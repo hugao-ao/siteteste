@@ -1,5 +1,5 @@
 // Arquivo de integração com Supabase
-import { createClient } from "https://vbikskbfkhundhropykf.supabase.co"
+import { createClient } from "https://siteteste-vbikskbfkhundhropykf.supabase.co"
 
 export const supabase = createClient(
   "https://siteteste.supabase.co",
