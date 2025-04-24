@@ -1,10 +1,17 @@
-let credentials = { username: "admin", password: "admin123" };
+import { supabase } from './supabase.js';
 
-function login() {
-  const user = document.getElementById("username").value;
-  const pass = document.getElementById("password").value;
+async function login() {
+  const userInput = document.getElementById("username").value;
+  const passInput = document.getElementById("password").value;
 
-  if (user === credentials.username && pass === credentials.password) {
+  const { data, error } = await supabase
+    .from("credenciais")
+    .select("*")
+    .eq("usuario", userInput)
+    .eq("senha", passInput)
+    .single();
+
+  if (data && !error) {
     document.body.innerHTML = `
       <div class="app-container">
         <div class="sidebar">
@@ -24,15 +31,6 @@ function login() {
           <button onclick="closeModal()">Cancelar</button>
         </div>
       </div>
-      <style>
-        .app-container { display: flex; height: 100vh; }
-        .sidebar { width: 200px; background: #222; color: white; padding: 20px; }
-        .main { flex: 1; padding: 40px; }
-        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-                 background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
-        .modal-content { background: white; padding: 30px; border-radius: 10px; }
-        .hidden { display: none; }
-      </style>
     `;
   } else {
     alert("Login ou senha incorretos.");
@@ -51,15 +49,30 @@ function closeModal() {
   document.getElementById("modal").classList.add("hidden");
 }
 
-function updateCredentials() {
+async function updateCredentials() {
   const newUser = document.getElementById("newUser").value;
   const newPass = document.getElementById("newPass").value;
+
   if (newUser && newPass) {
-    credentials.username = newUser;
-    credentials.password = newPass;
-    alert("Credenciais atualizadas com sucesso!");
-    closeModal();
+    const { data, error } = await supabase
+      .from("credenciais")
+      .update({ usuario: newUser, senha: newPass })
+      .eq("usuario", "admin");
+
+    if (!error) {
+      alert("Credenciais atualizadas com sucesso!");
+      closeModal();
+    } else {
+      alert("Erro ao atualizar credenciais.");
+    }
   } else {
     alert("Preencha todos os campos.");
   }
 }
+
+// Expõe login no escopo global
+window.login = login;
+window.logout = logout;
+window.showConfig = showConfig;
+window.closeModal = closeModal;
+window.updateCredentials = updateCredentials;
