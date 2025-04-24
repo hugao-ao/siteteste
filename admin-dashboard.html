@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="admin-container">
+    <h2>Painel de Administração</h2>
+    <button onclick="logout()">Logout</button>
+    <h3>Usuários Cadastrados</h3>
+    <table border="1" id="userTable">
+      <thead>
+        <tr><th>Usuário</th><th>Nível</th><th>Ações</th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <h3>Cadastrar Novo Usuário</h3>
+    <input type="text" id="newUser" placeholder="Novo usuário">
+    <input type="password" id="newPass" placeholder="Senha">
+    <button onclick="createUser()">Criar Usuário</button>
+  </div>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>
