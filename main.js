@@ -5,11 +5,12 @@ async function login() {
   const passInput = document.getElementById("password").value;
 
   const { data, error } = await supabase
-    .from("credenciais")
-    .select("*")
-    .eq("usuario", userInput)
-    .eq("senha", passInput)
-    .single();
+  .from("credenciais")
+  .select("*")
+  .eq("usuario", userInput)
+  .eq("senha", passInput)
+  .maybeSingle();
+
 
   if (data && !error) {
     document.body.innerHTML = `
