@@ -13,6 +13,7 @@ async function login() {
 
   if (data && !error) {
     if (data.nivel === "admin") {
+      sessionStorage.setItem("usuario", data.usuario);
       window.location.href = "/admin-dashboard.html";
     } else {
       document.body.innerHTML = `
