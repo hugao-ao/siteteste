@@ -58,7 +58,7 @@ async function updateCredentials() {
     const { data, error } = await supabase
       .from("credenciais")
       .update({ usuario: newUser, senha: newPass })
-      .eq("usuario", "admin");
+      .select("*").order("created_at", { ascending: false }).limit(1);
 
     if (!error) {
       alert("Credenciais atualizadas com sucesso!");
