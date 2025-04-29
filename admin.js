@@ -89,9 +89,14 @@ async function deleteUser(id) {
   if (confirm("Tem certeza que deseja excluir este usuário?")) {
     await supabase.from("credenciais").delete().eq("id", id);
     alert("Usuário excluído!");
-    loadUsers();
+
+    // pequeno atraso para garantir que o DOM termine
+    setTimeout(() => {
+      loadUsers();
+    }, 100);
   }
 }
+
 
 async function createUser() {
   const user = document.getElementById("newUser").value;
