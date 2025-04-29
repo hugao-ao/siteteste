@@ -80,7 +80,6 @@ async function saveUser(id) {
 }
 
 async function deleteUser(id) {
-  // não permite excluir o próprio admin
   const usernameCell = document.querySelector(`td[data-id='${id}'][data-field='usuario']`);
   if (usernameCell && usernameCell.innerText === currentUser) {
     alert("Você não pode excluir a si mesmo.");
@@ -91,7 +90,6 @@ async function deleteUser(id) {
     return;
   }
 
-  // faz o delete no Supabase
   const { error } = await supabase
     .from("credenciais")
     .delete()
@@ -103,9 +101,9 @@ async function deleteUser(id) {
   }
 
   alert("Usuário excluído!");
-  // recarrega a tabela imediatamente
-  await loadUsers();
+  await loadUsers();  // recarrega a tabela imediatamente
 }
+
 
 
 
