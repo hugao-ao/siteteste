@@ -1,26 +1,33 @@
-<!-- index.html -->
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Login</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
+  <!-- ETAPA 1: login usuário + senha -->
   <div class="login-container" id="step1">
     <h2>Login</h2>
-    <input type="text" id="username" placeholder="Usuário">
-    <input type="password" id="password" placeholder="Senha">
+    <input type="text" id="username" placeholder="Usuário" />
+    <input type="password" id="password" placeholder="Senha" />
     <button onclick="login()">Entrar</button>
   </div>
 
+  <!-- ETAPA 2: digitar código OTP -->
   <div class="login-container" id="step2" style="display:none;">
     <h2>Autenticação em duas etapas</h2>
-    <p>Digite o código que enviamos para você:</p>
-    <input type="text" id="code" placeholder="Código de 6 dígitos">
+    <p>Digite o código que enviamos para o seu e-mail:</p>
+    <input type="text" id="code" placeholder="Código de 6 dígitos" />
     <button onclick="verifyCode()">Confirmar</button>
   </div>
+
+  <!-- SDK EmailJS + inicialização -->
+  <script src="https://cdn.emailjs.com/sdk/2.3.2/email.min.js"></script>
+  <script>
+    emailjs.init("MfDhG_3505PQGJTfi"); // <=== SUA Public Key do EmailJS
+  </script>
 
   <script type="module" src="main.js"></script>
 </body>
