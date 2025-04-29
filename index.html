@@ -7,12 +7,21 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="login-container">
+  <div class="login-container" id="step1">
     <h2>Login</h2>
     <input type="text" id="username" placeholder="Usuário">
     <input type="password" id="password" placeholder="Senha">
     <button onclick="login()">Entrar</button>
   </div>
+
+  <div class="login-container" id="step2" style="display:none;">
+    <h2>Autenticação em duas etapas</h2>
+    <p>Digite o código que enviamos para você:</p>
+    <input type="text" id="code" placeholder="Código de 6 dígitos">
+    <button onclick="verifyCode()">Confirmar</button>
+  </div>
+
   <script type="module" src="main.js"></script>
 </body>
+
 </html>
