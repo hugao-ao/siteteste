@@ -1,48 +1,45 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8"/>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta charset="UTF-8" />
   <title>Painel de Administração</title>
-  <link rel="stylesheet" href="style.css"/>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <script>
-    const user  = sessionStorage.getItem("usuario");
-    const nivel = sessionStorage.getItem("nivel");
-    if (!user || nivel !== "admin") {
-      window.location.href = "/";
-    }
-  </script>
-
-  <div class="admin-container">
+  <main>
     <h1>Painel de Administração</h1>
-    <button onclick="logout()">Logout</button>
+    <button id="btn-logout">Logout</button>
 
-    <h2>Usuários Cadastrados</h2>
-    <table id="userTable">
-      <thead>
-        <tr>
-          <th>Usuário</th>
-          <th>Senha</th>
-          <th>Nível</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
+    <section>
+      <h2>Usuários Cadastrados</h2>
+      <table id="users-table">
+        <thead>
+          <tr>
+            <th>Usuário</th>
+            <th>Senha</th>
+            <th>E-mail</th>
+            <th>Nível</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
 
-    <h2>Cadastrar Novo Usuário</h2>
-    <input type="text" id="newUser" placeholder="Novo usuário" />
-    <input type="text" id="newPass" placeholder="Senha" />
-    <input type="text" id="newEmail" placeholder="E-mail" />
-    <select id="newLevel">
-      <option value="usuario">usuario</option>
-      <option value="admin">admin</option>
-    </select>
-    <button onclick="createUser()">Criar Usuário</button>
-  </div>
+    <section>
+      <h2>Cadastrar Novo Usuário</h2>
+      <input type="text" id="new-username" placeholder="Novo usuário" />
+      <input type="password" id="new-password" placeholder="Senha" />
+      <input type="email" id="new-email" placeholder="E-mail" />
+      <select id="new-level">
+        <option value="usuario">usuario</option>
+        <option value="admin">admin</option>
+      </select>
+      <button id="btn-create">Criar Usuário</button>
+    </section>
+  </main>
 
+  <!-- Importa o script como módulo -->
   <script type="module" src="admin.js"></script>
 </body>
 </html>
