@@ -2,10 +2,32 @@ import { supabase } from './supabase.js';
 
 let currentUser = null;
 
-async function loadUsers() {
+async function checkAccess() {
   const sessionUser = sessionStorage.getItem("usuario");
-  currentUser = sessionUser;
 
+  if (!sessionUser) {
+    alert("Acesso não autorizado. Faça login primeiro.");
+    window.location.href = "/";
+    return;
+  }
+
+  const { data, error } = await supabase
+    .from("credenciais")
+    .select("usuario, nivel")
+    .eq("usuario", sessionUser)
+    .maybeSingle();
+
+  if (!data || error || data.nivel !== "admin") {
+    alert("Acesso restrito apenas para administradores.");
+    window.location.href = "/";
+    return;
+  }
+
+  currentUser = data.usuario;
+  loadUsers();
+}
+
+async function loadUsers() {
   const { data, error } = await supabase.from("credenciais").select("*");
   const tbody = document.querySelector("#userTable tbody");
   tbody.innerHTML = "";
@@ -77,4 +99,4 @@ window.createUser = createUser;
 window.deleteUser = deleteUser;
 window.saveUser = saveUser;
 
-loadUsers();
+checkAccess();
