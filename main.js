@@ -1,7 +1,7 @@
 import { supabase } from './supabase.js';
 
 // IDs do seu serviço e template no EmailJS
-const EMAILJS_SERVICE_ID = 'YOUR_SERVICE_ID';
+const EMAILJS_SERVICE_ID = 'service_lk94gdg';
 const EMAILJS_TEMPLATE_ID = 'template_5i54ywq';
 
 let _tempUser = null;
