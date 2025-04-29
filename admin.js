@@ -90,12 +90,11 @@ async function deleteUser(id) {
     await supabase.from("credenciais").delete().eq("id", id);
     alert("Usuário excluído!");
 
-    // pequeno atraso para garantir que o DOM termine
-    setTimeout(() => {
-      loadUsers();
-    }, 100);
+    // Recarrega imediatamente depois da exclusão
+    requestAnimationFrame(() => loadUsers());
   }
 }
+
 
 
 async function createUser() {
