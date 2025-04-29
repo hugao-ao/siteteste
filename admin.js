@@ -38,7 +38,7 @@ async function loadUsers() {
       const blockDelete = user.usuario === currentUser;
       tr.innerHTML = `
         <td contenteditable="true" data-id="${user.id}" data-field="usuario">${user.usuario}</td>
-        <td contenteditable="true" data-id="${user.id}" data-field="senha">••••••••</td>
+        <td data-id="${user.id}" data-field="senha" data-real="${user.senha}">•••••••• <button onclick="toggleSenha(this)">👁️</button></td>
         <td>${user.nivel}</td>
         <td>
           <button onclick="saveUser('${user.id}')">Salvar</button>
@@ -50,9 +50,25 @@ async function loadUsers() {
   }
 }
 
+function toggleSenha(button) {
+  const td = button.parentElement;
+  const senha = td.getAttribute("data-real");
+  if (td.innerText.includes("••••")) {
+    td.innerHTML = `${senha} <button onclick="toggleSenha(this)">🙈</button>`;
+  } else {
+    td.innerHTML = `•••••••• <button onclick="toggleSenha(this)">👁️</button>`;
+  }
+  td.setAttribute("data-real", senha);
+  td.setAttribute("contenteditable", "true");
+  td.setAttribute("data-field", "senha");
+}
+
 async function saveUser(id) {
   const username = document.querySelector(`td[data-id='${id}'][data-field='usuario']`).innerText;
-  const senha = document.querySelector(`td[data-id='${id}'][data-field='senha']`).innerText;
+  const senhaField = document.querySelector(`td[data-id='${id}'][data-field='senha']`);
+  const senha = senhaField.innerText.includes("•••")
+    ? senhaField.getAttribute("data-real")
+    : senhaField.innerText.replace("🙈", "").trim();
 
   const updates = {};
   if (username) updates.usuario = username;
@@ -98,5 +114,6 @@ window.logout = logout;
 window.createUser = createUser;
 window.deleteUser = deleteUser;
 window.saveUser = saveUser;
+window.toggleSenha = toggleSenha;
 
 checkAccess();
