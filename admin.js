@@ -8,7 +8,7 @@ const btnCreate = document.getElementById("btn-create");
 btnLogout.onclick = logout;
 btnCreate.onclick = createUser;
 
-checkAdminAndLoad();
+
 
 async function checkAdminAndLoad() {
   // Garante que só admin veja essa página
@@ -20,7 +20,7 @@ async function checkAdminAndLoad() {
   }
   loadUsers();
 }
-
+checkAdminAndLoad();
 async function loadUsers() {
   // limpa tabela
   tableBody.innerHTML = "";
