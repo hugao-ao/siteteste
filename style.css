@@ -1,25 +1,62 @@
 body {
   font-family: Arial, sans-serif;
-  background-color: #f0f0f0;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-  margin: 0;
+  margin: 0; padding: 0;
+  background: #f5f5f5;
 }
+
 .login-container {
-  background: white;
-  padding: 30px;
+  width: 300px;
+  margin: 100px auto;
+  padding: 2rem;
+  background: #fff;
   border-radius: 8px;
-  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   text-align: center;
 }
-input {
-  display: block;
-  margin: 10px auto;
-  padding: 10px;
-  width: 80%;
+.login-container h2 {
+  margin-bottom: 1rem;
 }
-button {
-  padding: 10px 20px;
+.login-container input {
+  width: 100%;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+.login-container button {
+  padding: 0.6rem 1.2rem;
+  border: none;
+  background: #0A1257;
+  color: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.login-container button:hover {
+  background: #081040;
+}
+
+/* Admin Dashboard */
+.admin-container {
+  max-width: 800px;
+  margin: 40px auto;
+  background: #fff;
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+.admin-container h1 { margin-top:0; }
+.admin-container button { margin-bottom:1rem; }
+table {
+  border-collapse: collapse;
+  width: 100%;
+  margin-top: 1rem;
+}
+th, td {
+  border: 1px solid #999;
+  padding: 0.5rem;
+  text-align: center;
+}
+input, select {
+  padding: 0.3rem;
+  width: 100px;
 }
