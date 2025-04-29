@@ -1,133 +1,95 @@
-import { supabase } from './supabase.js';
+// admin.js
+import { supabase } from "./supabase.js";
 
-let currentUser = null;
+const tbody = document.querySelector("#userTable tbody");
 
-async function checkAccess() {
-  const sessionUser = sessionStorage.getItem("usuario");
-
-  if (!sessionUser) {
-    alert("Acesso não autorizado. Faça login primeiro.");
-    window.location.href = "/";
-    return;
-  }
-
+export async function loadUsers() {
+  tbody.innerHTML = "<tr><td colspan='4'>Carregando...</td></tr>";
   const { data, error } = await supabase
     .from("credenciais")
-    .select("usuario, nivel")
-    .eq("usuario", sessionUser)
-    .maybeSingle();
+    .select("id,usuario,senha,nivel,email");
 
-  if (!data || error || data.nivel !== "admin") {
-    alert("Acesso restrito apenas para administradores.");
-    window.location.href = "/";
-    return;
+  if (error) {
+    return alert("Erro ao carregar usuários.");
   }
 
-  currentUser = data.usuario;
-  loadUsers();
-}
-
-async function loadUsers() {
-  const { data, error } = await supabase.from("credenciais").select("*");
-  const tbody = document.querySelector("#userTable tbody");
   tbody.innerHTML = "";
-
-  if (data && !error) {
-    data.forEach(user => {
-      const tr = document.createElement("tr");
-      const blockDelete = user.usuario === currentUser;
-      tr.innerHTML = `
-        <td contenteditable="true" data-id="${user.id}" data-field="usuario">${user.usuario}</td>
-        <td data-id="${user.id}" data-field="senha" data-real="${user.senha}">•••••••• <button onclick="toggleSenha(this)">👁️</button></td>
-        <td>${user.nivel}</td>
-        <td>
-          <button onclick="saveUser('${user.id}')">Salvar</button>
-          ${blockDelete ? '<span style="color: gray">[Admin]</span>' : `<button onclick="deleteUser('${user.id}')">Excluir</button>`}
-        </td>
-      `;
-      tbody.appendChild(tr);
-    });
-  }
+  data.forEach(row => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${row.usuario}</td>
+      <td>
+        <input type="password" id="pass-${row.id}" value="${row.senha}" readonly />
+        <button onclick="toggleShow(${row.id})">👁️</button>
+      </td>
+      <td>
+        <select id="lvl-${row.id}">
+          <option ${row.nivel==="usuario"?"selected":""} value="usuario">usuario</option>
+          <option ${row.nivel==="admin"  ?"selected":""} value="admin">admin</option>
+        </select>
+      </td>
+      <td>
+        <button onclick="saveUser(${row.id})">Salvar</button>
+        ${row.usuario === sessionStorage.getItem("usuario")
+          ? "[Admin]" 
+          : `<button onclick="deleteUser(${row.id})">Excluir</button>`}
+      </td>`;
+    tbody.appendChild(tr);
+  });
 }
 
-function toggleSenha(button) {
-  const td = button.parentElement;
-  const senha = td.getAttribute("data-real");
-  if (td.innerText.includes("••••")) {
-    td.innerHTML = `${senha} <button onclick="toggleSenha(this)">🙈</button>`;
-  } else {
-    td.innerHTML = `•••••••• <button onclick="toggleSenha(this)">👁️</button>`;
-  }
-  td.setAttribute("data-real", senha);
-  td.setAttribute("contenteditable", "true");
-  td.setAttribute("data-field", "senha");
-}
+window.toggleShow = id => {
+  const inp = document.getElementById(`pass-${id}`);
+  inp.type = inp.type === "password" ? "text" : "password";
+};
 
-async function saveUser(id) {
-  const username = document.querySelector(`td[data-id='${id}'][data-field='usuario']`).innerText;
-  const senhaField = document.querySelector(`td[data-id='${id}'][data-field='senha']`);
-  const senha = senhaField.innerText.includes("•••")
-    ? senhaField.getAttribute("data-real")
-    : senhaField.innerText.replace("🙈", "").trim();
-
-  const updates = {};
-  if (username) updates.usuario = username;
-  if (senha && senha !== "••••••••") updates.senha = senha;
-
-  await supabase.from("credenciais").update(updates).eq("id", id);
-  alert("Usuário atualizado!");
+export async function saveUser(id) {
+  const senha = document.getElementById(`pass-${id}`).value;
+  const nivel = document.getElementById(`lvl-${id}`).value;
+  const { error } = await supabase
+    .from("credenciais")
+    .update({ senha, nivel })
+    .eq("id", id);
+  if (error) return alert("Erro ao salvar.");
+  alert("Dados atualizados.");
   loadUsers();
 }
 
-async function deleteUser(id) {
-  const usernameCell = document.querySelector(`td[data-id='${id}'][data-field='usuario']`);
-  if (usernameCell && usernameCell.innerText === currentUser) {
-    alert("Você não pode excluir a si mesmo.");
-    return;
-  }
-
-  if (!confirm("Tem certeza que deseja excluir este usuário?")) {
-    return;
-  }
-
+export async function deleteUser(id) {
+  if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
   const { error } = await supabase
     .from("credenciais")
     .delete()
     .eq("id", id);
-
-  if (error) {
-    alert("Erro ao excluir usuário: " + error.message);
-    return;
-  }
-
+  if (error) return alert("Erro ao excluir.");
   alert("Usuário excluído!");
-  await loadUsers();  // recarrega a tabela imediatamente
+  loadUsers();
 }
 
-
-
-
-async function createUser() {
-  const user = document.getElementById("newUser").value;
-  const pass = document.getElementById("newPass").value;
-  if (user && pass) {
-    await supabase.from("credenciais").insert([{ usuario: user, senha: pass, nivel: "usuario" }]);
-    alert("Usuário criado!");
-    loadUsers();
-  } else {
-    alert("Preencha todos os campos.");
+export async function createUser() {
+  const usuario = document.getElementById("newUser").value.trim();
+  const senha   = document.getElementById("newPass").value.trim();
+  const email   = document.getElementById("newEmail").value.trim();
+  const nivel   = document.getElementById("newLevel").value;
+  if (!usuario || !senha || !email) {
+    return alert("Preencha todos os campos.");
   }
+
+  const { error } = await supabase
+    .from("credenciais")
+    .insert([{ usuario, senha, email, nivel }]);
+  if (error) return alert("Erro ao criar usuário.");
+  alert("Usuário criado!");
+  document.getElementById("newUser").value = "";
+  document.getElementById("newPass").value = "";
+  document.getElementById("newEmail").value = "";
+  loadUsers();
 }
 
-function logout() {
-  sessionStorage.removeItem("usuario");
+export function logout() {
+  sessionStorage.clear();
   window.location.href = "/";
 }
 
-window.logout = logout;
-window.createUser = createUser;
-window.deleteUser = deleteUser;
-window.saveUser = saveUser;
-window.toggleSenha = toggleSenha;
-
-checkAccess();
+// ao abrir a página carrega a lista
+loadUsers();
