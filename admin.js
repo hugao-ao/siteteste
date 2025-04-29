@@ -80,19 +80,31 @@ async function saveUser(id) {
 }
 
 async function deleteUser(id) {
-  const row = document.querySelector(`td[data-id='${id}']`);
-  if (row && row.innerText === currentUser) {
+  // não permite excluir o próprio admin
+  const usernameCell = document.querySelector(`td[data-id='${id}'][data-field='usuario']`);
+  if (usernameCell && usernameCell.innerText === currentUser) {
     alert("Você não pode excluir a si mesmo.");
     return;
   }
 
-  if (confirm("Tem certeza que deseja excluir este usuário?")) {
-    await supabase.from("credenciais").delete().eq("id", id);
-    alert("Usuário excluído!");
-
-    // Recarrega imediatamente depois da exclusão
-    requestAnimationFrame(() => loadUsers());
+  if (!confirm("Tem certeza que deseja excluir este usuário?")) {
+    return;
   }
+
+  // faz o delete no Supabase
+  const { error } = await supabase
+    .from("credenciais")
+    .delete()
+    .eq("id", id);
+
+  if (error) {
+    alert("Erro ao excluir usuário: " + error.message);
+    return;
+  }
+
+  alert("Usuário excluído!");
+  // recarrega a tabela imediatamente
+  await loadUsers();
 }
 
 
