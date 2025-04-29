@@ -3,10 +3,20 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login</title>
+  <title>Login 2FA via Email</title>
   <link rel="stylesheet" href="style.css">
+  
+  <!-- EmailJS SDK -->
+  <script type="text/javascript" src="https://cdn.emailjs.com/sdk/2.3.2/email.min.js"></script>
+  <script type="text/javascript">
+    // Substitua pelo seu USER ID do EmailJS
+    (function(){
+      emailjs.init('YOUR_EMAILJS_USER_ID');
+    })();
+  </script>
 </head>
 <body>
+  <!-- Etapa 1: usuário & senha -->
   <div class="login-container" id="step1">
     <h2>Login</h2>
     <input type="text" id="username" placeholder="Usuário">
@@ -14,14 +24,14 @@
     <button onclick="login()">Entrar</button>
   </div>
 
+  <!-- Etapa 2: confirmação por código enviado por e-mail -->
   <div class="login-container" id="step2" style="display:none;">
     <h2>Autenticação em duas etapas</h2>
-    <p>Digite o código que enviamos para você:</p>
+    <p>Enviamos um código de 6 dígitos para seu e-mail. Digite-o abaixo:</p>
     <input type="text" id="code" placeholder="Código de 6 dígitos">
     <button onclick="verifyCode()">Confirmar</button>
   </div>
 
   <script type="module" src="main.js"></script>
 </body>
-
 </html>
