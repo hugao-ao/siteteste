@@ -1,98 +1,106 @@
-import { supabase } from './supabase.js';
+// main.js
+import { supabase } from "./supabase.js";
 
-// IDs do seu serviço e template no EmailJS
-const EMAILJS_SERVICE_ID = 'service_lk94gdg';
-const EMAILJS_TEMPLATE_ID = 'template_5i54ywq';
+// ——————
+// CONFIGURAÇÕES EmailJS
+const EMAILJS_SERVICE   = "service_lk94gdg";    // <=== seu Service ID
+const EMAILJS_TEMPLATE  = "template_5i54ywq";   // <=== seu Template ID
+const EMAILJS_PUBLICKEY = "MfDhG_3505PQGJTfi";  // <=== sua Public Key
+// ——————
 
-let _tempUser = null;
-let _tempCode = null;
+let _tempUser  = null;
+let _tempPass  = null;
+let _tempCode  = null;
 
-async function login() {
-  // 1ª etapa: valida usuário+senha no Supabase
+export async function login() {
   const user = document.getElementById("username").value.trim();
   const pass = document.getElementById("password").value.trim();
 
   const { data, error } = await supabase
     .from("credenciais")
-    .select("usuario, nivel, email")
+    .select("usuario,senha,email")
     .eq("usuario", user)
     .eq("senha", pass)
     .maybeSingle();
 
   if (error || !data) {
-    alert("Usuário ou senha incorretos.");
-    return;
+    return alert("Usuário ou senha incorretos.");
   }
 
-  // guarda usuário e gera código aleatório
   _tempUser = data.usuario;
-  _tempCode = Math.floor(100000 + Math.random()*900000).toString();
+  _tempPass = data.senha;
+  _tempCode = String(Math.floor(100000 + Math.random() * 900000)); // gera 6 dígitos
 
-  // dispara envio por EmailJS
-  emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
-    to_email: data.email,
-    code: _tempCode
-  }).then(() => {
-    alert("Código enviado para " + data.email);
-    document.getElementById("step1").style.display = "none";
-    document.getElementById("step2").style.display = "block";
-  }).catch(err => {
-    console.error(err);
-    alert("Erro ao enviar o e-mail. Tente novamente.");
-  });
+  // envia OTP por EmailJS
+  try {
+    const resp = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE,
+        template_id: EMAILJS_TEMPLATE,
+        user_id:    EMAILJS_PUBLICKEY,
+        template_params: {
+          email:    data.email,
+          passcode: _tempCode,
+          time:     new Date(Date.now() + 15*60000).toLocaleTimeString()
+        }
+      })
+    });
+    if (!resp.ok) throw new Error(`status ${resp.status}`);
+  } catch (e) {
+    console.error(e);
+    return alert("Erro ao enviar o e-mail. Tente novamente.");
+  }
+
+  document.getElementById("step1").style.display = "none";
+  document.getElementById("step2").style.display = "block";
 }
 
-function verifyCode() {
+export function verifyCode() {
   const code = document.getElementById("code").value.trim();
   if (code !== _tempCode) {
-    alert("Código incorreto. Tente novamente.");
-    return;
+    return alert("Código incorreto. Tente novamente.");
   }
   finalizeLogin(_tempUser);
 }
 
-function finalizeLogin(user) {
-  // recupera nível e redireciona
-  supabase
+async function finalizeLogin(user) {
+  const { data, error } = await supabase
     .from("credenciais")
     .select("nivel")
     .eq("usuario", user)
-    .maybeSingle()
-    .then(({ data, error }) => {
-      if (error || !data) {
-        alert("Erro ao recuperar nível de acesso.");
-        window.location.href = "/";
-        return;
-      }
-      sessionStorage.setItem("usuario", user);
-      if (data.nivel === "admin") {
-        window.location.href = "/admin-dashboard.html";
-      } else {
-        document.body.innerHTML = `
-          <div class="app-container">
-            <div class="sidebar">
-              <button onclick="logout()">Logout</button>
-            </div>
-            <div class="main">
-              <h2>Você conseguiu fazer login!</h2>
-            </div>
-          </div>
-          <style>
-            .app-container { display: flex; height: 100vh; }
-            .sidebar { width: 200px; background: #222; color: white; padding: 20px; }
-            .main { flex: 1; padding: 40px; }
-          </style>
-        `;
-      }
-    });
+    .maybeSingle();
+
+  if (error || !data) {
+    alert("Erro ao recuperar nível de acesso.");
+    return window.location.href = "/";
+  }
+
+  sessionStorage.setItem("usuario", user);
+  sessionStorage.setItem("nivel", data.nivel);
+
+  if (data.nivel === "admin") {
+    window.location.href = "/admin-dashboard.html";
+  } else {
+    document.body.innerHTML = `
+      <div class="app-container">
+        <div class="sidebar">
+          <button onclick="logout()">Logout</button>
+        </div>
+        <div class="main">
+          <h2>Você conseguiu fazer login!</h2>
+        </div>
+      </div>
+    `;
+  }
 }
 
-function logout() {
+export function logout() {
   sessionStorage.clear();
   window.location.href = "/";
 }
 
-// Expor funções ao escopo global
-window.login = login;
+window.login      = login;
 window.verifyCode = verifyCode;
-window.logout = logout;
+window.logout     = logout;
