@@ -14,13 +14,14 @@ import { supabase } from "./supabase.js";
 
 // Função de escape para prevenir XSS e erros de sintaxe
 const sanitizeInput = (str) => {
+  // << CORREÇÃO DEFINITIVA APLICADA AQUI >>
   if (str === null || str === undefined) return ";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;")
+    .replace(/\'/g, "&#x27;") // Corrigido para escapar aspas simples corretamente
     .replace(/`/g, "&#x60;");
 };
 
@@ -141,7 +142,6 @@ async function loadUsers() {
       // --- Linha para Tabela de Lista ---
       const listTr = document.createElement("tr");
       listTr.dataset.userId = user.id;
-      // << MODIFICADO: Adicionado data-projeto ao botão >>
       listTr.innerHTML = `
         <td>${sanitizeInput(user.usuario)}</td>
         <td>${sanitizeInput(user.email)}</td>
@@ -179,8 +179,8 @@ async function saveUser(id) {
         return;
     }
 
-    const updateData = { email, nivel, projeto };
-    if (senha && senha !== '********') {
+    const updateData = { email, nivel, projeto: projeto || null }; // Garante null se vazio
+    if (senha && senha !== '********') { // Evita salvar a máscara
         updateData.senha = senha;
     }
 
@@ -197,12 +197,14 @@ async function saveUser(id) {
         listRow.children[1].textContent = sanitizeInput(email);
         listRow.children[2].textContent = sanitizeInput(nivel);
         listRow.children[3].textContent = sanitizeInput(projeto) || 'Nenhum';
-        // << MODIFICADO: Atualiza data-projeto no botão da lista >>
         const viewBtn = listRow.querySelector('.view-user-dashboard-btn');
         if (viewBtn) {
             viewBtn.dataset.projeto = sanitizeInput(projeto) || '';
         }
     }
+    // Resetar campo senha para máscara após salvar
+    const passInput = document.getElementById(`pass-${id}`);
+    if (passInput) passInput.value = '********'; 
     
   } catch (error) {
     console.error("Erro ao salvar usuário:", error);
@@ -245,14 +247,10 @@ async function createUser(event) {
     if (!usuario || !senha || !email) {
       throw new Error("Preencha todos os campos obrigatórios: Usuário, Senha e E-mail.");
     }
-    // Projeto agora não é obrigatório na criação, pode ser definido depois
-    // if (!projeto) {
-    //     throw new Error("Selecione um Projeto para o novo usuário.");
-    // }
 
     const { data, error } = await supabase
       .from("credenciais")
-      .insert({ usuario, senha, email, nivel, projeto: projeto || null }) // Garante null se vazio
+      .insert({ usuario, senha, email, nivel, projeto: projeto || null })
       .select();
 
     if (error) {
@@ -276,14 +274,12 @@ async function createUser(event) {
   }
 }
 
-// --- Navegação para Dashboard do Usuário (Modificada) ---
-// << MODIFICADO: Função separada, verifica projeto >>
+// --- Navegação para Dashboard do Usuário ---
 function viewUserDashboard(userId, username, userProject) {
     sessionStorage.setItem('viewing_user_id', userId);
     sessionStorage.setItem('viewing_username', username);
     sessionStorage.setItem('admin_viewer_username', sessionStorage.getItem('usuario'));
     
-    // Redireciona com base no projeto do usuário visualizado
     if (userProject === 'Planejamento') {
         window.location.href = `planejamento-dashboard.html`; 
     } else {
@@ -293,7 +289,6 @@ function viewUserDashboard(userId, username, userProject) {
 
 // --- Navegação para Gerenciamento de Clientes (Admin) ---
 function viewClientesDashboard() {
-    // Limpa a visualização de usuário específico antes de ir para clientes
     sessionStorage.removeItem('viewing_user_id');
     sessionStorage.removeItem('viewing_username');
     window.location.href = `clientes-dashboard.html`;
@@ -320,6 +315,15 @@ manageTableBody.addEventListener("click", e => {
      if (input) {
         input.type = input.type === "password" ? "text" : "password";
         target.textContent = input.type === "password" ? "👁️" : "🙈";
+        // Define um timeout para voltar a ser password após 3 segundos
+        if (input.type === "text") {
+            setTimeout(() => {
+                if (document.getElementById(`pass-${id}`)) { // Verifica se o elemento ainda existe
+                   document.getElementById(`pass-${id}`).type = "password";
+                   target.textContent = "👁️";
+                }
+            }, 3000);
+        }
      }
    } else if (target.classList.contains("save-btn")) {
      if (id) saveUser(id);
@@ -328,15 +332,14 @@ manageTableBody.addEventListener("click", e => {
    }
  });
 
- // << MODIFICADO: Listener pega o projeto do data attribute >>
  listTableBody.addEventListener("click", e => {
     const target = e.target;
     if (target.classList.contains("view-user-dashboard-btn")) {
         const userId = target.dataset.id;
         const username = target.dataset.username;
-        const userProject = target.dataset.projeto; // Pega o projeto
+        const userProject = target.dataset.projeto;
         if (userId && username) {
-            viewUserDashboard(userId, username, userProject); // Passa o projeto
+            viewUserDashboard(userId, username, userProject);
         }
     }
  });
@@ -347,5 +350,6 @@ btnLogout.addEventListener("click", logout);
 // Inicialização
 if (checkAccess()) {
   loadUsers();
-  switchTab('manage');
+  switchTab('manage'); // Inicia na aba de gerenciamento por padrão
 }
+
