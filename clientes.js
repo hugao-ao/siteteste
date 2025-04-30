@@ -16,10 +16,11 @@ let currentUserId = null;
 let currentUserNivel = null;
 let currentUserProjeto = null;
 let isAdmin = false;
+let allUsers = []; // << NOVO: Para armazenar lista de usuários para o select
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
-  if (str === null || str === undefined) return '';
+  if (str === null || str === undefined) return ";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -30,7 +31,7 @@ const sanitizeInput = (str) => {
 };
 
 // --- Verificação de Acesso e Inicialização ---
-function initializeDashboard() {
+async function initializeDashboard() { // << MODIFICADO: Tornou-se async
     currentUser = sessionStorage.getItem("usuario");
     currentUserId = sessionStorage.getItem("user_id");
     currentUserNivel = sessionStorage.getItem("nivel");
@@ -47,11 +48,11 @@ function initializeDashboard() {
     // Configura botões de navegação e indicador admin
     if (isAdmin) {
         adminViewIndicator.style.display = "block";
-        backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; }; // Admin volta para admin-dashboard
+        backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; };
+        await loadAllUsers(); // << NOVO: Carrega usuários para o admin
     } else if (currentUserProjeto === 'Planejamento') {
-        backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; }; // Planejamento volta para planejamento-dashboard
+        backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; };
     } else {
-        // Se não for admin nem do Planejamento, não deveria estar aqui
         alert("Acesso indevido a esta página.");
         window.location.href = "index.html";
         return false;
@@ -59,32 +60,56 @@ function initializeDashboard() {
 
     logoutBtn.onclick = logout;
     addClientForm.addEventListener("submit", addClient);
-    clientsTableBody.addEventListener("click", handleTableClick); // Delegação de eventos para editar/excluir/status
+    clientsTableBody.addEventListener("click", handleTableClick);
 
-    loadClients(); // Carrega os clientes ao inicializar
+    loadClients();
     return true;
 }
 
-// --- Carregar Clientes ---
+// << NOVO: Função para carregar todos os usuários (para o select do admin) >>
+async function loadAllUsers() {
+    try {
+        const { data, error } = await supabase
+            .from('credenciais')
+            .select('id, usuario')
+            .order('usuario', { ascending: true });
+        if (error) throw error;
+        allUsers = data;
+    } catch (error) {
+        console.error("Erro ao carregar lista de usuários:", error);
+        // Não crítico para a funcionalidade principal, mas informa o erro
+        alert("Erro ao carregar a lista de usuários para atribuição: " + error.message);
+        allUsers = []; // Garante que a lista esteja vazia em caso de erro
+    }
+}
+
+// --- Carregar Clientes (Modificado para Visibilidade) ---
 async function loadClients() {
     try {
         clientsTableBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
         let query = supabase.from('clientes').select('*');
 
-        // Filtra por usuário se não for admin
+        // << MODIFICADO: Lógica de filtro para não-admin >>
         if (!isAdmin) {
-            query = query.eq('criado_por_id', currentUserId);
+            // Busca clientes atribuídos ao usuário OU com visibilidade TODOS
+            query = query.or(`assigned_to_user_id.eq.${currentUserId},visibility.eq.TODOS`);
         }
 
-        const { data: clients, error } = await query.order('created_at', { ascending: false });
+        // Ordena por nome para consistência
+        const { data: clients, error } = await query.order('nome', { ascending: true });
 
         if (error) {
-            // Verifica erro específico de tabela inexistente
-            if (error.code === '42P01') { 
+            // Verifica erros comuns relacionados às novas colunas
+            if (error.code === '42703') { // Coluna não existe
+                if (error.message.includes('visibility')) {
+                    throw new Error("Erro: A coluna 'visibility' não foi encontrada. Siga as instruções para atualizar a tabela 'clientes'.");
+                } else if (error.message.includes('assigned_to_user_id')) {
+                    throw new Error("Erro: A coluna 'assigned_to_user_id' não foi encontrada. Siga as instruções para atualizar a tabela 'clientes'.");
+                }
+            } else if (error.code === '42P01') { // Tabela não existe
                  throw new Error("Erro: A tabela 'clientes' não foi encontrada no banco de dados. Siga as instruções para criá-la.");
-            } else {
-                throw error;
             }
+            throw error; // Lança outros erros
         }
 
         renderClients(clients);
@@ -95,9 +120,9 @@ async function loadClients() {
     }
 }
 
-// --- Renderizar Tabela de Clientes ---
+// --- Renderizar Tabela de Clientes (Modificado para Visibilidade/Atribuição) ---
 function renderClients(clients) {
-    clientsTableBody.innerHTML = ""; // Limpa a tabela
+    clientsTableBody.innerHTML = "";
 
     if (!clients || clients.length === 0) {
         clientsTableBody.innerHTML = '<tr><td colspan="4">Nenhum cliente encontrado.</td></tr>';
@@ -108,15 +133,36 @@ function renderClients(clients) {
         const tr = document.createElement("tr");
         tr.dataset.clientId = client.id;
 
-        // Define se o usuário atual pode editar/excluir este cliente
-        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || client.status === 'TODOS';
+        // << MODIFICADO: Lógica de permissão de edição/exclusão >>
+        // Admin pode tudo. Usuário pode se criou OU se visibilidade for TODOS.
+        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || client.visibility === 'TODOS';
 
-        // Formata o status
-        let statusHtml = '';
-        if (client.status === 'TODOS') {
-            statusHtml = '<span class="status-todos">TODOS</span>';
+        // << MODIFICADO: Lógica de exibição de Status/Atribuição >>
+        let assignmentHtml = '';
+        if (client.visibility === 'TODOS') {
+            assignmentHtml = '<span class="status-todos">TODOS</span>';
+        } else if (client.assigned_to_user_id) {
+            // Tenta encontrar o nome do usuário atribuído (se a lista carregou)
+            const assignedUser = allUsers.find(u => u.id === client.assigned_to_user_id);
+            assignmentHtml = `<span class="status-individual">${assignedUser ? sanitizeInput(assignedUser.usuario) : 'Atribuído (ID: ...' + client.assigned_to_user_id.slice(-4) + ')'}</span>`;
         } else {
-            statusHtml = '<span class="status-individual">Individual</span>';
+            assignmentHtml = '<span style="color:gray">Não atribuído</span>'; // Caso raro
+        }
+
+        // << MODIFICADO: Select de atribuição para Admin >>
+        let adminAssignmentSelectHtml = '';
+        if (isAdmin) {
+            adminAssignmentSelectHtml = `
+                <select id="assignment-${client.id}">
+                    <option value="TODOS" ${client.visibility === 'TODOS' ? 'selected' : ''}>TODOS</option>
+                    <option value="ASSIGNED" ${client.visibility !== 'TODOS' ? 'selected' : ''}>Atribuir a:</option>
+                    ${allUsers.map(user => 
+                        `<option value="${user.id}" ${client.visibility !== 'TODOS' && client.assigned_to_user_id === user.id ? 'selected' : ''}>
+                            &nbsp;&nbsp;${sanitizeInput(user.usuario)}
+                        </option>`
+                    ).join('')}
+                </select>
+            `;
         }
 
         tr.innerHTML = `
@@ -127,13 +173,7 @@ function renderClients(clients) {
                 <input type="text" id="whatsapp-${client.id}" value="${sanitizeInput(client.whatsapp)}" ${!canEditDelete ? 'disabled' : ''} />
             </td>
             <td>
-                ${isAdmin 
-                    ? `<select id="status-${client.id}">
-                         <option value="INDIVIDUAL" ${client.status !== 'TODOS' ? 'selected' : ''}>Individual</option>
-                         <option value="TODOS" ${client.status === 'TODOS' ? 'selected' : ''}>TODOS</option>
-                       </select>` 
-                    : statusHtml
-                }
+                ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml}
             </td>
             <td>
                 ${canEditDelete 
@@ -147,7 +187,7 @@ function renderClients(clients) {
     });
 }
 
-// --- Adicionar Cliente ---
+// --- Adicionar Cliente (Modificado para Status Padrão) ---
 async function addClient(event) {
     event.preventDefault();
     const nome = newClientNameInput.value.trim();
@@ -159,21 +199,25 @@ async function addClient(event) {
     }
 
     try {
+        // << MODIFICADO: Define visibilidade e atribuição padrão >>
+        const insertData = {
+            nome: nome,
+            whatsapp: whatsapp,
+            criado_por_id: currentUserId,
+            visibility: 'ASSIGNED', // Visibilidade padrão é atribuído
+            assigned_to_user_id: currentUserId // Atribuído ao criador por padrão
+        };
+
         const { data, error } = await supabase
             .from('clientes')
-            .insert({ 
-                nome: nome, 
-                whatsapp: whatsapp, 
-                criado_por_id: currentUserId, // Associa ao usuário logado
-                status: 'INDIVIDUAL' // Status padrão
-            })
+            .insert(insertData)
             .select();
 
         if (error) throw error;
 
         alert("Cliente adicionado com sucesso!");
-        addClientForm.reset(); // Limpa o formulário
-        loadClients(); // Recarrega a lista
+        addClientForm.reset();
+        loadClients();
 
     } catch (error) {
         console.error("Erro ao adicionar cliente:", error);
@@ -186,7 +230,7 @@ function handleTableClick(event) {
     const target = event.target;
     const clientId = target.dataset.id;
 
-    if (!clientId) return; // Sai se não clicou em um botão com data-id
+    if (!clientId) return;
 
     if (target.classList.contains('save-client-btn')) {
         saveClient(clientId);
@@ -195,12 +239,12 @@ function handleTableClick(event) {
     }
 }
 
-// --- Salvar Alterações do Cliente ---
+// --- Salvar Alterações do Cliente (Modificado para Visibilidade/Atribuição) ---
 async function saveClient(clientId) {
     try {
         const nomeInput = document.getElementById(`name-${clientId}`);
         const whatsappInput = document.getElementById(`whatsapp-${clientId}`);
-        const statusSelect = document.getElementById(`status-${clientId}`); // Só existe para admin
+        const assignmentSelect = document.getElementById(`assignment-${clientId}`); // Só existe para admin
 
         const nome = nomeInput.value.trim();
         const whatsapp = whatsappInput.value.trim();
@@ -212,9 +256,20 @@ async function saveClient(clientId) {
 
         const updateData = { nome, whatsapp };
 
-        // Apenas admin pode mudar o status
-        if (isAdmin && statusSelect) {
-            updateData.status = statusSelect.value;
+        // << MODIFICADO: Lógica de atualização de visibilidade/atribuição pelo Admin >>
+        if (isAdmin && assignmentSelect) {
+            const selectedValue = assignmentSelect.value;
+            if (selectedValue === 'TODOS') {
+                updateData.visibility = 'TODOS';
+                updateData.assigned_to_user_id = null; // Remove atribuição específica
+            } else if (selectedValue === 'ASSIGNED') {
+                // Se selecionou "Atribuir a:", mas não um usuário, não faz nada na atribuição
+                // Mantém o assigned_to_user_id atual ou null se não houver
+                updateData.visibility = 'ASSIGNED'; 
+            } else { // Selecionou um ID de usuário específico
+                updateData.visibility = 'ASSIGNED';
+                updateData.assigned_to_user_id = selectedValue; // Atribui ao usuário selecionado
+            }
         }
 
         const { error } = await supabase
@@ -225,17 +280,8 @@ async function saveClient(clientId) {
         if (error) throw error;
 
         alert("Cliente atualizado com sucesso!");
-        // Opcional: Mudar visualmente o status na linha se admin alterou
-        if (isAdmin && statusSelect) {
-            const statusCell = statusSelect.closest('td');
-            if (updateData.status === 'TODOS') {
-                statusCell.innerHTML = '<span class="status-todos">TODOS</span>';
-            } else {
-                 statusCell.innerHTML = '<span class="status-individual">Individual</span>';
-            }
-            // Recarregar pode ser necessário se a permissão de edição mudou para outros usuários
-            // loadClients(); 
-        }
+        // Recarrega a lista para refletir mudanças de atribuição/visibilidade
+        loadClients(); 
 
     } catch (error) {
         console.error("Erro ao salvar cliente:", error);
@@ -256,7 +302,6 @@ async function deleteClient(clientId) {
         if (error) throw error;
 
         alert("Cliente excluído com sucesso!");
-        // Remove a linha da tabela
         const rowToRemove = clientsTableBody.querySelector(`tr[data-client-id="${clientId}"]`);
         if (rowToRemove) {
             rowToRemove.remove();
