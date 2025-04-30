@@ -4,6 +4,16 @@ if (sessionStorage.getItem("nivel") !== "admin") {
 }
 // ————————————————————————————————————————————————————————
 
+// ─── Proteção de UI: se não for admin, substitui todo o body ───
+if (sessionStorage.getItem("nivel") !== "admin") {
+  document.body.innerHTML = `
+   <main style="padding:2rem; text-align:center;">
+     <h1 style="color:#c62828;">Acesso negado</h1>
+     <p>Esta área é restrita ao administrador.</p>
+   </main>`;
+ throw new Error("Acesso não autorizado");
+}
+// ──────────────────────────────────────────────────────────────
 
 // admin.js
 import { supabase } from "./supabase.js";
