@@ -1,11 +1,13 @@
 // admin.js
 import { supabase } from "./supabase.js";
 
+// ─── Seleção do botão de Logout ───
+const btnLogout = document.getElementById("logout-btn");
+
 const tableBody   = document.querySelector("#users-table tbody");
-const btnLogout   = document.getElementById("logout-btn");
 const btnCreate   = document.getElementById("create-user-btn");
 
-// atrelando eventos
+// vincula o clique de logout
 btnLogout.onclick = logout;
 btnCreate.onclick = createUser;
 
@@ -162,7 +164,7 @@ async function createUser() {
   }
 }
 
-// Logout
+// Função de logout
 function logout() {
   sessionStorage.clear();
   window.location.href = "index.html";
