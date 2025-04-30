@@ -46,8 +46,25 @@
     </section>
   </main>
 
-  <!-- client Supabase deve vir antes de admin.js -->
-  <script type="module" src="supabase.js"></script>
-  <script type="module" src="admin.js"></script>
+<!-- client Supabase e lógica de admin só são carregados se for admin -->
+<script type="module">
+  import { isAdmin } from "./permissions.js";
+
+  if (!isAdmin()) {
+    // acessos não autorizados veem só esta mensagem
+    document.body.innerHTML = `
+      <main style="padding:2rem; text-align:center;">
+        <h1 style="color:#c62828;">Acesso negado</h1>
+        <p>Esta área é restrita ao administrador.</p>
+      </main>`;
+  } else {
+    // carrega Supabase e depois todo o código de admin
+    await import("./supabase.js");
+    await import("./admin.js");
+  }
+</script>
+</body>
+</html>
+
 </body>
 </html>
