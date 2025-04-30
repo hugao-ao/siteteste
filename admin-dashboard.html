@@ -6,49 +6,134 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Painel de Administração</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Estilos adicionais para abas */
+    .tab-navigation {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 1rem;
+    }
+    .tab-button {
+      padding: 0.6rem 1.2rem;
+      margin-right: 0.5rem;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-dark);
+      color: var(--text-muted);
+      border-radius: 6px 6px 0 0;
+      border-bottom: none;
+      transition: all 0.3s ease;
+    }
+    .tab-button.active {
+      background-color: var(--bg-surface);
+      color: var(--gold-lighter);
+      border-color: var(--border-color);
+      border-bottom: 1px solid var(--bg-surface); /* Cobre a linha inferior */
+      transform: translateY(1px);
+    }
+    .tab-button:not(.active):hover {
+        background-color: var(--emerald-glow);
+        color: var(--text-light);
+    }
+    .tab-content {
+      display: none; /* Esconde por padrão */
+    }
+    .tab-content.active {
+      display: block; /* Mostra a aba ativa */
+    }
+    /* Estilo para botão de acesso ao dashboard do usuário */
+    .view-user-dashboard-btn {
+        margin-left: 0.5rem;
+        background: var(--emerald-dark);
+        color: var(--gold-lighter);
+        border: 1px solid var(--gold);
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+    }
+    .view-user-dashboard-btn:hover {
+        box-shadow: 0 0 5px var(--shadow-color);
+    }
+  </style>
 </head>
 <body> 
   <main>
     <h1>Painel de Administração</h1>
-    <!-- botão de logout -->
     <button id="logout-btn">Logout</button>
 
-    <!-- lista de usuários -->
-    <section>
-      <h2>Usuários Cadastrados</h2>
-      <table id="users-table">
-        <thead>
-          <tr>
-            <th>Usuário</th>
-            <th>Senha</th>
-            <th>E-mail</th>
-            <th>Nível</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- preenchido dinamicamente por admin.js -->
-        </tbody>
-      </table>
-    </section>
+    <!-- Navegação por Abas -->
+    <nav class="tab-navigation">
+      <button id="tab-btn-manage" class="tab-button active">Gerenciar Usuários</button>
+      <button id="tab-btn-list" class="tab-button">Lista de Usuários</button>
+    </nav>
 
-    <!-- formulário de criação -->
-    <section>
-      <h2>Cadastrar Novo Usuário</h2>
-      <input type="text"     id="new-user"  placeholder="Novo usuário" />
-      <input type="password" id="new-pass"  placeholder="Senha"         />
-      <input type="email"    id="new-email" placeholder="E-mail"         />
-      <select id="new-level">
-        <option value="usuario">usuario</option>
-        <option value="admin">admin</option>
-      </select>
-      <button id="create-user-btn">Criar Usuário</button>
-    </section>
+    <!-- Conteúdo da Aba: Gerenciar Usuários -->
+    <div id="tab-content-manage" class="tab-content active">
+      <section>
+        <h2>Usuários Cadastrados (Gerenciamento)</h2>
+        <table id="manage-users-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Senha</th>
+              <th>E-mail</th>
+              <th>Nível</th>
+              <th>Projeto</th> <!-- Nova Coluna -->
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- preenchido dinamicamente por admin.js -->
+          </tbody>
+        </table>
+      </section>
+
+      <section>
+        <h2>Cadastrar Novo Usuário</h2>
+        <form id="create-user-form">
+            <input type="text"     id="new-user"  placeholder="Novo usuário" required />
+            <input type="password" id="new-pass"  placeholder="Senha" required />
+            <input type="email"    id="new-email" placeholder="E-mail" required />
+            <select id="new-level">
+                <option value="usuario">usuario</option>
+                <option value="admin">admin</option>
+            </select>
+            <select id="new-project"> <!-- Novo Campo -->
+                <option value="" disabled selected>Selecione o Projeto</option>
+                <option value="Hvc">Hvc</option>
+                <option value="Argos">Argos</option>
+                <option value="Planejamento">Planejamento</option>
+            </select>
+            <button type="submit" id="create-user-btn">Criar Usuário</button>
+        </form>
+      </section>
+    </div>
+
+    <!-- Conteúdo da Aba: Lista de Usuários -->
+    <div id="tab-content-list" class="tab-content">
+      <section>
+        <h2>Lista de Usuários (Acesso ao Dashboard)</h2>
+        <table id="list-users-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>E-mail</th>
+              <th>Nível</th>
+              <th>Projeto</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- preenchido dinamicamente por admin.js -->
+          </tbody>
+        </table>
+      </section>
+    </div>
+
   </main>
   
-  <!-- checa permissão, inicializa Supabase e carrega o módulo de administração -->
   <script type="module" src="permissions.js"></script>
   <script type="module" src="supabase.js"></script>
   <script type="module" src="admin.js"></script>
 </body>
 </html>
+
