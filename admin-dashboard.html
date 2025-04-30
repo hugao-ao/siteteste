@@ -2,13 +2,15 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Painel de Administração</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main>
     <h1>Painel de Administração</h1>
-    <button id="btn-logout">Logout</button>
+    <button id="logout-btn">Logout</button>
 
     <section>
       <h2>Usuários Cadastrados</h2>
@@ -22,24 +24,41 @@
             <th>Ações</th>
           </tr>
         </thead>
-        <tbody></tbody>
+        <tbody>
+          <!-- Vai ser preenchido dinamicamente pelo admin.js -->
+        </tbody>
       </table>
     </section>
 
     <section>
       <h2>Cadastrar Novo Usuário</h2>
-      <input type="text" id="new-username" placeholder="Novo usuário" />
-      <input type="password" id="new-password" placeholder="Senha" />
+      <input type="text" id="new-user" placeholder="Novo usuário" />
+      <input type="password" id="new-pass" placeholder="Senha" />
       <input type="email" id="new-email" placeholder="E-mail" />
       <select id="new-level">
         <option value="usuario">usuario</option>
         <option value="admin">admin</option>
       </select>
-      <button id="btn-create">Criar Usuário</button>
+      <button id="create-user-btn">Criar Usuário</button>
     </section>
   </main>
 
-  <!-- Importa o script como módulo -->
+  <!-- Script de integração Supabase, EmailJS etc. -->
+  <script type="module" src="supabase.js"></script>
   <script type="module" src="admin.js"></script>
+
+  <!-- Toggle de senha -->
+  <script>
+    // delegação: quando clicar em qualquer botão .toggle-password
+    document.body.addEventListener('click', e => {
+      if (!e.target.matches('.toggle-password')) return;
+      const btn = e.target;
+      // encontra o <input> de senha na mesma célula
+      const input = btn.closest('td').querySelector('input');
+      input.type = input.type === 'password' ? 'text' : 'password';
+      // opcional: muda o ícone
+      btn.textContent = input.type === 'password' ? '👁️' : '🙈';
+    });
+  </script>
 </body>
 </html>
