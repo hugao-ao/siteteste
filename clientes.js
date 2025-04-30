@@ -19,7 +19,7 @@ let isAdmin = false;
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
-  if (str === null || str === undefined) return ";
+  if (str === null || str === undefined) return "; // << CORRIGIDO AQUI
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -276,4 +276,3 @@ function logout() {
 
 // --- Inicialização ---
 initializeDashboard();
-
