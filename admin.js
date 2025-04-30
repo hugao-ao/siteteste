@@ -14,7 +14,7 @@ import { supabase } from "./supabase.js";
 
 // Função de escape para prevenir XSS e erros de sintaxe
 const sanitizeInput = (str) => {
-  if (str === null || str === undefined) return '';
+  if (str === null || str === undefined) return ";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -35,11 +35,12 @@ const newEmailInput = document.getElementById("new-email");
 const newLevelSelect = document.getElementById("new-level");
 const newProjectSelect = document.getElementById("new-project");
 
-// Abas
+// Abas e Botão Clientes Admin
 const tabBtnManage = document.getElementById("tab-btn-manage");
 const tabBtnList = document.getElementById("tab-btn-list");
 const tabContentManage = document.getElementById("tab-content-manage");
 const tabContentList = document.getElementById("tab-content-list");
+const adminClientesBtn = document.getElementById("admin-clientes-btn"); // << NOVO: Botão para clientes
 
 // Validação de acesso
 function checkAccess() {
@@ -285,6 +286,11 @@ function viewUserDashboard(userId, username) {
     window.location.href = `user-dashboard.html`; 
 }
 
+// --- Navegação para Gerenciamento de Clientes (Admin) ---
+function viewClientesDashboard() {
+    window.location.href = `clientes-dashboard.html`;
+}
+
 // Logout
 function logout() {
   sessionStorage.clear();
@@ -296,6 +302,9 @@ function logout() {
 // Abas
 tabBtnManage.addEventListener('click', () => switchTab('manage'));
 tabBtnList.addEventListener('click', () => switchTab('list'));
+
+// Botão Gerenciar Clientes (Admin)
+adminClientesBtn.addEventListener('click', viewClientesDashboard); // << NOVO
 
 // Delegação de eventos para Tabela de Gerenciamento
 manageTableBody.addEventListener("click", e => {
