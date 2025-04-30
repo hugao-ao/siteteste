@@ -1,19 +1,28 @@
 // admin.js
 import { supabase } from "./supabase.js";
 
-// ─── Seleção do botão de Logout ───
+// Função para escapar caracteres especiais
+const escapeHTML = (str) => {
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+};
+
+// Elementos DOM
 const btnLogout = document.getElementById("logout-btn");
+const tableBody = document.querySelector("#users-table tbody");
+const btnCreate = document.getElementById("create-user-btn");
 
-const tableBody   = document.querySelector("#users-table tbody");
-const btnCreate   = document.getElementById("create-user-btn");
-
-// vincula o clique de logout
+// Event Listeners
 btnLogout.onclick = logout;
 btnCreate.onclick = createUser;
 
-// 1) Valida sessão de admin via sessionStorage
+// Validação de acesso
 function checkAccess() {
-  const user  = sessionStorage.getItem("usuario");
+  const user = sessionStorage.getItem("usuario");
   const nivel = sessionStorage.getItem("nivel");
   if (!user || nivel !== "admin") {
     alert("Acesso não autorizado. Faça login como admin.");
@@ -23,7 +32,7 @@ function checkAccess() {
   return true;
 }
 
-// 2) Só carrega se for admin
+// Carregar usuários
 if (checkAccess()) {
   loadUsers();
 }
@@ -40,19 +49,19 @@ async function loadUsers() {
   }
 
   tableBody.innerHTML = "";
-  users.forEach(user => {
+  users.forEach((user) => {
     const tr = document.createElement("tr");
 
     // Usuário
-    tr.innerHTML += `<td>${user.usuario}</td>`;
+    tr.innerHTML += `<td>${escapeHTML(user.usuario)}</td>`;
 
-    // Senha + botão olho
+    // Senha
     tr.innerHTML += `
       <td>
         <input
           type="password"
           id="pass-${user.id}"
-          value="${user.senha}"
+          value="${escapeHTML(user.senha)}"
         />
         <button
           type="button"
@@ -67,7 +76,7 @@ async function loadUsers() {
         <input
           type="email"
           id="email-${user.id}"
-          value="${user.email}"
+          value="${escapeHTML(user.email)}"
         />
       </td>`;
 
@@ -75,8 +84,12 @@ async function loadUsers() {
     tr.innerHTML += `
       <td>
         <select id="lvl-${user.id}">
-          <option value="usuario" ${user.nivel==="usuario"?"selected":""}>usuario</option>
-          <option value="admin"   ${user.nivel==="admin"  ?"selected":""}>admin</option>
+          <option value="usuario" ${user.nivel === "usuario" ? "selected" : ""}>
+            usuario
+          </option>
+          <option value="admin" ${user.nivel === "admin" ? "selected" : ""}>
+            admin
+          </option>
         </select>
       </td>`;
 
@@ -93,8 +106,8 @@ async function loadUsers() {
   });
 }
 
-// toggle show/hide password (delegação de evento)
-document.body.addEventListener("click", e => {
+// Toggle Password
+document.body.addEventListener("click", (e) => {
   if (!e.target.matches(".toggle-password")) return;
   const id = e.target.dataset.id;
   const inp = document.getElementById(`pass-${id}`);
@@ -102,7 +115,7 @@ document.body.addEventListener("click", e => {
   e.target.textContent = inp.type === "password" ? "👁️" : "🙈";
 });
 
-// Salvar usuário
+// Funções CRUD
 async function saveUser(id) {
   const senha = document.getElementById(`pass-${id}`).value;
   const email = document.getElementById(`email-${id}`).value;
@@ -121,7 +134,6 @@ async function saveUser(id) {
   }
 }
 
-// Excluir usuário
 async function deleteUser(id) {
   if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
   const { error } = await supabase
@@ -137,12 +149,11 @@ async function deleteUser(id) {
   }
 }
 
-// Criar novo usuário
 async function createUser() {
   const usuario = document.getElementById("new-user").value.trim();
-  const senha   = document.getElementById("new-pass").value.trim();
-  const email   = document.getElementById("new-email").value.trim();
-  const nivel   = document.getElementById("new-level").value;
+  const senha = document.getElementById("new-pass").value.trim();
+  const email = document.getElementById("new-email").value.trim();
+  const nivel = document.getElementById("new-level").value;
 
   if (!usuario || !senha || !email) {
     alert("Preencha todos os campos.");
@@ -164,14 +175,14 @@ async function createUser() {
   }
 }
 
-// Função de logout
+// Logout
 function logout() {
   sessionStorage.clear();
   window.location.href = "index.html";
 }
 
-// expõe no escopo global para que os onclick do HTML funcionem
-window.saveUser   = saveUser;
+// Exportar para escopo global
+window.saveUser = saveUser;
 window.deleteUser = deleteUser;
 window.createUser = createUser;
-window.logout     = logout;
+window.logout = logout;
