@@ -1,8 +1,3 @@
-// ——— Proteção extra: impede execução se não for admin ———
-if (sessionStorage.getItem("nivel") !== "admin") {
-  throw new Error("Acesso não autorizado: apenas administradores podem rodar este script.");
-}
-// ————————————————————————————————————————————————————————
 
 // ─── Proteção de UI: se não for admin, substitui todo o body ───
 if (sessionStorage.getItem("nivel") !== "admin") {
