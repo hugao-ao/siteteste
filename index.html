@@ -1,56 +1,33 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Login - SITETESTE</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SITETESTE</title>
   <link rel="stylesheet" href="style.css" />
 
-  <!-- EmailJS SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-  <script>
-    // Inicializa o EmailJS com sua Public Key
-    emailjs.init("MfDhG_3505PQGJTfi");
-  </script>
+  <!-- EmailJS -->
+  <script type="module" src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
 </head>
 <body>
-  <div class="login-container">
+  <div class="container">
     <!-- FORMULÁRIO DE LOGIN -->
     <form id="login-form">
       <h2>Login</h2>
-      <input
-        type="text"
-        id="usuario"
-        placeholder="Usuário"
-        required
-        autocomplete="username"
-      />
-      <input
-        type="password"
-        id="senha"
-        placeholder="Senha"
-        required
-        autocomplete="current-password"
-      />
+      <input id="usuario" type="text" placeholder="Usuário" required />
+      <input id="senha" type="password" placeholder="Senha" required />
       <button type="submit">Entrar</button>
     </form>
 
-    <!-- FORMULÁRIO DE OTP (inicialmente oculto) -->
-    <form id="otp-form" style="display: none;">
-      <h2>Verificação em Duas Etapas</h2>
-      <p>Digite o código enviado para seu e-mail:</p>
-      <input
-        type="text"
-        id="otp"
-        placeholder="Código de 6 dígitos"
-        maxlength="6"
-        required
-      />
-      <button type="submit">Verificar Código</button>
+    <!-- FORMULÁRIO DE OTP (escondido inicialmente) -->
+    <form id="otp-form" style="display:none;">
+      <h2>Digite o código</h2>
+      <input id="otp" type="text" placeholder="Código (OTP)" required />
+      <button type="submit">Verificar</button>
     </form>
   </div>
 
-  <!-- Módulos JavaScript -->
+  <!-- integrações e lógica -->
   <script type="module" src="supabase.js"></script>
   <script type="module" src="main.js"></script>
 </body>
