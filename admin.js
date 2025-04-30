@@ -1,4 +1,3 @@
-
 // ─── Proteção de UI: se não for admin, substitui todo o body ───
 if (sessionStorage.getItem("nivel") !== "admin") {
   document.body.innerHTML = `
@@ -26,9 +25,6 @@ const sanitizeInput = (str) => {
 
 // Elementos DOM
 const btnLogout = document.getElementById("logout-btn");
-// vincula o clique do botão de logout à função logout()
-btnLogout.onclick = logout;
-
 const tableBody = document.querySelector("#users-table tbody");
 const btnCreate = document.getElementById("create-user-btn");
 
@@ -59,6 +55,7 @@ async function loadUsers() {
     
     users.forEach(user => {
       const tr = document.createElement("tr");
+      tr.dataset.userId = user.id; // Adiciona ID ao TR para referência
       
       // Conteúdo das células
       tr.innerHTML = `
@@ -88,9 +85,9 @@ async function loadUsers() {
           </select>
         </td>
         <td>
-          <button onclick="saveUser(${user.id})">Salvar</button>
+          <button class="save-btn" data-id="${user.id}">Salvar</button>
           ${user.usuario !== sessionStorage.getItem("usuario") 
-            ? `<button onclick="deleteUser(${user.id})">Excluir</button>` 
+            ? `<button class="delete-btn" data-id="${user.id}">Excluir</button>` 
             : '<span style="color:gray">[Admin]</span>'}
         </td>
       `;
@@ -99,19 +96,10 @@ async function loadUsers() {
     });
 
   } catch (error) {
+    console.error("Erro ao carregar usuários:", error); // Log detalhado no console
     alert("Erro ao carregar usuários: " + error.message);
   }
 }
-
-// Event listeners
-document.body.addEventListener("click", e => {
-  if (e.target.classList.contains("toggle-password")) {
-    const id = e.target.dataset.id;
-    const input = document.getElementById(`pass-${id}`);
-    input.type = input.type === "password" ? "text" : "password";
-    e.target.textContent = input.type === "password" ? "👁️" : "🙈";
-  }
-});
 
 // Operações CRUD
 async function saveUser(id) {
@@ -119,6 +107,12 @@ async function saveUser(id) {
     const senha = document.getElementById(`pass-${id}`).value;
     const email = document.getElementById(`email-${id}`).value;
     const nivel = document.getElementById(`lvl-${id}`).value;
+
+    // Validação básica (pode ser expandida)
+    if (!email || !senha) {
+        alert("Email e Senha não podem estar vazios.");
+        return;
+    }
 
     const { error } = await supabase
       .from("credenciais")
@@ -128,9 +122,11 @@ async function saveUser(id) {
     if (error) throw error;
     
     alert("Usuário atualizado com sucesso!");
-    loadUsers();
+    // Não precisa recarregar tudo, pode atualizar a UI localmente se preferir
+    // loadUsers(); 
     
   } catch (error) {
+    console.error("Erro ao salvar usuário:", error); // Log detalhado
     alert("Erro ao salvar: " + error.message);
   }
 }
@@ -147,9 +143,15 @@ async function deleteUser(id) {
     if (error) throw error;
     
     alert("Usuário excluído com sucesso!");
-    loadUsers();
+    // Remove a linha da tabela em vez de recarregar tudo
+    const rowToRemove = tableBody.querySelector(`tr[data-user-id="${id}"]`);
+    if (rowToRemove) {
+        rowToRemove.remove();
+    }
+    // loadUsers(); // Evita recarregar a lista inteira
     
   } catch (error) {
+    console.error("Erro ao excluir usuário:", error); // Log detalhado
     alert("Erro ao excluir: " + error.message);
   }
 }
@@ -162,22 +164,31 @@ async function createUser() {
     const nivel = document.getElementById("new-level").value;
 
     if (!usuario || !senha || !email) {
-      throw new Error("Preencha todos os campos obrigatórios");
+      throw new Error("Preencha todos os campos obrigatórios: Usuário, Senha e E-mail.");
     }
 
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from("credenciais")
-      .insert({ usuario, senha, email, nivel });
+      .insert({ usuario, senha, email, nivel })
+      .select(); // Adicionado select() para obter o usuário criado, se necessário
 
-    if (error) throw error;
+    if (error) {
+        // Verifica erro específico de violação de unicidade (usuário já existe)
+        if (error.code === '23505') { 
+            throw new Error(`Erro: O nome de usuário "${usuario}" já existe.`);
+        } else {
+            throw error; // Lança outros erros
+        }
+    }
     
     alert("Usuário criado com sucesso!");
     document.getElementById("new-user").value = "";
     document.getElementById("new-pass").value = "";
     document.getElementById("new-email").value = "";
-    loadUsers();
+    loadUsers(); // Recarrega a lista para incluir o novo usuário
     
   } catch (error) {
+    console.error("Erro ao criar usuário:", error); // Log detalhado
     alert("Erro ao criar usuário: " + error.message);
   }
 }
@@ -188,13 +199,43 @@ function logout() {
   window.location.href = "index.html";
 }
 
+// --- Event Listeners --- 
+
+// Delegação de eventos para botões na tabela (Salvar, Excluir, Mostrar Senha)
+ tableBody.addEventListener("click", e => {
+   const target = e.target;
+   const id = target.dataset.id;
+
+   if (target.classList.contains("toggle-password")) {
+     const input = document.getElementById(`pass-${id}`);
+     if (input) {
+        input.type = input.type === "password" ? "text" : "password";
+        target.textContent = input.type === "password" ? "👁️" : "🙈";
+     }
+   } else if (target.classList.contains("save-btn")) {
+     if (id) saveUser(id);
+   } else if (target.classList.contains("delete-btn")) {
+     if (id) deleteUser(id);
+   }
+ });
+
+// Listener para o botão Criar Usuário
+if (btnCreate) {
+    btnCreate.addEventListener("click", createUser);
+}
+
+// Listener para o botão Logout
+if (btnLogout) {
+    btnLogout.addEventListener("click", logout);
+}
+
 // Inicialização
 if (checkAccess()) {
   loadUsers();
 }
 
-// Expor funções globais
-window.saveUser = saveUser;
-window.deleteUser = deleteUser;
-window.createUser = createUser;
-window.logout = logout;
+// Não é mais necessário expor funções globalmente
+// window.saveUser = saveUser;
+// window.deleteUser = deleteUser;
+// window.createUser = createUser;
+// window.logout = logout;
