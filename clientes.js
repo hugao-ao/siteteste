@@ -16,22 +16,23 @@ let currentUserId = null;
 let currentUserNivel = null;
 let currentUserProjeto = null;
 let isAdmin = false;
-let allUsers = []; // << NOVO: Para armazenar lista de usuários para o select
+let allUsers = []; // Para armazenar lista de usuários para o select
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
+  // << CORREÇÃO DEFINITIVA APLICADA AQUI >>
   if (str === null || str === undefined) return ";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;")
+    .replace(/\'/g, "&#x27;") // Corrigido para escapar aspas simples corretamente
     .replace(/`/g, "&#x60;");
 };
 
 // --- Verificação de Acesso e Inicialização ---
-async function initializeDashboard() { // << MODIFICADO: Tornou-se async
+async function initializeDashboard() {
     currentUser = sessionStorage.getItem("usuario");
     currentUserId = sessionStorage.getItem("user_id");
     currentUserNivel = sessionStorage.getItem("nivel");
@@ -49,7 +50,7 @@ async function initializeDashboard() { // << MODIFICADO: Tornou-se async
     if (isAdmin) {
         adminViewIndicator.style.display = "block";
         backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; };
-        await loadAllUsers(); // << NOVO: Carrega usuários para o admin
+        await loadAllUsers(); // Carrega usuários para o admin
     } else if (currentUserProjeto === 'Planejamento') {
         backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; };
     } else {
@@ -66,7 +67,7 @@ async function initializeDashboard() { // << MODIFICADO: Tornou-se async
     return true;
 }
 
-// << NOVO: Função para carregar todos os usuários (para o select do admin) >>
+// Função para carregar todos os usuários (para o select do admin)
 async function loadAllUsers() {
     try {
         const { data, error } = await supabase
@@ -77,9 +78,8 @@ async function loadAllUsers() {
         allUsers = data;
     } catch (error) {
         console.error("Erro ao carregar lista de usuários:", error);
-        // Não crítico para a funcionalidade principal, mas informa o erro
         alert("Erro ao carregar a lista de usuários para atribuição: " + error.message);
-        allUsers = []; // Garante que a lista esteja vazia em caso de erro
+        allUsers = [];
     }
 }
 
@@ -89,7 +89,7 @@ async function loadClients() {
         clientsTableBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
         let query = supabase.from('clientes').select('*');
 
-        // << MODIFICADO: Lógica de filtro para não-admin >>
+        // Lógica de filtro para não-admin
         if (!isAdmin) {
             // Busca clientes atribuídos ao usuário OU com visibilidade TODOS
             query = query.or(`assigned_to_user_id.eq.${currentUserId},visibility.eq.TODOS`);
@@ -99,17 +99,16 @@ async function loadClients() {
         const { data: clients, error } = await query.order('nome', { ascending: true });
 
         if (error) {
-            // Verifica erros comuns relacionados às novas colunas
-            if (error.code === '42703') { // Coluna não existe
+            if (error.code === '42703') {
                 if (error.message.includes('visibility')) {
                     throw new Error("Erro: A coluna 'visibility' não foi encontrada. Siga as instruções para atualizar a tabela 'clientes'.");
                 } else if (error.message.includes('assigned_to_user_id')) {
                     throw new Error("Erro: A coluna 'assigned_to_user_id' não foi encontrada. Siga as instruções para atualizar a tabela 'clientes'.");
                 }
-            } else if (error.code === '42P01') { // Tabela não existe
+            } else if (error.code === '42P01') {
                  throw new Error("Erro: A tabela 'clientes' não foi encontrada no banco de dados. Siga as instruções para criá-la.");
             }
-            throw error; // Lança outros erros
+            throw error;
         }
 
         renderClients(clients);
@@ -133,23 +132,21 @@ function renderClients(clients) {
         const tr = document.createElement("tr");
         tr.dataset.clientId = client.id;
 
-        // << MODIFICADO: Lógica de permissão de edição/exclusão >>
-        // Admin pode tudo. Usuário pode se criou OU se visibilidade for TODOS.
+        // Lógica de permissão de edição/exclusão
         const canEditDelete = isAdmin || client.criado_por_id === currentUserId || client.visibility === 'TODOS';
 
-        // << MODIFICADO: Lógica de exibição de Status/Atribuição >>
+        // Lógica de exibição de Status/Atribuição
         let assignmentHtml = '';
         if (client.visibility === 'TODOS') {
             assignmentHtml = '<span class="status-todos">TODOS</span>';
         } else if (client.assigned_to_user_id) {
-            // Tenta encontrar o nome do usuário atribuído (se a lista carregou)
             const assignedUser = allUsers.find(u => u.id === client.assigned_to_user_id);
             assignmentHtml = `<span class="status-individual">${assignedUser ? sanitizeInput(assignedUser.usuario) : 'Atribuído (ID: ...' + client.assigned_to_user_id.slice(-4) + ')'}</span>`;
         } else {
-            assignmentHtml = '<span style="color:gray">Não atribuído</span>'; // Caso raro
+            assignmentHtml = '<span style="color:gray">Não atribuído</span>';
         }
 
-        // << MODIFICADO: Select de atribuição para Admin >>
+        // Select de atribuição para Admin
         let adminAssignmentSelectHtml = '';
         if (isAdmin) {
             adminAssignmentSelectHtml = `
@@ -199,7 +196,7 @@ async function addClient(event) {
     }
 
     try {
-        // << MODIFICADO: Define visibilidade e atribuição padrão >>
+        // Define visibilidade e atribuição padrão
         const insertData = {
             nome: nome,
             whatsapp: whatsapp,
@@ -256,19 +253,17 @@ async function saveClient(clientId) {
 
         const updateData = { nome, whatsapp };
 
-        // << MODIFICADO: Lógica de atualização de visibilidade/atribuição pelo Admin >>
+        // Lógica de atualização de visibilidade/atribuição pelo Admin
         if (isAdmin && assignmentSelect) {
             const selectedValue = assignmentSelect.value;
             if (selectedValue === 'TODOS') {
                 updateData.visibility = 'TODOS';
-                updateData.assigned_to_user_id = null; // Remove atribuição específica
+                updateData.assigned_to_user_id = null;
             } else if (selectedValue === 'ASSIGNED') {
-                // Se selecionou "Atribuir a:", mas não um usuário, não faz nada na atribuição
-                // Mantém o assigned_to_user_id atual ou null se não houver
                 updateData.visibility = 'ASSIGNED'; 
-            } else { // Selecionou um ID de usuário específico
+            } else {
                 updateData.visibility = 'ASSIGNED';
-                updateData.assigned_to_user_id = selectedValue; // Atribui ao usuário selecionado
+                updateData.assigned_to_user_id = selectedValue;
             }
         }
 
@@ -280,7 +275,6 @@ async function saveClient(clientId) {
         if (error) throw error;
 
         alert("Cliente atualizado com sucesso!");
-        // Recarrega a lista para refletir mudanças de atribuição/visibilidade
         loadClients(); 
 
     } catch (error) {
