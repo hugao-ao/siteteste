@@ -26,6 +26,9 @@ const sanitizeInput = (str) => {
 
 // Elementos DOM
 const btnLogout = document.getElementById("logout-btn");
+// vincula o clique do botão de logout à função logout()
+btnLogout.onclick = logout;
+
 const tableBody = document.querySelector("#users-table tbody");
 const btnCreate = document.getElementById("create-user-btn");
 
