@@ -1,103 +1,99 @@
-// admin.js
 import { supabase } from "./supabase.js";
 
-const tableBody = document.querySelector("#users-table tbody");
-const btnLogout = document.getElementById("btn-logout");
-const btnCreate = document.getElementById("btn-create");
+const tableBody  = document.querySelector("#users-table tbody");
+const btnLogout  = document.getElementById("btn-logout");
+const btnCreate  = document.getElementById("btn-create");
 
 btnLogout.onclick = logout;
 btnCreate.onclick = createUser;
 
-
-
-async function checkAdminAndLoad() {
-  // Garante que só admin veja essa página
-  const { data: session } = await supabase.auth.getSession();
-  if (!session.session || session.session.user.role !== "admin") {
-    // redireciona para login
+// 1) Valida sessão de admin via sessionStorage
+function checkAccess() {
+  const user  = sessionStorage.getItem("usuario");
+  const nivel = sessionStorage.getItem("nivel");
+  if (!user || nivel !== "admin") {
+    alert("Acesso não autorizado. Faça login como admin.");
     window.location.href = "index.html";
-    return;
+    return false;
   }
+  return true;
+}
+
+// 2) Só carrega se for admin
+if (checkAccess()) {
   loadUsers();
 }
-checkAdminAndLoad();
+
 async function loadUsers() {
-  // limpa tabela
-  tableBody.innerHTML = "";
+  tableBody.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
   const { data: users, error } = await supabase
     .from("credenciais")
     .select("id, usuario, senha, email, nivel");
-  if (error) return alert("Erro ao carregar usuários: " + error.message);
 
+  if (error) {
+    return alert("Erro ao carregar usuários: " + error.message);
+  }
+
+  tableBody.innerHTML = "";
   users.forEach(user => {
     const tr = document.createElement("tr");
 
     // Usuário
-    const tdUser = document.createElement("td");
-    tdUser.textContent = user.usuario;
-    tr.appendChild(tdUser);
+    tr.innerHTML += `<td>${user.usuario}</td>`;
 
-    // Senha
-    const tdPass = document.createElement("td");
-    const inputPass = document.createElement("input");
-    inputPass.type = "password";
-    inputPass.value = user.senha;
-    inputPass.id = `pass-${user.id}`;
-    tdPass.appendChild(inputPass);
-    tr.appendChild(tdPass);
+    // Senha (campo editável)
+    tr.innerHTML += `
+      <td>
+        <input 
+          type="password" 
+          id="pass-${user.id}" 
+          value="${user.senha}" 
+        />
+        <button onclick="toggleShow(${user.id})">👁️</button>
+      </td>`;
 
-    // E-mail
-    const tdEmail = document.createElement("td");
-    const inputEmail = document.createElement("input");
-    inputEmail.type = "email";
-    inputEmail.value = user.email;
-    inputEmail.id = `email-${user.id}`;
-    tdEmail.appendChild(inputEmail);
-    tr.appendChild(tdEmail);
+    // E-mail (campo editável)
+    tr.innerHTML += `
+      <td>
+        <input 
+          type="email" 
+          id="email-${user.id}" 
+          value="${user.email}" 
+        />
+      </td>`;
 
-    // Nível
-    const tdLevel = document.createElement("td");
-    const select = document.createElement("select");
-    select.id = `level-${user.id}`;
-    ["usuario", "admin"].forEach(level => {
-      const opt = document.createElement("option");
-      opt.value = level;
-      opt.textContent = level;
-      if (user.nivel === level) opt.selected = true;
-      select.appendChild(opt);
-    });
-    tdLevel.appendChild(select);
-    tr.appendChild(tdLevel);
+    // Nível (select)
+    tr.innerHTML += `
+      <td>
+        <select id="lvl-${user.id}">
+          <option value="usuario" ${user.nivel==="usuario"?"selected":""}>usuario</option>
+          <option value="admin"   ${user.nivel==="admin"  ?"selected":""}>admin</option>
+        </select>
+      </td>`;
 
     // Ações
-    const tdActions = document.createElement("td");
-    // Salvar
-    const btnSave = document.createElement("button");
-    btnSave.textContent = "Salvar";
-    btnSave.onclick = () => saveUser(user.id);
-    tdActions.appendChild(btnSave);
-
-    // Excluir (não aparece para o próprio admin)
-    if (user.nivel !== "admin") {
-      const btnDelete = document.createElement("button");
-      btnDelete.textContent = "Excluir";
-      btnDelete.onclick = () => deleteUser(user.id);
-      tdActions.appendChild(btnDelete);
+    let actions = `<button onclick="saveUser(${user.id})">Salvar</button>`;
+    if (user.usuario !== sessionStorage.getItem("usuario")) {
+      actions += ` <button onclick="deleteUser(${user.id})">Excluir</button>`;
     } else {
-      const span = document.createElement("span");
-      span.textContent = "[Admin]";
-      tdActions.appendChild(span);
+      actions += ` <span style="color:gray">[Admin]</span>`;
     }
+    tr.innerHTML += `<td>${actions}</td>`;
 
-    tr.appendChild(tdActions);
     tableBody.appendChild(tr);
   });
 }
 
-async function saveUser(id) {
+// Mostrar / ocultar senha
+window.toggleShow = id => {
+  const inp = document.getElementById(`pass-${id}`);
+  inp.type = inp.type === "password" ? "text" : "password";
+};
+
+export async function saveUser(id) {
   const senha = document.getElementById(`pass-${id}`).value;
   const email = document.getElementById(`email-${id}`).value;
-  const nivel = document.getElementById(`level-${id}`).value;
+  const nivel = document.getElementById(`lvl-${id}`).value;
 
   const { error } = await supabase
     .from("credenciais")
@@ -109,22 +105,23 @@ async function saveUser(id) {
   loadUsers();
 }
 
-async function deleteUser(id) {
+export async function deleteUser(id) {
   if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
   const { error } = await supabase
     .from("credenciais")
     .delete()
     .eq("id", id);
+
   if (error) return alert("Erro ao excluir: " + error.message);
   alert("Usuário excluído!");
   loadUsers();
 }
 
-async function createUser() {
-  const usuario = document.getElementById("new-username").value;
-  const senha = document.getElementById("new-password").value;
-  const email = document.getElementById("new-email").value;
-  const nivel = document.getElementById("new-level").value;
+export async function createUser() {
+  const usuario = document.getElementById("new-username").value.trim();
+  const senha   = document.getElementById("new-password").value.trim();
+  const email   = document.getElementById("new-email").value.trim();
+  const nivel   = document.getElementById("new-level").value;
 
   if (!usuario || !senha || !email) {
     return alert("Preencha todos os campos.");
@@ -136,14 +133,13 @@ async function createUser() {
 
   if (error) return alert("Erro ao criar: " + error.message);
   alert("Usuário criado!");
-  // limpa formulário
   document.getElementById("new-username").value = "";
   document.getElementById("new-password").value = "";
   document.getElementById("new-email").value = "";
   loadUsers();
 }
 
-async function logout() {
-  await supabase.auth.signOut();
+export function logout() {
+  sessionStorage.clear();
   window.location.href = "index.html";
 }
