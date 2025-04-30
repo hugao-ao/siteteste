@@ -1,62 +1,98 @@
+// main.js
 import { supabase } from "./supabase.js";
+import emailjs from "https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js";
 
+// Configurações do EmailJS
+const EMAILJS_SERVICE_ID  = "service_lk94gdg";
+const EMAILJS_TEMPLATE_ID = "template_5i54ywq";
+const EMAILJS_PUBLIC_KEY  = "MfDhG_3505PQGJTfi";
+
+// Inicializa EmailJS
+emailjs.init(EMAILJS_PUBLIC_KEY);
+
+// Variáveis de controle
+let usuarioAtual = "";
+let codigoGerado = "";
+
+// Referências aos elementos do DOM
 const loginForm = document.getElementById("login-form");
-const otpForm   = document.getElementById("otp-form");
+const usuarioInput = document.getElementById("usuario");
+const senhaInput = document.getElementById("senha");
 
-let _currentUser, _currentEmail, _currentOTP;
+const otpForm = document.getElementById("otp-form");
+const otpInput = document.getElementById("otp");
 
-// 1) Usuário submeteu usuário+senha
-loginForm.addEventListener("submit", async e => {
+// PASSO 1: Autenticação usuário+senha e envio do OTP
+loginForm.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const usuario = document.getElementById("usuario").value;
-  const senha   = document.getElementById("senha").value;
 
-  // Verifica credenciais no Supabase
+  const usuario = usuarioInput.value.trim();
+  const senha    = senhaInput.value;
+
+  // Buscando credenciais no Supabase
   const { data, error } = await supabase
     .from("credenciais")
-    .select("usuario, email")
+    .select("senha, email")
     .eq("usuario", usuario)
-    .eq("senha", senha)
+    .single();
+
+  if (error || !data || data.senha !== senha) {
+    alert("Login ou senha incorretos.");
+    return;
+  }
+
+  usuarioAtual = usuario;
+  // Gera OTP de 6 dígitos
+  codigoGerado = Math.floor(100000 + Math.random() * 900000).toString();
+  // Expira em 15 minutos
+  const expira = new Date(Date.now() + 15 * 60 * 1000).toLocaleTimeString();
+
+  // Envia OTP por email (campo no template: {{to_email}})
+  emailjs
+    .send(
+      EMAILJS_SERVICE_ID,
+      EMAILJS_TEMPLATE_ID,
+      {
+        to_email: data.email,      // variável do template
+        passcode: codigoGerado,
+        time: expira,
+      }
+    )
+    .then(() => {
+      loginForm.style.display = "none";
+      otpForm.style.display   = "block";
+    })
+    .catch(() => {
+      alert("Erro ao enviar o e-mail. Tente novamente.");
+    });
+});
+
+// PASSO 2: Validação do OTP
+otpForm.addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const tokenDigitado = otpInput.value.trim();
+
+  if (tokenDigitado !== codigoGerado) {
+    alert("Código inválido.");
+    return;
+  }
+
+  // Busca nível de acesso
+  const { data, error } = await supabase
+    .from("credenciais")
+    .select("nivel")
+    .eq("usuario", usuarioAtual)
     .single();
 
   if (error || !data) {
-    return alert("Usuário ou senha incorretos.");
+    alert("Não foi possível determinar o nível de acesso.");
+    return;
   }
 
-  // guardo usuário e e-mail p/ etapa 2
-  _currentUser  = data.usuario;
-  _currentEmail = data.email;
-
-  // Gero OTP aleatório de 6 dígitos
-  _currentOTP = Math.floor(100000 + Math.random() * 900000).toString();
-
-  // Envia email via EmailJS
-  try {
-    await emailjs.send(
-      "service_lk94gdg",    // seu Service ID
-      "template_5i54ywq",   // seu Template ID
-      {
-        to_email: _currentEmail,
-        passcode: _currentOTP,
-        time: new Date(Date.now() + 15*60000).toLocaleTimeString()
-      }
-    );
-    // oculto login e mostro OTP
-    loginForm.style.display = "none";
-    otpForm.style.display   = "block";
-  } catch (err) {
-    console.error(err);
-    alert("Erro ao enviar o e-mail. Tente novamente.");
+  // Redireciona conforme nível
+  if (data.nivel === "admin") {
+    window.location.href = "admin-dashboard.html";
+  } else {
+    window.location.href = "user-dashboard.html";
   }
-});
-
-// 2) Usuário submeteu o OTP
-otpForm.addEventListener("submit", e => {
-  e.preventDefault();
-  const otpInput = document.getElementById("otp").value;
-  if (otpInput !== _currentOTP) {
-    return alert("Código inválido.");
-  }
-  // 3) Se OK, redireciona p/ admin-dashboard
-  window.location.href = "admin-dashboard.html";
 });
