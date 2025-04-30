@@ -14,8 +14,8 @@ import { supabase } from "./supabase.js";
 
 // Função de escape para prevenir XSS e erros de sintaxe
 const sanitizeInput = (str) => {
-  // << CORREÇÃO DEFINITIVA APLICADA AQUI >>
-  if (str === null || str === undefined) return ";
+  // << CORREÇÃO DEFINITIVA APLICADA AQUI (MAIS UMA VEZ) >>
+  if (str === null || str === undefined) return "; // Garante retorno de string vazia
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -101,7 +101,7 @@ async function loadUsers() {
           <input 
             type="password" 
             id="pass-${user.id}" 
-            value="${sanitizeInput(user.senha)}"
+            value="********" // Sempre mostra máscara inicialmente
           />
           <button 
             class="toggle-password" 
@@ -169,7 +169,8 @@ async function loadUsers() {
 // --- Operações CRUD (Modificadas para incluir Projeto) ---
 async function saveUser(id) {
   try {
-    const senha = document.getElementById(`pass-${id}`).value;
+    const senhaInput = document.getElementById(`pass-${id}`);
+    const senha = senhaInput.value;
     const email = document.getElementById(`email-${id}`).value;
     const nivel = document.getElementById(`lvl-${id}`).value;
     const projeto = document.getElementById(`proj-${id}`).value;
@@ -180,7 +181,8 @@ async function saveUser(id) {
     }
 
     const updateData = { email, nivel, projeto: projeto || null }; // Garante null se vazio
-    if (senha && senha !== '********') { // Evita salvar a máscara
+    // Só atualiza a senha se o campo não estiver com a máscara
+    if (senha && senha !== '********') {
         updateData.senha = senha;
     }
 
@@ -203,8 +205,7 @@ async function saveUser(id) {
         }
     }
     // Resetar campo senha para máscara após salvar
-    const passInput = document.getElementById(`pass-${id}`);
-    if (passInput) passInput.value = '********'; 
+    if (senhaInput) senhaInput.value = '********'; 
     
   } catch (error) {
     console.error("Erro ao salvar usuário:", error);
@@ -318,8 +319,9 @@ manageTableBody.addEventListener("click", e => {
         // Define um timeout para voltar a ser password após 3 segundos
         if (input.type === "text") {
             setTimeout(() => {
-                if (document.getElementById(`pass-${id}`)) { // Verifica se o elemento ainda existe
-                   document.getElementById(`pass-${id}`).type = "password";
+                const currentInput = document.getElementById(`pass-${id}`);
+                if (currentInput && currentInput.type === "text") { // Verifica se ainda é texto
+                   currentInput.type = "password";
                    target.textContent = "👁️";
                 }
             }, 3000);
@@ -338,7 +340,7 @@ manageTableBody.addEventListener("click", e => {
         const userId = target.dataset.id;
         const username = target.dataset.username;
         const userProject = target.dataset.projeto;
-        if (userId && username) {
+        if (userId && username !== undefined) { // Verifica se username não é undefined
             viewUserDashboard(userId, username, userProject);
         }
     }
