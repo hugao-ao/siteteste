@@ -6,25 +6,67 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Painel do Usuário</title>
   <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Estilo para o botão de retorno ao admin */
+    #back-to-admin-btn {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem; /* Posiciona no canto superior esquerdo */
+        background: var(--emerald-dark);
+        color: var(--gold-lighter);
+        border: 1px solid var(--gold);
+        padding: 0.5rem 1rem;
+        display: none; /* Escondido por padrão */
+    }
+
+    #back-to-admin-btn:hover {
+        background: var(--emerald-dark);
+        box-shadow: 0 0 8px var(--shadow-color);
+        color: #fff;
+    }
+    /* Ajuste para o botão logout não sobrepor o de retorno */
+    #logout-btn {
+        right: 1.5rem;
+        left: auto; /* Garante que não vá para a esquerda */
+    }
+    /* Estilo para indicar que o admin está visualizando */
+    .admin-view-indicator {
+        background-color: rgba(218, 165, 32, 0.1); /* Fundo dourado transparente */
+        color: var(--gold-lighter);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--gold);
+        text-align: center;
+        font-size: 0.9rem;
+    }
+  </style>
 </head>
 <body>
-  <main class="admin-container">
-    <h1>Bem-vindo, <span id="username-display"></span>!</h1>
-
-    <!-- botão de logout -->
+  <main class="admin-container"> <!-- Reutilizando classe para consistência, pode ser renomeada -->
+    <!-- Botão para Admin retornar -->
+    <button id="back-to-admin-btn">Voltar ao Painel Admin</button>
+    
+    <!-- Botão de logout padrão -->
     <button id="logout-btn">Logout</button>
 
-    <!-- Exemplo de conteúdo do painel de usuário -->
+    <!-- Indicador de visualização pelo Admin -->
+    <div id="admin-view-indicator" class="admin-view-indicator" style="display: none;">
+      Você está visualizando o painel como administrador.
+    </div>
+
+    <h1>Bem-vindo, <span id="username-display"></span>!</h1>
+
     <section>
       <h2>Seu Dashboard</h2>
       <p>Aqui você pode ver suas informações e ações disponíveis.</p>
+      <p><strong>Projeto:</strong> <span id="user-project-display">Carregando...</span></p> <!-- Campo para exibir projeto -->
       <!-- … coloque aqui as funcionalidades específicas de usuário … -->
     </section>
   </main>
 
-  <!-- client Supabase -->
   <script type="module" src="supabase.js"></script>
-  <!-- lógica de acesso e logout -->
   <script type="module" src="user.js"></script>
 </body>
 </html>
+
