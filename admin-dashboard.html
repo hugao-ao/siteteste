@@ -10,9 +10,10 @@
 <body>
   <main>
     <h1>Painel de Administração</h1>
-    <!-- OBSERVE: o ID aqui é "btn-logout" para casar com o admin.js -->
-    <button id="btn-logout">Logout</button>
+    <!-- botão de logout -->
+    <button id="logout-btn">Logout</button>
 
+    <!-- lista de usuários -->
     <section>
       <h2>Usuários Cadastrados</h2>
       <table id="users-table">
@@ -26,26 +27,26 @@
           </tr>
         </thead>
         <tbody>
-          <!-- preenchido dinamicamente pelo admin.js -->
+          <!-- preenchido dinamicamente por admin.js -->
         </tbody>
       </table>
     </section>
 
+    <!-- formulário de criação -->
     <section>
       <h2>Cadastrar Novo Usuário</h2>
-      <!-- Esses IDs também precisam casar com os que o JS lê -->
-      <input type="text"     id="new-username" placeholder="Novo usuário" />
-      <input type="password" id="new-password" placeholder="Senha"         />
-      <input type="email"    id="new-email"    placeholder="E-mail"         />
+      <input type="text"     id="new-user"  placeholder="Novo usuário" />
+      <input type="password" id="new-pass"  placeholder="Senha"         />
+      <input type="email"    id="new-email" placeholder="E-mail"         />
       <select id="new-level">
         <option value="usuario">usuario</option>
         <option value="admin">admin</option>
       </select>
-      <button id="btn-create">Criar Usuário</button>
+      <button id="create-user-btn">Criar Usuário</button>
     </section>
   </main>
 
-  <!-- scripts em ordem: supabase.js primeiro, depois admin.js -->
+  <!-- client Supabase deve vir antes de admin.js -->
   <script type="module" src="supabase.js"></script>
   <script type="module" src="admin.js"></script>
 </body>
