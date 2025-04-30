@@ -1,3 +1,10 @@
+// ——— Proteção extra: impede execução se não for admin ———
+if (sessionStorage.getItem("nivel") !== "admin") {
+  throw new Error("Acesso não autorizado: apenas administradores podem rodar este script.");
+}
+// ————————————————————————————————————————————————————————
+
+
 // admin.js
 import { supabase } from "./supabase.js";
 
