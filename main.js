@@ -89,6 +89,12 @@ otpForm.addEventListener("submit", async (e) => {
     return;
   }
 
+// ─────────── GRAVAÇÃO NO SESSIONSTORAGE ───────────
+// 1) Armazena no sessionStorage para o checkAccess() funcionar
+sessionStorage.setItem("usuario", usuarioAtual);
+sessionStorage.setItem("nivel", data.nivel);
+// ───────────────────────────────────────────────────
+
   // Redireciona conforme nível
   if (data.nivel === "admin") {
     window.location.href = "admin-dashboard.html";
