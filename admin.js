@@ -1,9 +1,11 @@
+// admin.js
 import { supabase } from "./supabase.js";
 
-const tableBody  = document.querySelector("#users-table tbody");
-const btnLogout  = document.getElementById("btn-logout");
-const btnCreate  = document.getElementById("btn-create");
+const tableBody   = document.querySelector("#users-table tbody");
+const btnLogout   = document.getElementById("logout-btn");
+const btnCreate   = document.getElementById("create-user-btn");
 
+// atrelando eventos
 btnLogout.onclick = logout;
 btnCreate.onclick = createUser;
 
@@ -31,7 +33,8 @@ async function loadUsers() {
     .select("id, usuario, senha, email, nivel");
 
   if (error) {
-    return alert("Erro ao carregar usuários: " + error.message);
+    alert("Erro ao carregar usuários: " + error.message);
+    return;
   }
 
   tableBody.innerHTML = "";
@@ -41,28 +44,32 @@ async function loadUsers() {
     // Usuário
     tr.innerHTML += `<td>${user.usuario}</td>`;
 
-    // Senha (campo editável)
+    // Senha + botão olho
     tr.innerHTML += `
       <td>
-        <input 
-          type="password" 
-          id="pass-${user.id}" 
-          value="${user.senha}" 
+        <input
+          type="password"
+          id="pass-${user.id}"
+          value="${user.senha}"
         />
-        <button onclick="toggleShow(${user.id})">👁️</button>
+        <button
+          type="button"
+          class="toggle-password"
+          data-id="${user.id}"
+        >👁️</button>
       </td>`;
 
-    // E-mail (campo editável)
+    // E-mail
     tr.innerHTML += `
       <td>
-        <input 
-          type="email" 
-          id="email-${user.id}" 
-          value="${user.email}" 
+        <input
+          type="email"
+          id="email-${user.id}"
+          value="${user.email}"
         />
       </td>`;
 
-    // Nível (select)
+    // Nível
     tr.innerHTML += `
       <td>
         <select id="lvl-${user.id}">
@@ -84,13 +91,17 @@ async function loadUsers() {
   });
 }
 
-// Mostrar / ocultar senha
-window.toggleShow = id => {
+// toggle show/hide password (delegação de evento)
+document.body.addEventListener("click", e => {
+  if (!e.target.matches(".toggle-password")) return;
+  const id = e.target.dataset.id;
   const inp = document.getElementById(`pass-${id}`);
   inp.type = inp.type === "password" ? "text" : "password";
-};
+  e.target.textContent = inp.type === "password" ? "👁️" : "🙈";
+});
 
-export async function saveUser(id) {
+// Salvar usuário
+async function saveUser(id) {
   const senha = document.getElementById(`pass-${id}`).value;
   const email = document.getElementById(`email-${id}`).value;
   const nivel = document.getElementById(`lvl-${id}`).value;
@@ -100,46 +111,65 @@ export async function saveUser(id) {
     .update({ senha, email, nivel })
     .eq("id", id);
 
-  if (error) return alert("Erro ao salvar: " + error.message);
-  alert("Usuário atualizado!");
-  loadUsers();
+  if (error) {
+    alert("Erro ao salvar: " + error.message);
+  } else {
+    alert("Usuário atualizado!");
+    loadUsers();
+  }
 }
 
-export async function deleteUser(id) {
+// Excluir usuário
+async function deleteUser(id) {
   if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
   const { error } = await supabase
     .from("credenciais")
     .delete()
     .eq("id", id);
 
-  if (error) return alert("Erro ao excluir: " + error.message);
-  alert("Usuário excluído!");
-  loadUsers();
+  if (error) {
+    alert("Erro ao excluir: " + error.message);
+  } else {
+    alert("Usuário excluído!");
+    loadUsers();
+  }
 }
 
-export async function createUser() {
-  const usuario = document.getElementById("new-username").value.trim();
-  const senha   = document.getElementById("new-password").value.trim();
+// Criar novo usuário
+async function createUser() {
+  const usuario = document.getElementById("new-user").value.trim();
+  const senha   = document.getElementById("new-pass").value.trim();
   const email   = document.getElementById("new-email").value.trim();
   const nivel   = document.getElementById("new-level").value;
 
   if (!usuario || !senha || !email) {
-    return alert("Preencha todos os campos.");
+    alert("Preencha todos os campos.");
+    return;
   }
 
   const { error } = await supabase
     .from("credenciais")
     .insert({ usuario, senha, email, nivel });
 
-  if (error) return alert("Erro ao criar: " + error.message);
-  alert("Usuário criado!");
-  document.getElementById("new-username").value = "";
-  document.getElementById("new-password").value = "";
-  document.getElementById("new-email").value = "";
-  loadUsers();
+  if (error) {
+    alert("Erro ao criar: " + error.message);
+  } else {
+    alert("Usuário criado!");
+    document.getElementById("new-user").value = "";
+    document.getElementById("new-pass").value = "";
+    document.getElementById("new-email").value = "";
+    loadUsers();
+  }
 }
 
-export function logout() {
+// Logout
+function logout() {
   sessionStorage.clear();
   window.location.href = "index.html";
 }
+
+// expõe no escopo global para que os onclick do HTML funcionem
+window.saveUser   = saveUser;
+window.deleteUser = deleteUser;
+window.createUser = createUser;
+window.logout     = logout;
