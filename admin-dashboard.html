@@ -12,29 +12,44 @@
       margin-bottom: 2rem;
       border-bottom: 1px solid var(--border-color);
       padding-bottom: 1rem;
+      display: flex; /* Alinha botões */
+      flex-wrap: wrap; /* Permite quebrar linha se necessário */
+      gap: 0.5rem; /* Espaço entre botões */
     }
-    .tab-button {
+    .tab-button, #admin-clientes-btn {
       padding: 0.6rem 1.2rem;
-      margin-right: 0.5rem;
       cursor: pointer;
       border: 1px solid var(--border-color);
       background-color: var(--bg-dark);
       color: var(--text-muted);
-      border-radius: 6px 6px 0 0;
-      border-bottom: none;
+      border-radius: 6px;
       transition: all 0.3s ease;
+      margin-right: 0.5rem; /* Mantém um espaço à direita */
     }
     .tab-button.active {
       background-color: var(--bg-surface);
       color: var(--gold-lighter);
       border-color: var(--border-color);
-      border-bottom: 1px solid var(--bg-surface); /* Cobre a linha inferior */
-      transform: translateY(1px);
+      /* Remove efeito de aba levantada para consistência */
+      /* border-bottom: 1px solid var(--bg-surface); */
+      /* transform: translateY(1px); */
     }
-    .tab-button:not(.active):hover {
+    .tab-button:not(.active):hover, #admin-clientes-btn:hover {
         background-color: var(--emerald-glow);
         color: var(--text-light);
     }
+    /* Estilo específico para o botão de clientes do admin */
+    #admin-clientes-btn {
+        background-color: var(--emerald-dark); /* Destaque diferente */
+        color: var(--gold-lighter);
+        border-color: var(--gold);
+        margin-left: auto; /* Empurra para a direita */
+        margin-right: 0; /* Remove margem direita extra */
+    }
+    #admin-clientes-btn:hover {
+        box-shadow: 0 0 8px var(--shadow-color);
+    }
+
     .tab-content {
       display: none; /* Esconde por padrão */
     }
@@ -60,10 +75,12 @@
     <h1>Painel de Administração</h1>
     <button id="logout-btn">Logout</button>
 
-    <!-- Navegação por Abas -->
+    <!-- Navegação por Abas e Botão Clientes -->
     <nav class="tab-navigation">
       <button id="tab-btn-manage" class="tab-button active">Gerenciar Usuários</button>
       <button id="tab-btn-list" class="tab-button">Lista de Usuários</button>
+      <!-- Botão para Admin acessar Gerenciamento de Clientes -->
+      <button id="admin-clientes-btn">Gerenciar Clientes</button> 
     </nav>
 
     <!-- Conteúdo da Aba: Gerenciar Usuários -->
