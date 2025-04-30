@@ -1,6 +1,6 @@
 // main.js
 import { supabase } from "./supabase.js";
-import emailjs from "https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js";
+
 
 // Configurações do EmailJS
 const EMAILJS_SERVICE_ID  = "service_lk94gdg";
