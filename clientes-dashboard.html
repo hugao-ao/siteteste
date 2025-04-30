@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gerenciamento de Clientes</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Estilos específicos para gerenciamento de clientes */
+    #back-btn {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem;
+        background: var(--emerald-dark);
+        color: var(--gold-lighter);
+        border: 1px solid var(--gold);
+        padding: 0.5rem 1rem;
+    }
+    #back-btn:hover {
+        background: var(--emerald-dark);
+        box-shadow: 0 0 8px var(--shadow-color);
+        color: #fff;
+    }
+    #logout-btn {
+        right: 1.5rem;
+        left: auto; /* Garante que não vá para a esquerda */
+    }
+    .admin-view-indicator {
+        background-color: rgba(218, 165, 32, 0.1);
+        color: var(--gold-lighter);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--gold);
+        text-align: center;
+        font-size: 0.9rem;
+    }
+    #add-client-form {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        align-items: end;
+        margin-bottom: 2rem;
+    }
+    #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 35%; } /* Nome */
+    #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 25%; } /* WhatsApp */
+    #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 15%; } /* Status */
+    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 25%; } /* Ações */
+
+    /* Estilo para status 'TODOS' */
+    .status-todos {
+        background-color: var(--gold-lighter);
+        color: var(--bg-dark);
+        padding: 0.2rem 0.5rem;
+        border-radius: 4px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        text-align: center;
+        display: inline-block;
+    }
+    .status-individual {
+         color: var(--text-muted);
+         font-style: italic;
+         font-size: 0.9rem;
+    }
+
+    /* Responsividade da tabela de clientes */
+    @media (max-width: 768px) {
+        #clients-table th:nth-child(n), 
+        #clients-table td:nth-child(n) { width: 100%; } /* Reset width */
+
+        #clients-table td:nth-of-type(1):before { content: "Nome"; }
+        #clients-table td:nth-of-type(2):before { content: "WhatsApp"; }
+        #clients-table td:nth-of-type(3):before { content: "Status"; }
+        #clients-table td:nth-of-type(4):before { content: "Ações"; }
+    }
+
+  </style>
+</head>
+<body>
+  <main>
+    <!-- Botão Voltar (para admin ou planejamento) -->
+    <button id="back-btn">Voltar</button>
+    <!-- Botão Logout -->
+    <button id="logout-btn">Logout</button>
+
+    <!-- Indicador de visualização pelo Admin -->
+    <div id="admin-view-indicator" class="admin-view-indicator" style="display: none;">
+      Você está visualizando como administrador.
+    </div>
+
+    <h1>Gerenciamento de Clientes</h1>
+
+    <!-- Formulário para Adicionar Cliente -->
+    <section>
+      <h2>Adicionar Novo Cliente</h2>
+      <form id="add-client-form">
+        <input type="text" id="new-client-name" placeholder="Nome do Cliente" required />
+        <input type="text" id="new-client-whatsapp" placeholder="WhatsApp (+55 DDD Numero)" required />
+        <button type="submit" id="add-client-btn">Adicionar Cliente</button>
+      </form>
+    </section>
+
+    <!-- Tabela de Clientes -->
+    <section>
+      <h2>Clientes Cadastrados</h2>
+      <table id="clients-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>WhatsApp</th>
+            <th>Status</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- Linhas preenchidas dinamicamente por clientes.js -->
+          <tr><td colspan="4">Carregando clientes...</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+  </main>
+
+  <!-- Scripts -->
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="clientes.js"></script> <!-- Novo JS para esta página -->
+
+</body>
+</html>
+
