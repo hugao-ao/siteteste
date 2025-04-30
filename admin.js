@@ -136,7 +136,7 @@ async function loadUsers() {
           ${user.usuario !== sessionStorage.getItem("usuario") 
             ? `<button class="delete-btn" data-id="${user.id}">Excluir</button>` 
             : 
-M          <span style="color:gray">[Admin]</span>`}
+          '<span style="color:gray">[Admin]</span>'`}
         </td>
       `;
       manageTableBody.appendChild(manageTr);
@@ -338,4 +338,3 @@ if (checkAccess()) {
   loadUsers();
   switchTab('manage'); // Inicia na aba de gerenciamento
 }
-
