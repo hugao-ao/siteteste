@@ -1,15 +1,15 @@
-// admin.js
 import { supabase } from "./supabase.js";
 
-const tableBody   = document.querySelector("#users-table tbody");
-const btnLogout   = document.getElementById("logout-btn");
-const btnCreate   = document.getElementById("create-user-btn");
+// referenciar exatamente esses IDs:
+const tableBody  = document.querySelector("#users-table tbody");
+const btnLogout  = document.getElementById("btn-logout");
+const btnCreate  = document.getElementById("btn-create");
 
-// atrelando eventos
+// vincula funções aos botões
 btnLogout.onclick = logout;
 btnCreate.onclick = createUser;
 
-// 1) Valida sessão de admin via sessionStorage
+// 1) valida sessão de admin (colocada em sessionStorage lá no login)
 function checkAccess() {
   const user  = sessionStorage.getItem("usuario");
   const nivel = sessionStorage.getItem("nivel");
@@ -21,7 +21,7 @@ function checkAccess() {
   return true;
 }
 
-// 2) Só carrega se for admin
+// só carrega se o checkAccess tiver passado
 if (checkAccess()) {
   loadUsers();
 }
@@ -33,8 +33,7 @@ async function loadUsers() {
     .select("id, usuario, senha, email, nivel");
 
   if (error) {
-    alert("Erro ao carregar usuários: " + error.message);
-    return;
+    return alert("Erro ao carregar usuários: " + error.message);
   }
 
   tableBody.innerHTML = "";
@@ -44,32 +43,28 @@ async function loadUsers() {
     // Usuário
     tr.innerHTML += `<td>${user.usuario}</td>`;
 
-    // Senha + botão olho
+    // Senha com campo editável + toggle
     tr.innerHTML += `
       <td>
-        <input
-          type="password"
-          id="pass-${user.id}"
-          value="${user.senha}"
+        <input 
+          type="password" 
+          id="pass-${user.id}" 
+          value="${user.senha.replace(/"/g,'&quot;')}" 
         />
-        <button
-          type="button"
-          class="toggle-password"
-          data-id="${user.id}"
-        >👁️</button>
+        <button onclick="toggleShow(${user.id})">👁️</button>
       </td>`;
 
-    // E-mail
+    // E-mail editável
     tr.innerHTML += `
       <td>
-        <input
-          type="email"
-          id="email-${user.id}"
-          value="${user.email}"
+        <input 
+          type="email" 
+          id="email-${user.id}" 
+          value="${user.email.replace(/"/g,'&quot;')}" 
         />
       </td>`;
 
-    // Nível
+    // Nível select
     tr.innerHTML += `
       <td>
         <select id="lvl-${user.id}">
@@ -78,7 +73,7 @@ async function loadUsers() {
         </select>
       </td>`;
 
-    // Ações
+    // Ações: Salvar sempre, Excluir só se não for o próprio admin
     let actions = `<button onclick="saveUser(${user.id})">Salvar</button>`;
     if (user.usuario !== sessionStorage.getItem("usuario")) {
       actions += ` <button onclick="deleteUser(${user.id})">Excluir</button>`;
@@ -91,17 +86,13 @@ async function loadUsers() {
   });
 }
 
-// toggle show/hide password (delegação de evento)
-document.body.addEventListener("click", e => {
-  if (!e.target.matches(".toggle-password")) return;
-  const id = e.target.dataset.id;
+// toggle de visibilidade da senha
+window.toggleShow = id => {
   const inp = document.getElementById(`pass-${id}`);
   inp.type = inp.type === "password" ? "text" : "password";
-  e.target.textContent = inp.type === "password" ? "👁️" : "🙈";
-});
+};
 
-// Salvar usuário
-async function saveUser(id) {
+export async function saveUser(id) {
   const senha = document.getElementById(`pass-${id}`).value;
   const email = document.getElementById(`email-${id}`).value;
   const nivel = document.getElementById(`lvl-${id}`).value;
@@ -111,65 +102,47 @@ async function saveUser(id) {
     .update({ senha, email, nivel })
     .eq("id", id);
 
-  if (error) {
-    alert("Erro ao salvar: " + error.message);
-  } else {
-    alert("Usuário atualizado!");
-    loadUsers();
-  }
+  if (error) return alert("Erro ao salvar: " + error.message);
+  alert("Usuário atualizado!");
+  loadUsers();
 }
 
-// Excluir usuário
-async function deleteUser(id) {
+export async function deleteUser(id) {
   if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
   const { error } = await supabase
     .from("credenciais")
     .delete()
     .eq("id", id);
 
-  if (error) {
-    alert("Erro ao excluir: " + error.message);
-  } else {
-    alert("Usuário excluído!");
-    loadUsers();
-  }
+  if (error) return alert("Erro ao excluir: " + error.message);
+  alert("Usuário excluído!");
+  loadUsers();
 }
 
-// Criar novo usuário
-async function createUser() {
-  const usuario = document.getElementById("new-user").value.trim();
-  const senha   = document.getElementById("new-pass").value.trim();
+export async function createUser() {
+  const usuario = document.getElementById("new-username").value.trim();
+  const senha   = document.getElementById("new-password").value.trim();
   const email   = document.getElementById("new-email").value.trim();
   const nivel   = document.getElementById("new-level").value;
 
   if (!usuario || !senha || !email) {
-    alert("Preencha todos os campos.");
-    return;
+    return alert("Preencha todos os campos.");
   }
 
   const { error } = await supabase
     .from("credenciais")
     .insert({ usuario, senha, email, nivel });
 
-  if (error) {
-    alert("Erro ao criar: " + error.message);
-  } else {
-    alert("Usuário criado!");
-    document.getElementById("new-user").value = "";
-    document.getElementById("new-pass").value = "";
-    document.getElementById("new-email").value = "";
-    loadUsers();
-  }
+  if (error) return alert("Erro ao criar: " + error.message);
+  alert("Usuário criado!");
+  // limpa campos e recarrega
+  document.getElementById("new-username").value = "";
+  document.getElementById("new-password").value = "";
+  document.getElementById("new-email").value    = "";
+  loadUsers();
 }
 
-// Logout
-function logout() {
+export function logout() {
   sessionStorage.clear();
   window.location.href = "index.html";
 }
-
-// expõe no escopo global para que os onclick do HTML funcionem
-window.saveUser   = saveUser;
-window.deleteUser = deleteUser;
-window.createUser = createUser;
-window.logout     = logout;
