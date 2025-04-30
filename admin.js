@@ -14,7 +14,7 @@ import { supabase } from "./supabase.js";
 
 // Função de escape para prevenir XSS e erros de sintaxe
 const sanitizeInput = (str) => {
-  if (str === null || str === undefined) return '';
+  if (str === null || str === undefined) return ";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -40,7 +40,7 @@ const tabBtnManage = document.getElementById("tab-btn-manage");
 const tabBtnList = document.getElementById("tab-btn-list");
 const tabContentManage = document.getElementById("tab-content-manage");
 const tabContentList = document.getElementById("tab-content-list");
-const adminClientesBtn = document.getElementById("admin-clientes-btn"); // << NOVO: Botão para clientes
+const adminClientesBtn = document.getElementById("admin-clientes-btn");
 
 // Validação de acesso
 function checkAccess() {
@@ -72,25 +72,21 @@ function switchTab(activeTab) {
 // --- Carregar Usuários --- 
 async function loadUsers() {
   try {
-    // Limpa ambas as tabelas e mostra carregando
     manageTableBody.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
     listTableBody.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
     
-    // Busca usuários incluindo o novo campo 'projeto'
     const { data: users, error } = await supabase
       .from("credenciais")
-      .select("id, usuario, senha, email, nivel, projeto"); // Adicionado 'projeto'
+      .select("id, usuario, senha, email, nivel, projeto");
 
     if (error) {
-        // Verifica se o erro é coluna inexistente (para guiar o usuário)
         if (error.code === '42703' && error.message.includes('projeto')) {
             throw new Error("Erro ao carregar usuários: A coluna 'projeto' não existe na tabela 'credenciais'. Por favor, adicione a coluna no Supabase.");
         } else {
-            throw error; // Lança outros erros
+            throw error;
         }
     }
 
-    // Limpa tabelas após sucesso da busca
     manageTableBody.innerHTML = "";
     listTableBody.innerHTML = "";
     
@@ -125,7 +121,7 @@ async function loadUsers() {
           </select>
         </td>
         <td>
-          <select id="proj-${user.id}"> <!-- Select para Projeto -->
+          <select id="proj-${user.id}">
             <option value="" ${!user.projeto ? "selected" : ""}>Nenhum</option>
             <option value="Hvc" ${user.projeto === "Hvc" ? "selected" : ""}>Hvc</option>
             <option value="Argos" ${user.projeto === "Argos" ? "selected" : ""}>Argos</option>
@@ -145,13 +141,19 @@ async function loadUsers() {
       // --- Linha para Tabela de Lista ---
       const listTr = document.createElement("tr");
       listTr.dataset.userId = user.id;
+      // << MODIFICADO: Adicionado data-projeto ao botão >>
       listTr.innerHTML = `
         <td>${sanitizeInput(user.usuario)}</td>
         <td>${sanitizeInput(user.email)}</td>
         <td>${sanitizeInput(user.nivel)}</td>
         <td>${sanitizeInput(user.projeto) || 'Nenhum'}</td>
         <td>
-          <button class="view-user-dashboard-btn" data-id="${user.id}" data-username="${sanitizeInput(user.usuario)}">Ver Dashboard</button>
+          <button 
+            class="view-user-dashboard-btn" 
+            data-id="${user.id}" 
+            data-username="${sanitizeInput(user.usuario)}"
+            data-projeto="${sanitizeInput(user.projeto) || ''}" 
+          >Ver Dashboard</button>
         </td>
       `;
       listTableBody.appendChild(listTr);
@@ -159,10 +161,8 @@ async function loadUsers() {
 
   } catch (error) {
     console.error("Erro ao carregar usuários:", error);
-    // Exibe o erro de forma mais clara na UI
     manageTableBody.innerHTML = `<tr><td colspan='6' style='color: red;'>${error.message}</td></tr>`;
     listTableBody.innerHTML = `<tr><td colspan='5' style='color: red;'>${error.message}</td></tr>`;
-    // alert("Erro ao carregar usuários: " + error.message); // Evita alert bloqueante
   }
 }
 
@@ -172,35 +172,37 @@ async function saveUser(id) {
     const senha = document.getElementById(`pass-${id}`).value;
     const email = document.getElementById(`email-${id}`).value;
     const nivel = document.getElementById(`lvl-${id}`).value;
-    const projeto = document.getElementById(`proj-${id}`).value; // Pega valor do projeto
+    const projeto = document.getElementById(`proj-${id}`).value;
 
-    if (!email) { // Senha pode ser vazia se não for alterada, mas email não
+    if (!email) {
         alert("O campo E-mail não pode estar vazio.");
         return;
     }
 
     const updateData = { email, nivel, projeto };
-    // Só atualiza a senha se o campo não estiver vazio (ou com placeholder)
-    if (senha && senha !== '********') { // Ajuste conforme o placeholder se necessário
+    if (senha && senha !== '********') {
         updateData.senha = senha;
     }
 
     const { error } = await supabase
       .from("credenciais")
-      .update(updateData) // Inclui 'projeto' no update
+      .update(updateData)
       .eq("id", id);
 
     if (error) throw error;
     
     alert("Usuário atualizado com sucesso!");
-    // Atualiza a linha na tabela de lista também (opcional, mas bom para consistência)
     const listRow = listTableBody.querySelector(`tr[data-user-id="${id}"]`);
     if (listRow) {
         listRow.children[1].textContent = sanitizeInput(email);
         listRow.children[2].textContent = sanitizeInput(nivel);
         listRow.children[3].textContent = sanitizeInput(projeto) || 'Nenhum';
+        // << MODIFICADO: Atualiza data-projeto no botão da lista >>
+        const viewBtn = listRow.querySelector('.view-user-dashboard-btn');
+        if (viewBtn) {
+            viewBtn.dataset.projeto = sanitizeInput(projeto) || '';
+        }
     }
-    // loadUsers(); // Evita recarregar tudo
     
   } catch (error) {
     console.error("Erro ao salvar usuário:", error);
@@ -220,7 +222,6 @@ async function deleteUser(id) {
     if (error) throw error;
     
     alert("Usuário excluído com sucesso!");
-    // Remove a linha de ambas as tabelas
     const manageRowToRemove = manageTableBody.querySelector(`tr[data-user-id="${id}"]`);
     if (manageRowToRemove) manageRowToRemove.remove();
     const listRowToRemove = listTableBody.querySelector(`tr[data-user-id="${id}"]`);
@@ -233,24 +234,25 @@ async function deleteUser(id) {
 }
 
 async function createUser(event) {
-  event.preventDefault(); // Previne o envio padrão do formulário
+  event.preventDefault();
   try {
     const usuario = newUserInput.value.trim();
     const senha = newPassInput.value.trim();
     const email = newEmailInput.value.trim();
     const nivel = newLevelSelect.value;
-    const projeto = newProjectSelect.value; // Pega valor do projeto
+    const projeto = newProjectSelect.value;
 
-    if (!usuario || !senha || !email) { // Projeto não é obrigatório inicialmente
+    if (!usuario || !senha || !email) {
       throw new Error("Preencha todos os campos obrigatórios: Usuário, Senha e E-mail.");
     }
-    if (!projeto) {
-        throw new Error("Selecione um Projeto para o novo usuário.");
-    }
+    // Projeto agora não é obrigatório na criação, pode ser definido depois
+    // if (!projeto) {
+    //     throw new Error("Selecione um Projeto para o novo usuário.");
+    // }
 
     const { data, error } = await supabase
       .from("credenciais")
-      .insert({ usuario, senha, email, nivel, projeto }) // Inclui 'projeto' no insert
+      .insert({ usuario, senha, email, nivel, projeto: projeto || null }) // Garante null se vazio
       .select();
 
     if (error) {
@@ -264,9 +266,9 @@ async function createUser(event) {
     }
     
     alert("Usuário criado com sucesso!");
-    createUserForm.reset(); // Limpa o formulário
-    newProjectSelect.value = ""; // Garante que o placeholder volte
-    loadUsers(); // Recarrega a lista
+    createUserForm.reset();
+    newProjectSelect.value = "";
+    loadUsers();
     
   } catch (error) {
     console.error("Erro ao criar usuário:", error);
@@ -274,20 +276,26 @@ async function createUser(event) {
   }
 }
 
-// --- Navegação para Dashboard do Usuário ---
-function viewUserDashboard(userId, username) {
-    // Armazena informações sobre quem está sendo visualizado
-    // e quem está visualizando (o admin)
+// --- Navegação para Dashboard do Usuário (Modificada) ---
+// << MODIFICADO: Função separada, verifica projeto >>
+function viewUserDashboard(userId, username, userProject) {
     sessionStorage.setItem('viewing_user_id', userId);
     sessionStorage.setItem('viewing_username', username);
-    sessionStorage.setItem('admin_viewer_username', sessionStorage.getItem('usuario')); // Guarda o admin original
+    sessionStorage.setItem('admin_viewer_username', sessionStorage.getItem('usuario'));
     
-    // Redireciona para o dashboard do usuário
-    window.location.href = `user-dashboard.html`; 
+    // Redireciona com base no projeto do usuário visualizado
+    if (userProject === 'Planejamento') {
+        window.location.href = `planejamento-dashboard.html`; 
+    } else {
+        window.location.href = `user-dashboard.html`; 
+    }
 }
 
 // --- Navegação para Gerenciamento de Clientes (Admin) ---
 function viewClientesDashboard() {
+    // Limpa a visualização de usuário específico antes de ir para clientes
+    sessionStorage.removeItem('viewing_user_id');
+    sessionStorage.removeItem('viewing_username');
     window.location.href = `clientes-dashboard.html`;
 }
 
@@ -299,14 +307,10 @@ function logout() {
 
 // --- Event Listeners --- 
 
-// Abas
 tabBtnManage.addEventListener('click', () => switchTab('manage'));
 tabBtnList.addEventListener('click', () => switchTab('list'));
+adminClientesBtn.addEventListener('click', viewClientesDashboard);
 
-// Botão Gerenciar Clientes (Admin)
-adminClientesBtn.addEventListener('click', viewClientesDashboard); // << NOVO
-
-// Delegação de eventos para Tabela de Gerenciamento
 manageTableBody.addEventListener("click", e => {
    const target = e.target;
    const id = target.dataset.id;
@@ -324,26 +328,24 @@ manageTableBody.addEventListener("click", e => {
    }
  });
 
- // Delegação de eventos para Tabela de Lista (Ver Dashboard)
+ // << MODIFICADO: Listener pega o projeto do data attribute >>
  listTableBody.addEventListener("click", e => {
     const target = e.target;
     if (target.classList.contains("view-user-dashboard-btn")) {
         const userId = target.dataset.id;
         const username = target.dataset.username;
+        const userProject = target.dataset.projeto; // Pega o projeto
         if (userId && username) {
-            viewUserDashboard(userId, username);
+            viewUserDashboard(userId, username, userProject); // Passa o projeto
         }
     }
  });
 
-// Listener para o formulário Criar Usuário
 createUserForm.addEventListener("submit", createUser);
-
-// Listener para o botão Logout
 btnLogout.addEventListener("click", logout);
 
 // Inicialização
 if (checkAccess()) {
   loadUsers();
-  switchTab('manage'); // Inicia na aba de gerenciamento
+  switchTab('manage');
 }
