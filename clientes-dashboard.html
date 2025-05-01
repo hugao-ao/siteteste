@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* Estilos específicos para gerenciamento de clientes */
-    #back-btn, #back-to-admin-btn { /* Combina estilos dos botões de voltar */
+    #history-back-btn { /* Botão Voltar Universal */
         position: absolute;
         top: 1.5rem;
         left: 1.5rem;
@@ -16,17 +16,19 @@
         color: var(--gold-lighter);
         border: 1px solid var(--gold);
         padding: 0.5rem 1rem;
-        z-index: 10; /* Garante que fique acima de outros elementos */
-        cursor: pointer; /* Adiciona cursor pointer */
+        z-index: 10;
+        cursor: pointer;
     }
-    #back-to-admin-btn { /* Esconde por padrão */
-        display: none;
-    }
-    #back-btn:hover, #back-to-admin-btn:hover {
+    #history-back-btn:hover {
         background: var(--emerald-dark);
         box-shadow: 0 0 8px var(--shadow-color);
         color: #fff;
     }
+    /* Remove estilos dos botões antigos */
+    /* #back-btn, #back-to-admin-btn { ... } */
+    /* #back-to-admin-btn { display: none; } */
+    /* #back-btn:hover, #back-to-admin-btn:hover { ... } */
+
     #logout-btn {
         position: absolute; /* Garante posicionamento correto */
         top: 1.5rem;
@@ -212,10 +214,8 @@
 </head>
 <body>
   <main>
-    <!-- Botão Voltar (padrão para usuário Planejamento ou Admin em sua própria view) -->
-    <button id="back-btn">Voltar</button>
-    <!-- Botão Voltar para Admin (quando admin visualiza como usuário) -->
-    <button id="back-to-admin-btn">Voltar ao Painel Admin</button>
+    <!-- Botão Voltar Universal (history.back) -->
+    <button id="history-back-btn">Voltar</button>
     <!-- Botão Logout -->
     <button id="logout-btn">Logout</button>
 
