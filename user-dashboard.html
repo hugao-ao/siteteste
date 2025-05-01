@@ -7,23 +7,27 @@
   <title>Painel do Usuário</title>
   <link rel="stylesheet" href="style.css" />
   <style>
-    /* Estilo para o botão de retorno ao admin */
-    #back-to-admin-btn {
+    /* Estilo para botão Voltar Universal */
+    #history-back-btn {
         position: absolute;
         top: 1.5rem;
-        left: 1.5rem; /* Posiciona no canto superior esquerdo */
+        left: 1.5rem;
         background: var(--emerald-dark);
         color: var(--gold-lighter);
         border: 1px solid var(--gold);
         padding: 0.5rem 1rem;
-        display: none; /* Escondido por padrão */
+        z-index: 10;
+        cursor: pointer;
     }
-
-    #back-to-admin-btn:hover {
+    #history-back-btn:hover {
         background: var(--emerald-dark);
         box-shadow: 0 0 8px var(--shadow-color);
         color: #fff;
     }
+    /* Remove estilos do botão antigo */
+    /* #back-to-admin-btn { ... } */
+    /* #back-to-admin-btn:hover { ... } */
+
     /* Ajuste para o botão logout não sobrepor o de retorno */
     #logout-btn {
         right: 1.5rem;
@@ -44,8 +48,8 @@
 </head>
 <body>
   <main class="admin-container"> <!-- Reutilizando classe para consistência, pode ser renomeada -->
-    <!-- Botão para Admin retornar -->
-    <button id="back-to-admin-btn">Voltar ao Painel Admin</button>
+    <!-- Botão Voltar Universal -->
+    <button id="history-back-btn">Voltar</button>
     
     <!-- Botão de logout padrão -->
     <button id="logout-btn">Logout</button>
