@@ -6,83 +6,185 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Painel de Administração</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome for icons -->
   <style>
-    /* Estilo para botão Voltar Universal */
-    #history-back-btn {
-        position: absolute;
-        top: 1.5rem;
-        left: 1.5rem;
-        background: var(--emerald-dark);
-        color: var(--gold-lighter);
-        border: 1px solid var(--gold);
-        padding: 0.5rem 1rem;
-        z-index: 10;
-        cursor: pointer;
-    }
-    #history-back-btn:hover {
-        background: var(--emerald-dark);
-        box-shadow: 0 0 8px var(--shadow-color);
-        color: #fff;
-    }
-    /* Ajuste para logout não sobrepor */
-    #logout-btn {
-        position: absolute;
-        top: 1.5rem;
-        right: 1.5rem;
-        left: auto;
-        z-index: 10;
+    body {
+      display: flex; /* Use flexbox for layout */
+      margin: 0; /* Remove default body margin */
+      min-height: 100vh; /* Ensure body takes full viewport height */
     }
 
-    /* Estilos adicionais para abas */
-    .tab-navigation {
-      margin-bottom: 2rem;
-      border-bottom: 1px solid var(--border-color);
-      padding-bottom: 1rem;
-      display: flex; /* Alinha botões */
-      flex-wrap: wrap; /* Permite quebrar linha se necessário */
-      gap: 0.5rem; /* Espaço entre botões */
-    }
-    .tab-button, #admin-clientes-btn {
-      padding: 0.6rem 1.2rem;
-      cursor: pointer;
-      border: 1px solid var(--border-color);
+    /* --- Sidebar Styles --- */
+    #sidebar {
+      width: 250px; /* Default width */
       background-color: var(--bg-dark);
-      color: var(--text-muted);
-      border-radius: 6px;
-      transition: all 0.3s ease;
-      margin-right: 0.5rem; /* Mantém um espaço à direita */
-    }
-    .tab-button.active {
-      background-color: var(--bg-surface);
-      color: var(--gold-lighter);
-      border-color: var(--border-color);
-      /* Remove efeito de aba levantada para consistência */
-      /* border-bottom: 1px solid var(--bg-surface); */
-      /* transform: translateY(1px); */
-    }
-    .tab-button:not(.active):hover, #admin-clientes-btn:hover {
-        background-color: var(--emerald-glow);
-        color: var(--text-light);
-    }
-    /* Estilo específico para o botão de clientes do admin */
-    #admin-clientes-btn {
-        background-color: var(--emerald-dark); /* Destaque diferente */
-        color: var(--gold-lighter);
-        border-color: var(--gold);
-        margin-left: auto; /* Empurra para a direita */
-        margin-right: 0; /* Remove margem direita extra */
-    }
-    #admin-clientes-btn:hover {
-        box-shadow: 0 0 8px var(--shadow-color);
+      padding: 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s ease;
+      position: fixed; /* Keep sidebar fixed */
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 1000; /* Ensure sidebar is on top */
+      border-right: 1px solid var(--border-color);
     }
 
-    .tab-content {
-      display: none; /* Esconde por padrão */
+    #sidebar.collapsed {
+      width: 60px; /* Collapsed width */
     }
-    .tab-content.active {
-      display: block; /* Mostra a aba ativa */
+
+    #sidebar-toggle {
+      background: none;
+      border: none;
+      color: var(--gold-lighter);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0 1.2rem; /* Adjust padding for toggle */
+      margin-bottom: 1.5rem;
+      text-align: right; /* Align icon to the right when expanded */
     }
-    /* Estilo para botão de acesso ao dashboard do usuário */
+
+    #sidebar.collapsed #sidebar-toggle {
+      text-align: center; /* Center icon when collapsed */
+      padding: 0;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      flex-grow: 1; /* Allow menu to fill space */
+    }
+
+    .sidebar-menu li a, .sidebar-menu li button {
+      display: flex;
+      align-items: center;
+      padding: 0.8rem 1.2rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      white-space: nowrap; /* Prevent text wrapping */
+      overflow: hidden; /* Hide text when collapsed */
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+     .sidebar-menu li button#sidebar-logout-btn {
+        margin-top: auto; /* Push logout to the bottom */
+    }
+
+    .sidebar-menu li a i, .sidebar-menu li button i {
+      margin-right: 0.8rem;
+      font-size: 1.1rem;
+      width: 24px; /* Fixed width for icon */
+      text-align: center;
+    }
+
+    #sidebar.collapsed .sidebar-menu li a span,
+    #sidebar.collapsed .sidebar-menu li button span {
+      display: none; /* Hide text when collapsed */
+    }
+     #sidebar.collapsed .sidebar-menu li a i,
+     #sidebar.collapsed .sidebar-menu li button i {
+        margin-right: 0;
+     }
+
+
+    .sidebar-menu li a:hover, .sidebar-menu li button:hover,
+    .sidebar-menu li a.active, .sidebar-menu li button.active {
+      background-color: var(--emerald-glow);
+      color: var(--text-light);
+    }
+
+    /* --- Main Content Styles --- */
+    #main-content {
+      flex-grow: 1; /* Allow main content to fill remaining space */
+      padding: 2rem;
+      margin-left: 250px; /* Initial margin to accommodate sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface); /* Match original main background */
+      color: var(--text-light); /* Match original text color */
+    }
+
+    #sidebar.collapsed + #main-content {
+      margin-left: 60px; /* Adjusted margin when sidebar is collapsed */
+    }
+
+    /* --- Tab Content (Now Sections) --- */
+    .content-section {
+      display: none; /* Hide all sections by default */
+    }
+    .content-section.active {
+      display: block; /* Show the active section */
+    }
+
+    /* --- Responsive adjustments (optional) --- */
+    @media (max-width: 768px) {
+        #sidebar {
+            width: 60px; /* Collapse sidebar by default on smaller screens */
+        }
+        #sidebar.collapsed {
+             width: 60px;
+        }
+        #main-content {
+            margin-left: 60px;
+        }
+         #sidebar.collapsed + #main-content {
+             margin-left: 60px;
+         }
+         /* Hide text even when not explicitly collapsed on small screens */
+         #sidebar .sidebar-menu li a span,
+         #sidebar .sidebar-menu li button span {
+            display: none;
+         }
+         #sidebar .sidebar-menu li a i,
+         #sidebar .sidebar-menu li button i {
+            margin-right: 0;
+         }
+         #sidebar-toggle {
+             text-align: center;
+             padding: 0;
+         }
+    }
+
+    /* Keep original table styles etc. */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+    }
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 0.8rem;
+      text-align: left;
+    }
+    th {
+      background-color: var(--emerald-dark);
+      color: var(--gold-lighter);
+    }
+    td input, td select {
+        width: calc(100% - 10px); /* Adjust input width */
+        padding: 5px;
+    }
+    td button {
+        margin-right: 5px;
+    }
+    .toggle-password {
+        cursor: pointer;
+        margin-left: 5px;
+    }
+    form {
+        margin-bottom: 2rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    form input, form select, form button {
+        padding: 0.6rem;
+    }
     .view-user-dashboard-btn {
         margin-left: 0.5rem;
         background: var(--emerald-dark);
@@ -90,29 +192,38 @@
         border: 1px solid var(--gold);
         font-size: 0.8rem;
         padding: 0.3rem 0.6rem;
+        cursor: pointer;
     }
     .view-user-dashboard-btn:hover {
         box-shadow: 0 0 5px var(--shadow-color);
     }
+
   </style>
 </head>
-<body> 
-  <main>
-    <!-- Botão Voltar Universal -->
-    <button id="history-back-btn">Voltar</button>
-    <h1>Painel de Administração</h1>
-    <button id="logout-btn">Logout</button>
+<body>
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <button id="sidebar-toggle"><i class="fas fa-bars"></i></button> <!-- Toggle Button -->
+    <ul class="sidebar-menu">
+      <li><a href="admin-dashboard.html" id="nav-painel-admin" class="active"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin</span></a></li>
+      <li><a href="#" id="nav-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
+      <li><a href="#" id="nav-listar-usuarios"><i class="fas fa-users"></i> <span>Lista de Usuários</span></a></li>
+      <li><a href="#" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+      <li><button id="sidebar-back-btn"><i class="fas fa-arrow-left"></i> <span>Voltar</span></button></li>
+      <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
+    </ul>
+  </nav>
 
-    <!-- Navegação por Abas e Botão Clientes -->
-    <nav class="tab-navigation">
-      <button id="tab-btn-manage" class="tab-button active">Gerenciar Usuários</button>
-      <button id="tab-btn-list" class="tab-button">Lista de Usuários</button>
-      <!-- Botão para Admin acessar Gerenciamento de Clientes -->
-      <button id="admin-clientes-btn">Gerenciar Clientes</button> 
-    </nav>
+  <!-- Main Content Area -->
+  <main id="main-content">
+    <!-- Content sections will be shown/hidden by JS -->
+    <div id="content-painel" class="content-section active">
+        <h1>Painel Administrativo</h1>
+        <p>Bem-vindo ao painel de administração. Use o menu lateral para navegar.</p>
+        <!-- Maybe add some summary info here later -->
+    </div>
 
-    <!-- Conteúdo da Aba: Gerenciar Usuários -->
-    <div id="tab-content-manage" class="tab-content active">
+    <div id="content-gerenciar-usuarios" class="content-section">
       <section>
         <h2>Usuários Cadastrados (Gerenciamento)</h2>
         <table id="manage-users-table">
@@ -122,7 +233,7 @@
               <th>Senha</th>
               <th>E-mail</th>
               <th>Nível</th>
-              <th>Projeto</th> <!-- Nova Coluna -->
+              <th>Projeto</th>
               <th>Ações</th>
             </tr>
           </thead>
@@ -131,7 +242,6 @@
           </tbody>
         </table>
       </section>
-
       <section>
         <h2>Cadastrar Novo Usuário</h2>
         <form id="create-user-form">
@@ -142,7 +252,7 @@
                 <option value="usuario">usuario</option>
                 <option value="admin">admin</option>
             </select>
-            <select id="new-project"> <!-- Novo Campo -->
+            <select id="new-project">
                 <option value="" disabled selected>Selecione o Projeto</option>
                 <option value="Hvc">Hvc</option>
                 <option value="Argos">Argos</option>
@@ -153,8 +263,7 @@
       </section>
     </div>
 
-    <!-- Conteúdo da Aba: Lista de Usuários -->
-    <div id="tab-content-list" class="tab-content">
+    <div id="content-listar-usuarios" class="content-section">
       <section>
         <h2>Lista de Usuários (Acesso ao Dashboard)</h2>
         <table id="list-users-table">
@@ -174,8 +283,10 @@
       </section>
     </div>
 
+    <!-- Gerenciar Clientes will navigate to clientes-dashboard.html, so no content section needed here -->
+
   </main>
-  
+
   <script type="module" src="permissions.js"></script>
   <script type="module" src="supabase.js"></script>
   <script type="module" src="admin.js"></script>
