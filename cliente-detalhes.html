@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* Estilos específicos para a página de detalhes */
-    #back-to-clients-btn {
+    /* Estilo para botão Voltar Universal (consistente com outras páginas) */
+    #history-back-btn {
         position: absolute;
         top: 1.5rem;
         left: 1.5rem;
@@ -16,12 +17,18 @@
         color: var(--gold-lighter);
         border: 1px solid var(--gold);
         padding: 0.5rem 1rem;
+        z-index: 10;
+        cursor: pointer;
     }
-    #back-to-clients-btn:hover {
+    #history-back-btn:hover {
         background: var(--emerald-dark);
         box-shadow: 0 0 8px var(--shadow-color);
         color: #fff;
     }
+    /* Remove estilo antigo */
+    /* #back-to-clients-btn { ... } */
+    /* #back-to-clients-btn:hover { ... } */
+
     .details-container {
         padding: 3rem;
         text-align: center;
@@ -30,8 +37,8 @@
 </head>
 <body>
   <main class="details-container">
-    <!-- Botão Voltar para a lista de clientes -->
-    <button id="back-to-clients-btn">Voltar</button>
+    <!-- Botão Voltar Universal -->
+    <button id="history-back-btn">Voltar</button>
 
     <h1>Detalhes do <span id="client-name-display">Cliente</span></h1>
 
@@ -42,7 +49,8 @@
 
   <script type="module">
     const clientNameDisplay = document.getElementById("client-name-display");
-    const backBtn = document.getElementById("back-to-clients-btn");
+    const historyBackBtn = document.getElementById("history-back-btn"); // <<< NOVO: Referência ao botão universal
+    // const backBtn = document.getElementById("back-to-clients-btn"); // Removido
 
     // Recupera o nome do cliente do sessionStorage
     const clientName = sessionStorage.getItem("viewing_client_name");
@@ -52,23 +60,20 @@
         clientNameDisplay.textContent = clientName;
         document.title = `Detalhes - ${clientName}`; // Atualiza título da aba
     } else {
-        // Se não encontrar o nome, mostra um genérico e avisa
         clientNameDisplay.textContent = "Cliente";
         console.warn("Nome do cliente não encontrado no sessionStorage.");
-        // Poderia redirecionar de volta se o nome for essencial
     }
 
-    // Funcionalidade do botão Voltar
-    backBtn.addEventListener("click", () => {
-        // Limpa as informações do cliente visualizado ao voltar
+    // Funcionalidade do botão Voltar Universal
+    historyBackBtn.addEventListener("click", () => {
+        // Limpa as informações do cliente visualizado ao voltar (opcional, mas pode ser bom)
         sessionStorage.removeItem("viewing_client_name");
         sessionStorage.removeItem("viewing_client_id");
-        // Volta para a página anterior (presumivelmente, clientes-dashboard.html)
+        // Volta para a página anterior
         window.history.back(); 
-        // Alternativa: window.location.href = "clientes-dashboard.html";
     });
 
-    // Limpa sessionStorage ao descarregar a página (opcional, mas boa prática)
+    // Limpa sessionStorage ao descarregar a página (opcional)
     window.addEventListener('beforeunload', () => {
         sessionStorage.removeItem("viewing_client_name");
         sessionStorage.removeItem("viewing_client_id");
