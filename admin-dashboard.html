@@ -7,6 +7,32 @@
   <title>Painel de Administração</title>
   <link rel="stylesheet" href="style.css" />
   <style>
+    /* Estilo para botão Voltar Universal */
+    #history-back-btn {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem;
+        background: var(--emerald-dark);
+        color: var(--gold-lighter);
+        border: 1px solid var(--gold);
+        padding: 0.5rem 1rem;
+        z-index: 10;
+        cursor: pointer;
+    }
+    #history-back-btn:hover {
+        background: var(--emerald-dark);
+        box-shadow: 0 0 8px var(--shadow-color);
+        color: #fff;
+    }
+    /* Ajuste para logout não sobrepor */
+    #logout-btn {
+        position: absolute;
+        top: 1.5rem;
+        right: 1.5rem;
+        left: auto;
+        z-index: 10;
+    }
+
     /* Estilos adicionais para abas */
     .tab-navigation {
       margin-bottom: 2rem;
@@ -72,6 +98,8 @@
 </head>
 <body> 
   <main>
+    <!-- Botão Voltar Universal -->
+    <button id="history-back-btn">Voltar</button>
     <h1>Painel de Administração</h1>
     <button id="logout-btn">Logout</button>
 
