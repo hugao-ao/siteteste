@@ -6,39 +6,43 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Detalhes do Cliente</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome -->
   <style>
-    /* Estilos específicos para a página de detalhes */
-    /* Estilo para botão Voltar Universal (consistente com outras páginas) */
-    #history-back-btn {
-        position: absolute;
-        top: 1.5rem;
-        left: 1.5rem;
-        background: var(--emerald-dark);
-        color: var(--gold-lighter);
-        border: 1px solid var(--gold);
-        padding: 0.5rem 1rem;
-        z-index: 10;
-        cursor: pointer;
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
     }
-    #history-back-btn:hover {
-        background: var(--emerald-dark);
-        box-shadow: 0 0 8px var(--shadow-color);
-        color: #fff;
+    #main-content-detalhes {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+      text-align: center; /* Keep original text alignment */
     }
-    /* Remove estilo antigo */
-    /* #back-to-clients-btn { ... } */
-    /* #back-to-clients-btn:hover { ... } */
+    #main-content-detalhes.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
 
+    /* REMOVIDO: Botão Voltar Universal antigo */
+    /* #history-back-btn { ... } */
+
+    /* Estilos específicos mantidos */
     .details-container {
-        padding: 3rem;
+        /* Padding agora é aplicado em #main-content-detalhes */
         text-align: center;
     }
   </style>
 </head>
 <body>
-  <main class="details-container">
-    <!-- Botão Voltar Universal -->
-    <button id="history-back-btn">Voltar</button>
+  <!-- Sidebar será injetada aqui pelo sidebar.js se for admin -->
+  <main id="main-content-detalhes">
+    <!-- Botão Voltar Universal (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="history-back-btn">Voltar</button> -->
 
     <h1>Detalhes do <span id="client-name-display">Cliente</span></h1>
 
@@ -48,9 +52,11 @@
   </main>
 
   <script type="module">
+    import { injectSidebarIfAdmin } from './sidebar.js';
+    injectSidebarIfAdmin('main-content-detalhes'); // Passa o ID do container principal
+
     const clientNameDisplay = document.getElementById("client-name-display");
-    const historyBackBtn = document.getElementById("history-back-btn"); // <<< NOVO: Referência ao botão universal
-    // const backBtn = document.getElementById("back-to-clients-btn"); // Removido
+    // const historyBackBtn = document.getElementById("history-back-btn"); // Removido
 
     // Recupera o nome do cliente do sessionStorage
     const clientName = sessionStorage.getItem("viewing_client_name");
@@ -64,7 +70,8 @@
         console.warn("Nome do cliente não encontrado no sessionStorage.");
     }
 
-    // Funcionalidade do botão Voltar Universal
+    // Funcionalidade do botão Voltar Universal (REMOVIDA - Sidebar cuida disso)
+    /*
     historyBackBtn.addEventListener("click", () => {
         // Limpa as informações do cliente visualizado ao voltar (opcional, mas pode ser bom)
         sessionStorage.removeItem("viewing_client_name");
@@ -72,8 +79,9 @@
         // Volta para a página anterior
         window.history.back(); 
     });
+    */
 
-    // Limpa sessionStorage ao descarregar a página (opcional)
+    // Limpa sessionStorage ao descarregar a página (mantido, pode ser útil)
     window.addEventListener('beforeunload', () => {
         sessionStorage.removeItem("viewing_client_name");
         sessionStorage.removeItem("viewing_client_id");
