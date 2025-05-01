@@ -101,7 +101,7 @@ async function loadUsers() {
           <input 
             type="password" 
             id="pass-${user.id}" 
-            value="********" // Sempre mostra máscara inicialmente
+            value="${sanitizeInput(user.senha)}" // <<< CORREÇÃO: Carrega a senha real no valor
           />
           <button 
             class="toggle-password" 
