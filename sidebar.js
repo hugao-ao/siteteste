@@ -17,6 +17,26 @@ function createAdminSidebarHTML() {
     `;
 }
 
+// Função para injetar o CSS da Sidebar
+function injectSidebarCSS() {
+    const cssLink = document.createElement('link');
+    cssLink.rel = 'stylesheet';
+    cssLink.href = 'sidebar.css'; // Referencia o arquivo CSS externo
+    document.head.appendChild(cssLink);
+
+    // Adiciona também Font Awesome se não estiver presente (opcional, mas bom para garantir ícones)
+    if (!document.querySelector('link[href*="font-awesome"]')) {
+        const faLink = document.createElement('link');
+        faLink.rel = 'stylesheet';
+        faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
+        faLink.integrity = 'sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==';
+        faLink.crossOrigin = 'anonymous';
+        faLink.referrerPolicy = 'no-referrer';
+        document.head.appendChild(faLink);
+    }
+}
+
+
 // Função para inicializar a lógica da Sidebar
 function initializeSidebar(sidebarElement, mainContentElement) {
     const sidebarToggle = sidebarElement.querySelector("#sidebar-toggle");
@@ -108,6 +128,9 @@ function injectSidebarIfAdmin(mainContentElementId) {
             console.error(`Elemento com ID '${mainContentElementId}' não encontrado para injetar a sidebar.`);
             return;
         }
+
+        // Injeta o CSS
+        injectSidebarCSS();
 
         const sidebarHTML = createAdminSidebarHTML();
         // Insere a sidebar no início do body
