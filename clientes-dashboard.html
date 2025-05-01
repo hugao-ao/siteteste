@@ -6,36 +6,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gerenciamento de Clientes</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome -->
   <style>
-    /* Estilos específicos para gerenciamento de clientes */
-    #history-back-btn { /* Botão Voltar Universal */
-        position: absolute;
-        top: 1.5rem;
-        left: 1.5rem;
-        background: var(--emerald-dark);
-        color: var(--gold-lighter);
-        border: 1px solid var(--gold);
-        padding: 0.5rem 1rem;
-        z-index: 10;
-        cursor: pointer;
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
     }
-    #history-back-btn:hover {
-        background: var(--emerald-dark);
-        box-shadow: 0 0 8px var(--shadow-color);
-        color: #fff;
+    #main-content-clientes {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
     }
-    /* Remove estilos dos botões antigos */
-    /* #back-btn, #back-to-admin-btn { ... } */
-    /* #back-to-admin-btn { display: none; } */
-    /* #back-btn:hover, #back-to-admin-btn:hover { ... } */
+    #main-content-clientes.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
 
-    #logout-btn {
-        position: absolute; /* Garante posicionamento correto */
-        top: 1.5rem;
-        right: 1.5rem;
-        left: auto; /* Garante que não vá para a esquerda */
-        z-index: 10;
-    }
+    /* Estilos específicos para gerenciamento de clientes (mantidos e ajustados) */
+    /* REMOVIDO: Botão Voltar Universal e Logout antigos */
+    /* #history-back-btn { ... } */
+    /* #logout-btn { ... } */
+
     .admin-view-indicator {
         background-color: rgba(218, 165, 32, 0.1);
         color: var(--gold-lighter);
@@ -53,30 +49,27 @@
         align-items: end;
         margin-bottom: 2rem;
     }
-    /* Ajustes na Tabela Principal */
     #clients-table {
-        width: 100%; /* Garante que a tabela use a largura total */
-        border-collapse: collapse; /* Melhora aparência das bordas */
+        width: 100%;
+        border-collapse: collapse;
         margin-bottom: 2rem;
     }
     #clients-table th, #clients-table td {
-        padding: 0.75rem; /* Aumenta espaçamento interno */
+        padding: 0.75rem;
         text-align: left;
-        border-bottom: 1px solid var(--border-color); /* Linha separadora */
+        border-bottom: 1px solid var(--border-color);
     }
     #clients-table th {
-        background-color: var(--emerald-dark); /* Fundo do cabeçalho */
+        background-color: var(--emerald-dark);
         color: var(--gold-lighter);
         font-weight: bold;
     }
-    /* Larguras das colunas (ajustadas) */
     #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 25%; } /* Nome */
     #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 25%; } /* WhatsApp */
     #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 15%; } /* Status */
     #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 15%; text-align: center; } /* Formulários */
     #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 20%; } /* Ações */
 
-    /* Estilo para célula WhatsApp com ícone */
     .whatsapp-cell {
         display: flex;
         align-items: center;
@@ -85,21 +78,20 @@
     .whatsapp-cell .phone-icon {
         cursor: default;
         opacity: 0.6;
-        font-size: 1.1rem; /* Ajusta tamanho do ícone */
+        font-size: 1.1rem;
     }
     .whatsapp-cell input[type="text"] {
-        flex-grow: 1; /* Input ocupa espaço restante */
-        min-width: 100px; /* Largura mínima para o input */
+        flex-grow: 1;
+        min-width: 100px;
     }
 
-    /* Estilo para botão de formulário (olho) */
     .view-details-btn {
         background: none;
         border: none;
         cursor: pointer;
-        font-size: 1.3rem; /* Aumenta tamanho do olho */
+        font-size: 1.3rem;
         padding: 0;
-        color: var(--gold-lighter); /* Cor do olho */
+        color: var(--gold-lighter);
         opacity: 0.8;
         transition: opacity 0.2s;
     }
@@ -107,7 +99,6 @@
         opacity: 1;
     }
 
-    /* Estilo para status */
     .status-todos {
         background-color: var(--gold-lighter);
         color: var(--bg-dark);
@@ -117,7 +108,7 @@
         font-weight: bold;
         text-align: center;
         display: inline-block;
-        white-space: nowrap; /* Evita quebra de linha */
+        white-space: nowrap;
     }
     .status-individual {
          color: var(--text-muted);
@@ -125,67 +116,64 @@
          font-size: 0.9rem;
          white-space: nowrap;
     }
-    /* Ajuste para select de admin */
     #clients-table select {
-        max-width: 100%; /* Evita que o select estoure */
+        max-width: 100%;
     }
 
-    /* Responsividade da tabela de clientes (Melhorada) */
-    @media (max-width: 900px) { /* Ponto de quebra ajustado */
+    @media (max-width: 900px) {
         #clients-table thead {
-            display: none; /* Esconde cabeçalho */
+            display: none;
         }
         #clients-table tr {
             display: block;
             margin-bottom: 1rem;
             border: 1px solid var(--border-color);
             border-radius: 6px;
-            overflow: hidden; /* Garante que bordas arredondadas funcionem */
+            overflow: hidden;
         }
         #clients-table td {
             display: block;
-            text-align: right; /* Alinha valor à direita */
-            padding-left: 50%; /* Espaço para o label */
+            text-align: right;
+            padding-left: 50%;
             position: relative;
-            border-bottom: 1px dotted var(--border-color); /* Linha pontilhada entre campos */
-            width: 100% !important; /* Força largura total */
-            box-sizing: border-box; /* Inclui padding na largura */
+            border-bottom: 1px dotted var(--border-color);
+            width: 100% !important;
+            box-sizing: border-box;
         }
         #clients-table td:last-child {
-            border-bottom: none; /* Remove borda do último item */
+            border-bottom: none;
         }
         #clients-table td::before {
-            content: attr(data-label); /* Usa data-label para o nome da coluna */
+            content: attr(data-label);
             position: absolute;
-            left: 0.75rem; /* Alinha label à esquerda */
-            width: 45%; /* Largura do label */
+            left: 0.75rem;
+            width: 45%;
             padding-right: 0.5rem;
             text-align: left;
             font-weight: bold;
             white-space: nowrap;
-            color: var(--gold-lighter); /* Cor do label */
+            color: var(--gold-lighter);
         }
-        /* Ajustes específicos para células no modo responsivo */
-        #clients-table td:nth-of-type(2) { /* WhatsApp */
-             padding-left: 0.75rem; /* Remove padding extra para flex funcionar */
+        #clients-table td:nth-of-type(2) {
+             padding-left: 0.75rem;
         }
         #clients-table td:nth-of-type(2)::before {
-             position: static; /* Volta ao fluxo normal */
-             display: block; /* Ocupa linha própria */
+             position: static;
+             display: block;
              width: auto;
              margin-bottom: 0.5rem;
              text-align: left;
         }
         .whatsapp-cell {
-            flex-direction: column; /* Empilha ícone e input */
-            align-items: flex-start; /* Alinha à esquerda */
+            flex-direction: column;
+            align-items: flex-start;
         }
         .whatsapp-cell input[type="text"] {
-            width: 100%; /* Input ocupa largura total */
+            width: 100%;
         }
-        #clients-table td:nth-of-type(4) { /* Formulários */
-            text-align: center; /* Centraliza o olho */
-            padding-left: 0.75rem; /* Remove padding extra */
+        #clients-table td:nth-of-type(4) {
+            text-align: center;
+            padding-left: 0.75rem;
         }
         #clients-table td:nth-of-type(4)::before {
              position: static;
@@ -194,9 +182,9 @@
              margin-bottom: 0.5rem;
              text-align: left;
         }
-        #clients-table td:nth-of-type(5) { /* Ações */
-            text-align: center; /* Centraliza botões */
-            padding-left: 0.75rem; /* Remove padding extra */
+        #clients-table td:nth-of-type(5) {
+            text-align: center;
+            padding-left: 0.75rem;
         }
          #clients-table td:nth-of-type(5)::before {
              position: static;
@@ -206,18 +194,19 @@
              text-align: left;
         }
         #clients-table td:nth-of-type(5) button {
-            margin: 0.2rem; /* Espaçamento entre botões */
+            margin: 0.2rem;
         }
     }
 
   </style>
 </head>
 <body>
-  <main>
-    <!-- Botão Voltar Universal (history.back) -->
-    <button id="history-back-btn">Voltar</button>
-    <!-- Botão Logout -->
-    <button id="logout-btn">Logout</button>
+  <!-- Sidebar será injetada aqui pelo sidebar.js se for admin -->
+  <main id="main-content-clientes">
+    <!-- Botão Voltar Universal (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="history-back-btn">Voltar</button> -->
+    <!-- Botão Logout (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="logout-btn">Logout</button> -->
 
     <!-- Indicador de visualização pelo Admin -->
     <div id="admin-view-indicator" class="admin-view-indicator" style="display: none;">
@@ -260,7 +249,11 @@
 
   <!-- Scripts -->
   <script type="module" src="supabase.js"></script>
-  <script type="module" src="clientes.js"></script> <!-- Novo JS para esta página -->
+  <script type="module">
+    import { injectSidebarIfAdmin } from './sidebar.js';
+    injectSidebarIfAdmin('main-content-clientes'); // Passa o ID do container principal
+  </script>
+  <script type="module" src="clientes.js"></script>
 
 </body>
 </html>
