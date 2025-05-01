@@ -21,6 +21,8 @@
 </head>
 <body>
   <main class="planejamento-container">
+    <!-- Botão Voltar para Admin (visível apenas quando admin visualiza) -->
+    <button id="back-to-admin-btn" style="display: none; position: absolute; top: 1.5rem; left: 1.5rem; background: var(--emerald-dark); color: var(--gold-lighter); border: 1px solid var(--gold); padding: 0.5rem 1rem;">Voltar para Painel Admin</button>
     <!-- Botão de logout padrão -->
     <button id="logout-btn" style="position: absolute; top: 1.5rem; right: 1.5rem;">Logout</button>
 
@@ -36,20 +38,48 @@
     const usernameDisplay = document.getElementById("username-display");
     const clientesBtn = document.getElementById("clientes-btn");
     const logoutBtn = document.getElementById("logout-btn");
+    const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Botão de voltar para admin
 
-    // Exibe nome do usuário
-    const user = sessionStorage.getItem("usuario");
+    const isAdminViewing = sessionStorage.getItem('is_admin_viewing') === 'true';
+    let user = null;
+
+    if (isAdminViewing) {
+        // Admin está visualizando
+        user = sessionStorage.getItem("viewing_username");
+        if (backToAdminBtn) {
+            backToAdminBtn.style.display = 'block';
+            backToAdminBtn.onclick = () => {
+                sessionStorage.removeItem('is_admin_viewing');
+                sessionStorage.removeItem('viewing_user_id');
+                sessionStorage.removeItem('viewing_username');
+                window.location.href = "admin-dashboard.html";
+            };
+        }
+    } else {
+        // Usuário normal
+        user = sessionStorage.getItem("usuario");
+        if (backToAdminBtn) {
+            backToAdminBtn.style.display = 'none';
+        }
+        // Segurança básica - redireciona se não for usuário logado
+        if (!user) {
+             alert("Acesso não autorizado. Faça login.");
+             window.location.href = "index.html";
+        }
+    }
+
+    // Exibe nome do usuário (visualizado ou logado)
     if (user) {
         usernameDisplay.textContent = user;
-    } else {
-        // Se não encontrar usuário, redireciona para login (segurança básica)
-        // Idealmente, ter um script de permissão mais robusto como nos outros dashboards
+    } else if (!isAdminViewing) {
+        // Se não for admin visualizando E não encontrou usuário, redireciona
         alert("Acesso não autorizado. Faça login.");
         window.location.href = "index.html";
     }
 
     // Navega para o dashboard de clientes
     clientesBtn.addEventListener("click", () => {
+        // Mantém a flag se o admin estiver visualizando
         window.location.href = "clientes-dashboard.html";
     });
 
@@ -62,4 +92,3 @@
   </script>
 </body>
 </html>
-
