@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detalhes do Cliente</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Estilos específicos para a página de detalhes */
+    #back-to-clients-btn {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem;
+        background: var(--emerald-dark);
+        color: var(--gold-lighter);
+        border: 1px solid var(--gold);
+        padding: 0.5rem 1rem;
+    }
+    #back-to-clients-btn:hover {
+        background: var(--emerald-dark);
+        box-shadow: 0 0 8px var(--shadow-color);
+        color: #fff;
+    }
+    .details-container {
+        padding: 3rem;
+        text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <main class="details-container">
+    <!-- Botão Voltar para a lista de clientes -->
+    <button id="back-to-clients-btn">Voltar</button>
+
+    <h1>Detalhes do <span id="client-name-display">Cliente</span></h1>
+
+    <!-- Conteúdo futuro dos detalhes/formulários do cliente pode ir aqui -->
+    <p><i>(Conteúdo dos formulários e detalhes será adicionado futuramente)</i></p>
+
+  </main>
+
+  <script type="module">
+    const clientNameDisplay = document.getElementById("client-name-display");
+    const backBtn = document.getElementById("back-to-clients-btn");
+
+    // Recupera o nome do cliente do sessionStorage
+    const clientName = sessionStorage.getItem("viewing_client_name");
+    const clientId = sessionStorage.getItem("viewing_client_id"); // Pode ser útil no futuro
+
+    if (clientName) {
+        clientNameDisplay.textContent = clientName;
+        document.title = `Detalhes - ${clientName}`; // Atualiza título da aba
+    } else {
+        // Se não encontrar o nome, mostra um genérico e avisa
+        clientNameDisplay.textContent = "Cliente";
+        console.warn("Nome do cliente não encontrado no sessionStorage.");
+        // Poderia redirecionar de volta se o nome for essencial
+    }
+
+    // Funcionalidade do botão Voltar
+    backBtn.addEventListener("click", () => {
+        // Limpa as informações do cliente visualizado ao voltar
+        sessionStorage.removeItem("viewing_client_name");
+        sessionStorage.removeItem("viewing_client_id");
+        // Volta para a página anterior (presumivelmente, clientes-dashboard.html)
+        window.history.back(); 
+        // Alternativa: window.location.href = "clientes-dashboard.html";
+    });
+
+    // Limpa sessionStorage ao descarregar a página (opcional, mas boa prática)
+    window.addEventListener('beforeunload', () => {
+        sessionStorage.removeItem("viewing_client_name");
+        sessionStorage.removeItem("viewing_client_id");
+    });
+
+  </script>
+</body>
+</html>
+
