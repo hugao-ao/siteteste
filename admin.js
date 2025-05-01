@@ -15,7 +15,7 @@ import { supabase } from "./supabase.js";
 // Função de escape para prevenir XSS e erros de sintaxe
 const sanitizeInput = (str) => {
   // << CORREÇÃO DEFINITIVA APLICADA AQUI (MAIS UMA VEZ) >>
-  if (str === null || str === undefined) return "; // Garante retorno de string vazia
+  if (str === null || str === undefined) return ""; // Garante retorno de string vazia
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
