@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css" />
   <style>
     /* Estilos específicos para gerenciamento de clientes */
-    #back-btn {
+    #back-btn, #back-to-admin-btn { /* Combina estilos dos botões de voltar */
         position: absolute;
         top: 1.5rem;
         left: 1.5rem;
@@ -16,15 +16,22 @@
         color: var(--gold-lighter);
         border: 1px solid var(--gold);
         padding: 0.5rem 1rem;
+        z-index: 10; /* Garante que fique acima de outros elementos */
     }
-    #back-btn:hover {
+    #back-to-admin-btn { /* Esconde por padrão */
+        display: none;
+    }
+    #back-btn:hover, #back-to-admin-btn:hover {
         background: var(--emerald-dark);
         box-shadow: 0 0 8px var(--shadow-color);
         color: #fff;
     }
     #logout-btn {
+        position: absolute; /* Garante posicionamento correto */
+        top: 1.5rem;
         right: 1.5rem;
         left: auto; /* Garante que não vá para a esquerda */
+        z-index: 10;
     }
     .admin-view-indicator {
         background-color: rgba(218, 165, 32, 0.1);
@@ -43,12 +50,61 @@
         align-items: end;
         margin-bottom: 2rem;
     }
-    #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 35%; } /* Nome */
+    /* Ajustes na Tabela Principal */
+    #clients-table {
+        width: 100%; /* Garante que a tabela use a largura total */
+        border-collapse: collapse; /* Melhora aparência das bordas */
+        margin-bottom: 2rem;
+    }
+    #clients-table th, #clients-table td {
+        padding: 0.75rem; /* Aumenta espaçamento interno */
+        text-align: left;
+        border-bottom: 1px solid var(--border-color); /* Linha separadora */
+    }
+    #clients-table th {
+        background-color: var(--emerald-dark); /* Fundo do cabeçalho */
+        color: var(--gold-lighter);
+        font-weight: bold;
+    }
+    /* Larguras das colunas (ajustadas) */
+    #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 25%; } /* Nome */
     #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 25%; } /* WhatsApp */
     #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 15%; } /* Status */
-    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 25%; } /* Ações */
+    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 15%; text-align: center; } /* Formulários */
+    #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 20%; } /* Ações */
 
-    /* Estilo para status 'TODOS' */
+    /* Estilo para célula WhatsApp com ícone */
+    .whatsapp-cell {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+    .whatsapp-cell .phone-icon {
+        cursor: default;
+        opacity: 0.6;
+        font-size: 1.1rem; /* Ajusta tamanho do ícone */
+    }
+    .whatsapp-cell input[type="text"] {
+        flex-grow: 1; /* Input ocupa espaço restante */
+        min-width: 100px; /* Largura mínima para o input */
+    }
+
+    /* Estilo para botão de formulário (olho) */
+    .view-details-btn {
+        background: none;
+        border: none;
+        cursor: pointer;
+        font-size: 1.3rem; /* Aumenta tamanho do olho */
+        padding: 0;
+        color: var(--gold-lighter); /* Cor do olho */
+        opacity: 0.8;
+        transition: opacity 0.2s;
+    }
+    .view-details-btn:hover {
+        opacity: 1;
+    }
+
+    /* Estilo para status */
     .status-todos {
         background-color: var(--gold-lighter);
         color: var(--bg-dark);
@@ -58,22 +114,97 @@
         font-weight: bold;
         text-align: center;
         display: inline-block;
+        white-space: nowrap; /* Evita quebra de linha */
     }
     .status-individual {
          color: var(--text-muted);
          font-style: italic;
          font-size: 0.9rem;
+         white-space: nowrap;
+    }
+    /* Ajuste para select de admin */
+    #clients-table select {
+        max-width: 100%; /* Evita que o select estoure */
     }
 
-    /* Responsividade da tabela de clientes */
-    @media (max-width: 768px) {
-        #clients-table th:nth-child(n), 
-        #clients-table td:nth-child(n) { width: 100%; } /* Reset width */
-
-        #clients-table td:nth-of-type(1):before { content: "Nome"; }
-        #clients-table td:nth-of-type(2):before { content: "WhatsApp"; }
-        #clients-table td:nth-of-type(3):before { content: "Status"; }
-        #clients-table td:nth-of-type(4):before { content: "Ações"; }
+    /* Responsividade da tabela de clientes (Melhorada) */
+    @media (max-width: 900px) { /* Ponto de quebra ajustado */
+        #clients-table thead {
+            display: none; /* Esconde cabeçalho */
+        }
+        #clients-table tr {
+            display: block;
+            margin-bottom: 1rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            overflow: hidden; /* Garante que bordas arredondadas funcionem */
+        }
+        #clients-table td {
+            display: block;
+            text-align: right; /* Alinha valor à direita */
+            padding-left: 50%; /* Espaço para o label */
+            position: relative;
+            border-bottom: 1px dotted var(--border-color); /* Linha pontilhada entre campos */
+            width: 100% !important; /* Força largura total */
+            box-sizing: border-box; /* Inclui padding na largura */
+        }
+        #clients-table td:last-child {
+            border-bottom: none; /* Remove borda do último item */
+        }
+        #clients-table td::before {
+            content: attr(data-label); /* Usa data-label para o nome da coluna */
+            position: absolute;
+            left: 0.75rem; /* Alinha label à esquerda */
+            width: 45%; /* Largura do label */
+            padding-right: 0.5rem;
+            text-align: left;
+            font-weight: bold;
+            white-space: nowrap;
+            color: var(--gold-lighter); /* Cor do label */
+        }
+        /* Ajustes específicos para células no modo responsivo */
+        #clients-table td:nth-of-type(2) { /* WhatsApp */
+             padding-left: 0.75rem; /* Remove padding extra para flex funcionar */
+        }
+        #clients-table td:nth-of-type(2)::before {
+             position: static; /* Volta ao fluxo normal */
+             display: block; /* Ocupa linha própria */
+             width: auto;
+             margin-bottom: 0.5rem;
+             text-align: left;
+        }
+        .whatsapp-cell {
+            flex-direction: column; /* Empilha ícone e input */
+            align-items: flex-start; /* Alinha à esquerda */
+        }
+        .whatsapp-cell input[type="text"] {
+            width: 100%; /* Input ocupa largura total */
+        }
+        #clients-table td:nth-of-type(4) { /* Formulários */
+            text-align: center; /* Centraliza o olho */
+            padding-left: 0.75rem; /* Remove padding extra */
+        }
+        #clients-table td:nth-of-type(4)::before {
+             position: static;
+             display: block;
+             width: auto;
+             margin-bottom: 0.5rem;
+             text-align: left;
+        }
+        #clients-table td:nth-of-type(5) { /* Ações */
+            text-align: center; /* Centraliza botões */
+            padding-left: 0.75rem; /* Remove padding extra */
+        }
+         #clients-table td:nth-of-type(5)::before {
+             position: static;
+             display: block;
+             width: auto;
+             margin-bottom: 0.5rem;
+             text-align: left;
+        }
+        #clients-table td:nth-of-type(5) button {
+            margin: 0.2rem; /* Espaçamento entre botões */
+        }
     }
 
   </style>
@@ -81,9 +212,7 @@
 <body>
   <main>
     <!-- Botão Voltar (para admin ou planejamento) -->
-    <button id="back-btn" style="display: none;">Voltar</button> <!-- Escondido por padrão -->
-    <!-- Botão Voltar para Admin (visível apenas quando admin visualiza) -->
-    <button id="back-to-admin-btn" style="display: none; position: absolute; top: 1.5rem; left: 1.5rem; background: var(--emerald-dark); color: var(--gold-lighter); border: 1px solid var(--gold); padding: 0.5rem 1rem;">Voltar para Painel Admin</button>
+    <button id="back-btn">Voltar</button>
     <!-- Botão Logout -->
     <button id="logout-btn">Logout</button>
 
@@ -113,12 +242,13 @@
             <th>Nome</th>
             <th>WhatsApp</th>
             <th>Status</th>
+            <th>Formulários</th> <!-- Nova coluna -->
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           <!-- Linhas preenchidas dinamicamente por clientes.js -->
-          <tr><td colspan="4">Carregando clientes...</td></tr>
+          <tr><td colspan="5">Carregando clientes...</td></tr>
         </tbody>
       </table>
     </section>
