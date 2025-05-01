@@ -277,14 +277,18 @@ async function createUser(event) {
 
 // --- Navegação para Dashboard do Usuário ---
 function viewUserDashboard(userId, username, userProject) {
+    // Store info about the user being viewed
     sessionStorage.setItem('viewing_user_id', userId);
     sessionStorage.setItem('viewing_username', username);
+    // Store info about the admin viewer
     sessionStorage.setItem('admin_viewer_username', sessionStorage.getItem('usuario'));
-    
+    sessionStorage.setItem('is_admin_viewing', 'true'); // Flag para indicar visualização pelo admin
+
+    // Navigate to the correct dashboard
     if (userProject === 'Planejamento') {
-        window.location.href = `planejamento-dashboard.html`; 
+        window.location.href = `planejamento-dashboard.html`;
     } else {
-        window.location.href = `user-dashboard.html`; 
+        window.location.href = `user-dashboard.html`;
     }
 }
 
@@ -354,4 +358,3 @@ if (checkAccess()) {
   loadUsers();
   switchTab('manage'); // Inicia na aba de gerenciamento por padrão
 }
-
