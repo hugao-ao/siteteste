@@ -81,7 +81,9 @@
 <body>
   <main>
     <!-- Botão Voltar (para admin ou planejamento) -->
-    <button id="back-btn">Voltar</button>
+    <button id="back-btn" style="display: none;">Voltar</button> <!-- Escondido por padrão -->
+    <!-- Botão Voltar para Admin (visível apenas quando admin visualiza) -->
+    <button id="back-to-admin-btn" style="display: none; position: absolute; top: 1.5rem; left: 1.5rem; background: var(--emerald-dark); color: var(--gold-lighter); border: 1px solid var(--gold); padding: 0.5rem 1rem;">Voltar para Painel Admin</button>
     <!-- Botão Logout -->
     <button id="logout-btn">Logout</button>
 
@@ -129,4 +131,3 @@
 
 </body>
 </html>
-
