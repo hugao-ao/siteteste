@@ -163,20 +163,20 @@ function renderClients(clients) {
         }
 
         tr.innerHTML = `
-            <td>
+            <td data-label="Nome">
                 <input type="text" id="name-${client.id}" value="${sanitizeInput(client.nome)}" ${!canEditDelete ? 'disabled' : ''} />
             </td>
-            <td style="display: flex; align-items: center; gap: 0.5rem;">
-                <span style="cursor: default; opacity: 0.6;" title="Funcionalidade futura">📞</span> <!-- Ícone de telefone -->
-                <input type="text" id="whatsapp-${client.id}" value="${sanitizeInput(client.whatsapp)}" ${!canEditDelete ? 'disabled' : ''} style="flex-grow: 1;" />
+            <td data-label="WhatsApp" class="whatsapp-cell">
+                <span class="phone-icon" title="Funcionalidade futura">📞</span>
+                <input type="text" id="whatsapp-${client.id}" value="${sanitizeInput(client.whatsapp)}" ${!canEditDelete ? 'disabled' : ''} />
             </td>
-            <td>
+            <td data-label="Status">
                 ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml}
             </td>
-            <td> <!-- Nova coluna Formulários -->
-                <button class="view-details-btn" data-id="${client.id}" data-name="${sanitizeInput(client.nome)}" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;" title="Ver Detalhes">👁️</button>
+            <td data-label="Formulários">
+                <button class="view-details-btn" data-id="${client.id}" data-name="${sanitizeInput(client.nome)}" title="Ver Detalhes">👁️</button>
             </td>
-            <td>
+            <td data-label="Ações">
                 ${canEditDelete 
                     ? `<button class="save-client-btn" data-id="${client.id}">Salvar</button>
                        <button class="delete-client-btn" data-id="${client.id}">Excluir</button>`
