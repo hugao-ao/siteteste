@@ -21,7 +21,7 @@ let allUsers = []; // Para armazenar lista de usuários para o select
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
   // << CORREÇÃO DEFINITIVA APLICADA AQUI >>
-  if (str === null || str === undefined) return ";
+  if (str === null || str === undefined) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
