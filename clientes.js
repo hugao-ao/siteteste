@@ -3,6 +3,7 @@ import { supabase } from "./supabase.js";
 
 // --- Elementos DOM ---
 const backBtn = document.getElementById("back-btn");
+const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Novo botão
 const logoutBtn = document.getElementById("logout-btn");
 const adminViewIndicator = document.getElementById("admin-view-indicator");
 const addClientForm = document.getElementById("add-client-form");
@@ -33,37 +34,76 @@ const sanitizeInput = (str) => {
 
 // --- Verificação de Acesso e Inicialização ---
 async function initializeDashboard() {
-    currentUser = sessionStorage.getItem("usuario");
-    currentUserId = sessionStorage.getItem("user_id");
-    currentUserNivel = sessionStorage.getItem("nivel");
-    currentUserProjeto = sessionStorage.getItem("projeto");
+    const isAdminViewing = sessionStorage.getItem('is_admin_viewing') === 'true';
 
-    isAdmin = currentUserNivel === 'admin';
+    if (isAdminViewing) {
+        // Admin está visualizando o dashboard de outro usuário
+        currentUser = sessionStorage.getItem("viewing_username");
+        currentUserId = sessionStorage.getItem("viewing_user_id");
+        currentUserNivel = 'usuario'; // Simula a visão do usuário
+        currentUserProjeto = null; // Precisa buscar o projeto do usuário visualizado?
+                                  // Por enquanto, vamos assumir que não é necessário para clientes,
+                                  // mas pode ser necessário buscar se a lógica depender disso.
+        isAdmin = false; // TRATA COMO NÃO ADMIN PARA RENDERIZAÇÃO
 
-    if (!currentUser || !currentUserId || !currentUserNivel) {
-        alert("Acesso não autorizado. Faça login novamente.");
-        window.location.href = "index.html";
-        return false;
-    }
+        // Configura botão de voltar para o painel admin
+        if (backToAdminBtn) {
+            backToAdminBtn.style.display = 'block';
+            backToAdminBtn.onclick = () => {
+                // Limpa flags de visualização antes de voltar
+                sessionStorage.removeItem('is_admin_viewing');
+                sessionStorage.removeItem('viewing_user_id');
+                sessionStorage.removeItem('viewing_username');
+                window.location.href = "admin-dashboard.html";
+            };
+        }
+        if (backBtn) backBtn.style.display = 'none'; // Esconde botão de voltar normal
+        if (adminViewIndicator) adminViewIndicator.style.display = 'none'; // Esconde indicador
 
-    // Configura botões de navegação e indicador admin
-    if (isAdmin) {
-        adminViewIndicator.style.display = "block";
-        backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; };
-        await loadAllUsers(); // Carrega usuários para o admin
-    } else if (currentUserProjeto === 'Planejamento') {
-        backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; };
+        // Carrega todos os usuários APENAS se o admin REAL estiver logado (para referência futura, se necessário)
+        // No entanto, como isAdmin está false para renderização, não será usado na tabela.
+        if (sessionStorage.getItem('nivel') === 'admin') {
+             await loadAllUsers();
+        }
+
     } else {
-        alert("Acesso indevido a esta página.");
-        window.location.href = "index.html";
-        return false;
+        // Usuário normal (Planejamento) ou Admin acessando seu próprio gerenciador
+        currentUser = sessionStorage.getItem("usuario");
+        currentUserId = sessionStorage.getItem("user_id");
+        currentUserNivel = sessionStorage.getItem("nivel");
+        currentUserProjeto = sessionStorage.getItem("projeto");
+        isAdmin = currentUserNivel === 'admin';
+
+        if (!currentUser || !currentUserId || !currentUserNivel) {
+            alert("Acesso não autorizado. Faça login novamente.");
+            window.location.href = "index.html";
+            return false;
+        }
+
+        // Configura botão de voltar normal e indicador admin (se aplicável)
+        if (backBtn) backBtn.style.display = 'block';
+        if (backToAdminBtn) backToAdminBtn.style.display = 'none';
+
+        if (isAdmin) {
+            if (adminViewIndicator) adminViewIndicator.style.display = 'block';
+            if (backBtn) backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; };
+            await loadAllUsers(); // Carrega usuários para o select do admin
+        } else if (currentUserProjeto === 'Planejamento') {
+            if (adminViewIndicator) adminViewIndicator.style.display = 'none';
+            if (backBtn) backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; };
+        } else {
+            alert("Acesso indevido a esta página.");
+            window.location.href = "index.html";
+            return false;
+        }
     }
 
+    // Event listeners comuns
     logoutBtn.onclick = logout;
     addClientForm.addEventListener("submit", addClient);
     clientsTableBody.addEventListener("click", handleTableClick);
 
-    loadClients();
+    loadClients(); // Carrega clientes com base no contexto (admin vendo user, user normal, admin normal)
     return true;
 }
 
@@ -315,4 +355,3 @@ function logout() {
 
 // --- Inicialização ---
 initializeDashboard();
-
