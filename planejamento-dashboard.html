@@ -17,10 +17,35 @@
         font-size: 1.2rem;
         margin-top: 2rem;
     }
+    /* Estilo para o botão de retorno ao admin (copiado de user-dashboard) */
+    #back-to-admin-btn {
+        position: absolute;
+        top: 1.5rem;
+        left: 1.5rem; /* Posiciona no canto superior esquerdo */
+        background: var(--emerald-dark);
+        color: var(--gold-lighter);
+        border: 1px solid var(--gold);
+        padding: 0.5rem 1rem;
+        display: none; /* Escondido por padrão */
+        cursor: pointer;
+    }
+    #back-to-admin-btn:hover {
+        background: var(--emerald-dark);
+        box-shadow: 0 0 8px var(--shadow-color);
+        color: #fff;
+    }
+    /* Ajuste para o botão logout não sobrepor o de retorno */
+    #logout-btn {
+        right: 1.5rem;
+        left: auto; /* Garante que não vá para a esquerda */
+    }
   </style>
 </head>
 <body>
   <main class="planejamento-container">
+    <!-- Botão para Admin retornar (copiado de user-dashboard) -->
+    <button id="back-to-admin-btn">Voltar ao Painel Admin</button>
+
     <!-- Botão de logout padrão -->
     <button id="logout-btn" style="position: absolute; top: 1.5rem; right: 1.5rem;">Logout</button>
 
@@ -36,30 +61,70 @@
     const usernameDisplay = document.getElementById("username-display");
     const clientesBtn = document.getElementById("clientes-btn");
     const logoutBtn = document.getElementById("logout-btn");
+    const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Referência ao novo botão
 
-    // Exibe nome do usuário
-    const user = sessionStorage.getItem("usuario");
-    if (user) {
-        usernameDisplay.textContent = user;
+    // Verifica se um admin está visualizando este painel
+    const viewingUserId = sessionStorage.getItem("viewing_user_id");
+    const viewingUsername = sessionStorage.getItem("viewing_username");
+    const adminViewerUsername = sessionStorage.getItem("admin_viewer_username");
+
+    let currentUser = null;
+    let isAdminViewing = false;
+
+    if (adminViewerUsername && viewingUserId && viewingUsername) {
+        // Admin está visualizando
+        isAdminViewing = true;
+        currentUser = viewingUsername;
+        usernameDisplay.textContent = currentUser;
+        backToAdminBtn.style.display = "block"; // Mostra o botão de voltar
+        backToAdminBtn.onclick = goBackToAdmin; // Define a função de clique
+        // O botão de logout ainda funciona, mas desloga o admin
+        logoutBtn.onclick = logoutAdmin;
     } else {
-        // Se não encontrar usuário, redireciona para login (segurança básica)
-        // Idealmente, ter um script de permissão mais robusto como nos outros dashboards
-        alert("Acesso não autorizado. Faça login.");
-        window.location.href = "index.html";
+        // Usuário normal logado
+        const user = sessionStorage.getItem("usuario");
+        const nivel = sessionStorage.getItem("nivel");
+
+        if (!user || !nivel || nivel !== "usuario" || sessionStorage.getItem("projeto") !== "Planejamento") {
+            // Se não encontrar usuário, ou não for nível usuário, ou não for do projeto correto, redireciona
+            alert("Acesso não autorizado. Faça login.");
+            window.location.href = "index.html";
+        }
+        currentUser = user;
+        usernameDisplay.textContent = currentUser;
+        logoutBtn.onclick = logoutUser;
     }
 
     // Navega para o dashboard de clientes
     clientesBtn.addEventListener("click", () => {
+        // A lógica dentro de clientes.js cuidará da visualização correta
         window.location.href = "clientes-dashboard.html";
     });
 
-    // Logout
-    logoutBtn.addEventListener("click", () => {
-        sessionStorage.clear();
-        window.location.href = "index.html";
-    });
+    // --- Funções de Navegação e Logout (copiadas/adaptadas de user.js) ---
+
+    // Logout normal do usuário
+    function logoutUser() {
+      sessionStorage.clear();
+      window.location.href = "index.html";
+    }
+
+    // Logout quando admin está visualizando (desloga o admin)
+    function logoutAdmin() {
+      sessionStorage.clear(); // Limpa tudo, incluindo as chaves de visualização
+      window.location.href = "index.html";
+    }
+
+    // Função para o admin voltar ao seu painel
+    function goBackToAdmin() {
+      // Remove apenas as chaves de visualização
+      sessionStorage.removeItem("viewing_user_id");
+      sessionStorage.removeItem("viewing_username");
+      sessionStorage.removeItem("admin_viewer_username");
+      // Redireciona de volta para o painel admin
+      window.location.href = "admin-dashboard.html";
+    }
 
   </script>
 </body>
 </html>
-
