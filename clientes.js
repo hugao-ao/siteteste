@@ -3,7 +3,6 @@ import { supabase } from "./supabase.js";
 
 // --- Elementos DOM ---
 const backBtn = document.getElementById("back-btn");
-const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Novo botão
 const logoutBtn = document.getElementById("logout-btn");
 const adminViewIndicator = document.getElementById("admin-view-indicator");
 const addClientForm = document.getElementById("add-client-form");
@@ -34,76 +33,37 @@ const sanitizeInput = (str) => {
 
 // --- Verificação de Acesso e Inicialização ---
 async function initializeDashboard() {
-    const isAdminViewing = sessionStorage.getItem('is_admin_viewing') === 'true';
+    currentUser = sessionStorage.getItem("usuario");
+    currentUserId = sessionStorage.getItem("user_id");
+    currentUserNivel = sessionStorage.getItem("nivel");
+    currentUserProjeto = sessionStorage.getItem("projeto");
 
-    if (isAdminViewing) {
-        // Admin está visualizando o dashboard de outro usuário
-        currentUser = sessionStorage.getItem("viewing_username");
-        currentUserId = sessionStorage.getItem("viewing_user_id");
-        currentUserNivel = 'usuario'; // Simula a visão do usuário
-        currentUserProjeto = null; // Precisa buscar o projeto do usuário visualizado?
-                                  // Por enquanto, vamos assumir que não é necessário para clientes,
-                                  // mas pode ser necessário buscar se a lógica depender disso.
-        isAdmin = false; // TRATA COMO NÃO ADMIN PARA RENDERIZAÇÃO
+    isAdmin = currentUserNivel === 'admin';
 
-        // Configura botão de voltar para o painel admin
-        if (backToAdminBtn) {
-            backToAdminBtn.style.display = 'block';
-            backToAdminBtn.onclick = () => {
-                // Limpa flags de visualização antes de voltar
-                sessionStorage.removeItem('is_admin_viewing');
-                sessionStorage.removeItem('viewing_user_id');
-                sessionStorage.removeItem('viewing_username');
-                window.location.href = "admin-dashboard.html";
-            };
-        }
-        if (backBtn) backBtn.style.display = 'none'; // Esconde botão de voltar normal
-        if (adminViewIndicator) adminViewIndicator.style.display = 'none'; // Esconde indicador
-
-        // Carrega todos os usuários APENAS se o admin REAL estiver logado (para referência futura, se necessário)
-        // No entanto, como isAdmin está false para renderização, não será usado na tabela.
-        if (sessionStorage.getItem('nivel') === 'admin') {
-             await loadAllUsers();
-        }
-
-    } else {
-        // Usuário normal (Planejamento) ou Admin acessando seu próprio gerenciador
-        currentUser = sessionStorage.getItem("usuario");
-        currentUserId = sessionStorage.getItem("user_id");
-        currentUserNivel = sessionStorage.getItem("nivel");
-        currentUserProjeto = sessionStorage.getItem("projeto");
-        isAdmin = currentUserNivel === 'admin';
-
-        if (!currentUser || !currentUserId || !currentUserNivel) {
-            alert("Acesso não autorizado. Faça login novamente.");
-            window.location.href = "index.html";
-            return false;
-        }
-
-        // Configura botão de voltar normal e indicador admin (se aplicável)
-        if (backBtn) backBtn.style.display = 'block';
-        if (backToAdminBtn) backToAdminBtn.style.display = 'none';
-
-        if (isAdmin) {
-            if (adminViewIndicator) adminViewIndicator.style.display = 'block';
-            if (backBtn) backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; };
-            await loadAllUsers(); // Carrega usuários para o select do admin
-        } else if (currentUserProjeto === 'Planejamento') {
-            if (adminViewIndicator) adminViewIndicator.style.display = 'none';
-            if (backBtn) backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; };
-        } else {
-            alert("Acesso indevido a esta página.");
-            window.location.href = "index.html";
-            return false;
-        }
+    if (!currentUser || !currentUserId || !currentUserNivel) {
+        alert("Acesso não autorizado. Faça login novamente.");
+        window.location.href = "index.html";
+        return false;
     }
 
-    // Event listeners comuns
+    // Configura botões de navegação e indicador admin
+    if (isAdmin) {
+        adminViewIndicator.style.display = "block";
+        backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; };
+        await loadAllUsers(); // Carrega usuários para o admin
+    } else if (currentUserProjeto === 'Planejamento') {
+        backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; };
+    } else {
+        alert("Acesso indevido a esta página.");
+        window.location.href = "index.html";
+        return false;
+    }
+
     logoutBtn.onclick = logout;
     addClientForm.addEventListener("submit", addClient);
     clientsTableBody.addEventListener("click", handleTableClick);
 
-    loadClients(); // Carrega clientes com base no contexto (admin vendo user, user normal, admin normal)
+    loadClients();
     return true;
 }
 
@@ -206,11 +166,15 @@ function renderClients(clients) {
             <td>
                 <input type="text" id="name-${client.id}" value="${sanitizeInput(client.nome)}" ${!canEditDelete ? 'disabled' : ''} />
             </td>
-            <td>
-                <input type="text" id="whatsapp-${client.id}" value="${sanitizeInput(client.whatsapp)}" ${!canEditDelete ? 'disabled' : ''} />
+            <td style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="cursor: default; opacity: 0.6;" title="Funcionalidade futura">📞</span> <!-- Ícone de telefone -->
+                <input type="text" id="whatsapp-${client.id}" value="${sanitizeInput(client.whatsapp)}" ${!canEditDelete ? 'disabled' : ''} style="flex-grow: 1;" />
             </td>
             <td>
                 ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml}
+            </td>
+            <td> <!-- Nova coluna Formulários -->
+                <button class="view-details-btn" data-id="${client.id}" data-name="${sanitizeInput(client.nome)}" style="background: none; border: none; cursor: pointer; font-size: 1.2rem;" title="Ver Detalhes">👁️</button>
             </td>
             <td>
                 ${canEditDelete 
@@ -261,21 +225,32 @@ async function addClient(event) {
         alert("Erro ao adicionar cliente: " + error.message);
     }
 }
-
 // --- Delegação de Eventos da Tabela ---
 function handleTableClick(event) {
     const target = event.target;
-    const clientId = target.dataset.id;
+    // Usa .closest para pegar o ID do botão ou do ícone dentro do botão
+    const saveButton = target.closest('.save-client-btn');
+    const deleteButton = target.closest('.delete-client-btn');
+    const viewDetailsButton = target.closest('.view-details-btn');
 
-    if (!clientId) return;
-
-    if (target.classList.contains('save-client-btn')) {
-        saveClient(clientId);
-    } else if (target.classList.contains('delete-client-btn')) {
-        deleteClient(clientId);
+    if (saveButton) {
+        const clientId = saveButton.dataset.id;
+        if (clientId) saveClient(clientId);
+    } else if (deleteButton) {
+        const clientId = deleteButton.dataset.id;
+        if (clientId) deleteClient(clientId);
+    } else if (viewDetailsButton) {
+        const clientId = viewDetailsButton.dataset.id;
+        const clientName = viewDetailsButton.dataset.name;
+        if (clientId && clientName) {
+            // Armazena ID e nome para a página de detalhes
+            sessionStorage.setItem("viewing_client_id", clientId);
+            sessionStorage.setItem("viewing_client_name", clientName);
+            // Navega para a página de detalhes
+            window.location.href = "cliente-detalhes.html";
+        }
     }
-}
-
+} // End of handleTableClick
 // --- Salvar Alterações do Cliente (Modificado para Visibilidade/Atribuição) ---
 async function saveClient(clientId) {
     try {
@@ -355,3 +330,4 @@ function logout() {
 
 // --- Inicialização ---
 initializeDashboard();
+
