@@ -6,52 +6,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Painel - Planejamento</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome -->
   <style>
-    /* Estilos específicos para este dashboard simples */
-    .planejamento-container {
-        text-align: center;
-        padding: 3rem;
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
     }
+    #main-content-planejamento {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+      text-align: center; /* Keep original text alignment */
+    }
+    #main-content-planejamento.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
+
+    /* Estilos específicos para este dashboard (mantidos) */
     .clientes-btn {
         padding: 1rem 2rem;
         font-size: 1.2rem;
         margin-top: 2rem;
     }
-    /* Estilo para botão Voltar Universal */
-    #history-back-btn {
-        position: absolute;
-        top: 1.5rem;
-        left: 1.5rem;
-        background: var(--emerald-dark);
-        color: var(--gold-lighter);
-        border: 1px solid var(--gold);
-        padding: 0.5rem 1rem;
-        z-index: 10;
-        cursor: pointer;
-    }
-    #history-back-btn:hover {
-        background: var(--emerald-dark);
-        box-shadow: 0 0 8px var(--shadow-color);
-        color: #fff;
-    }
-    /* Remove estilos do botão antigo */
-    /* #back-to-admin-btn { ... } */
-    /* #back-to-admin-btn:hover { ... } */
 
-    /* Ajuste para o botão logout não sobrepor o de retorno */
-    #logout-btn {
-        right: 1.5rem;
-        left: auto; /* Garante que não vá para a esquerda */
-    }
+    /* REMOVIDO: Botão Voltar Universal e Logout antigos */
+    /* #history-back-btn { ... } */
+    /* #logout-btn { ... } */
+
   </style>
 </head>
 <body>
-  <main class="planejamento-container">
-    <!-- Botão Voltar Universal -->
-    <button id="history-back-btn">Voltar</button>
-
-    <!-- Botão de logout padrão -->
-    <button id="logout-btn" style="position: absolute; top: 1.5rem; right: 1.5rem;">Logout</button>
+  <!-- Sidebar será injetada aqui pelo sidebar.js se for admin -->
+  <main id="main-content-planejamento">
+    <!-- Botão Voltar Universal (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="history-back-btn">Voltar</button> -->
+    <!-- Botão de logout padrão (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="logout-btn" style="position: absolute; top: 1.5rem; right: 1.5rem;">Logout</button> -->
 
     <h1>Painel de Planejamento</h1>
     <p>Bem-vindo, <span id="username-display">usuário</span>!</p>
@@ -61,12 +57,14 @@
   </main>
 
   <script type="module">
-    // Script simples para este dashboard
+    import { injectSidebarIfAdmin } from './sidebar.js';
+    injectSidebarIfAdmin('main-content-planejamento'); // Passa o ID do container principal
+
+    // Script simples para este dashboard (adaptado)
     const usernameDisplay = document.getElementById("username-display");
     const clientesBtn = document.getElementById("clientes-btn");
-    const logoutBtn = document.getElementById("logout-btn");
-    const historyBackBtn = document.getElementById("history-back-btn"); // <<< NOVO: Referência ao botão universal
-    // const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Removido
+    // const logoutBtn = document.getElementById("logout-btn"); // Removido
+    // const historyBackBtn = document.getElementById("history-back-btn"); // Removido
 
     // Verifica se um admin está visualizando este painel
     const viewingUserId = sessionStorage.getItem("viewing_user_id");
@@ -83,7 +81,7 @@
         usernameDisplay.textContent = currentUser;
         // backToAdminBtn.style.display = "block"; // Lógica removida
         // backToAdminBtn.onclick = goBackToAdmin; // Lógica removida
-        logoutBtn.onclick = logoutAdmin;
+        // logoutBtn.onclick = logoutAdmin; // Removido - Sidebar cuida disso
     } else {
         // Usuário normal logado
         const user = sessionStorage.getItem("usuario");
@@ -95,27 +93,18 @@
         }
         currentUser = user;
         usernameDisplay.textContent = currentUser;
-        logoutBtn.onclick = logoutUser;
+        // logoutBtn.onclick = logoutUser; // Removido - Sidebar cuida disso
     }
 
-    // Adiciona listener para o botão Voltar Universal
-    historyBackBtn.onclick = () => history.back(); // <<< NOVO
+    // Adiciona listener para o botão Voltar Universal (REMOVIDO)
+    // historyBackBtn.onclick = () => history.back();
 
     // Navega para o dashboard de clientes
     clientesBtn.addEventListener("click", () => {
         window.location.href = "clientes-dashboard.html";
     });
 
-    // --- Funções de Logout (simplificadas, goBackToAdmin removida) ---
-    function logoutUser() {
-      sessionStorage.clear();
-      window.location.href = "index.html";
-    }
-    function logoutAdmin() {
-      sessionStorage.clear();
-      window.location.href = "index.html";
-    }
-    // function goBackToAdmin() { ... } // Removida
+    // Funções de Logout e goBackToAdmin removidas - Sidebar cuida disso
 
   </script>
 </body>
