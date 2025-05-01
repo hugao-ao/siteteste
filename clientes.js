@@ -2,14 +2,15 @@
 import { supabase } from "./supabase.js";
 
 // --- Elementos DOM ---
-const backBtn = document.getElementById("back-btn");
+const historyBackBtn = document.getElementById("history-back-btn"); // Botão Voltar Universal
 const logoutBtn = document.getElementById("logout-btn");
 const adminViewIndicator = document.getElementById("admin-view-indicator");
 const addClientForm = document.getElementById("add-client-form");
 const newClientNameInput = document.getElementById("new-client-name");
 const newClientWhatsappInput = document.getElementById("new-client-whatsapp");
 const clientsTableBody = document.querySelector("#clients-table tbody");
-const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Adiciona referência ao botão de voltar para admin
+// const backBtn = document.getElementById("back-btn"); // Removido
+// const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Removido
 
 // --- Variáveis de Estado e Informações do Usuário ---
 let currentUser = null;
@@ -58,23 +59,13 @@ async function initializeDashboard() {
         currentUser = viewingUsernameFromSession;
         currentUserId = viewingUserIdFromSession;
         currentUserNivel = 'usuario'; // Simula o nível do usuário visualizado
-        // Poderíamos buscar o projeto do usuário visualizado se necessário, mas para clientes não parece ser
         currentUserProjeto = null; 
 
-        // Configura botões para admin visualizando
-        if (backToAdminBtn) {
-            backToAdminBtn.style.display = 'block';
-            backToAdminBtn.onclick = () => {
-                sessionStorage.removeItem('viewing_user_id');
-                sessionStorage.removeItem('viewing_username');
-                sessionStorage.removeItem('admin_viewer_username');
-                window.location.href = "admin-dashboard.html";
-            };
-        }
-        if (backBtn) backBtn.style.display = 'none';
-        if (adminViewIndicator) adminViewIndicator.style.display = 'none';
+        // Configurações específicas para admin visualizando
+        // if (backToAdminBtn) { ... } // Lógica removida
+        // if (backBtn) backBtn.style.display = 'none'; // Lógica removida
+        if (adminViewIndicator) adminViewIndicator.style.display = 'none'; // Mantém indicador oculto
 
-        // Carrega todos os usuários (para referência interna, se necessário no futuro)
         await loadAllUsers(); 
 
     } else {
@@ -91,27 +82,28 @@ async function initializeDashboard() {
             return false;
         }
 
-        // Configura botões normais
-        if (backToAdminBtn) backToAdminBtn.style.display = 'none';
-        if (backBtn) backBtn.style.display = 'block';
+        // Configurações normais
+        // if (backToAdminBtn) backToAdminBtn.style.display = 'none'; // Lógica removida
+        // if (backBtn) backBtn.style.display = 'block'; // Lógica removida
 
         if (isAdmin) {
             if (adminViewIndicator) adminViewIndicator.style.display = 'block';
-            if (backBtn) backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; };
-            await loadAllUsers(); // Carrega usuários para o select do admin
+            // if (backBtn) backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; }; // Lógica removida
+            await loadAllUsers(); 
         } else if (currentUserProjeto === 'Planejamento') {
             if (adminViewIndicator) adminViewIndicator.style.display = 'none';
-            if (backBtn) backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; };
+            // if (backBtn) backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; }; // Lógica removida
         } else {
-            // Se não for admin nem Planejamento, não deveria estar aqui
             alert("Acesso indevido a esta página.");
-            window.location.href = "index.html"; // Ou user-dashboard.html
+            window.location.href = "index.html"; 
             return false;
         }
     }
 
     // Event listeners comuns
     logoutBtn.onclick = logout;
+    historyBackBtn.onclick = () => history.back(); // <<< NOVO: Botão Voltar Universal
+
     // Só permite adicionar cliente se não for admin visualizando como user
     if (!isAdminViewingAsUser) {
         addClientForm.addEventListener("submit", addClient);
