@@ -2,9 +2,10 @@
 import { supabase } from "./supabase.js";
 
 // Seleciona elementos
+const historyBackBtn = document.getElementById("history-back-btn"); // Botão Voltar Universal
 const btnLogout = document.getElementById("logout-btn");
 const usernameDisplay = document.getElementById("username-display");
-const backToAdminBtn = document.getElementById("back-to-admin-btn");
+// const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Removido
 const adminViewIndicator = document.getElementById("admin-view-indicator");
 const userProjectDisplay = document.getElementById("user-project-display");
 
@@ -26,10 +27,10 @@ async function initializeDashboard() {
     currentUserId = viewingUserId;
     usernameDisplay.textContent = currentUser;
     adminViewIndicator.style.display = "block";
-    backToAdminBtn.style.display = "block";
+    // backToAdminBtn.style.display = "block"; // Lógica removida
     // O botão de logout ainda funciona, mas desloga o admin
     btnLogout.onclick = logoutAdmin;
-    backToAdminBtn.onclick = goBackToAdmin;
+    // backToAdminBtn.onclick = goBackToAdmin; // Lógica removida
 
   } else {
     // Usuário normal logado
@@ -47,6 +48,9 @@ async function initializeDashboard() {
     usernameDisplay.textContent = currentUser;
     btnLogout.onclick = logoutUser;
   }
+
+  // Adiciona listener para o botão Voltar Universal
+  historyBackBtn.onclick = () => history.back(); // <<< NOVO
 
   // Carrega o projeto do usuário (seja o visualizado ou o logado)
   if (currentUserId) {
