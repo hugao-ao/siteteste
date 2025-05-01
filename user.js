@@ -17,27 +17,35 @@ const adminViewerUsername = sessionStorage.getItem("admin_viewer_username");
 async function initializeDashboard() {
   let currentUser = null;
   let currentUserId = null;
-  let isAdminViewing = false;
+  const isAdminViewing = sessionStorage.getItem("is_admin_viewing") === "true"; // Usa a nova flag
 
-  if (adminViewerUsername && viewingUserId && viewingUsername) {
+  if (isAdminViewing) {
     // Admin está visualizando
-    isAdminViewing = true;
-    currentUser = viewingUsername;
-    currentUserId = viewingUserId;
+    currentUser = sessionStorage.getItem("viewing_username");
+    currentUserId = sessionStorage.getItem("viewing_user_id");
+
+    if (!currentUser || !currentUserId) {
+        alert("Erro: Informações de visualização do admin não encontradas. Voltando ao painel.");
+        goBackToAdmin(); // Função para voltar ao painel admin
+        return false;
+    }
+
     usernameDisplay.textContent = currentUser;
-    adminViewIndicator.style.display = "block";
-    backToAdminBtn.style.display = "block";
+    if (adminViewIndicator) adminViewIndicator.style.display = "none"; // Não mostra mais o indicador amarelo
+    if (backToAdminBtn) {
+        backToAdminBtn.style.display = "block";
+        backToAdminBtn.onclick = goBackToAdmin;
+    }
     // O botão de logout ainda funciona, mas desloga o admin
     btnLogout.onclick = logoutAdmin;
-    backToAdminBtn.onclick = goBackToAdmin;
 
   } else {
     // Usuário normal logado
     const user = sessionStorage.getItem("usuario");
     const nivel = sessionStorage.getItem("nivel");
-    const userId = sessionStorage.getItem("user_id"); // Assumindo que o ID é salvo no login
+    const userId = sessionStorage.getItem("user_id");
 
-    if (!user || !nivel) {
+    if (!user || !nivel || !userId) { // Verifica também o userId
       alert("Acesso não autorizado. Faça login primeiro.");
       window.location.href = "index.html";
       return false;
@@ -45,17 +53,17 @@ async function initializeDashboard() {
     currentUser = user;
     currentUserId = userId;
     usernameDisplay.textContent = currentUser;
+    if (adminViewIndicator) adminViewIndicator.style.display = "none";
+    if (backToAdminBtn) backToAdminBtn.style.display = "none";
     btnLogout.onclick = logoutUser;
   }
 
   // Carrega o projeto do usuário (seja o visualizado ou o logado)
   if (currentUserId) {
       await loadUserProject(currentUserId);
-  } else if (!isAdminViewing) {
-      // Se for usuário normal e não tivermos ID, tenta buscar pelo nome
-      // (Isso requer que o ID seja salvo no login para ser robusto)
-      console.warn("ID do usuário não encontrado no sessionStorage. Tentando buscar pelo nome...");
-      await loadUserProjectByName(currentUser);
+  } else {
+      console.error("ID do usuário não disponível para carregar projeto.");
+      userProjectDisplay.textContent = "Erro ao carregar";
   }
 
   return true;
@@ -128,4 +136,3 @@ function goBackToAdmin() {
 
 // --- Inicialização ---
 initializeDashboard();
-
