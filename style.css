@@ -410,5 +410,3 @@ button:not(.toggle-password):active::after {
         grid-template-columns: 1fr; /* Uma coluna em telas pequenas */
     }
 }
-
-
