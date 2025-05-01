@@ -1,3 +1,6 @@
+// admin.js
+import { supabase } from "./supabase.js";
+
 // ─── Proteção de UI: se não for admin, substitui todo o body ───
 if (sessionStorage.getItem("nivel") !== "admin") {
   document.body.innerHTML = `
@@ -9,25 +12,38 @@ if (sessionStorage.getItem("nivel") !== "admin") {
 }
 // ──────────────────────────────────────────────────────────────
 
-// admin.js
-import { supabase } from "./supabase.js";
-
 // Função de escape para prevenir XSS e erros de sintaxe
 const sanitizeInput = (str) => {
-  // << CORREÇÃO DEFINITIVA APLICADA AQUI (MAIS UMA VEZ) >>
-  if (str === null || str === undefined) return ""; // Garante retorno de string vazia
+  if (str === null || str === undefined) return "";
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;") // Corrigido para escapar aspas simples corretamente
+    .replace(/\'/g, "&#x27;")
     .replace(/`/g, "&#x60;");
 };
 
-// Elementos DOM
-const historyBackBtn = document.getElementById("history-back-btn"); // Botão Voltar Universal
-const btnLogout = document.getElementById("logout-btn");
+// --- Elementos DOM --- 
+// Sidebar
+const sidebar = document.getElementById("sidebar");
+const sidebarToggle = document.getElementById("sidebar-toggle");
+const navPainelAdmin = document.getElementById("nav-painel-admin");
+const navGerenciarUsuarios = document.getElementById("nav-gerenciar-usuarios");
+const navListarUsuarios = document.getElementById("nav-listar-usuarios");
+const navGerenciarClientes = document.getElementById("nav-gerenciar-clientes");
+const sidebarBackBtn = document.getElementById("sidebar-back-btn");
+const sidebarLogoutBtn = document.getElementById("sidebar-logout-btn");
+const sidebarMenuItems = document.querySelectorAll(".sidebar-menu li a, .sidebar-menu li button"); // Para gerenciar estado ativo
+
+// Conteúdo Principal
+const mainContent = document.getElementById("main-content");
+const contentPainel = document.getElementById("content-painel");
+const contentGerenciarUsuarios = document.getElementById("content-gerenciar-usuarios");
+const contentListarUsuarios = document.getElementById("content-listar-usuarios");
+const allContentSections = document.querySelectorAll(".content-section");
+
+// Tabelas e Formulários (dentro das seções de conteúdo)
 const manageTableBody = document.querySelector("#manage-users-table tbody");
 const listTableBody = document.querySelector("#list-users-table tbody");
 const createUserForm = document.getElementById("create-user-form");
@@ -37,14 +53,16 @@ const newEmailInput = document.getElementById("new-email");
 const newLevelSelect = document.getElementById("new-level");
 const newProjectSelect = document.getElementById("new-project");
 
-// Abas e Botão Clientes Admin
-const tabBtnManage = document.getElementById("tab-btn-manage");
-const tabBtnList = document.getElementById("tab-btn-list");
-const tabContentManage = document.getElementById("tab-content-manage");
-const tabContentList = document.getElementById("tab-content-list");
-const adminClientesBtn = document.getElementById("admin-clientes-btn");
+// REMOVIDO: Botões antigos
+// const historyBackBtn = document.getElementById("history-back-btn"); 
+// const btnLogout = document.getElementById("logout-btn");
+// const tabBtnManage = document.getElementById("tab-btn-manage");
+// const tabBtnList = document.getElementById("tab-btn-list");
+// const tabContentManage = document.getElementById("tab-content-manage"); // Agora é contentGerenciarUsuarios
+// const tabContentList = document.getElementById("tab-content-list"); // Agora é contentListarUsuarios
+// const adminClientesBtn = document.getElementById("admin-clientes-btn"); // Agora é navGerenciarClientes
 
-// Validação de acesso
+// Validação de acesso (mantida)
 function checkAccess() {
   const user = sessionStorage.getItem("usuario");
   const nivel = sessionStorage.getItem("nivel");
@@ -56,22 +74,44 @@ function checkAccess() {
   return true;
 }
 
-// --- Lógica das Abas ---
-function switchTab(activeTab) {
-  if (activeTab === 'manage') {
-    tabBtnManage.classList.add('active');
-    tabBtnList.classList.remove('active');
-    tabContentManage.classList.add('active');
-    tabContentList.classList.remove('active');
-  } else if (activeTab === 'list') {
-    tabBtnManage.classList.remove('active');
-    tabBtnList.classList.add('active');
-    tabContentManage.classList.remove('active');
-    tabContentList.classList.add('active');
-  }
+// --- Lógica da Sidebar e Navegação --- 
+
+// Recolher/Expandir Sidebar
+function toggleSidebar() {
+    sidebar.classList.toggle("collapsed");
+    // Salvar estado no localStorage (opcional)
+    localStorage.setItem("sidebarCollapsed", sidebar.classList.contains("collapsed"));
 }
 
-// --- Carregar Usuários --- 
+// Mostrar Seção de Conteúdo Específica
+function showContentSection(sectionId) {
+    // Esconde todas as seções
+    allContentSections.forEach(section => section.classList.remove("active"));
+    // Mostra a seção desejada
+    const sectionToShow = document.getElementById(sectionId);
+    if (sectionToShow) {
+        sectionToShow.classList.add("active");
+    }
+    // Atualiza estado ativo no menu
+    updateMenuActiveState(sectionId);
+}
+
+// Atualizar Estado Ativo no Menu da Sidebar
+function updateMenuActiveState(activeSectionId) {
+    sidebarMenuItems.forEach(item => {
+        item.classList.remove("active");
+        const targetSectionId = item.dataset.targetSection; // Adicionar data-target-section nos links do HTML
+        if (targetSectionId === activeSectionId) {
+            item.classList.add("active");
+        }
+    });
+    // Caso especial para o link inicial do painel
+    if (activeSectionId === 'content-painel' && navPainelAdmin) {
+        navPainelAdmin.classList.add('active');
+    }
+}
+
+// --- Carregar Usuários (mantido) --- 
 async function loadUsers() {
   try {
     manageTableBody.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
@@ -93,7 +133,7 @@ async function loadUsers() {
     listTableBody.innerHTML = "";
     
     users.forEach(user => {
-      // --- Linha para Tabela de Gerenciamento ---
+      // Linha para Tabela de Gerenciamento
       const manageTr = document.createElement("tr");
       manageTr.dataset.userId = user.id;
       manageTr.innerHTML = `
@@ -102,7 +142,7 @@ async function loadUsers() {
           <input 
             type="password" 
             id="pass-${user.id}" 
-            value="${sanitizeInput(user.senha)}" // <<< CORREÇÃO: Carrega a senha real no valor
+            value="${sanitizeInput(user.senha)}" 
           />
           <button 
             class="toggle-password" 
@@ -140,7 +180,7 @@ async function loadUsers() {
       `;
       manageTableBody.appendChild(manageTr);
 
-      // --- Linha para Tabela de Lista ---
+      // Linha para Tabela de Lista
       const listTr = document.createElement("tr");
       listTr.dataset.userId = user.id;
       listTr.innerHTML = `
@@ -167,7 +207,7 @@ async function loadUsers() {
   }
 }
 
-// --- Operações CRUD (Modificadas para incluir Projeto) ---
+// --- Operações CRUD (mantidas) ---
 async function saveUser(id) {
   try {
     const senhaInput = document.getElementById(`pass-${id}`);
@@ -181,8 +221,7 @@ async function saveUser(id) {
         return;
     }
 
-    const updateData = { email, nivel, projeto: projeto || null }; // Garante null se vazio
-    // Só atualiza a senha se o campo não estiver com a máscara
+    const updateData = { email, nivel, projeto: projeto || null };
     if (senha && senha !== '********') {
         updateData.senha = senha;
     }
@@ -205,7 +244,6 @@ async function saveUser(id) {
             viewBtn.dataset.projeto = sanitizeInput(projeto) || '';
         }
     }
-    // Resetar campo senha para máscara após salvar
     if (senhaInput) senhaInput.value = '********'; 
     
   } catch (error) {
@@ -268,7 +306,8 @@ async function createUser(event) {
     alert("Usuário criado com sucesso!");
     createUserForm.reset();
     newProjectSelect.value = "";
-    loadUsers();
+    loadUsers(); // Recarrega usuários para incluir o novo
+    showContentSection('content-gerenciar-usuarios'); // Volta para a seção de gerenciamento
     
   } catch (error) {
     console.error("Erro ao criar usuário:", error);
@@ -276,7 +315,7 @@ async function createUser(event) {
   }
 }
 
-// --- Navegação para Dashboard do Usuário ---
+// --- Navegação para Dashboard do Usuário (mantida) ---
 function viewUserDashboard(userId, username, userProject) {
     sessionStorage.setItem('viewing_user_id', userId);
     sessionStorage.setItem('viewing_username', username);
@@ -289,14 +328,14 @@ function viewUserDashboard(userId, username, userProject) {
     }
 }
 
-// --- Navegação para Gerenciamento de Clientes (Admin) ---
+// --- Navegação para Gerenciamento de Clientes (Admin - Sidebar) ---
 function viewClientesDashboard() {
     sessionStorage.removeItem('viewing_user_id');
     sessionStorage.removeItem('viewing_username');
     window.location.href = `clientes-dashboard.html`;
 }
 
-// Logout
+// --- Logout (mantido) ---
 function logout() {
   sessionStorage.clear();
   window.location.href = "index.html";
@@ -304,57 +343,121 @@ function logout() {
 
 // --- Event Listeners --- 
 
-// Add listener for the universal back button
-historyBackBtn.addEventListener('click', () => history.back()); // <<< NOVO
+// Sidebar Toggle
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', toggleSidebar);
+}
 
-tabBtnManage.addEventListener('click', () => switchTab('manage'));
-tabBtnList.addEventListener('click', () => switchTab('list'));
-adminClientesBtn.addEventListener('click', viewClientesDashboard);
+// Sidebar Navigation
+if (navPainelAdmin) {
+    navPainelAdmin.dataset.targetSection = 'content-painel'; // Adiciona data attribute
+    navPainelAdmin.addEventListener('click', (e) => {
+        e.preventDefault(); // Previne recarregamento da página se for link real
+        showContentSection('content-painel');
+    });
+}
+if (navGerenciarUsuarios) {
+    navGerenciarUsuarios.dataset.targetSection = 'content-gerenciar-usuarios'; // Adiciona data attribute
+    navGerenciarUsuarios.addEventListener('click', (e) => {
+        e.preventDefault();
+        showContentSection('content-gerenciar-usuarios');
+    });
+}
+if (navListarUsuarios) {
+    navListarUsuarios.dataset.targetSection = 'content-listar-usuarios'; // Adiciona data attribute
+    navListarUsuarios.addEventListener('click', (e) => {
+        e.preventDefault();
+        showContentSection('content-listar-usuarios');
+    });
+}
+if (navGerenciarClientes) {
+    navGerenciarClientes.addEventListener('click', (e) => {
+        e.preventDefault();
+        viewClientesDashboard(); // Navega para a página de clientes
+    });
+}
 
-manageTableBody.addEventListener("click", e => {
-   const target = e.target;
-   const id = target.dataset.id;
+// Sidebar Botões Voltar e Logout
+if (sidebarBackBtn) {
+    sidebarBackBtn.addEventListener('click', () => history.back());
+}
+if (sidebarLogoutBtn) {
+    sidebarLogoutBtn.addEventListener('click', logout);
+}
 
-   if (target.classList.contains("toggle-password")) {
-     const input = document.getElementById(`pass-${id}`);
-     if (input) {
-        input.type = input.type === "password" ? "text" : "password";
-        target.textContent = input.type === "password" ? "👁️" : "🙈";
-        // Define um timeout para voltar a ser password após 3 segundos
-        if (input.type === "text") {
-            setTimeout(() => {
-                const currentInput = document.getElementById(`pass-${id}`);
-                if (currentInput && currentInput.type === "text") { // Verifica se ainda é texto
-                   currentInput.type = "password";
-                   target.textContent = "👁️";
-                }
-            }, 3000);
+// REMOVIDO: Listeners antigos das abas e botões
+// historyBackBtn.addEventListener('click', () => history.back()); 
+// tabBtnManage.addEventListener('click', () => switchTab('manage'));
+// tabBtnList.addEventListener('click', () => switchTab('list'));
+// adminClientesBtn.addEventListener('click', viewClientesDashboard);
+// btnLogout.addEventListener('click', logout);
+
+// Delegação de Eventos para Tabelas (mantido e adaptado)
+if (manageTableBody) {
+    manageTableBody.addEventListener("click", e => {
+       const target = e.target;
+       const id = target.dataset.id;
+
+       if (target.classList.contains("toggle-password")) {
+         const input = document.getElementById(`pass-${id}`);
+         if (input) {
+            const originalValue = input.dataset.originalValue || input.value; // Guarda o valor original
+            input.dataset.originalValue = originalValue; // Garante que está guardado
+
+            if (input.type === "password") {
+                input.type = "text";
+                input.value = originalValue; // Mostra valor real
+                target.textContent = "🙈";
+                // Define um timeout para voltar a ser password após 3 segundos
+                setTimeout(() => {
+                    const currentInput = document.getElementById(`pass-${id}`);
+                    if (currentInput && currentInput.type === "text") { // Verifica se ainda é texto
+                       currentInput.type = "password";
+                       // Não redefinir o valor aqui, deixa o original
+                       target.textContent = "👁️";
+                    }
+                }, 3000);
+            } else {
+                input.type = "password";
+                // Não precisa mudar o valor, o tipo password já mascara
+                target.textContent = "👁️";
+            }
+         }
+       } else if (target.classList.contains("save-btn")) {
+         if (id) saveUser(id);
+       } else if (target.classList.contains("delete-btn")) {
+         if (id) deleteUser(id);
+       }
+     });
+}
+
+if (listTableBody) {
+     listTableBody.addEventListener("click", e => {
+        const target = e.target;
+        if (target.classList.contains("view-user-dashboard-btn")) {
+            const userId = target.dataset.id;
+            const username = target.dataset.username;
+            const userProject = target.dataset.projeto;
+            if (userId && username !== undefined) {
+                viewUserDashboard(userId, username, userProject);
+            }
         }
-     }
-   } else if (target.classList.contains("save-btn")) {
-     if (id) saveUser(id);
-   } else if (target.classList.contains("delete-btn")) {
-     if (id) deleteUser(id);
-   }
- });
+     });
+}
 
- listTableBody.addEventListener("click", e => {
-    const target = e.target;
-    if (target.classList.contains("view-user-dashboard-btn")) {
-        const userId = target.dataset.id;
-        const username = target.dataset.username;
-        const userProject = target.dataset.projeto;
-        if (userId && username !== undefined) { // Verifica se username não é undefined
-            viewUserDashboard(userId, username, userProject);
-        }
-    }
- });
+// Formulário Criar Usuário (mantido)
+if (createUserForm) {
+    createUserForm.addEventListener("submit", createUser);
+}
 
-createUserForm.addEventListener("submit", createUser);
-btnLogout.addEventListener("click", logout);
-
-// Inicialização
+// --- Inicialização --- 
 if (checkAccess()) {
   loadUsers();
-  switchTab('manage'); // Inicia na aba de gerenciamento por padrão
+  // Verifica estado da sidebar no localStorage (opcional)
+  const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+  if (sidebarCollapsed && sidebar) {
+      sidebar.classList.add("collapsed");
+  }
+  // Mostra a seção inicial (Painel Admin)
+  showContentSection('content-painel'); 
 }
