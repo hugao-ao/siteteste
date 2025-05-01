@@ -26,6 +26,7 @@ const sanitizeInput = (str) => {
 };
 
 // Elementos DOM
+const historyBackBtn = document.getElementById("history-back-btn"); // Botão Voltar Universal
 const btnLogout = document.getElementById("logout-btn");
 const manageTableBody = document.querySelector("#manage-users-table tbody");
 const listTableBody = document.querySelector("#list-users-table tbody");
@@ -302,6 +303,9 @@ function logout() {
 }
 
 // --- Event Listeners --- 
+
+// Add listener for the universal back button
+historyBackBtn.addEventListener('click', () => history.back()); // <<< NOVO
 
 tabBtnManage.addEventListener('click', () => switchTab('manage'));
 tabBtnList.addEventListener('click', () => switchTab('list'));
