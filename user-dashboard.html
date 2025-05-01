@@ -6,34 +6,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Painel do Usuário</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome -->
   <style>
-    /* Estilo para botão Voltar Universal */
-    #history-back-btn {
-        position: absolute;
-        top: 1.5rem;
-        left: 1.5rem;
-        background: var(--emerald-dark);
-        color: var(--gold-lighter);
-        border: 1px solid var(--gold);
-        padding: 0.5rem 1rem;
-        z-index: 10;
-        cursor: pointer;
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
     }
-    #history-back-btn:hover {
-        background: var(--emerald-dark);
-        box-shadow: 0 0 8px var(--shadow-color);
-        color: #fff;
+    #main-content-user {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
     }
-    /* Remove estilos do botão antigo */
-    /* #back-to-admin-btn { ... } */
-    /* #back-to-admin-btn:hover { ... } */
+    #main-content-user.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
 
-    /* Ajuste para o botão logout não sobrepor o de retorno */
-    #logout-btn {
-        right: 1.5rem;
-        left: auto; /* Garante que não vá para a esquerda */
-    }
-    /* Estilo para indicar que o admin está visualizando */
+    /* REMOVIDO: Botão Voltar Universal e Logout antigos */
+    /* #history-back-btn { ... } */
+    /* #logout-btn { ... } */
+
+    /* Estilo para indicar que o admin está visualizando (mantido) */
     .admin-view-indicator {
         background-color: rgba(218, 165, 32, 0.1); /* Fundo dourado transparente */
         color: var(--gold-lighter);
@@ -47,12 +45,12 @@
   </style>
 </head>
 <body>
-  <main class="admin-container"> <!-- Reutilizando classe para consistência, pode ser renomeada -->
-    <!-- Botão Voltar Universal -->
-    <button id="history-back-btn">Voltar</button>
-    
-    <!-- Botão de logout padrão -->
-    <button id="logout-btn">Logout</button>
+  <!-- Sidebar será injetada aqui pelo sidebar.js se for admin -->
+  <main id="main-content-user">
+    <!-- Botão Voltar Universal (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="history-back-btn">Voltar</button> -->
+    <!-- Botão de logout padrão (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="logout-btn">Logout</button> -->
 
     <!-- Indicador de visualização pelo Admin -->
     <div id="admin-view-indicator" class="admin-view-indicator" style="display: none;">
@@ -69,7 +67,12 @@
     </section>
   </main>
 
+  <!-- Scripts -->
   <script type="module" src="supabase.js"></script>
+  <script type="module">
+    import { injectSidebarIfAdmin } from './sidebar.js';
+    injectSidebarIfAdmin('main-content-user'); // Passa o ID do container principal
+  </script>
   <script type="module" src="user.js"></script>
 </body>
 </html>
