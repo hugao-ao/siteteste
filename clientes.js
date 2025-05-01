@@ -101,8 +101,8 @@ async function initializeDashboard() {
     }
 
     // Event listeners comuns
-    logoutBtn.onclick = logout;
-    historyBackBtn.onclick = () => history.back(); // <<< NOVO: Botão Voltar Universal
+    // logoutBtn.onclick = logout; // REMOVIDO - Sidebar cuida disso
+    // historyBackBtn.onclick = () => history.back(); // REMOVIDO - Sidebar cuida disso
 
     // Só permite adicionar cliente se não for admin visualizando como user
     if (!isAdminViewingAsUser) {
