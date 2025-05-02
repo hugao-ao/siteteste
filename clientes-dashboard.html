@@ -221,6 +221,12 @@
       <form id="add-client-form">
         <input type="text" id="new-client-name" placeholder="Nome do Cliente" required />
         <input type="text" id="new-client-whatsapp" placeholder="WhatsApp (+55 DDD Numero)" required />
+        <select id="new-client-project" required>
+            <option value="" disabled selected>Selecione o Projeto</option>
+            <option value="Argos">Argos</option>
+            <option value="Hvc">Hvc</option>
+            <option value="Planejamento">Planejamento</option>
+        </select>
         <button type="submit" id="add-client-btn">Adicionar Cliente</button>
       </form>
     </section>
@@ -233,8 +239,9 @@
           <tr>
             <th>Nome</th>
             <th>WhatsApp</th>
+            <th>Projeto</th> <!-- Nova coluna -->
             <th>Status</th>
-            <th>Formulários</th> <!-- Nova coluna -->
+            <th>Formulários</th>
             <th>Ações</th>
           </tr>
         </thead>
