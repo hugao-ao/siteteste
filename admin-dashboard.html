@@ -198,6 +198,82 @@
         box-shadow: 0 0 5px var(--shadow-color);
     }
 
+    /* --- Project Button Styles --- */
+    .project-buttons-container {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 2rem;
+        flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+    }
+
+    .project-btn {
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 5px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden; /* Needed for pseudo-element shine */
+        text-decoration: none; /* If using <a> tags */
+        display: inline-block; /* Proper sizing */
+        text-align: center;
+    }
+
+    /* Shine effect using pseudo-element */
+    .project-btn::before {
+        content: ";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(
+            120deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.4) 50%,
+            rgba(255, 255, 255, 0) 100%
+        );
+        transform: skewX(-25deg);
+        transition: left 0.6s ease;
+    }
+
+    .project-btn:hover::before {
+        left: 120%;
+    }
+
+    .project-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .project-btn:active {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    /* ARGOS Button */
+    .project-btn-argos {
+        background: linear-gradient(145deg, #1e90ff, #4682b4); /* Bright blue gradient */
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    /* HVC Button */
+    .project-btn-hvc {
+        background: linear-gradient(145deg, #000080, #191970); /* Dark sapphire blue gradient */
+        color: #e0e0e0; /* Shiny silver-ish */
+        text-shadow: 0 0 5px #ffffff, 0 0 10px #c0c0c0; /* Silver shine text effect */
+    }
+
+    /* PLANEJAMENTO Button */
+    .project-btn-planejamento {
+        background: linear-gradient(145deg, #006400, #2e8b57); /* Dark emerald green gradient */
+        color: #fffacd; /* Shiny gold-ish (LemonChiffon) */
+        text-shadow: 0 0 5px #ffd700, 0 0 8px #daa520; /* Gold shine text effect */
+    }
+
   </style>
 </head>
 <body>
@@ -220,6 +296,14 @@
     <div id="content-painel" class="content-section active">
         <h1>Painel Administrativo</h1>
         <p>Bem-vindo ao painel de administração. Use o menu lateral para navegar.</p>
+        
+        <!-- Project Buttons -->
+        <div class="project-buttons-container">
+            <button class="project-btn project-btn-argos">ARGOS</button>
+            <button class="project-btn project-btn-hvc">HVC</button>
+            <button class="project-btn project-btn-planejamento">PLANEJAMENTO</button>
+        </div>
+        
         <!-- Maybe add some summary info here later -->
     </div>
 
