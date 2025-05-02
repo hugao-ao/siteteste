@@ -1,4 +1,5 @@
 // sidebar.js
+import { supabase } from "./supabase.js"; // Importa supabase
 
 // Função para criar o HTML da Sidebar do Admin
 function createAdminSidebarHTML() {
@@ -31,6 +32,23 @@ function createUserSidebarHTML(userProject) {
         <li><a href="${homePage}" id="nav-painel-inicial"><i class="fas fa-home"></i> <span>Painel Inicial</span></a></li>
         <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
         <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
+      </ul>
+    </nav>
+    `;
+}
+
+// *** NOVA FUNÇÃO: Criar Sidebar para Admin Visualizando como Usuário ***
+function createAdminViewingUserSidebarHTML(viewedUserProject) {
+    // Define a classe de tema baseada no projeto do usuário visualizado
+    const themeClass = `theme-${viewedUserProject ? viewedUserProject.toLowerCase() : 'default'}`;
+
+    return `
+    <nav id="sidebar" class="${themeClass}">
+      <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
+      <ul class="sidebar-menu">
+        <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-arrow-left"></i> <span>Painel Admin</span></a></li> <!-- Link para voltar ao painel admin -->
+        <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+        <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li> <!-- Logout ainda desloga o admin -->
       </ul>
     </nav>
     `;
@@ -133,12 +151,13 @@ function initializeSidebar(sidebarElement, mainContentElement) {
     }
 }
 
-// Função para injetar e inicializar a Sidebar (Admin ou Usuário)
-function injectSidebar(mainContentElementId) {
-    const userLevel = sessionStorage.getItem("nivel");
-    const userProject = sessionStorage.getItem("projeto"); // Pega o projeto do usuário
+// Função para injetar e inicializar a Sidebar (MODIFICADA para contexto de visualização)
+async function injectSidebar(mainContentElementId) { // Tornou-se async
+    const loggedInUserLevel = sessionStorage.getItem("nivel");
+    const loggedInUserProject = sessionStorage.getItem("projeto");
+    const viewingUserId = sessionStorage.getItem("viewing_user_id");
 
-    if (!userLevel) return; // Sai se não houver nível definido (não logado)
+    if (!loggedInUserLevel) return; // Sai se não houver nível definido (não logado)
 
     const mainContentElement = document.getElementById(mainContentElementId);
     if (!mainContentElement) {
@@ -150,12 +169,34 @@ function injectSidebar(mainContentElementId) {
     injectSidebarCSS();
 
     let sidebarHTML;
-    if (userLevel === "admin") {
+    let isViewingAsUser = loggedInUserLevel === "admin" && viewingUserId;
+
+    if (isViewingAsUser) {
+        // Admin está visualizando como usuário
+        let viewedUserProject = null;
+        try {
+            // Busca o projeto do usuário que está sendo visualizado
+            const { data: viewedUserData, error: viewedUserError } = await supabase
+                .from('credenciais')
+                .select('projeto')
+                .eq('id', viewingUserId)
+                .single();
+            if (viewedUserError) throw viewedUserError;
+            viewedUserProject = viewedUserData?.projeto;
+        } catch (error) {
+            console.error("Erro ao buscar projeto do usuário visualizado para a sidebar:", error);
+            // Continua com projeto nulo/default em caso de erro
+        }
+        sidebarHTML = createAdminViewingUserSidebarHTML(viewedUserProject);
+
+    } else if (loggedInUserLevel === "admin") {
+        // Admin acessando suas próprias páginas
         sidebarHTML = createAdminSidebarHTML();
-    } else if (userLevel === "usuario") {
-        sidebarHTML = createUserSidebarHTML(userProject);
+    } else if (loggedInUserLevel === "usuario") {
+        // Usuário normal acessando suas páginas
+        sidebarHTML = createUserSidebarHTML(loggedInUserProject);
     } else {
-        return; // Não injeta para outros níveis ou se não estiver logado
+        return; // Não injeta para outros níveis
     }
 
     // Insere a sidebar no início do body
