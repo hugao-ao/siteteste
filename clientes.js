@@ -162,11 +162,12 @@ async function loadAllUsers() {
     }
 }
 
-// --- Carregar Clientes (Modificado para Visibilidade) ---
+// --- Carregar Clientes (Modificado para Visibilidade e Indicador de Formulário) ---
 async function loadClients() {
     try {
-        clientsTableBody.innerHTML = '<tr><td colspan="4">Carregando...</td></tr>';
-        let query = supabase.from('clientes').select('*');
+        clientsTableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>'; // Colspan 6 agora
+        // Modifica a query para incluir a contagem de formulários associados
+        let query = supabase.from('clientes').select('*, formularios_clientes(count)');
 
         // Lógica de filtro para não-admin
         if (!isAdmin) {
@@ -191,16 +192,21 @@ async function loadClients() {
                     throw new Error("Erro: A coluna 'assigned_to_user_id' não foi encontrada. Siga as instruções para atualizar a tabela 'clientes'.");
                 }
             } else if (error.code === '42P01') {
-                 throw new Error("Erro: A tabela 'clientes' não foi encontrada no banco de dados. Siga as instruções para criá-la.");
+                 if (error.message.includes('formularios_clientes')) {
+                     throw new Error("Erro: A tabela 'formularios_clientes' não foi encontrada ou a relação não está configurada corretamente. Verifique o Supabase.");
+                 } else {
+                     throw new Error("Erro: A tabela 'clientes' não foi encontrada no banco de dados. Siga as instruções para criá-la.");
+                 }
             }
             throw error;
         }
 
+        // Passa os dados com a contagem de formulários para renderização
         renderClients(clients);
 
     } catch (error) {
         console.error("Erro ao carregar clientes:", error);
-        clientsTableBody.innerHTML = `<tr><td colspan="4" style="color: red;">${error.message}</td></tr>`;
+        clientsTableBody.innerHTML = `<tr><td colspan="6" style="color: red;">${error.message}</td></tr>`; // Colspan 6
     }
 }
 
@@ -261,6 +267,9 @@ function renderClients(clients) {
             `;
         }
 
+        // Verifica se há formulários associados (a query agora retorna um array com um objeto de contagem)
+        const hasForm = client.formularios_clientes && client.formularios_clientes.length > 0 && client.formularios_clientes[0].count > 0;
+
         tr.innerHTML = `
             <td data-label="Nome">
                 <input type="text" id="name-${client.id}" value="${sanitizeInput(client.nome)}" ${!canEditDelete ? 'disabled' : ''} />
@@ -275,7 +284,8 @@ function renderClients(clients) {
             <td data-label="Status">
                 ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml}
             </td>
-            <td data-label="Formulários">
+            <td data-label="Formulários" style="text-align: center;"> <!-- Centraliza conteúdo -->
+                ${hasForm ? '<span title="Formulário existente">📄</span> ' : ''} <!-- Indicador de formulário -->
                 <button class="view-details-btn" data-id="${client.id}" data-name="${sanitizeInput(client.nome)}" title="Ver Detalhes">👁️</button>
             </td>
             <td data-label="Ações">
