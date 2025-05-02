@@ -1,377 +1,458 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Painel de Administração</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome for icons -->
-  <style>
-    body {
-      display: flex; /* Use flexbox for layout */
-      margin: 0; /* Remove default body margin */
-      min-height: 100vh; /* Ensure body takes full viewport height */
-    }
+// admin.js
+import { supabase } from "./supabase.js";
 
-    /* --- Sidebar Styles --- */
-    #sidebar {
-      width: 250px; /* Default width */
-      background-color: var(--bg-dark);
-      padding: 1.5rem 0;
-      display: flex;
-      flex-direction: column;
-      transition: width 0.3s ease;
-      position: fixed; /* Keep sidebar fixed */
-      left: 0;
-      top: 0;
-      bottom: 0;
-      z-index: 1000; /* Ensure sidebar is on top */
-      border-right: 1px solid var(--border-color);
-    }
+// ─── Proteção de UI: se não for admin, substitui todo o body ───
+if (sessionStorage.getItem("nivel") !== "admin") {
+  document.body.innerHTML = `
+   <main style="padding:2rem; text-align:center;">
+     <h1 style="color:#c62828;">Acesso negado</h1>
+     <p>Esta área é restrita ao administrador.</p>
+   </main>`;
+ throw new Error("Acesso não autorizado");
+}
+// ──────────────────────────────────────────────────────────────
 
-    #sidebar.collapsed {
-      width: 60px; /* Collapsed width */
-    }
+// Função de escape para prevenir XSS e erros de sintaxe
+const sanitizeInput = (str) => {
+  if (str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/\'/g, "&#x27;")
+    .replace(/`/g, "&#x60;");
+};
 
-    #sidebar-toggle {
-      background: none;
-      border: none;
-      color: var(--gold-lighter);
-      font-size: 1.5rem;
-      cursor: pointer;
-      padding: 0 1.2rem; /* Adjust padding for toggle */
-      margin-bottom: 1.5rem;
-      text-align: right; /* Align icon to the right when expanded */
-    }
+// --- Elementos DOM --- 
+// Sidebar
+const sidebar = document.getElementById("sidebar");
+const sidebarToggle = document.getElementById("sidebar-toggle");
+const navPainelAdmin = document.getElementById("nav-painel-admin");
+const navGerenciarUsuarios = document.getElementById("nav-gerenciar-usuarios");
+const navListarUsuarios = document.getElementById("nav-listar-usuarios");
+const navGerenciarClientes = document.getElementById("nav-gerenciar-clientes");
+const sidebarLogoutBtn = document.getElementById("sidebar-logout-btn");
+const sidebarMenuItems = document.querySelectorAll(".sidebar-menu li a, .sidebar-menu li button"); // Para gerenciar estado ativo
 
-    #sidebar.collapsed #sidebar-toggle {
-      text-align: center; /* Center icon when collapsed */
-      padding: 0;
-    }
+// Conteúdo Principal
+const mainContent = document.getElementById("main-content");
+const contentPainel = document.getElementById("content-painel");
+const contentGerenciarUsuarios = document.getElementById("content-gerenciar-usuarios");
+const contentListarUsuarios = document.getElementById("content-listar-usuarios");
+const allContentSections = document.querySelectorAll(".content-section");
 
-    .sidebar-menu {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      flex-grow: 1; /* Allow menu to fill space */
-    }
+// Tabelas e Formulários (dentro das seções de conteúdo)
+const manageTableBody = document.querySelector("#manage-users-table tbody");
+const listTableBody = document.querySelector("#list-users-table tbody");
+const createUserForm = document.getElementById("create-user-form");
+const newUserInput = document.getElementById("new-user");
+const newPassInput = document.getElementById("new-pass");
+const newEmailInput = document.getElementById("new-email");
+const newLevelSelect = document.getElementById("new-level");
+const newProjectSelect = document.getElementById("new-project");
 
-    .sidebar-menu li a, .sidebar-menu li button {
-      display: flex;
-      align-items: center;
-      padding: 0.8rem 1.2rem;
-      color: var(--text-muted);
-      text-decoration: none;
-      white-space: nowrap; /* Prevent text wrapping */
-      overflow: hidden; /* Hide text when collapsed */
-      border: none;
-      background: none;
-      width: 100%;
-      text-align: left;
-      cursor: pointer;
-      font-size: 1rem;
-    }
-     .sidebar-menu li button#sidebar-logout-btn {
-        margin-top: auto; /* Push logout to the bottom */
-    }
+// REMOVIDO: Botões antigos
+// const historyBackBtn = document.getElementById("history-back-btn"); 
+// const btnLogout = document.getElementById("logout-btn");
+// const tabBtnManage = document.getElementById("tab-btn-manage");
+// const tabBtnList = document.getElementById("tab-btn-list");
+// const tabContentManage = document.getElementById("tab-content-manage"); // Agora é contentGerenciarUsuarios
+// const tabContentList = document.getElementById("tab-content-list"); // Agora é contentListarUsuarios
+// const adminClientesBtn = document.getElementById("admin-clientes-btn"); // Agora é navGerenciarClientes
 
-    .sidebar-menu li a i, .sidebar-menu li button i {
-      margin-right: 0.8rem;
-      font-size: 1.1rem;
-      width: 24px; /* Fixed width for icon */
-      text-align: center;
-    }
+// Validação de acesso (mantida)
+function checkAccess() {
+  const user = sessionStorage.getItem("usuario");
+  const nivel = sessionStorage.getItem("nivel");
+  if (!user || nivel !== "admin") {
+    alert("Acesso não autorizado. Faça login como admin.");
+    window.location.href = "index.html";
+    return false;
+  }
+  return true;
+}
 
-    #sidebar.collapsed .sidebar-menu li a span,
-    #sidebar.collapsed .sidebar-menu li button span {
-      display: none; /* Hide text when collapsed */
-    }
-     #sidebar.collapsed .sidebar-menu li a i,
-     #sidebar.collapsed .sidebar-menu li button i {
-        margin-right: 0;
-     }
+// --- Lógica da Sidebar e Navegação --- 
 
+// Recolher/Expandir Sidebar
+function toggleSidebar() {
+    sidebar.classList.toggle("collapsed");
+    // Salvar estado no localStorage (opcional)
+    localStorage.setItem("sidebarCollapsed", sidebar.classList.contains("collapsed"));
+}
 
-    .sidebar-menu li a:hover, .sidebar-menu li button:hover,
-    .sidebar-menu li a.active, .sidebar-menu li button.active {
-      background-color: var(--emerald-glow);
-      color: var(--text-light);
+// Mostrar Seção de Conteúdo Específica
+function showContentSection(sectionId) {
+    // Esconde todas as seções
+    allContentSections.forEach(section => section.classList.remove("active"));
+    // Mostra a seção desejada
+    const sectionToShow = document.getElementById(sectionId);
+    if (sectionToShow) {
+        sectionToShow.classList.add("active");
     }
+    // Atualiza estado ativo no menu
+    updateMenuActiveState(sectionId);
+}
 
-    /* --- Main Content Styles --- */
-    #main-content {
-      flex-grow: 1; /* Allow main content to fill remaining space */
-      padding: 2rem;
-      margin-left: 250px; /* Initial margin to accommodate sidebar */
-      transition: margin-left 0.3s ease;
-      background-color: var(--bg-surface); /* Match original main background */
-      color: var(--text-light); /* Match original text color */
-    }
-
-    #sidebar.collapsed + #main-content {
-      margin-left: 60px; /* Adjusted margin when sidebar is collapsed */
-    }
-
-    /* --- Tab Content (Now Sections) --- */
-    .content-section {
-      display: none; /* Hide all sections by default */
-    }
-    .content-section.active {
-      display: block; /* Show the active section */
-    }
-
-    /* --- Responsive adjustments (optional) --- */
-    @media (max-width: 768px) {
-        #sidebar {
-            width: 60px; /* Collapse sidebar by default on smaller screens */
+// Atualizar Estado Ativo no Menu da Sidebar
+function updateMenuActiveState(activeSectionId) {
+    sidebarMenuItems.forEach(item => {
+        item.classList.remove("active");
+        const targetSectionId = item.dataset.targetSection; // Adicionar data-target-section nos links do HTML
+        if (targetSectionId === activeSectionId) {
+            item.classList.add("active");
         }
-        #sidebar.collapsed {
-             width: 60px;
+    });
+    // Caso especial para o link inicial do painel
+    if (activeSectionId === 'content-painel' && navPainelAdmin) {
+        navPainelAdmin.classList.add('active');
+    }
+}
+
+// --- Carregar Usuários (mantido) --- 
+async function loadUsers() {
+  try {
+    manageTableBody.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
+    listTableBody.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
+    
+    const { data: users, error } = await supabase
+      .from("credenciais")
+      .select("id, usuario, senha, email, nivel, projeto");
+
+    if (error) {
+        if (error.code === '42703' && error.message.includes('projeto')) {
+            throw new Error("Erro ao carregar usuários: A coluna 'projeto' não existe na tabela 'credenciais'. Por favor, adicione a coluna no Supabase.");
+        } else {
+            throw error;
         }
-        #main-content {
-            margin-left: 60px;
+    }
+
+    manageTableBody.innerHTML = "";
+    listTableBody.innerHTML = "";
+    
+    users.forEach(user => {
+      // Linha para Tabela de Gerenciamento
+      const manageTr = document.createElement("tr");
+      manageTr.dataset.userId = user.id;
+      manageTr.innerHTML = `
+        <td>${sanitizeInput(user.usuario)}</td>
+        <td>
+          <input 
+            type="password" 
+            id="pass-${user.id}" 
+            value="${sanitizeInput(user.senha)}" 
+          />
+          <button 
+            class="toggle-password" 
+            data-id="${user.id}"
+          >👁️</button>
+        </td>
+        <td>
+          <input 
+            type="email" 
+            id="email-${user.id}" 
+            value="${sanitizeInput(user.email)}"
+          />
+        </td>
+        <td>
+          <select id="lvl-${user.id}">
+            <option value="usuario" ${user.nivel === "usuario" ? "selected" : ""}>usuario</option>
+            <option value="admin" ${user.nivel === "admin" ? "selected" : ""}>admin</option>
+          </select>
+        </td>
+        <td>
+          <select id="proj-${user.id}">
+            <option value="" ${!user.projeto ? "selected" : ""}>Nenhum</option>
+            <option value="Hvc" ${user.projeto === "Hvc" ? "selected" : ""}>Hvc</option>
+            <option value="Argos" ${user.projeto === "Argos" ? "selected" : ""}>Argos</option>
+            <option value="Planejamento" ${user.projeto === "Planejamento" ? "selected" : ""}>Planejamento</option>
+          </select>
+        </td>
+        <td>
+          <button class="save-btn" data-id="${user.id}">Salvar</button>
+          ${user.usuario !== sessionStorage.getItem("usuario") 
+            ? `<button class="delete-btn" data-id="${user.id}">Excluir</button>` 
+            : 
+          '<span style="color:gray">[Admin]</span>'}
+        </td>
+      `;
+      manageTableBody.appendChild(manageTr);
+
+      // Linha para Tabela de Lista
+      const listTr = document.createElement("tr");
+      listTr.dataset.userId = user.id;
+      listTr.innerHTML = `
+        <td>${sanitizeInput(user.usuario)}</td>
+        <td>${sanitizeInput(user.email)}</td>
+        <td>${sanitizeInput(user.nivel)}</td>
+        <td>${sanitizeInput(user.projeto) || 'Nenhum'}</td>
+        <td>
+          <button 
+            class="view-user-dashboard-btn" 
+            data-id="${user.id}" 
+            data-username="${sanitizeInput(user.usuario)}"
+            data-projeto="${sanitizeInput(user.projeto) || ''}" 
+          >Ver Dashboard</button>
+        </td>
+      `;
+      listTableBody.appendChild(listTr);
+    });
+
+  } catch (error) {
+    console.error("Erro ao carregar usuários:", error);
+    manageTableBody.innerHTML = `<tr><td colspan='6' style='color: red;'>${error.message}</td></tr>`;
+    listTableBody.innerHTML = `<tr><td colspan='5' style='color: red;'>${error.message}</td></tr>`;
+  }
+}
+
+// --- Operações CRUD (mantidas) ---
+async function saveUser(id) {
+  try {
+    const senhaInput = document.getElementById(`pass-${id}`);
+    const senha = senhaInput.value;
+    const email = document.getElementById(`email-${id}`).value;
+    const nivel = document.getElementById(`lvl-${id}`).value;
+    const projeto = document.getElementById(`proj-${id}`).value;
+
+    if (!email) {
+        alert("O campo E-mail não pode estar vazio.");
+        return;
+    }
+
+    const updateData = { email, nivel, projeto: projeto || null };
+    if (senha && senha !== '********') {
+        updateData.senha = senha;
+    }
+
+    const { error } = await supabase
+      .from("credenciais")
+      .update(updateData)
+      .eq("id", id);
+
+    if (error) throw error;
+    
+    alert("Usuário atualizado com sucesso!");
+    const listRow = listTableBody.querySelector(`tr[data-user-id="${id}"]`);
+    if (listRow) {
+        listRow.children[1].textContent = sanitizeInput(email);
+        listRow.children[2].textContent = sanitizeInput(nivel);
+        listRow.children[3].textContent = sanitizeInput(projeto) || 'Nenhum';
+        const viewBtn = listRow.querySelector('.view-user-dashboard-btn');
+        if (viewBtn) {
+            viewBtn.dataset.projeto = sanitizeInput(projeto) || '';
         }
-         #sidebar.collapsed + #main-content {
-             margin-left: 60px;
+    }
+    if (senhaInput) senhaInput.value = '********'; 
+    
+  } catch (error) {
+    console.error("Erro ao salvar usuário:", error);
+    alert("Erro ao salvar: " + error.message);
+  }
+}
+
+async function deleteUser(id) {
+  if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
+  
+  try {
+    const { error } = await supabase
+      .from("credenciais")
+      .delete()
+      .eq("id", id);
+
+    if (error) throw error;
+    
+    alert("Usuário excluído com sucesso!");
+    const manageRowToRemove = manageTableBody.querySelector(`tr[data-user-id="${id}"]`);
+    if (manageRowToRemove) manageRowToRemove.remove();
+    const listRowToRemove = listTableBody.querySelector(`tr[data-user-id="${id}"]`);
+    if (listRowToRemove) listRowToRemove.remove();
+    
+  } catch (error) {
+    console.error("Erro ao excluir usuário:", error);
+    alert("Erro ao excluir: " + error.message);
+  }
+}
+
+async function createUser(event) {
+  event.preventDefault();
+  try {
+    const usuario = newUserInput.value.trim();
+    const senha = newPassInput.value.trim();
+    const email = newEmailInput.value.trim();
+    const nivel = newLevelSelect.value;
+    const projeto = newProjectSelect.value;
+
+    if (!usuario || !senha || !email) {
+      throw new Error("Preencha todos os campos obrigatórios: Usuário, Senha e E-mail.");
+    }
+
+    const { data, error } = await supabase
+      .from("credenciais")
+      .insert({ usuario, senha, email, nivel, projeto: projeto || null })
+      .select();
+
+    if (error) {
+        if (error.code === '23505') { 
+            throw new Error(`Erro: O nome de usuário "${usuario}" já existe.`);
+        } else if (error.code === '42703' && error.message.includes('projeto')) {
+             throw new Error("Erro ao criar usuário: A coluna 'projeto' não existe na tabela 'credenciais'. Por favor, adicione a coluna no Supabase.");
+        } else {
+            throw error;
+        }
+    }
+    
+    alert("Usuário criado com sucesso!");
+    createUserForm.reset();
+    newProjectSelect.value = "";
+    loadUsers(); // Recarrega usuários para incluir o novo
+    showContentSection('content-gerenciar-usuarios'); // Volta para a seção de gerenciamento
+    
+  } catch (error) {
+    console.error("Erro ao criar usuário:", error);
+    alert("Erro ao criar usuário: " + error.message);
+  }
+}
+
+// --- Navegação para Dashboard do Usuário (mantida) ---
+function viewUserDashboard(userId, username, userProject) {
+    sessionStorage.setItem('viewing_user_id', userId);
+    sessionStorage.setItem('viewing_username', username);
+    sessionStorage.setItem('admin_viewer_username', sessionStorage.getItem('usuario'));
+    
+    if (userProject === 'Planejamento') {
+        window.location.href = `planejamento-dashboard.html`; 
+    } else {
+        window.location.href = `user-dashboard.html`; 
+    }
+}
+
+// --- Navegação para Gerenciamento de Clientes (Admin - Sidebar) ---
+function viewClientesDashboard() {
+    sessionStorage.removeItem('viewing_user_id');
+    sessionStorage.removeItem('viewing_username');
+    window.location.href = `clientes-dashboard.html`;
+}
+
+// --- Logout (mantido) ---
+function logout() {
+  sessionStorage.clear();
+  window.location.href = "index.html";
+}
+
+// --- Event Listeners --- 
+
+// Sidebar Toggle
+if (sidebarToggle) {
+    sidebarToggle.addEventListener('click', toggleSidebar);
+}
+
+// Sidebar Navigation
+if (navPainelAdmin) {
+    navPainelAdmin.dataset.targetSection = 'content-painel'; // Adiciona data attribute
+    navPainelAdmin.addEventListener('click', (e) => {
+        e.preventDefault(); // Previne recarregamento da página se for link real
+        showContentSection('content-painel');
+    });
+}
+if (navGerenciarUsuarios) {
+    navGerenciarUsuarios.dataset.targetSection = 'content-gerenciar-usuarios'; // Adiciona data attribute
+    navGerenciarUsuarios.addEventListener('click', (e) => {
+        e.preventDefault();
+        showContentSection('content-gerenciar-usuarios');
+    });
+}
+if (navListarUsuarios) {
+    navListarUsuarios.dataset.targetSection = 'content-listar-usuarios'; // Adiciona data attribute
+    navListarUsuarios.addEventListener('click', (e) => {
+        e.preventDefault();
+        showContentSection('content-listar-usuarios');
+    });
+}
+if (navGerenciarClientes) {
+    navGerenciarClientes.addEventListener('click', (e) => {
+        e.preventDefault();
+        viewClientesDashboard(); // Navega para a página de clientes
+    });
+}
+
+if (sidebarLogoutBtn) {
+    sidebarLogoutBtn.addEventListener('click', logout);
+}
+
+// REMOVIDO: Listeners antigos das abas e botões
+// historyBackBtn.addEventListener('click', () => history.back()); 
+// tabBtnManage.addEventListener('click', () => switchTab('manage'));
+// tabBtnList.addEventListener('click', () => switchTab('list'));
+// adminClientesBtn.addEventListener('click', viewClientesDashboard);
+// btnLogout.addEventListener('click', logout);
+
+// Delegação de Eventos para Tabelas (mantido e adaptado)
+if (manageTableBody) {
+    manageTableBody.addEventListener("click", e => {
+       const target = e.target;
+       const id = target.dataset.id;
+
+       if (target.classList.contains("toggle-password")) {
+         const input = document.getElementById(`pass-${id}`);
+         if (input) {
+            const originalValue = input.dataset.originalValue || input.value; // Guarda o valor original
+            input.dataset.originalValue = originalValue; // Garante que está guardado
+
+            if (input.type === "password") {
+                input.type = "text";
+                input.value = originalValue; // Mostra valor real
+                target.textContent = "🙈";
+                // Define um timeout para voltar a ser password após 3 segundos
+                setTimeout(() => {
+                    const currentInput = document.getElementById(`pass-${id}`);
+                    if (currentInput && currentInput.type === "text") { // Verifica se ainda é texto
+                       currentInput.type = "password";
+                       // Não redefinir o valor aqui, deixa o original
+                       target.textContent = "👁️";
+                    }
+                }, 3000);
+            } else {
+                input.type = "password";
+                // Não precisa mudar o valor, o tipo password já mascara
+                target.textContent = "👁️";
+            }
          }
-         /* Hide text even when not explicitly collapsed on small screens */
-         #sidebar .sidebar-menu li a span,
-         #sidebar .sidebar-menu li button span {
-            display: none;
-         }
-         #sidebar .sidebar-menu li a i,
-         #sidebar .sidebar-menu li button i {
-            margin-right: 0;
-         }
-         #sidebar-toggle {
-             text-align: center;
-             padding: 0;
-         }
-    }
+       } else if (target.classList.contains("save-btn")) {
+         if (id) saveUser(id);
+       } else if (target.classList.contains("delete-btn")) {
+         if (id) deleteUser(id);
+       }
+     });
+}
 
-    /* Keep original table styles etc. */
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 2rem;
-    }
-    th, td {
-      border: 1px solid var(--border-color);
-      padding: 0.8rem;
-      text-align: left;
-    }
-    th {
-      background-color: var(--emerald-dark);
-      color: var(--gold-lighter);
-    }
-    td input, td select {
-        width: calc(100% - 10px); /* Adjust input width */
-        padding: 5px;
-    }
-    td button {
-        margin-right: 5px;
-    }
-    .toggle-password {
-        cursor: pointer;
-        margin-left: 5px;
-    }
-    form {
-        margin-bottom: 2rem;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    form input, form select, form button {
-        padding: 0.6rem;
-    }
-    .view-user-dashboard-btn {
-        margin-left: 0.5rem;
-        background: var(--emerald-dark);
-        color: var(--gold-lighter);
-        border: 1px solid var(--gold);
-        font-size: 0.8rem;
-        padding: 0.3rem 0.6rem;
-        cursor: pointer;
-    }
-    .view-user-dashboard-btn:hover {
-        box-shadow: 0 0 5px var(--shadow-color);
-    }
+if (listTableBody) {
+     listTableBody.addEventListener("click", e => {
+        const target = e.target;
+        if (target.classList.contains("view-user-dashboard-btn")) {
+            const userId = target.dataset.id;
+            const username = target.dataset.username;
+            const userProject = target.dataset.projeto;
+            if (userId && username !== undefined) {
+                viewUserDashboard(userId, username, userProject);
+            }
+        }
+     });
+}
 
-    /* --- Project Button Styles --- */
-    .project-buttons-container {
-        display: flex;
-        gap: 1.5rem;
-        margin-top: 2rem;
-        flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
-    }
+// Formulário Criar Usuário (mantido)
+if (createUserForm) {
+    createUserForm.addEventListener("submit", createUser);
+}
 
-    .project-btn {
-        padding: 1rem 2rem;
-        border: none;
-        border-radius: 5px;
-        font-size: 1.1rem;
-        font-weight: bold;
-        cursor: pointer;
-        transition: transform 0.2s ease, box-shadow 0.3s ease;
-        position: relative;
-        overflow: hidden; /* Needed for pseudo-element shine */
-        text-decoration: none; /* If using <a> tags */
-        display: inline-block; /* Proper sizing */
-        text-align: center;
-    }
-
-    /* Shine effect using pseudo-element */
-    .project-btn::before {
-        content: ";
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 50%;
-        height: 100%;
-        background: linear-gradient(
-            120deg,
-            rgba(255, 255, 255, 0) 0%,
-            rgba(255, 255, 255, 0.4) 50%,
-            rgba(255, 255, 255, 0) 100%
-        );
-        transform: skewX(-25deg);
-        transition: left 0.6s ease;
-    }
-
-    .project-btn:hover::before {
-        left: 120%;
-    }
-
-    .project-btn:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
-    }
-
-    .project-btn:active {
-        transform: translateY(-1px);
-        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
-    }
-
-    /* ARGOS Button */
-    .project-btn-argos {
-        background: linear-gradient(145deg, #1e90ff, #4682b4); /* Bright blue gradient */
-        color: white;
-        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
-    }
-
-    /* HVC Button */
-    .project-btn-hvc {
-        background: linear-gradient(145deg, #000080, #191970); /* Dark sapphire blue gradient */
-        color: #e0e0e0; /* Shiny silver-ish */
-        text-shadow: 0 0 5px #ffffff, 0 0 10px #c0c0c0; /* Silver shine text effect */
-    }
-
-    /* PLANEJAMENTO Button */
-    .project-btn-planejamento {
-        background: linear-gradient(145deg, #006400, #2e8b57); /* Dark emerald green gradient */
-        color: #fffacd; /* Shiny gold-ish (LemonChiffon) */
-        text-shadow: 0 0 5px #ffd700, 0 0 8px #daa520; /* Gold shine text effect */
-    }
-
-  </style>
-</head>
-<body>
-  <!-- Sidebar -->
-  <nav id="sidebar">
-    <button id="sidebar-toggle"><i class="fas fa-bars"></i></button> <!-- Toggle Button -->
-    <ul class="sidebar-menu">
-      <li><a href="admin-dashboard.html" id="nav-painel-admin" class="active"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin</span></a></li>
-      <li><a href="#" id="nav-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
-      <li><a href="#" id="nav-listar-usuarios"><i class="fas fa-users"></i> <span>Lista de Usuários</span></a></li>
-      <li><a href="#" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-      <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
-    </ul>
-  </nav>
-
-  <!-- Main Content Area -->
-  <main id="main-content">
-    <!-- Content sections will be shown/hidden by JS -->
-    <div id="content-painel" class="content-section active">
-        <h1>Painel Administrativo</h1>
-        <p>Bem-vindo ao painel de administração. Use o menu lateral para navegar.</p>
-        
-        <!-- Project Buttons -->
-        <div class="project-buttons-container">
-            <button class="project-btn project-btn-argos">ARGOS</button>
-            <button class="project-btn project-btn-hvc">HVC</button>
-            <button class="project-btn project-btn-planejamento">PLANEJAMENTO</button>
-        </div>
-        
-        <!-- Maybe add some summary info here later -->
-    </div>
-
-    <div id="content-gerenciar-usuarios" class="content-section">
-      <section>
-        <h2>Usuários Cadastrados (Gerenciamento)</h2>
-        <table id="manage-users-table">
-          <thead>
-            <tr>
-              <th>Usuário</th>
-              <th>Senha</th>
-              <th>E-mail</th>
-              <th>Nível</th>
-              <th>Projeto</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- preenchido dinamicamente por admin.js -->
-          </tbody>
-        </table>
-      </section>
-      <section>
-        <h2>Cadastrar Novo Usuário</h2>
-        <form id="create-user-form">
-            <input type="text"     id="new-user"  placeholder="Novo usuário" required />
-            <input type="password" id="new-pass"  placeholder="Senha" required />
-            <input type="email"    id="new-email" placeholder="E-mail" required />
-            <select id="new-level">
-                <option value="usuario">usuario</option>
-                <option value="admin">admin</option>
-            </select>
-            <select id="new-project">
-                <option value="" disabled selected>Selecione o Projeto</option>
-                <option value="Hvc">Hvc</option>
-                <option value="Argos">Argos</option>
-                <option value="Planejamento">Planejamento</option>
-            </select>
-            <button type="submit" id="create-user-btn">Criar Usuário</button>
-        </form>
-      </section>
-    </div>
-
-    <div id="content-listar-usuarios" class="content-section">
-      <section>
-        <h2>Lista de Usuários (Acesso ao Dashboard)</h2>
-        <table id="list-users-table">
-          <thead>
-            <tr>
-              <th>Usuário</th>
-              <th>E-mail</th>
-              <th>Nível</th>
-              <th>Projeto</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- preenchido dinamicamente por admin.js -->
-          </tbody>
-        </table>
-      </section>
-    </div>
-
-    <!-- Gerenciar Clientes will navigate to clientes-dashboard.html, so no content section needed here -->
-
-  </main>
-
-  <script type="module" src="permissions.js"></script>
-  <script type="module" src="supabase.js"></script>
-  <script type="module" src="admin.js"></script>
-</body>
-</html>
+// --- Inicialização --- 
+if (checkAccess()) {
+  loadUsers();
+  // Verifica estado da sidebar no localStorage (opcional)
+  const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+  if (sidebarCollapsed && sidebar) {
+      sidebar.classList.add("collapsed");
+  }
+  // Mostra a seção inicial (Painel Admin)
+  showContentSection('content-painel'); 
+}
