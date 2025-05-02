@@ -14,11 +14,11 @@ const clientsTableBody = document.querySelector("#clients-table tbody");
 // const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Removido
 
 // --- Variáveis de Estado e Informações do Usuário ---
-let currentUser = null; // Nome do usuário no contexto atual (pode ser o visualizado)
-let currentUserId = null; // ID do usuário no contexto atual (pode ser o visualizado)
-let currentUserNivel = null; // Nível no contexto atual (pode ser 'usuario' se admin visualizando)
-let currentUserProjeto = null; // Projeto no contexto atual (pode ser do usuário visualizado)
-let isAdmin = false; // Flag para saber se o *contexto atual de carregamento* é de admin
+let currentUser = null;
+let currentUserId = null;
+let currentUserNivel = null;
+let currentUserProjeto = null;
+let isAdmin = false; // Flag para saber se o *contexto atual* é de admin
 let isActuallyAdmin = false; // Flag para saber se o usuário *logado* é admin
 let allUsers = []; // Para armazenar lista de usuários para o select
 
@@ -128,7 +128,6 @@ async function initializeDashboard() {
     loadClients();
 }
 
-
 // Função para carregar todos os usuários (para o select do admin)
 async function loadAllUsers() {
     try {
@@ -145,26 +144,23 @@ async function loadAllUsers() {
     }
 }
 
-// --- Carregar Clientes (Usa variáveis globais isAdmin, currentUserId, currentUserProjeto) ---
+// --- Carregar Clientes (Modificado para Visibilidade e Indicador de Formulário) ---
 async function loadClients() {
     try {
         clientsTableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>'; // Colspan 6 agora
         // Modifica a query para incluir a contagem de formulários associados
         let query = supabase.from('clientes').select('*, formularios_clientes(count)');
 
-        // Lógica de filtro (agora usa as variáveis globais corretas)
+        // Lógica de filtro para não-admin
         if (!isAdmin) {
             if (!currentUserProjeto) {
-                // Se o usuário (ou usuário visualizado) não tiver projeto, só pode ver os clientes atribuídos a ele
-                console.warn("Usuário (ou visualizado) sem projeto definido, mostrando apenas clientes atribuídos diretamente.");
+                // Se o usuário não tiver projeto, só pode ver os clientes atribuídos a ele
+                console.warn("Usuário sem projeto definido, mostrando apenas clientes atribuídos diretamente.");
                 query = query.eq("assigned_to_user_id", currentUserId);
             } else {
                 // Busca clientes atribuídos ao usuário OU (com visibilidade TODOS E do mesmo projeto do usuário)
-                console.log(`Filtrando clientes para usuário ${currentUserId} no projeto ${currentUserProjeto}`);
                 query = query.or(`assigned_to_user_id.eq.${currentUserId},and(visibility.eq.TODOS,projeto.eq.${currentUserProjeto})`);
             }
-        } else {
-             console.log("Carregando todos os clientes (contexto Admin).");
         }
 
         // Ordena por nome para consistência
@@ -196,12 +192,12 @@ async function loadClients() {
     }
 }
 
-// --- Renderizar Tabela de Clientes (Modificado para Visibilidade/Atribuição e Indicador) ---
+// --- Renderizar Tabela de Clientes (Modificado para Visibilidade/Atribuição) ---
 function renderClients(clients) {
     clientsTableBody.innerHTML = "";
 
     if (!clients || clients.length === 0) {
-        clientsTableBody.innerHTML = '<tr><td colspan="6">Nenhum cliente encontrado para este contexto.</td></tr>'; // Colspan 6
+        clientsTableBody.innerHTML = '<tr><td colspan="4">Nenhum cliente encontrado.</td></tr>';
         return;
     }
 
@@ -209,12 +205,12 @@ function renderClients(clients) {
         const tr = document.createElement("tr");
         tr.dataset.clientId = client.id;
 
-        // Lógica de permissão de edição/exclusão (Admin sempre pode, usuário só os seus ou TODOS do seu projeto)
-        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || (client.visibility === 'TODOS' && client.projeto === currentUserProjeto);
+        // Lógica de permissão de edição/exclusão
+        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || (client.visibility === 'TODOS' && client.projeto === currentUserProjeto); // Ajuste: TODOS só editável se for do mesmo projeto
 
-        // Lógica de exibição de Projeto (com edição para admin no contexto admin)
+        // Lógica de exibição de Projeto (com edição para admin)
         let projectHtml = '';
-        if (isAdmin) { // Só mostra select se o CONTEXTO for admin
+        if (isAdmin) {
             projectHtml = `
                 <select id="project-${client.id}">
                     <option value="Argos" ${client.projeto === 'Argos' ? 'selected' : ''}>Argos</option>
@@ -237,14 +233,14 @@ function renderClients(clients) {
             assignmentHtml = '<span style="color:gray">Não atribuído</span>';
         }
 
-        // Select de atribuição para Admin (só no contexto admin)
+        // Select de atribuição para Admin
         let adminAssignmentSelectHtml = '';
-        if (isAdmin) { // Só mostra select se o CONTEXTO for admin
+        if (isAdmin) {
             adminAssignmentSelectHtml = `
                 <select id="assignment-${client.id}">
                     <option value="TODOS" ${client.visibility === 'TODOS' ? 'selected' : ''}>TODOS</option>
                     <option value="ASSIGNED" ${client.visibility !== 'TODOS' ? 'selected' : ''}>Atribuir a:</option>
-                    ${allUsers.map(user =>
+                    ${allUsers.map(user => 
                         `<option value="${user.id}" ${client.visibility !== 'TODOS' && client.assigned_to_user_id === user.id ? 'selected' : ''}>
                             &nbsp;&nbsp;${sanitizeInput(user.usuario)}
                         </option>`
@@ -265,17 +261,17 @@ function renderClients(clients) {
                 <input type="text" id="whatsapp-${client.id}" value="${sanitizeInput(client.whatsapp)}" ${!canEditDelete ? 'disabled' : ''} />
             </td>
             <td data-label="Projeto">
-                ${projectHtml} <!-- Coluna do Projeto -->
+                ${projectHtml} <!-- Coluna do Projeto adicionada -->
             </td>
             <td data-label="Status">
-                ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml} <!-- Mostra select ou texto -->
+                ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml}
             </td>
             <td data-label="Formulários" style="text-align: center;"> <!-- Centraliza conteúdo -->
                 ${hasForm ? '<span title="Formulário existente">📄</span> ' : ''} <!-- Indicador de formulário -->
                 <button class="view-details-btn" data-id="${client.id}" data-name="${sanitizeInput(client.nome)}" title="Ver Detalhes">👁️</button>
             </td>
             <td data-label="Ações">
-                ${canEditDelete
+                ${canEditDelete 
                     ? `<button class="save-client-btn" data-id="${client.id}">Salvar</button>
                        <button class="delete-client-btn" data-id="${client.id}">Excluir</button>`
                     : '<span style="color: var(--text-muted); font-size: 0.9rem;">(Apenas leitura)</span>'
@@ -286,7 +282,7 @@ function renderClients(clients) {
     });
 }
 
-// --- Adicionar Cliente (Só é chamado se o form estiver visível - contexto admin) ---
+// --- Adicionar Cliente (Modificado para Status Padrão) ---
 async function addClient(event) {
     event.preventDefault();
     const nome = newClientNameInput.value.trim();
@@ -304,9 +300,9 @@ async function addClient(event) {
             nome: nome,
             whatsapp: whatsapp,
             projeto: projeto, // Adiciona o projeto selecionado
-            criado_por_id: currentUserId, // ID do admin que está criando
+            criado_por_id: currentUserId,
             visibility: 'ASSIGNED', // Visibilidade padrão é atribuído
-            assigned_to_user_id: currentUserId // Atribuído ao criador (admin) por padrão
+            assigned_to_user_id: currentUserId // Atribuído ao criador por padrão
         };
 
         const { data, error } = await supabase
@@ -353,25 +349,22 @@ function handleTableClick(event) {
             // Armazena ID e nome para a página de detalhes
             sessionStorage.setItem("viewing_client_id", clientId);
             sessionStorage.setItem("viewing_client_name", clientName);
-            // Mantém o viewing_user_id se admin estiver visualizando
-            // Não precisa limpar aqui, a página de detalhes fará sua própria verificação
+            // Navega para a página de detalhes
             window.location.href = "cliente-detalhes.html";
         }
     }
 } // End of handleTableClick
-
-// --- Salvar Alterações do Cliente (Só é chamado se botões estiverem visíveis) ---
+// --- Salvar Alterações do Cliente (Modificado para Visibilidade/Atribuição) ---
 async function saveClient(clientId) {
-    // A lógica de permissão (canEditDelete) já preveniu que este botão aparecesse se não deveria
     try {
         const nomeInput = document.getElementById(`name-${clientId}`);
         const whatsappInput = document.getElementById(`whatsapp-${clientId}`);
-        const projectSelect = document.getElementById(`project-${clientId}`); // Select do projeto (só existe no contexto admin)
-        const assignmentSelect = document.getElementById(`assignment-${clientId}`); // Select de atribuição (só existe no contexto admin)
+        const projectSelect = document.getElementById(`project-${clientId}`); // Novo: Select do projeto (só existe para admin)
+        const assignmentSelect = document.getElementById(`assignment-${clientId}`); // Select de atribuição (só existe para admin)
 
         const nome = nomeInput.value.trim();
         const whatsapp = whatsappInput.value.trim();
-
+        
         if (!nome || !whatsapp) {
             alert("Nome e WhatsApp não podem ficar vazios.");
             return;
@@ -379,12 +372,12 @@ async function saveClient(clientId) {
 
         const updateData = { nome, whatsapp };
 
-        // Lógica de atualização de PROJETO (só se select existir - contexto admin)
+        // Lógica de atualização de PROJETO pelo Admin
         if (isAdmin && projectSelect) {
             updateData.projeto = projectSelect.value; // Salva o projeto selecionado
         }
 
-        // Lógica de atualização de visibilidade/atribuição (só se select existir - contexto admin)
+        // Lógica de atualização de visibilidade/atribuição pelo Admin
         if (isAdmin && assignmentSelect) {
             const selectedValue = assignmentSelect.value;
             if (selectedValue === 'TODOS') {
@@ -393,7 +386,7 @@ async function saveClient(clientId) {
             } else if (selectedValue === 'ASSIGNED') {
                 // Se "Atribuir a:" for selecionado, não muda a atribuição atual, apenas garante visibility = ASSIGNED
                 // A atribuição real acontece se um usuário específico for selecionado
-                updateData.visibility = 'ASSIGNED';
+                updateData.visibility = 'ASSIGNED'; 
             } else {
                 // Um usuário específico foi selecionado
                 updateData.visibility = 'ASSIGNED';
@@ -423,9 +416,8 @@ async function saveClient(clientId) {
     }
 }
 
-// --- Excluir Cliente (Só é chamado se botões estiverem visíveis) ---
+// --- Excluir Cliente ---
 async function deleteClient(clientId) {
-    // A lógica de permissão (canEditDelete) já preveniu que este botão aparecesse se não deveria
     if (!confirm("Tem certeza que deseja excluir este cliente?")) return;
 
     try {
@@ -441,7 +433,6 @@ async function deleteClient(clientId) {
         if (rowToRemove) {
             rowToRemove.remove();
         }
-        // Não precisa recarregar a lista inteira, apenas remove a linha
 
     } catch (error) {
         console.error("Erro ao excluir cliente:", error);
@@ -449,12 +440,11 @@ async function deleteClient(clientId) {
     }
 }
 
-// --- Logout (Removido daqui, pois está na sidebar) ---
-// function logout() {
-//   sessionStorage.clear();
-//   window.location.href = "index.html";
-// }
+// --- Logout ---
+function logout() {
+  sessionStorage.clear();
+  window.location.href = "index.html";
+}
 
 // --- Inicialização ---
 initializeDashboard();
-
