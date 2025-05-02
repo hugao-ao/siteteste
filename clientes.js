@@ -8,6 +8,7 @@ const adminViewIndicator = document.getElementById("admin-view-indicator");
 const addClientForm = document.getElementById("add-client-form");
 const newClientNameInput = document.getElementById("new-client-name");
 const newClientWhatsappInput = document.getElementById("new-client-whatsapp");
+const newClientProjectSelect = document.getElementById("new-client-project"); // Novo elemento
 const clientsTableBody = document.querySelector("#clients-table tbody");
 // const backBtn = document.getElementById("back-btn"); // Removido
 // const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Removido
@@ -146,8 +147,14 @@ async function loadClients() {
 
         // Lógica de filtro para não-admin
         if (!isAdmin) {
-            // Busca clientes atribuídos ao usuário OU com visibilidade TODOS
-            query = query.or(`assigned_to_user_id.eq.${currentUserId},visibility.eq.TODOS`);
+            if (!currentUserProjeto) {
+                // Se o usuário não tiver projeto, só pode ver os clientes atribuídos a ele
+                console.warn("Usuário sem projeto definido, mostrando apenas clientes atribuídos diretamente.");
+                query = query.eq("assigned_to_user_id", currentUserId);
+            } else {
+                // Busca clientes atribuídos ao usuário OU (com visibilidade TODOS E do mesmo projeto do usuário)
+                query = query.or(`assigned_to_user_id.eq.${currentUserId},and(visibility.eq.TODOS,projeto.eq.${currentUserProjeto})`);
+            }
         }
 
         // Ordena por nome para consistência
@@ -188,7 +195,21 @@ function renderClients(clients) {
         tr.dataset.clientId = client.id;
 
         // Lógica de permissão de edição/exclusão
-        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || client.visibility === 'TODOS';
+        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || (client.visibility === 'TODOS' && client.projeto === currentUserProjeto); // Ajuste: TODOS só editável se for do mesmo projeto
+
+        // Lógica de exibição de Projeto (com edição para admin)
+        let projectHtml = '';
+        if (isAdmin) {
+            projectHtml = `
+                <select id="project-${client.id}">
+                    <option value="Argos" ${client.projeto === 'Argos' ? 'selected' : ''}>Argos</option>
+                    <option value="Hvc" ${client.projeto === 'Hvc' ? 'selected' : ''}>Hvc</option>
+                    <option value="Planejamento" ${client.projeto === 'Planejamento' ? 'selected' : ''}>Planejamento</option>
+                </select>
+            `;
+        } else {
+            projectHtml = sanitizeInput(client.projeto) || '<span style="color:gray">N/A</span>';
+        }
 
         // Lógica de exibição de Status/Atribuição
         let assignmentHtml = '';
@@ -225,6 +246,9 @@ function renderClients(clients) {
                 <span class="phone-icon" title="Funcionalidade futura">📞</span>
                 <input type="text" id="whatsapp-${client.id}" value="${sanitizeInput(client.whatsapp)}" ${!canEditDelete ? 'disabled' : ''} />
             </td>
+            <td data-label="Projeto">
+                ${projectHtml} <!-- Coluna do Projeto adicionada -->
+            </td>
             <td data-label="Status">
                 ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml}
             </td>
@@ -248,17 +272,19 @@ async function addClient(event) {
     event.preventDefault();
     const nome = newClientNameInput.value.trim();
     const whatsapp = newClientWhatsappInput.value.trim();
+    const projeto = newClientProjectSelect.value; // Pega o valor do projeto
 
-    if (!nome || !whatsapp) {
-        alert("Preencha o nome e o WhatsApp do cliente.");
+    if (!nome || !whatsapp || !projeto) { // Verifica se o projeto foi selecionado
+        alert("Preencha o nome, o WhatsApp e selecione o projeto do cliente.");
         return;
     }
 
     try {
-        // Define visibilidade e atribuição padrão
+        // Define visibilidade, atribuição padrão e PROJETO
         const insertData = {
             nome: nome,
             whatsapp: whatsapp,
+            projeto: projeto, // Adiciona o projeto selecionado
             criado_por_id: currentUserId,
             visibility: 'ASSIGNED', // Visibilidade padrão é atribuído
             assigned_to_user_id: currentUserId // Atribuído ao criador por padrão
@@ -269,10 +295,17 @@ async function addClient(event) {
             .insert(insertData)
             .select();
 
-        if (error) throw error;
+        if (error) {
+             if (error.code === '42703' && error.message.includes('projeto')) {
+                 throw new Error("Erro ao adicionar cliente: A coluna 'projeto' não foi encontrada na tabela 'clientes'. Verifique se a coluna foi criada corretamente no Supabase.");
+             } else {
+                 throw error;
+             }
+        }
 
         alert("Cliente adicionado com sucesso!");
         addClientForm.reset();
+        newClientProjectSelect.value = ""; // Limpa o select do projeto
         loadClients();
 
     } catch (error) {
@@ -311,7 +344,8 @@ async function saveClient(clientId) {
     try {
         const nomeInput = document.getElementById(`name-${clientId}`);
         const whatsappInput = document.getElementById(`whatsapp-${clientId}`);
-        const assignmentSelect = document.getElementById(`assignment-${clientId}`); // Só existe para admin
+        const projectSelect = document.getElementById(`project-${clientId}`); // Novo: Select do projeto (só existe para admin)
+        const assignmentSelect = document.getElementById(`assignment-${clientId}`); // Select de atribuição (só existe para admin)
 
         const nome = nomeInput.value.trim();
         const whatsapp = whatsappInput.value.trim();
@@ -323,6 +357,11 @@ async function saveClient(clientId) {
 
         const updateData = { nome, whatsapp };
 
+        // Lógica de atualização de PROJETO pelo Admin
+        if (isAdmin && projectSelect) {
+            updateData.projeto = projectSelect.value; // Salva o projeto selecionado
+        }
+
         // Lógica de atualização de visibilidade/atribuição pelo Admin
         if (isAdmin && assignmentSelect) {
             const selectedValue = assignmentSelect.value;
@@ -330,8 +369,11 @@ async function saveClient(clientId) {
                 updateData.visibility = 'TODOS';
                 updateData.assigned_to_user_id = null;
             } else if (selectedValue === 'ASSIGNED') {
+                // Se "Atribuir a:" for selecionado, não muda a atribuição atual, apenas garante visibility = ASSIGNED
+                // A atribuição real acontece se um usuário específico for selecionado
                 updateData.visibility = 'ASSIGNED'; 
             } else {
+                // Um usuário específico foi selecionado
                 updateData.visibility = 'ASSIGNED';
                 updateData.assigned_to_user_id = selectedValue;
             }
@@ -342,10 +384,16 @@ async function saveClient(clientId) {
             .update(updateData)
             .eq('id', clientId);
 
-        if (error) throw error;
+        if (error) {
+             if (error.code === '42703' && error.message.includes('projeto')) {
+                 throw new Error("Erro ao salvar cliente: A coluna 'projeto' não foi encontrada na tabela 'clientes'. Verifique se a coluna foi criada corretamente no Supabase.");
+             } else {
+                 throw error;
+             }
+        }
 
         alert("Cliente atualizado com sucesso!");
-        loadClients(); 
+        loadClients(); // Recarrega para mostrar mudanças
 
     } catch (error) {
         console.error("Erro ao salvar cliente:", error);
