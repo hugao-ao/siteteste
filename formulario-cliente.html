@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Formulário do Cliente</title>
+  <link rel="stylesheet" href="style.css"> <!-- Link para o CSS principal, pode precisar de ajustes -->
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+      font-family: sans-serif;
+      padding: 2rem;
+      box-sizing: border-box;
+    }
+    .form-container {
+      background-color: var(--bg-dark);
+      padding: 2rem 3rem;
+      border-radius: 8px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+      max-width: 500px;
+      width: 100%;
+      text-align: center;
+    }
+    .form-container h1 {
+      color: var(--gold-lighter);
+      margin-bottom: 1.5rem;
+    }
+    .form-container label {
+      display: block;
+      text-align: left;
+      margin-bottom: 0.5rem;
+      font-weight: bold;
+      color: var(--text-muted);
+    }
+    .form-container input[type="text"] {
+      width: 100%;
+      padding: 0.8rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+      box-sizing: border-box;
+    }
+    .form-container button {
+      padding: 0.8rem 1.5rem;
+      background-color: var(--emerald-dark);
+      color: var(--gold-lighter);
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background-color 0.3s ease;
+    }
+    .form-container button:hover {
+      background-color: var(--emerald-glow);
+    }
+    .message {
+      margin-top: 1.5rem;
+      padding: 1rem;
+      border-radius: 4px;
+    }
+    .message.success {
+      background-color: rgba(46, 139, 87, 0.2);
+      color: #90ee90;
+      border: 1px solid seagreen;
+    }
+    .message.error {
+      background-color: rgba(198, 40, 40, 0.2);
+      color: #ffcccb;
+      border: 1px solid #c62828;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h1 id="form-title">Formulário do Cliente</h1>
+    <div id="form-content">
+      <!-- Formulário será carregado aqui ou mensagem de erro/sucesso -->
+      <p>Carregando...</p>
+    </div>
+    <div id="message-area"></div>
+  </div>
+
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="formulario-cliente.js"></script>
+</body>
+</html>
+
