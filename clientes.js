@@ -37,14 +37,23 @@ const sanitizeInput = (str) => {
 
 // --- Verificação de Acesso e Inicialização ---
 async function initializeDashboard() {
-    // Verifica se um admin está visualizando o painel de outro usuário
-    const viewingUserIdFromSession = sessionStorage.getItem("viewing_user_id");
-    const viewingUsernameFromSession = sessionStorage.getItem("viewing_username");
-    const adminViewerUsername = sessionStorage.getItem("admin_viewer_username");
-
     // Verifica o nível REAL do usuário logado
     const loggedInUserNivel = sessionStorage.getItem("nivel");
     isActuallyAdmin = loggedInUserNivel === 'admin';
+
+    // *** CORREÇÃO: Limpa o estado de visualização se o admin acessar diretamente ***
+    if (isActuallyAdmin && window.location.pathname.endsWith("clientes-dashboard.html")) {
+        // Se o admin está nesta página, não está "visualizando como" outro usuário
+        sessionStorage.removeItem("viewing_user_id");
+        sessionStorage.removeItem("viewing_username");
+        sessionStorage.removeItem("admin_viewer_username");
+    }
+    // *** FIM DA CORREÇÃO ***
+
+    // Verifica se um admin está visualizando o painel de outro usuário (após possível limpeza)
+    const viewingUserIdFromSession = sessionStorage.getItem("viewing_user_id");
+    const viewingUsernameFromSession = sessionStorage.getItem("viewing_username");
+    const adminViewerUsername = sessionStorage.getItem("admin_viewer_username");
 
     let effectiveUserId = sessionStorage.getItem("user_id");
     let effectiveUsername = sessionStorage.getItem("usuario");
@@ -53,6 +62,7 @@ async function initializeDashboard() {
 
     let isAdminViewingAsUser = false;
 
+    // Agora esta condição só será verdadeira se o admin veio da página de admin clicando em "Ver Dashboard"
     if (isActuallyAdmin && viewingUserIdFromSession && viewingUsernameFromSession) {
         // Admin está visualizando como usuário
         isAdminViewingAsUser = true;
@@ -60,14 +70,25 @@ async function initializeDashboard() {
         currentUser = viewingUsernameFromSession;
         currentUserId = viewingUserIdFromSession;
         currentUserNivel = 'usuario'; // Simula o nível do usuário visualizado
-        currentUserProjeto = null; 
+        // Busca o projeto do usuário que está sendo visualizado
+        try {
+            const { data: viewedUserData, error: viewedUserError } = await supabase
+                .from('credenciais')
+                .select('projeto')
+                .eq('id', viewingUserIdFromSession)
+                .single();
+            if (viewedUserError) throw viewedUserError;
+            currentUserProjeto = viewedUserData?.projeto;
+        } catch (error) {
+            console.error("Erro ao buscar projeto do usuário visualizado:", error);
+            currentUserProjeto = null; // Define como null em caso de erro
+        }
 
         // Configurações específicas para admin visualizando
-        // if (backToAdminBtn) { ... } // Lógica removida
-        // if (backBtn) backBtn.style.display = 'none'; // Lógica removida
         if (adminViewIndicator) adminViewIndicator.style.display = 'none'; // Mantém indicador oculto
 
-        await loadAllUsers(); 
+        // Admin visualizando precisa da lista de usuários para a lógica de exibição, mas não para edição
+        await loadAllUsers();
 
     } else {
         // Usuário normal (Planejamento) ou Admin acessando sua própria gestão
@@ -84,34 +105,36 @@ async function initializeDashboard() {
         }
 
         // Configurações normais
-        // if (backToAdminBtn) backToAdminBtn.style.display = 'none'; // Lógica removida
-        // if (backBtn) backBtn.style.display = 'block'; // Lógica removida
-
         if (isAdmin) {
             if (adminViewIndicator) adminViewIndicator.style.display = 'block';
-            // if (backBtn) backBtn.onclick = () => { window.location.href = "admin-dashboard.html"; }; // Lógica removida
-            await loadAllUsers(); 
+            await loadAllUsers(); // Admin precisa da lista para atribuição
         } else if (currentUserProjeto === 'Planejamento') {
             if (adminViewIndicator) adminViewIndicator.style.display = 'none';
-            // if (backBtn) backBtn.onclick = () => { window.location.href = "planejamento-dashboard.html"; }; // Lógica removida
+            // Usuário Planejamento não precisa da lista completa de usuários
         } else {
-            alert("Acesso indevido a esta página.");
-            window.location.href = "index.html"; 
-            return false;
+            // Outros usuários (Argos, HVC) não deveriam estar aqui diretamente
+            // A sidebar os direciona para user-dashboard.html
+            console.warn("Usuário não-Planejamento acessou clientes-dashboard.html diretamente.");
+            // Poderia redirecionar, mas a sidebar já deve cuidar disso.
+            // A lógica de filtro de clientes ainda se aplica corretamente.
+            if (adminViewIndicator) adminViewIndicator.style.display = 'none';
         }
     }
 
     // Event listeners comuns
-    // logoutBtn.onclick = logout; // REMOVIDO - Sidebar cuida disso
-    // historyBackBtn.onclick = () => history.back(); // REMOVIDO - Sidebar cuida disso
 
-    // Só permite adicionar cliente se não for admin visualizando como user
+    // Só permite adicionar cliente se NÃO for admin visualizando como user
     if (!isAdminViewingAsUser) {
+        addClientForm.style.display = 'grid'; // Garante que o form seja visível
+        const addClientTitle = addClientForm.previousElementSibling;
+        if (addClientTitle && addClientTitle.tagName === 'H2') {
+            addClientTitle.style.display = 'block'; // Garante que o título seja visível
+        }
         addClientForm.addEventListener("submit", addClient);
     } else {
-        // Opcional: Desabilitar ou esconder o formulário de adicionar cliente
-        addClientForm.style.display = 'none'; 
-        const addClientTitle = addClientForm.previousElementSibling; // Pega o H2
+        // Esconde o formulário se for admin visualizando como user
+        addClientForm.style.display = 'none';
+        const addClientTitle = addClientForm.previousElementSibling;
         if (addClientTitle && addClientTitle.tagName === 'H2') {
             addClientTitle.style.display = 'none';
         }
@@ -119,7 +142,7 @@ async function initializeDashboard() {
     clientsTableBody.addEventListener("click", handleTableClick);
 
     // Carrega clientes baseado no contexto (isAdmin e currentUserId corretos)
-    loadClients(); 
+    loadClients();
     return true;
 }
 
