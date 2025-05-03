@@ -231,6 +231,10 @@ async function injectSidebar(mainContentElementId) { // Tornou-se async
             mainContentElement.classList.add(themeClass);
             console.log(`Aplicando tema ${themeClass} ao main content.`);
         }
+        // *** NOVO: Dispara evento para indicar que a sidebar está pronta ***
+        console.log("Dispatching sidebarReady event");
+        document.dispatchEvent(new CustomEvent('sidebarReady'));
+
     } else {
          console.error("Sidebar element not found after injection.");
     }
