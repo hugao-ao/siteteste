@@ -441,6 +441,8 @@ if (manageTableBody) {
      });
 }
 
+// Listener para listTableBody removido
+/*
 if (listTableBody) {
      listTableBody.addEventListener("click", e => {
         const target = e.target;
@@ -448,6 +450,13 @@ if (listTableBody) {
             const userId = target.dataset.id;
             const username = target.dataset.username;
             const userProject = target.dataset.projeto;
+            if (userId && username) {
+                viewUserDashboard(userId, username, userProject);
+            }
+        }
+     });
+}
+*/
             if (userId && username !== undefined) {
                 viewUserDashboard(userId, username, userProject);
             }
