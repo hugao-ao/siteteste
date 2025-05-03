@@ -1,4 +1,4 @@
-// Função para injetar o HTML da Sidebar do Admin (MODIFICADA para aceitar tema de projeto)
+// Função para injetar o HTML da Sidebar do Admin (SIMPLIFICADA AINDA MAIS)
 function createAdminSidebarHTML(projectTheme = null) {
     // Aplica tema do projeto se fornecido, senão usa theme-admin
     const themeClass = projectTheme ? `theme-${projectTheme.toLowerCase()}` : 'theme-admin';
@@ -8,7 +8,6 @@ function createAdminSidebarHTML(projectTheme = null) {
       <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
       <ul class="sidebar-menu">
         <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin</span></a></li>
-        <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li> <!-- Link para visão geral de clientes -->
         <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
       </ul>
     </nav>
