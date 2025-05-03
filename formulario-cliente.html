@@ -3,92 +3,1449 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Formulário do Cliente</title>
-  <link rel="stylesheet" href="style.css"> <!-- Link para o CSS principal, pode precisar de ajustes -->
+  <title>Formulário de Atendimento Financeiro</title>
   <style>
+    :root {
+      --cor-primaria: #002d26;
+      --cor-secundaria: #014034;
+      --cor-terciaria: #015c4a;
+      --cor-quaternaria: #016857;
+      --cor-destaque: #ffd700;
+      --cor-destaque-hover: #ffc400;
+      --cor-texto: #ffffff;
+      --cor-texto-secundario: #f5f5f5;
+      --cor-erro: #ff6b6b;
+      --cor-erro-hover: #ff5252;
+      --cor-sucesso: #28a745;
+      --cor-input: #f5f5f5;
+      --cor-desabilitado: #cccccc;
+      --espacamento-padrao: 20px;
+      --borda-raio: 8px;
+      --transicao: all 0.3s ease;
+      --sombra: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     body {
-      display: flex;
+      background-color: var(--cor-primaria);
+      color: var(--cor-texto);
+      font-family: 'Arial', sans-serif;
+      padding: var(--espacamento-padrao);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    h1 {
+      color: var(--cor-destaque);
+      text-align: center;
+      margin-bottom: 30px;
+      font-size: 2rem;
+    }
+
+    form {
+      background-color: var(--cor-secundaria);
+      padding: 30px;
+      border-radius: var(--borda-raio);
+      max-width: 800px;
+      margin: 0 auto;
+      display: grid;
+      gap: 25px;
+      box-shadow: var(--sombra);
+    }
+
+    .form-section {
+      background-color: var(--cor-terciaria);
+      padding: var(--espacamento-padrao);
+      border-radius: var(--borda-raio);
+      transition: var(--transicao);
+    }
+
+    .form-section:focus-within {
+      box-shadow: 0 0 0 2px var(--cor-destaque);
+    }
+
+    .form-section h2 {
+      color: var(--cor-destaque);
+      margin-bottom: 15px;
+      font-size: 1.2rem;
+    }
+
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    input, textarea, select {
+      width: 100%;
+      padding: 12px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+      font-size: 14px;
+      text-align: left;
+      background-color: var(--cor-input);
+      margin-bottom: 15px;
+      transition: var(--transicao);
+      color: #333; /* Adicionado para garantir cor do texto nos inputs */
+    }
+
+    input:focus, textarea:focus, select:focus {
+      outline: none;
+      border-color: var(--cor-destaque);
+      box-shadow: 0 0 0 2px rgba(255, 215, 0, 0.3);
+    }
+
+    input[type="text"].moeda {
+      text-align: right;
+    }
+
+    .btn {
+      background-color: var(--cor-destaque);
+      color: var(--cor-primaria);
+      font-weight: bold;
+      border: none;
+      padding: 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: var(--transicao);
+      width: 100%;
+      font-size: 16px;
+      margin-top: 10px;
+      display: inline-flex;
       justify-content: center;
       align-items: center;
-      min-height: 100vh;
-      background-color: var(--bg-surface);
-      color: var(--text-light);
-      font-family: sans-serif;
-      padding: 2rem;
-      box-sizing: border-box;
     }
-    .form-container {
-      background-color: var(--bg-dark);
-      padding: 2rem 3rem;
-      border-radius: 8px;
-      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-      max-width: 500px;
-      width: 100%;
-      text-align: center;
+
+    .btn-enviar:hover, .btn-adicionar:hover {
+      background-color: var(--cor-destaque-hover);
+      transform: translateY(-2px);
     }
-    .form-container h1 {
-      color: var(--gold-lighter);
-      margin-bottom: 1.5rem;
+
+    .btn-enviar:disabled {
+      background-color: var(--cor-desabilitado);
+      color: #666; /* Cor do texto para botão desabilitado */
+      cursor: not-allowed;
+      transform: none;
     }
-    .form-container label {
+
+    .btn-adicionar {
+      margin-top: 20px;
+    }
+
+    .pessoa-item, .dependente-item, .patrimonio-item, .divida-item {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 15px;
+      margin-bottom: 25px;
+      background-color: var(--cor-quaternaria);
+      padding: var(--espacamento-padrao);
+      border-radius: var(--borda-raio);
+      position: relative;
+      transition: var(--transicao);
+    }
+
+    .patrimonio-row {
+      display: grid;
+      gap: 15px;
+    }
+
+    .option-group {
+      margin: 15px 0;
+    }
+
+    .option-group label {
+      margin-bottom: 10px;
       display: block;
-      text-align: left;
-      margin-bottom: 0.5rem;
-      font-weight: bold;
-      color: var(--text-muted);
     }
-    .form-container input[type="text"] {
-      width: 100%;
-      padding: 0.8rem;
-      margin-bottom: 1.5rem;
-      border: 1px solid var(--border-color);
-      border-radius: 4px;
-      background-color: var(--bg-surface);
-      color: var(--text-light);
-      box-sizing: border-box;
+
+    .option-options {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      margin-top: 10px;
     }
-    .form-container button {
-      padding: 0.8rem 1.5rem;
-      background-color: var(--emerald-dark);
-      color: var(--gold-lighter);
-      border: none;
-      border-radius: 4px;
+
+    .option-option {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    input[type="radio"] {
+      accent-color: var(--cor-destaque);
+      width: auto;
+      margin: 0;
       cursor: pointer;
+      transform: scale(1.2);
+    }
+
+    .option-option label {
+      font-weight: normal;
+      margin: 0;
+      cursor: pointer;
+    }
+
+    .delete-btn {
+      background-color: var(--cor-erro);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: var(--transicao);
+      width: auto;
+      margin-top: 10px;
+      font-weight: bold;
+      position: absolute;
+      right: 20px;
+      top: 20px;
+    }
+
+    .delete-btn:hover {
+      background-color: var(--cor-erro-hover);
+    }
+
+    .error-message {
+      color: var(--cor-erro);
+      font-size: 13px;
+      margin-top: -10px;
+      margin-bottom: 15px;
+      display: none;
+    }
+
+    input:invalid, textarea:invalid {
+      border: 2px solid var(--cor-erro);
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+      position: relative;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    .success-message {
+      background-color: var(--cor-sucesso);
+      color: white;
+      padding: 15px;
+      border-radius: var(--borda-raio);
+      margin-top: 20px;
+      text-align: center;
+      display: none;
+    }
+
+    /* Melhorias de acessibilidade */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
+    }
+
+    /* Melhorias de responsividade */
+    @media (max-width: 768px) {
+      form {
+        padding: 20px;
+      }
+
+      h1 {
+        font-size: 1.5rem;
+      }
+
+      .option-options {
+        flex-direction: column;
+        gap: 10px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+
+      .form-section {
+        padding: 15px;
+      }
+
+      input, textarea, select {
+        padding: 10px;
+      }
+    }
+
+    /* Animações */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .pessoa-item, .dependente-item, .patrimonio-item, .divida-item {
+      animation: fadeIn 0.3s ease-out;
+    }
+
+    /* Tooltip para ajuda */
+    .tooltip {
+      position: relative;
+      display: inline-block;
+      margin-left: 8px;
+      cursor: help;
+    }
+
+    .tooltip-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 18px;
+      height: 18px;
+      background-color: var(--cor-destaque);
+      color: var(--cor-primaria);
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .tooltip-text {
+      visibility: hidden;
+      width: 200px;
+      background-color: #333;
+      color: #fff;
+      text-align: center;
+      border-radius: 6px;
+      padding: 10px;
+      position: absolute;
+      z-index: 1;
+      bottom: 125%;
+      left: 50%;
+      margin-left: -100px;
+      opacity: 0;
+      transition: opacity 0.3s;
+      font-weight: normal;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    .tooltip:hover .tooltip-text {
+      visibility: visible;
+      opacity: 1;
+    }
+    
+    /* Estilo para pessoa fluxo de caixa */
+    .pessoa-fluxo-caixa {
+      margin-top: 15px;
+      padding: 15px;
+      background-color: var(--cor-quaternaria);
+      border-radius: var(--borda-raio);
+    }
+    
+    .pessoa-fluxo-caixa h3 {
+      color: var(--cor-destaque);
+      margin-bottom: 10px;
       font-size: 1rem;
-      transition: background-color 0.3s ease;
     }
-    .form-container button:hover {
-      background-color: var(--emerald-glow);
-    }
-    .message {
-      margin-top: 1.5rem;
-      padding: 1rem;
-      border-radius: 4px;
-    }
-    .message.success {
-      background-color: rgba(46, 139, 87, 0.2);
-      color: #90ee90;
-      border: 1px solid seagreen;
-    }
-    .message.error {
-      background-color: rgba(198, 40, 40, 0.2);
-      color: #ffcccb;
-      border: 1px solid #c62828;
+    
+    /* Estilo para campo de informações adicionais */
+    textarea.info-adicional {
+      min-height: 120px;
+      resize: vertical;
     }
   </style>
 </head>
 <body>
-  <div class="form-container">
-    <h1 id="form-title">Formulário do Cliente</h1>
-    <div id="form-content">
-      <!-- Formulário será carregado aqui ou mensagem de erro/sucesso -->
-      <p>Carregando...</p>
+  <h1>Formulário de Atendimento Financeiro</h1>
+  <form id="formularioAtendimento" novalidate>
+    <div class="form-section">
+      <h2>Informações Pessoais</h2>
+      <div class="form-group">
+        <label for="nome">Nome completo: <span aria-hidden="true">*</span></label>
+        <input type="text" id="nome" name="nome" required aria-required="true" aria-describedby="nome-error">
+        <div class="error-message" id="nome-error" role="alert">Por favor, preencha seu nome completo</div>
+      </div>
     </div>
-    <div id="message-area"></div>
-  </div>
 
-  <script type="module" src="supabase.js"></script>
-  <script type="module" src="formulario-cliente.js"></script>
+    <!-- Seção de pessoas com renda -->
+    <div class="form-section" id="secaoPessoasRenda">
+      <h2>Pessoas com Renda</h2>
+      <div class="option-group">
+        <label id="label-unica-renda">Você é a única pessoa que tem renda na sua casa?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="label-unica-renda">
+          <div class="option-option">
+            <input type="radio" id="unicaRendaSim" name="unicaRenda" value="Sim" onchange="togglePessoasRenda(true)">
+            <label for="unicaRendaSim">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="unicaRendaNao" name="unicaRenda" value="Não" onchange="togglePessoasRenda(false)">
+            <label for="unicaRendaNao">Não</label>
+          </div>
+        </div>
+      </div>
+      
+      <div id="listaPessoasRenda" style="display: none;">
+        <label>Adicione as outras pessoas que têm renda na sua casa:</label>
+        <div id="pessoasRendaContainer"></div>
+        <button type="button" class="btn btn-adicionar" onclick="adicionarPessoaRenda()">
+          <span class="sr-only">Adicionar</span> Adicionar Pessoa
+        </button>
+      </div>
+    </div>
+
+    <!-- Seção de dependentes -->
+    <div class="form-section" id="secaoDependentes">
+      <h2>Dependentes</h2>
+      <div class="option-group">
+        <label id="label-tem-dependentes">Você possui dependentes?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="label-tem-dependentes">
+          <div class="option-option">
+            <input type="radio" id="temDependentesSim" name="temDependentes" value="Sim" onchange="toggleDependentes(true)">
+            <label for="temDependentesSim">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="temDependentesNao" name="temDependentes" value="Não" onchange="toggleDependentes(false)">
+            <label for="temDependentesNao">Não</label>
+          </div>
+        </div>
+      </div>
+      
+      <div id="listaDependentes" style="display: none;">
+        <label>Adicione seus dependentes:</label>
+        <div id="dependentesContainer"></div>
+        <button type="button" class="btn btn-adicionar" onclick="adicionarDependente()">
+          <span class="sr-only">Adicionar</span> Adicionar Dependente
+        </button>
+      </div>
+    </div>
+
+    <!-- Seção de patrimônios físicos -->
+    <div class="form-section">
+      <h2>Patrimônios Físicos</h2>
+      <label>Adicione seus patrimônios físicos:</label>
+      <div id="listaPatrimonios"></div>
+      <button type="button" class="btn btn-adicionar" onclick="adicionarPatrimonio()">
+        <span class="sr-only">Adicionar</span> Adicionar Patrimônio
+      </button>
+    </div>
+
+    <!-- Seção de seguros e planos -->
+    <div class="form-section">
+      <h2>Seguros e Planos</h2>
+      <div class="option-group">
+        <label id="label-plano-saude">Você possui plano de saúde?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="label-plano-saude">
+          <div class="option-option">
+            <input type="radio" id="planoSaudeSim" name="planoSaude" value="Sim">
+            <label for="planoSaudeSim">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="planoSaudeNao" name="planoSaude" value="Não">
+            <label for="planoSaudeNao">Não</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="planoSaudeNaoSei" name="planoSaude" value="Não sei">
+            <label for="planoSaudeNaoSei">Não sei</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="planosSaudePessoas"></div>
+      <div id="planosSaudeDependentes"></div>
+
+      <div class="option-group">
+        <label id="label-seguro-vida">Você possui seguro de vida?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="label-seguro-vida">
+          <div class="option-option">
+            <input type="radio" id="seguroVidaSim" name="seguroVida" value="Sim">
+            <label for="seguroVidaSim">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="seguroVidaNao" name="seguroVida" value="Não">
+            <label for="seguroVidaNao">Não</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="seguroVidaNaoSei" name="seguroVida" value="Não sei">
+            <label for="seguroVidaNaoSei">Não sei</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="segurosVidaPessoas"></div>
+    </div>
+
+    <!-- Seção de patrimônio líquido -->
+    <div class="form-section">
+      <h2>Patrimônio Líquido</h2>
+      <div class="form-group">
+        <label for="patrimonioLiquido">
+          Seu patrimônio líquido:
+          <div class="tooltip">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-text">Soma de todos os seus bens menos suas dívidas</span>
+          </div>
+        </label>
+        <input type="text" id="patrimonioLiquido" name="patrimonioLiquido" class="moeda" placeholder="R$ 0,00">
+      </div>
+      <div id="patrimoniosPessoas"></div>
+    </div>
+
+    <!-- Seção de imposto de renda -->
+    <div class="form-section">
+      <h2>Imposto de Renda</h2>
+      <!-- Perguntas do cliente principal -->
+      <div class="option-group">
+        <label id="label-declara-ir">Você declara imposto de renda?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="label-declara-ir">
+          <div class="option-option">
+            <input type="radio" id="declaraIRSim" name="declaraIR" value="Sim" onchange="toggleDeclaracaoIRCliente(true)">
+            <label for="declaraIRSim">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="declaraIRNao" name="declaraIR" value="Não" onchange="toggleDeclaracaoIRCliente(false)">
+            <label for="declaraIRNao">Não</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="declaracaoIRCliente" style="display: none;">
+        <div class="option-group">
+          <label id="label-tipo-declaracao">Se sim, qual o tipo da sua declaração?</label>
+          <div class="option-options" role="radiogroup" aria-labelledby="label-tipo-declaracao">
+            <div class="option-option">
+              <input type="radio" id="tipoCompleta" name="tipoDeclaracao" value="Completa">
+              <label for="tipoCompleta">Completa</label>
+            </div>
+            <div class="option-option">
+              <input type="radio" id="tipoSimplificada" name="tipoDeclaracao" value="Simplificada">
+              <label for="tipoSimplificada">Simplificada</label>
+            </div>
+            <div class="option-option">
+              <input type="radio" id="tipoNaoSei" name="tipoDeclaracao" value="Não sei">
+              <label for="tipoNaoSei">Não sei</label>
+            </div>
+          </div>
+        </div>
+
+        <div class="option-group">
+          <label id="label-resultado-ir">Resultado do seu IR:</label>
+          <div class="option-options" role="radiogroup" aria-labelledby="label-resultado-ir">
+            <div class="option-option">
+              <input type="radio" id="resultadoIRRestitui" name="resultadoIR" value="Restitui">
+              <label for="resultadoIRRestitui">Restitui</label>
+            </div>
+            <div class="option-option">
+              <input type="radio" id="resultadoIRPaga" name="resultadoIR" value="Paga">
+              <label for="resultadoIRPaga">Paga</label>
+            </div>
+            <div class="option-option">
+              <input type="radio" id="resultadoIRIsento" name="resultadoIR" value="Isento/Não se aplica">
+              <label for="resultadoIRIsento">Isento/Não se aplica</label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Perguntas para outras pessoas com renda -->
+      <div id="declaracaoIRPessoas"></div>
+    </div>
+
+    <!-- Seção de investimentos -->
+    <div class="form-section">
+      <h2>Investimentos</h2>
+      <div class="option-group">
+        <label id="label-possui-investimentos">Você possui investimentos?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="label-possui-investimentos">
+          <div class="option-option">
+            <input type="radio" id="investimentosSim" name="possuiInvestimentos" value="Sim" onchange="toggleInvestimentos(true)">
+            <label for="investimentosSim">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="investimentosNao" name="possuiInvestimentos" value="Não" onchange="toggleInvestimentos(false)">
+            <label for="investimentosNao">Não</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="detalhesInvestimentos" style="display: none;">
+        <div class="form-group">
+          <label for="valorTotalInvestido">Valor total investido:</label>
+          <input type="text" id="valorTotalInvestido" name="valorTotalInvestido" class="moeda" placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label for="tiposInvestimentos">Tipos de investimentos (ex: Ações, Renda Fixa, Fundos):</label>
+          <textarea id="tiposInvestimentos" name="tiposInvestimentos" rows="3"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="objetivoInvestimentos">Objetivo dos investimentos:</label>
+          <textarea id="objetivoInvestimentos" name="objetivoInvestimentos" rows="3"></textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Seção de dívidas -->
+    <div class="form-section">
+      <h2>Dívidas</h2>
+      <div class="option-group">
+        <label id="label-possui-dividas">Você possui dívidas?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="label-possui-dividas">
+          <div class="option-option">
+            <input type="radio" id="dividasSim" name="possuiDividas" value="Sim" onchange="toggleDividas(true)">
+            <label for="dividasSim">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="dividasNao" name="possuiDividas" value="Não" onchange="toggleDividas(false)">
+            <label for="dividasNao">Não</label>
+          </div>
+        </div>
+      </div>
+
+      <div id="listaDividas" style="display: none;">
+        <label>Adicione suas dívidas:</label>
+        <div id="dividasContainer"></div>
+        <button type="button" class="btn btn-adicionar" onclick="adicionarDivida()">
+          <span class="sr-only">Adicionar</span> Adicionar Dívida
+        </button>
+      </div>
+    </div>
+
+    <!-- Seção de fluxo de caixa -->
+    <div class="form-section">
+      <h2>Fluxo de Caixa Mensal</h2>
+      <div id="fluxoCaixaPessoas"></div>
+    </div>
+
+    <!-- Seção de objetivos financeiros -->
+    <div class="form-section">
+      <h2>Objetivos Financeiros</h2>
+      <div class="form-group">
+        <label for="objetivosCurtoPrazo">Objetivos de curto prazo (até 1 ano):</label>
+        <textarea id="objetivosCurtoPrazo" name="objetivosCurtoPrazo" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="objetivosMedioPrazo">Objetivos de médio prazo (1 a 5 anos):</label>
+        <textarea id="objetivosMedioPrazo" name="objetivosMedioPrazo" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label for="objetivosLongoPrazo">Objetivos de longo prazo (mais de 5 anos):</label>
+        <textarea id="objetivosLongoPrazo" name="objetivosLongoPrazo" rows="3"></textarea>
+      </div>
+    </div>
+
+    <!-- Seção de informações adicionais -->
+    <div class="form-section">
+      <h2>Informações Adicionais</h2>
+      <div class="form-group">
+        <label for="infoAdicional">Há mais alguma informação relevante que você gostaria de compartilhar?</label>
+        <textarea id="infoAdicional" name="infoAdicional" class="info-adicional" rows="5"></textarea>
+      </div>
+    </div>
+
+    <button type="submit" class="btn btn-enviar" id="submitBtn">Enviar Formulário</button>
+    <div class="success-message" id="successMessage" role="status">Formulário enviado com sucesso!</div>
+  </form>
+
+  <script>
+    // Funções auxiliares para formatar moeda
+    function formatarMoeda(valor) {
+      if (!valor) return '';
+      valor = valor.replace(/\D/g, '');
+      valor = (parseInt(valor) / 100).toFixed(2) + '';
+      valor = valor.replace(".", ",");
+      valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+      return 'R$ ' + valor;
+    }
+
+    function desformatarMoeda(valor) {
+      if (!valor) return 0;
+      valor = valor.replace(/[^\d,]/g, '');
+      valor = valor.replace(".", "");
+      valor = valor.replace(",", ".");
+      return parseFloat(valor) || 0;
+    }
+
+    // Aplica máscara de moeda aos inputs relevantes
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.moeda').forEach(input => {
+        input.addEventListener('input', (e) => {
+          e.target.value = formatarMoeda(e.target.value);
+        });
+        // Formata o valor inicial se houver
+        if(input.value) {
+            input.value = formatarMoeda(input.value);
+        }
+      });
+      
+      // Inicializa os campos dinâmicos
+      atualizarCamposPlanoSaude();
+      atualizarCamposSeguroVida();
+      atualizarCamposPatrimonioLiquido();
+      atualizarCamposDeclaracaoIR();
+      atualizarCamposFluxoCaixa();
+    });
+
+    // Funções para adicionar/remover itens dinâmicos
+    let pessoaRendaId = 0;
+    let dependenteId = 0;
+    let patrimonioId = 0;
+    let dividaId = 0;
+
+    function adicionarPessoaRenda() {
+      pessoaRendaId++;
+      const container = document.getElementById('pessoasRendaContainer');
+      const div = document.createElement('div');
+      div.className = 'pessoa-item';
+      div.id = `pessoaRenda-${pessoaRendaId}`;
+      div.innerHTML = `
+        <button type="button" class="delete-btn" onclick="removerItem('pessoaRenda-${pessoaRendaId}')" aria-label="Remover pessoa ${pessoaRendaId}">X</button>
+        <div class="form-group">
+          <label for="pessoaRendaNome-${pessoaRendaId}">Nome:</label>
+          <input type="text" id="pessoaRendaNome-${pessoaRendaId}" name="pessoaRendaNome-${pessoaRendaId}">
+        </div>
+        <div class="form-group">
+          <label for="pessoaRendaParentesco-${pessoaRendaId}">Parentesco:</label>
+          <input type="text" id="pessoaRendaParentesco-${pessoaRendaId}" name="pessoaRendaParentesco-${pessoaRendaId}">
+        </div>
+        <div class="form-group">
+          <label for="pessoaRendaRenda-${pessoaRendaId}">Renda Mensal:</label>
+          <input type="text" id="pessoaRendaRenda-${pessoaRendaId}" name="pessoaRendaRenda-${pessoaRendaId}" class="moeda" placeholder="R$ 0,00">
+        </div>
+      `;
+      container.appendChild(div);
+      // Aplica máscara ao novo input de moeda
+      const novoInputMoeda = div.querySelector('.moeda');
+      novoInputMoeda.addEventListener('input', (e) => {
+        e.target.value = formatarMoeda(e.target.value);
+      });
+      atualizarCamposDinamicos(); // Atualiza outras seções que dependem das pessoas
+    }
+
+    function adicionarDependente() {
+      dependenteId++;
+      const container = document.getElementById('dependentesContainer');
+      const div = document.createElement('div');
+      div.className = 'dependente-item';
+      div.id = `dependente-${dependenteId}`;
+      div.innerHTML = `
+        <button type="button" class="delete-btn" onclick="removerItem('dependente-${dependenteId}')" aria-label="Remover dependente ${dependenteId}">X</button>
+        <div class="form-group">
+          <label for="dependenteNome-${dependenteId}">Nome:</label>
+          <input type="text" id="dependenteNome-${dependenteId}" name="dependenteNome-${dependenteId}">
+        </div>
+        <div class="form-group">
+          <label for="dependenteIdade-${dependenteId}">Idade:</label>
+          <input type="number" id="dependenteIdade-${dependenteId}" name="dependenteIdade-${dependenteId}">
+        </div>
+        <div class="form-group">
+          <label for="dependenteParentesco-${dependenteId}">Parentesco:</label>
+          <input type="text" id="dependenteParentesco-${dependenteId}" name="dependenteParentesco-${dependenteId}">
+        </div>
+      `;
+      container.appendChild(div);
+      atualizarCamposDinamicos(); // Atualiza outras seções que dependem dos dependentes
+    }
+
+    function adicionarPatrimonio() {
+      patrimonioId++;
+      const container = document.getElementById('listaPatrimonios');
+      const div = document.createElement('div');
+      div.className = 'patrimonio-item';
+      div.id = `patrimonio-${patrimonioId}`;
+      div.innerHTML = `
+        <button type="button" class="delete-btn" onclick="removerItem('patrimonio-${patrimonioId}')" aria-label="Remover patrimônio ${patrimonioId}">X</button>
+        <div class="patrimonio-row">
+          <div class="form-group">
+            <label for="patrimonioTipo-${patrimonioId}">Tipo (ex: Imóvel, Veículo):</label>
+            <input type="text" id="patrimonioTipo-${patrimonioId}" name="patrimonioTipo-${patrimonioId}">
+          </div>
+          <div class="form-group">
+            <label for="patrimonioValor-${patrimonioId}">Valor Estimado:</label>
+            <input type="text" id="patrimonioValor-${patrimonioId}" name="patrimonioValor-${patrimonioId}" class="moeda" placeholder="R$ 0,00">
+          </div>
+          <div class="form-group">
+            <label for="patrimonioFinanciado-${patrimonioId}">É financiado?</label>
+            <select id="patrimonioFinanciado-${patrimonioId}" name="patrimonioFinanciado-${patrimonioId}">
+              <option value="Não">Não</option>
+              <option value="Sim">Sim</option>
+            </select>
+          </div>
+        </div>
+      `;
+      container.appendChild(div);
+      // Aplica máscara ao novo input de moeda
+      const novoInputMoeda = div.querySelector('.moeda');
+      novoInputMoeda.addEventListener('input', (e) => {
+        e.target.value = formatarMoeda(e.target.value);
+      });
+    }
+
+    function adicionarDivida() {
+      dividaId++;
+      const container = document.getElementById('dividasContainer');
+      const div = document.createElement('div');
+      div.className = 'divida-item';
+      div.id = `divida-${dividaId}`;
+      div.innerHTML = `
+        <button type="button" class="delete-btn" onclick="removerItem('divida-${dividaId}')" aria-label="Remover dívida ${dividaId}">X</button>
+        <div class="form-group">
+          <label for="dividaTipo-${dividaId}">Tipo (ex: Empréstimo, Cartão, Financiamento):</label>
+          <input type="text" id="dividaTipo-${dividaId}" name="dividaTipo-${dividaId}">
+        </div>
+        <div class="form-group">
+          <label for="dividaValorTotal-${dividaId}">Valor Total:</label>
+          <input type="text" id="dividaValorTotal-${dividaId}" name="dividaValorTotal-${dividaId}" class="moeda" placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label for="dividaValorParcela-${dividaId}">Valor da Parcela Mensal:</label>
+          <input type="text" id="dividaValorParcela-${dividaId}" name="dividaValorParcela-${dividaId}" class="moeda" placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label for="dividaTaxaJuros-${dividaId}">Taxa de Juros (% a.m.):</label>
+          <input type="number" step="0.01" id="dividaTaxaJuros-${dividaId}" name="dividaTaxaJuros-${dividaId}" placeholder="Ex: 1.99">
+        </div>
+      `;
+      container.appendChild(div);
+      // Aplica máscara aos novos inputs de moeda
+      div.querySelectorAll('.moeda').forEach(input => {
+        input.addEventListener('input', (e) => {
+          e.target.value = formatarMoeda(e.target.value);
+        });
+      });
+    }
+
+    function removerItem(id) {
+      const item = document.getElementById(id);
+      if (item) {
+        item.style.animation = 'fadeOut 0.3s ease-out forwards';
+        item.addEventListener('animationend', () => {
+          item.remove();
+          atualizarCamposDinamicos(); // Atualiza seções dependentes após remover
+        });
+      }
+    }
+    
+    // Adiciona animação de fadeOut
+    const styleSheet = document.styleSheets[0];
+    styleSheet.insertRule(`
+      @keyframes fadeOut {
+        from { opacity: 1; transform: scale(1); }
+        to { opacity: 0; transform: scale(0.9); }
+      }
+    `, styleSheet.cssRules.length);
+
+    // Funções para mostrar/esconder seções
+    function togglePessoasRenda(unicaRenda) {
+      document.getElementById('listaPessoasRenda').style.display = unicaRenda ? 'none' : 'block';
+      if (unicaRenda) {
+        document.getElementById('pessoasRendaContainer').innerHTML = ''; // Limpa pessoas se for única renda
+        pessoaRendaId = 0;
+      }
+      atualizarCamposDinamicos();
+    }
+
+    function toggleDependentes(temDependentes) {
+      document.getElementById('listaDependentes').style.display = temDependentes ? 'block' : 'none';
+      if (!temDependentes) {
+        document.getElementById('dependentesContainer').innerHTML = ''; // Limpa dependentes se não tiver
+        dependenteId = 0;
+      }
+      atualizarCamposDinamicos();
+    }
+
+    function toggleInvestimentos(possui) {
+      document.getElementById('detalhesInvestimentos').style.display = possui ? 'block' : 'none';
+    }
+
+    function toggleDividas(possui) {
+      document.getElementById('listaDividas').style.display = possui ? 'block' : 'none';
+      if (!possui) {
+        document.getElementById('dividasContainer').innerHTML = ''; // Limpa dívidas se não tiver
+        dividaId = 0;
+      }
+    }
+    
+    function toggleDeclaracaoIRCliente(declara) {
+        document.getElementById('declaracaoIRCliente').style.display = declara ? 'block' : 'none';
+    }
+
+    // Função para atualizar campos que dependem de Pessoas e Dependentes
+    function atualizarCamposDinamicos() {
+      atualizarCamposPlanoSaude();
+      atualizarCamposSeguroVida();
+      atualizarCamposPatrimonioLiquido();
+      atualizarCamposDeclaracaoIR();
+      atualizarCamposFluxoCaixa();
+    }
+
+    // Funções para gerar campos dinâmicos baseados nas pessoas e dependentes
+    function getPessoasComRenda() {
+      const pessoas = [];
+      // Adiciona o cliente principal
+      const nomeCliente = document.getElementById('nome').value || 'Você';
+      pessoas.push({ id: 'cliente', nome: nomeCliente });
+      
+      // Adiciona outras pessoas com renda
+      document.querySelectorAll('.pessoa-item').forEach(item => {
+        const id = item.id;
+        const nomeInput = item.querySelector(`input[name^="pessoaRendaNome-"]`);
+        if (nomeInput && nomeInput.value) {
+          pessoas.push({ id: id, nome: nomeInput.value });
+        }
+      });
+      return pessoas;
+    }
+
+    function getDependentes() {
+      const dependentes = [];
+      document.querySelectorAll('.dependente-item').forEach(item => {
+        const id = item.id;
+        const nomeInput = item.querySelector(`input[name^="dependenteNome-"]`);
+        if (nomeInput && nomeInput.value) {
+          dependentes.push({ id: id, nome: nomeInput.value });
+        }
+      });
+      return dependentes;
+    }
+
+    function atualizarCamposPlanoSaude() {
+      const containerPessoas = document.getElementById('planosSaudePessoas');
+      const containerDependentes = document.getElementById('planosSaudeDependentes');
+      containerPessoas.innerHTML = '';
+      containerDependentes.innerHTML = '';
+
+      const pessoas = getPessoasComRenda();
+      const dependentes = getDependentes();
+
+      if (pessoas.length > 0) {
+          const h3Pessoas = document.createElement('h3');
+          h3Pessoas.textContent = 'Plano de Saúde (Pessoas com Renda):';
+          containerPessoas.appendChild(h3Pessoas);
+          pessoas.forEach(pessoa => {
+            containerPessoas.appendChild(criarOpcaoPlanoSaude(pessoa.id, pessoa.nome));
+          });
+      }
+
+      if (dependentes.length > 0) {
+          const h3Dependentes = document.createElement('h3');
+          h3Dependentes.textContent = 'Plano de Saúde (Dependentes):';
+          containerDependentes.appendChild(h3Dependentes);
+          dependentes.forEach(dependente => {
+            containerDependentes.appendChild(criarOpcaoPlanoSaude(dependente.id, dependente.nome));
+          });
+      }
+    }
+
+    function criarOpcaoPlanoSaude(id, nome) {
+      const div = document.createElement('div');
+      div.className = 'option-group';
+      const labelId = `label-plano-saude-${id}`;
+      div.innerHTML = `
+        <label id="${labelId}">${nome} possui plano de saúde?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="${labelId}">
+          <div class="option-option">
+            <input type="radio" id="planoSaudeSim-${id}" name="planoSaude-${id}" value="Sim">
+            <label for="planoSaudeSim-${id}">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="planoSaudeNao-${id}" name="planoSaude-${id}" value="Não">
+            <label for="planoSaudeNao-${id}">Não</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="planoSaudeNaoSei-${id}" name="planoSaude-${id}" value="Não sei">
+            <label for="planoSaudeNaoSei-${id}">Não sei</label>
+          </div>
+        </div>
+      `;
+      return div;
+    }
+
+    function atualizarCamposSeguroVida() {
+      const container = document.getElementById('segurosVidaPessoas');
+      container.innerHTML = '';
+      const pessoas = getPessoasComRenda();
+
+      if (pessoas.length > 0) {
+          const h3 = document.createElement('h3');
+          h3.textContent = 'Seguro de Vida (Pessoas com Renda):';
+          container.appendChild(h3);
+          pessoas.forEach(pessoa => {
+            container.appendChild(criarOpcaoSeguroVida(pessoa.id, pessoa.nome));
+          });
+      }
+    }
+
+    function criarOpcaoSeguroVida(id, nome) {
+      const div = document.createElement('div');
+      div.className = 'option-group';
+      const labelId = `label-seguro-vida-${id}`;
+      div.innerHTML = `
+        <label id="${labelId}">${nome} possui seguro de vida?</label>
+        <div class="option-options" role="radiogroup" aria-labelledby="${labelId}">
+          <div class="option-option">
+            <input type="radio" id="seguroVidaSim-${id}" name="seguroVida-${id}" value="Sim">
+            <label for="seguroVidaSim-${id}">Sim</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="seguroVidaNao-${id}" name="seguroVida-${id}" value="Não">
+            <label for="seguroVidaNao-${id}">Não</label>
+          </div>
+          <div class="option-option">
+            <input type="radio" id="seguroVidaNaoSei-${id}" name="seguroVida-${id}" value="Não sei">
+            <label for="seguroVidaNaoSei-${id}">Não sei</label>
+          </div>
+        </div>
+      `;
+      return div;
+    }
+
+    function atualizarCamposPatrimonioLiquido() {
+      const container = document.getElementById('patrimoniosPessoas');
+      container.innerHTML = '';
+      const pessoas = getPessoasComRenda().filter(p => p.id !== 'cliente'); // Exclui o cliente principal
+
+      if (pessoas.length > 0) {
+          const h3 = document.createElement('h3');
+          h3.textContent = 'Patrimônio Líquido (Outras Pessoas com Renda):';
+          container.appendChild(h3);
+          pessoas.forEach(pessoa => {
+            container.appendChild(criarCampoPatrimonioLiquido(pessoa.id, pessoa.nome));
+          });
+      }
+    }
+
+    function criarCampoPatrimonioLiquido(id, nome) {
+      const div = document.createElement('div');
+      div.className = 'form-group';
+      div.innerHTML = `
+        <label for="patrimonioLiquido-${id}">
+          Patrimônio líquido de ${nome}:
+          <div class="tooltip">
+            <span class="tooltip-icon">?</span>
+            <span class="tooltip-text">Soma de todos os bens menos as dívidas de ${nome}</span>
+          </div>
+        </label>
+        <input type="text" id="patrimonioLiquido-${id}" name="patrimonioLiquido-${id}" class="moeda" placeholder="R$ 0,00">
+      `;
+      // Aplica máscara ao novo input de moeda
+      const novoInputMoeda = div.querySelector('.moeda');
+      novoInputMoeda.addEventListener('input', (e) => {
+        e.target.value = formatarMoeda(e.target.value);
+      });
+      return div;
+    }
+    
+    function atualizarCamposDeclaracaoIR() {
+        const container = document.getElementById('declaracaoIRPessoas');
+        container.innerHTML = '';
+        const pessoas = getPessoasComRenda().filter(p => p.id !== 'cliente'); // Exclui o cliente principal
+
+        if (pessoas.length > 0) {
+            const h3 = document.createElement('h3');
+            h3.textContent = 'Imposto de Renda (Outras Pessoas com Renda):';
+            container.appendChild(h3);
+            pessoas.forEach(pessoa => {
+                container.appendChild(criarCamposDeclaracaoIRPessoa(pessoa.id, pessoa.nome));
+            });
+        }
+    }
+
+    function criarCamposDeclaracaoIRPessoa(id, nome) {
+        const div = document.createElement('div');
+        div.className = 'pessoa-ir-section'; // Classe para estilização se necessário
+        div.style.marginTop = '20px';
+        div.style.paddingTop = '15px';
+        div.style.borderTop = '1px solid var(--cor-quaternaria)';
+        
+        const labelDeclaraId = `label-declara-ir-${id}`;
+        const divDeclara = document.createElement('div');
+        divDeclara.className = 'option-group';
+        divDeclara.innerHTML = `
+            <label id="${labelDeclaraId}">${nome} declara imposto de renda?</label>
+            <div class="option-options" role="radiogroup" aria-labelledby="${labelDeclaraId}">
+              <div class="option-option">
+                <input type="radio" id="declaraIRSim-${id}" name="declaraIR-${id}" value="Sim" onchange="toggleDeclaracaoIRPessoa('${id}', true)">
+                <label for="declaraIRSim-${id}">Sim</label>
+              </div>
+              <div class="option-option">
+                <input type="radio" id="declaraIRNao-${id}" name="declaraIR-${id}" value="Não" onchange="toggleDeclaracaoIRPessoa('${id}', false)">
+                <label for="declaraIRNao-${id}">Não</label>
+              </div>
+            </div>
+        `;
+        div.appendChild(divDeclara);
+
+        const divDetalhes = document.createElement('div');
+        divDetalhes.id = `declaracaoIRPessoa-${id}`;
+        divDetalhes.style.display = 'none';
+        divDetalhes.style.marginLeft = '20px'; // Indentação
+
+        const labelTipoId = `label-tipo-declaracao-${id}`;
+        const divTipo = document.createElement('div');
+        divTipo.className = 'option-group';
+        divTipo.innerHTML = `
+            <label id="${labelTipoId}">Se sim, qual o tipo da declaração de ${nome}?</label>
+            <div class="option-options" role="radiogroup" aria-labelledby="${labelTipoId}">
+              <div class="option-option">
+                <input type="radio" id="tipoCompleta-${id}" name="tipoDeclaracao-${id}" value="Completa">
+                <label for="tipoCompleta-${id}">Completa</label>
+              </div>
+              <div class="option-option">
+                <input type="radio" id="tipoSimplificada-${id}" name="tipoDeclaracao-${id}" value="Simplificada">
+                <label for="tipoSimplificada-${id}">Simplificada</label>
+              </div>
+              <div class="option-option">
+                <input type="radio" id="tipoNaoSei-${id}" name="tipoDeclaracao-${id}" value="Não sei">
+                <label for="tipoNaoSei-${id}">Não sei</label>
+              </div>
+            </div>
+        `;
+        divDetalhes.appendChild(divTipo);
+
+        const labelResultadoId = `label-resultado-ir-${id}`;
+        const divResultado = document.createElement('div');
+        divResultado.className = 'option-group';
+        divResultado.innerHTML = `
+            <label id="${labelResultadoId}">Resultado do IR de ${nome}:</label>
+            <div class="option-options" role="radiogroup" aria-labelledby="${labelResultadoId}">
+              <div class="option-option">
+                <input type="radio" id="resultadoIRRestitui-${id}" name="resultadoIR-${id}" value="Restitui">
+                <label for="resultadoIRRestitui-${id}">Restitui</label>
+              </div>
+              <div class="option-option">
+                <input type="radio" id="resultadoIRPaga-${id}" name="resultadoIR-${id}" value="Paga">
+                <label for="resultadoIRPaga-${id}">Paga</label>
+              </div>
+              <div class="option-option">
+                <input type="radio" id="resultadoIRIsento-${id}" name="resultadoIR-${id}" value="Isento/Não se aplica">
+                <label for="resultadoIRIsento-${id}">Isento/Não se aplica</label>
+              </div>
+            </div>
+        `;
+        divDetalhes.appendChild(divResultado);
+        div.appendChild(divDetalhes);
+
+        return div;
+    }
+
+    function toggleDeclaracaoIRPessoa(id, declara) {
+        const detalhesDiv = document.getElementById(`declaracaoIRPessoa-${id}`);
+        if (detalhesDiv) {
+            detalhesDiv.style.display = declara ? 'block' : 'none';
+        }
+    }
+
+    function atualizarCamposFluxoCaixa() {
+      const container = document.getElementById('fluxoCaixaPessoas');
+      container.innerHTML = '';
+      const pessoas = getPessoasComRenda();
+
+      if (pessoas.length > 0) {
+          const h3 = document.createElement('h3');
+          h3.textContent = 'Rendas e Despesas Mensais:';
+          container.appendChild(h3);
+          pessoas.forEach(pessoa => {
+            container.appendChild(criarCamposFluxoCaixaPessoa(pessoa.id, pessoa.nome));
+          });
+      }
+    }
+
+    function criarCamposFluxoCaixaPessoa(id, nome) {
+      const div = document.createElement('div');
+      div.className = 'pessoa-fluxo-caixa';
+      div.innerHTML = `
+        <h3>${nome}</h3>
+        <div class="form-group">
+          <label for="rendaMensal-${id}">Renda Mensal Líquida:</label>
+          <input type="text" id="rendaMensal-${id}" name="rendaMensal-${id}" class="moeda" placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label for="despesasFixas-${id}">Despesas Fixas Mensais:</label>
+          <input type="text" id="despesasFixas-${id}" name="despesasFixas-${id}" class="moeda" placeholder="R$ 0,00">
+        </div>
+        <div class="form-group">
+          <label for="despesasVariaveis-${id}">Despesas Variáveis Mensais (média):</label>
+          <input type="text" id="despesasVariaveis-${id}" name="despesasVariaveis-${id}" class="moeda" placeholder="R$ 0,00">
+        </div>
+      `;
+      // Aplica máscara aos novos inputs de moeda
+      div.querySelectorAll('.moeda').forEach(input => {
+        input.addEventListener('input', (e) => {
+          e.target.value = formatarMoeda(e.target.value);
+        });
+      });
+      return div;
+    }
+
+    // Validação e envio do formulário
+    const form = document.getElementById('formularioAtendimento');
+    const submitBtn = document.getElementById('submitBtn');
+    const successMessage = document.getElementById('successMessage');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      
+      // Limpa mensagens de erro anteriores
+      document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+      document.querySelectorAll('input, textarea, select').forEach(el => el.style.borderColor = 'transparent');
+
+      let isValid = true;
+
+      // Validação do nome
+      const nomeInput = document.getElementById('nome');
+      if (!nomeInput.value.trim()) {
+        isValid = false;
+        document.getElementById('nome-error').style.display = 'block';
+        nomeInput.style.borderColor = 'var(--cor-erro)';
+      }
+      
+      // Adicione aqui mais validações para outros campos obrigatórios, se houver.
+      // Exemplo: Verificar se opções de radio foram selecionadas
+      if (!document.querySelector('input[name="unicaRenda"]:checked')) {
+          isValid = false;
+          alert('Por favor, informe se você é a única pessoa com renda.');
+          // Poderia adicionar uma mensagem de erro visual perto do campo
+      }
+      // ... outras validações ...
+
+      if (!isValid) {
+        alert('Por favor, corrija os campos destacados em vermelho.');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Enviando...';
+
+      // Coleta todos os dados do formulário em um objeto JSON
+      const formData = new FormData(form);
+      const dadosFormulario = {};
+      
+      // Coleta campos simples e radios
+      formData.forEach((value, key) => {
+          // Verifica se é um campo de moeda e desformata
+          const inputElement = document.querySelector(`[name="${key}"]`);
+          if (inputElement && inputElement.classList.contains('moeda')) {
+              dadosFormulario[key] = desformatarMoeda(value);
+          } else {
+              // Tratamento para radios (pega apenas o selecionado)
+              if (inputElement && inputElement.type === 'radio') {
+                  const checkedRadio = document.querySelector(`input[name="${key}"]:checked`);
+                  if (checkedRadio) {
+                      dadosFormulario[key] = checkedRadio.value;
+                  }
+              } else {
+                  dadosFormulario[key] = value;
+              }
+          }
+      });
+      
+      // Coleta dados de Pessoas com Renda (agrupados)
+      dadosFormulario.pessoasRenda = [];
+      document.querySelectorAll('.pessoa-item').forEach(item => {
+          const pessoa = {};
+          item.querySelectorAll('input, select').forEach(input => {
+              const key = input.name.replace(/-\d+$/, ''); // Remove o ID do final da chave
+              if (input.classList.contains('moeda')) {
+                  pessoa[key] = desformatarMoeda(input.value);
+              } else {
+                  pessoa[key] = input.value;
+              }
+          });
+          dadosFormulario.pessoasRenda.push(pessoa);
+      });
+
+      // Coleta dados de Dependentes (agrupados)
+      dadosFormulario.dependentes = [];
+      document.querySelectorAll('.dependente-item').forEach(item => {
+          const dependente = {};
+          item.querySelectorAll('input, select').forEach(input => {
+              const key = input.name.replace(/-\d+$/, '');
+              dependente[key] = input.value;
+          });
+          dadosFormulario.dependentes.push(dependente);
+      });
+
+      // Coleta dados de Patrimônios (agrupados)
+      dadosFormulario.patrimonios = [];
+      document.querySelectorAll('.patrimonio-item').forEach(item => {
+          const patrimonio = {};
+          item.querySelectorAll('input, select').forEach(input => {
+              const key = input.name.replace(/-\d+$/, '');
+              if (input.classList.contains('moeda')) {
+                  patrimonio[key] = desformatarMoeda(input.value);
+              } else {
+                  patrimonio[key] = input.value;
+              }
+          });
+          dadosFormulario.patrimonios.push(patrimonio);
+      });
+      
+      // Coleta dados de Dívidas (agrupados)
+      dadosFormulario.dividas = [];
+      document.querySelectorAll('.divida-item').forEach(item => {
+          const divida = {};
+          item.querySelectorAll('input, select').forEach(input => {
+              const key = input.name.replace(/-\d+$/, '');
+              if (input.classList.contains('moeda')) {
+                  divida[key] = desformatarMoeda(input.value);
+              } else if (input.type === 'number') {
+                  divida[key] = parseFloat(input.value) || 0;
+              } else {
+                  divida[key] = input.value;
+              }
+          });
+          dadosFormulario.dividas.push(divida);
+      });
+      
+      // Coleta dados de Plano de Saúde (pessoas e dependentes)
+      dadosFormulario.planoSaudeDetalhes = {};
+      document.querySelectorAll('input[name^="planoSaude-"]').forEach(radio => {
+          if (radio.checked) {
+              const id = radio.name.split('-').pop(); // Pega o ID (cliente, pessoaRenda-X, dependente-X)
+              dadosFormulario.planoSaudeDetalhes[id] = radio.value;
+          }
+      });
+      
+      // Coleta dados de Seguro de Vida (pessoas)
+      dadosFormulario.seguroVidaDetalhes = {};
+      document.querySelectorAll('input[name^="seguroVida-"]').forEach(radio => {
+          if (radio.checked) {
+              const id = radio.name.split('-').pop();
+              dadosFormulario.seguroVidaDetalhes[id] = radio.value;
+          }
+      });
+      
+      // Coleta dados de Patrimônio Líquido (outras pessoas)
+      dadosFormulario.patrimonioLiquidoPessoas = {};
+      document.querySelectorAll('input[name^="patrimonioLiquido-"]').forEach(input => {
+          const id = input.name.split('-').pop();
+          if (id !== 'patrimonioLiquido') { // Ignora o campo principal já coletado
+             dadosFormulario.patrimonioLiquidoPessoas[id] = desformatarMoeda(input.value);
+          }
+      });
+      
+      // Coleta dados de IR (cliente e outras pessoas)
+      dadosFormulario.impostoRendaDetalhes = {};
+      // Cliente
+      const declaraIRCliente = document.querySelector('input[name="declaraIR"]:checked');
+      if (declaraIRCliente) {
+          dadosFormulario.impostoRendaDetalhes.cliente = { declara: declaraIRCliente.value };
+          if (declaraIRCliente.value === 'Sim') {
+              const tipoDeclara = document.querySelector('input[name="tipoDeclaracao"]:checked');
+              const resultadoIR = document.querySelector('input[name="resultadoIR"]:checked');
+              dadosFormulario.impostoRendaDetalhes.cliente.tipo = tipoDeclara ? tipoDeclara.value : null;
+              dadosFormulario.impostoRendaDetalhes.cliente.resultado = resultadoIR ? resultadoIR.value : null;
+          }
+      }
+      // Outras Pessoas
+      document.querySelectorAll('input[name^="declaraIR-"]').forEach(radio => {
+          if (radio.checked) {
+              const id = radio.name.split('-').pop();
+              dadosFormulario.impostoRendaDetalhes[id] = { declara: radio.value };
+              if (radio.value === 'Sim') {
+                  const tipoDeclaraPessoa = document.querySelector(`input[name="tipoDeclaracao-${id}"]:checked`);
+                  const resultadoIRPessoa = document.querySelector(`input[name="resultadoIR-${id}"]:checked`);
+                  dadosFormulario.impostoRendaDetalhes[id].tipo = tipoDeclaraPessoa ? tipoDeclaraPessoa.value : null;
+                  dadosFormulario.impostoRendaDetalhes[id].resultado = resultadoIRPessoa ? resultadoIRPessoa.value : null;
+              }
+          }
+      });
+      
+      // Coleta dados de Fluxo de Caixa (pessoas)
+      dadosFormulario.fluxoCaixaDetalhes = {};
+      document.querySelectorAll('.pessoa-fluxo-caixa').forEach(div => {
+          const id = div.querySelector('input[name^="rendaMensal-"]').name.split('-').pop();
+          dadosFormulario.fluxoCaixaDetalhes[id] = {
+              rendaMensal: desformatarMoeda(div.querySelector(`input[name="rendaMensal-${id}"]`).value),
+              despesasFixas: desformatarMoeda(div.querySelector(`input[name="despesasFixas-${id}"]`).value),
+              despesasVariaveis: desformatarMoeda(div.querySelector(`input[name="despesasVariaveis-${id}"]`).value)
+          };
+      });
+
+      console.log('Dados a serem enviados:', JSON.stringify(dadosFormulario, null, 2));
+
+      // TODO: Integrar com o Supabase
+      // 1. Obter o token da URL
+      // 2. Verificar se o token é válido e o formulário está 'pendente'
+      // 3. Atualizar o registro no Supabase:
+      //    - Salvar `dadosFormulario` no campo `dados_formulario` (JSONB)
+      //    - Mudar o `status` para 'preenchido'
+      //    - Registrar `data_preenchimento`
+      // 4. Tratar erros
+
+      // Simulação de envio bem-sucedido (REMOVER DEPOIS DA INTEGRAÇÃO)
+      await new Promise(resolve => setTimeout(resolve, 1500)); 
+      console.log('Simulação de envio concluída.');
+      successMessage.style.display = 'block';
+      form.style.display = 'none'; // Esconde o formulário após envio
+      document.querySelector('h1').textContent = 'Obrigado!'; // Muda o título
+
+      // Lógica real de envio (exemplo)
+      /*
+      try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        if (!token) {
+          throw new Error('Token não encontrado na URL.');
+        }
+
+        // Substitua 'supabaseUrl' e 'supabaseKey' pelas suas credenciais
+        const supabaseUrl = 'SEU_SUPABASE_URL';
+        const supabaseKey = 'SUA_SUPABASE_ANON_KEY';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        // Verifica o token e status
+        const { data: formRecord, error: fetchError } = await supabase
+          .from('formularios_clientes')
+          .select('id, status')
+          .eq('token_unico', token)
+          .single();
+
+        if (fetchError || !formRecord) {
+          throw new Error('Formulário inválido ou não encontrado.');
+        }
+
+        if (formRecord.status !== 'pendente') {
+          throw new Error('Este formulário já foi preenchido.');
+        }
+
+        // Atualiza o registro
+        const { error: updateError } = await supabase
+          .from('formularios_clientes')
+          .update({
+            dados_formulario: dadosFormulario,
+            status: 'preenchido',
+            data_preenchimento: new Date().toISOString()
+          })
+          .eq('id', formRecord.id);
+
+        if (updateError) {
+          console.error('Erro ao atualizar Supabase:', updateError);
+          throw new Error('Erro ao salvar os dados. Tente novamente.');
+        }
+
+        // Sucesso
+        successMessage.style.display = 'block';
+        form.style.display = 'none';
+        document.querySelector('h1').textContent = 'Obrigado!';
+
+      } catch (error) {
+        console.error('Erro no envio:', error);
+        alert(error.message || 'Ocorreu um erro inesperado.');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Enviar Formulário';
+      }
+      */
+    });
+
+  </script>
 </body>
 </html>
 
