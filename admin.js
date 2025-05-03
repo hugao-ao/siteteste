@@ -460,7 +460,7 @@ if (listTableBody) {
             if (userId && username !== undefined) {
                 viewUserDashboard(userId, username, userProject);
             }
-        }
+        
      });
 }
 
