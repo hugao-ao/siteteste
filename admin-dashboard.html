@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Painel de Administração</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome for icons -->
+  <style>
+    body {
+      display: flex; /* Use flexbox for layout */
+      margin: 0; /* Remove default body margin */
+      min-height: 100vh; /* Ensure body takes full viewport height */
+    }
+
+    /* --- Sidebar Styles --- */
+    #sidebar {
+      width: 250px; /* Default width */
+      background-color: var(--bg-dark);
+      padding: 1.5rem 0;
+      display: flex;
+      flex-direction: column;
+      transition: width 0.3s ease;
+      position: fixed; /* Keep sidebar fixed */
+      left: 0;
+      top: 0;
+      bottom: 0;
+      z-index: 1000; /* Ensure sidebar is on top */
+      border-right: 1px solid var(--border-color);
+    }
+
+    #sidebar.collapsed {
+      width: 60px; /* Collapsed width */
+    }
+
+    #sidebar-toggle {
+      background: none;
+      border: none;
+      color: var(--gold-lighter);
+      font-size: 1.5rem;
+      cursor: pointer;
+      padding: 0 1.2rem; /* Adjust padding for toggle */
+      margin-bottom: 1.5rem;
+      text-align: right; /* Align icon to the right when expanded */
+    }
+
+    #sidebar.collapsed #sidebar-toggle {
+      text-align: center; /* Center icon when collapsed */
+      padding: 0;
+    }
+
+    .sidebar-menu {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      flex-grow: 1; /* Allow menu to fill space */
+    }
+
+    .sidebar-menu li a, .sidebar-menu li button {
+      display: flex;
+      align-items: center;
+      padding: 0.8rem 1.2rem;
+      color: var(--text-muted);
+      text-decoration: none;
+      white-space: nowrap; /* Prevent text wrapping */
+      overflow: hidden; /* Hide text when collapsed */
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+     .sidebar-menu li button#sidebar-logout-btn {
+        margin-top: auto; /* Push logout to the bottom */
+    }
+
+    .sidebar-menu li a i, .sidebar-menu li button i {
+      margin-right: 0.8rem;
+      font-size: 1.1rem;
+      width: 24px; /* Fixed width for icon */
+      text-align: center;
+    }
+
+    #sidebar.collapsed .sidebar-menu li a span,
+    #sidebar.collapsed .sidebar-menu li button span {
+      display: none; /* Hide text when collapsed */
+    }
+     #sidebar.collapsed .sidebar-menu li a i,
+     #sidebar.collapsed .sidebar-menu li button i {
+        margin-right: 0;
+     }
+
+
+    .sidebar-menu li a:hover, .sidebar-menu li button:hover,
+    .sidebar-menu li a.active, .sidebar-menu li button.active {
+      background-color: var(--emerald-glow);
+      color: var(--text-light);
+    }
+
+    /* --- Main Content Styles --- */
+    #main-content {
+      flex-grow: 1; /* Allow main content to fill remaining space */
+      padding: 2rem;
+      margin-left: 250px; /* Initial margin to accommodate sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface); /* Match original main background */
+      color: var(--text-light); /* Match original text color */
+    }
+
+    #sidebar.collapsed + #main-content {
+      margin-left: 60px; /* Adjusted margin when sidebar is collapsed */
+    }
+
+    /* --- Tab Content (Now Sections) --- */
+    .content-section {
+      display: none; /* Hide all sections by default */
+    }
+    .content-section.active {
+      display: block; /* Show the active section */
+    }
+
+    /* --- Responsive adjustments (optional) --- */
+    @media (max-width: 768px) {
+        #sidebar {
+            width: 60px; /* Collapse sidebar by default on smaller screens */
+        }
+        #sidebar.collapsed {
+             width: 60px;
+        }
+        #main-content {
+            margin-left: 60px;
+        }
+         #sidebar.collapsed + #main-content {
+             margin-left: 60px;
+         }
+         /* Hide text even when not explicitly collapsed on small screens */
+         #sidebar .sidebar-menu li a span,
+         #sidebar .sidebar-menu li button span {
+            display: none;
+         }
+         #sidebar .sidebar-menu li a i,
+         #sidebar .sidebar-menu li button i {
+            margin-right: 0;
+         }
+         #sidebar-toggle {
+             text-align: center;
+             padding: 0;
+         }
+    }
+
+    /* Keep original table styles etc. */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 2rem;
+    }
+    th, td {
+      border: 1px solid var(--border-color);
+      padding: 0.8rem;
+      text-align: left;
+    }
+    th {
+      background-color: var(--emerald-dark);
+      color: var(--gold-lighter);
+    }
+    td input, td select {
+        width: calc(100% - 10px); /* Adjust input width */
+        padding: 5px;
+    }
+    td button {
+        margin-right: 5px;
+    }
+    .toggle-password {
+        cursor: pointer;
+        margin-left: 5px;
+    }
+    form {
+        margin-bottom: 2rem;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    form input, form select, form button {
+        padding: 0.6rem;
+    }
+    .view-user-dashboard-btn {
+        margin-left: 0.5rem;
+        background: var(--emerald-dark);
+        color: var(--gold-lighter);
+        border: 1px solid var(--gold);
+        font-size: 0.8rem;
+        padding: 0.3rem 0.6rem;
+        cursor: pointer;
+    }
+    .view-user-dashboard-btn:hover {
+        box-shadow: 0 0 5px var(--shadow-color);
+    }
+
+    /* --- Project Button Styles --- */
+    .project-buttons-container {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 2rem;
+        flex-wrap: wrap; /* Allow buttons to wrap on smaller screens */
+    }
+
+    .project-btn {
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 5px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden; /* Needed for pseudo-element shine */
+        text-decoration: none; /* If using <a> tags */
+        display: inline-block; /* Proper sizing */
+        text-align: center;
+    }
+
+    /* Shine effect using pseudo-element */
+    .project-btn::before {
+        content: ";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(
+            120deg,
+            rgba(255, 255, 255, 0) 0%,
+            rgba(255, 255, 255, 0.4) 50%,
+            rgba(255, 255, 255, 0) 100%
+        );
+        transform: skewX(-25deg);
+        transition: left 0.6s ease;
+    }
+
+    .project-btn:hover::before {
+        left: 120%;
+    }
+
+    .project-btn:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .project-btn:active {
+        transform: translateY(-1px);
+        box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2);
+    }
+
+    /* ARGOS Button */
+    .project-btn-argos {
+        background: linear-gradient(145deg, #1e90ff, #4682b4); /* Bright blue gradient */
+        color: white;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    /* HVC Button */
+    .project-btn-hvc {
+        background: linear-gradient(145deg, #000080, #191970); /* Dark sapphire blue gradient */
+        color: #e0e0e0; /* Shiny silver-ish */
+        text-shadow: 0 0 5px #ffffff, 0 0 10px #c0c0c0; /* Silver shine text effect */
+    }
+
+    /* PLANEJAMENTO Button */
+    .project-btn-planejamento {
+        background: linear-gradient(145deg, #006400, #2e8b57); /* Dark emerald green gradient */
+        color: #fffacd; /* Shiny gold-ish (LemonChiffon) */
+        text-shadow: 0 0 5px #ffd700, 0 0 8px #daa520; /* Gold shine text effect */
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <button id="sidebar-toggle"><i class="fas fa-bars"></i></button> <!-- Toggle Button -->
+    <ul class="sidebar-menu">
+      <li><a href="admin-dashboard.html" id="nav-painel-admin" class="active"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin</span></a></li>
+      <li><a href="#" id="nav-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
+      <li><a href="#" id="nav-listar-usuarios"><i class="fas fa-users"></i> <span>Lista de Usuários</span></a></li>
+      <li><a href="#" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+      <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
+    </ul>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main id="main-content">
+    <!-- Content sections will be shown/hidden by JS -->
+    <div id="content-painel" class="content-section active">
+        <h1>Painel Administrativo</h1>
+        <p>Bem-vindo ao painel de administração. Use o menu lateral para navegar.</p>
+        
+        <!-- Project Buttons (agora links) -->
+        <div class="project-buttons-container">
+            <a href="admin-projeto-dashboard.html?projeto=Argos" class="project-btn project-btn-argos">ARGOS</a>
+            <a href="admin-projeto-dashboard.html?projeto=Hvc" class="project-btn project-btn-hvc">HVC</a>
+            <a href="admin-projeto-dashboard.html?projeto=Planejamento" class="project-btn project-btn-planejamento">PLANEJAMENTO</a>
+        </div>
+        
+        <!-- Maybe add some summary info here later -->
+    </div>
+
+    <div id="content-gerenciar-usuarios" class="content-section">
+      <section>
+        <h2>Usuários Cadastrados (Gerenciamento)</h2>
+        <table id="manage-users-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Senha</th>
+              <th>E-mail</th>
+              <th>Nível</th>
+              <th>Projeto</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- preenchido dinamicamente por admin.js -->
+          </tbody>
+        </table>
+      </section>
+      <section>
+        <h2>Cadastrar Novo Usuário</h2>
+        <form id="create-user-form">
+            <input type="text"     id="new-user"  placeholder="Novo usuário" required />
+            <input type="password" id="new-pass"  placeholder="Senha" required />
+            <input type="email"    id="new-email" placeholder="E-mail" required />
+            <select id="new-level">
+                <option value="usuario">usuario</option>
+                <option value="admin">admin</option>
+            </select>
+            <select id="new-project">
+                <option value="" disabled selected>Selecione o Projeto</option>
+                <option value="Hvc">Hvc</option>
+                <option value="Argos">Argos</option>
+                <option value="Planejamento">Planejamento</option>
+            </select>
+            <button type="submit" id="create-user-btn">Criar Usuário</button>
+        </form>
+      </section>
+    </div>
+
+    <div id="content-listar-usuarios" class="content-section">
+      <section>
+        <h2>Lista de Usuários (Acesso ao Dashboard)</h2>
+        <table id="list-users-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>E-mail</th>
+              <th>Nível</th>
+              <th>Projeto</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- preenchido dinamicamente por admin.js -->
+          </tbody>
+        </table>
+      </section>
+    </div>
+
+    <!-- Gerenciar Clientes will navigate to clientes-dashboard.html, so no content section needed here -->
+
+  </main>
+
+  <script type="module" src="permissions.js"></script>
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="admin.js"></script>
+</body>
+</html>

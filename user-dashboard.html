@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Painel do Usuário</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome -->
+  <style>
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+    #main-content-user {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+    }
+    #main-content-user.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
+
+    /* REMOVIDO: Botão Voltar Universal e Logout antigos */
+    /* #history-back-btn { ... } */
+    /* #logout-btn { ... } */
+
+    /* Estilo para indicar que o admin está visualizando (mantido) */
+    .admin-view-indicator {
+        background-color: rgba(218, 165, 32, 0.1); /* Fundo dourado transparente */
+        color: var(--gold-lighter);
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        margin-bottom: 1.5rem;
+        border: 1px solid var(--gold);
+        text-align: center;
+        font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js se for admin -->
+  <main id="main-content-user">
+    <!-- Botão Voltar Universal (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="history-back-btn">Voltar</button> -->
+    <!-- Botão de logout padrão (REMOVIDO - agora na sidebar) -->
+    <!-- <button id="logout-btn">Logout</button> -->
+
+    <!-- Indicador de visualização pelo Admin -->
+    <div id="admin-view-indicator" class="admin-view-indicator" style="display: none;">
+      Você está visualizando o painel como administrador.
+    </div>
+
+    <h1>Bem-vindo, <span id="username-display"></span>!</h1>
+
+    <section>
+      <h2>Seu Dashboard</h2>
+      <p>Aqui você pode ver suas informações e ações disponíveis.</p>
+      <p><strong>Projeto:</strong> <span id="user-project-display">Carregando...</span></p> <!-- Campo para exibir projeto -->
+      <!-- … coloque aqui as funcionalidades específicas de usuário … -->
+    </section>
+  </main>
+
+  <!-- Scripts -->
+  <script type="module" src="supabase.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    injectSidebar("main-content-user"); // Passa o ID do container principal
+  </script>
+  <script type="module" src="user.js"></script>
+</body>
+</html>
