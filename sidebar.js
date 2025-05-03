@@ -190,11 +190,19 @@ async function injectSidebar(mainContentElementId) { // Tornou-se async
 
     if (sidebarElement) {
         initializeSidebar(sidebarElement, mainContentElement);
-        // *** NOVO: Aplica classe de tema ao main content também ***
+        // *** MODIFICADO: Aplica classe de tema ao BODY e ao main content ***
         const themeClass = sidebarElement.className; // Pega a classe de tema da sidebar
-        if (mainContentElement && themeClass.startsWith('theme-')) {
-            // Remove temas antigos e aplica o novo
-            mainContentElement.classList.remove('theme-admin', 'theme-argos', 'theme-hvc', 'theme-planejamento', 'theme-default');
+        
+        // Aplica ao Body
+        document.body.classList.remove("theme-admin", "theme-argos", "theme-hvc", "theme-planejamento", "theme-default");
+        if (themeClass.startsWith("theme-")) {
+            document.body.classList.add(themeClass);
+            console.log(`Aplicando tema ${themeClass} ao body.`);
+        }
+
+        // Aplica ao Main Content (se existir)
+        if (mainContentElement && themeClass.startsWith("theme-")) {
+            mainContentElement.classList.remove("theme-admin", "theme-argos", "theme-hvc", "theme-planejamento", "theme-default");
             mainContentElement.classList.add(themeClass);
             console.log(`Aplicando tema ${themeClass} ao main content.`);
         }
