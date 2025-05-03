@@ -140,7 +140,7 @@ async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
     
     if (users.length === 0 && filterProject) {
         manageTableBody.innerHTML = `<tr><td colspan='6'>Nenhum usuário encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
-        listTableBody.innerHTML = `<tr><td colspan='5'>Nenhum usuário encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
+
         return; // Sai da função se não houver usuários para o projeto
     }
     
@@ -480,35 +480,21 @@ if (checkAccess()) {
       sidebar.classList.add("collapsed");
   }
 
-  // *** MODIFICAÇÃO: Decide qual seção mostrar ***
+  // *** MODIFICAÇÃO: Decide qual seção mostrar baseado no HASH ***
   let initialSection = 'content-painel'; // Padrão é o painel admin
-  if (filterProjectFromUrl) {
-      // Se veio de um dashboard de projeto (admin-projeto-dashboard.html), mostra a lista de usuários por padrão
-      // O link no dashboard do projeto já aponta para #listar-usuarios
-      if (currentHash === 'listar-usuarios') {
-          initialSection = 'content-listar-usuarios';
-      } else if (currentHash === 'gerenciar-usuarios') {
-          // Se o hash for gerenciar, ainda mostra a lista no contexto do projeto
-          initialSection = 'content-listar-usuarios'; 
-      } else {
-          // Se não houver hash válido, mostra a lista por padrão no contexto do projeto
-          initialSection = 'content-listar-usuarios';
+  if (currentHash === 'gerenciar-usuarios') {
+      initialSection = 'content-gerenciar-usuarios';
+      console.log(`Carregando seção: ${initialSection}`);
+      // Adiciona título indicando o projeto, se houver filtro
+      if (filterProjectFromUrl) {
+          const sectionTitle = document.querySelector(`#${initialSection} h2`);
+          if(sectionTitle) {
+              // Evita adicionar o nome do projeto múltiplas vezes
+              if (!sectionTitle.textContent.includes(`(${filterProjectFromUrl})`)) {
+                 sectionTitle.textContent += ` (${filterProjectFromUrl})`;
+              }
+          }
       }
-      console.log(`Carregando admin.js no contexto do projeto: ${filterProjectFromUrl}, seção: ${initialSection}`);
-      // Poderíamos adicionar um título indicando o projeto aqui
-      const sectionTitle = document.querySelector(`#${initialSection} h2`);
-      if(sectionTitle) {
-          sectionTitle.textContent += ` (${filterProjectFromUrl})`;
-      }
-
-  } else if (currentHash) {
-      // Se não tem filtro de projeto, mas tem hash, mostra a seção correspondente
-      if (currentHash === 'gerenciar-usuarios') {
-          initialSection = 'content-gerenciar-usuarios';
-      } else if (currentHash === 'listar-usuarios') {
-          initialSection = 'content-listar-usuarios';
-      }
-      // Se for outro hash ou inválido, mantém 'content-painel'
   }
 
   // Mostra a seção inicial determinada
