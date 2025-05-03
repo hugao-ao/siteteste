@@ -14,11 +14,11 @@ const clientsTableBody = document.querySelector("#clients-table tbody");
 // const backToAdminBtn = document.getElementById("back-to-admin-btn"); // Removido
 
 // --- Variáveis de Estado e Informações do Usuário ---
-let currentUser = null;
-let currentUserId = null;
-let currentUserNivel = null;
-let currentUserProjeto = null;
-let isAdmin = false; // Flag para saber se o *contexto atual* é de admin
+let currentUser = null; // Nome do usuário no contexto atual (pode ser o visualizado)
+let currentUserId = null; // ID do usuário no contexto atual (pode ser o visualizado)
+let currentUserNivel = null; // Nível no contexto atual (pode ser 'usuario' se admin visualizando)
+let currentUserProjeto = null; // Projeto no contexto atual (pode ser do usuário visualizado)
+let isAdmin = false; // Flag para saber se o *contexto atual de carregamento* é de admin
 let isActuallyAdmin = false; // Flag para saber se o usuário *logado* é admin
 let allUsers = []; // Para armazenar lista de usuários para o select
 
@@ -35,13 +35,17 @@ const sanitizeInput = (str) => {
     .replace(/`/g, "&#x60;");
 };
 
-// --- Verificação de Acesso e Inicialização (CORRIGIDA PARA FILTRO EM VIEW AS USER) ---
+// --- Verificação de Acesso e Inicialização (CORRIGIDA PARA FILTRO EM VIEW AS USER E FILTRO DE PROJETO ADMIN) ---
 async function initializeDashboard() {
     // Verifica o nível REAL do usuário logado
     const loggedInUserId = sessionStorage.getItem("user_id");
     const loggedInUserNivel = sessionStorage.getItem("nivel");
     const loggedInUserProjeto = sessionStorage.getItem("projeto");
     isActuallyAdmin = loggedInUserNivel === 'admin';
+
+    // *** NOVO: Verifica se a página foi carregada com filtro de projeto pela URL ***
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterProjectFromUrl = urlParams.get('projeto');
 
     // Verifica se um admin está visualizando o painel de outro usuário
     const viewingUserIdFromSession = sessionStorage.getItem("viewing_user_id");
@@ -54,11 +58,34 @@ async function initializeDashboard() {
     let loadAsAdminContext = isActuallyAdmin; // Por padrão, carrega como admin se logado como admin
     let isAdminViewingAsUser = false;
 
-    // Detecta se admin está visualizando como usuário
-    if (isActuallyAdmin && viewingUserIdFromSession && viewingUsernameFromSession) {
+    // *** Lógica de Contexto ***
+    if (isActuallyAdmin && filterProjectFromUrl) {
+        // CASO 1: Admin acessando via dashboard de projeto específico
+        console.log(`Admin acessando contexto do projeto: ${filterProjectFromUrl}`);
+        isAdmin = true; // O contexto é de admin
+        currentUserId = loggedInUserId; // ID é o do admin logado
+        currentUserNivel = 'admin';
+        currentUserProjeto = filterProjectFromUrl; // O PROJETO relevante é o da URL
+        // Não estamos visualizando como outro usuário neste caso
+        if (adminViewIndicator) adminViewIndicator.style.display = 'block'; // Mostra indicador admin
+        addClientForm.style.display = 'grid'; // Mostra form de adicionar
+        const addClientTitle = addClientForm.previousElementSibling;
+        if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'block';
+        // Ajusta o form para o projeto específico
+        if (newClientProjectSelect) {
+            newClientProjectSelect.value = filterProjectFromUrl;
+            newClientProjectSelect.disabled = true; // Desabilita a seleção, já está definido
+        }
+        // Atualiza título da página
+        document.title = `Gerenciar Clientes - ${filterProjectFromUrl}`;
+        const pageTitleElement = document.querySelector('h1'); // Assume que o H1 principal é o título
+        if(pageTitleElement) pageTitleElement.textContent = `Gerenciamento de Clientes (${filterProjectFromUrl})`;
+
+    } else if (isActuallyAdmin && viewingUserIdFromSession && viewingUsernameFromSession) {
+        // CASO 2: Admin visualizando como usuário (lógica anterior mantida e refinada)
         console.log("Admin está visualizando como usuário.");
         isAdminViewingAsUser = true;
-        loadAsAdminContext = false; // O contexto de carregamento NÃO é de admin
+        isAdmin = false; // O contexto de carregamento NÃO é de admin para filtros
         effectiveUserId = viewingUserIdFromSession; // ID para filtro é o do usuário visualizado
         effectiveNivel = 'usuario'; // Nível para filtro é 'usuario'
         currentUser = viewingUsernameFromSession; // Nome de usuário para exibição (se necessário)
@@ -79,9 +106,19 @@ async function initializeDashboard() {
             effectiveProjeto = null; // Define como null em caso de erro, filtro tratará isso
             alert("Erro ao carregar informações do usuário visualizado. A lista de clientes pode estar incorreta.");
         }
+        // Atualiza variáveis globais para o contexto de visualização
+        currentUserId = effectiveUserId;
+        currentUserNivel = effectiveNivel;
+        currentUserProjeto = effectiveProjeto;
+        // Configura UI para visualização
+        if (adminViewIndicator) adminViewIndicator.style.display = 'none';
+        addClientForm.style.display = 'none';
+        const addClientTitle = addClientForm.previousElementSibling;
+        if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'none';
+
     } else {
-        console.log("Carregando contexto normal (usuário logado ou admin em sua própria visão).");
-        // Usuário normal ou Admin acessando sua própria gestão
+        // CASO 3: Usuário normal ou Admin acessando sua própria gestão geral (sem filtro de projeto URL)
+        console.log("Carregando contexto normal (usuário logado ou admin em sua própria visão geral).");
         if (!loggedInUserId || !loggedInUserNivel) {
             alert("Acesso não autorizado. Faça login novamente.");
             window.location.href = "index.html";
@@ -89,44 +126,40 @@ async function initializeDashboard() {
         }
         // Define o nome do usuário logado para exibição (se necessário)
         currentUser = sessionStorage.getItem("usuario");
+        // Atualiza variáveis globais para o contexto normal
+        isAdmin = isActuallyAdmin; // Contexto é admin se logado como admin
+        currentUserId = loggedInUserId;
+        currentUserNivel = loggedInUserNivel;
+        currentUserProjeto = loggedInUserProjeto;
+        // Configura UI
+        if (isAdmin) {
+            if (adminViewIndicator) adminViewIndicator.style.display = 'block';
+            addClientForm.style.display = 'grid';
+            const addClientTitle = addClientForm.previousElementSibling;
+            if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'block';
+            if (newClientProjectSelect) newClientProjectSelect.disabled = false; // Garante que está habilitado
+        } else {
+            if (adminViewIndicator) adminViewIndicator.style.display = 'none';
+            addClientForm.style.display = 'none';
+            const addClientTitle = addClientForm.previousElementSibling;
+            if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'none';
+        }
     }
 
-    // Atualiza variáveis globais DEPOIS de determinar o contexto efetivo
-    isAdmin = loadAsAdminContext; // Define se o CONTEXTO de carregamento é admin
-    currentUserId = effectiveUserId; // ID efetivo para filtros e ações
-    currentUserNivel = effectiveNivel; // Nível efetivo
-    currentUserProjeto = effectiveProjeto; // Projeto efetivo
+    // Carrega todos os usuários (necessário para selects de atribuição e nomes)
+    await loadAllUsers();
 
-    console.log(`Contexto final para loadClients: isAdmin=${isAdmin}, currentUserId=${currentUserId}, currentUserProjeto=${currentUserProjeto}`);
-
-    // Configurações da UI baseadas no contexto
-    if (isAdmin) {
-        // Contexto de Admin: mostra form, carrega usuários para select
-        console.log("Configurando UI para contexto Admin.");
-        if (adminViewIndicator) adminViewIndicator.style.display = 'block';
-        addClientForm.style.display = 'grid';
-        const addClientTitle = addClientForm.previousElementSibling;
-        if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'block';
-        addClientForm.addEventListener("submit", addClient);
-        await loadAllUsers(); // Admin precisa da lista para atribuição
-    } else {
-        // Contexto de Usuário (seja usuário logado ou admin visualizando)
-        console.log("Configurando UI para contexto Usuário (ou Admin visualizando).");
-        if (adminViewIndicator) adminViewIndicator.style.display = 'none';
-        // Esconde form de adicionar cliente
-        addClientForm.style.display = 'none';
-        const addClientTitle = addClientForm.previousElementSibling;
-        if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'none';
-        // Precisa da lista de usuários para exibir nomes na coluna Status, mesmo no modo de visualização
-        await loadAllUsers();
-    }
-
-    // Event listener da tabela (comum a ambos os contextos)
+    // Event listener da tabela (comum a todos os contextos)
     clientsTableBody.addEventListener("click", handleTableClick);
+    // Event listener do form (só será acionado se o form estiver visível)
+    addClientForm.addEventListener("submit", addClient);
 
     // Carrega clientes usando as variáveis de contexto globais atualizadas
-    loadClients();
+    // Passa o filtro de projeto da URL explicitamente para loadClients, se existir
+    console.log(`Chamando loadClients com filtro: ${filterProjectFromUrl || 'Nenhum'}`);
+    loadClients(filterProjectFromUrl);
 }
+
 
 // Função para carregar todos os usuários (para o select do admin)
 async function loadAllUsers() {
@@ -144,23 +177,33 @@ async function loadAllUsers() {
     }
 }
 
-// --- Carregar Clientes (Modificado para Visibilidade e Indicador de Formulário) ---
-async function loadClients() {
+// --- Carregar Clientes (MODIFICADO para aceitar filtro de projeto admin) ---
+async function loadClients(filterProject = null) { // Adiciona parâmetro opcional
     try {
         clientsTableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>'; // Colspan 6 agora
         // Modifica a query para incluir a contagem de formulários associados
         let query = supabase.from('clientes').select('*, formularios_clientes(count)');
 
-        // Lógica de filtro para não-admin
-        if (!isAdmin) {
+        // Lógica de filtro
+        if (filterProject && isAdmin) {
+            // CASO 1: Admin acessando via dashboard de projeto específico
+            console.log(`Admin filtrando clientes pelo projeto: ${filterProject}`);
+            query = query.eq('projeto', filterProject);
+        } else if (!isAdmin) {
+            // CASO 2: Usuário normal ou Admin visualizando como usuário
             if (!currentUserProjeto) {
-                // Se o usuário não tiver projeto, só pode ver os clientes atribuídos a ele
-                console.warn("Usuário sem projeto definido, mostrando apenas clientes atribuídos diretamente.");
+                // Se o usuário (ou usuário visualizado) não tiver projeto, só pode ver os clientes atribuídos a ele
+                console.warn("Usuário (ou visualizado) sem projeto definido, mostrando apenas clientes atribuídos diretamente.");
                 query = query.eq("assigned_to_user_id", currentUserId);
             } else {
                 // Busca clientes atribuídos ao usuário OU (com visibilidade TODOS E do mesmo projeto do usuário)
+                console.log(`Filtrando clientes para usuário ${currentUserId} no projeto ${currentUserProjeto}`);
                 query = query.or(`assigned_to_user_id.eq.${currentUserId},and(visibility.eq.TODOS,projeto.eq.${currentUserProjeto})`);
             }
+        } else {
+            // CASO 3: Admin acessando visão geral (sem filtro de projeto URL)
+             console.log("Carregando todos os clientes (contexto Admin geral).");
+             // Nenhuma filtragem adicional necessária aqui, busca todos
         }
 
         // Ordena por nome para consistência
@@ -182,6 +225,12 @@ async function loadClients() {
             }
             throw error;
         }
+        
+        // Mensagem se nenhum cliente for encontrado no filtro de projeto
+        if (clients.length === 0 && filterProject && isAdmin) {
+             clientsTableBody.innerHTML = `<tr><td colspan="6">Nenhum cliente encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
+             return;
+        }
 
         // Passa os dados com a contagem de formulários para renderização
         renderClients(clients);
@@ -192,12 +241,12 @@ async function loadClients() {
     }
 }
 
-// --- Renderizar Tabela de Clientes (Modificado para Visibilidade/Atribuição) ---
+// --- Renderizar Tabela de Clientes (Modificado para Visibilidade/Atribuição e Indicador) ---
 function renderClients(clients) {
     clientsTableBody.innerHTML = "";
 
     if (!clients || clients.length === 0) {
-        clientsTableBody.innerHTML = '<tr><td colspan="4">Nenhum cliente encontrado.</td></tr>';
+        clientsTableBody.innerHTML = '<tr><td colspan="6">Nenhum cliente encontrado para este contexto.</td></tr>'; // Colspan 6
         return;
     }
 
@@ -205,12 +254,12 @@ function renderClients(clients) {
         const tr = document.createElement("tr");
         tr.dataset.clientId = client.id;
 
-        // Lógica de permissão de edição/exclusão
-        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || (client.visibility === 'TODOS' && client.projeto === currentUserProjeto); // Ajuste: TODOS só editável se for do mesmo projeto
+        // Lógica de permissão de edição/exclusão (Admin sempre pode, usuário só os seus ou TODOS do seu projeto)
+        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || (client.visibility === 'TODOS' && client.projeto === currentUserProjeto);
 
-        // Lógica de exibição de Projeto (com edição para admin)
+        // Lógica de exibição de Projeto (com edição para admin no contexto admin)
         let projectHtml = '';
-        if (isAdmin) {
+        if (isAdmin) { // Só mostra select se o CONTEXTO for admin
             projectHtml = `
                 <select id="project-${client.id}">
                     <option value="Argos" ${client.projeto === 'Argos' ? 'selected' : ''}>Argos</option>
@@ -233,14 +282,14 @@ function renderClients(clients) {
             assignmentHtml = '<span style="color:gray">Não atribuído</span>';
         }
 
-        // Select de atribuição para Admin
+        // Select de atribuição para Admin (só no contexto admin)
         let adminAssignmentSelectHtml = '';
-        if (isAdmin) {
+        if (isAdmin) { // Só mostra select se o CONTEXTO for admin
             adminAssignmentSelectHtml = `
                 <select id="assignment-${client.id}">
                     <option value="TODOS" ${client.visibility === 'TODOS' ? 'selected' : ''}>TODOS</option>
                     <option value="ASSIGNED" ${client.visibility !== 'TODOS' ? 'selected' : ''}>Atribuir a:</option>
-                    ${allUsers.map(user => 
+                    ${allUsers.map(user =>
                         `<option value="${user.id}" ${client.visibility !== 'TODOS' && client.assigned_to_user_id === user.id ? 'selected' : ''}>
                             &nbsp;&nbsp;${sanitizeInput(user.usuario)}
                         </option>`
@@ -261,17 +310,17 @@ function renderClients(clients) {
                 <input type="text" id="whatsapp-${client.id}" value="${sanitizeInput(client.whatsapp)}" ${!canEditDelete ? 'disabled' : ''} />
             </td>
             <td data-label="Projeto">
-                ${projectHtml} <!-- Coluna do Projeto adicionada -->
+                ${projectHtml} <!-- Coluna do Projeto -->
             </td>
             <td data-label="Status">
-                ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml}
+                ${isAdmin ? adminAssignmentSelectHtml : assignmentHtml} <!-- Mostra select ou texto -->
             </td>
             <td data-label="Formulários" style="text-align: center;"> <!-- Centraliza conteúdo -->
                 ${hasForm ? '<span title="Formulário existente">📄</span> ' : ''} <!-- Indicador de formulário -->
                 <button class="view-details-btn" data-id="${client.id}" data-name="${sanitizeInput(client.nome)}" title="Ver Detalhes">👁️</button>
             </td>
             <td data-label="Ações">
-                ${canEditDelete 
+                ${canEditDelete
                     ? `<button class="save-client-btn" data-id="${client.id}">Salvar</button>
                        <button class="delete-client-btn" data-id="${client.id}">Excluir</button>`
                     : '<span style="color: var(--text-muted); font-size: 0.9rem;">(Apenas leitura)</span>'
@@ -282,7 +331,7 @@ function renderClients(clients) {
     });
 }
 
-// --- Adicionar Cliente (Modificado para Status Padrão) ---
+// --- Adicionar Cliente (Só é chamado se o form estiver visível - contexto admin) ---
 async function addClient(event) {
     event.preventDefault();
     const nome = newClientNameInput.value.trim();
@@ -300,9 +349,9 @@ async function addClient(event) {
             nome: nome,
             whatsapp: whatsapp,
             projeto: projeto, // Adiciona o projeto selecionado
-            criado_por_id: currentUserId,
+            criado_por_id: currentUserId, // ID do admin que está criando
             visibility: 'ASSIGNED', // Visibilidade padrão é atribuído
-            assigned_to_user_id: currentUserId // Atribuído ao criador por padrão
+            assigned_to_user_id: currentUserId // Atribuído ao criador (admin) por padrão
         };
 
         const { data, error } = await supabase
@@ -349,22 +398,25 @@ function handleTableClick(event) {
             // Armazena ID e nome para a página de detalhes
             sessionStorage.setItem("viewing_client_id", clientId);
             sessionStorage.setItem("viewing_client_name", clientName);
-            // Navega para a página de detalhes
+            // Mantém o viewing_user_id se admin estiver visualizando
+            // Não precisa limpar aqui, a página de detalhes fará sua própria verificação
             window.location.href = "cliente-detalhes.html";
         }
     }
 } // End of handleTableClick
-// --- Salvar Alterações do Cliente (Modificado para Visibilidade/Atribuição) ---
+
+// --- Salvar Alterações do Cliente (Só é chamado se botões estiverem visíveis) ---
 async function saveClient(clientId) {
+    // A lógica de permissão (canEditDelete) já preveniu que este botão aparecesse se não deveria
     try {
         const nomeInput = document.getElementById(`name-${clientId}`);
         const whatsappInput = document.getElementById(`whatsapp-${clientId}`);
-        const projectSelect = document.getElementById(`project-${clientId}`); // Novo: Select do projeto (só existe para admin)
-        const assignmentSelect = document.getElementById(`assignment-${clientId}`); // Select de atribuição (só existe para admin)
+        const projectSelect = document.getElementById(`project-${clientId}`); // Select do projeto (só existe no contexto admin)
+        const assignmentSelect = document.getElementById(`assignment-${clientId}`); // Select de atribuição (só existe no contexto admin)
 
         const nome = nomeInput.value.trim();
         const whatsapp = whatsappInput.value.trim();
-        
+
         if (!nome || !whatsapp) {
             alert("Nome e WhatsApp não podem ficar vazios.");
             return;
@@ -372,12 +424,12 @@ async function saveClient(clientId) {
 
         const updateData = { nome, whatsapp };
 
-        // Lógica de atualização de PROJETO pelo Admin
+        // Lógica de atualização de PROJETO (só se select existir - contexto admin)
         if (isAdmin && projectSelect) {
             updateData.projeto = projectSelect.value; // Salva o projeto selecionado
         }
 
-        // Lógica de atualização de visibilidade/atribuição pelo Admin
+        // Lógica de atualização de visibilidade/atribuição (só se select existir - contexto admin)
         if (isAdmin && assignmentSelect) {
             const selectedValue = assignmentSelect.value;
             if (selectedValue === 'TODOS') {
@@ -386,7 +438,7 @@ async function saveClient(clientId) {
             } else if (selectedValue === 'ASSIGNED') {
                 // Se "Atribuir a:" for selecionado, não muda a atribuição atual, apenas garante visibility = ASSIGNED
                 // A atribuição real acontece se um usuário específico for selecionado
-                updateData.visibility = 'ASSIGNED'; 
+                updateData.visibility = 'ASSIGNED';
             } else {
                 // Um usuário específico foi selecionado
                 updateData.visibility = 'ASSIGNED';
@@ -416,8 +468,9 @@ async function saveClient(clientId) {
     }
 }
 
-// --- Excluir Cliente ---
+// --- Excluir Cliente (Só é chamado se botões estiverem visíveis) ---
 async function deleteClient(clientId) {
+    // A lógica de permissão (canEditDelete) já preveniu que este botão aparecesse se não deveria
     if (!confirm("Tem certeza que deseja excluir este cliente?")) return;
 
     try {
@@ -433,6 +486,7 @@ async function deleteClient(clientId) {
         if (rowToRemove) {
             rowToRemove.remove();
         }
+        // Não precisa recarregar a lista inteira, apenas remove a linha
 
     } catch (error) {
         console.error("Erro ao excluir cliente:", error);
@@ -440,11 +494,12 @@ async function deleteClient(clientId) {
     }
 }
 
-// --- Logout ---
-function logout() {
-  sessionStorage.clear();
-  window.location.href = "index.html";
-}
+// --- Logout (Removido daqui, pois está na sidebar) ---
+// function logout() {
+//   sessionStorage.clear();
+//   window.location.href = "index.html";
+// }
 
 // --- Inicialização ---
 initializeDashboard();
+
