@@ -1,24 +1,21 @@
-// sidebar.js
-import { supabase } from "./supabase.js"; // Importa supabase
-
-// Função para criar o HTML da Sidebar do Admin
-function createAdminSidebarHTML() {
-    // Adiciona classe de tema específica para admin (pode ser ajustada se necessário)
+// Função para injetar o HTML da Sidebar do Admin (MODIFICADA para aceitar tema de projeto)
+function createAdminSidebarHTML(projectTheme = null) {
+    // Aplica tema do projeto se fornecido, senão usa theme-admin
+    const themeClass = projectTheme ? `theme-${projectTheme.toLowerCase()}` : 'theme-admin';
+    console.log(`Criando sidebar admin com tema: ${themeClass}`);
     return `
-    <nav id="sidebar" class="theme-admin">
+    <nav id="sidebar" class="${themeClass}">
       <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
       <ul class="sidebar-menu">
         <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin</span></a></li>
-        <li><a href="admin-dashboard.html#gerenciar-usuarios" id="nav-gerenciar-usuarios" data-target-section="content-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
-        <li><a href="admin-dashboard.html#listar-usuarios" id="nav-listar-usuarios" data-target-section="content-listar-usuarios"><i class="fas fa-users"></i> <span>Lista de Usuários</span></a></li>
-        <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+        <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li> <!-- Link para visão geral de clientes -->
         <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
       </ul>
     </nav>
     `;
 }
 
-// Função para criar o HTML da Sidebar do Usuário
+// Função para criar o HTML da Sidebar do Usuário (mantida)
 function createUserSidebarHTML(userProject) {
     // Determina a página inicial baseada no projeto
     const homePage = userProject === 'Planejamento' ? 'planejamento-dashboard.html' : 'user-dashboard.html';
@@ -37,7 +34,7 @@ function createUserSidebarHTML(userProject) {
     `;
 }
 
-// *** NOVA FUNÇÃO: Criar Sidebar para Admin Visualizando como Usuário ***
+// Função para Criar Sidebar para Admin Visualizando como Usuário (mantida)
 function createAdminViewingUserSidebarHTML(viewedUserProject) {
     // Define a classe de tema baseada no projeto do usuário visualizado
     const themeClass = `theme-${viewedUserProject ? viewedUserProject.toLowerCase() : 'default'}`;
@@ -54,7 +51,7 @@ function createAdminViewingUserSidebarHTML(viewedUserProject) {
     `;
 }
 
-// Função para injetar o CSS da Sidebar
+// Função para injetar o CSS da Sidebar (mantida)
 function injectSidebarCSS() {
     const cssLink = document.createElement('link');
     cssLink.rel = 'stylesheet';
@@ -73,11 +70,10 @@ function injectSidebarCSS() {
     }
 }
 
-// Função para inicializar a lógica da Sidebar (comum para admin e usuário)
+// Função para inicializar a lógica da Sidebar (mantida)
 function initializeSidebar(sidebarElement, mainContentElement) {
     const sidebarToggle = sidebarElement.querySelector("#sidebar-toggle");
     const sidebarLogoutBtn = sidebarElement.querySelector("#sidebar-logout-btn");
-    // const sidebarBackBtn = sidebarElement.querySelector("#sidebar-back-btn"); // REMOVIDO
 
     // Função Toggle
     function toggleSidebar() {
@@ -100,9 +96,6 @@ function initializeSidebar(sidebarElement, mainContentElement) {
     if (sidebarToggle) {
         sidebarToggle.addEventListener('click', toggleSidebar);
     }
-    // if (sidebarBackBtn) { // REMOVIDO
-    //     sidebarBackBtn.addEventListener('click', () => history.back());
-    // }
     if (sidebarLogoutBtn) {
         sidebarLogoutBtn.addEventListener('click', logout);
     }
@@ -129,33 +122,19 @@ function initializeSidebar(sidebarElement, mainContentElement) {
         }
     });
 
-    // Lógica específica para admin-dashboard (seções internas)
-    if (currentPage === 'admin-dashboard.html') {
-        const currentHash = window.location.hash;
-        const adminMenuItems = sidebarElement.querySelectorAll('.sidebar-menu a[data-target-section]');
-        let sectionActive = false;
-        adminMenuItems.forEach(item => {
-            if (item.getAttribute('href').endsWith(currentHash)) {
-                item.classList.add('active');
-                // Remove active de outros links do admin
-                sidebarElement.querySelector('#nav-painel-admin')?.classList.remove('active');
-                sectionActive = true;
-            } else {
-                 item.classList.remove('active');
-            }
-        });
-        // Se nenhuma seção estiver ativa (ou hash vazio), ativa o Painel Admin
-        if (!sectionActive) {
-             sidebarElement.querySelector('#nav-painel-admin')?.classList.add('active');
-        }
-    }
+    // Lógica específica para admin-dashboard (seções internas) - REMOVIDA pois não há mais seções internas via sidebar
+    // if (currentPage === 'admin-dashboard.html') { ... }
 }
 
-// Função para injetar e inicializar a Sidebar (MODIFICADA para contexto de visualização)
+// Função para injetar e inicializar a Sidebar (MODIFICADA para contexto de visualização E tema de projeto admin)
 async function injectSidebar(mainContentElementId) { // Tornou-se async
     const loggedInUserLevel = sessionStorage.getItem("nivel");
     const loggedInUserProject = sessionStorage.getItem("projeto");
     const viewingUserId = sessionStorage.getItem("viewing_user_id");
+
+    // *** NOVO: Ler projeto da URL para aplicar tema ao admin ***
+    const urlParams = new URLSearchParams(window.location.search);
+    const projectFromUrl = urlParams.get('projeto');
 
     if (!loggedInUserLevel) return; // Sai se não houver nível definido (não logado)
 
@@ -172,7 +151,7 @@ async function injectSidebar(mainContentElementId) { // Tornou-se async
     let isViewingAsUser = loggedInUserLevel === "admin" && viewingUserId;
 
     if (isViewingAsUser) {
-        // Admin está visualizando como usuário
+        // CASO 1: Admin está visualizando como usuário
         let viewedUserProject = null;
         try {
             // Busca o projeto do usuário que está sendo visualizado
@@ -190,10 +169,17 @@ async function injectSidebar(mainContentElementId) { // Tornou-se async
         sidebarHTML = createAdminViewingUserSidebarHTML(viewedUserProject);
 
     } else if (loggedInUserLevel === "admin") {
-        // Admin acessando suas próprias páginas
-        sidebarHTML = createAdminSidebarHTML();
+        // CASO 2: Admin acessando suas próprias páginas
+        // Verifica se está em um contexto de projeto pela URL
+        if (projectFromUrl && ['Argos', 'Hvc', 'Planejamento'].includes(projectFromUrl)) {
+            // Admin em contexto de projeto: usa tema do projeto
+            sidebarHTML = createAdminSidebarHTML(projectFromUrl);
+        } else {
+            // Admin em contexto geral: usa tema admin padrão
+            sidebarHTML = createAdminSidebarHTML(); // Sem argumento = theme-admin
+        }
     } else if (loggedInUserLevel === "usuario") {
-        // Usuário normal acessando suas páginas
+        // CASO 3: Usuário normal acessando suas páginas
         sidebarHTML = createUserSidebarHTML(loggedInUserProject);
     } else {
         return; // Não injeta para outros níveis
@@ -205,6 +191,14 @@ async function injectSidebar(mainContentElementId) { // Tornou-se async
 
     if (sidebarElement) {
         initializeSidebar(sidebarElement, mainContentElement);
+        // *** NOVO: Aplica classe de tema ao main content também ***
+        const themeClass = sidebarElement.className; // Pega a classe de tema da sidebar
+        if (mainContentElement && themeClass.startsWith('theme-')) {
+            // Remove temas antigos e aplica o novo
+            mainContentElement.classList.remove('theme-admin', 'theme-argos', 'theme-hvc', 'theme-planejamento', 'theme-default');
+            mainContentElement.classList.add(themeClass);
+            console.log(`Aplicando tema ${themeClass} ao main content.`);
+        }
     } else {
          console.error("Sidebar element not found after injection.");
     }
