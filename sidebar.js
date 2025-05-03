@@ -1,13 +1,32 @@
-// Função para injetar o HTML da Sidebar do Admin (SIMPLIFICADA AINDA MAIS)
-function createAdminSidebarHTML(projectTheme = null) {
-    // Aplica tema do projeto se fornecido, senão usa theme-admin
-    const themeClass = projectTheme ? `theme-${projectTheme.toLowerCase()}` : 'theme-admin';
-    console.log(`Criando sidebar admin com tema: ${themeClass}`);
+// Função para injetar o HTML da Sidebar do Admin (MODIFICADA com Projetos)
+function createAdminSidebarHTML(projectContext = null) {
+    // Se houver contexto de projeto, aplica tema do projeto, senão usa theme-admin
+    const themeClass = projectContext ? `theme-${projectContext.toLowerCase()}` : 'theme-admin';
+    console.log(`Criando sidebar admin com tema/contexto: ${themeClass}`);
+
+    // Define os links base
+    let projectLinks = `
+        <li><a href="admin-projeto-dashboard.html?projeto=Argos" id="nav-projeto-argos"><i class="fas fa-shield-alt"></i> <span>Projeto Argos</span></a></li>
+        <li><a href="admin-projeto-dashboard.html?projeto=Hvc" id="nav-projeto-hvc"><i class="fas fa-heartbeat"></i> <span>Projeto HVC</span></a></li>
+        <li><a href="admin-projeto-dashboard.html?projeto=Planejamento" id="nav-projeto-planejamento"><i class="fas fa-clipboard-list"></i> <span>Projeto Planejamento</span></a></li>
+    `;
+
+    // Se estiver em um contexto de projeto, adiciona links de gerenciamento específicos
+    if (projectContext) {
+        projectLinks += `
+            <li class="sub-menu"><a href="#" id="nav-gerenciar-usuarios-projeto"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários (${projectContext})</span></a></li>
+            <li class="sub-menu"><a href="clientes-dashboard.html?projeto=${projectContext}" id="nav-gerenciar-clientes-projeto"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes (${projectContext})</span></a></li>
+        `;
+    }
+
     return `
     <nav id="sidebar" class="${themeClass}">
       <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
       <ul class="sidebar-menu">
-        <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin</span></a></li>
+        <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin Geral</span></a></li>
+        <hr class="sidebar-divider">
+        ${projectLinks} 
+        <hr class="sidebar-divider">
         <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
       </ul>
     </nav>
