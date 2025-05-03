@@ -24,42 +24,10 @@ const sanitizeInput = (str) => {
     .replace(/`/g, "&#x60;");
 };
 
-// --- Elementos DOM --- 
-// Sidebar
-const sidebar = document.getElementById("sidebar");
-const sidebarToggle = document.getElementById("sidebar-toggle");
-const navPainelAdmin = document.getElementById("nav-painel-admin");
-const navGerenciarUsuarios = document.getElementById("nav-gerenciar-usuarios");
-// const navListarUsuarios = document.getElementById("nav-listar-usuarios"); // REMOVIDO
-const navGerenciarClientes = document.getElementById("nav-gerenciar-clientes");
-const sidebarLogoutBtn = document.getElementById("sidebar-logout-btn");
-const sidebarMenuItems = document.querySelectorAll(".sidebar-menu li a, .sidebar-menu li button"); // Para gerenciar estado ativo
-
-// Conteúdo Principal
-const mainContent = document.getElementById("main-content");
-const contentPainel = document.getElementById("content-painel");
-const contentGerenciarUsuarios = document.getElementById("content-gerenciar-usuarios");
-// const contentListarUsuarios = document.getElementById("content-listar-usuarios"); // REMOVIDO
-const allContentSections = document.querySelectorAll(".content-section");
-
-// Tabelas e Formulários (dentro das seções de conteúdo)
-const manageTableBody = document.querySelector("#manage-users-table tbody");
-// const listTableBody = document.querySelector("#list-users-table tbody"); // REMOVIDO
-const createUserForm = document.getElementById("create-user-form");
-const newUserInput = document.getElementById("new-user");
-const newPassInput = document.getElementById("new-pass");
-const newEmailInput = document.getElementById("new-email");
-const newLevelSelect = document.getElementById("new-level");
-const newProjectSelect = document.getElementById("new-project");
-
-// REMOVIDO: Botões antigos
-// const historyBackBtn = document.getElementById("history-back-btn"); 
-// const btnLogout = document.getElementById("logout-btn");
-// const tabBtnManage = document.getElementById("tab-btn-manage");
-// const tabBtnList = document.getElementById("tab-btn-list");
-// const tabContentManage = document.getElementById("tab-content-manage"); // Agora é contentGerenciarUsuarios
-// const tabContentList = document.getElementById("tab-content-list"); // Agora é contentListarUsuarios
-// const adminClientesBtn = document.getElementById("admin-clientes-btn"); // Agora é navGerenciarClientes
+// --- Elementos DOM (Definidos dentro de initializeAdminPageLogic) ---
+let sidebar, sidebarToggle, navPainelAdmin, navGerenciarUsuarios, navGerenciarClientes, sidebarLogoutBtn, sidebarMenuItems;
+let mainContent, contentPainel, contentGerenciarUsuarios, allContentSections;
+let manageTableBody, createUserForm, newUserInput, newPassInput, newEmailInput, newLevelSelect, newProjectSelect;
 
 // Validação de acesso (mantida)
 function checkAccess() {
@@ -73,17 +41,22 @@ function checkAccess() {
   return true;
 }
 
-// --- Lógica da Sidebar e Navegação --- 
+// --- Lógica da Sidebar e Navegação (Funções auxiliares) --- 
 
 // Recolher/Expandir Sidebar
 function toggleSidebar() {
+    if (!sidebar) return; // Garante que sidebar existe
     sidebar.classList.toggle("collapsed");
-    // Salvar estado no localStorage (opcional)
+    // Ajusta a classe no main content para margem (se existir)
+    if (mainContent) {
+         mainContent.classList.toggle("sidebar-collapsed");
+    }
     localStorage.setItem("sidebarCollapsed", sidebar.classList.contains("collapsed"));
 }
 
 // Mostrar Seção de Conteúdo Específica
 function showContentSection(sectionId) {
+    if (!allContentSections) return;
     // Esconde todas as seções
     allContentSections.forEach(section => section.classList.remove("active"));
     // Mostra a seção desejada
@@ -97,24 +70,28 @@ function showContentSection(sectionId) {
 
 // Atualizar Estado Ativo no Menu da Sidebar
 function updateMenuActiveState(activeSectionId) {
+    if (!sidebarMenuItems) return;
     sidebarMenuItems.forEach(item => {
         item.classList.remove("active");
-        const targetSectionId = item.dataset.targetSection; // Adicionar data-target-section nos links do HTML
-        if (targetSectionId === activeSectionId) {
-            item.classList.add("active");
+        // Usa o href para determinar o alvo da seção interna, se aplicável
+        const targetHref = item.getAttribute("href");
+        if (targetHref && targetHref.includes("#")) {
+            const targetSectionIdFromHash = "content-" + targetHref.split("#")[1];
+            if (targetSectionIdFromHash === activeSectionId) {
+                item.classList.add("active");
+            }
+        } else if (item.id === "nav-painel-admin" && activeSectionId === 'content-painel') {
+            // Caso especial para o link inicial do painel
+            item.classList.add('active');
         }
     });
-    // Caso especial para o link inicial do painel
-    if (activeSectionId === 'content-painel' && navPainelAdmin) {
-        navPainelAdmin.classList.add('active');
-    }
 }
 
 // --- Carregar Usuários (MODIFICADO para filtrar por projeto) --- 
 async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
+  if (!manageTableBody) return;
   try {
     manageTableBody.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
-    // listTableBody.innerHTML = "<tr><td colspan=\'5\'>Carregando...</td></tr>"; // REMOVIDO   
     let query = supabase
       .from("credenciais")
       .select("id, usuario, senha, email, nivel, projeto");
@@ -136,12 +113,13 @@ async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
     }
 
     manageTableBody.innerHTML = "";
-    // listTableBody.innerHTML = ""; // REMOVIDO
     
-    if (users.length === 0 && filterProject) {
-        manageTableBody.innerHTML = `<tr><td colspan='6'>Nenhum usuário encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
-
-        return; // Sai da função se não houver usuários para o projeto
+    if (users.length === 0) {
+        const message = filterProject 
+            ? `Nenhum usuário encontrado para o projeto ${sanitizeInput(filterProject)}.`
+            : "Nenhum usuário cadastrado.";
+        manageTableBody.innerHTML = `<tr><td colspan='6'>${message}</td></tr>`;
+        return; // Sai da função se não houver usuários
     }
     
     users.forEach(user => {
@@ -154,7 +132,8 @@ async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
           <input 
             type="password" 
             id="pass-${user.id}" 
-            value="${sanitizeInput(user.senha)}" 
+            value="********" 
+            data-real-pass="${sanitizeInput(user.senha)}" /* Guarda senha real aqui */
           />
           <button 
             class="toggle-password" 
@@ -191,41 +170,19 @@ async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
         </td>
       `;
       manageTableBody.appendChild(manageTr);
-
-      // Linha para Tabela de Lista (REMOVIDA)
-      /*
-      const listTr = document.createElement("tr");
-      listTr.dataset.userId = user.id;
-      listTr.innerHTML = `
-        <td>${sanitizeInput(user.usuario)}</td>
-        <td>${sanitizeInput(user.email)}</td>
-        <td>${sanitizeInput(user.nivel)}</td>
-        <td>${sanitizeInput(user.projeto) || 'Nenhum'}</td>
-        <td>
-          <button 
-            class="view-user-dashboard-btn" 
-            data-id="${user.id}" 
-            data-username="${sanitizeInput(user.usuario)}"
-            data-projeto="${sanitizeInput(user.projeto) || ''}" 
-          >Ver Dashboard</button>
-        </td>
-      `;
-      listTableBody.appendChild(listTr);
-      */
     });
 
-  } catch (error) { // <<< CORRIGIDO
+  } catch (error) {
     console.error("Erro ao carregar usuários:", error);
     manageTableBody.innerHTML = `<tr><td colspan='6' style='color: red;'>${error.message}</td></tr>`;
-    // listTableBody.innerHTML = `<tr><td colspan='5' style='color: red;'>${error.message}</td></tr>`; // REMOVIDO
   }
 }
 
-// --- Operações CRUD (mantidas) ---
+// --- Operações CRUD (mantidas e ajustadas) ---
 async function saveUser(id) {
   try {
     const senhaInput = document.getElementById(`pass-${id}`);
-    const senha = senhaInput.value;
+    const senha = senhaInput.type === 'text' ? senhaInput.value : null; // Pega a senha só se estiver visível
     const email = document.getElementById(`email-${id}`).value;
     const nivel = document.getElementById(`lvl-${id}`).value;
     const projeto = document.getElementById(`proj-${id}`).value;
@@ -236,6 +193,7 @@ async function saveUser(id) {
     }
 
     const updateData = { email, nivel, projeto: projeto || null };
+    // Só atualiza a senha se ela foi revelada e modificada
     if (senha && senha !== '********') {
         updateData.senha = senha;
     }
@@ -248,20 +206,17 @@ async function saveUser(id) {
     if (error) throw error;
     
     alert("Usuário atualizado com sucesso!");
-    // Atualização da tabela de lista removida
-    /*
-    const listRow = listTableBody.querySelector(`tr[data-user-id="${id}"]`);
-    if (listRow) {
-        listRow.children[1].textContent = sanitizeInput(email);
-        listRow.children[2].textContent = sanitizeInput(nivel);
-        listRow.children[3].textContent = sanitizeInput(projeto) || 'Nenhum';
-        const viewBtn = listRow.querySelector('.view-user-dashboard-btn');
-        if (viewBtn) {
-            viewBtn.dataset.projeto = sanitizeInput(projeto) || '';
+    // Reseta o campo senha para '********'
+    if (senhaInput) {
+        senhaInput.type = 'password';
+        senhaInput.value = '********';
+        // Atualiza o data-real-pass se a senha foi alterada
+        if (updateData.senha) {
+             senhaInput.dataset.realPass = updateData.senha;
         }
+        const toggleBtn = document.querySelector(`.toggle-password[data-id="${id}"]`);
+        if (toggleBtn) toggleBtn.textContent = "👁️";
     }
-    */
-    if (senhaInput) senhaInput.value = '********'; 
     
   } catch (error) {
     console.error("Erro ao salvar usuário:", error);
@@ -283,11 +238,6 @@ async function deleteUser(id) {
     alert("Usuário excluído com sucesso!");
     const manageRowToRemove = manageTableBody.querySelector(`tr[data-user-id="${id}"]`);
     if (manageRowToRemove) manageRowToRemove.remove();
-    // Remoção da tabela de lista removida
-    /*
-    const listRowToRemove = listTableBody.querySelector(`tr[data-user-id="${id}"]`);
-    if (listRowToRemove) listRowToRemove.remove();
-    */
     
   } catch (error) {
     console.error("Erro ao excluir usuário:", error);
@@ -326,7 +276,10 @@ async function createUser(event) {
     alert("Usuário criado com sucesso!");
     createUserForm.reset();
     newProjectSelect.value = "";
-    loadUsers(); // Recarrega usuários para incluir o novo
+    // Recarrega usuários para incluir o novo, respeitando o filtro atual
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentFilter = urlParams.get('projeto');
+    loadUsers(currentFilter);
     showContentSection('content-gerenciar-usuarios'); // Volta para a seção de gerenciamento
     
   } catch (error) {
@@ -352,151 +305,163 @@ function viewUserDashboard(userId, username, userProject) {
 function viewClientesDashboard() {
     sessionStorage.removeItem('viewing_user_id');
     sessionStorage.removeItem('viewing_username');
-    window.location.href = `clientes-dashboard.html`;
+    // Mantém o filtro de projeto se existir
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentFilter = urlParams.get('projeto');
+    window.location.href = `clientes-dashboard.html${currentFilter ? '?projeto=' + currentFilter : ''}`;
 }
 
 // --- Logout (mantido) ---
 function logout() {
   sessionStorage.clear();
+  localStorage.removeItem("sidebarCollapsed"); // Limpa estado da sidebar no logout
   window.location.href = "index.html";
 }
 
-// --- Event Listeners --- 
+// --- Função para Configurar Listeners (Chamada após sidebarReady) ---
+function setupAdminListeners() {
+    console.log("Setting up admin listeners...");
+    // Encontra elementos DOM APÓS sidebar estar pronta
+    sidebar = document.getElementById("sidebar");
+    sidebarToggle = document.getElementById("sidebar-toggle");
+    navPainelAdmin = document.getElementById("nav-painel-admin");
+    navGerenciarUsuarios = document.getElementById("nav-gerenciar-usuarios");
+    navGerenciarClientes = document.getElementById("nav-gerenciar-clientes");
+    sidebarLogoutBtn = document.getElementById("sidebar-logout-btn");
+    sidebarMenuItems = sidebar ? sidebar.querySelectorAll(".sidebar-menu li a, .sidebar-menu li button") : [];
 
-// Sidebar Toggle
-if (sidebarToggle) {
-    sidebarToggle.addEventListener('click', toggleSidebar);
-}
+    mainContent = document.getElementById("main-content");
+    contentPainel = document.getElementById("content-painel");
+    contentGerenciarUsuarios = document.getElementById("content-gerenciar-usuarios");
+    allContentSections = document.querySelectorAll(".content-section");
 
-// Sidebar Navigation
-if (navPainelAdmin) {
-    navPainelAdmin.dataset.targetSection = 'content-painel'; // Adiciona data attribute
-    navPainelAdmin.addEventListener('click', (e) => {
-        e.preventDefault(); // Previne recarregamento da página se for link real
-        showContentSection('content-painel');
-    });
-}
-if (navGerenciarUsuarios) {
-    navGerenciarUsuarios.dataset.targetSection = 'content-gerenciar-usuarios'; // Adiciona data attribute
-    navGerenciarUsuarios.addEventListener('click', (e) => {
-        e.preventDefault();
-        showContentSection('content-gerenciar-usuarios');
-    });
-}
-// Listener para navListarUsuarios removido
-if (navGerenciarClientes) {
-    navGerenciarClientes.addEventListener('click', (e) => {
-        e.preventDefault();
-        viewClientesDashboard(); // Navega para a página de clientes
-    });
-}
+    manageTableBody = document.querySelector("#manage-users-table tbody");
+    createUserForm = document.getElementById("create-user-form");
+    newUserInput = document.getElementById("new-user");
+    newPassInput = document.getElementById("new-pass");
+    newEmailInput = document.getElementById("new-email");
+    newLevelSelect = document.getElementById("new-level");
+    newProjectSelect = document.getElementById("new-project");
 
-if (sidebarLogoutBtn) {
-    sidebarLogoutBtn.addEventListener('click', logout);
-}
+    // Configura Listeners da Sidebar
+    if (sidebarToggle) {
+        sidebarToggle.addEventListener('click', toggleSidebar);
+    }
+    if (navPainelAdmin) {
+        navPainelAdmin.addEventListener('click', (e) => {
+            // Verifica se já está na admin-dashboard.html para evitar recarga
+            if (window.location.pathname.endsWith('admin-dashboard.html') && !window.location.search.includes('projeto')) {
+                e.preventDefault();
+                showContentSection('content-painel');
+            } // Senão, deixa o link navegar normalmente para limpar o contexto
+        });
+    }
+    if (navGerenciarUsuarios) {
+        navGerenciarUsuarios.addEventListener('click', (e) => {
+            // Verifica se já está na admin-dashboard.html com o hash certo
+            if (window.location.pathname.endsWith('admin-dashboard.html') && window.location.hash === '#gerenciar-usuarios') {
+                e.preventDefault();
+                showContentSection('content-gerenciar-usuarios');
+                // Recarrega usuários caso o filtro tenha mudado (via URL)
+                const urlParams = new URLSearchParams(window.location.search);
+                const currentFilter = urlParams.get('projeto');
+                loadUsers(currentFilter);
+            } // Senão, deixa o link navegar normalmente
+        });
+    }
+    if (navGerenciarClientes) {
+        // Listener removido daqui, pois o link agora navega para outra página
+        // A navegação é gerenciada diretamente pelo href no sidebar.js
+    }
+    if (sidebarLogoutBtn) {
+        sidebarLogoutBtn.addEventListener('click', logout);
+    }
 
-// REMOVIDO: Listeners antigos das abas e botões
-// historyBackBtn.addEventListener('click', () => history.back()); 
-// tabBtnManage.addEventListener('click', () => switchTab('manage'));
-// tabBtnList.addEventListener('click', () => switchTab('list'));
-// adminClientesBtn.addEventListener('click', viewClientesDashboard);
-// btnLogout.addEventListener('click', logout);
+    // Delegação de Eventos para Tabela de Gerenciamento
+    if (manageTableBody) {
+        manageTableBody.addEventListener("click", e => {
+           const target = e.target;
+           const id = target.dataset.id;
 
-// Delegação de Eventos para Tabelas (mantido e adaptado)
-if (manageTableBody) {
-    manageTableBody.addEventListener("click", e => {
-       const target = e.target;
-       const id = target.dataset.id;
+           if (target.classList.contains("toggle-password")) {
+             const input = document.getElementById(`pass-${id}`);
+             if (input) {
+                if (input.type === "password") {
+                    input.type = "text";
+                    input.value = input.dataset.realPass || ''; // Mostra senha real
+                    target.textContent = "🙈";
+                    // Define um timeout para voltar a ser password após 3 segundos
+                    setTimeout(() => {
+                        const currentInput = document.getElementById(`pass-${id}`);
+                        if (currentInput && currentInput.type === "text") { // Verifica se ainda está como texto
+                            currentInput.type = "password";
+                            currentInput.value = '********';
+                            target.textContent = "👁️";
+                        }
+                    }, 3000);
+                } else {
+                    input.type = "password";
+                    input.value = '********';
+                    target.textContent = "👁️";
+                }
+             }
+           } else if (target.classList.contains("save-btn")) {
+             saveUser(id);
+           } else if (target.classList.contains("delete-btn")) {
+             deleteUser(id);
+           }
+        });
+    }
 
-       if (target.classList.contains("toggle-password")) {
-         const input = document.getElementById(`pass-${id}`);
-         if (input) {
-            const originalValue = input.dataset.originalValue || input.value; // Guarda o valor original
-            input.dataset.originalValue = originalValue; // Garante que está guardado
+    // Formulário Criar Usuário
+    if (createUserForm) {
+        createUserForm.addEventListener("submit", createUser);
+    }
 
-            if (input.type === "password") {
-                input.type = "text";
-                input.value = originalValue; // Mostra valor real
-                target.textContent = "🙈";
-                // Define um timeout para voltar a ser password após 3 segundos
-                setTimeout(() => {
-                    const currentInput = document.getElementById(`pass-${id}`);
-                    if (currentInput && currentInput.type === "text") { // Verifica se ainda é texto
-                       currentInput.type = "password";
-                       // Não redefinir o valor aqui, deixa o original
-                       target.textContent = "👁️";
-                    }
-                }, 3000);
-            } else {
-                input.type = "password";
-                // Não precisa mudar o valor, o tipo password já mascara
-                target.textContent = "👁️";
-            }
-         }
-       } else if (target.classList.contains("save-btn")) {
-         if (id) saveUser(id);
-       } else if (target.classList.contains("delete-btn")) {
-         if (id) deleteUser(id);
-       }
-     });
-}
+    // *** Lógica de Inicialização que depende da Sidebar ***
+    // Verifica estado da sidebar no localStorage
+    const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
+    if (sidebarCollapsed && sidebar) {
+        sidebar.classList.add("collapsed");
+        if (mainContent) {
+            mainContent.classList.add("sidebar-collapsed");
+        }
+    }
 
-// Listener para listTableBody removido
-/*
-if (listTableBody) {
-     listTableBody.addEventListener("click", e => {
-        const target = e.target;
-        if (target.classList.contains("view-user-dashboard-btn")) {
-            const userId = target.dataset.id;
-            const username = target.dataset.username;
-            const userProject = target.dataset.projeto;
-            if (userId && username) {
-                viewUserDashboard(userId, username, userProject);
+    // *** Lógica de Inicialização da Seção e Carregamento de Dados ***
+    const urlParams = new URLSearchParams(window.location.search);
+    const filterProjectFromUrl = urlParams.get('projeto');
+    const currentHash = window.location.hash.substring(1); // Remove o '#'
+
+    // Carrega usuários, aplicando filtro se veio de um dashboard de projeto
+    loadUsers(filterProjectFromUrl);
+
+    // Decide qual seção mostrar baseado no HASH
+    let initialSection = 'content-painel'; // Padrão é o painel admin
+    if (currentHash === 'gerenciar-usuarios') {
+        initialSection = 'content-gerenciar-usuarios';
+        console.log(`Carregando seção: ${initialSection}`);
+        // Adiciona título indicando o projeto, se houver filtro
+        if (filterProjectFromUrl) {
+            const sectionTitle = document.querySelector(`#${initialSection} h2`);
+            if(sectionTitle) {
+                // Evita adicionar o nome do projeto múltiplas vezes
+                if (!sectionTitle.textContent.includes(`(${filterProjectFromUrl})`)) {
+                   sectionTitle.textContent += ` (${filterProjectFromUrl})`;
+                }
             }
         }
-     });
-}
-*/
-// Bloco de código remanescente removido
+    }
 
-// Formulário Criar Usuário (mantido)
-if (createUserForm) {
-    createUserForm.addEventListener("submit", createUser);
+    // Mostra a seção inicial determinada
+    showContentSection(initialSection);
+
+    console.log("Admin listeners and initial setup complete.");
 }
 
-// --- Inicialização (MODIFICADA para ler projeto da URL) --- 
+// --- Inicialização Principal (Espera sidebarReady) --- 
 if (checkAccess()) {
-  // *** MODIFICAÇÃO: Ler parâmetro de projeto da URL ***
-  const urlParams = new URLSearchParams(window.location.search);
-  const filterProjectFromUrl = urlParams.get('projeto');
-  const currentHash = window.location.hash.substring(1); // Remove o '#'
-
-  // Carrega usuários, aplicando filtro se veio de um dashboard de projeto
-  loadUsers(filterProjectFromUrl);
-
-  // Verifica estado da sidebar no localStorage (opcional)
-  const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-  if (sidebarCollapsed && sidebar) {
-      sidebar.classList.add("collapsed");
-  }
-
-  // *** MODIFICAÇÃO: Decide qual seção mostrar baseado no HASH ***
-  let initialSection = 'content-painel'; // Padrão é o painel admin
-  if (currentHash === 'gerenciar-usuarios') {
-      initialSection = 'content-gerenciar-usuarios';
-      console.log(`Carregando seção: ${initialSection}`);
-      // Adiciona título indicando o projeto, se houver filtro
-      if (filterProjectFromUrl) {
-          const sectionTitle = document.querySelector(`#${initialSection} h2`);
-          if(sectionTitle) {
-              // Evita adicionar o nome do projeto múltiplas vezes
-              if (!sectionTitle.textContent.includes(`(${filterProjectFromUrl})`)) {
-                 sectionTitle.textContent += ` (${filterProjectFromUrl})`;
-              }
-          }
-      }
-  }
-
-  // Mostra a seção inicial determinada
-  showContentSection(initialSection); 
+  console.log("Access checked. Waiting for sidebarReady event...");
+  document.addEventListener('sidebarReady', setupAdminListeners, { once: true }); // Roda a configuração uma vez quando a sidebar estiver pronta
 }
+
