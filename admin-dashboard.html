@@ -277,17 +277,7 @@
   </style>
 </head>
 <body>
-  <!-- Sidebar -->
-  <nav id="sidebar">
-    <button id="sidebar-toggle"><i class="fas fa-bars"></i></button> <!-- Toggle Button -->
-    <ul class="sidebar-menu">
-      <li><a href="admin-dashboard.html" id="nav-painel-admin" class="active"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin</span></a></li>
-      <li><a href="#" id="nav-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
-      <!-- Lista de Usuários Removido -->
-      <li><a href="#" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-      <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
-    </ul>
-  </nav>
+  <!-- Sidebar será injetada dinamicamente por sidebar.js -->
 
   <!-- Main Content Area -->
   <main id="main-content">
@@ -357,3 +347,8 @@
   <script type="module" src="admin.js"></script>
 </body>
 </html>
+
+<script type="module">
+    import { injectSidebar } from './sidebar.js';
+    injectSidebar("main-content"); // Passa o ID do container principal
+  </script>
