@@ -652,7 +652,9 @@
     <div class="success-message" id="successMessage" role="status">Formulário enviado com sucesso!</div>
   </form>
 
-  <script>
+  <script type="module">
+    import { supabase } from './supabase.js'; // <<< IMPORTAÇÃO ADICIONADA AQUI
+
     // Funções auxiliares para formatar moeda
     function formatarMoeda(valor) {
       if (!valor) return '';
