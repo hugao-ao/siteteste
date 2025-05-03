@@ -160,37 +160,66 @@
         `;
     }
 
-    // Função para exibir os dados preenchidos (adaptada para JSON)
+    // Função para exibir os dados preenchidos (EXPANDIDA para JSON completo)
     function displayFormData(formData) {
         let displayHTML = `
             <p>Formulário preenchido em: ${new Date(formData.data_preenchimento).toLocaleString("pt-BR")}</p>
             <div class="form-data-display">
         `;
 
-        // Tenta acessar dados do JSON
         if (formData.dados_formulario && typeof formData.dados_formulario === 'object') {
             const dados = formData.dados_formulario;
-            // Exibe o nome principal do formulário JSON
-            displayHTML += `<p><strong>Nome (informado no formulário):</strong> ${dados.nome ? sanitizeInput(dados.nome) : 'N/A'}</p>`;
-            
-            // Adicione aqui a exibição de outros campos importantes do JSON, se desejar.
-            // Exemplo: Exibir se possui investimentos
-            if (dados.possuiInvestimentos) {
-                 displayHTML += `<p><strong>Possui Investimentos:</strong> ${sanitizeInput(dados.possuiInvestimentos)}</p>`;
+
+            // Função auxiliar para renderizar um objeto (recursiva para sub-objetos)
+            function renderObject(obj, indentLevel = 0) {
+                let html = '';
+                const indent = '&nbsp;'.repeat(indentLevel * 4);
+                for (const key in obj) {
+                    if (obj.hasOwnProperty(key)) {
+                        const value = obj[key];
+                        const formattedKey = key.replace(/([A-Z])/g, ' $1').replace(/^./, str => str.toUpperCase()); // Formata camelCase para Título
+
+                        if (Array.isArray(value)) {
+                            html += `<p>${indent}<strong>${sanitizeInput(formattedKey)}:</strong></p>`;
+                            if (value.length > 0) {
+                                html += '<ul>';
+                                value.forEach((item, index) => {
+                                    html += `<li>${indent}&nbsp;&nbsp;<em>Item ${index + 1}:</em><br>`;
+                                    if (typeof item === 'object' && item !== null) {
+                                        html += renderObject(item, indentLevel + 1);
+                                    } else {
+                                        html += `${indent}&nbsp;&nbsp;&nbsp;&nbsp;${sanitizeInput(item)}`;
+                                    }
+                                    html += '</li>';
+                                });
+                                html += '</ul>';
+                            } else {
+                                html += `<p>${indent}&nbsp;&nbsp;<em>(Nenhum item)</em></p>`;
+                            }
+                        } else if (typeof value === 'object' && value !== null) {
+                            html += `<p>${indent}<strong>${sanitizeInput(formattedKey)}:</strong></p>`;
+                            html += renderObject(value, indentLevel + 1);
+                        } else {
+                            // Não exibe chaves internas de detalhes específicos que já são agrupados (ex: planoSaude-cliente)
+                            if (!key.match(/^(planoSaude|seguroVida|patrimonioLiquido|impostoRenda|fluxoCaixa)-[\w-]+$/)) {
+                                html += `<p>${indent}<strong>${sanitizeInput(formattedKey)}:</strong> ${sanitizeInput(value !== null && value !== undefined ? value : 'N/A')}</p>`;
+                            }
+                        }
+                    }
+                }
+                return html;
             }
-             // Exemplo: Exibir objetivos de curto prazo
-            if (dados.objetivosCurtoPrazo) {
-                 displayHTML += `<p><strong>Objetivos Curto Prazo:</strong> ${sanitizeInput(dados.objetivosCurtoPrazo)}</p>`;
-            }
-            // ... adicione mais campos conforme necessário ...
             
-            displayHTML += `<p><small>(Dados completos armazenados no banco de dados)</small></p>`;
+            // Renderiza o objeto JSON principal
+            displayHTML += renderObject(dados);
+
         } else {
             displayHTML += `<p><strong>Dados do formulário:</strong> (Formato inválido ou não encontrado no banco de dados)</p>`;
         }
 
         displayHTML += `
             </div>
+            <hr style="margin: 1.5rem 0; border-color: var(--border-color);">
             <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
         `;
         
@@ -285,7 +314,7 @@
                 displayGenerateLinkForm();
             } else if (latestForm.status === 'pendente') {
                 // Formulário pendente existe, mostra o link
-                displayFormLink(latestForm.token_unico);
+                displayFormLink(latestForm.token); // Usa a coluna 'token' correta
             } else if (latestForm.status === 'preenchido') {
                 // Formulário preenchido existe, mostra os dados e botão de excluir
                 displayFormData(latestForm);
