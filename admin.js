@@ -214,9 +214,11 @@ async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
       */
     });
 
-  } catch (er    console.error("Erro ao carregar usuários:", error);
-    manageTableBody.innerHTML = `<tr><td colspan=\'6\' style=\'color: red;\'>${error.message}</td></tr>`;
-    // listTableBody.innerHTML = `<tr><td colspan=\'5\' style=\'color: red;\'>${error.message}</td></tr>`; // REMOVIDO  }
+  } catch (error) { // <<< CORRIGIDO
+    console.error("Erro ao carregar usuários:", error);
+    manageTableBody.innerHTML = `<tr><td colspan='6' style='color: red;'>${error.message}</td></tr>`;
+    // listTableBody.innerHTML = `<tr><td colspan='5' style='color: red;'>${error.message}</td></tr>`; // REMOVIDO
+  }
 }
 
 // --- Operações CRUD (mantidas) ---
