@@ -160,16 +160,42 @@
         `;
     }
 
-    // Função para exibir os dados preenchidos
+    // Função para exibir os dados preenchidos (adaptada para JSON)
     function displayFormData(formData) {
-        formInfoContentEl.innerHTML = `
+        let displayHTML = `
             <p>Formulário preenchido em: ${new Date(formData.data_preenchimento).toLocaleString("pt-BR")}</p>
             <div class="form-data-display">
-                <p><strong>Nome Completo:</strong> ${formData.nome_preenchido ? sanitizeInput(formData.nome_preenchido) : 'N/A'}</p>
-                <p><strong>Cidade Natal:</strong> ${formData.cidade_natal_preenchida ? sanitizeInput(formData.cidade_natal_preenchida) : 'N/A'}</p>
+        `;
+
+        // Tenta acessar dados do JSON
+        if (formData.dados_formulario && typeof formData.dados_formulario === 'object') {
+            const dados = formData.dados_formulario;
+            // Exibe o nome principal do formulário JSON
+            displayHTML += `<p><strong>Nome (informado no formulário):</strong> ${dados.nome ? sanitizeInput(dados.nome) : 'N/A'}</p>`;
+            
+            // Adicione aqui a exibição de outros campos importantes do JSON, se desejar.
+            // Exemplo: Exibir se possui investimentos
+            if (dados.possuiInvestimentos) {
+                 displayHTML += `<p><strong>Possui Investimentos:</strong> ${sanitizeInput(dados.possuiInvestimentos)}</p>`;
+            }
+             // Exemplo: Exibir objetivos de curto prazo
+            if (dados.objetivosCurtoPrazo) {
+                 displayHTML += `<p><strong>Objetivos Curto Prazo:</strong> ${sanitizeInput(dados.objetivosCurtoPrazo)}</p>`;
+            }
+            // ... adicione mais campos conforme necessário ...
+            
+            displayHTML += `<p><small>(Dados completos armazenados no banco de dados)</small></p>`;
+        } else {
+            displayHTML += `<p><strong>Dados do formulário:</strong> (Formato inválido ou não encontrado no banco de dados)</p>`;
+        }
+
+        displayHTML += `
             </div>
             <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
         `;
+        
+        formInfoContentEl.innerHTML = displayHTML;
+
         // Adiciona listener para o botão de exclusão
         const deleteBtn = formInfoContentEl.querySelector('.delete-form-btn');
         if (deleteBtn) {
