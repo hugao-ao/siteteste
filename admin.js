@@ -383,13 +383,7 @@ if (navGerenciarUsuarios) {
         showContentSection('content-gerenciar-usuarios');
     });
 }
-if (navListarUsuarios) {
-    navListarUsuarios.dataset.targetSection = 'content-listar-usuarios'; // Adiciona data attribute
-    navListarUsuarios.addEventListener('click', (e) => {
-        e.preventDefault();
-        showContentSection('content-listar-usuarios');
-    });
-}
+// Listener para navListarUsuarios removido
 if (navGerenciarClientes) {
     navGerenciarClientes.addEventListener('click', (e) => {
         e.preventDefault();
