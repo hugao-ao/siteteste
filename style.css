@@ -26,18 +26,18 @@
   --admin-header-bg: var(--emerald-dark);
   --admin-header-text: var(--gold-lighter);
 
-  /* Cores Tema Argos (Azul) */
-  --argos-primary: #1e90ff; /* Azul Dodger */
+  /* Cores Tema Argos (Azul MAIS CLARO) */
+  --argos-primary: #1e90ff; /* Azul Dodger (mantido) */
   --argos-primary-darker: #1c86ee;
   --argos-primary-lighter: #4cb2ff;
   --argos-secondary: #ffffff; /* Branco como secundário */
   --argos-secondary-darker: #f0f0f0;
   --argos-secondary-lighter: #ffffff;
-  --argos-bg-dark: #1a1a2e; /* Azul muito escuro */
-  --argos-bg-surface: #2a2a4e; /* Azul escuro para superfícies */
-  --argos-text-light: #f0f8ff; /* Alice blue */
-  --argos-text-muted: #b0c4de; /* Light steel blue */
-  --argos-border-color: #4682b4; /* Steel blue */
+  --argos-bg-dark: #4682B4; /* SteelBlue (AINDA MAIS CLARO) */
+  --argos-bg-surface: #B0C4DE; /* LightSteelBlue (AINDA MAIS CLARO para superfície) */
+  --argos-text-light: #ecf0f1; /* Clouds (branco suave) */
+  --argos-text-muted: #bdc3c7; /* Silver */
+  --argos-border-color: #7f8c8d; /* Cinza ardósia */
   --argos-shadow-color: rgba(30, 144, 255, 0.3);
   --argos-header-bg: var(--argos-primary);
   --argos-header-text: var(--argos-secondary);
