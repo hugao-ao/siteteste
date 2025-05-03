@@ -11,9 +11,7 @@ function createAdminSidebarHTML(projectContext = null) {
         <li><a href="admin-projeto-dashboard.html?projeto=Planejamento" id="nav-projeto-planejamento"><i class="fas fa-clipboard-list"></i> <span>Projeto Planejamento</span></a></li>
     `;
 
-    // Define o rótulo e os links de gerenciamento (SEMPRE VISÍVEIS)
-    const managementLabel = projectContext ? `(${projectContext})` : '(Geral)';
-    const userManagementLink = projectContext ? `admin-dashboard.html?projeto=${projectContext}#gerenciar-usuarios` : 'admin-dashboard.html#gerenciar-usuarios';
+    // Define o rótulo e os links de gerenciamento (SEMPRE VISÍVEIS)    const managementLabel = projectContext ? `(${projectContext})` : 	'(Administrativo)	'; // <<< RÓTULO AJUSTADO    const userManagementLink = projectContext ? `admin-dashboard.html?projeto=${projectContext}#gerenciar-usuarios` : 'admin-dashboard.html#gerenciar-usuarios';
     const clientManagementLink = projectContext ? `clientes-dashboard.html?projeto=${projectContext}` : 'clientes-dashboard.html';
 
     const managementLinks = `
