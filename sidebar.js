@@ -1,21 +1,24 @@
-// Função para injetar o HTML da Sidebar do Admin (MODIFICADA com Projetos)
+// Função para injetar o HTML da Sidebar do Admin (MODIFICADA com Projetos e Gerenciamento Contextual)
 function createAdminSidebarHTML(projectContext = null) {
     // Se houver contexto de projeto, aplica tema do projeto, senão usa theme-admin
     const themeClass = projectContext ? `theme-${projectContext.toLowerCase()}` : 'theme-admin';
     console.log(`Criando sidebar admin com tema/contexto: ${themeClass}`);
 
-    // Define os links base
+    // Define os links base dos projetos
     let projectLinks = `
         <li><a href="admin-projeto-dashboard.html?projeto=Argos" id="nav-projeto-argos"><i class="fas fa-shield-alt"></i> <span>Projeto Argos</span></a></li>
         <li><a href="admin-projeto-dashboard.html?projeto=Hvc" id="nav-projeto-hvc"><i class="fas fa-heartbeat"></i> <span>Projeto HVC</span></a></li>
         <li><a href="admin-projeto-dashboard.html?projeto=Planejamento" id="nav-projeto-planejamento"><i class="fas fa-clipboard-list"></i> <span>Projeto Planejamento</span></a></li>
     `;
 
-    // Se estiver em um contexto de projeto, adiciona links de gerenciamento específicos
+    // Define os links de gerenciamento (SÓ APARECEM SE projectContext EXISTIR)
+    let managementLinks = '';
     if (projectContext) {
-        projectLinks += `
-            <li class="sub-menu"><a href="#" id="nav-gerenciar-usuarios-projeto"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários (${projectContext})</span></a></li>
-            <li class="sub-menu"><a href="clientes-dashboard.html?projeto=${projectContext}" id="nav-gerenciar-clientes-projeto"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes (${projectContext})</span></a></li>
+        managementLinks = `
+            <hr class="sidebar-divider">
+            <li class="sub-menu-header"><span>Gerenciamento (${projectContext})</span></li>
+            <li class="sub-menu"><a href="admin-dashboard.html?projeto=${projectContext}#gerenciar-usuarios" id="nav-gerenciar-usuarios-projeto"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
+            <li class="sub-menu"><a href="clientes-dashboard.html?projeto=${projectContext}" id="nav-gerenciar-clientes-projeto"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
         `;
     }
 
@@ -25,7 +28,9 @@ function createAdminSidebarHTML(projectContext = null) {
       <ul class="sidebar-menu">
         <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin Geral</span></a></li>
         <hr class="sidebar-divider">
+        <li class="sub-menu-header"><span>Projetos</span></li>
         ${projectLinks} 
+        ${managementLinks} <!-- Links de gerenciamento só aparecem se houver contexto -->
         <hr class="sidebar-divider">
         <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
       </ul>
