@@ -73,6 +73,9 @@
     <p>Gerencie usuários e clientes específicos deste projeto.</p>
 
     <div class="dashboard-buttons">
+      <a href="#" id="btn-gerenciar-usuarios" class="dashboard-btn">
+        <i class="fas fa-user-cog"></i> Gerenciar Usuários
+      </a>
       <a href="#" id="btn-listar-usuarios" class="dashboard-btn">
         <i class="fas fa-users"></i> Lista de Usuários
       </a>
@@ -134,12 +137,17 @@
       }
 
       // Define os links dos botões, passando o projeto como parâmetro
-      const btnListarUsuarios = document.getElementById('btn-listar-usuarios');
-      const btnListarClientes = document.getElementById('btn-listar-clientes');
+      const btnGerenciarUsuarios = document.getElementById("btn-gerenciar-usuarios"); // NOVO
+      const btnListarUsuarios = document.getElementById("btn-listar-usuarios");
+      const btnListarClientes = document.getElementById("btn-listar-clientes");
 
+      // Define os links dos botões, passando o projeto como parâmetro
+      if (btnGerenciarUsuarios) {
+          // Aponta para admin-dashboard com hash e parâmetro de projeto
+          btnGerenciarUsuarios.href = `admin-dashboard.html?projeto=${projeto}#gerenciar-usuarios`;
+      }
       if (btnListarUsuarios) {
-          // TODO: Decidir para qual página levar. Usar admin.js com filtro ou nova página?
-          // Por ora, vamos apontar para admin-dashboard com hash e parâmetro
+          // Aponta para admin-dashboard com hash e parâmetro de projeto
           btnListarUsuarios.href = `admin-dashboard.html?projeto=${projeto}#listar-usuarios`;
       }
       if (btnListarClientes) {
