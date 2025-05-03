@@ -110,15 +110,23 @@ function updateMenuActiveState(activeSectionId) {
     }
 }
 
-// --- Carregar Usuários (mantido) --- 
-async function loadUsers() {
+// --- Carregar Usuários (MODIFICADO para filtrar por projeto) --- 
+async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
   try {
     manageTableBody.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
     listTableBody.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
     
-    const { data: users, error } = await supabase
+    let query = supabase
       .from("credenciais")
       .select("id, usuario, senha, email, nivel, projeto");
+
+    // Aplica filtro de projeto se fornecido
+    if (filterProject) {
+        console.log(`Filtrando usuários pelo projeto: ${filterProject}`);
+        query = query.eq('projeto', filterProject);
+    }
+
+    const { data: users, error } = await query;
 
     if (error) {
         if (error.code === '42703' && error.message.includes('projeto')) {
@@ -130,6 +138,12 @@ async function loadUsers() {
 
     manageTableBody.innerHTML = "";
     listTableBody.innerHTML = "";
+    
+    if (users.length === 0 && filterProject) {
+        manageTableBody.innerHTML = `<tr><td colspan='6'>Nenhum usuário encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
+        listTableBody.innerHTML = `<tr><td colspan='5'>Nenhum usuário encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
+        return; // Sai da função se não houver usuários para o projeto
+    }
     
     users.forEach(user => {
       // Linha para Tabela de Gerenciamento
@@ -445,14 +459,53 @@ if (createUserForm) {
     createUserForm.addEventListener("submit", createUser);
 }
 
-// --- Inicialização --- 
+// --- Inicialização (MODIFICADA para ler projeto da URL) --- 
 if (checkAccess()) {
-  loadUsers();
+  // *** MODIFICAÇÃO: Ler parâmetro de projeto da URL ***
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterProjectFromUrl = urlParams.get('projeto');
+  const currentHash = window.location.hash.substring(1); // Remove o '#'
+
+  // Carrega usuários, aplicando filtro se veio de um dashboard de projeto
+  loadUsers(filterProjectFromUrl);
+
   // Verifica estado da sidebar no localStorage (opcional)
   const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
   if (sidebarCollapsed && sidebar) {
       sidebar.classList.add("collapsed");
   }
-  // Mostra a seção inicial (Painel Admin)
-  showContentSection('content-painel'); 
+
+  // *** MODIFICAÇÃO: Decide qual seção mostrar ***
+  let initialSection = 'content-painel'; // Padrão é o painel admin
+  if (filterProjectFromUrl) {
+      // Se veio de um dashboard de projeto (admin-projeto-dashboard.html), mostra a lista de usuários por padrão
+      // O link no dashboard do projeto já aponta para #listar-usuarios
+      if (currentHash === 'listar-usuarios') {
+          initialSection = 'content-listar-usuarios';
+      } else if (currentHash === 'gerenciar-usuarios') {
+          // Se o hash for gerenciar, ainda mostra a lista no contexto do projeto
+          initialSection = 'content-listar-usuarios'; 
+      } else {
+          // Se não houver hash válido, mostra a lista por padrão no contexto do projeto
+          initialSection = 'content-listar-usuarios';
+      }
+      console.log(`Carregando admin.js no contexto do projeto: ${filterProjectFromUrl}, seção: ${initialSection}`);
+      // Poderíamos adicionar um título indicando o projeto aqui
+      const sectionTitle = document.querySelector(`#${initialSection} h2`);
+      if(sectionTitle) {
+          sectionTitle.textContent += ` (${filterProjectFromUrl})`;
+      }
+
+  } else if (currentHash) {
+      // Se não tem filtro de projeto, mas tem hash, mostra a seção correspondente
+      if (currentHash === 'gerenciar-usuarios') {
+          initialSection = 'content-gerenciar-usuarios';
+      } else if (currentHash === 'listar-usuarios') {
+          initialSection = 'content-listar-usuarios';
+      }
+      // Se for outro hash ou inválido, mantém 'content-painel'
+  }
+
+  // Mostra a seção inicial determinada
+  showContentSection(initialSection); 
 }
