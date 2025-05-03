@@ -1416,82 +1416,158 @@
           }
       });
 
-      console.log('Dados a serem enviados:', JSON.stringify(dadosFormulario, null, 2));
-
-      // TODO: Integrar com o Supabase
-      // 1. Obter o token da URL
-      // 2. Verificar se o token é válido e o formulário está 'pendente'
-      // 3. Atualizar o registro no Supabase:
-      //    - Salvar `dadosFormulario` no campo `dados_formulario` (JSONB)
-      //    - Mudar o `status` para 'preenchido'
-      //    - Registrar `data_preenchimento`
-      // 4. Tratar erros
-
-      // Simulação de envio bem-sucedido (REMOVER DEPOIS DA INTEGRAÇÃO)
-      await new Promise(resolve => setTimeout(resolve, 1500)); 
-      console.log('Simulação de envio concluída.');
-      successMessage.style.display = 'block';
-      form.style.display = 'none'; // Esconde o formulário após envio
-      document.querySelector('h1').textContent = 'Obrigado!'; // Muda o título
-
-      // Lógica real de envio (exemplo)
-      /*
+      // Integração real com Supabase
       try {
         const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
+        const token = urlParams.get("token");
 
         if (!token) {
-          throw new Error('Token não encontrado na URL.');
+          throw new Error("Token não encontrado na URL.");
         }
 
-        // Substitua 'supabaseUrl' e 'supabaseKey' pelas suas credenciais
-        const supabaseUrl = 'SEU_SUPABASE_URL';
-        const supabaseKey = 'SUA_SUPABASE_ANON_KEY';
-        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+        // Assume que 'supabase' está disponível globalmente (ex: importado de supabaseClient.js)
+        if (typeof supabase === 'undefined') {
+            throw new Error('Cliente Supabase não encontrado. Verifique a importação/inicialização.');
+        }
 
-        // Verifica o token e status
+        // 1. Verificar se o token é válido e o formulário está 'pendente'
         const { data: formRecord, error: fetchError } = await supabase
           .from('formularios_clientes')
           .select('id, status')
-          .eq('token_unico', token)
+          .eq('token', token) // Usa a coluna 'token' correta
           .single();
 
         if (fetchError || !formRecord) {
-          throw new Error('Formulário inválido ou não encontrado.');
+          console.error('Erro ao buscar formulário ou token inválido:', fetchError);
+          throw new Error('Formulário inválido, não encontrado ou erro na busca.');
         }
 
         if (formRecord.status !== 'pendente') {
-          throw new Error('Este formulário já foi preenchido.');
+          // Se não estiver pendente, mostra mensagem e para (já tratado no load, mas dupla checagem)
+          alert('Este formulário não está mais pendente para preenchimento.');
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Enviar Respostas';
+          return; 
         }
 
-        // Atualiza o registro
-        const { error: updateError } = await supabase
+        // 2. Atualizar o registro no Supabase:
+        const { data: updateData, error: updateError } = await supabase
           .from('formularios_clientes')
-          .update({
-            dados_formulario: dadosFormulario,
-            status: 'preenchido',
-            data_preenchimento: new Date().toISOString()
+          .update({ 
+              dados_formulario: dadosFormulario, 
+              status: 'preenchido', 
+              data_preenchimento: new Date().toISOString() // Usa formato ISO string
           })
-          .eq('id', formRecord.id);
+          .eq('token', token) // Condição para atualização
+          .select(); // Retorna os dados atualizados para confirmação
 
         if (updateError) {
-          console.error('Erro ao atualizar Supabase:', updateError);
-          throw new Error('Erro ao salvar os dados. Tente novamente.');
+          console.error('Erro ao atualizar formulário no Supabase:', updateError);
+          throw new Error('Erro ao salvar os dados no servidor. Tente novamente.');
+        }
+        
+        if (!updateData || updateData.length === 0) {
+            // Isso não deveria acontecer se o fetch inicial funcionou, mas é uma segurança
+            throw new Error('Nenhum registro foi atualizado. Contate o suporte.');
         }
 
-        // Sucesso
-        successMessage.style.display = 'block';
-        form.style.display = 'none';
-        document.querySelector('h1').textContent = 'Obrigado!';
+        console.log('Formulário atualizado com sucesso:', updateData);
+        
+        // 3. Exibir mensagem de sucesso e desabilitar formulário
+        document.getElementById('successMessage').style.display = 'block';
+        form.style.display = 'none'; // Esconde o formulário
+        document.querySelector('h1').textContent = 'Formulário Enviado com Sucesso!'; // Muda o título
 
       } catch (error) {
-        console.error('Erro no envio:', error);
-        alert(error.message || 'Ocorreu um erro inesperado.');
+        console.error('Erro no processo de envio:', error);
+        alert(error.message || 'Ocorreu um erro inesperado durante o envio.');
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Enviar Formulário';
+        submitBtn.textContent = 'Enviar Respostas';
       }
-      */
     });
+
+    // Função para carregar e verificar o estado inicial do formulário
+    async function carregarEstadoFormulario() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      const formElement = document.getElementById('formularioAtendimento');
+      const h1Element = document.querySelector('h1');
+
+      if (!token) {
+        document.body.innerHTML = '<h1>Token inválido ou ausente na URL.</h1>';
+        return;
+      }
+
+      try {
+        // Assume que 'supabase' está disponível globalmente
+        if (typeof supabase === 'undefined') {
+            throw new Error('Cliente Supabase não encontrado.');
+        }
+
+        const { data, error } = await supabase
+          .from('formularios_clientes')
+          .select('status, cliente_id, clientes(nome)') // Pega status e nome do cliente
+          .eq('token', token)
+          .single();
+
+        if (error || !data) {
+          console.error('Erro ao buscar formulário ou token inválido:', error);
+          document.body.innerHTML = '<h1>Erro ao carregar o formulário ou link inválido/expirado.</h1>';
+          return;
+        }
+
+        // Opcional: Exibir nome do cliente
+        // if (data.clientes && data.clientes.nome) {
+        //    h1Element.textContent += ` para ${data.clientes.nome}`;
+        // }
+
+        if (data.status === 'preenchido') {
+          formElement.style.display = 'none';
+          h1Element.textContent = 'Formulário Já Preenchido';
+          let msgDiv = document.getElementById('mensagem-preenchido');
+          if (!msgDiv) {
+              msgDiv = document.createElement('div');
+              msgDiv.id = 'mensagem-preenchido';
+              msgDiv.style.textAlign = 'center';
+              msgDiv.style.marginTop = '20px';
+              msgDiv.style.padding = '20px';
+              msgDiv.style.backgroundColor = 'var(--cor-secundaria)';
+              msgDiv.style.borderRadius = 'var(--borda-raio)';
+              msgDiv.style.maxWidth = '600px';
+              msgDiv.style.margin = '20px auto';
+              document.body.appendChild(msgDiv);
+          }
+          msgDiv.textContent = 'Este formulário já foi preenchido anteriormente e não pode ser alterado. Obrigado!';
+          
+        } else if (data.status === 'pendente') {
+          // Formulário está ok para ser preenchido, garante visibilidade
+          formElement.style.display = 'grid'; 
+        } else {
+          // Outro status (ex: 'cancelado', etc.)
+          document.body.innerHTML = `<h1>Status inválido (${data.status}) para este formulário.</h1>`;
+        }
+
+      } catch (err) {
+        console.error('Erro ao carregar estado do formulário:', err);
+        document.body.innerHTML = `<h1>Ocorreu um erro ao verificar o estado do formulário: ${err.message}</h1>`;
+      }
+    }
+
+    // Carrega o estado do formulário quando a página é carregada
+    // Garante que o Supabase client esteja carregado antes de chamar
+    if (typeof supabase !== 'undefined') {
+        document.addEventListener('DOMContentLoaded', carregarEstadoFormulario);
+    } else {
+        // Tenta carregar após um pequeno delay se Supabase não estiver pronto imediatamente
+        window.addEventListener('load', () => {
+             if (typeof supabase !== 'undefined') {
+                 carregarEstadoFormulario();
+             } else {
+                 console.error("Supabase client ainda não definido após load event.");
+                 document.body.innerHTML = '<h1>Erro crítico: Falha ao inicializar a conexão com o banco de dados.</h1>';
+             }
+        });
+    }
 
   </script>
 </body>
