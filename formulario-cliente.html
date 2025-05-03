@@ -823,11 +823,17 @@
     function removerItem(id) {
       const item = document.getElementById(id);
       if (item) {
+        item.remove(); // Remove imediatamente para teste
+        atualizarCamposDinamicos(); // Atualiza seções dependentes após remover
+        /* // Animação removida temporariamente para teste
         item.style.animation = 'fadeOut 0.3s ease-out forwards';
         item.addEventListener('animationend', () => {
           item.remove();
           atualizarCamposDinamicos(); // Atualiza seções dependentes após remover
         });
+        */
+      } else {
+          console.error("Item com ID", id, "não encontrado para remoção.");
       }
     }
     
@@ -1228,20 +1234,23 @@
       
       // Coleta campos simples e radios
       formData.forEach((value, key) => {
-          // Verifica se é um campo de moeda e desformata
-          const inputElement = document.querySelector(`[name="${key}"]`);
-          if (inputElement && inputElement.classList.contains('moeda')) {
-              dadosFormulario[key] = desformatarMoeda(value);
-          } else {
-              // Tratamento para radios (pega apenas o selecionado)
-              if (inputElement && inputElement.type === 'radio') {
-                  const checkedRadio = document.querySelector(`input[name="${key}"]:checked`);
+          const inputElement = form.querySelector(`[name="${key}"]`); // Busca dentro do form
+          if (inputElement) { // Verifica se o elemento existe
+              if (inputElement.type === 'radio') {
+                  const checkedRadio = form.querySelector(`input[name="${key}"]:checked`);
                   if (checkedRadio) {
                       dadosFormulario[key] = checkedRadio.value;
                   }
+              } else if (inputElement.classList.contains('moeda')) {
+                  dadosFormulario[key] = desformatarMoeda(value);
               } else {
                   dadosFormulario[key] = value;
               }
+          } else {
+              // Se o elemento não for encontrado (pode ter sido removido dinamicamente),
+              // talvez não seja necessário adicionar ao JSON ou adicionar como null/undefined.
+              // Por segurança, vamos ignorar campos não encontrados por enquanto.
+              console.warn(`Elemento com nome "${key}" não encontrado no formulário.`);
           }
       });
       
@@ -1249,58 +1258,82 @@
       dadosFormulario.pessoasRenda = [];
       document.querySelectorAll('.pessoa-item').forEach(item => {
           const pessoa = {};
+          let hasData = false;
           item.querySelectorAll('input, select').forEach(input => {
-              const key = input.name.replace(/-\d+$/, ''); // Remove o ID do final da chave
-              if (input.classList.contains('moeda')) {
-                  pessoa[key] = desformatarMoeda(input.value);
-              } else {
-                  pessoa[key] = input.value;
+              if (input && input.name) { // Verifica se input e input.name existem
+                  const key = input.name.replace(/-\d+$/, ''); // Remove o ID do final da chave
+                  if (input.classList.contains('moeda')) {
+                      pessoa[key] = desformatarMoeda(input.value);
+                  } else {
+                      pessoa[key] = input.value;
+                  }
+                  if (input.value) hasData = true; // Marca se algum dado foi preenchido
               }
           });
-          dadosFormulario.pessoasRenda.push(pessoa);
+          if (hasData) { // Adiciona apenas se houver algum dado preenchido no item
+             dadosFormulario.pessoasRenda.push(pessoa);
+          }
       });
 
       // Coleta dados de Dependentes (agrupados)
       dadosFormulario.dependentes = [];
       document.querySelectorAll('.dependente-item').forEach(item => {
           const dependente = {};
+          let hasData = false;
           item.querySelectorAll('input, select').forEach(input => {
-              const key = input.name.replace(/-\d+$/, '');
-              dependente[key] = input.value;
+              if (input && input.name) {
+                  const key = input.name.replace(/-\d+$/, '');
+                  dependente[key] = input.value;
+                  if (input.value) hasData = true;
+              }
           });
-          dadosFormulario.dependentes.push(dependente);
+          if (hasData) {
+             dadosFormulario.dependentes.push(dependente);
+          }
       });
 
       // Coleta dados de Patrimônios (agrupados)
       dadosFormulario.patrimonios = [];
       document.querySelectorAll('.patrimonio-item').forEach(item => {
           const patrimonio = {};
+          let hasData = false;
           item.querySelectorAll('input, select').forEach(input => {
-              const key = input.name.replace(/-\d+$/, '');
-              if (input.classList.contains('moeda')) {
-                  patrimonio[key] = desformatarMoeda(input.value);
-              } else {
-                  patrimonio[key] = input.value;
+              if (input && input.name) {
+                  const key = input.name.replace(/-\d+$/, '');
+                  if (input.classList.contains('moeda')) {
+                      patrimonio[key] = desformatarMoeda(input.value);
+                  } else {
+                      patrimonio[key] = input.value;
+                  }
+                   if (input.value) hasData = true;
               }
           });
-          dadosFormulario.patrimonios.push(patrimonio);
+           if (hasData) {
+             dadosFormulario.patrimonios.push(patrimonio);
+          }
       });
       
       // Coleta dados de Dívidas (agrupados)
       dadosFormulario.dividas = [];
       document.querySelectorAll('.divida-item').forEach(item => {
           const divida = {};
+          let hasData = false;
           item.querySelectorAll('input, select').forEach(input => {
-              const key = input.name.replace(/-\d+$/, '');
-              if (input.classList.contains('moeda')) {
-                  divida[key] = desformatarMoeda(input.value);
-              } else if (input.type === 'number') {
-                  divida[key] = parseFloat(input.value) || 0;
-              } else {
-                  divida[key] = input.value;
+              if (input && input.name) {
+                  const key = input.name.replace(/-\d+$/, '');
+                  if (input.classList.contains('moeda')) {
+                      divida[key] = desformatarMoeda(input.value);
+                  } else if (input.type === 'number') {
+                      divida[key] = parseFloat(input.value) || 0;
+                  } else {
+                      divida[key] = input.value;
+                  }
+                  if (input.value) hasData = true;
               }
           });
-          dadosFormulario.dividas.push(divida);
+          if (hasData) {
+             dadosFormulario.dividas.push(divida);
+          }
       });
       
       // Coleta dados de Plano de Saúde (pessoas e dependentes)
@@ -1308,7 +1341,10 @@
       document.querySelectorAll('input[name^="planoSaude-"]').forEach(radio => {
           if (radio.checked) {
               const id = radio.name.split('-').pop(); // Pega o ID (cliente, pessoaRenda-X, dependente-X)
-              dadosFormulario.planoSaudeDetalhes[id] = radio.value;
+              // Verifica se o elemento correspondente (pessoa/dependente) ainda existe
+              if (id === 'cliente' || document.getElementById(`pessoaRenda-${id}`) || document.getElementById(`dependente-${id}`)) {
+                 dadosFormulario.planoSaudeDetalhes[id] = radio.value;
+              }
           }
       });
       
@@ -1317,7 +1353,9 @@
       document.querySelectorAll('input[name^="seguroVida-"]').forEach(radio => {
           if (radio.checked) {
               const id = radio.name.split('-').pop();
-              dadosFormulario.seguroVidaDetalhes[id] = radio.value;
+              if (id === 'cliente' || document.getElementById(`pessoaRenda-${id}`)) {
+                 dadosFormulario.seguroVidaDetalhes[id] = radio.value;
+              }
           }
       });
       
@@ -1325,7 +1363,8 @@
       dadosFormulario.patrimonioLiquidoPessoas = {};
       document.querySelectorAll('input[name^="patrimonioLiquido-"]').forEach(input => {
           const id = input.name.split('-').pop();
-          if (id !== 'patrimonioLiquido') { // Ignora o campo principal já coletado
+          // Certifica-se de que não é o input principal e que a pessoa existe
+          if (input.id !== 'patrimonioLiquido' && document.getElementById(`pessoaRenda-${id}`)) { 
              dadosFormulario.patrimonioLiquidoPessoas[id] = desformatarMoeda(input.value);
           }
       });
@@ -1347,12 +1386,15 @@
       document.querySelectorAll('input[name^="declaraIR-"]').forEach(radio => {
           if (radio.checked) {
               const id = radio.name.split('-').pop();
-              dadosFormulario.impostoRendaDetalhes[id] = { declara: radio.value };
-              if (radio.value === 'Sim') {
-                  const tipoDeclaraPessoa = document.querySelector(`input[name="tipoDeclaracao-${id}"]:checked`);
-                  const resultadoIRPessoa = document.querySelector(`input[name="resultadoIR-${id}"]:checked`);
-                  dadosFormulario.impostoRendaDetalhes[id].tipo = tipoDeclaraPessoa ? tipoDeclaraPessoa.value : null;
-                  dadosFormulario.impostoRendaDetalhes[id].resultado = resultadoIRPessoa ? resultadoIRPessoa.value : null;
+              // Certifica-se que é um ID de pessoa e que a pessoa existe
+              if (id !== 'declaraIR' && document.getElementById(`pessoaRenda-${id}`)) {
+                  dadosFormulario.impostoRendaDetalhes[id] = { declara: radio.value };
+                  if (radio.value === 'Sim') {
+                      const tipoDeclaraPessoa = document.querySelector(`input[name="tipoDeclaracao-${id}"]:checked`);
+                      const resultadoIRPessoa = document.querySelector(`input[name="resultadoIR-${id}"]:checked`);
+                      dadosFormulario.impostoRendaDetalhes[id].tipo = tipoDeclaraPessoa ? tipoDeclaraPessoa.value : null;
+                      dadosFormulario.impostoRendaDetalhes[id].resultado = resultadoIRPessoa ? resultadoIRPessoa.value : null;
+                  }
               }
           }
       });
@@ -1360,12 +1402,18 @@
       // Coleta dados de Fluxo de Caixa (pessoas)
       dadosFormulario.fluxoCaixaDetalhes = {};
       document.querySelectorAll('.pessoa-fluxo-caixa').forEach(div => {
-          const id = div.querySelector('input[name^="rendaMensal-"]').name.split('-').pop();
-          dadosFormulario.fluxoCaixaDetalhes[id] = {
-              rendaMensal: desformatarMoeda(div.querySelector(`input[name="rendaMensal-${id}"]`).value),
-              despesasFixas: desformatarMoeda(div.querySelector(`input[name="despesasFixas-${id}"]`).value),
-              despesasVariaveis: desformatarMoeda(div.querySelector(`input[name="despesasVariaveis-${id}"]`).value)
-          };
+          const inputRenda = div.querySelector('input[name^="rendaMensal-"]');
+          if (inputRenda && inputRenda.name) { // Verifica se o input e seu nome existem
+              const id = inputRenda.name.split('-').pop();
+              // Verifica se a pessoa correspondente ainda existe
+              if (id === 'cliente' || document.getElementById(`pessoaRenda-${id}`)) {
+                  dadosFormulario.fluxoCaixaDetalhes[id] = {
+                      rendaMensal: desformatarMoeda(div.querySelector(`input[name="rendaMensal-${id}"]`)?.value || ''), // Adiciona verificação e fallback
+                      despesasFixas: desformatarMoeda(div.querySelector(`input[name="despesasFixas-${id}"]`)?.value || ''),
+                      despesasVariaveis: desformatarMoeda(div.querySelector(`input[name="despesasVariaveis-${id}"]`)?.value || '')
+                  };
+              }
+          }
       });
 
       console.log('Dados a serem enviados:', JSON.stringify(dadosFormulario, null, 2));
