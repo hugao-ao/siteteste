@@ -30,7 +30,7 @@ const sidebar = document.getElementById("sidebar");
 const sidebarToggle = document.getElementById("sidebar-toggle");
 const navPainelAdmin = document.getElementById("nav-painel-admin");
 const navGerenciarUsuarios = document.getElementById("nav-gerenciar-usuarios");
-const navListarUsuarios = document.getElementById("nav-listar-usuarios");
+// const navListarUsuarios = document.getElementById("nav-listar-usuarios"); // REMOVIDO
 const navGerenciarClientes = document.getElementById("nav-gerenciar-clientes");
 const sidebarLogoutBtn = document.getElementById("sidebar-logout-btn");
 const sidebarMenuItems = document.querySelectorAll(".sidebar-menu li a, .sidebar-menu li button"); // Para gerenciar estado ativo
@@ -39,12 +39,12 @@ const sidebarMenuItems = document.querySelectorAll(".sidebar-menu li a, .sidebar
 const mainContent = document.getElementById("main-content");
 const contentPainel = document.getElementById("content-painel");
 const contentGerenciarUsuarios = document.getElementById("content-gerenciar-usuarios");
-const contentListarUsuarios = document.getElementById("content-listar-usuarios");
+// const contentListarUsuarios = document.getElementById("content-listar-usuarios"); // REMOVIDO
 const allContentSections = document.querySelectorAll(".content-section");
 
 // Tabelas e Formulários (dentro das seções de conteúdo)
 const manageTableBody = document.querySelector("#manage-users-table tbody");
-const listTableBody = document.querySelector("#list-users-table tbody");
+// const listTableBody = document.querySelector("#list-users-table tbody"); // REMOVIDO
 const createUserForm = document.getElementById("create-user-form");
 const newUserInput = document.getElementById("new-user");
 const newPassInput = document.getElementById("new-pass");
@@ -114,8 +114,7 @@ function updateMenuActiveState(activeSectionId) {
 async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
   try {
     manageTableBody.innerHTML = "<tr><td colspan='6'>Carregando...</td></tr>";
-    listTableBody.innerHTML = "<tr><td colspan='5'>Carregando...</td></tr>";
-    
+    // listTableBody.innerHTML = "<tr><td colspan=\'5\'>Carregando...</td></tr>"; // REMOVIDO   
     let query = supabase
       .from("credenciais")
       .select("id, usuario, senha, email, nivel, projeto");
@@ -137,7 +136,7 @@ async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
     }
 
     manageTableBody.innerHTML = "";
-    listTableBody.innerHTML = "";
+    // listTableBody.innerHTML = ""; // REMOVIDO
     
     if (users.length === 0 && filterProject) {
         manageTableBody.innerHTML = `<tr><td colspan='6'>Nenhum usuário encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
@@ -193,7 +192,8 @@ async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
       `;
       manageTableBody.appendChild(manageTr);
 
-      // Linha para Tabela de Lista
+      // Linha para Tabela de Lista (REMOVIDA)
+      /*
       const listTr = document.createElement("tr");
       listTr.dataset.userId = user.id;
       listTr.innerHTML = `
@@ -211,13 +211,12 @@ async function loadUsers(filterProject = null) { // Adiciona parâmetro opcional
         </td>
       `;
       listTableBody.appendChild(listTr);
+      */
     });
 
-  } catch (error) {
-    console.error("Erro ao carregar usuários:", error);
-    manageTableBody.innerHTML = `<tr><td colspan='6' style='color: red;'>${error.message}</td></tr>`;
-    listTableBody.innerHTML = `<tr><td colspan='5' style='color: red;'>${error.message}</td></tr>`;
-  }
+  } catch (er    console.error("Erro ao carregar usuários:", error);
+    manageTableBody.innerHTML = `<tr><td colspan=\'6\' style=\'color: red;\'>${error.message}</td></tr>`;
+    // listTableBody.innerHTML = `<tr><td colspan=\'5\' style=\'color: red;\'>${error.message}</td></tr>`; // REMOVIDO  }
 }
 
 // --- Operações CRUD (mantidas) ---
@@ -247,6 +246,8 @@ async function saveUser(id) {
     if (error) throw error;
     
     alert("Usuário atualizado com sucesso!");
+    // Atualização da tabela de lista removida
+    /*
     const listRow = listTableBody.querySelector(`tr[data-user-id="${id}"]`);
     if (listRow) {
         listRow.children[1].textContent = sanitizeInput(email);
@@ -257,6 +258,7 @@ async function saveUser(id) {
             viewBtn.dataset.projeto = sanitizeInput(projeto) || '';
         }
     }
+    */
     if (senhaInput) senhaInput.value = '********'; 
     
   } catch (error) {
@@ -279,8 +281,11 @@ async function deleteUser(id) {
     alert("Usuário excluído com sucesso!");
     const manageRowToRemove = manageTableBody.querySelector(`tr[data-user-id="${id}"]`);
     if (manageRowToRemove) manageRowToRemove.remove();
+    // Remoção da tabela de lista removida
+    /*
     const listRowToRemove = listTableBody.querySelector(`tr[data-user-id="${id}"]`);
     if (listRowToRemove) listRowToRemove.remove();
+    */
     
   } catch (error) {
     console.error("Erro ao excluir usuário:", error);
