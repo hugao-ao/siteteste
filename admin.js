@@ -457,12 +457,7 @@ if (listTableBody) {
      });
 }
 */
-            if (userId && username !== undefined) {
-                viewUserDashboard(userId, username, userProject);
-            }
-        
-     });
-}
+// Bloco de código remanescente removido
 
 // Formulário Criar Usuário (mantido)
 if (createUserForm) {
