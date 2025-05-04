@@ -14,8 +14,8 @@
       min-height: 100vh; /* Ensure body takes full viewport height */
     }
 
-    /* --- Sidebar Styles (Importado de sidebar.css) --- */
-    /* @import url("sidebar.css"); */ /* Comentado pois sidebar.js injeta */
+    /* --- Sidebar Styles (Importado de sidebar.css ou injetado) --- */
+    /* Estilos da sidebar são gerenciados por sidebar.js e style.css/sidebar.css */
 
     /* --- Main Content Styles --- */
     #main-content {
@@ -140,7 +140,7 @@
         text-align: center;
     }
     .project-btn::before {
-        content: '';
+        content: ";
         position: absolute;
         top: 0;
         left: -100%;
@@ -214,16 +214,26 @@
             <!-- preenchido dinamicamente por admin.js -->
           </tbody>
         </table>
-        <!-- Botão para Salvar Todas as Alterações -->
+        <!-- Botão para Salvar Todas as Alterações (Adicionado aqui) -->
         <button id="save-all-users-btn" disabled>Salvar Todas as Alterações</button>
       </section>
     </div>
 
+    <!-- Seção Lista de Usuários Removida (mantido do original) -->
+
+    <!-- Gerenciar Clientes will navigate to clientes-dashboard.html, so no content section needed here -->
+
   </main>
 
+  <!-- Scripts originais mantidos -->
+  <script type="module" src="permissions.js"></script>
   <script type="module" src="supabase.js"></script>
-  <script type="module" src="sidebar.js"></script> <!-- Carrega sidebar antes de admin.js -->
   <script type="module" src="admin.js"></script>
+  <!-- Script para injetar a sidebar (mantido do original) -->
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    injectSidebar("main-content"); // Passa o ID do container principal
+  </script>
 
 </body>
 </html>
