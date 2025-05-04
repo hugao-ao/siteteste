@@ -35,8 +35,8 @@
   --argos-secondary-lighter: #ffffff;
   --argos-bg-dark: #4682B4; /* SteelBlue (AINDA MAIS CLARO) */
   --argos-bg-surface: #B0C4DE; /* LightSteelBlue (AINDA MAIS CLARO para superfície) */
-  --argos-text-light: #2c3e50; /* Midnight Blue (MAIS ESCURO para contraste) */
-  --argos-text-muted: #bdc3c7; /* Silver */
+  --argos-text-light: #FFFFFF; /* Branco para hover/ativo, máximo brilho */
+  --argos-text-muted: #E0E0E0; /* Prata mais claro e brilhante */
   --argos-border-color: #7f8c8d; /* Cinza ardósia */
   --argos-shadow-color: rgba(30, 144, 255, 0.3);
   --argos-header-bg: var(--argos-primary);
