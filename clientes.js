@@ -34,23 +34,24 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;")
+    .replace(/\'/g, "&#x27;") // Corrigido para escapar aspas simples corretamente
     .replace(/`/g, "&#x60;");
 };
 
 // --- Verificação de Acesso e Inicialização (Exportada) ---
-export async function initializeDashboard() { // <<< EXPORTADO
-    console.log("clientes.js: initializeDashboard() chamado."); // Log de depuração
+export async function initializeDashboard() {
+    console.log("clientes.js: initializeDashboard() INICIADO.");
     const loggedInUserId = sessionStorage.getItem("user_id");
     const loggedInUserNivel = sessionStorage.getItem("nivel");
     const loggedInUserProjeto = sessionStorage.getItem("projeto");
 
-    // Verifica se está logado (movido para o início)
     if (!loggedInUserId || !loggedInUserNivel) {
+        console.error("clientes.js: Usuário não logado ou sem nível definido.");
         alert("Acesso não autorizado. Faça login novamente.");
         window.location.href = "index.html";
-        return; // Interrompe a execução
+        return;
     }
+    console.log(`clientes.js: Usuário logado ID: ${loggedInUserId}, Nível: ${loggedInUserNivel}`);
 
     isActuallyAdmin = loggedInUserNivel === 'admin';
 
@@ -65,9 +66,9 @@ export async function initializeDashboard() { // <<< EXPORTADO
     let effectiveProjeto = loggedInUserProjeto;
     let isAdminViewingAsUser = false;
 
-    // *** Lógica de Contexto (mantida) ***
+    // *** Lógica de Contexto ***
     if (isActuallyAdmin && filterProjectFromUrl) {
-        console.log(`Admin acessando contexto do projeto: ${filterProjectFromUrl}`);
+        console.log(`clientes.js: Contexto = Admin acessando projeto: ${filterProjectFromUrl}`);
         isAdmin = true;
         currentUserId = loggedInUserId;
         currentUserNivel = 'admin';
@@ -85,13 +86,14 @@ export async function initializeDashboard() { // <<< EXPORTADO
         if(pageTitleElement) pageTitleElement.textContent = `Gerenciamento de Clientes (${filterProjectFromUrl})`;
 
     } else if (isActuallyAdmin && viewingUserIdFromSession && viewingUsernameFromSession) {
-        console.log("Admin está visualizando como usuário.");
+        console.log(`clientes.js: Contexto = Admin visualizando como usuário ID: ${viewingUserIdFromSession}`);
         isAdminViewingAsUser = true;
         isAdmin = false;
         effectiveUserId = viewingUserIdFromSession;
         effectiveNivel = 'usuario';
         currentUser = viewingUsernameFromSession;
         try {
+            console.log(`clientes.js: Buscando projeto para usuário visualizado ID: ${effectiveUserId}`);
             const { data: viewedUserData, error: viewedUserError } = await supabase
                 .from('credenciais')
                 .select('projeto')
@@ -99,8 +101,9 @@ export async function initializeDashboard() { // <<< EXPORTADO
                 .single();
             if (viewedUserError) throw viewedUserError;
             effectiveProjeto = viewedUserData?.projeto;
+            console.log(`clientes.js: Projeto do usuário visualizado (${effectiveUserId}): ${effectiveProjeto}`);
         } catch (error) {
-            console.error("Erro ao buscar projeto do usuário visualizado:", error);
+            console.error("clientes.js: Erro ao buscar projeto do usuário visualizado:", error);
             effectiveProjeto = null;
             alert("Erro ao carregar informações do usuário visualizado.");
         }
@@ -113,7 +116,7 @@ export async function initializeDashboard() { // <<< EXPORTADO
         if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'none';
 
     } else {
-        console.log("Carregando contexto normal.");
+        console.log("clientes.js: Contexto = Usuário normal ou Admin geral.");
         currentUser = sessionStorage.getItem("usuario");
         isAdmin = isActuallyAdmin;
         currentUserId = loggedInUserId;
@@ -132,25 +135,34 @@ export async function initializeDashboard() { // <<< EXPORTADO
             if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'none';
         }
     }
+    console.log(`clientes.js: Contexto final - isAdmin: ${isAdmin}, currentUserId: ${currentUserId}, currentUserProjeto: ${currentUserProjeto}`);
 
+    console.log("clientes.js: Carregando todos os usuários...");
     await loadAllUsers();
+    console.log(`clientes.js: ${allUsers.length} usuários carregados.`);
 
     // --- Listeners --- 
     if (clientsTableBody) {
         clientsTableBody.addEventListener("click", handleTableClick);
         clientsTableBody.addEventListener("input", markClientAsModified);
         clientsTableBody.addEventListener("change", markClientAsModified);
+        console.log("clientes.js: Listeners da tabela adicionados.");
+    } else {
+        console.error("clientes.js: Erro crítico - clientsTableBody não encontrado para adicionar listeners.");
     }
     if (addClientForm) {
         addClientForm.addEventListener("submit", addClient);
+        console.log("clientes.js: Listener do formulário de adicionar cliente adicionado.");
     }
     if (saveAllClientsBtn) {
         saveAllClientsBtn.addEventListener('click', saveAllClientChanges);
         saveAllClientsBtn.disabled = true;
+        console.log("clientes.js: Listener do botão Salvar Tudo adicionado.");
     }
     // Modal Listeners
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => formsModal.style.display = "none");
+        console.log("clientes.js: Listener do botão fechar modal adicionado.");
     }
     window.addEventListener('click', (event) => {
         if (event.target == formsModal) {
@@ -159,11 +171,13 @@ export async function initializeDashboard() { // <<< EXPORTADO
     });
     if (clientFormsList) {
         clientFormsList.addEventListener('click', handleDeleteFormClick);
+        console.log("clientes.js: Listener da lista de formulários no modal adicionado.");
     }
 
-    // Carrega clientes (agora chamado no final da inicialização)
-    console.log(`Chamando loadClients com filtro: ${filterProjectFromUrl || 'Nenhum'}`);
+    // Carrega clientes
+    console.log(`clientes.js: Chamando loadClients com filtro de projeto URL: ${filterProjectFromUrl || 'Nenhum'}`);
     loadClients(filterProjectFromUrl);
+    console.log("clientes.js: initializeDashboard() CONCLUÍDO.");
 }
 
 // Função para carregar todos os usuários (mantida)
@@ -176,41 +190,49 @@ async function loadAllUsers() {
         if (error) throw error;
         allUsers = data;
     } catch (error) {
-        console.error("Erro ao carregar lista de usuários:", error);
+        console.error("clientes.js: Erro ao carregar lista de usuários:", error);
         allUsers = [];
     }
 }
 
 // --- Carregar Clientes --- 
 async function loadClients(filterProject = null) {
-    console.log("clientes.js: loadClients() chamado."); // Log de depuração
+    console.log("clientes.js: loadClients() INICIADO.");
     modifiedClientIds.clear();
     if (saveAllClientsBtn) saveAllClientsBtn.disabled = true;
 
     if (!clientsTableBody) {
-        console.error("Erro: Elemento clientsTableBody não encontrado!");
+        console.error("clientes.js: Erro crítico em loadClients - clientsTableBody não encontrado!");
         return;
     }
 
     try {
-        clientsTableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
+        clientsTableBody.innerHTML = '<tr><td colspan="6">Carregando clientes...</td></tr>';
+        console.log("clientes.js: Construindo query Supabase...");
         let query = supabase.from('clientes').select('*, formularios_clientes(count)');
 
-        // Lógica de filtro (mantida)
+        // Lógica de filtro
         if (filterProject && isAdmin) {
+            console.log(`clientes.js: Aplicando filtro de projeto (Admin): ${filterProject}`);
             query = query.eq('projeto', filterProject);
         } else if (!isAdmin) {
             if (!currentUserProjeto) {
+                console.warn(`clientes.js: Usuário ${currentUserId} sem projeto, filtrando por assigned_to_user_id.`);
                 query = query.eq("assigned_to_user_id", currentUserId);
             } else {
+                console.log(`clientes.js: Aplicando filtro para usuário ${currentUserId} no projeto ${currentUserProjeto} (assigned OR TODOS)`);
                 query = query.or(`assigned_to_user_id.eq.${currentUserId},and(visibility.eq.TODOS,projeto.eq.${currentUserProjeto})`);
             }
-        } // else: Admin geral carrega todos
+        } else {
+             console.log("clientes.js: Carregando todos os clientes (Admin geral).");
+        }
 
+        console.log("clientes.js: Executando query Supabase...");
         const { data: clients, error } = await query.order('nome', { ascending: true });
 
         if (error) {
-            console.error("Erro Supabase ao carregar clientes:", error);
+            console.error("clientes.js: Erro na query Supabase:", error);
+            // Tratamento de erro mantido
             if (error.code === '42703') {
                 if (error.message.includes('visibility')) throw new Error("Erro DB: Coluna 'visibility' não encontrada.");
                 if (error.message.includes('assigned_to_user_id')) throw new Error("Erro DB: Coluna 'assigned_to_user_id' não encontrada.");
@@ -219,35 +241,50 @@ async function loadClients(filterProject = null) {
                  if (error.message.includes('formularios_clientes')) throw new Error("Erro DB: Relação 'formularios_clientes' não encontrada/configurada.");
                  if (error.message.includes('clientes')) throw new Error("Erro DB: Tabela 'clientes' não encontrada.");
             }
-            throw error;
+            throw error; // Re-throw para o catch externo
         }
         
-        console.log(`Clientes carregados: ${clients.length}`); // Log de depuração
+        console.log(`clientes.js: Query Supabase concluída. ${clients ? clients.length : 0} clientes encontrados.`);
 
-        if (clients.length === 0 && filterProject && isAdmin) {
-             clientsTableBody.innerHTML = `<tr><td colspan="6">Nenhum cliente encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
-             return;
+        if (clients && clients.length === 0) {
+            if (filterProject && isAdmin) {
+                clientsTableBody.innerHTML = `<tr><td colspan="6">Nenhum cliente encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
+            } else {
+                clientsTableBody.innerHTML = '<tr><td colspan="6">Nenhum cliente encontrado para este contexto.</td></tr>';
+            }
+            console.log("clientes.js: Nenhum cliente encontrado, renderização interrompida.");
+            return; // Interrompe se não houver clientes
         }
 
+        console.log("clientes.js: Chamando renderClients...");
         renderClients(clients);
+        console.log("clientes.js: renderClients concluído.");
 
     } catch (error) {
-        console.error("Erro final ao carregar clientes:", error);
-        clientsTableBody.innerHTML = `<tr><td colspan="6" style="color: red;">Erro ao carregar: ${error.message}</td></tr>`;
+        console.error("clientes.js: Erro GERAL em loadClients:", error);
+        clientsTableBody.innerHTML = `<tr><td colspan="6" style="color: red;">Erro ao carregar clientes: ${error.message}</td></tr>`;
     }
+    console.log("clientes.js: loadClients() CONCLUÍDO.");
 }
 
 // --- Renderizar Tabela de Clientes --- 
 function renderClients(clients) {
-    if (!clientsTableBody) return;
-    clientsTableBody.innerHTML = "";
+    console.log("clientes.js: renderClients() INICIADO.");
+    if (!clientsTableBody) {
+        console.error("clientes.js: Erro crítico em renderClients - clientsTableBody não encontrado!");
+        return;
+    }
+    clientsTableBody.innerHTML = ""; // Limpa antes de renderizar
 
     if (!clients || clients.length === 0) {
-        clientsTableBody.innerHTML = '<tr><td colspan="6">Nenhum cliente encontrado para este contexto.</td></tr>';
+        console.warn("clientes.js: renderClients chamado com lista vazia ou nula.");
+        clientsTableBody.innerHTML = '<tr><td colspan="6">Nenhum cliente para exibir.</td></tr>';
         return;
     }
 
-    clients.forEach(client => {
+    console.log(`clientes.js: Renderizando ${clients.length} clientes...`);
+    clients.forEach((client, index) => {
+        // console.log(`clientes.js: Renderizando cliente ${index + 1}: ID ${client.id}, Nome: ${client.nome}`); // Log muito verboso, comentado
         const tr = document.createElement("tr");
         tr.dataset.clientId = client.id;
         tr.dataset.originalNome = client.nome || '';
@@ -257,7 +294,7 @@ function renderClients(clients) {
         tr.dataset.originalAssignedTo = client.assigned_to_user_id || '';
 
         const canEditDelete = isAdmin || client.criado_por_id === currentUserId || (client.visibility === 'TODOS' && client.projeto === currentUserProjeto);
-        const formCount = client.formularios_clientes[0]?.count || 0;
+        const formCount = client.formularios_clientes && client.formularios_clientes.length > 0 ? client.formularios_clientes[0].count : 0;
 
         const nomeHtml = canEditDelete
             ? `<input type="text" class="client-input" data-field="nome" id="nome-${client.id}" value="${sanitizeInput(client.nome)}">`
@@ -327,10 +364,12 @@ function renderClients(clients) {
         `;
         clientsTableBody.appendChild(tr);
     });
+    console.log("clientes.js: renderClients() CONCLUÍDO.");
 }
 
 // --- Salvar Todas as Alterações de Clientes --- 
 async function saveAllClientChanges() {
+    console.log("clientes.js: saveAllClientChanges() chamado.");
     if (modifiedClientIds.size === 0) {
         alert("Nenhuma alteração detectada para salvar.");
         return;
@@ -344,7 +383,10 @@ async function saveAllClientChanges() {
 
     for (const id of modifiedClientIds) {
         const row = clientsTableBody.querySelector(`tr[data-client-id="${id}"]`);
-        if (!row) continue;
+        if (!row) {
+            console.warn(`clientes.js: Linha não encontrada para cliente modificado ID: ${id}`);
+            continue;
+        }
 
         const nomeInput = document.getElementById(`nome-${id}`);
         const whatsappInput = document.getElementById(`whatsapp-${id}`);
@@ -371,7 +413,7 @@ async function saveAllClientChanges() {
         return;
     }
 
-    console.log("Enviando atualizações de clientes:", updates);
+    console.log("clientes.js: Enviando atualizações de clientes:", updates);
     try {
         const { error } = await supabase.from('clientes').upsert(updates, { onConflict: 'id' });
         if (error) throw error;
@@ -389,11 +431,12 @@ async function saveAllClientChanges() {
             }
         });
     } catch (error) {
-        console.error("Erro ao salvar clientes em lote:", error);
+        console.error("clientes.js: Erro ao salvar clientes em lote:", error);
         alert("Erro ao salvar alterações: " + error.message);
     } finally {
         saveAllClientsBtn.disabled = true;
         saveAllClientsBtn.textContent = 'Salvar Todas as Alterações';
+        console.log("clientes.js: saveAllClientChanges() concluído.");
     }
 }
 
@@ -411,13 +454,14 @@ function markClientAsModified(event) {
         modifiedClientIds.add(clientId);
         row.classList.add('modified');
         if (saveAllClientsBtn) saveAllClientsBtn.disabled = false;
-        console.log("Clientes modificados:", modifiedClientIds);
+        // console.log("Clientes modificados:", modifiedClientIds); // Log muito verboso
     }
 }
 
 // --- Operações CRUD (addClient, deleteClient mantidas) ---
 async function addClient(event) {
     event.preventDefault();
+    console.log("clientes.js: addClient() chamado.");
     try {
         const nome = newClientNameInput.value.trim();
         const whatsapp = newClientWhatsappInput.value.trim();
@@ -429,6 +473,7 @@ async function addClient(event) {
             .insert({ nome, whatsapp, projeto, criado_por_id: currentUserId, visibility: 'INDIVIDUAL', assigned_to_user_id: currentUserId })
             .select();
         if (error) {
+             console.error("clientes.js: Erro ao adicionar cliente (Supabase):", error);
              if (error.code === '42703') {
                  if (error.message.includes('projeto')) throw new Error("Erro DB: Coluna 'projeto' não existe.");
                  if (error.message.includes('criado_por_id')) throw new Error("Erro DB: Coluna 'criado_por_id' não existe.");
@@ -439,44 +484,59 @@ async function addClient(event) {
         addClientForm.reset();
         if (newClientProjectSelect.disabled) newClientProjectSelect.value = currentUserProjeto;
         const urlParams = new URLSearchParams(window.location.search);
-        loadClients(urlParams.get('projeto'));
+        loadClients(urlParams.get('projeto')); // Recarrega a lista
     } catch (error) {
-        console.error("Erro ao adicionar cliente:", error);
-        alert("Erro: " + error.message);
+        console.error("clientes.js: Erro GERAL em addClient:", error);
+        alert("Erro ao adicionar cliente: " + error.message);
     }
 }
 
 async function deleteClient(id) {
+    console.log(`clientes.js: deleteClient() chamado para ID: ${id}`);
     try {
         const { count, error: countError } = await supabase
             .from('formularios_clientes')
             .select('*', { count: 'exact', head: true })
             .eq('cliente_id', id);
-        if (countError) throw countError;
+        if (countError) {
+            console.error("clientes.js: Erro ao contar formulários para exclusão:", countError);
+            throw countError;
+        }
 
         let confirmMessage = "Excluir este cliente?";
         if (count > 0) confirmMessage += `\n\nATENÇÃO: ${count} formulário(s) associado(s) também serão excluídos!`;
-        if (!confirm(confirmMessage)) return;
+        if (!confirm(confirmMessage)) {
+            console.log("clientes.js: Exclusão cancelada pelo usuário.");
+            return;
+        }
 
         const { error: deleteError } = await supabase.from("clientes").delete().eq("id", id);
-        if (deleteError) throw deleteError;
+        if (deleteError) {
+            console.error("clientes.js: Erro ao excluir cliente (Supabase):", deleteError);
+            throw deleteError;
+        }
 
         alert("Cliente e formulários associados excluídos!");
         const rowToRemove = clientsTableBody.querySelector(`tr[data-client-id="${id}"]`);
         if (rowToRemove) rowToRemove.remove();
         modifiedClientIds.delete(id);
         if (modifiedClientIds.size === 0 && saveAllClientsBtn) saveAllClientsBtn.disabled = true;
+        console.log(`clientes.js: Cliente ID ${id} excluído com sucesso.`);
     } catch (error) {
-        console.error("Erro ao excluir cliente:", error);
-        alert("Erro: " + error.message);
+        console.error("clientes.js: Erro GERAL em deleteClient:", error);
+        alert("Erro ao excluir cliente: " + error.message);
     }
 }
 
 // --- Lógica do Modal de Formulários --- 
 async function showClientFormsModal(clientId, clientName) {
-    if (!formsModal || !modalTitle || !clientFormsList || !noFormsMessage) return;
+    console.log(`clientes.js: showClientFormsModal() chamado para Cliente ID: ${clientId}, Nome: ${clientName}`);
+    if (!formsModal || !modalTitle || !clientFormsList || !noFormsMessage) {
+        console.error("clientes.js: Elementos do modal não encontrados!");
+        return;
+    }
 
-    modalTitle.textContent = `Formulários de: ${clientName}`;
+    modalTitle.textContent = `Formulários de: ${sanitizeInput(clientName)}`;
     clientFormsList.innerHTML = '<li>Carregando formulários...</li>';
     noFormsMessage.style.display = 'none';
     formsModal.style.display = "block";
@@ -485,6 +545,7 @@ async function showClientFormsModal(clientId, clientName) {
 }
 
 async function loadClientForms(clientId) {
+    console.log(`clientes.js: loadClientForms() chamado para Cliente ID: ${clientId}`);
     try {
         const { data: forms, error } = await supabase
             .from('formularios_clientes')
@@ -492,11 +553,15 @@ async function loadClientForms(clientId) {
             .eq('cliente_id', clientId)
             .order('created_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error("clientes.js: Erro ao carregar formulários (Supabase):", error);
+            throw error;
+        }
 
+        console.log(`clientes.js: ${forms ? forms.length : 0} formulários encontrados para cliente ${clientId}.`);
         clientFormsList.innerHTML = '';
 
-        if (forms.length === 0) {
+        if (!forms || forms.length === 0) {
             noFormsMessage.style.display = 'block';
         } else {
             noFormsMessage.style.display = 'none';
@@ -513,14 +578,18 @@ async function loadClientForms(clientId) {
             });
         }
     } catch (error) {
-        console.error("Erro ao carregar formulários do cliente:", error);
-        clientFormsList.innerHTML = '<li>Erro ao carregar formulários.</li>';
+        console.error("clientes.js: Erro GERAL em loadClientForms:", error);
+        clientFormsList.innerHTML = '<li>Erro ao carregar formulários. Verifique o console.</li>';
         noFormsMessage.style.display = 'none';
     }
 }
 
 async function deleteForm(formId, clientId) {
-    if (!confirm("Tem certeza que deseja excluir este formulário permanentemente?")) return;
+    console.log(`clientes.js: deleteForm() chamado para Formulário ID: ${formId}, Cliente ID: ${clientId}`);
+    if (!confirm("Tem certeza que deseja excluir este formulário permanentemente?")) {
+        console.log("clientes.js: Exclusão de formulário cancelada.");
+        return;
+    }
 
     try {
         const { error } = await supabase
@@ -528,14 +597,18 @@ async function deleteForm(formId, clientId) {
             .delete()
             .eq('id', formId);
 
-        if (error) throw error;
+        if (error) {
+            console.error("clientes.js: Erro ao excluir formulário (Supabase):", error);
+            throw error;
+        }
 
         alert("Formulário excluído com sucesso!");
-        await loadClientForms(clientId);
+        await loadClientForms(clientId); // Recarrega modal
         const urlParams = new URLSearchParams(window.location.search);
-        loadClients(urlParams.get('projeto'));
+        loadClients(urlParams.get('projeto')); // Recarrega tabela principal
+        console.log(`clientes.js: Formulário ID ${formId} excluído.`);
     } catch (error) {
-        console.error("Erro ao excluir formulário:", error);
+        console.error("clientes.js: Erro GERAL em deleteForm:", error);
         alert("Erro ao excluir formulário: " + error.message);
     }
 }
@@ -571,8 +644,6 @@ function handleDeleteFormClick(event) {
     }
 }
 
-// --- Inicialização Removida --- 
-// A inicialização agora é chamada pelo script no HTML
-// const loggedInUserNivelCheck = sessionStorage.getItem("nivel");
-// if (!loggedInUserNivelCheck) { ... } else { ... }
+// --- Inicialização chamada pelo HTML --- 
+console.log("clientes.js: Script carregado.");
 
