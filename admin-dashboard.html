@@ -298,24 +298,6 @@
 
     <div id="content-gerenciar-usuarios" class="content-section">
       <section>
-        <h2>Usuários Cadastrados (Gerenciamento)</h2>
-        <table id="manage-users-table">
-          <thead>
-            <tr>
-              <th>Usuário</th>
-              <th>Senha</th>
-              <th>E-mail</th>
-              <th>Nível</th>
-              <th>Projeto</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody>
-            <!-- preenchido dinamicamente por admin.js -->
-          </tbody>
-        </table>
-      </section>
-      <section>
         <h2>Cadastrar Novo Usuário</h2>
         <form id="create-user-form">
             <input type="text"     id="new-user"  placeholder="Novo usuário" required />
@@ -333,6 +315,24 @@
             </select>
             <button type="submit" id="create-user-btn">Criar Usuário</button>
         </form>
+      </section>
+      <section>
+        <h2>Usuários Cadastrados (Gerenciamento)</h2>
+        <table id="manage-users-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Senha</th>
+              <th>E-mail</th>
+              <th>Nível</th>
+              <th>Projeto</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- preenchido dinamicamente por admin.js -->
+          </tbody>
+        </table>
       </section>
     </div>
 
