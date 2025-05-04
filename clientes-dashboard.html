@@ -19,26 +19,22 @@
       padding: 2rem;
       margin-left: 250px; /* Default margin for expanded sidebar */
       transition: margin-left 0.3s ease;
-      background-color: var(--bg-surface);
-      color: var(--text-light);
+      background-color: var(--theme-bg-surface);
+      color: var(--theme-text-light);
     }
     #main-content-clientes.sidebar-collapsed {
       margin-left: 60px; /* Margin for collapsed sidebar */
     }
     /* --- End Sidebar Integration Styles --- */
 
-    /* Estilos específicos para gerenciamento de clientes (mantidos e ajustados) */
-    /* REMOVIDO: Botão Voltar Universal e Logout antigos */
-    /* #history-back-btn { ... } */
-    /* #logout-btn { ... } */
-
+    /* Estilos específicos para gerenciamento de clientes */
     .admin-view-indicator {
-        background-color: rgba(218, 165, 32, 0.1);
-        color: var(--gold-lighter);
+        background-color: rgba(var(--theme-secondary-rgb, 218, 165, 32), 0.1);
+        color: var(--theme-secondary-lighter);
         padding: 0.5rem 1rem;
         border-radius: 6px;
         margin-bottom: 1.5rem;
-        border: 1px solid var(--gold);
+        border: 1px solid var(--theme-secondary);
         text-align: center;
         font-size: 0.9rem;
     }
@@ -52,23 +48,26 @@
     #clients-table {
         width: 100%;
         border-collapse: collapse;
-        margin-bottom: 2rem;
+        margin-bottom: 1rem; /* Reduzido */
     }
     #clients-table th, #clients-table td {
         padding: 0.75rem;
         text-align: left;
-        border-bottom: 1px solid var(--border-color);
+        border-bottom: 1px solid var(--theme-border-color);
+        vertical-align: middle;
     }
     #clients-table th {
-        background-color: var(--emerald-dark);
-        color: var(--gold-lighter);
+        background-color: var(--theme-header-bg);
+        color: var(--theme-header-text);
         font-weight: bold;
     }
-    #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 25%; } /* Nome */
-    #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 25%; } /* WhatsApp */
-    #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 15%; } /* Status */
-    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 15%; text-align: center; } /* Formulários */
-    #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 20%; } /* Ações */
+    /* Ajuste de larguras das colunas */
+    #clients-table th:nth-child(1), #clients-table td:nth-child(1) { width: 20%; } /* Nome */
+    #clients-table th:nth-child(2), #clients-table td:nth-child(2) { width: 20%; } /* WhatsApp */
+    #clients-table th:nth-child(3), #clients-table td:nth-child(3) { width: 15%; } /* Projeto */
+    #clients-table th:nth-child(4), #clients-table td:nth-child(4) { width: 20%; } /* Status/Atribuição */
+    #clients-table th:nth-child(5), #clients-table td:nth-child(5) { width: 10%; text-align: center; } /* Formulários */
+    #clients-table th:nth-child(6), #clients-table td:nth-child(6) { width: 15%; text-align: center;} /* Ações */
 
     .whatsapp-cell {
         display: flex;
@@ -84,24 +83,34 @@
         flex-grow: 1;
         min-width: 100px;
     }
-
-    .view-details-btn {
+    .view-details-btn, .view-forms-btn, .delete-btn {
         background: none;
         border: none;
         cursor: pointer;
-        font-size: 1.3rem;
-        padding: 0;
-        color: var(--gold-lighter);
+        padding: 0.2rem 0.4rem;
+        font-size: 1rem; /* Ajustado */
+        color: var(--theme-secondary-lighter);
         opacity: 0.8;
-        transition: opacity 0.2s;
+        transition: opacity 0.2s, color 0.2s;
+        vertical-align: middle;
     }
-    .view-details-btn:hover {
+     .view-details-btn i, .view-forms-btn i {
+         font-size: 1.1rem;
+     }
+    .view-details-btn:hover, .view-forms-btn:hover, .delete-btn:hover {
         opacity: 1;
+        color: var(--theme-secondary);
+    }
+    .delete-btn {
+        color: #ff6b6b; /* Vermelho para excluir */
+    }
+    .delete-btn:hover {
+        color: #e03131; /* Vermelho mais escuro */
     }
 
     .status-todos {
-        background-color: var(--gold-lighter);
-        color: var(--bg-dark);
+        background-color: var(--theme-secondary-lighter);
+        color: var(--theme-bg-dark);
         padding: 0.2rem 0.5rem;
         border-radius: 4px;
         font-size: 0.8rem;
@@ -111,102 +120,157 @@
         white-space: nowrap;
     }
     .status-individual {
-         color: var(--text-muted);
+         color: var(--theme-text-muted);
          font-style: italic;
          font-size: 0.9rem;
          white-space: nowrap;
     }
     #clients-table select {
         max-width: 100%;
+        padding: 0.3rem;
+        margin-top: 0.2rem;
+    }
+    #clients-table input {
+        padding: 0.4rem;
+    }
+    tr.modified td {
+        background-color: rgba(var(--theme-secondary-rgb, 218, 165, 32), 0.1);
+    }
+    #save-all-clients-btn {
+        display: block;
+        width: fit-content;
+        margin: 1rem 0 2rem auto;
+        padding: 0.8rem 1.5rem;
+    }
+    #save-all-clients-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
     }
 
+    /* --- Modal Styles --- */
+    .modal {
+        display: none; /* Hidden by default */
+        position: fixed; /* Stay in place */
+        z-index: 1001; /* Sit on top */
+        left: 0;
+        top: 0;
+        width: 100%; /* Full width */
+        height: 100%; /* Full height */
+        overflow: auto; /* Enable scroll if needed */
+        background-color: rgba(0,0,0,0.6); /* Black w/ opacity */
+    }
+    .modal-content {
+        background-color: var(--theme-bg-surface);
+        color: var(--theme-text-light);
+        margin: 10% auto; /* 10% from the top and centered */
+        padding: 25px;
+        border: 1px solid var(--theme-border-color);
+        border-radius: 8px;
+        width: 80%; /* Could be more or less, depending on screen size */
+        max-width: 700px;
+        position: relative;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+    }
+    .modal-close {
+        color: var(--theme-text-muted);
+        position: absolute;
+        top: 10px;
+        right: 20px;
+        font-size: 28px;
+        font-weight: bold;
+        transition: color 0.3s ease;
+    }
+    .modal-close:hover,
+    .modal-close:focus {
+        color: var(--theme-secondary-lighter);
+        text-decoration: none;
+        cursor: pointer;
+    }
+    .modal h2 {
+        margin-top: 0;
+        color: var(--theme-secondary-lighter);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+        margin-bottom: 1.5rem;
+    }
+    #client-forms-list {
+        list-style: none;
+        padding: 0;
+        max-height: 400px; /* Limit height and add scroll */
+        overflow-y: auto;
+    }
+    #client-forms-list li {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.8rem 0.5rem;
+        border-bottom: 1px solid var(--theme-border-color);
+        transition: background-color 0.2s ease;
+    }
+     #client-forms-list li:last-child {
+         border-bottom: none;
+     }
+    #client-forms-list li:hover {
+        background-color: rgba(var(--theme-primary-rgb, 0, 0, 0), 0.1);
+    }
+    #client-forms-list .form-info {
+        font-size: 0.9rem;
+        color: var(--theme-text-muted);
+    }
+    #client-forms-list .form-actions button {
+        margin-left: 0.5rem;
+        font-size: 0.9rem;
+    }
+    #client-forms-list .delete-form-btn {
+        color: #ff6b6b;
+    }
+    #client-forms-list .delete-form-btn:hover {
+        color: #e03131;
+    }
+    #no-forms-message {
+        text-align: center;
+        color: var(--theme-text-muted);
+        padding: 1rem;
+    }
+    /* --- End Modal Styles --- */
+
     @media (max-width: 900px) {
-        #clients-table thead {
-            display: none;
-        }
-        #clients-table tr {
-            display: block;
-            margin-bottom: 1rem;
-            border: 1px solid var(--border-color);
-            border-radius: 6px;
-            overflow: hidden;
-        }
-        #clients-table td {
-            display: block;
-            text-align: right;
-            padding-left: 50%;
-            position: relative;
-            border-bottom: 1px dotted var(--border-color);
-            width: 100% !important;
-            box-sizing: border-box;
-        }
-        #clients-table td:last-child {
-            border-bottom: none;
-        }
-        #clients-table td::before {
-            content: attr(data-label);
-            position: absolute;
-            left: 0.75rem;
-            width: 45%;
-            padding-right: 0.5rem;
-            text-align: left;
-            font-weight: bold;
-            white-space: nowrap;
-            color: var(--gold-lighter);
-        }
-        #clients-table td:nth-of-type(2) {
-             padding-left: 0.75rem;
-        }
-        #clients-table td:nth-of-type(2)::before {
-             position: static;
-             display: block;
-             width: auto;
-             margin-bottom: 0.5rem;
-             text-align: left;
-        }
-        .whatsapp-cell {
-            flex-direction: column;
-            align-items: flex-start;
-        }
-        .whatsapp-cell input[type="text"] {
-            width: 100%;
-        }
-        #clients-table td:nth-of-type(4) {
-            text-align: center;
-            padding-left: 0.75rem;
-        }
-        #clients-table td:nth-of-type(4)::before {
-             position: static;
-             display: block;
-             width: auto;
-             margin-bottom: 0.5rem;
-             text-align: left;
-        }
-        #clients-table td:nth-of-type(5) {
-            text-align: center;
-            padding-left: 0.75rem;
-        }
-         #clients-table td:nth-of-type(5)::before {
-             position: static;
-             display: block;
-             width: auto;
-             margin-bottom: 0.5rem;
-             text-align: left;
-        }
-        #clients-table td:nth-of-type(5) button {
-            margin: 0.2rem;
+        /* Responsive table styles (mantidos) */
+        #clients-table thead { display: none; }
+        #clients-table tr { display: block; margin-bottom: 1rem; border: 1px solid var(--theme-border-color); border-radius: 6px; overflow: hidden; }
+        #clients-table td { display: block; text-align: right; padding-left: 50%; position: relative; border-bottom: 1px dotted var(--theme-border-color); width: 100% !important; box-sizing: border-box; }
+        #clients-table td:last-child { border-bottom: none; }
+        #clients-table td::before { content: attr(data-label); position: absolute; left: 0.75rem; width: 45%; padding-right: 0.5rem; text-align: left; font-weight: bold; white-space: nowrap; color: var(--theme-secondary-lighter); }
+        /* Ajustes específicos para colunas responsivas */
+        #clients-table td:nth-of-type(2), /* WhatsApp */
+        #clients-table td:nth-of-type(4), /* Status */
+        #clients-table td:nth-of-type(5), /* Formulários */
+        #clients-table td:nth-of-type(6)  /* Ações */
+        { padding-left: 0.75rem; }
+        #clients-table td:nth-of-type(2)::before, /* WhatsApp */
+        #clients-table td:nth-of-type(4)::before, /* Status */
+        #clients-table td:nth-of-type(5)::before, /* Formulários */
+        #clients-table td:nth-of-type(6)::before  /* Ações */
+        { position: static; display: block; width: auto; margin-bottom: 0.5rem; text-align: left; }
+        .whatsapp-cell { flex-direction: column; align-items: flex-start; }
+        .whatsapp-cell input[type="text"] { width: 100%; }
+        #clients-table td:nth-of-type(5), /* Formulários */
+        #clients-table td:nth-of-type(6)  /* Ações */
+        { text-align: center; }
+        #clients-table td:nth-of-type(6) button { margin: 0.2rem; }
+
+        /* Modal responsivo */
+        .modal-content {
+            width: 90%;
+            margin: 15% auto;
         }
     }
 
   </style>
 </head>
 <body>
-  <!-- Sidebar será injetada aqui pelo sidebar.js se for admin -->
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
   <main id="main-content-clientes">
-    <!-- Botão Voltar Universal (REMOVIDO - agora na sidebar) -->
-    <!-- <button id="history-back-btn">Voltar</button> -->
-    <!-- Botão Logout (REMOVIDO - agora na sidebar) -->
-    <!-- <button id="logout-btn">Logout</button> -->
 
     <!-- Indicador de visualização pelo Admin -->
     <div id="admin-view-indicator" class="admin-view-indicator" style="display: none;">
@@ -216,7 +280,7 @@
     <h1>Gerenciamento de Clientes</h1>
 
     <!-- Formulário para Adicionar Cliente -->
-    <section>
+    <section id="add-client-section">
       <h2>Adicionar Novo Cliente</h2>
       <form id="add-client-form">
         <input type="text" id="new-client-name" placeholder="Nome do Cliente" required />
@@ -239,28 +303,50 @@
           <tr>
             <th>Nome</th>
             <th>WhatsApp</th>
-            <th>Projeto</th> <!-- Nova coluna -->
-            <th>Status</th>
+            <th>Projeto</th>
+            <th>Status/Atribuição</th>
             <th>Formulários</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody>
           <!-- Linhas preenchidas dinamicamente por clientes.js -->
-          <tr><td colspan="5">Carregando clientes...</td></tr>
+          <tr><td colspan="6">Carregando clientes...</td></tr>
         </tbody>
       </table>
+      <!-- Botão Salvar Tudo (Clientes) -->
+      <button id="save-all-clients-btn" disabled>Salvar Todas as Alterações</button>
     </section>
 
   </main>
+
+  <!-- Modal para Visualizar/Excluir Formulários -->
+  <div id="forms-modal" class="modal">
+    <div class="modal-content">
+      <span class="modal-close" id="modal-close-btn">&times;</span>
+      <h2 id="modal-title">Formulários do Cliente</h2>
+      <ul id="client-forms-list">
+        <!-- Lista de formulários será preenchida aqui -->
+        <li id="no-forms-message" style="display: none;">Nenhum formulário encontrado para este cliente.</li>
+      </ul>
+    </div>
+  </div>
 
   <!-- Scripts -->
   <script type="module" src="supabase.js"></script>
   <script type="module">
     import { injectSidebar } from './sidebar.js';
-    injectSidebar("main-content-clientes"); // Passa o ID do container principal
+    // Verifica se deve injetar sidebar (só se for admin ou user normal, não admin vendo como user)
+    const isAdminViewingAsUser = sessionStorage.getItem("viewing_user_id") && sessionStorage.getItem("nivel") === 'admin';
+    if (!isAdminViewingAsUser) {
+        injectSidebar("main-content-clientes");
+    } else {
+        // Opcional: Adicionar um header simples ou botão voltar se não tiver sidebar
+        console.log("Admin visualizando como usuário, sidebar não injetada.");
+    }
   </script>
   <script type="module" src="clientes.js"></script>
 
 </body>
 </html>
+
