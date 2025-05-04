@@ -505,4 +505,3 @@ if (checkAccess()) {
   console.log("Access checked. Waiting for sidebarReady event...");
   document.addEventListener('sidebarReady', setupAdminListeners, { once: true });
 }
-
