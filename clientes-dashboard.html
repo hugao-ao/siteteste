@@ -335,17 +335,25 @@
   <!-- Scripts -->
   <script type="module" src="supabase.js"></script>
   <script type="module">
+    // Importa funções necessárias
     import { injectSidebar } from './sidebar.js';
+    import { initializeDashboard as initializeClientes } from './clientes.js'; // Importa a função de inicialização do clientes.js
+
     // Verifica se deve injetar sidebar (só se for admin ou user normal, não admin vendo como user)
     const isAdminViewingAsUser = sessionStorage.getItem("viewing_user_id") && sessionStorage.getItem("nivel") === 'admin';
+    
     if (!isAdminViewingAsUser) {
-        injectSidebar("main-content-clientes");
+        // Se não for admin vendo como user, injeta a sidebar normalmente
+        injectSidebar("main-content-clientes"); 
+        // Adiciona listener para chamar initializeClientes APÓS sidebar estar pronta
+        document.addEventListener('sidebarReady', initializeClientes, { once: true });
     } else {
-        // Opcional: Adicionar um header simples ou botão voltar se não tiver sidebar
-        console.log("Admin visualizando como usuário, sidebar não injetada.");
+        // Se for admin vendo como user, não injeta sidebar e chama initializeClientes diretamente
+        console.log("Admin visualizando como usuário, sidebar não injetada. Inicializando clientes diretamente.");
+        initializeClientes(); // Chama a inicialização do clientes.js diretamente
     }
   </script>
-  <script type="module" src="clientes.js"></script>
+  <!-- REMOVIDO: <script type="module" src="clientes.js"></script> (agora importado acima) -->
 
 </body>
 </html>
