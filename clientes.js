@@ -38,11 +38,20 @@ const sanitizeInput = (str) => {
     .replace(/`/g, "&#x60;");
 };
 
-// --- Verificação de Acesso e Inicialização ---
-async function initializeDashboard() {
+// --- Verificação de Acesso e Inicialização (Exportada) ---
+export async function initializeDashboard() { // <<< EXPORTADO
+    console.log("clientes.js: initializeDashboard() chamado."); // Log de depuração
     const loggedInUserId = sessionStorage.getItem("user_id");
     const loggedInUserNivel = sessionStorage.getItem("nivel");
     const loggedInUserProjeto = sessionStorage.getItem("projeto");
+
+    // Verifica se está logado (movido para o início)
+    if (!loggedInUserId || !loggedInUserNivel) {
+        alert("Acesso não autorizado. Faça login novamente.");
+        window.location.href = "index.html";
+        return; // Interrompe a execução
+    }
+
     isActuallyAdmin = loggedInUserNivel === 'admin';
 
     const urlParams = new URLSearchParams(window.location.search);
@@ -105,11 +114,6 @@ async function initializeDashboard() {
 
     } else {
         console.log("Carregando contexto normal.");
-        if (!loggedInUserId || !loggedInUserNivel) {
-            alert("Acesso não autorizado.");
-            window.location.href = "index.html";
-            return;
-        }
         currentUser = sessionStorage.getItem("usuario");
         isAdmin = isActuallyAdmin;
         currentUserId = loggedInUserId;
@@ -148,17 +152,17 @@ async function initializeDashboard() {
     if (modalCloseBtn) {
         modalCloseBtn.addEventListener('click', () => formsModal.style.display = "none");
     }
-    // Close modal if clicked outside content
     window.addEventListener('click', (event) => {
         if (event.target == formsModal) {
             formsModal.style.display = "none";
         }
     });
-    // Listener para botões de exclusão dentro do modal (delegação)
     if (clientFormsList) {
         clientFormsList.addEventListener('click', handleDeleteFormClick);
     }
 
+    // Carrega clientes (agora chamado no final da inicialização)
+    console.log(`Chamando loadClients com filtro: ${filterProjectFromUrl || 'Nenhum'}`);
     loadClients(filterProjectFromUrl);
 }
 
@@ -179,8 +183,14 @@ async function loadAllUsers() {
 
 // --- Carregar Clientes --- 
 async function loadClients(filterProject = null) {
+    console.log("clientes.js: loadClients() chamado."); // Log de depuração
     modifiedClientIds.clear();
     if (saveAllClientsBtn) saveAllClientsBtn.disabled = true;
+
+    if (!clientsTableBody) {
+        console.error("Erro: Elemento clientsTableBody não encontrado!");
+        return;
+    }
 
     try {
         clientsTableBody.innerHTML = '<tr><td colspan="6">Carregando...</td></tr>';
@@ -200,8 +210,7 @@ async function loadClients(filterProject = null) {
         const { data: clients, error } = await query.order('nome', { ascending: true });
 
         if (error) {
-            // Tratamento de erro mantido
-            console.error("Erro Supabase:", error);
+            console.error("Erro Supabase ao carregar clientes:", error);
             if (error.code === '42703') {
                 if (error.message.includes('visibility')) throw new Error("Erro DB: Coluna 'visibility' não encontrada.");
                 if (error.message.includes('assigned_to_user_id')) throw new Error("Erro DB: Coluna 'assigned_to_user_id' não encontrada.");
@@ -213,6 +222,8 @@ async function loadClients(filterProject = null) {
             throw error;
         }
         
+        console.log(`Clientes carregados: ${clients.length}`); // Log de depuração
+
         if (clients.length === 0 && filterProject && isAdmin) {
              clientsTableBody.innerHTML = `<tr><td colspan="6">Nenhum cliente encontrado para o projeto ${sanitizeInput(filterProject)}.</td></tr>`;
              return;
@@ -221,13 +232,14 @@ async function loadClients(filterProject = null) {
         renderClients(clients);
 
     } catch (error) {
-        console.error("Erro ao carregar clientes:", error);
+        console.error("Erro final ao carregar clientes:", error);
         clientsTableBody.innerHTML = `<tr><td colspan="6" style="color: red;">Erro ao carregar: ${error.message}</td></tr>`;
     }
 }
 
 // --- Renderizar Tabela de Clientes --- 
 function renderClients(clients) {
+    if (!clientsTableBody) return;
     clientsTableBody.innerHTML = "";
 
     if (!clients || clients.length === 0) {
@@ -304,7 +316,7 @@ function renderClients(clients) {
             <td data-label="Status/Atribuição">${assignmentHtml}</td>
             <td data-label="Formulários" style="text-align: center;">
                 ${formCount > 0
-                    ? `<button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}">${formCount} <i class="fa-solid fa-list-check"></i></button>` // Icone diferente
+                    ? `<button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}">${formCount} <i class="fa-solid fa-list-check"></i></button>`
                     : '0'
                 }
             </td>
@@ -465,7 +477,7 @@ async function showClientFormsModal(clientId, clientName) {
     if (!formsModal || !modalTitle || !clientFormsList || !noFormsMessage) return;
 
     modalTitle.textContent = `Formulários de: ${clientName}`;
-    clientFormsList.innerHTML = '<li>Carregando formulários...</li>'; // Limpa e mostra carregando
+    clientFormsList.innerHTML = '<li>Carregando formulários...</li>';
     noFormsMessage.style.display = 'none';
     formsModal.style.display = "block";
 
@@ -476,13 +488,13 @@ async function loadClientForms(clientId) {
     try {
         const { data: forms, error } = await supabase
             .from('formularios_clientes')
-            .select('id, created_at, tipo_formulario') // Seleciona campos relevantes
+            .select('id, created_at, tipo_formulario')
             .eq('cliente_id', clientId)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
 
-        clientFormsList.innerHTML = ''; // Limpa a lista
+        clientFormsList.innerHTML = '';
 
         if (forms.length === 0) {
             noFormsMessage.style.display = 'block';
@@ -494,7 +506,6 @@ async function loadClientForms(clientId) {
                 li.innerHTML = `
                     <span class="form-info">${sanitizeInput(form.tipo_formulario) || 'Formulário'} - ${formDate}</span>
                     <div class="form-actions">
-                        <!-- <button class="view-form-btn" data-form-id="${form.id}"><i class="fa-solid fa-eye"></i> Ver</button> -->
                         <button class="delete-form-btn" data-form-id="${form.id}" data-client-id="${clientId}" title="Excluir Formulário"><i class="fa-solid fa-trash-can"></i> Excluir</button>
                     </div>
                 `;
@@ -520,12 +531,9 @@ async function deleteForm(formId, clientId) {
         if (error) throw error;
 
         alert("Formulário excluído com sucesso!");
-        // Recarrega a lista no modal
         await loadClientForms(clientId);
-        // Atualiza a contagem na tabela principal (opcional, mas bom)
         const urlParams = new URLSearchParams(window.location.search);
-        loadClients(urlParams.get('projeto')); // Recarrega a tabela de clientes
-
+        loadClients(urlParams.get('projeto'));
     } catch (error) {
         console.error("Erro ao excluir formulário:", error);
         alert("Erro ao excluir formulário: " + error.message);
@@ -563,12 +571,8 @@ function handleDeleteFormClick(event) {
     }
 }
 
-// --- Inicialização --- 
-const loggedInUserNivelCheck = sessionStorage.getItem("nivel");
-if (!loggedInUserNivelCheck) {
-    alert("Acesso não autorizado.");
-    window.location.href = "index.html";
-} else {
-    document.addEventListener('sidebarReady', initializeDashboard, { once: true });
-}
+// --- Inicialização Removida --- 
+// A inicialização agora é chamada pelo script no HTML
+// const loggedInUserNivelCheck = sessionStorage.getItem("nivel");
+// if (!loggedInUserNivelCheck) { ... } else { ... }
 
