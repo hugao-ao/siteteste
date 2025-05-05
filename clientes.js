@@ -25,6 +25,7 @@ let isAdmin = false;
 let isActuallyAdmin = false;
 let allUsers = [];
 const modifiedClientIds = new Set();
+let isInitialized = false; // <<< Flag para evitar inicialização dupla
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
@@ -34,13 +35,20 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;") // Corrigido para escapar aspas simples corretamente
+    .replace(/\'/g, "&#x27;")
     .replace(/`/g, "&#x60;");
 };
 
 // --- Verificação de Acesso e Inicialização (Exportada) ---
 export async function initializeDashboard() {
+    if (isInitialized) { // <<< Verifica se já foi inicializado
+        console.warn("clientes.js: Tentativa de inicialização dupla bloqueada.");
+        return;
+    }
+    isInitialized = true; // <<< Marca como inicializado
     console.log("clientes.js: initializeDashboard() INICIADO.");
+
+    // Restante do código de inicialização...
     const loggedInUserId = sessionStorage.getItem("user_id");
     const loggedInUserNivel = sessionStorage.getItem("nivel");
     const loggedInUserProjeto = sessionStorage.getItem("projeto");
