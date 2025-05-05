@@ -84,6 +84,7 @@
         cursor: pointer;
         font-size: 0.9rem;
         transition: background-color 0.3s ease;
+        margin-top: 0.5rem; /* Adiciona espaço acima do botão */
     }
     #form-section .delete-form-btn:hover {
         background-color: #a12020;
@@ -147,8 +148,11 @@
     //     return crypto.randomUUID();
     // }
 
-    // Função para exibir o link do formulário
-    function displayFormLink(token) {
+    // <<< MODIFICADO: Aceita 'latestForm' e adiciona botão de exclusão >>>
+    // Função para exibir o link do formulário PENDENTE
+    function displayFormLink(latestForm) {
+        const token = latestForm.token_unico;
+        const formId = latestForm.id;
         const link = `${window.location.origin}/formulario-cliente.html?token=${token}`;
         formInfoContentEl.innerHTML = `
             <p>Este cliente ainda não preencheu o formulário.</p>
@@ -157,16 +161,23 @@
                 <a href="${link}" target="_blank">${link}</a>
             </div>
             <p><small>(Este link é único e só pode ser usado uma vez)</small></p>
+            <button class="delete-form-btn" data-form-id="${formId}">Excluir Link e Gerar Novo</button>
         `;
+        // Adiciona listener para o botão de exclusão
+        const deleteBtn = formInfoContentEl.querySelector('.delete-form-btn');
+        if (deleteBtn) {
+            deleteBtn.addEventListener('click', handleDeleteForm);
+        }
     }
 
-    // Função para exibir os dados preenchidos
+    // Função para exibir os dados PREENCHIDOS
     function displayFormData(formData) {
         formInfoContentEl.innerHTML = `
             <p>Formulário preenchido em: ${new Date(formData.data_preenchimento).toLocaleString("pt-BR")}</p>
             <div class="form-data-display">
                 <p><strong>Nome Completo:</strong> ${formData.nome_preenchido ? sanitizeInput(formData.nome_preenchido) : 'N/A'}</p>
                 <p><strong>Cidade Natal:</strong> ${formData.cidade_natal_preenchida ? sanitizeInput(formData.cidade_natal_preenchida) : 'N/A'}</p>
+                <!-- Adicione outros campos preenchidos aqui -->
             </div>
             <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
         `;
@@ -223,6 +234,7 @@
         }
 
         try {
+            formInfoContentEl.innerHTML = `<p id="form-loading-state">Carregando informações do formulário...</p>`; // Reset state
             // 1. Busca dados do cliente (incluindo projeto)
             const { data: clientData, error: clientError } = await supabase
                 .from('clientes')
@@ -243,7 +255,7 @@
             // 3. Busca o formulário MAIS RECENTE para este cliente
             const { data: latestForm, error: formError } = await supabase
                 .from('formularios_clientes')
-                .select('*')
+                .select('*') // Seleciona todas as colunas necessárias (id, token_unico, status, data_preenchimento, etc.)
                 .eq('cliente_id', clientId)
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -258,8 +270,9 @@
                 // Nenhum formulário existe, mostra botão para gerar
                 displayGenerateLinkForm();
             } else if (latestForm.status === 'pendente') {
-                // Formulário pendente existe, mostra o link
-                displayFormLink(latestForm.token_unico);
+                // Formulário pendente existe, mostra o link E o botão de excluir
+                // <<< MODIFICADO: Passa 'latestForm' completo >>>
+                displayFormLink(latestForm);
             } else if (latestForm.status === 'preenchido') {
                 // Formulário preenchido existe, mostra os dados e botão de excluir
                 displayFormData(latestForm);
@@ -288,13 +301,14 @@
 
             if (error) throw error;
 
-            displayFormLink(newToken); // Exibe o novo link
+            // <<< MODIFICADO: Passa 'data' (o novo formulário) para displayFormLink >>>
+            displayFormLink(data); // Exibe o novo link e o botão de excluir
 
         } catch (error) {
             console.error("Erro ao gerar link:", error);
             formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao gerar link: ${error.message}</p>`;
             // Adiciona botão para tentar novamente
-            formInfoContentEl.innerHTML += `<button class="generate-link-btn">Tentar Gerar Novamente</button>`;
+            formInfoContentEl.innerHTML += `<br><button class="generate-link-btn">Tentar Gerar Novamente</button>`;
             const generateBtn = formInfoContentEl.querySelector('.generate-link-btn');
             if (generateBtn) {
                 generateBtn.addEventListener('click', handleGenerateLink);
@@ -302,14 +316,15 @@
         }
     }
 
-    // Handler para excluir dados do formulário
+    // Handler para excluir dados/link do formulário
     async function handleDeleteForm(event) {
         const formId = event.target.dataset.formId;
-        if (!formId || !confirm("Tem certeza que deseja excluir os dados deste formulário? Isso permitirá gerar um novo link.")) {
+        // <<< MODIFICADO: Mensagem de confirmação genérica >>>
+        if (!formId || !confirm("Tem certeza que deseja excluir este formulário? Isso permitirá gerar um novo link.")) {
             return;
         }
 
-        formInfoContentEl.innerHTML = `<p>Excluindo dados...</p>`;
+        formInfoContentEl.innerHTML = `<p>Excluindo formulário...</p>`;
         try {
             const { error } = await supabase
                 .from('formularios_clientes')
@@ -318,7 +333,7 @@
 
             if (error) throw error;
 
-            alert("Dados do formulário excluídos com sucesso!");
+            alert("Formulário excluído com sucesso!");
             loadAndManageForm(); // Recarrega a seção para mostrar o botão de gerar link
 
         } catch (error) {
