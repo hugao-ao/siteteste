@@ -148,7 +148,18 @@
     //     return crypto.randomUUID();
     // }
 
-    // <<< MODIFICADO: Aceita 'latestForm' e adiciona botão de exclusão >>>
+    // Função para sanitizar input (copiada de outros scripts)
+    const sanitizeInput = (str) => {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/\'/g, "&#x27;") // Corrigido para \'
+        .replace(/`/g, "&#x60;");
+    };
+
     // Função para exibir o link do formulário PENDENTE
     function displayFormLink(latestForm) {
         console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); // DEBUG LOG
@@ -178,15 +189,31 @@
         }
     }
 
-    // Função para exibir os dados PREENCHIDOS
+    // Função para exibir os dados PREENCHIDOS (MODIFICADA PARA USAR JSONB)
     function displayFormData(formData) {
         console.log("DEBUG: Entering displayFormData for completed form:", formData); // DEBUG LOG
+        let dataHtml = '';
+        // Verifica se dados_formulario existe e é um objeto
+        if (formData.dados_formulario && typeof formData.dados_formulario === 'object') {
+            const data = formData.dados_formulario;
+            // Acessa os campos dentro do JSON
+            const nome = data.nome ? sanitizeInput(data.nome) : 'N/A';
+            const cidade = data.cidade_natal ? sanitizeInput(data.cidade_natal) : 'N/A';
+            
+            dataHtml = `
+                <p><strong>Nome Completo:</strong> ${nome}</p>
+                <p><strong>Cidade Natal:</strong> ${cidade}</p>
+                <!-- Adicione outros campos do JSON aqui conforme necessário -->
+            `;
+        } else {
+            dataHtml = '<p>Não foi possível carregar os dados do formulário.</p>';
+            console.log("DEBUG: dados_formulario is null or not an object:", formData.dados_formulario); // DEBUG LOG
+        }
+
         formInfoContentEl.innerHTML = `
             <p>Formulário preenchido em: ${new Date(formData.data_preenchimento).toLocaleString("pt-BR")}</p>
             <div class="form-data-display">
-                <p><strong>Nome Completo:</strong> ${formData.nome_preenchido ? sanitizeInput(formData.nome_preenchido) : 'N/A'}</p>
-                <p><strong>Cidade Natal:</strong> ${formData.cidade_natal_preenchida ? sanitizeInput(formData.cidade_natal_preenchida) : 'N/A'}</p>
-                <!-- Adicione outros campos preenchidos aqui -->
+                ${dataHtml}
             </div>
             <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
         `;
@@ -224,18 +251,6 @@
             console.log("DEBUG: Generate button not found."); // DEBUG LOG
         }
     }
-
-    // Função para sanitizar input (copiada de outros scripts)
-    const sanitizeInput = (str) => {
-      if (str === null || str === undefined) return "";
-      return String(str)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/\'/g, "&#x27;")
-        .replace(/`/g, "&#x60;");
-    };
 
     // Função principal para carregar e gerenciar o formulário
     async function loadAndManageForm() {
@@ -283,7 +298,7 @@
             console.log("DEBUG: Fetching latest form for client ID:", clientId); // DEBUG LOG
             const { data: latestForm, error: formError } = await supabase
                 .from('formularios_clientes')
-                .select('*') // Seleciona todas as colunas necessárias (id, token_unico, status, data_preenchimento, etc.)
+                .select('*') // Seleciona todas as colunas necessárias (id, token_unico, status, data_preenchimento, dados_formulario)
                 .eq('cliente_id', clientId)
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -303,7 +318,6 @@
             } else if (latestForm.status === 'pendente') {
                 // Formulário pendente existe, mostra o link E o botão de excluir
                 console.log("DEBUG: Pending form found. Displaying form link and delete button."); // DEBUG LOG
-                // <<< MODIFICADO: Passa 'latestForm' completo >>>
                 displayFormLink(latestForm);
             } else if (latestForm.status === 'preenchido') {
                 // Formulário preenchido existe, mostra os dados e botão de excluir
@@ -333,6 +347,7 @@
                     cliente_id: clientId,
                     token_unico: newToken,
                     status: 'pendente'
+                    // dados_formulario será null por padrão
                 })
                 .select()
                 .single();
@@ -343,7 +358,6 @@
             }
             console.log("DEBUG: New form link inserted:", data); // DEBUG LOG
 
-            // <<< MODIFICADO: Passa 'data' (o novo formulário) para displayFormLink >>>
             displayFormLink(data); // Exibe o novo link e o botão de excluir
 
         } catch (error) {
@@ -362,47 +376,49 @@
     async function handleDeleteForm(event) {
         const formId = event.target.dataset.formId;
         console.log("DEBUG: Entering handleDeleteForm for form ID:", formId); // DEBUG LOG
-        // <<< MODIFICADO: Mensagem de confirmação genérica >>>
-        if (!formId || !confirm("Tem certeza que deseja excluir este formulário? Isso permitirá gerar um novo link.")) {
-            console.log("DEBUG: Deletion cancelled by user or no form ID."); // DEBUG LOG
+        if (!formId) {
+            console.error("DEBUG: Form ID not found on button dataset."); // DEBUG LOG
+            alert("Erro: ID do formulário não encontrado.");
             return;
         }
 
-        formInfoContentEl.innerHTML = `<p>Excluindo formulário...</p>`;
+        const confirmation = confirm("Tem certeza que deseja excluir este formulário/link? Esta ação gerará um novo link para o cliente.");
+        if (!confirmation) {
+            console.log("DEBUG: Deletion cancelled by user."); // DEBUG LOG
+            return;
+        }
+
+        formInfoContentEl.innerHTML = `<p>Excluindo formulário e gerando novo link...</p>`;
+
         try {
-            console.log("DEBUG: Attempting to delete form with ID:", formId); // DEBUG LOG
-            const { error } = await supabase
+            // 1. Exclui o formulário antigo (ou apenas o link, se pendente)
+            console.log("DEBUG: Deleting form with ID:", formId); // DEBUG LOG
+            const { error: deleteError } = await supabase
                 .from('formularios_clientes')
                 .delete()
                 .eq('id', formId);
 
-            if (error) {
-                console.error("DEBUG: Error deleting form:", error); // DEBUG LOG
-                throw error;
+            if (deleteError) {
+                console.error("DEBUG: Error deleting form:", deleteError); // DEBUG LOG
+                throw deleteError;
             }
             console.log("DEBUG: Form deleted successfully."); // DEBUG LOG
 
-            alert("Formulário excluído com sucesso!");
-            loadAndManageForm(); // Recarrega a seção para mostrar o botão de gerar link
+            // 2. Gera um novo link (chama a função handleGenerateLink)
+            console.log("DEBUG: Calling handleGenerateLink to create a new form link."); // DEBUG LOG
+            await handleGenerateLink(); // Reutiliza a função de gerar link
 
         } catch (error) {
-            console.error("Erro ao excluir formulário:", error);
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao excluir: ${error.message}</p>`;
-            // Recarrega para voltar ao estado anterior em caso de erro
-            setTimeout(loadAndManageForm, 2000);
+            console.error("Erro ao excluir e gerar novo link:", error);
+            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao processar a exclusão: ${error.message}</p>`;
+            // Adiciona botão para tentar recarregar
+            formInfoContentEl.innerHTML += `<br><button onclick="loadAndManageForm()">Recarregar</button>`;
         }
     }
 
-    // Limpa sessionStorage ao descarregar a página (mantido)
-    window.addEventListener('beforeunload', () => {
-        console.log("DEBUG: Clearing sessionStorage before unload."); // DEBUG LOG
-        sessionStorage.removeItem("viewing_client_name");
-        sessionStorage.removeItem("viewing_client_id");
-    });
-
-    // Inicia o carregamento
-    console.log("DEBUG: Initializing client details page..."); // DEBUG LOG
-    loadAndManageForm();
+    // --- Inicialização ---
+    // Carrega o formulário quando o DOM estiver pronto
+    document.addEventListener('DOMContentLoaded', loadAndManageForm);
 
   </script>
 </body>
