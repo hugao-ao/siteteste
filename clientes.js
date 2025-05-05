@@ -25,7 +25,7 @@ let isAdmin = false;
 let isActuallyAdmin = false;
 let allUsers = [];
 const modifiedClientIds = new Set();
-let isInitialized = false; // <<< Flag para evitar inicialização dupla
+// let isInitialized = false; // REMOVIDO - Não mais necessário com DOMContentLoaded
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
@@ -35,18 +35,15 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;")
+    .replace(/\'/g, "&#x27;") // Corrigido
     .replace(/`/g, "&#x60;");
 };
 
-// --- Verificação de Acesso e Inicialização (Exportada) ---
-export async function initializeDashboard() {
-    if (isInitialized) { // <<< Verifica se já foi inicializado
-        console.warn("clientes.js: Tentativa de inicialização dupla bloqueada.");
-        return;
-    }
-    isInitialized = true; // <<< Marca como inicializado
-    console.log("clientes.js: initializeDashboard() INICIADO.");
+// --- Verificação de Acesso e Inicialização (NÃO MAIS EXPORTADA) ---
+async function initializeDashboard() {
+    // if (isInitialized) { ... } // REMOVIDO
+    // isInitialized = true; // REMOVIDO
+    console.log("clientes.js: initializeDashboard() INICIADO via DOMContentLoaded.");
 
     // Restante do código de inicialização...
     const loggedInUserId = sessionStorage.getItem("user_id");
@@ -652,6 +649,7 @@ function handleDeleteFormClick(event) {
     }
 }
 
-// --- Inicialização chamada pelo HTML --- 
+// --- Inicialização chamada pelo HTML via DOMContentLoaded --- 
 console.log("clientes.js: Script carregado.");
+document.addEventListener("DOMContentLoaded", initializeDashboard);
 
