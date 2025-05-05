@@ -334,10 +334,10 @@
 
   <!-- Scripts -->
   <script type="module" src="supabase.js"></script>
+  <script type="module" src="clientes.js"></script> <!-- Apenas carrega o script, ele se inicializa sozinho -->
   <script type="module">
-    // Importa funções necessárias
+    // Importa função para injetar a sidebar
     import { injectSidebar } from './sidebar.js';
-    import { initializeDashboard as initializeClientes } from './clientes.js'; // Importa a função de inicialização
 
     // Verifica se deve injetar sidebar (só se for admin ou user normal, não admin vendo como user)
     const isAdminViewingAsUser = sessionStorage.getItem("viewing_user_id") && sessionStorage.getItem("nivel") === 'admin';
@@ -346,21 +346,11 @@
         // Se não for admin vendo como user, injeta a sidebar normalmente
         console.log("clientes-dashboard.html: Injetando sidebar...");
         injectSidebar("main-content-clientes"); 
-        // Chama a inicialização APÓS a sidebar ser injetada (ou imediatamente se já estiver pronta)
-        // O evento 'sidebarReady' ainda é útil aqui para garantir que a sidebar está no DOM
-        document.addEventListener('sidebarReady', () => {
-            console.log("clientes-dashboard.html: Evento sidebarReady recebido. Chamando initializeClientes...");
-            initializeClientes();
-        }, { once: true });
-        // Adiciona um fallback caso o evento já tenha sido disparado
-        if (document.body.classList.contains('sidebar-ready')) {
-             console.log("clientes-dashboard.html: Sidebar já estava pronta. Chamando initializeClientes diretamente (fallback).");
-             initializeClientes();
-        }
+        // O script clientes.js agora inicializa sozinho via DOMContentLoaded
     } else {
-        // Se for admin vendo como user, não injeta sidebar e chama initializeClientes diretamente
-        console.log("clientes-dashboard.html: Admin visualizando como usuário, sidebar não injetada. Chamando initializeClientes diretamente.");
-        initializeClientes(); // Chama a inicialização do clientes.js diretamente
+        // Se for admin vendo como user, não injeta sidebar
+        console.log("clientes-dashboard.html: Admin visualizando como usuário, sidebar não injetada.");
+        // O script clientes.js agora inicializa sozinho via DOMContentLoaded
     }
   </script>
 
