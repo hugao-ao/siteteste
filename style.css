@@ -52,7 +52,7 @@
   --hvc-bg-dark: #0f0f1f; /* Quase preto azulado */
   --hvc-bg-surface: #191933; /* Azul muito escuro para superfícies */
   --hvc-text-light: #e6e6fa; /* Lavender */
-  --hvc-text-muted: #b0b0d0;
+  --hvc-text-muted: #C0C0C0; /* Silver para melhor contraste */
   --hvc-border-color: #483d8b; /* Dark slate blue */
   --hvc-shadow-color: rgba(0, 0, 128, 0.3);
   --hvc-header-bg: var(--hvc-primary);
@@ -67,8 +67,8 @@
   --planejamento-secondary-lighter: #fffacd; /* Lemon chiffon */
   --planejamento-bg-dark: #1a2a1a; /* Verde muito escuro */
   --planejamento-bg-surface: #2a4a2a; /* Verde escuro para superfícies */
-  --planejamento-text-light: #f0fff0; /* Honeydew */
-  --planejamento-text-muted: #90ee90; /* Light green */
+  --planejamento-text-light: #FFFFFF; /* Branco para máximo contraste */
+  --planejamento-text-muted: #C0C0C0; /* Silver para melhor contraste */
   --planejamento-border-color: #556b2f; /* Dark olive green */
   --planejamento-shadow-color: rgba(0, 100, 0, 0.3);
   --planejamento-header-bg: var(--planejamento-primary);
