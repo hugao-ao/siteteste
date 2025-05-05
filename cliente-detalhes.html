@@ -151,9 +151,11 @@
     // <<< MODIFICADO: Aceita 'latestForm' e adiciona botão de exclusão >>>
     // Função para exibir o link do formulário PENDENTE
     function displayFormLink(latestForm) {
+        console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); // DEBUG LOG
         const token = latestForm.token_unico;
         const formId = latestForm.id;
         const link = `${window.location.origin}/formulario-cliente.html?token=${token}`;
+        console.log("DEBUG: Setting innerHTML for pending form link..."); // DEBUG LOG
         formInfoContentEl.innerHTML = `
             <p>Este cliente ainda não preencheu o formulário.</p>
             <p>Compartilhe o link abaixo com o cliente:</p>
@@ -163,15 +165,22 @@
             <p><small>(Este link é único e só pode ser usado uma vez)</small></p>
             <button class="delete-form-btn" data-form-id="${formId}">Excluir Link e Gerar Novo</button>
         `;
+        console.log("DEBUG: innerHTML set. Querying for delete button..."); // DEBUG LOG
         // Adiciona listener para o botão de exclusão
         const deleteBtn = formInfoContentEl.querySelector('.delete-form-btn');
         if (deleteBtn) {
+            console.log("DEBUG: Delete button found:", deleteBtn); // DEBUG LOG
+            console.log("DEBUG: Adding event listener to delete button..."); // DEBUG LOG
             deleteBtn.addEventListener('click', handleDeleteForm);
+            console.log("DEBUG: Event listener added."); // DEBUG LOG
+        } else {
+            console.log("DEBUG: Delete button not found in DOM after setting innerHTML."); // DEBUG LOG
         }
     }
 
     // Função para exibir os dados PREENCHIDOS
     function displayFormData(formData) {
+        console.log("DEBUG: Entering displayFormData for completed form:", formData); // DEBUG LOG
         formInfoContentEl.innerHTML = `
             <p>Formulário preenchido em: ${new Date(formData.data_preenchimento).toLocaleString("pt-BR")}</p>
             <div class="form-data-display">
@@ -184,17 +193,23 @@
         // Adiciona listener para o botão de exclusão
         const deleteBtn = formInfoContentEl.querySelector('.delete-form-btn');
         if (deleteBtn) {
+            console.log("DEBUG: Delete button found (completed form):", deleteBtn); // DEBUG LOG
             deleteBtn.addEventListener('click', handleDeleteForm);
+            console.log("DEBUG: Event listener added (completed form)."); // DEBUG LOG
+        } else {
+             console.log("DEBUG: Delete button not found (completed form)."); // DEBUG LOG
         }
     }
 
     // Função para exibir mensagem de formulário não aplicável
     function displayFormNotApplicable() {
+        console.log("DEBUG: Entering displayFormNotApplicable"); // DEBUG LOG
         formInfoContentEl.innerHTML = `<p>O formulário é aplicável apenas para clientes do projeto "Planejamento".</p>`;
     }
 
     // Função para exibir botão de gerar link (quando não há formulário)
     function displayGenerateLinkForm() {
+        console.log("DEBUG: Entering displayGenerateLinkForm"); // DEBUG LOG
          formInfoContentEl.innerHTML = `
             <p>Nenhum formulário encontrado para este cliente.</p>
             <button class="generate-link-btn">Gerar Link do Formulário</button>
@@ -202,7 +217,11 @@
         // Adiciona listener para o botão de gerar link
         const generateBtn = formInfoContentEl.querySelector('.generate-link-btn');
         if (generateBtn) {
+            console.log("DEBUG: Generate button found:", generateBtn); // DEBUG LOG
             generateBtn.addEventListener('click', handleGenerateLink);
+            console.log("DEBUG: Event listener added (generate button)."); // DEBUG LOG
+        } else {
+            console.log("DEBUG: Generate button not found."); // DEBUG LOG
         }
     }
 
@@ -220,7 +239,9 @@
 
     // Função principal para carregar e gerenciar o formulário
     async function loadAndManageForm() {
+        console.log("DEBUG: Entering loadAndManageForm. Client ID:", clientId, "Client Name:", clientName); // DEBUG LOG
         if (!clientId) {
+            console.log("DEBUG: Client ID not found in sessionStorage."); // DEBUG LOG
             clientNameDisplay.textContent = "Cliente Inválido";
             formInfoContentEl.innerHTML = `<p style="color:red;">ID do cliente não encontrado.</p>`;
             return;
@@ -234,8 +255,10 @@
         }
 
         try {
+            console.log("DEBUG: Resetting form info content."); // DEBUG LOG
             formInfoContentEl.innerHTML = `<p id="form-loading-state">Carregando informações do formulário...</p>`; // Reset state
             // 1. Busca dados do cliente (incluindo projeto)
+            console.log("DEBUG: Fetching client data for ID:", clientId); // DEBUG LOG
             const { data: clientData, error: clientError } = await supabase
                 .from('clientes')
                 .select('projeto')
@@ -243,16 +266,21 @@
                 .single();
 
             if (clientError || !clientData) {
+                console.error("DEBUG: Error fetching client data or client not found:", clientError); // DEBUG LOG
                 throw clientError || new Error("Cliente não encontrado.");
             }
+            console.log("DEBUG: Client data fetched:", clientData); // DEBUG LOG
 
             // 2. Verifica se o projeto é Planejamento
             if (clientData.projeto !== 'Planejamento') {
+                console.log("DEBUG: Client project is not Planejamento. Displaying not applicable message."); // DEBUG LOG
                 displayFormNotApplicable();
                 return;
             }
+            console.log("DEBUG: Client project is Planejamento. Proceeding..."); // DEBUG LOG
 
             // 3. Busca o formulário MAIS RECENTE para este cliente
+            console.log("DEBUG: Fetching latest form for client ID:", clientId); // DEBUG LOG
             const { data: latestForm, error: formError } = await supabase
                 .from('formularios_clientes')
                 .select('*') // Seleciona todas as colunas necessárias (id, token_unico, status, data_preenchimento, etc.)
@@ -262,20 +290,28 @@
                 .maybeSingle(); // Retorna null se não encontrar, em vez de erro
 
             if (formError) {
+                console.error("DEBUG: Error fetching form data:", formError); // DEBUG LOG
                 throw formError;
             }
+            console.log("DEBUG: Latest form data fetched:", latestForm); // DEBUG LOG
 
             // 4. Decide o que exibir com base no formulário encontrado
             if (!latestForm) {
                 // Nenhum formulário existe, mostra botão para gerar
+                console.log("DEBUG: No form found. Displaying generate link button."); // DEBUG LOG
                 displayGenerateLinkForm();
             } else if (latestForm.status === 'pendente') {
                 // Formulário pendente existe, mostra o link E o botão de excluir
+                console.log("DEBUG: Pending form found. Displaying form link and delete button."); // DEBUG LOG
                 // <<< MODIFICADO: Passa 'latestForm' completo >>>
                 displayFormLink(latestForm);
             } else if (latestForm.status === 'preenchido') {
                 // Formulário preenchido existe, mostra os dados e botão de excluir
+                console.log("DEBUG: Completed form found. Displaying form data and delete button."); // DEBUG LOG
                 displayFormData(latestForm);
+            } else {
+                 console.log("DEBUG: Form found with unknown status:", latestForm.status); // DEBUG LOG
+                 formInfoContentEl.innerHTML = `<p style="color:orange;">Status desconhecido do formulário: ${latestForm.status}</p>`;
             }
 
         } catch (error) {
@@ -286,9 +322,11 @@
 
     // Handler para gerar novo link
     async function handleGenerateLink() {
+        console.log("DEBUG: Entering handleGenerateLink"); // DEBUG LOG
         formInfoContentEl.innerHTML = `<p>Gerando novo link...</p>`;
         try {
             const newToken = crypto.randomUUID(); // Gera token único
+            console.log("DEBUG: Generated new token:", newToken); // DEBUG LOG
             const { data, error } = await supabase
                 .from('formularios_clientes')
                 .insert({
@@ -299,7 +337,11 @@
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                 console.error("DEBUG: Error inserting new form link:", error); // DEBUG LOG
+                 throw error;
+            }
+            console.log("DEBUG: New form link inserted:", data); // DEBUG LOG
 
             // <<< MODIFICADO: Passa 'data' (o novo formulário) para displayFormLink >>>
             displayFormLink(data); // Exibe o novo link e o botão de excluir
@@ -319,19 +361,26 @@
     // Handler para excluir dados/link do formulário
     async function handleDeleteForm(event) {
         const formId = event.target.dataset.formId;
+        console.log("DEBUG: Entering handleDeleteForm for form ID:", formId); // DEBUG LOG
         // <<< MODIFICADO: Mensagem de confirmação genérica >>>
         if (!formId || !confirm("Tem certeza que deseja excluir este formulário? Isso permitirá gerar um novo link.")) {
+            console.log("DEBUG: Deletion cancelled by user or no form ID."); // DEBUG LOG
             return;
         }
 
         formInfoContentEl.innerHTML = `<p>Excluindo formulário...</p>`;
         try {
+            console.log("DEBUG: Attempting to delete form with ID:", formId); // DEBUG LOG
             const { error } = await supabase
                 .from('formularios_clientes')
                 .delete()
                 .eq('id', formId);
 
-            if (error) throw error;
+            if (error) {
+                console.error("DEBUG: Error deleting form:", error); // DEBUG LOG
+                throw error;
+            }
+            console.log("DEBUG: Form deleted successfully."); // DEBUG LOG
 
             alert("Formulário excluído com sucesso!");
             loadAndManageForm(); // Recarrega a seção para mostrar o botão de gerar link
@@ -346,11 +395,13 @@
 
     // Limpa sessionStorage ao descarregar a página (mantido)
     window.addEventListener('beforeunload', () => {
+        console.log("DEBUG: Clearing sessionStorage before unload."); // DEBUG LOG
         sessionStorage.removeItem("viewing_client_name");
         sessionStorage.removeItem("viewing_client_id");
     });
 
     // Inicia o carregamento
+    console.log("DEBUG: Initializing client details page..."); // DEBUG LOG
     loadAndManageForm();
 
   </script>
