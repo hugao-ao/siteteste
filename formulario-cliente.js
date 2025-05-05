@@ -14,7 +14,7 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;")
+    .replace(/\'/g, "&#x27;") // Corrigido para \'
     .replace(/`/g, "&#x60;");
 };
 
@@ -94,7 +94,7 @@ function renderActualForm(formData) {
     }
 }
 
-// Função para lidar com o envio do formulário
+// Função para lidar com o envio do formulário (MODIFICADA PARA USAR JSONB)
 async function handleFormSubmit(event, formData) {
     event.preventDefault();
     messageAreaEl.innerHTML = ""; // Limpa mensagens anteriores
@@ -110,12 +110,18 @@ async function handleFormSubmit(event, formData) {
         return;
     }
 
+    // Cria o objeto JSON com as respostas
+    const dadosFormulario = {
+        nome: nome,
+        cidade_natal: cidade // Mantendo a chave consistente com o label
+        // Adicione outros campos aqui conforme o formulário crescer
+    };
+
     try {
         const { error } = await supabase
             .from("formularios_clientes")
             .update({
-                nome_preenchido: nome,
-                cidade_natal_preenchida: cidade,
+                dados_formulario: dadosFormulario, // Salva o objeto JSON
                 status: "preenchido",
                 data_preenchimento: new Date()
             })
