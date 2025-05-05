@@ -25,7 +25,6 @@ let isAdmin = false;
 let isActuallyAdmin = false;
 let allUsers = [];
 const modifiedClientIds = new Set();
-// let isInitialized = false; // REMOVIDO - Não mais necessário com DOMContentLoaded
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
@@ -39,13 +38,10 @@ const sanitizeInput = (str) => {
     .replace(/`/g, "&#x60;");
 };
 
-// --- Verificação de Acesso e Inicialização (NÃO MAIS EXPORTADA) ---
+// --- Verificação de Acesso e Inicialização ---
 async function initializeDashboard() {
-    // if (isInitialized) { ... } // REMOVIDO
-    // isInitialized = true; // REMOVIDO
     console.log("clientes.js: initializeDashboard() INICIADO via DOMContentLoaded.");
 
-    // Restante do código de inicialização...
     const loggedInUserId = sessionStorage.getItem("user_id");
     const loggedInUserNivel = sessionStorage.getItem("nivel");
     const loggedInUserProjeto = sessionStorage.getItem("projeto");
@@ -289,10 +285,10 @@ function renderClients(clients) {
 
     console.log(`clientes.js: Renderizando ${clients.length} clientes...`);
     clients.forEach((client, index) => {
-        // console.log(`clientes.js: Renderizando cliente ${index + 1}: ID ${client.id}, Nome: ${client.nome}`); // Log muito verboso, comentado
         const tr = document.createElement("tr");
         tr.dataset.clientId = client.id;
-        tr.dataset.originalNome = client.nome || '';
+        // <<< CORREÇÃO: Armazena nome original no dataset da linha >>>
+        tr.dataset.originalNome = client.nome || ''; 
         tr.dataset.originalWhatsapp = client.whatsapp || '';
         tr.dataset.originalProjeto = client.projeto || '';
         tr.dataset.originalVisibility = client.visibility || 'INDIVIDUAL';
@@ -358,6 +354,7 @@ function renderClients(clients) {
             <td data-label="Status/Atribuição">${assignmentHtml}</td>
             <td data-label="Formulários" style="text-align: center;">
                 ${formCount > 0
+                    // <<< CORREÇÃO: Adiciona data-client-name ao botão de formulários >>>
                     ? `<button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}">${formCount} <i class="fa-solid fa-list-check"></i></button>`
                     : '0'
                 }
@@ -459,7 +456,6 @@ function markClientAsModified(event) {
         modifiedClientIds.add(clientId);
         row.classList.add('modified');
         if (saveAllClientsBtn) saveAllClientsBtn.disabled = false;
-        // console.log("Clientes modificados:", modifiedClientIds); // Log muito verboso
     }
 }
 
@@ -505,7 +501,7 @@ async function deleteClient(id) {
             .eq('cliente_id', id);
         if (countError) {
             console.error("clientes.js: Erro ao contar formulários para exclusão:", countError);
-            throw countError;
+            // Não lança erro aqui, permite excluir cliente mesmo se contagem falhar
         }
 
         let confirmMessage = "Excluir este cliente?";
@@ -533,7 +529,7 @@ async function deleteClient(id) {
     }
 }
 
-// --- Lógica do Modal de Formulários --- 
+// --- Lógica do Modal de Formulários (CORRIGIDO) --- 
 async function showClientFormsModal(clientId, clientName) {
     console.log(`clientes.js: showClientFormsModal() chamado para Cliente ID: ${clientId}, Nome: ${clientName}`);
     if (!formsModal || !modalTitle || !clientFormsList || !noFormsMessage) {
@@ -552,14 +548,19 @@ async function showClientFormsModal(clientId, clientName) {
 async function loadClientForms(clientId) {
     console.log(`clientes.js: loadClientForms() chamado para Cliente ID: ${clientId}`);
     try {
+        // <<< CORREÇÃO: Removido 'tipo_formulario' do select >>>
         const { data: forms, error } = await supabase
             .from('formularios_clientes')
-            .select('id, created_at, tipo_formulario')
+            .select('id, created_at') // Seleciona apenas id e created_at
             .eq('cliente_id', clientId)
             .order('created_at', { ascending: false });
 
         if (error) {
             console.error("clientes.js: Erro ao carregar formulários (Supabase):", error);
+            // <<< CORREÇÃO: Verifica se o erro é sobre a coluna inexistente >>>
+            if (error.code === '42703' && error.message.includes('tipo_formulario')) {
+                 throw new Error("Erro DB: A coluna 'tipo_formulario' não existe na tabela 'formularios_clientes'. Remova-a da consulta ou adicione-a no Supabase.");
+            }
             throw error;
         }
 
@@ -573,8 +574,9 @@ async function loadClientForms(clientId) {
             forms.forEach(form => {
                 const li = document.createElement('li');
                 const formDate = new Date(form.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+                // <<< CORREÇÃO: Usa texto genérico já que tipo_formulario não existe >>>
                 li.innerHTML = `
-                    <span class="form-info">${sanitizeInput(form.tipo_formulario) || 'Formulário'} - ${formDate}</span>
+                    <span class="form-info">Formulário - ${formDate}</span>
                     <div class="form-actions">
                         <button class="delete-form-btn" data-form-id="${form.id}" data-client-id="${clientId}" title="Excluir Formulário"><i class="fa-solid fa-trash-can"></i> Excluir</button>
                     </div>
@@ -584,7 +586,7 @@ async function loadClientForms(clientId) {
         }
     } catch (error) {
         console.error("clientes.js: Erro GERAL em loadClientForms:", error);
-        clientFormsList.innerHTML = '<li>Erro ao carregar formulários. Verifique o console.</li>';
+        clientFormsList.innerHTML = `<li>Erro ao carregar formulários: ${error.message}</li>`;
         noFormsMessage.style.display = 'none';
     }
 }
@@ -623,17 +625,37 @@ function handleTableClick(event) {
     const targetButton = event.target.closest('button');
     if (!targetButton) return;
 
-    const clientId = targetButton.dataset.clientId || targetButton.closest('tr')?.dataset.clientId;
+    const row = targetButton.closest('tr'); // Get the table row
+    const clientId = targetButton.dataset.clientId || row?.dataset.clientId;
     const id = targetButton.dataset.id; // Para delete-btn de cliente
 
     if (targetButton.classList.contains("view-details-btn")) {
-        if (clientId) window.location.href = `cliente-detalhes.html?id=${clientId}`;
+        // <<< CORREÇÃO: Define sessionStorage antes de redirecionar >>>
+        if (clientId && row) { // Check if row exists to get the name
+            const clientName = row.dataset.originalNome; // Get name from row dataset
+            if (clientName !== undefined) { // Check if name was found
+                console.log(`clientes.js: Setting sessionStorage for viewing client ID: ${clientId}, Name: ${clientName}`);
+                sessionStorage.setItem("viewing_client_id", clientId);
+                sessionStorage.setItem("viewing_client_name", clientName);
+                window.location.href = `cliente-detalhes.html`; // Redirect without ID in URL
+            } else {
+                 console.error(`clientes.js: Could not find client name for ID ${clientId} in row dataset.`);
+                 alert("Erro: Não foi possível obter o nome do cliente para ver os detalhes.");
+            }
+        } else {
+             console.error("clientes.js: Client ID or table row not found for view-details-btn.");
+             alert("Erro: ID do cliente não encontrado para ver os detalhes.");
+        }
     } else if (targetButton.classList.contains("delete-btn")) {
         if (id) deleteClient(id);
     } else if (targetButton.classList.contains("view-forms-btn")) {
-        const clientName = targetButton.dataset.clientName;
-        if (clientId && clientName) {
-            showClientFormsModal(clientId, clientName);
+        // <<< CORREÇÃO: Usa nome do dataset do botão, que foi adicionado em renderClients >>>
+        const clientNameFromButton = targetButton.dataset.clientName;
+        if (clientId && clientNameFromButton) {
+            showClientFormsModal(clientId, clientNameFromButton);
+        } else {
+             console.error(`clientes.js: Client ID (${clientId}) or Name (${clientNameFromButton}) not found for view-forms-btn.`);
+             alert("Erro: Não foi possível obter informações do cliente para mostrar formulários.");
         }
     }
 }
