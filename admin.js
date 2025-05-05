@@ -20,7 +20,7 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;")
+    .replace(/\'/g, "&#x27;") // Corrigido para escapar aspas simples corretamente
     .replace(/`/g, "&#x60;");
 };
 
@@ -122,6 +122,7 @@ async function loadUsers(filterProject = null) {
       const manageTr = document.createElement("tr");
       manageTr.dataset.userId = user.id;
       // Guarda valores originais para comparação (opcional, mas útil)
+      manageTr.dataset.originalUsuario = user.usuario || ''; // <<< GUARDA USUARIO ORIGINAL
       manageTr.dataset.originalEmail = user.email || '';
       manageTr.dataset.originalNivel = user.nivel || 'usuario';
       manageTr.dataset.originalProjeto = user.projeto || '';
@@ -199,6 +200,8 @@ async function saveAllUserChanges() {
         const row = manageTableBody.querySelector(`tr[data-user-id="${id}"]`);
         if (!row) continue;
 
+        // <<< PEGA O USUÁRIO ORIGINAL DO DATASET OU DA CÉLULA >>>
+        const usuario = row.dataset.originalUsuario || row.cells[0].textContent.trim(); 
         const senhaInput = document.getElementById(`pass-${id}`);
         const senha = senhaInput.type === 'text' ? senhaInput.value : null; // Pega a senha só se estiver visível
         const email = document.getElementById(`email-${id}`).value;
@@ -206,13 +209,20 @@ async function saveAllUserChanges() {
         const projeto = document.getElementById(`proj-${id}`).value;
 
         if (!email) {
-            alert(`Erro: O campo E-mail não pode estar vazio para o usuário na linha com ID ${id}.`);
+            alert(`Erro: O campo E-mail não pode estar vazio para o usuário ${usuario} (ID: ${id}).`);
             saveAllUsersBtn.disabled = false;
             saveAllUsersBtn.textContent = 'Salvar Todas as Alterações';
             return; // Interrompe o salvamento
         }
+        if (!usuario) { // <<< VERIFICAÇÃO ADICIONAL >>>
+             alert(`Erro: Não foi possível obter o nome de usuário para a linha com ID ${id}.`);
+             saveAllUsersBtn.disabled = false;
+             saveAllUsersBtn.textContent = 'Salvar Todas as Alterações';
+             return;
+        }
 
-        const updateData = { id, email, nivel, projeto: projeto || null };
+        // <<< ADICIONA 'usuario' AO updateData >>>
+        const updateData = { id, usuario, email, nivel, projeto: projeto || null };
         if (senha && senha !== '********') {
             updateData.senha = senha;
         }
@@ -228,7 +238,14 @@ async function saveAllUserChanges() {
             onConflict: 'id' // Especifica a coluna de conflito para fazer update em vez de insert
         });
 
-        if (error) throw error;
+        if (error) {
+            // <<< VERIFICA ERRO ESPECÍFICO DE USUARIO NULL >>>
+            if (error.code === '23502' && error.message.includes('"usuario"')) {
+                 console.error("Erro Supabase: Tentativa de salvar usuário com nome nulo.", error);
+                 throw new Error("Erro interno: O nome de usuário não pode ser nulo. Verifique os dados.");
+            }
+            throw error;
+        }
 
         alert(`Alterações salvas com sucesso para ${updates.length} usuário(s)!`);
         modifiedUserIds.clear(); // Limpa o set de modificados
@@ -247,7 +264,13 @@ async function saveAllUserChanges() {
             }
             // Remove a marcação visual de modificado (se houver)
             const row = manageTableBody.querySelector(`tr[data-user-id="${update.id}"]`);
-            if(row) row.classList.remove('modified');
+            if(row) {
+                 row.classList.remove('modified');
+                 // Atualiza datasets originais se necessário (opcional)
+                 row.dataset.originalEmail = update.email;
+                 row.dataset.originalNivel = update.nivel;
+                 row.dataset.originalProjeto = update.projeto || '';
+            }
         });
 
     } catch (error) {
@@ -262,6 +285,9 @@ async function saveAllUserChanges() {
 // --- Função para Marcar Linha como Modificada --- 
 function markUserAsModified(event) {
     const target = event.target;
+    // Verifica se o alvo é um input ou select dentro da tabela
+    if (!target.matches('.user-input')) return;
+    
     const row = target.closest('tr');
     if (row && row.dataset.userId) {
         const userId = row.dataset.userId;
@@ -269,7 +295,7 @@ function markUserAsModified(event) {
         modifiedUserIds.add(userId);
         row.classList.add('modified'); // Adiciona classe visual (opcional)
         if (saveAllUsersBtn) saveAllUsersBtn.disabled = false; // Habilita o botão de salvar
-        console.log("Usuários modificados:", modifiedUserIds);
+        // console.log("Usuários modificados:", modifiedUserIds); // Log verboso
     }
 }
 
@@ -403,61 +429,65 @@ function setupAdminListeners() {
             if (window.location.pathname.endsWith('admin-dashboard.html') && !window.location.search.includes('projeto')) {
                 e.preventDefault();
                 showContentSection('content-painel');
+                window.history.pushState({}, '', 'admin-dashboard.html'); // Limpa hash
+            } else {
+                // Se estiver em outra página ou com filtro, navega para admin-dashboard sem filtro
+                window.location.href = 'admin-dashboard.html';
             }
         });
     }
     if (navGerenciarUsuarios) {
         navGerenciarUsuarios.addEventListener('click', (e) => {
-            if (window.location.pathname.endsWith('admin-dashboard.html') && window.location.hash === '#gerenciar-usuarios') {
-                e.preventDefault();
-                showContentSection('content-gerenciar-usuarios');
-                const urlParams = new URLSearchParams(window.location.search);
-                const currentFilter = urlParams.get('projeto');
-                loadUsers(currentFilter);
-            }
+            e.preventDefault();
+            showContentSection('content-gerenciar-usuarios');
+            window.history.pushState({}, '', '#gerenciar-usuarios'); // Atualiza hash
+        });
+    }
+    if (navGerenciarClientes) {
+        navGerenciarClientes.addEventListener('click', (e) => {
+            e.preventDefault();
+            viewClientesDashboard();
         });
     }
     if (sidebarLogoutBtn) sidebarLogoutBtn.addEventListener('click', logout);
 
-    // --- Delegação de Eventos para Tabela de Gerenciamento (MODIFICADA) ---
+    // Listener para hash change (mantido)
+    window.addEventListener('hashchange', () => {
+        const hash = window.location.hash.substring(1);
+        if (hash === 'gerenciar-usuarios') {
+            showContentSection('content-gerenciar-usuarios');
+        } else {
+            showContentSection('content-painel');
+        }
+    });
+
+    // Listener para o formulário de criação (mantido)
+    if (createUserForm) createUserForm.addEventListener("submit", createUser);
+
+    // Listeners para a tabela de gerenciamento (MODIFICADO)
     if (manageTableBody) {
-        // Listener para detectar mudanças nos inputs/selects
-        manageTableBody.addEventListener("input", markUserAsModified);
-        manageTableBody.addEventListener("change", markUserAsModified); // Para selects
-
-        // Listener para botões de ação (toggle e delete)
-        manageTableBody.addEventListener("click", e => {
-           const target = e.target;
-           const id = target.dataset.id;
-
-           if (target.classList.contains("toggle-password")) {
-             const input = document.getElementById(`pass-${id}`);
-             if (input) {
-                if (input.type === "password") {
-                    input.type = "text";
-                    input.value = input.dataset.realPass || '';
+        manageTableBody.addEventListener("click", (event) => {
+            const target = event.target;
+            if (target.classList.contains("delete-btn")) {
+                const id = target.dataset.id;
+                deleteUser(id);
+            } else if (target.classList.contains("toggle-password")) {
+                const id = target.dataset.id;
+                const passInput = document.getElementById(`pass-${id}`);
+                if (passInput.type === "password") {
+                    passInput.type = "text";
+                    passInput.value = passInput.dataset.realPass || ''; // Mostra senha real
                     target.textContent = "🙈";
-                    // Marca como modificado se a senha for revelada
-                    markUserAsModified({ target: input }); 
-                    setTimeout(() => {
-                        const currentInput = document.getElementById(`pass-${id}`);
-                        if (currentInput && currentInput.type === "text") {
-                            currentInput.type = "password";
-                            currentInput.value = '********';
-                            target.textContent = "👁️";
-                        }
-                    }, 5000); // Aumentado para 5s
                 } else {
-                    input.type = "password";
-                    input.value = '********';
+                    passInput.type = "password";
+                    passInput.value = "********";
                     target.textContent = "👁️";
                 }
-             }
-           } else if (target.classList.contains("delete-btn")) {
-             deleteUser(id);
-           }
-           // REMOVIDO: else if (target.classList.contains("save-btn")) { saveUser(id); }
+            }
         });
+        // Adiciona listeners para input e change para marcar como modificado
+        manageTableBody.addEventListener("input", markUserAsModified);
+        manageTableBody.addEventListener("change", markUserAsModified); // Para selects
     }
 
     // Listener para o botão Salvar Todas as Alterações
@@ -466,42 +496,33 @@ function setupAdminListeners() {
         saveAllUsersBtn.disabled = true; // Começa desabilitado
     }
 
-    // Formulário Criar Usuário (mantido)
-    if (createUserForm) {
-        createUserForm.addEventListener("submit", createUser);
-    }
+    console.log("Admin listeners set up.");
+}
 
-    // Lógica de Inicialização (mantida)
-    const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-    if (sidebarCollapsed && sidebar) {
+// --- Inicialização da Página --- 
+function initializeAdminPageLogic() {
+    if (!checkAccess()) return;
+    setupAdminListeners();
+
+    // Verifica estado da sidebar no localStorage (mantido)
+    if (localStorage.getItem("sidebarCollapsed") === "true" && sidebar) {
         sidebar.classList.add("collapsed");
-        if (mainContent) {
-            mainContent.classList.add("sidebar-collapsed");
-        }
+        if (mainContent) mainContent.classList.add("sidebar-collapsed");
     }
 
+    // Carrega usuários e mostra seção correta baseado no hash (mantido)
     const urlParams = new URLSearchParams(window.location.search);
-    const filterProjectFromUrl = urlParams.get('projeto');
-    const currentHash = window.location.hash.substring(1);
+    const filterProject = urlParams.get('projeto');
+    loadUsers(filterProject);
 
-    loadUsers(filterProjectFromUrl);
-
-    let initialSection = 'content-painel';
-    if (currentHash === 'gerenciar-usuarios') {
-        initialSection = 'content-gerenciar-usuarios';
-        if (filterProjectFromUrl) {
-            const sectionTitle = document.querySelector(`#${initialSection} h2`);
-            if(sectionTitle && !sectionTitle.textContent.includes(`(${filterProjectFromUrl})`)) {
-               sectionTitle.textContent += ` (${filterProjectFromUrl})`;
-            }
-        }
+    const hash = window.location.hash.substring(1);
+    if (hash === 'gerenciar-usuarios') {
+        showContentSection('content-gerenciar-usuarios');
+    } else {
+        showContentSection('content-painel');
     }
-    showContentSection(initialSection);
-    console.log("Admin listeners and initial setup complete.");
 }
 
-// --- Inicialização Principal (mantida) --- 
-if (checkAccess()) {
-  console.log("Access checked. Waiting for sidebarReady event...");
-  document.addEventListener('sidebarReady', setupAdminListeners, { once: true });
-}
+// --- Executa a inicialização --- 
+document.addEventListener("DOMContentLoaded", initializeAdminPageLogic);
+
