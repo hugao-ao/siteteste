@@ -183,9 +183,7 @@ function renderPlanoSaudeQuestions() {
     savePlanoSaudeSelections(); 
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
-    container.innerHTML = 
-
-;
+    container.innerHTML = '';
     const pessoasDaCasa = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
@@ -286,9 +284,7 @@ function renderSeguroVidaQuestions() {
     saveSeguroVidaSelections(); 
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
-    container.innerHTML = 
-
-;
+    container.innerHTML = '';
     const pessoasComRenda = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
