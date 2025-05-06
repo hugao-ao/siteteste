@@ -73,55 +73,143 @@ async function loadForm(token) {
     }
 }
 
-// Função para renderizar o formulário HTML
+// Função para renderizar o formulário HTML (MODIFICADA)
 function renderActualForm(formData) {
     formContentEl.innerHTML = `
         <form id="client-response-form">
-            <label for="nome">Nome Completo:</label>
-            <input type="text" id="nome" name="nome" required>
+            <label for="nome_completo">Nome Completo:</label>
+            <input type="text" id="nome_completo" name="nome_completo" required>
 
-            <label for="cidade">Cidade Natal:</label>
-            <input type="text" id="cidade" name="cidade" required>
+            <div class="radio-group">
+                <label>Você é a única pessoa que possui renda na sua casa?</label><br>
+                <input type="radio" id="renda_unica_sim" name="renda_unica" value="sim" required>
+                <label for="renda_unica_sim">Sim</label>
+                <input type="radio" id="renda_unica_nao" name="renda_unica" value="nao">
+                <label for="renda_unica_nao">Não</label>
+            </div>
+
+            <div id="outras-pessoas-renda-container" style="display: none;">
+                <label>Outras pessoas com renda na casa:</label>
+                <div id="pessoas-list"></div>
+                <button type="button" id="add-person-btn">+ Adicionar Pessoa</button>
+            </div>
 
             <button type="submit">Enviar Resposta</button>
         </form>
     `;
 
-    // Adiciona o listener para o envio do formulário
+    // Adiciona listeners
     const formElement = document.getElementById("client-response-form");
+    const radioSim = document.getElementById("renda_unica_sim");
+    const radioNao = document.getElementById("renda_unica_nao");
+    const outrasPessoasContainer = document.getElementById("outras-pessoas-renda-container");
+    const addPersonBtn = document.getElementById("add-person-btn");
+    const pessoasList = document.getElementById("pessoas-list");
+
+    // Listener para mostrar/esconder seção de outras pessoas
+    radioSim.addEventListener('change', () => {
+        if (radioSim.checked) {
+            outrasPessoasContainer.style.display = 'none';
+            pessoasList.innerHTML = ''; // Limpa a lista se mudar para Sim
+        }
+    });
+    radioNao.addEventListener('change', () => {
+        if (radioNao.checked) {
+            outrasPessoasContainer.style.display = 'block';
+        }
+    });
+
+    // Listener para adicionar pessoa
+    addPersonBtn.addEventListener('click', () => {
+        const personId = Date.now(); // ID simples para remover
+        const personEntry = document.createElement('div');
+        personEntry.classList.add('person-entry');
+        personEntry.dataset.id = personId;
+        personEntry.innerHTML = `
+            <button type="button" class="remove-person-btn" data-id="${personId}">Remover</button>
+            <label for="pessoa_nome_${personId}">Nome:</label>
+            <input type="text" id="pessoa_nome_${personId}" name="pessoa_nome" required>
+            <label for="pessoa_autorizacao_${personId}">Precisa da autorização para decisões financeiras?</label>
+            <select id="pessoa_autorizacao_${personId}" name="pessoa_autorizacao" required>
+                <option value="">Selecione...</option>
+                <option value="sim">Sim</option>
+                <option value="nao">Não</option>
+            </select>
+        `;
+        pessoasList.appendChild(personEntry);
+
+        // Adiciona listener para o botão remover desta entrada
+        personEntry.querySelector('.remove-person-btn').addEventListener('click', (e) => {
+            const idToRemove = e.target.dataset.id;
+            const entryToRemove = pessoasList.querySelector(`.person-entry[data-id="${idToRemove}"]`);
+            if (entryToRemove) {
+                entryToRemove.remove();
+            }
+        });
+    });
+
+    // Listener para o envio do formulário
     if (formElement) {
         formElement.addEventListener("submit", (event) => handleFormSubmit(event, formData));
     }
 }
 
-// Função para lidar com o envio do formulário (MODIFICADA PARA USAR JSONB)
+// Função para lidar com o envio do formulário (MODIFICADA PARA NOVA ESTRUTURA)
 async function handleFormSubmit(event, formData) {
     event.preventDefault();
     messageAreaEl.innerHTML = ""; // Limpa mensagens anteriores
 
-    const nomeInput = document.getElementById("nome");
-    const cidadeInput = document.getElementById("cidade");
+    const nomeCompletoInput = document.getElementById("nome_completo");
+    const rendaUnicaRadio = document.querySelector('input[name="renda_unica"]:checked');
 
-    const nome = sanitizeInput(nomeInput.value.trim());
-    const cidade = sanitizeInput(cidadeInput.value.trim());
+    const nomeCompleto = sanitizeInput(nomeCompletoInput.value.trim());
+    const rendaUnicaValue = rendaUnicaRadio ? rendaUnicaRadio.value : null;
 
-    if (!nome || !cidade) {
-        showMessage("error", "Por favor, preencha ambos os campos.");
+    if (!nomeCompleto) {
+        showMessage("error", "Por favor, preencha o Nome Completo.");
+        return;
+    }
+    if (!rendaUnicaValue) {
+        showMessage("error", "Por favor, selecione se você é a única pessoa com renda.");
         return;
     }
 
-    // Cria o objeto JSON com as respostas
     const dadosFormulario = {
-        nome: nome,
-        cidade_natal: cidade // Mantendo a chave consistente com o label
-        // Adicione outros campos aqui conforme o formulário crescer
+        nome_completo: nomeCompleto,
+        renda_unica: rendaUnicaValue === 'sim',
+        outras_pessoas_renda: []
     };
+
+    if (rendaUnicaValue === 'nao') {
+        const personEntries = document.querySelectorAll('#pessoas-list .person-entry');
+        for (const entry of personEntries) {
+            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
+            const autorizacaoSelect = entry.querySelector('select[name="pessoa_autorizacao"]');
+
+            const nome = sanitizeInput(nomeInput.value.trim());
+            const autorizacao = autorizacaoSelect.value;
+
+            if (!nome || !autorizacao) {
+                showMessage("error", "Por favor, preencha todos os campos para cada pessoa adicionada ou remova a entrada incompleta.");
+                return; // Interrompe o envio
+            }
+            dadosFormulario.outras_pessoas_renda.push({
+                nome: nome,
+                precisa_autorizacao: autorizacao === 'sim'
+            });
+        }
+        // Opcional: Validar se pelo menos uma pessoa foi adicionada se marcou 'Não'
+        // if (dadosFormulario.outras_pessoas_renda.length === 0) {
+        //     showMessage("error", "Você indicou que não é a única pessoa com renda, por favor, adicione as outras pessoas.");
+        //     return;
+        // }
+    }
 
     try {
         const { error } = await supabase
             .from("formularios_clientes")
             .update({
-                dados_formulario: dadosFormulario, // Salva o objeto JSON
+                dados_formulario: dadosFormulario, // Salva o novo objeto JSON
                 status: "preenchido",
                 data_preenchimento: new Date()
             })
