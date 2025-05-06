@@ -199,49 +199,54 @@
         if (formData.dados_formulario && typeof formData.dados_formulario === "object") {
             const data = formData.dados_formulario;
 
-            const nomeCompleto = data.nome_completo ? sanitizeInput(data.nome_completo) : "N/A";
+            // CORREÇÃO: Usar 'nome_preenchido' ao invés de 'nome_completo'
+            const nomeCompleto = data.nome_preenchido ? sanitizeInput(data.nome_preenchido) : "N/A";
             dataHtml += `<p><strong>Nome Completo:</strong> ${nomeCompleto}</p>`;
 
-            const rendaUnicaText = typeof data.renda_unica === "boolean" ? (data.renda_unica ? "Sim" : "Não") : "N/A";
+            // CORREÇÃO: 'renda_unica' é string "sim" ou "nao" no formulário
+            const rendaUnicaText = data.renda_unica === "sim" ? "Sim" : (data.renda_unica === "nao" ? "Não" : "N/A");
             dataHtml += `<p><strong>Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
 
-            if (data.renda_unica === false && Array.isArray(data.outras_pessoas_renda) && data.outras_pessoas_renda.length > 0) {
+            // CORREÇÃO: 'renda_unica' é string "nao" e 'autorizacao_financeira' é a chave correta
+            if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas_renda) && data.outras_pessoas_renda.length > 0) {
                 dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong></p><ul>`;
                 data.outras_pessoas_renda.forEach((pessoa) => {
                     const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : "Nome não informado";
-                    const autorizacaoText = typeof pessoa.precisa_autorizacao === "boolean" ? (pessoa.precisa_autorizacao ? "Sim" : "Não") : "Não informado";
+                    const autorizacaoText = pessoa.autorizacao_financeira === "sim" ? "Sim" : (pessoa.autorizacao_financeira === "nao" ? "Não" : "Não informado");
                     dataHtml += `<li>${nomePessoa} (Precisa de autorização: ${autorizacaoText})</li>`;
                 });
                 dataHtml += `</ul>`;
-            } else if (data.renda_unica === false) {
+            } else if (data.renda_unica === "nao") {
                  dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
             }
 
-            const temDependentesText = typeof data.tem_dependentes === "boolean" ? (data.tem_dependentes ? "Sim" : "Não") : "N/A";
+            // CORREÇÃO: 'tem_dependentes' é string "sim" ou "nao"
+            const temDependentesText = data.tem_dependentes === "sim" ? "Sim" : (data.tem_dependentes === "nao" ? "Não" : "N/A");
             dataHtml += `<p style="margin-top: 1rem;"><strong>Tem dependentes?</strong> ${temDependentesText}</p>`;
 
-            if (data.tem_dependentes === true && Array.isArray(data.dependentes) && data.dependentes.length > 0) {
+            if (data.tem_dependentes === "sim" && Array.isArray(data.dependentes) && data.dependentes.length > 0) {
                 dataHtml += `<p><strong>Dependentes:</strong></p><ul>`;
                 data.dependentes.forEach((dependente) => {
                     const nomeDep = dependente.nome ? sanitizeInput(dependente.nome) : "Nome não informado";
-                    const idadeDep = dependente.idade !== undefined ? sanitizeInput(String(dependente.idade)) : "N/A";
+                    const idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
                     const relacaoDep = dependente.relacao ? sanitizeInput(dependente.relacao) : "N/A";
                     dataHtml += `<li>${nomeDep} (Idade: ${idadeDep}, Relação: ${relacaoDep})</li>`;
                 });
                 dataHtml += `</ul>`;
-            } else if (data.tem_dependentes === true) {
+            } else if (data.tem_dependentes === "sim") {
                 dataHtml += `<p><strong>Dependentes:</strong> Nenhum dependente adicionado.</p>`;
             }
 
             // Exibição de Informações sobre Plano de Saúde
+            // CORREÇÃO: Usar 'possui_plano' ao invés de 'status_plano'
             if (Array.isArray(data.informacoes_plano_saude) && data.informacoes_plano_saude.length > 0) {
                 dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong></p><ul>`;
                 data.informacoes_plano_saude.forEach((planoInfo) => {
                     const nomePessoaPlano = planoInfo.nome_pessoa ? sanitizeInput(planoInfo.nome_pessoa) : "Pessoa não identificada";
                     let statusPlanoText = "N/A";
-                    if (planoInfo.status_plano === "sim") statusPlanoText = "Sim";
-                    else if (planoInfo.status_plano === "nao") statusPlanoText = "Não";
-                    else if (planoInfo.status_plano === "nao_sei") statusPlanoText = "Não sei informar";
+                    if (planoInfo.possui_plano === "sim") statusPlanoText = "Sim";
+                    else if (planoInfo.possui_plano === "nao") statusPlanoText = "Não";
+                    else if (planoInfo.possui_plano === "nao_sei") statusPlanoText = "Não sei informar";
                     
                     dataHtml += `<li>${nomePessoaPlano}: ${statusPlanoText}</li>`;
                 });
@@ -249,14 +254,15 @@
             }
 
             // Exibição de Informações sobre Seguro de Vida
+            // CORREÇÃO: Usar 'possui_seguro' ao invés de 'status_seguro'
             if (Array.isArray(data.informacoes_seguro_vida) && data.informacoes_seguro_vida.length > 0) {
                 dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Seguro de Vida:</strong></p><ul>`;
                 data.informacoes_seguro_vida.forEach((seguroInfo) => {
                     const nomePessoaSeguro = seguroInfo.nome_pessoa ? sanitizeInput(seguroInfo.nome_pessoa) : "Pessoa não identificada";
                     let statusSeguroText = "N/A";
-                    if (seguroInfo.status_seguro === "sim") statusSeguroText = "Sim";
-                    else if (seguroInfo.status_seguro === "nao") statusSeguroText = "Não";
-                    else if (seguroInfo.status_seguro === "nao_sei") statusSeguroText = "Não sei informar";
+                    if (seguroInfo.possui_seguro === "sim") statusSeguroText = "Sim";
+                    else if (seguroInfo.possui_seguro === "nao") statusSeguroText = "Não";
+                    else if (seguroInfo.possui_seguro === "nao_sei") statusSeguroText = "Não sei informar";
                     
                     dataHtml += `<li>${nomePessoaSeguro}: ${statusSeguroText}</li>`;
                 });
@@ -264,20 +270,22 @@
             }
 
             // Exibição de Informações sobre Patrimônio Físico
-            const possuiPatrimonioText = typeof data.possui_patrimonio_fisico === "boolean" ? (data.possui_patrimonio_fisico ? "Sim" : "Não") : "N/A";
+            // CORREÇÃO: 'possui_patrimonio_fisico' é string "sim" ou "nao"
+            const possuiPatrimonioText = data.possui_patrimonio_fisico === "sim" ? "Sim" : (data.possui_patrimonio_fisico === "nao" ? "Não" : "N/A");
             dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
 
-            if (data.possui_patrimonio_fisico === true && Array.isArray(data.patrimonios_fisicos) && data.patrimonios_fisicos.length > 0) {
+            // CORREÇÃO: Usar 'seguro' e 'quitado' ao invés de 'possui_seguro' e 'esta_quitado'
+            if (data.possui_patrimonio_fisico === "sim" && Array.isArray(data.patrimonios_fisicos) && data.patrimonios_fisicos.length > 0) {
                 dataHtml += `<p><strong>Patrimônios Físicos:</strong></p><ul>`;
                 data.patrimonios_fisicos.forEach((patrimonio) => {
                     const descPat = patrimonio.descricao ? sanitizeInput(patrimonio.descricao) : "Descrição não informada";
                     const valorPat = formatCurrencyForDisplay(patrimonio.valor);
-                    const seguroPatText = typeof patrimonio.possui_seguro === "boolean" ? (patrimonio.possui_seguro ? "Sim" : "Não") : "N/A";
-                    const quitadoPatText = typeof patrimonio.esta_quitado === "boolean" ? (patrimonio.esta_quitado ? "Sim" : "Não") : "N/A";
+                    const seguroPatText = patrimonio.seguro === "sim" ? "Sim" : (patrimonio.seguro === "nao" ? "Não" : "N/A");
+                    const quitadoPatText = patrimonio.quitado === "sim" ? "Sim" : (patrimonio.quitado === "nao" ? "Não" : "N/A");
                     dataHtml += `<li>${descPat} (Valor: ${valorPat}, Seguro: ${seguroPatText}, Quitado: ${quitadoPatText})</li>`;
                 });
                 dataHtml += `</ul>`;
-            } else if (data.possui_patrimonio_fisico === true) {
+            } else if (data.possui_patrimonio_fisico === "sim") {
                 dataHtml += `<p><strong>Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
             }
 
@@ -305,7 +313,7 @@
 
     function displayFormNotApplicable() {
         console.log("DEBUG: Entering displayFormNotApplicable"); 
-        formInfoContentEl.innerHTML = `<p>O formulário é aplicável apenas para clientes do projeto "Planejamento".</p>`;
+        formInfoContentEl.innerHTML = `<p>O formulário é aplicável apenas para clientes do projeto \"Planejamento\".</p>`;
     }
 
     function displayGenerateLinkForm() {
@@ -331,136 +339,132 @@
         if (!currentClientId) {
             console.log("DEBUG: Client ID not found in sessionStorage."); 
             clientNameDisplay.textContent = "Cliente Inválido";
-            formInfoContentEl.innerHTML = `<p style="color:red;">ID do cliente não encontrado.</p>`;
+            formInfoContentEl.innerHTML = `<p style=\"color:red;\">ID do cliente não encontrado.</p>`;
             return;
         }
 
         if (clientName) {
-            clientNameDisplay.textContent = sanitizeInput(clientName); 
-            document.title = `Detalhes - ${sanitizeInput(clientName)}`; 
-        } else {
-            clientNameDisplay.textContent = "Cliente";
+            clientNameDisplay.textContent = sanitizeInput(clientName);
         }
 
         try {
-            console.log("DEBUG: Resetting form info content."); 
-            formInfoContentEl.innerHTML = `<p id="form-loading-state">Carregando informações do formulário...</p>`; 
-            console.log("DEBUG: Fetching client data for ID:", currentClientId); 
+            formInfoContentEl.innerHTML = `<p id="form-loading-state">Carregando informações do formulário...</p>`;
             const { data: clientData, error: clientError } = await supabase
                 .from("clientes")
-                .select("projeto")
+                .select("id, nome, projeto_associado, formularios_clientes (id, token_unico, status, dados_formulario, data_preenchimento)")
                 .eq("id", currentClientId)
                 .single();
 
-            if (clientError || !clientData) {
-                console.error("DEBUG: Error fetching client data or client not found:", clientError); 
-                throw clientError || new Error("Cliente não encontrado.");
-            }
-            console.log("DEBUG: Client data fetched:", clientData); 
+            if (clientError) throw clientError;
 
-            if (clientData.projeto !== "Planejamento") {
-                console.log("DEBUG: Client project is not Planejamento. Displaying not applicable message."); 
+            if (!clientData) {
+                formInfoContentEl.innerHTML = "<p>Cliente não encontrado.</p>";
+                return;
+            }
+            
+            // Verifica se o projeto é Planejamento
+            // Se o campo projeto_associado não existir ou for diferente de "Planejamento", exibe a mensagem.
+            // Considera que se projeto_associado for null ou undefined, o formulário não se aplica.
+            const projetoPlanejamentoId = "a75d285a-6607-4141-8f02-870870199803"; // ID do projeto "Planejamento"
+            if (clientData.projeto_associado !== projetoPlanejamentoId) {
                 displayFormNotApplicable();
                 return;
             }
-            console.log("DEBUG: Client project is Planejamento. Proceeding..."); 
 
-            console.log("DEBUG: Fetching latest form for client ID:", currentClientId); 
-            const { data: latestForm, error: formError } = await supabase
-                .from("formularios_clientes")
-                .select("*") 
-                .eq("cliente_id", currentClientId)
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle(); 
-
-            if (formError && formError.code !== "PGRST116") { // PGRST116 means no rows found, which is fine
-                console.error("DEBUG: Error fetching form data:", formError);
-                throw formError;
-            }
-            console.log("DEBUG: Latest form data fetched:", latestForm);
+            const forms = clientData.formularios_clientes || [];
+            const latestForm = forms.sort((a, b) => new Date(b.data_preenchimento || 0) - new Date(a.data_preenchimento || 0))[0];
 
             if (latestForm) {
                 if (latestForm.status === "pendente") {
                     displayFormLink(latestForm);
-                } else if (latestForm.status === "preenchido") {
+                } else if (latestForm.status === "preenchido" && latestForm.dados_formulario) {
                     displayFormData(latestForm);
                 } else {
-                    console.log("DEBUG: Latest form has unknown status, displaying generate link form.");
-                    displayGenerateLinkForm(); // Fallback or if status is neither
+                     console.log("DEBUG: Latest form has no data or unexpected status, generating new link form.", latestForm);
+                    displayGenerateLinkForm(); // Caso estranho, permite gerar novo link
                 }
             } else {
-                console.log("DEBUG: No form found. Displaying generate link button.");
                 displayGenerateLinkForm();
             }
 
         } catch (error) {
-            console.error("Erro ao carregar e gerenciar formulário:", error);
+            console.error("Erro ao carregar informações do formulário:", error);
             formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao carregar dados: ${sanitizeInput(error.message)}</p>`;
         }
     }
 
     async function handleGenerateLink() {
-        console.log("DEBUG: Entering handleGenerateLink. Client ID:", currentClientId);
         if (!currentClientId) {
-            console.error("DEBUG: Client ID is undefined in handleGenerateLink.");
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao gerar link: ID do cliente não definido.</p>`;
+            alert("ID do cliente não encontrado. Não é possível gerar o link.");
             return;
         }
+        const generateButton = formInfoContentEl.querySelector(".generate-link-btn");
+        if(generateButton) generateButton.disabled = true;
+
         try {
-            const { data, error } = await supabase
-                .from("formularios_clientes")
-                .insert([{ cliente_id: currentClientId, status: "pendente" }])
-                .select()
-                .single(); 
+            const { data, error } = await supabase.rpc('create_new_form_for_client', { client_id_param: currentClientId });
 
             if (error) throw error;
-            console.log("DEBUG: Generated new token:", data.token_unico);
-            loadAndManageForm(); // Recarrega para exibir o novo link
+
+            if (data && data.new_form_id && data.new_token) {
+                // Recarrega as informações do formulário para exibir o novo link
+                loadAndManageForm(); 
+            } else {
+                throw new Error("Não foi possível obter o novo token ou ID do formulário da resposta da função.");
+            }
+
         } catch (error) {
-            console.error("Erro ao gerar link do formulário:", error);
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao gerar link: ${sanitizeInput(error.message)}</p>`;
+            console.error("Erro ao gerar novo link:", error);
+            alert(`Erro ao gerar novo link: ${error.message}`);
+            if(generateButton) generateButton.disabled = false;
         }
     }
 
     async function handleDeleteForm(event) {
         const formId = event.target.dataset.formId;
-        console.log("DEBUG: Entering handleDeleteForm. Form ID:", formId);
         if (!formId) {
-            console.error("DEBUG: Form ID not found on button.");
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao excluir: ID do formulário não encontrado.</p>`;
+            alert("ID do formulário não encontrado para exclusão.");
             return;
         }
 
-        const confirmed = confirm("Tem certeza que deseja excluir este link/dados do formulário? Um novo link será gerado se não houver outros pendentes.");
-        if (!confirmed) return;
+        if (!confirm("Tem certeza que deseja excluir os dados deste formulário e gerar um novo link? Esta ação não pode ser desfeita.")) {
+            return;
+        }
+        
+        event.target.disabled = true;
+        event.target.textContent = "Excluindo...";
 
         try {
-            // Primeiro, tenta deletar o formulário específico pelo ID
+            // Primeiro, exclui o formulário existente
             const { error: deleteError } = await supabase
                 .from("formularios_clientes")
                 .delete()
                 .eq("id", formId);
 
-            if (deleteError) {
-                console.error("DEBUG: Error deleting form by ID:", deleteError);
-                // Se a exclusão por ID falhar (ex: RLS impede ou o formId não é o que pensamos),
-                // podemos tentar uma abordagem mais ampla se fizer sentido, ou apenas mostrar o erro.
-                // Por agora, vamos apenas mostrar o erro.
-                throw deleteError;
+            if (deleteError) throw deleteError;
+
+            // Em seguida, chama a função para criar um novo (que também gera o link)
+            const { data: newData, error: createError } = await supabase.rpc('create_new_form_for_client', { client_id_param: currentClientId });
+            if (createError) throw createError;
+
+            if (newData && newData.new_form_id && newData.new_token) {
+                loadAndManageForm(); // Recarrega para mostrar o novo link
+            } else {
+                throw new Error("Novo formulário criado, mas não foi possível obter o novo token ou ID.");
             }
-            console.log("DEBUG: Form deleted successfully (or was already deleted/not found by this ID). Reloading form management...");
-            loadAndManageForm(); // Recarrega para gerar novo link ou mostrar estado atual
 
         } catch (error) {
-            console.error("Erro ao excluir formulário:", error);
-            // Tenta manter a mensagem de erro dentro do formInfoContentEl para consistência
-            const currentContent = formInfoContentEl.innerHTML;
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao excluir: ${sanitizeInput(error.message)}</p><hr>${currentContent}`;
+            console.error("Erro ao excluir e gerar novo link:", error);
+            alert(`Erro: ${error.message}`);
+            // Não reabilita o botão aqui, pois a interface deve ser recarregada
+            // Se o recarregamento falhar, o usuário terá que recarregar a página manualmente ou tentar novamente.
+            loadAndManageForm(); // Tenta recarregar mesmo em erro para atualizar o estado da UI
         }
     }
 
+    // Carrega o formulário quando o DOM estiver pronto
     document.addEventListener("DOMContentLoaded", loadAndManageForm);
+
   </script>
 </body>
 </html>
