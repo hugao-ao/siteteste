@@ -18,6 +18,12 @@ const sanitizeInput = (str) => {
     .replace(/`/g, "&#x60;");
 };
 
+// Função para capitalizar a primeira letra de cada palavra em um nome
+const capitalizeName = (name) => {
+    if (!name) return "";
+    return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+};
+
 // Função para exibir mensagens
 function showMessage(type, text) {
     messageAreaEl.innerHTML = `<div class="message ${type}">${sanitizeInput(text)}</div>`;
@@ -81,27 +87,38 @@ function renderPlanoSaudeQuestions() {
 
     if (pessoasDaCasa.length === 0) {
         container.innerHTML = "<p>Preencha as informações anteriores para definir as perguntas sobre plano de saúde.</p>";
+        const tituloPlanoSaude = document.getElementById("plano-saude-section-title");
+        if(tituloPlanoSaude) tituloPlanoSaude.style.display = 'none';
         return;
     }
     
     const tituloPlanoSaude = document.getElementById("plano-saude-section-title");
     if(tituloPlanoSaude) tituloPlanoSaude.style.display = pessoasDaCasa.length > 0 ? 'block' : 'none';
 
-
     pessoasDaCasa.forEach((pessoa, index) => {
         const primeiroNome = pessoa.nome.split(' ')[0];
+        const nomeCapitalizado = capitalizeName(primeiroNome);
         const personId = `plano_saude_pessoa_${index}`;
 
         const entryDiv = document.createElement("div");
         entryDiv.classList.add("plano-saude-entry");
+        // Ajuste para os radio buttons ficarem na mesma linha
         entryDiv.innerHTML = `
-            <label for="${personId}">${primeiroNome} possui plano de saúde?</label><br>
-            <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
-            <label for="${personId}_sim">Sim</label>
-            <input type="radio" id="${personId}_nao" name="${personId}" value="nao">
-            <label for="${personId}_nao">Não</label>
-            <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei">
-            <label for="${personId}_naosei">Não sei informar</label>
+            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui plano de saúde?</label>
+            <div class="radio-options-inline">
+                <span style="margin-right: 15px;">
+                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
+                    <label for="${personId}_sim">Sim</label>
+                </span>
+                <span style="margin-right: 15px;">
+                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao">
+                    <label for="${personId}_nao">Não</label>
+                </span>
+                <span>
+                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei">
+                    <label for="${personId}_naosei">Não sei informar</label>
+                </span>
+            </div>
         `;
         entryDiv.dataset.personName = pessoa.nome; // Guardar o nome completo para o submit
         container.appendChild(entryDiv);
@@ -141,7 +158,7 @@ async function loadForm(token) {
         }
 
         if (formData.clientes && formData.clientes.nome) {
-            formTitleEl.textContent = `Formulário para ${sanitizeInput(formData.clientes.nome)}`;
+            formTitleEl.textContent = `Formulário para ${capitalizeName(sanitizeInput(formData.clientes.nome))}`;
         }
 
         if (formData.status === "pendente") {
@@ -161,7 +178,7 @@ async function loadForm(token) {
     }
 }
 
-// Função para renderizar o formulário HTML (AJUSTADO PARA PLANO DE SAÚDE)
+// Função para renderizar o formulário HTML
 function renderActualForm(formData) {
     formContentEl.innerHTML = `
         <form id="client-response-form">
@@ -253,7 +270,7 @@ function renderActualForm(formData) {
             const nomeDigitado = nomeInputPessoa.value.trim();
             const primeiroNome = nomeDigitado.split(' ')[0];
             if (primeiroNome) {
-                autorizacaoLabel.textContent = `Você precisa de autorização de ${sanitizeInput(primeiroNome)} para tomar decisões financeiras e agir?`;
+                autorizacaoLabel.textContent = `Você precisa de autorização de ${capitalizeName(sanitizeInput(primeiroNome))} para tomar decisões financeiras e agir?`;
             } else {
                 autorizacaoLabel.textContent = 'Você precisa de autorização de ... para tomar decisões financeiras e agir?';
             }
@@ -321,7 +338,7 @@ function renderActualForm(formData) {
     }
 }
 
-// Função para lidar com o envio do formulário (AJUSTADO PARA PLANO DE SAÚDE)
+// Função para lidar com o envio do formulário
 async function handleFormSubmit(event, formData) {
     event.preventDefault();
     messageAreaEl.innerHTML = "";
@@ -346,68 +363,54 @@ async function handleFormSubmit(event, formData) {
 
     const dadosFormulario = {
         nome_completo: nomeCompleto,
-        renda_unica: rendaUnicaValue === 'sim',
+        renda_unica: rendaUnicaValue === "sim",
         outras_pessoas_renda: [],
-        tem_dependentes: temDependentesValue === 'sim',
+        tem_dependentes: temDependentesValue === "sim",
         dependentes: [],
-        informacoes_plano_saude: [] // Novo campo
+        informacoes_plano_saude: []
     };
 
     if (dadosFormulario.renda_unica === false) {
-        const personEntries = document.querySelectorAll('#pessoas-list .person-entry');
-        for (const entry of personEntries) {
-            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
-            const autorizacaoSelect = entry.querySelector('select[name="pessoa_autorizacao"]');
-            const nome = sanitizeInput(nomeInput.value.trim());
-            const autorizacao = autorizacaoSelect.value;
-            if (!nome || !autorizacao) {
-                showMessage("error", "Por favor, preencha todos os campos para cada pessoa com renda ou remova a entrada incompleta."); return;
+        document.querySelectorAll("#pessoas-list .person-entry").forEach(entry => {
+            const nome = entry.querySelector('input[name="pessoa_nome"]').value.trim();
+            const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]').value;
+            if (nome) {
+                dadosFormulario.outras_pessoas_renda.push({
+                    nome: sanitizeInput(nome),
+                    precisa_autorizacao: autorizacao === "sim"
+                });
             }
-            dadosFormulario.outras_pessoas_renda.push({
-                nome: nome,
-                precisa_autorizacao: autorizacao === 'sim'
-            });
-        }
+        });
     }
 
     if (dadosFormulario.tem_dependentes === true) {
-        const depEntries = document.querySelectorAll('#dependentes-list .person-entry');
-        for (const entry of depEntries) {
-            const nomeInput = entry.querySelector('input[name="dep_nome"]');
-            const idadeInput = entry.querySelector('input[name="dep_idade"]');
-            const relacaoInput = entry.querySelector('input[name="dep_relacao"]');
-            const nome = sanitizeInput(nomeInput.value.trim());
-            const idade = idadeInput.value;
-            const relacao = sanitizeInput(relacaoInput.value.trim());
-            if (!nome || !idade || !relacao) {
-                showMessage("error", "Por favor, preencha todos os campos para cada dependente ou remova a entrada incompleta."); return;
+        document.querySelectorAll("#dependentes-list .person-entry").forEach(entry => {
+            const nome = entry.querySelector('input[name="dep_nome"]').value.trim();
+            const idade = entry.querySelector('input[name="dep_idade"]').value;
+            const relacao = entry.querySelector('input[name="dep_relacao"]').value.trim();
+            if (nome) {
+                dadosFormulario.dependentes.push({
+                    nome: sanitizeInput(nome),
+                    idade: idade ? parseInt(idade) : null,
+                    relacao: sanitizeInput(relacao)
+                });
             }
-            dadosFormulario.dependentes.push({
-                nome: nome,
-                idade: parseInt(idade),
-                relacao: relacao
-            });
-        }
-        if (dadosFormulario.dependentes.length === 0 && dadosFormulario.tem_dependentes === true) {
-             showMessage("error", "Você indicou que tem dependentes. Por favor, adicione as informações ou marque 'Não'."); return;
-        }
+        });
     }
 
     // Coleta de dados do plano de saúde
-    const planoSaudeEntries = document.querySelectorAll("#plano-saude-section-content .plano-saude-entry");
-    for (let i = 0; i < planoSaudeEntries.length; i++) {
-        const entry = planoSaudeEntries[i];
-        const personName = entry.dataset.personName; // Nome completo da pessoa
-        const radioGroupName = `plano_saude_pessoa_${i}`;
-        const selectedRadio = document.querySelector(`input[name="${radioGroupName}"]:checked`);
-        if (!selectedRadio) {
-            showMessage("error", `Por favor, informe se ${personName.split(' ')[0]} possui plano de saúde.`); return;
+    document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
+        const nomePessoa = entry.dataset.personName; // Usa o nome completo guardado
+        const radioChecked = entry.querySelector('input[type="radio"]:checked');
+        if (nomePessoa && radioChecked) {
+            dadosFormulario.informacoes_plano_saude.push({
+                nome_pessoa: sanitizeInput(nomePessoa),
+                status_plano: radioChecked.value
+            });
         }
-        dadosFormulario.informacoes_plano_saude.push({
-            nome_pessoa: personName,
-            status_plano: selectedRadio.value
-        });
-    }
+    });
+
+    console.log("DEBUG: Dados a serem enviados:", dadosFormulario);
 
     try {
         const { error } = await supabase
@@ -415,23 +418,25 @@ async function handleFormSubmit(event, formData) {
             .update({
                 dados_formulario: dadosFormulario,
                 status: "preenchido",
-                data_preenchimento: new Date()
+                data_preenchimento: new Date().toISOString(),
             })
             .eq("id", formData.id);
 
         if (error) throw error;
 
-        formContentEl.innerHTML = "<p>Obrigado por preencher o formulário!</p>";
-        showMessage("success", "Suas respostas foram enviadas com sucesso.");
+        formContentEl.innerHTML = "<p>Resposta enviada com sucesso!</p>";
+        showMessage("success", "Obrigado por preencher o formulário.");
 
     } catch (error) {
         console.error("Erro ao enviar formulário:", error);
-        showMessage("error", `Erro ao enviar: ${error.message}`);
+        showMessage("error", `Erro ao enviar: ${error.message}. Tente novamente.`);
     }
 }
 
 // --- Inicialização ---
-const urlParams = new URLSearchParams(window.location.search);
-const token = urlParams.get("token");
-loadForm(token);
+document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    loadForm(token);
+});
 
