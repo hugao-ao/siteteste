@@ -19,8 +19,8 @@
       padding: 2rem;
       margin-left: 250px; /* Default margin for expanded sidebar */
       transition: margin-left 0.3s ease;
-      background-color: var(--bg-surface);
-      color: var(--text-light);
+      background-color: var(--theme-bg-surface);
+      color: var(--theme-text-light);
       /* text-align: center; /* REMOVIDO - Deixar alinhamento padrão */
     }
     #main-content-detalhes.sidebar-collapsed {
@@ -31,23 +31,23 @@
     h1 {
         text-align: center;
         margin-bottom: 2rem;
-        color: var(--gold-lighter);
+        color: var(--theme-secondary-lighter); /* Ajustado para tema */
     }
 
     /* --- Seção do Formulário --- */
     #form-section {
-        background-color: var(--bg-dark);
+        background-color: var(--theme-bg-dark);
         padding: 1.5rem 2rem;
         margin-top: 2rem;
         border-radius: 8px;
-        border: 1px solid var(--border-color);
+        border: 1px solid var(--theme-border-color);
         text-align: left;
     }
     #form-section h2 {
         margin-top: 0;
         margin-bottom: 1rem;
-        color: var(--gold);
-        border-bottom: 1px solid var(--border-color);
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
         padding-bottom: 0.5rem;
     }
     #form-section p {
@@ -55,14 +55,14 @@
         line-height: 1.6;
     }
     #form-section .form-link-container {
-        background-color: var(--bg-surface);
+        background-color: var(--theme-bg-surface);
         padding: 1rem;
         border-radius: 4px;
         margin-bottom: 1rem;
         word-wrap: break-word; /* Quebra links longos */
     }
     #form-section .form-link-container a {
-        color: var(--emerald-glow);
+        color: var(--theme-secondary-lighter); /* Ajustado para tema */
         text-decoration: none;
         font-weight: bold;
     }
@@ -73,7 +73,16 @@
         margin-bottom: 1rem;
     }
     #form-section .form-data-display strong {
-        color: var(--gold-lighter);
+        color: var(--theme-secondary-lighter);
+    }
+    #form-section .form-data-display ul {
+        list-style: none;
+        padding-left: 1rem;
+        margin-top: 0.5rem;
+        border-left: 2px solid var(--theme-border-color);
+    }
+    #form-section .form-data-display li {
+        margin-bottom: 0.5rem;
     }
     #form-section .delete-form-btn {
         background-color: #c62828; /* Vermelho */
@@ -90,8 +99,8 @@
         background-color: #a12020;
     }
     #form-section .generate-link-btn {
-        background-color: var(--emerald-dark);
-        color: var(--gold-lighter);
+        background-color: var(--theme-primary); /* Ajustado para tema */
+        color: var(--theme-secondary-lighter);
         border: none;
         padding: 0.5rem 1rem;
         border-radius: 4px;
@@ -100,12 +109,12 @@
         transition: background-color 0.3s ease;
     }
     #form-section .generate-link-btn:hover {
-        background-color: var(--emerald-glow);
+        background-color: var(--theme-primary-lighter);
     }
     #form-loading-state {
         text-align: center;
         padding: 1rem;
-        color: var(--text-muted);
+        color: var(--theme-text-muted);
     }
 
   </style>
@@ -142,11 +151,6 @@
     // Recupera ID e nome do cliente do sessionStorage
     const clientId = sessionStorage.getItem("viewing_client_id");
     const clientName = sessionStorage.getItem("viewing_client_name");
-
-    // Função para gerar UUID (necessária se não usar extensão pgcrypto no Supabase)
-    // function generateUUID() { 
-    //     return crypto.randomUUID();
-    // }
 
     // Função para sanitizar input (copiada de outros scripts)
     const sanitizeInput = (str) => {
@@ -189,24 +193,37 @@
         }
     }
 
-    // Função para exibir os dados PREENCHIDOS (MODIFICADA PARA USAR JSONB)
+    // Função para exibir os dados PREENCHIDOS (MODIFICADA PARA NOVA ESTRUTURA JSONB)
     function displayFormData(formData) {
         console.log("DEBUG: Entering displayFormData for completed form:", formData); // DEBUG LOG
         let dataHtml = '';
         // Verifica se dados_formulario existe e é um objeto
         if (formData.dados_formulario && typeof formData.dados_formulario === 'object') {
             const data = formData.dados_formulario;
-            // Acessa os campos dentro do JSON
-            const nome = data.nome ? sanitizeInput(data.nome) : 'N/A';
-            const cidade = data.cidade_natal ? sanitizeInput(data.cidade_natal) : 'N/A';
-            
-            dataHtml = `
-                <p><strong>Nome Completo:</strong> ${nome}</p>
-                <p><strong>Cidade Natal:</strong> ${cidade}</p>
-                <!-- Adicione outros campos do JSON aqui conforme necessário -->
-            `;
+
+            // Nome Completo
+            const nomeCompleto = data.nome_completo ? sanitizeInput(data.nome_completo) : 'N/A';
+            dataHtml += `<p><strong>Nome Completo:</strong> ${nomeCompleto}</p>`;
+
+            // Renda Única
+            const rendaUnicaText = typeof data.renda_unica === 'boolean' ? (data.renda_unica ? 'Sim' : 'Não') : 'N/A';
+            dataHtml += `<p><strong>Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
+
+            // Outras Pessoas com Renda (se aplicável)
+            if (data.renda_unica === false && Array.isArray(data.outras_pessoas_renda) && data.outras_pessoas_renda.length > 0) {
+                dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong></p><ul>`;
+                data.outras_pessoas_renda.forEach((pessoa, index) => {
+                    const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : 'Nome não informado';
+                    const autorizacaoText = typeof pessoa.precisa_autorizacao === 'boolean' ? (pessoa.precisa_autorizacao ? 'Sim' : 'Não') : 'Não informado';
+                    dataHtml += `<li>${nomePessoa} (Precisa de autorização: ${autorizacaoText})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.renda_unica === false) {
+                 dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
+            }
+
         } else {
-            dataHtml = '<p>Não foi possível carregar os dados do formulário.</p>';
+            dataHtml = '<p>Não foi possível carregar os dados detalhados do formulário.</p>';
             console.log("DEBUG: dados_formulario is null or not an object:", formData.dados_formulario); // DEBUG LOG
         }
 
@@ -263,8 +280,8 @@
         }
 
         if (clientName) {
-            clientNameDisplay.textContent = clientName;
-            document.title = `Detalhes - ${clientName}`; // Atualiza título da aba
+            clientNameDisplay.textContent = sanitizeInput(clientName); // Sanitiza nome do cliente
+            document.title = `Detalhes - ${sanitizeInput(clientName)}`; // Atualiza título da aba
         } else {
             clientNameDisplay.textContent = "Cliente";
         }
@@ -298,7 +315,7 @@
             console.log("DEBUG: Fetching latest form for client ID:", clientId); // DEBUG LOG
             const { data: latestForm, error: formError } = await supabase
                 .from('formularios_clientes')
-                .select('*') // Seleciona todas as colunas necessárias (id, token_unico, status, data_preenchimento, dados_formulario)
+                .select('*') // Seleciona todas as colunas necessárias
                 .eq('cliente_id', clientId)
                 .order('created_at', { ascending: false })
                 .limit(1)
@@ -325,7 +342,7 @@
                 displayFormData(latestForm);
             } else {
                  console.log("DEBUG: Form found with unknown status:", latestForm.status); // DEBUG LOG
-                 formInfoContentEl.innerHTML = `<p style="color:orange;">Status desconhecido do formulário: ${latestForm.status}</p>`;
+                 formInfoContentEl.innerHTML = `<p style="color:orange;">Status desconhecido do formulário: ${sanitizeInput(latestForm.status)}</p>`;
             }
 
         } catch (error) {
