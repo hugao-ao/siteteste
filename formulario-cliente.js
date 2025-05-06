@@ -504,9 +504,7 @@ function attachFormEventListeners(formId) {
     if (rendaUnicaSimRadio) {
         rendaUnicaSimRadio.addEventListener("change", () => {
             outrasPessoasContainerEl.style.display = "none";
-            pessoasListEl.innerHTML = 
-
-; 
+            pessoasListEl.innerHTML = '';
             updateDynamicFormSections();
         });
     }
@@ -575,9 +573,7 @@ input
     if (temDependentesNaoRadio) {
         temDependentesNaoRadio.addEventListener("change", () => {
             dependentesContainerEl.style.display = "none";
-            dependentesListEl.innerHTML = 
-
-; 
+            dependentesListEl.innerHTML = '';
             updateDynamicFormSections();
         });
     }
@@ -623,9 +619,7 @@ input
     if (temPatrimonioNaoRadio) {
         temPatrimonioNaoRadio.addEventListener("change", () => {
             patrimonioListContainerEl.style.display = "none";
-            patrimonioListEl.innerHTML = 
-
-;
+            patrimonioListEl.innerHTML = "";
             updateDynamicFormSections();
         });
     }
