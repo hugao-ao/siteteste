@@ -444,8 +444,8 @@ async function handleFormSubmit(event, formData) {
 
     if (dadosFormulario.renda_unica === false) {
         document.querySelectorAll("#pessoas-list .person-entry").forEach(entry => {
-            const nome = entry.querySelector('input[name="pessoa_nome"]").value.trim();
-            const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]").value;
+            const nome = entry.querySelector('input[name="pessoa_nome"]').value.trim();
+            const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]').value;
             if (nome) {
                 dadosFormulario.outras_pessoas_renda.push({
                     nome: sanitizeInput(nome),
@@ -457,9 +457,9 @@ async function handleFormSubmit(event, formData) {
 
     if (dadosFormulario.tem_dependentes === true) {
         document.querySelectorAll("#dependentes-list .person-entry").forEach(entry => {
-            const nome = entry.querySelector('input[name="dep_nome"]").value.trim();
-            const idade = entry.querySelector('input[name="dep_idade"]").value;
-            const relacao = entry.querySelector('input[name="dep_relacao"]").value.trim();
+            const nome = entry.querySelector('input[name="dep_nome"]').value.trim();
+            const idade = entry.querySelector('input[name="dep_idade"]').value;
+            const relacao = entry.querySelector('input[name="dep_relacao"]').value.trim();
             if (nome) {
                 dadosFormulario.dependentes.push({
                     nome: sanitizeInput(nome),
