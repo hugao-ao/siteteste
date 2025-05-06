@@ -23,7 +23,7 @@ function showMessage(type, text) {
     messageAreaEl.innerHTML = `<div class="message ${type}">${sanitizeInput(text)}</div>`;
 }
 
-// Função para atualizar dinamicamente a pergunta sobre dependentes (AJUSTADA)
+// Função para atualizar dinamicamente a pergunta sobre dependentes
 function updatePerguntaDependentesLabel() {
     const labelTemDependentes = document.getElementById("label_tem_dependentes");
     if (!labelTemDependentes) return;
@@ -140,7 +140,7 @@ function renderActualForm(formData) {
     `;
 
     const nomeCompletoInput = document.getElementById("nome_completo");
-    // nomeCompletoInput.addEventListener('input', updatePerguntaDependentesLabel); // Removido daqui, será chamado em outros pontos
+    // nomeCompletoInput.addEventListener('input', updatePerguntaDependentesLabel); // Chamada agora é feita em outros pontos
 
     const radioRendaSim = document.getElementById("renda_unica_sim");
     const radioRendaNao = document.getElementById("renda_unica_nao");
@@ -228,13 +228,8 @@ function renderActualForm(formData) {
             <input type="text" id="dep_nome_${depId}" name="dep_nome" required>
             <label for="dep_idade_${depId}">Idade:</label>
             <input type="number" id="dep_idade_${depId}" name="dep_idade" min="0" required>
-            <label for="dep_relacao_${depId}">Relação:</label>
-            <select id="dep_relacao_${depId}" name="dep_relacao" required>
-                <option value="">Selecione...</option>
-                <option value="filho">Filho(a)</option>
-                <option value="pet">Pet</option>
-                <option value="outro">Outro</option>
-            </select>
+            <label for="dep_relacao_${depId}">Relação ( filho(a), pai, mãe, irmã(o), Pet, etc...):</label>
+            <input type="text" id="dep_relacao_${depId}" name="dep_relacao" required>
         `;
         dependentesList.appendChild(depEntry);
         depEntry.querySelector('.remove-person-btn').addEventListener('click', (e) => {
@@ -304,10 +299,10 @@ async function handleFormSubmit(event, formData) {
         for (const entry of depEntries) {
             const nomeInput = entry.querySelector('input[name="dep_nome"]');
             const idadeInput = entry.querySelector('input[name="dep_idade"]');
-            const relacaoSelect = entry.querySelector('select[name="dep_relacao"]');
+            const relacaoInput = entry.querySelector('input[name="dep_relacao"]'); // Alterado de relacaoSelect para relacaoInput
             const nome = sanitizeInput(nomeInput.value.trim());
             const idade = idadeInput.value;
-            const relacao = relacaoSelect.value;
+            const relacao = sanitizeInput(relacaoInput.value.trim()); // Coleta valor do input text e sanitiza
             if (!nome || !idade || !relacao) {
                 showMessage("error", "Por favor, preencha todos os campos para cada dependente ou remova a entrada incompleta."); return;
             }
