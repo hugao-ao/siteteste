@@ -102,20 +102,22 @@ function renderPlanoSaudeQuestions() {
 
         const entryDiv = document.createElement("div");
         entryDiv.classList.add("plano-saude-entry");
-        // Ajuste para os radio buttons ficarem na mesma linha
+        entryDiv.style.marginBottom = "1rem"; // Adiciona espaço entre cada pergunta de pessoa
+        
+        // Ajuste para os radio buttons ficarem na mesma linha usando display: flex
         entryDiv.innerHTML = `
             <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui plano de saúde?</label>
-            <div class="radio-options-inline">
-                <span style="margin-right: 15px;">
-                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
+            <div class="radio-options-inline" style="display: flex; align-items: center;">
+                <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
                     <label for="${personId}_sim">Sim</label>
                 </span>
-                <span style="margin-right: 15px;">
-                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao">
+                <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
                     <label for="${personId}_nao">Não</label>
                 </span>
-                <span>
-                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei">
+                <span style="display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
                     <label for="${personId}_naosei">Não sei informar</label>
                 </span>
             </div>
