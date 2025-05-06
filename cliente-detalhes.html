@@ -226,7 +226,7 @@
                 dataHtml += `<p><strong>Dependentes:</strong> Nenhum dependente adicionado.</p>`;
             }
 
-            // Exibição de Informações sobre Plano de Saúde (JÁ INTEGRADO NA VERSÃO ANTERIOR ENVIADA)
+            // Exibição de Informações sobre Plano de Saúde
             if (Array.isArray(data.informacoes_plano_saude) && data.informacoes_plano_saude.length > 0) {
                 dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong></p><ul>`;
                 data.informacoes_plano_saude.forEach((planoInfo) => {
@@ -239,9 +239,22 @@
                     dataHtml += `<li>${nomePessoaPlano}: ${statusPlanoText}</li>`;
                 });
                 dataHtml += `</ul>`;
-            } else {
-                // Não exibe nada se não houver informações de plano de saúde, ou pode-se adicionar uma mensagem como abaixo:
-                // dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong> Nenhuma informação registrada.</p>`;
+            }
+
+            // Exibição de Informações sobre Seguro de Vida
+            if (Array.isArray(data.informacoes_seguro_vida) && data.informacoes_seguro_vida.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Seguro de Vida:</strong></p><ul>`;
+                data.informacoes_seguro_vida.forEach((seguroInfo) => {
+                    const nomePessoaSeguro = seguroInfo.nome_pessoa ? sanitizeInput(seguroInfo.nome_pessoa) : "Pessoa não identificada";
+                    let statusSeguroText = "N/A";
+                    if (seguroInfo.status_seguro === "sim") statusSeguroText = "Sim";
+                    else if (seguroInfo.status_seguro === "nao") statusSeguroText = "Não";
+                    else if (seguroInfo.status_seguro === "nao_sei") statusSeguroText = "Não sei informar";
+                    
+                    // A lógica de coleta no formulário já garante que apenas pessoas com renda são incluídas aqui.
+                    dataHtml += `<li>${nomePessoaSeguro}: ${statusSeguroText}</li>`;
+                });
+                dataHtml += `</ul>`;
             }
 
         } else {
@@ -353,82 +366,64 @@
                 console.log("DEBUG: Completed form found. Displaying form data and delete button."); 
                 displayFormData(latestForm);
             } else {
-                 console.log("DEBUG: Form found with unknown status:", latestForm.status); 
-                 formInfoContentEl.innerHTML = `<p style="color:orange;">Status desconhecido do formulário: ${sanitizeInput(latestForm.status)}</p>`;
+                console.log("DEBUG: Form found with unknown status:", latestForm.status, ". Displaying generate link button as fallback."); 
+                displayGenerateLinkForm(); // Fallback para status desconhecido
             }
 
         } catch (error) {
-            console.error("Erro ao carregar informações do formulário:", error);
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao carregar: ${error.message}</p>`;
+            console.error("DEBUG: Error in loadAndManageForm:", error); 
+            clientNameDisplay.textContent = "Erro";
+            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao carregar dados: ${sanitizeInput(error.message)}</p>`;
         }
     }
 
     async function handleGenerateLink() {
-        console.log("DEBUG: Entering handleGenerateLink"); 
-        if (!currentClientId) { // Verifica se currentClientId está definido
-            console.error("DEBUG: Client ID is not defined in handleGenerateLink.");
-            alert("Erro crítico: ID do cliente não está definido. Recarregue a página ou contate o suporte.");
+        console.log("DEBUG: Entering handleGenerateLink. Client ID:", currentClientId); 
+        if (!currentClientId) {
+            console.error("DEBUG: Client ID is undefined in handleGenerateLink.");
+            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao gerar link: ID do cliente não definido.</p>`;
             return;
         }
-        formInfoContentEl.innerHTML = `<p>Gerando novo link...</p>`;
         try {
-            const newToken = crypto.randomUUID(); 
-            console.log("DEBUG: Generated new token:", newToken); 
+            const token = `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
+            console.log("DEBUG: Generated new token:", token); 
             const { data, error } = await supabase
                 .from("formularios_clientes")
-                .insert({
-                    cliente_id: currentClientId, // Usa currentClientId
-                    token_unico: newToken,
-                    status: "pendente"
-                })
+                .insert([{ cliente_id: currentClientId, token_unico: token, status: "pendente" }])
                 .select()
-                .single();
+                .single(); 
 
             if (error) throw error;
-            console.log("DEBUG: New form link generated and inserted:", data); 
-            loadAndManageForm(); // Recarrega para exibir o novo link
+            console.log("DEBUG: Form link generated and inserted:", data); 
+            displayFormLink(data);
         } catch (error) {
-            console.error("Erro ao gerar link:", error);
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao gerar link: ${error.message}</p>`;
+            console.error("DEBUG: Error generating form link:", error); 
+            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao gerar link: ${sanitizeInput(error.message)}</p>`;
         }
     }
 
     async function handleDeleteForm(event) {
         const formId = event.target.dataset.formId;
-        console.log("DEBUG: Entering handleDeleteForm for form ID:", formId); 
-        if (!formId) {
-            console.error("DEBUG: Form ID not found on button for deletion."); 
-            alert("Erro: ID do formulário não encontrado.");
+        console.log("DEBUG: Entering handleDeleteForm. Form ID:", formId); 
+        if (!confirm("Tem certeza que deseja excluir este link/formulário? Esta ação não pode ser desfeita.")) {
             return;
         }
-
-        const confirmDelete = confirm("Tem certeza que deseja excluir este formulário/link? Esta ação não pode ser desfeita.");
-        if (!confirmDelete) {
-            console.log("DEBUG: User cancelled deletion."); 
-            return;
-        }
-        
-        formInfoContentEl.innerHTML = `<p>Excluindo formulário...</p>`;
         try {
-            console.log("DEBUG: Deleting form with ID:", formId); 
             const { error } = await supabase
                 .from("formularios_clientes")
                 .delete()
                 .eq("id", formId);
-
             if (error) throw error;
-            console.log("DEBUG: Form deleted successfully."); 
-            alert("Formulário/Link excluído com sucesso! Um novo link será gerado ou a opção para gerar aparecerá.");
-            loadAndManageForm(); // Recarrega para gerar novo link ou mostrar botão
+            console.log("DEBUG: Form deleted successfully. Reloading form info..."); 
+            loadAndManageForm(); // Recarrega para mostrar o botão de gerar novo link
         } catch (error) {
-            console.error("Erro ao excluir formulário:", error);
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao excluir: ${error.message}</p>`;
-            alert(`Erro ao excluir: ${error.message}`);
+            console.error("DEBUG: Error deleting form:", error); 
+            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao excluir: ${sanitizeInput(error.message)}</p>`;
         }
     }
 
-    // Carrega o formulário ao iniciar a página
-    loadAndManageForm();
+    // Inicialização
+    document.addEventListener("DOMContentLoaded", loadAndManageForm);
 
   </script>
 </body>
