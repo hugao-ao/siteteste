@@ -146,6 +146,7 @@
 
     const clientNameDisplay = document.getElementById("client-name-display");
     const formInfoContentEl = document.getElementById("form-info-content");
+    let currentClientId; // Declarada em escopo mais amplo
 
     const sanitizeInput = (str) => {
       if (str === null || str === undefined) return "";
@@ -225,7 +226,7 @@
                 dataHtml += `<p><strong>Dependentes:</strong> Nenhum dependente adicionado.</p>`;
             }
 
-            // Exibição de Informações sobre Plano de Saúde (NOVA LÓGICA)
+            // Exibição de Informações sobre Plano de Saúde (JÁ INTEGRADO NA VERSÃO ANTERIOR ENVIADA)
             if (Array.isArray(data.informacoes_plano_saude) && data.informacoes_plano_saude.length > 0) {
                 dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong></p><ul>`;
                 data.informacoes_plano_saude.forEach((planoInfo) => {
@@ -239,7 +240,8 @@
                 });
                 dataHtml += `</ul>`;
             } else {
-                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong> Nenhuma informação registrada.</p>`;
+                // Não exibe nada se não houver informações de plano de saúde, ou pode-se adicionar uma mensagem como abaixo:
+                // dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong> Nenhuma informação registrada.</p>`;
             }
 
         } else {
@@ -286,10 +288,10 @@
     }
 
     async function loadAndManageForm() {
-        const clientId = sessionStorage.getItem("viewing_client_id");
+        currentClientId = sessionStorage.getItem("viewing_client_id"); // Atribui à variável de escopo mais amplo
         const clientName = sessionStorage.getItem("viewing_client_name");
-        console.log("DEBUG: Entering loadAndManageForm. Client ID:", clientId, "Client Name:", clientName); 
-        if (!clientId) {
+        console.log("DEBUG: Entering loadAndManageForm. Client ID:", currentClientId, "Client Name:", clientName); 
+        if (!currentClientId) {
             console.log("DEBUG: Client ID not found in sessionStorage."); 
             clientNameDisplay.textContent = "Cliente Inválido";
             formInfoContentEl.innerHTML = `<p style="color:red;">ID do cliente não encontrado.</p>`;
@@ -306,11 +308,11 @@
         try {
             console.log("DEBUG: Resetting form info content."); 
             formInfoContentEl.innerHTML = `<p id="form-loading-state">Carregando informações do formulário...</p>`; 
-            console.log("DEBUG: Fetching client data for ID:", clientId); 
+            console.log("DEBUG: Fetching client data for ID:", currentClientId); 
             const { data: clientData, error: clientError } = await supabase
                 .from("clientes")
                 .select("projeto")
-                .eq("id", clientId)
+                .eq("id", currentClientId)
                 .single();
 
             if (clientError || !clientData) {
@@ -326,11 +328,11 @@
             }
             console.log("DEBUG: Client project is Planejamento. Proceeding..."); 
 
-            console.log("DEBUG: Fetching latest form for client ID:", clientId); 
+            console.log("DEBUG: Fetching latest form for client ID:", currentClientId); 
             const { data: latestForm, error: formError } = await supabase
                 .from("formularios_clientes")
                 .select("*") 
-                .eq("cliente_id", clientId)
+                .eq("cliente_id", currentClientId)
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle(); 
@@ -363,6 +365,11 @@
 
     async function handleGenerateLink() {
         console.log("DEBUG: Entering handleGenerateLink"); 
+        if (!currentClientId) { // Verifica se currentClientId está definido
+            console.error("DEBUG: Client ID is not defined in handleGenerateLink.");
+            alert("Erro crítico: ID do cliente não está definido. Recarregue a página ou contate o suporte.");
+            return;
+        }
         formInfoContentEl.innerHTML = `<p>Gerando novo link...</p>`;
         try {
             const newToken = crypto.randomUUID(); 
@@ -370,7 +377,7 @@
             const { data, error } = await supabase
                 .from("formularios_clientes")
                 .insert({
-                    cliente_id: clientId,
+                    cliente_id: currentClientId, // Usa currentClientId
                     token_unico: newToken,
                     status: "pendente"
                 })
