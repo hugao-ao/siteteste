@@ -41,15 +41,77 @@ function updatePerguntaDependentesLabel() {
     }
 
     if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
-        // Apenas o preenchedor tem renda
         labelTemDependentes.textContent = "Você tem filho/pet/outros parentes que dependem de você?";
     } else if (temOutrasPessoasComRenda) {
-        // Preenchedor E outras pessoas têm renda
         labelTemDependentes.textContent = "Vocês têm filho/pet/outros parentes que dependem de vocês?";
     } else {
-        // Apenas o preenchedor tem renda (caso "Não" esteja marcado para renda única, mas nenhuma outra pessoa adicionada)
         labelTemDependentes.textContent = "Você tem filho/pet/outros parentes que dependem de você?";
     }
+}
+
+// Função para renderizar as perguntas sobre plano de saúde
+function renderPlanoSaudeQuestions() {
+    const container = document.getElementById("plano-saude-section-content");
+    if (!container) return;
+    container.innerHTML = ''; // Limpa perguntas anteriores
+
+    const pessoasDaCasa = [];
+    const nomeCompletoInput = document.getElementById("nome_completo");
+    if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
+        pessoasDaCasa.push({ id: "preenchedor", nome: sanitizeInput(nomeCompletoInput.value.trim()) });
+    }
+
+    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
+        document.querySelectorAll("#pessoas-list .person-entry").forEach((entry, index) => {
+            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
+            if (nomeInput && nomeInput.value.trim() !== "") {
+                pessoasDaCasa.push({ id: `outra_pessoa_${index}`, nome: sanitizeInput(nomeInput.value.trim()) });
+            }
+        });
+    }
+
+    if (document.getElementById("tem_dependentes_sim") && document.getElementById("tem_dependentes_sim").checked) {
+        document.querySelectorAll("#dependentes-list .person-entry").forEach((entry, index) => {
+            const nomeInput = entry.querySelector('input[name="dep_nome"]');
+            if (nomeInput && nomeInput.value.trim() !== "") {
+                pessoasDaCasa.push({ id: `dependente_${index}`, nome: sanitizeInput(nomeInput.value.trim()) });
+            }
+        });
+    }
+
+    if (pessoasDaCasa.length === 0) {
+        container.innerHTML = "<p>Preencha as informações anteriores para definir as perguntas sobre plano de saúde.</p>";
+        return;
+    }
+    
+    const tituloPlanoSaude = document.getElementById("plano-saude-section-title");
+    if(tituloPlanoSaude) tituloPlanoSaude.style.display = pessoasDaCasa.length > 0 ? 'block' : 'none';
+
+
+    pessoasDaCasa.forEach((pessoa, index) => {
+        const primeiroNome = pessoa.nome.split(' ')[0];
+        const personId = `plano_saude_pessoa_${index}`;
+
+        const entryDiv = document.createElement("div");
+        entryDiv.classList.add("plano-saude-entry");
+        entryDiv.innerHTML = `
+            <label for="${personId}">${primeiroNome} possui plano de saúde?</label><br>
+            <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
+            <label for="${personId}_sim">Sim</label>
+            <input type="radio" id="${personId}_nao" name="${personId}" value="nao">
+            <label for="${personId}_nao">Não</label>
+            <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei">
+            <label for="${personId}_naosei">Não sei informar</label>
+        `;
+        entryDiv.dataset.personName = pessoa.nome; // Guardar o nome completo para o submit
+        container.appendChild(entryDiv);
+    });
+}
+
+// Função unificada para atualizar seções dinâmicas
+function updateDynamicFormSections() {
+    updatePerguntaDependentesLabel();
+    renderPlanoSaudeQuestions();
 }
 
 
@@ -99,7 +161,7 @@ async function loadForm(token) {
     }
 }
 
-// Função para renderizar o formulário HTML
+// Função para renderizar o formulário HTML (AJUSTADO PARA PLANO DE SAÚDE)
 function renderActualForm(formData) {
     formContentEl.innerHTML = `
         <form id="client-response-form">
@@ -120,9 +182,8 @@ function renderActualForm(formData) {
                 <button type="button" id="add-person-btn">+ Adicionar Pessoa com Renda</button>
             </div>
 
-            <!-- Seção de Dependentes -->
             <div class="radio-group" style="margin-top: 2rem;">
-                <label id="label_tem_dependentes">Você tem filho/pet/outros parentes que dependem de você?</label><br> <!-- Texto inicial padrão -->
+                <label id="label_tem_dependentes">Você tem filho/pet/outros parentes que dependem de você?</label><br>
                 <input type="radio" id="tem_dependentes_sim" name="tem_dependentes" value="sim" required>
                 <label for="tem_dependentes_sim">Sim</label>
                 <input type="radio" id="tem_dependentes_nao" name="tem_dependentes" value="nao">
@@ -135,12 +196,18 @@ function renderActualForm(formData) {
                 <button type="button" id="add-dependente-btn">+ Adicionar Dependente</button>
             </div>
 
+            <!-- Seção de Plano de Saúde -->
+            <div id="plano-saude-section" style="margin-top: 2rem;">
+                <h3 id="plano-saude-section-title" style="display: none;">Informações sobre Plano de Saúde:</h3>
+                <div id="plano-saude-section-content"></div>
+            </div>
+
             <button type="submit" style="margin-top: 2rem;">Enviar Resposta</button>
         </form>
     `;
 
     const nomeCompletoInput = document.getElementById("nome_completo");
-    // nomeCompletoInput.addEventListener('input', updatePerguntaDependentesLabel); // Chamada agora é feita em outros pontos
+    nomeCompletoInput.addEventListener('input', updateDynamicFormSections);
 
     const radioRendaSim = document.getElementById("renda_unica_sim");
     const radioRendaNao = document.getElementById("renda_unica_nao");
@@ -153,13 +220,13 @@ function renderActualForm(formData) {
             outrasPessoasContainer.style.display = 'none';
             pessoasList.innerHTML = '';
         }
-        updatePerguntaDependentesLabel();
+        updateDynamicFormSections();
     });
     radioRendaNao.addEventListener('change', () => {
         if (radioRendaNao.checked) {
             outrasPessoasContainer.style.display = 'block';
         }
-        updatePerguntaDependentesLabel();
+        updateDynamicFormSections();
     });
 
     addPersonBtn.addEventListener('click', () => {
@@ -190,15 +257,15 @@ function renderActualForm(formData) {
             } else {
                 autorizacaoLabel.textContent = 'Você precisa de autorização de ... para tomar decisões financeiras e agir?';
             }
-            updatePerguntaDependentesLabel(); 
+            updateDynamicFormSections(); 
         });
         personEntry.querySelector('.remove-person-btn').addEventListener('click', (e) => {
             const idToRemove = e.target.dataset.id;
             const entryToRemove = pessoasList.querySelector(`.person-entry[data-id="${idToRemove}"]`);
             if (entryToRemove) entryToRemove.remove();
-            updatePerguntaDependentesLabel(); 
+            updateDynamicFormSections(); 
         });
-        updatePerguntaDependentesLabel(); 
+        updateDynamicFormSections(); 
     });
 
     const radioTemDependentesSim = document.getElementById("tem_dependentes_sim");
@@ -209,12 +276,14 @@ function renderActualForm(formData) {
 
     radioTemDependentesSim.addEventListener('change', () => {
         if (radioTemDependentesSim.checked) dependentesContainer.style.display = 'block';
+        updateDynamicFormSections();
     });
     radioTemDependentesNao.addEventListener('change', () => {
         if (radioTemDependentesNao.checked) {
             dependentesContainer.style.display = 'none';
             dependentesList.innerHTML = '';
         }
+        updateDynamicFormSections();
     });
 
     addDependenteBtn.addEventListener('click', () => {
@@ -232,14 +301,19 @@ function renderActualForm(formData) {
             <input type="text" id="dep_relacao_${depId}" name="dep_relacao" required>
         `;
         dependentesList.appendChild(depEntry);
+        const nomeDependenteInput = depEntry.querySelector('input[name="dep_nome"]');
+        nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
+
         depEntry.querySelector('.remove-person-btn').addEventListener('click', (e) => {
             const idToRemove = e.target.dataset.id;
             const entryToRemove = dependentesList.querySelector(`.person-entry[data-id="${idToRemove}"]`);
             if (entryToRemove) entryToRemove.remove();
+            updateDynamicFormSections();
         });
+        updateDynamicFormSections();
     });
 
-    updatePerguntaDependentesLabel(); // Chamada inicial para definir o label
+    updateDynamicFormSections(); // Chamada inicial para definir tudo
 
     const formElement = document.getElementById("client-response-form");
     if (formElement) {
@@ -247,6 +321,7 @@ function renderActualForm(formData) {
     }
 }
 
+// Função para lidar com o envio do formulário (AJUSTADO PARA PLANO DE SAÚDE)
 async function handleFormSubmit(event, formData) {
     event.preventDefault();
     messageAreaEl.innerHTML = "";
@@ -274,7 +349,8 @@ async function handleFormSubmit(event, formData) {
         renda_unica: rendaUnicaValue === 'sim',
         outras_pessoas_renda: [],
         tem_dependentes: temDependentesValue === 'sim',
-        dependentes: []
+        dependentes: [],
+        informacoes_plano_saude: [] // Novo campo
     };
 
     if (dadosFormulario.renda_unica === false) {
@@ -299,10 +375,10 @@ async function handleFormSubmit(event, formData) {
         for (const entry of depEntries) {
             const nomeInput = entry.querySelector('input[name="dep_nome"]');
             const idadeInput = entry.querySelector('input[name="dep_idade"]');
-            const relacaoInput = entry.querySelector('input[name="dep_relacao"]'); // Alterado de relacaoSelect para relacaoInput
+            const relacaoInput = entry.querySelector('input[name="dep_relacao"]');
             const nome = sanitizeInput(nomeInput.value.trim());
             const idade = idadeInput.value;
-            const relacao = sanitizeInput(relacaoInput.value.trim()); // Coleta valor do input text e sanitiza
+            const relacao = sanitizeInput(relacaoInput.value.trim());
             if (!nome || !idade || !relacao) {
                 showMessage("error", "Por favor, preencha todos os campos para cada dependente ou remova a entrada incompleta."); return;
             }
@@ -315,6 +391,22 @@ async function handleFormSubmit(event, formData) {
         if (dadosFormulario.dependentes.length === 0 && dadosFormulario.tem_dependentes === true) {
              showMessage("error", "Você indicou que tem dependentes. Por favor, adicione as informações ou marque 'Não'."); return;
         }
+    }
+
+    // Coleta de dados do plano de saúde
+    const planoSaudeEntries = document.querySelectorAll("#plano-saude-section-content .plano-saude-entry");
+    for (let i = 0; i < planoSaudeEntries.length; i++) {
+        const entry = planoSaudeEntries[i];
+        const personName = entry.dataset.personName; // Nome completo da pessoa
+        const radioGroupName = `plano_saude_pessoa_${i}`;
+        const selectedRadio = document.querySelector(`input[name="${radioGroupName}"]:checked`);
+        if (!selectedRadio) {
+            showMessage("error", `Por favor, informe se ${personName.split(' ')[0]} possui plano de saúde.`); return;
+        }
+        dadosFormulario.informacoes_plano_saude.push({
+            nome_pessoa: personName,
+            status_plano: selectedRadio.value
+        });
     }
 
     try {
