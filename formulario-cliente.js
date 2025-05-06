@@ -24,8 +24,7 @@ const sanitizeInput = (str) => {
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined || value === "") return "";
-    let cleanValue = String(value).replace(/[^\d,.-]/g, 
-        '') // Correção: remover espaço extra aqui
+    let cleanValue = String(value).replace(/[^\d,.-]/g, '');
     const commaCount = (cleanValue.match(/,/g) || []).length;
     if (commaCount > 1) {
         const parts = cleanValue.split(',');
@@ -144,8 +143,7 @@ function savePlanoSaudeSelections() {
     if (!container) return;
     planoSaudeSelections = {};
     container.querySelectorAll(".plano-saude-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]
-')?.name; 
+        const nameAttribute = entry.querySelector('input[type="radio"]')?.name; 
         if (nameAttribute) {
             const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
             if (selectedRadio) {
@@ -177,8 +175,7 @@ function renderPlanoSaudeQuestions() {
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         document.querySelectorAll("#pessoas-list .item-entry").forEach((entry, index) => {
-            const nomeInput = entry.querySelector('input[name="pessoa_nome"]
-');
+            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `outra_pessoa_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
             }
@@ -186,8 +183,7 @@ function renderPlanoSaudeQuestions() {
     }
     if (document.getElementById("tem_dependentes_sim") && document.getElementById("tem_dependentes_sim").checked) {
         document.querySelectorAll("#dependentes-list .item-entry").forEach((entry, index) => {
-            const nomeInput = entry.querySelector('input[name="dep_nome"]
-');
+            const nomeInput = entry.querySelector('input[name="dep_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `dependente_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "dependente" });
             }
@@ -236,8 +232,7 @@ function saveSeguroVidaSelections() {
     if (!container) return;
     seguroVidaSelections = {}; 
     container.querySelectorAll(".seguro-vida-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]
-')?.name; 
+        const nameAttribute = entry.querySelector('input[type="radio"]')?.name; 
         if (nameAttribute) {
             const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
             if (selectedRadio) {
@@ -269,8 +264,7 @@ function renderSeguroVidaQuestions() {
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         document.querySelectorAll("#pessoas-list .item-entry").forEach((entry, index) => {
-            const nomeInput = entry.querySelector('input[name="pessoa_nome"]
-');
+            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasComRenda.push({ id: `outra_pessoa_seguro_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
             }
@@ -502,8 +496,7 @@ function attachFormEventListeners(formId) {
                 <button type="button" class="btn-remove-item">Remover</button>
             `;
             pessoasListEl.appendChild(newPersonEntry);
-            const nomeInput = newPersonEntry.querySelector('input[name="pessoa_nome"]
-');
+            const nomeInput = newPersonEntry.querySelector('input[name="pessoa_nome"]');
             const placeholder = newPersonEntry.querySelector('.person-name-placeholder');
 
             if (nomeInput) {
@@ -551,8 +544,7 @@ function attachFormEventListeners(formId) {
             `;
             dependentesListEl.appendChild(newDependenteEntry);
             
-            const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]
-');
+            const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
             if (nomeDependenteInput) {
                 nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
             }
@@ -629,8 +621,7 @@ function attachFormEventListeners(formId) {
             `;
             patrimonioListEl.appendChild(newPatrimonioEntry);
 
-            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]
-');
+            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
             if (valorInput) {
                 valorInput.addEventListener("input", (e) => {
                     e.target.value = formatCurrency(e.target.value);
@@ -671,10 +662,8 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.renda_unica === "nao") {
                     document.querySelectorAll("#pessoas-list .item-entry").forEach(entry => {
-                        const nome = entry.querySelector('input[name="pessoa_nome"]
-')?.value;
-                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]
-')?.value;
+                        const nome = entry.querySelector('input[name="pessoa_nome"]')?.value;
+                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
                         if (nome) {
                             dadosFormulario.outras_pessoas_renda.push({
                                 nome: sanitizeInput(nome),
@@ -686,12 +675,9 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.tem_dependentes === "sim") {
                     document.querySelectorAll("#dependentes-list .item-entry").forEach(entry => {
-                        const nome = entry.querySelector('input[name="dep_nome"]
-')?.value;
-                        const idade = entry.querySelector('input[name="dep_idade"]
-')?.value;
-                        const relacao = entry.querySelector('input[name="dep_relacao"]
-')?.value;
+                        const nome = entry.querySelector('input[name="dep_nome"]')?.value;
+                        const idade = entry.querySelector('input[name="dep_idade"]')?.value;
+                        const relacao = entry.querySelector('input[name="dep_relacao"]')?.value;
                         if (nome) {
                             dadosFormulario.dependentes.push({
                                 nome: sanitizeInput(nome),
@@ -705,8 +691,7 @@ function attachFormEventListeners(formId) {
                 document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]
-')?.name;
+                    const radioName = entry.querySelector('input[type="radio"]')?.name;
                     if (radioName) {
                         const selectedValue = formDataObject.get(radioName);
                         if (personName && selectedValue) {
@@ -722,8 +707,7 @@ function attachFormEventListeners(formId) {
                 document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]
-')?.name;
+                    const radioName = entry.querySelector('input[type="radio"]')?.name;
                     if (radioName) {
                         const selectedValue = formDataObject.get(radioName);
                         if (personName && selectedValue) {
@@ -738,10 +722,8 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.possui_patrimonio_fisico === "sim") {
                     document.querySelectorAll("#patrimonio-list .item-entry").forEach((entry, index) => {
-                        const qual = entry.querySelector('input[name="patrimonio_qual"]
-')?.value;
-                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]
-')?.value;
+                        const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value;
+                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
                         const valor = valorRaw ? parseFloat(valorRaw.replace(/[^\d,.-]/g, '').replace(',', '.')) : null;
                         const seguro = formDataObject.get(`patrimonio_seguro_${index}`);
                         const quitado = formDataObject.get(`patrimonio_quitado_${index}`);
@@ -804,12 +786,9 @@ function populateFormWithExistingData(data) {
             addPersonBtn.click(); 
             const lastPersonEntry = document.querySelector("#pessoas-list .item-entry:last-child");
             if (lastPersonEntry) {
-                lastPersonEntry.querySelector('input[name="pessoa_nome"]
-').value = pessoa.nome || '';
-                lastPersonEntry.querySelector('select[name="pessoa_autorizacao"]
-').value = pessoa.autorizacao_financeira || '';
-                const nomeInput = lastPersonEntry.querySelector('input[name="pessoa_nome"]
-');
+                lastPersonEntry.querySelector('input[name="pessoa_nome"]').value = pessoa.nome || '';
+                lastPersonEntry.querySelector('select[name="pessoa_autorizacao"]').value = pessoa.autorizacao_financeira || '';
+                const nomeInput = lastPersonEntry.querySelector('input[name="pessoa_nome"]');
                 const placeholder = lastPersonEntry.querySelector('.person-name-placeholder');
                 if (nomeInput && placeholder) {
                     const primeiroNome = nomeInput.value.trim().split(' ')[0];
@@ -834,12 +813,9 @@ function populateFormWithExistingData(data) {
             addDependenteBtn.click();
             const lastDependenteEntry = document.querySelector("#dependentes-list .item-entry:last-child");
             if (lastDependenteEntry) {
-                lastDependenteEntry.querySelector('input[name="dep_nome"]
-').value = dep.nome || '';
-                lastDependenteEntry.querySelector('input[name="dep_idade"]
-').value = dep.idade || '';
-                lastDependenteEntry.querySelector('input[name="dep_relacao"]
-').value = dep.relacao || '';
+                lastDependenteEntry.querySelector('input[name="dep_nome"]').value = dep.nome || '';
+                lastDependenteEntry.querySelector('input[name="dep_idade"]').value = dep.idade || '';
+                lastDependenteEntry.querySelector('input[name="dep_relacao"]').value = dep.relacao || '';
             }
         });
     }
@@ -850,8 +826,7 @@ function populateFormWithExistingData(data) {
             const allPlanoEntries = document.querySelectorAll("#plano-saude-section-content .plano-saude-entry");
             allPlanoEntries.forEach(entry => {
                 if (entry.dataset.personName === plano.pessoa_nome && entry.dataset.personType === plano.tipo_pessoa) {
-                    const radioName = entry.querySelector('input[type="radio"]
-')?.name;
+                    const radioName = entry.querySelector('input[type="radio"]')?.name;
                     if (radioName) {
                         const radioToSelect = document.querySelector(`input[name="${radioName}"][value="${plano.possui_plano}"]`);
                         if (radioToSelect) radioToSelect.checked = true;
@@ -867,8 +842,7 @@ function populateFormWithExistingData(data) {
             const allSeguroEntries = document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry");
             allSeguroEntries.forEach(entry => {
                 if (entry.dataset.personName === seguro.pessoa_nome && entry.dataset.personType === seguro.tipo_pessoa) {
-                    const radioName = entry.querySelector('input[type="radio"]
-')?.name;
+                    const radioName = entry.querySelector('input[type="radio"]')?.name;
                     if (radioName) {
                         const radioToSelect = document.querySelector(`input[name="${radioName}"][value="${seguro.possui_seguro}"]`);
                         if (radioToSelect) radioToSelect.checked = true;
@@ -893,10 +867,8 @@ function populateFormWithExistingData(data) {
             addPatrimonioBtn.click();
             const lastPatrimonioEntry = document.querySelector("#patrimonio-list .item-entry:last-child");
             if (lastPatrimonioEntry) {
-                lastPatrimonioEntry.querySelector('input[name="patrimonio_qual"]
-').value = pat.descricao || '';
-                const valorInput = lastPatrimonioEntry.querySelector('input[name="patrimonio_valor"]
-');
+                lastPatrimonioEntry.querySelector('input[name="patrimonio_qual"]').value = pat.descricao || '';
+                const valorInput = lastPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
                 if (valorInput) valorInput.value = pat.valor_estimado ? formatCurrency(pat.valor_estimado) : '';
                 
                 const seguroRadio = lastPatrimonioEntry.querySelector(`input[name="patrimonio_seguro_${index}"][value="${pat.possui_seguro}"]`);
