@@ -366,7 +366,7 @@
             // Se o campo projeto_associado não existir ou for diferente de "Planejamento", exibe a mensagem.
             // Considera que se projeto_associado for null ou undefined, o formulário não se aplica.
             const projetoPlanejamentoId = "a75d285a-6607-4141-8f02-870870199803"; // ID do projeto "Planejamento"
-            if (clientData.projeto !== projetoPlanejamentoId) {
+            if (clientData.projeto !== "Planejamento") {
                 displayFormNotApplicable();
                 return;
             }
