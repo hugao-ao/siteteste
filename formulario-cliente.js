@@ -119,7 +119,7 @@ function renderActualForm(formData) {
         }
     });
 
-    // Listener para adicionar pessoa
+    // Listener para adicionar pessoa (MODIFICADO PARA PERGUNTA DINÂMICA)
     addPersonBtn.addEventListener('click', () => {
         const personId = Date.now(); // ID simples para remover
         const personEntry = document.createElement('div');
@@ -129,7 +129,7 @@ function renderActualForm(formData) {
             <button type="button" class="remove-person-btn" data-id="${personId}">Remover</button>
             <label for="pessoa_nome_${personId}">Nome:</label>
             <input type="text" id="pessoa_nome_${personId}" name="pessoa_nome" required>
-            <label for="pessoa_autorizacao_${personId}">Precisa da autorização para decisões financeiras?</label>
+            <label for="pessoa_autorizacao_${personId}" id="label_autorizacao_${personId}">Você precisa de autorização de ... para tomar decisões financeiras e agir?</label>
             <select id="pessoa_autorizacao_${personId}" name="pessoa_autorizacao" required>
                 <option value="">Selecione...</option>
                 <option value="sim">Sim</option>
@@ -137,6 +137,21 @@ function renderActualForm(formData) {
             </select>
         `;
         pessoasList.appendChild(personEntry);
+
+        // --- NOVO: Listener para atualizar label de autorização dinamicamente ---
+        const nomeInput = personEntry.querySelector(`#pessoa_nome_${personId}`);
+        const autorizacaoLabel = personEntry.querySelector(`#label_autorizacao_${personId}`);
+
+        nomeInput.addEventListener('input', () => {
+            const nomeDigitado = nomeInput.value.trim();
+            const primeiroNome = nomeDigitado.split(' ')[0]; // Pega a primeira palavra
+            if (primeiroNome) {
+                autorizacaoLabel.textContent = `Você precisa de autorização de ${sanitizeInput(primeiroNome)} para tomar decisões financeiras e agir?`;
+            } else {
+                autorizacaoLabel.textContent = 'Você precisa de autorização de ... para tomar decisões financeiras e agir?'; // Texto padrão
+            }
+        });
+        // --- FIM NOVO ---
 
         // Adiciona listener para o botão remover desta entrada
         personEntry.querySelector('.remove-person-btn').addEventListener('click', (e) => {
