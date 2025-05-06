@@ -18,7 +18,8 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
+    .replace(/
+/g, "&#x27;")
     .replace(/`/g, "&#x60;");
 };
 
@@ -48,12 +49,12 @@ const formatCurrencyOnBlur = (event) => {
         event.target.value = "";
         return;
     }
-    event.target.value = numericValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    event.target.value = numericValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 };
 
 // Função para converter o valor formatado (R$ X.XXX,XX) para um número float ao salvar
 const parseCurrency = (formattedValue) => {
-    if (formattedValue === null || formattedValue === undefined || typeof formattedValue !== 'string' || formattedValue.trim() === "") {
+    if (formattedValue === null || formattedValue === undefined || typeof formattedValue !== "string" || formattedValue.trim() === "") {
         return null;
     }
     const numericString = formattedValue.replace(/R\$\s?/, "").replace(/\./g, "").replace(",", ".");
@@ -64,7 +65,7 @@ const parseCurrency = (formattedValue) => {
 
 const capitalizeName = (name) => {
     if (!name) return "";
-    return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    return name.toLowerCase().split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
 };
 
 function showMessage(type, text) {
@@ -75,7 +76,7 @@ function updatePerguntaDependentesLabel() {
     const labelTemDependentes = document.getElementById("label_tem_dependentes");
     if (!labelTemDependentes) return;
     const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
-    const outrasPessoasInputs = document.querySelectorAll('#pessoas-list .item-entry input[name="pessoa_nome"]');
+    const outrasPessoasInputs = document.querySelectorAll("#pessoas-list .item-entry input[name=\"pessoa_nome\"]");
     let temOutrasPessoasComRenda = false;
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         outrasPessoasInputs.forEach(input => {
@@ -97,7 +98,7 @@ function updatePerguntaPatrimonioFisicoLabel() {
     const labelTemPatrimonio = document.getElementById("label_tem_patrimonio_fisico");
     if (!labelTemPatrimonio) return;
     const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
-    const outrasPessoasInputs = document.querySelectorAll('#pessoas-list .item-entry input[name="pessoa_nome"]');
+    const outrasPessoasInputs = document.querySelectorAll("#pessoas-list .item-entry input[name=\"pessoa_nome\"]");
     let temOutrasPessoasComRenda = false;
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         outrasPessoasInputs.forEach(input => {
@@ -124,7 +125,7 @@ function getPessoasComRendaParaDropdown() {
     }
 
     document.querySelectorAll("#pessoas-list .item-entry").forEach((entry) => {
-        const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
+        const nomeInput = entry.querySelector("input[name=\"pessoa_nome\"]");
         if (nomeInput && nomeInput.value.trim() !== "") {
             const nomeSanitizado = sanitizeInput(nomeInput.value.trim());
             pessoas.push({ value: nomeSanitizado, text: capitalizeName(nomeSanitizado) });
@@ -136,10 +137,12 @@ function getPessoasComRendaParaDropdown() {
 function updatePatrimonioPessoaDropdowns() {
     const patrimonioEntries = document.querySelectorAll("#patrimonio-list .item-entry");
     patrimonioEntries.forEach((entry, index) => {
-        const selectPessoa = entry.querySelector(`select[name="patrimonio_pessoa_associada_${index}"]`);
+        const selectPessoa = entry.querySelector(`select[name=\"patrimonio_pessoa_associada_${index}\"]`);
         if (selectPessoa) {
             const currentValue = selectPessoa.value;
-            selectPessoa.innerHTML = '<option value="" disabled selected>Selecione uma pessoa</option>'; 
+            selectPessoa.innerHTML = 
+<option value="" disabled selected>Selecione uma pessoa</option>
+; 
             const pessoasRenda = getPessoasComRendaParaDropdown();
             let foundCurrent = false;
             pessoasRenda.forEach(pessoa => {
@@ -166,7 +169,9 @@ function savePlanoSaudeSelections() {
     if (!container) return;
     planoSaudeSelections = {};
     container.querySelectorAll(".plano-saude-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]')?.name; 
+        const nameAttribute = entry.querySelector(
+input[type="radio"]
+)?.name; 
         if (nameAttribute) {
             const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
             if (selectedRadio) {
@@ -190,7 +195,9 @@ function renderPlanoSaudeQuestions() {
     savePlanoSaudeSelections(); 
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = 
+
+;
     const pessoasDaCasa = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
@@ -198,7 +205,9 @@ function renderPlanoSaudeQuestions() {
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         document.querySelectorAll("#pessoas-list .item-entry").forEach((entry, index) => {
-            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
+            const nomeInput = entry.querySelector(
+input[name="pessoa_nome"]
+);
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `outra_pessoa_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
             }
@@ -206,7 +215,9 @@ function renderPlanoSaudeQuestions() {
     }
     if (document.getElementById("tem_dependentes_sim") && document.getElementById("tem_dependentes_sim").checked) {
         document.querySelectorAll("#dependentes-list .item-entry").forEach((entry, index) => {
-            const nomeInput = entry.querySelector('input[name="dep_nome"]');
+            const nomeInput = entry.querySelector(
+input[name="dep_nome"]
+);
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `dependente_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "dependente" });
             }
@@ -215,12 +226,18 @@ function renderPlanoSaudeQuestions() {
     const tituloPlanoSaude = document.getElementById("plano-saude-section-title");
     if (pessoasDaCasa.length === 0) {
         container.innerHTML = "<p>Preencha as informações anteriores para definir as perguntas sobre plano de saúde.</p>";
-        if(tituloPlanoSaude) tituloPlanoSaude.style.display = 'none';
+        if(tituloPlanoSaude) tituloPlanoSaude.style.display = 
+none
+;
         return;
     }
-    if(tituloPlanoSaude) tituloPlanoSaude.style.display = 'block';
+    if(tituloPlanoSaude) tituloPlanoSaude.style.display = 
+block
+;
     pessoasDaCasa.forEach((pessoa) => {
-        const primeiroNome = pessoa.nome.split(' ')[0];
+        const primeiroNome = pessoa.nome.split(
+ 
+)[0];
         const nomeCapitalizado = capitalizeName(primeiroNome);
         const personId = `plano_saude_${pessoa.id.replace(/[^a-zA-Z0-9_]/g, "_")}`;
         const entryDiv = document.createElement("div");
@@ -255,7 +272,9 @@ function saveSeguroVidaSelections() {
     if (!container) return;
     seguroVidaSelections = {}; 
     container.querySelectorAll(".seguro-vida-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]')?.name; 
+        const nameAttribute = entry.querySelector(
+input[type="radio"]
+)?.name; 
         if (nameAttribute) {
             const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
             if (selectedRadio) {
@@ -279,7 +298,9 @@ function renderSeguroVidaQuestions() {
     saveSeguroVidaSelections(); 
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = 
+
+;
     const pessoasComRenda = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
@@ -287,7 +308,9 @@ function renderSeguroVidaQuestions() {
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         document.querySelectorAll("#pessoas-list .item-entry").forEach((entry, index) => {
-            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
+            const nomeInput = entry.querySelector(
+input[name="pessoa_nome"]
+);
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasComRenda.push({ id: `outra_pessoa_seguro_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
             }
@@ -296,12 +319,18 @@ function renderSeguroVidaQuestions() {
     const tituloSeguroVida = document.getElementById("seguro-vida-section-title");
     if (pessoasComRenda.length === 0) {
         container.innerHTML = "<p>Preencha as informações sobre nome e renda para definir as perguntas sobre seguro de vida.</p>";
-        if(tituloSeguroVida) tituloSeguroVida.style.display = 'none';
+        if(tituloSeguroVida) tituloSeguroVida.style.display = 
+none
+;
         return;
     }
-    if(tituloSeguroVida) tituloSeguroVida.style.display = 'block';
+    if(tituloSeguroVida) tituloSeguroVida.style.display = 
+block
+;
     pessoasComRenda.forEach((pessoa) => {
-        const primeiroNome = pessoa.nome.split(' ')[0];
+        const primeiroNome = pessoa.nome.split(
+ 
+)[0];
         const nomeCapitalizado = capitalizeName(primeiroNome);
         const personId = `seguro_vida_${pessoa.id.replace(/[^a-zA-Z0-9_]/g, "_")}`;
         const entryDiv = document.createElement("div");
@@ -352,7 +381,9 @@ async function loadForm(token) {
             .eq("token_unico", token)
             .single();
         if (formError || !formData) {
-            if (formError && formError.code === 'PGRST116') {
+            if (formError && formError.code === 
+PGRST116
+) {
                  formContentEl.innerHTML = "<p>Link inválido ou expirado.</p>";
                  showMessage("error", "O link para este formulário não é válido ou já foi utilizado.");
             } else {
@@ -489,7 +520,9 @@ function attachFormEventListeners(formId) {
     if (rendaUnicaSimRadio) {
         rendaUnicaSimRadio.addEventListener("change", () => {
             outrasPessoasContainerEl.style.display = "none";
-            pessoasListEl.innerHTML = ''; 
+            pessoasListEl.innerHTML = 
+
+; 
             updateDynamicFormSections();
         });
     }
@@ -519,12 +552,20 @@ function attachFormEventListeners(formId) {
                 <button type="button" class="btn-remove-item">Remover</button>
             `;
             pessoasListEl.appendChild(newPersonEntry);
-            const nomeInput = newPersonEntry.querySelector('input[name="pessoa_nome"]');
-            const placeholder = newPersonEntry.querySelector('.person-name-placeholder');
+            const nomeInput = newPersonEntry.querySelector(
+input[name="pessoa_nome"]
+);
+            const placeholder = newPersonEntry.querySelector(
+.person-name-placeholder
+);
 
             if (nomeInput) {
-                nomeInput.addEventListener('input', () => {
-                    const primeiroNome = nomeInput.value.trim().split(' ')[0];
+                nomeInput.addEventListener(
+input
+, () => {
+                    const primeiroNome = nomeInput.value.trim().split(
+ 
+)[0];
                     if (placeholder) placeholder.textContent = primeiroNome ? capitalizeName(primeiroNome) : "esta pessoa";
                     updateDynamicFormSections(); 
                 });
@@ -550,7 +591,9 @@ function attachFormEventListeners(formId) {
     if (temDependentesNaoRadio) {
         temDependentesNaoRadio.addEventListener("change", () => {
             dependentesContainerEl.style.display = "none";
-            dependentesListEl.innerHTML = ''; 
+            dependentesListEl.innerHTML = 
+
+; 
             updateDynamicFormSections();
         });
     }
@@ -567,9 +610,13 @@ function attachFormEventListeners(formId) {
             `;
             dependentesListEl.appendChild(newDependenteEntry);
             
-            const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
+            const nomeDependenteInput = newDependenteEntry.querySelector(
+input[name="dep_nome"]
+);
             if (nomeDependenteInput) {
-                nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
+                nomeDependenteInput.addEventListener(
+input
+, updateDynamicFormSections);
             }
 
             newDependenteEntry.querySelector(".btn-remove-item").addEventListener("click", () => {
@@ -592,7 +639,9 @@ function attachFormEventListeners(formId) {
     if (temPatrimonioNaoRadio) {
         temPatrimonioNaoRadio.addEventListener("change", () => {
             patrimonioListContainerEl.style.display = "none";
-            patrimonioListEl.innerHTML = '';
+            patrimonioListEl.innerHTML = 
+
+;
             updateDynamicFormSections();
         });
     }
@@ -604,7 +653,9 @@ function attachFormEventListeners(formId) {
             
             const selectPessoaHTMLId = `patrimonio_pessoa_associada_${patrimonioIndex}`;
             let optionsHTML = 
-                '<option value="" disabled selected>Selecione uma pessoa</option>';
+                
+<option value="" disabled selected>Selecione uma pessoa</option>
+;
             const pessoasRenda = getPessoasComRendaParaDropdown();
             pessoasRenda.forEach(pessoa => {
                 optionsHTML += `<option value="${pessoa.value}">${pessoa.text}</option>`;
@@ -644,7 +695,9 @@ function attachFormEventListeners(formId) {
             `;
             patrimonioListEl.appendChild(newPatrimonioEntry);
 
-            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
+            const valorInput = newPatrimonioEntry.querySelector(
+input[name="patrimonio_valor"]
+);
             if (valorInput) {
                 valorInput.addEventListener("input", handleCurrencyInput);
                 valorInput.addEventListener("blur", formatCurrencyOnBlur);
@@ -681,8 +734,12 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.renda_unica === "nao") {
                     document.querySelectorAll("#pessoas-list .item-entry").forEach(entry => {
-                        const nome = entry.querySelector('input[name="pessoa_nome"]')?.value;
-                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
+                        const nome = entry.querySelector(
+input[name="pessoa_nome"]
+)?.value;
+                        const autorizacao = entry.querySelector(
+select[name="pessoa_autorizacao"]
+)?.value;
                         if (nome) {
                             dadosFormulario.outras_pessoas_renda.push({
                                 nome: sanitizeInput(nome),
@@ -694,12 +751,15 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.tem_dependentes === "sim") {
                     document.querySelectorAll("#dependentes-list .item-entry").forEach(entry => {
-                        const nome = entry.querySelector('input[name="dep_nome"]
-z.value;
-                        const idade = entry.querySelector('input[name="dep_idade"]
-z.value;
-                        const relacao = entry.querySelector('input[name="dep_relacao"]
-z.value;
+                        const nome = entry.querySelector(
+input[name="dep_nome"]
+)?.value;
+                        const idade = entry.querySelector(
+input[name="dep_idade"]
+)?.value;
+                        const relacao = entry.querySelector(
+input[name="dep_relacao"]
+)?.value;
                         if (nome) {
                             dadosFormulario.dependentes.push({
                                 nome: sanitizeInput(nome),
@@ -713,8 +773,9 @@ z.value;
                 document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]
-z.name;
+                    const radioName = entry.querySelector(
+input[type="radio"]
+)?.name;
                     if (radioName) {
                         const selectedValue = formDataObject.get(radioName);
                         if (personName && selectedValue) {
@@ -730,8 +791,9 @@ z.name;
                 document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]
-z.name;
+                    const radioName = entry.querySelector(
+input[type="radio"]
+)?.name;
                     if (radioName) {
                         const selectedValue = formDataObject.get(radioName);
                         if (personName && selectedValue) {
@@ -746,10 +808,12 @@ z.name;
 
                 if (dadosFormulario.possui_patrimonio_fisico === "sim") {
                     document.querySelectorAll("#patrimonio-list .item-entry").forEach((entry, index) => {
-                        const qual = entry.querySelector('input[name="patrimonio_qual"]
-z.value;
-                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]
-z.value;
+                        const qual = entry.querySelector(
+input[name="patrimonio_qual"]
+)?.value;
+                        const valorRaw = entry.querySelector(
+input[name="patrimonio_valor"]
+)?.value;
                         const valor = parseCurrency(valorRaw);
                         
                         const seguro = formDataObject.get(`patrimonio_seguro_${index}`);
@@ -796,29 +860,49 @@ function populateFormWithExistingData(data) {
     if (!data) return;
 
     if (data.nome_preenchido) {
-        document.getElementById('nome_completo').value = data.nome_preenchido;
+        document.getElementById(
+nome_completo
+).value = data.nome_preenchido;
     }
     if (data.renda_unica) {
         const radioRenda = document.querySelector(`input[name="renda_unica"][value="${data.renda_unica}"]`);
         if (radioRenda) {
             radioRenda.checked = true;
-            const event = new Event('change');
+            const event = new Event(
+change
+);
             radioRenda.dispatchEvent(event);
         }
     }
 
-    if (data.renda_unica === 'nao' && data.outras_pessoas_renda && data.outras_pessoas_renda.length > 0) {
+    if (data.renda_unica === 
+nao
+ && data.outras_pessoas_renda && data.outras_pessoas_renda.length > 0) {
         const addPersonBtn = document.getElementById("add-person-btn");
         data.outras_pessoas_renda.forEach(pessoa => {
             addPersonBtn.click(); 
             const lastPersonEntry = document.querySelector("#pessoas-list .item-entry:last-child");
             if (lastPersonEntry) {
-                lastPersonEntry.querySelector('input[name="pessoa_nome"]' ).value = pessoa.nome || '';
-                lastPersonEntry.querySelector('select[name="pessoa_autorizacao"]' ).value = pessoa.autorizacao_financeira || '';
-                const nomeInput = lastPersonEntry.querySelector('input[name="pessoa_nome"]');
-                const placeholder = lastPersonEntry.querySelector('.person-name-placeholder');
+                lastPersonEntry.querySelector(
+input[name="pessoa_nome"]
+ ).value = pessoa.nome || 
+
+;
+                lastPersonEntry.querySelector(
+select[name="pessoa_autorizacao"]
+ ).value = pessoa.autorizacao_financeira || 
+
+;
+                const nomeInput = lastPersonEntry.querySelector(
+input[name="pessoa_nome"]
+);
+                const placeholder = lastPersonEntry.querySelector(
+.person-name-placeholder
+);
                 if (nomeInput && placeholder) {
-                    const primeiroNome = nomeInput.value.trim().split(' ')[0];
+                    const primeiroNome = nomeInput.value.trim().split(
+ 
+)[0];
                     placeholder.textContent = primeiroNome ? capitalizeName(primeiroNome) : "esta pessoa";
                 }
             }
@@ -829,20 +913,36 @@ function populateFormWithExistingData(data) {
         const radioDep = document.querySelector(`input[name="tem_dependentes"][value="${data.tem_dependentes}"]`);
         if (radioDep) {
             radioDep.checked = true;
-            const event = new Event('change');
+            const event = new Event(
+change
+);
             radioDep.dispatchEvent(event);
         }
     }
 
-    if (data.tem_dependentes === 'sim' && data.dependentes && data.dependentes.length > 0) {
+    if (data.tem_dependentes === 
+sim
+ && data.dependentes && data.dependentes.length > 0) {
         const addDependenteBtn = document.getElementById("add-dependente-btn");
         data.dependentes.forEach(dep => {
             addDependenteBtn.click();
             const lastDependenteEntry = document.querySelector("#dependentes-list .item-entry:last-child");
             if (lastDependenteEntry) {
-                lastDependenteEntry.querySelector('input[name="dep_nome"]' ).value = dep.nome || '';
-                lastDependenteEntry.querySelector('input[name="dep_idade"]' ).value = dep.idade || '';
-                lastDependenteEntry.querySelector('input[name="dep_relacao"]' ).value = dep.relacao || '';
+                lastDependenteEntry.querySelector(
+input[name="dep_nome"]
+ ).value = dep.nome || 
+
+;
+                lastDependenteEntry.querySelector(
+input[name="dep_idade"]
+ ).value = dep.idade || 
+
+;
+                lastDependenteEntry.querySelector(
+input[name="dep_relacao"]
+ ).value = dep.relacao || 
+
+;
             }
         });
     }
@@ -853,7 +953,9 @@ function populateFormWithExistingData(data) {
             const allPlanoEntries = document.querySelectorAll("#plano-saude-section-content .plano-saude-entry");
             allPlanoEntries.forEach(entry => {
                 if (entry.dataset.personName === plano.pessoa_nome && entry.dataset.personType === plano.tipo_pessoa) {
-                    const radioName = entry.querySelector('input[type="radio"]')?.name;
+                    const radioName = entry.querySelector(
+input[type="radio"]
+)?.name;
                     if (radioName) {
                         const radioToSelect = document.querySelector(`input[name="${radioName}"][value="${plano.possui_plano}"]`);
                         if (radioToSelect) radioToSelect.checked = true;
@@ -869,7 +971,9 @@ function populateFormWithExistingData(data) {
             const allSeguroEntries = document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry");
             allSeguroEntries.forEach(entry => {
                 if (entry.dataset.personName === seguro.pessoa_nome && entry.dataset.personType === seguro.tipo_pessoa) {
-                    const radioName = entry.querySelector('input[type="radio"]')?.name;
+                    const radioName = entry.querySelector(
+input[type="radio"]
+)?.name;
                     if (radioName) {
                         const radioToSelect = document.querySelector(`input[name="${radioName}"][value="${seguro.possui_seguro}"]`);
                         if (radioToSelect) radioToSelect.checked = true;
@@ -883,22 +987,40 @@ function populateFormWithExistingData(data) {
         const radioPat = document.querySelector(`input[name="tem_patrimonio"][value="${data.possui_patrimonio_fisico}"]`);
         if (radioPat) {
             radioPat.checked = true;
-            const event = new Event('change');
+            const event = new Event(
+change
+);
             radioPat.dispatchEvent(event);
         }
     }
 
-    if (data.possui_patrimonio_fisico === 'sim' && data.patrimonios_fisicos && data.patrimonios_fisicos.length > 0) {
+    if (data.possui_patrimonio_fisico === 
+sim
+ && data.patrimonios_fisicos && data.patrimonios_fisicos.length > 0) {
         const addPatrimonioBtn = document.getElementById("add-patrimonio-btn");
         data.patrimonios_fisicos.forEach((pat, index) => {
             addPatrimonioBtn.click();
             const lastPatrimonioEntry = document.querySelector("#patrimonio-list .item-entry:last-child");
             if (lastPatrimonioEntry) {
-                lastPatrimonioEntry.querySelector('input[name="patrimonio_qual"]' ).value = pat.descricao || '';
-                const valorInput = lastPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
+                lastPatrimonioEntry.querySelector(
+input[name="patrimonio_qual"]
+ ).value = pat.descricao || 
+
+;
+                const valorInput = lastPatrimonioEntry.querySelector(
+input[name="patrimonio_valor"]
+);
                 if (valorInput) {
                     valorInput.value = pat.valor_estimado !== null && pat.valor_estimado !== undefined ?
-                        pat.valor_estimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+                        pat.valor_estimado.toLocaleString(
+pt-BR
+, { style: 
+currency
+, currency: 
+BRL
+ }) : 
+
+;
                 }
                 
                 const seguroRadio = lastPatrimonioEntry.querySelector(`input[name="patrimonio_seguro_${index}"][value="${pat.possui_seguro}"]`);
