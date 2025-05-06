@@ -159,6 +159,13 @@
         .replace(/`/g, "&#x60;");
     };
 
+    const formatCurrencyForDisplay = (value) => {
+        if (value === null || value === undefined) return "N/A";
+        const number = parseFloat(value);
+        if (isNaN(number)) return "Valor inválido";
+        return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    };
+
     function displayFormLink(latestForm) {
         console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); 
         const token = latestForm.token_unico;
@@ -251,10 +258,27 @@
                     else if (seguroInfo.status_seguro === "nao") statusSeguroText = "Não";
                     else if (seguroInfo.status_seguro === "nao_sei") statusSeguroText = "Não sei informar";
                     
-                    // A lógica de coleta no formulário já garante que apenas pessoas com renda são incluídas aqui.
                     dataHtml += `<li>${nomePessoaSeguro}: ${statusSeguroText}</li>`;
                 });
                 dataHtml += `</ul>`;
+            }
+
+            // Exibição de Informações sobre Patrimônio Físico
+            const possuiPatrimonioText = typeof data.possui_patrimonio_fisico === "boolean" ? (data.possui_patrimonio_fisico ? "Sim" : "Não") : "N/A";
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
+
+            if (data.possui_patrimonio_fisico === true && Array.isArray(data.patrimonios_fisicos) && data.patrimonios_fisicos.length > 0) {
+                dataHtml += `<p><strong>Patrimônios Físicos:</strong></p><ul>`;
+                data.patrimonios_fisicos.forEach((patrimonio) => {
+                    const descPat = patrimonio.descricao ? sanitizeInput(patrimonio.descricao) : "Descrição não informada";
+                    const valorPat = formatCurrencyForDisplay(patrimonio.valor);
+                    const seguroPatText = typeof patrimonio.possui_seguro === "boolean" ? (patrimonio.possui_seguro ? "Sim" : "Não") : "N/A";
+                    const quitadoPatText = typeof patrimonio.esta_quitado === "boolean" ? (patrimonio.esta_quitado ? "Sim" : "Não") : "N/A";
+                    dataHtml += `<li>${descPat} (Valor: ${valorPat}, Seguro: ${seguroPatText}, Quitado: ${quitadoPatText})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.possui_patrimonio_fisico === true) {
+                dataHtml += `<p><strong>Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
             }
 
         } else {
@@ -350,81 +374,93 @@
                 .limit(1)
                 .maybeSingle(); 
 
-            if (formError) {
-                console.error("DEBUG: Error fetching form data:", formError); 
+            if (formError && formError.code !== "PGRST116") { // PGRST116 means no rows found, which is fine
+                console.error("DEBUG: Error fetching form data:", formError);
                 throw formError;
             }
-            console.log("DEBUG: Latest form data fetched:", latestForm); 
+            console.log("DEBUG: Latest form data fetched:", latestForm);
 
-            if (!latestForm) {
-                console.log("DEBUG: No form found. Displaying generate link button."); 
-                displayGenerateLinkForm();
-            } else if (latestForm.status === "pendente") {
-                console.log("DEBUG: Pending form found. Displaying form link and delete button."); 
-                displayFormLink(latestForm);
-            } else if (latestForm.status === "preenchido") {
-                console.log("DEBUG: Completed form found. Displaying form data and delete button."); 
-                displayFormData(latestForm);
+            if (latestForm) {
+                if (latestForm.status === "pendente") {
+                    displayFormLink(latestForm);
+                } else if (latestForm.status === "preenchido") {
+                    displayFormData(latestForm);
+                } else {
+                    console.log("DEBUG: Latest form has unknown status, displaying generate link form.");
+                    displayGenerateLinkForm(); // Fallback or if status is neither
+                }
             } else {
-                console.log("DEBUG: Form found with unknown status:", latestForm.status, ". Displaying generate link button as fallback."); 
-                displayGenerateLinkForm(); // Fallback para status desconhecido
+                console.log("DEBUG: No form found. Displaying generate link button.");
+                displayGenerateLinkForm();
             }
 
         } catch (error) {
-            console.error("DEBUG: Error in loadAndManageForm:", error); 
-            clientNameDisplay.textContent = "Erro";
+            console.error("Erro ao carregar e gerenciar formulário:", error);
             formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao carregar dados: ${sanitizeInput(error.message)}</p>`;
         }
     }
 
     async function handleGenerateLink() {
-        console.log("DEBUG: Entering handleGenerateLink. Client ID:", currentClientId); 
+        console.log("DEBUG: Entering handleGenerateLink. Client ID:", currentClientId);
         if (!currentClientId) {
             console.error("DEBUG: Client ID is undefined in handleGenerateLink.");
             formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao gerar link: ID do cliente não definido.</p>`;
             return;
         }
         try {
-            const token = `${Date.now().toString(36)}-${Math.random().toString(36).substring(2)}`;
-            console.log("DEBUG: Generated new token:", token); 
             const { data, error } = await supabase
                 .from("formularios_clientes")
-                .insert([{ cliente_id: currentClientId, token_unico: token, status: "pendente" }])
+                .insert([{ cliente_id: currentClientId, status: "pendente" }])
                 .select()
                 .single(); 
 
             if (error) throw error;
-            console.log("DEBUG: Form link generated and inserted:", data); 
-            displayFormLink(data);
+            console.log("DEBUG: Generated new token:", data.token_unico);
+            loadAndManageForm(); // Recarrega para exibir o novo link
         } catch (error) {
-            console.error("DEBUG: Error generating form link:", error); 
+            console.error("Erro ao gerar link do formulário:", error);
             formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao gerar link: ${sanitizeInput(error.message)}</p>`;
         }
     }
 
     async function handleDeleteForm(event) {
         const formId = event.target.dataset.formId;
-        console.log("DEBUG: Entering handleDeleteForm. Form ID:", formId); 
-        if (!confirm("Tem certeza que deseja excluir este link/formulário? Esta ação não pode ser desfeita.")) {
+        console.log("DEBUG: Entering handleDeleteForm. Form ID:", formId);
+        if (!formId) {
+            console.error("DEBUG: Form ID not found on button.");
+            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao excluir: ID do formulário não encontrado.</p>`;
             return;
         }
+
+        const confirmed = confirm("Tem certeza que deseja excluir este link/dados do formulário? Um novo link será gerado se não houver outros pendentes.");
+        if (!confirmed) return;
+
         try {
-            const { error } = await supabase
+            // Primeiro, tenta deletar o formulário específico pelo ID
+            const { error: deleteError } = await supabase
                 .from("formularios_clientes")
                 .delete()
                 .eq("id", formId);
-            if (error) throw error;
-            console.log("DEBUG: Form deleted successfully. Reloading form info..."); 
-            loadAndManageForm(); // Recarrega para mostrar o botão de gerar novo link
+
+            if (deleteError) {
+                console.error("DEBUG: Error deleting form by ID:", deleteError);
+                // Se a exclusão por ID falhar (ex: RLS impede ou o formId não é o que pensamos),
+                // podemos tentar uma abordagem mais ampla se fizer sentido, ou apenas mostrar o erro.
+                // Por agora, vamos apenas mostrar o erro.
+                throw deleteError;
+            }
+            console.log("DEBUG: Form deleted successfully (or was already deleted/not found by this ID). Reloading form management...");
+            loadAndManageForm(); // Recarrega para gerar novo link ou mostrar estado atual
+
         } catch (error) {
-            console.error("DEBUG: Error deleting form:", error); 
-            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao excluir: ${sanitizeInput(error.message)}</p>`;
+            console.error("Erro ao excluir formulário:", error);
+            // Tenta manter a mensagem de erro dentro do formInfoContentEl para consistência
+            const currentContent = formInfoContentEl.innerHTML;
+            formInfoContentEl.innerHTML = `<p style="color:red;">Erro ao excluir: ${sanitizeInput(error.message)}</p><hr>${currentContent}`;
         }
     }
 
-    // Inicialização
     document.addEventListener("DOMContentLoaded", loadAndManageForm);
-
   </script>
 </body>
 </html>
