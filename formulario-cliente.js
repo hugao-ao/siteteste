@@ -12,13 +12,18 @@ let seguroVidaSelections = {};
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
-  if (str === null || str === undefined) return "";
-  return String(str)
+  if (str === null || str === undefined) return "";  return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")    .replace(/'/g, "&#x27;") 
-    .replace(/`/g, "&#x60;");
+    .replace(/"/g, "&quot;")
+    .replace(/
+|
+|
+/g, "<br>") // Garante que todas as quebras de linha virem <br>
+    .replace(/	/g, "&emsp;") // Converte tabs para um espaço visualmente equivalente em HTML
+    .replace(/'/g, "&#x27;") // Converte aspas simples para entidade HTML
+    .replace(/`/g, "&#x60;"); // Converte crases para entidade HTML
 };
 
 const handleCurrencyInput = (event) => {
@@ -183,7 +188,9 @@ function renderPlanoSaudeQuestions() {
     savePlanoSaudeSelections(); 
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = 
+
+;
     const pessoasDaCasa = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
@@ -504,7 +511,9 @@ function attachFormEventListeners(formId) {
     if (rendaUnicaSimRadio) {
         rendaUnicaSimRadio.addEventListener("change", () => {
             outrasPessoasContainerEl.style.display = "none";
-            pessoasListEl.innerHTML = '';
+            pessoasListEl.innerHTML = 
+
+; 
             updateDynamicFormSections();
         });
     }
@@ -573,7 +582,9 @@ input
     if (temDependentesNaoRadio) {
         temDependentesNaoRadio.addEventListener("change", () => {
             dependentesContainerEl.style.display = "none";
-            dependentesListEl.innerHTML = '';
+            dependentesListEl.innerHTML = 
+
+; 
             updateDynamicFormSections();
         });
     }
@@ -619,7 +630,9 @@ input
     if (temPatrimonioNaoRadio) {
         temPatrimonioNaoRadio.addEventListener("change", () => {
             patrimonioListContainerEl.style.display = "none";
-            patrimonioListEl.innerHTML = "";
+            patrimonioListEl.innerHTML = 
+
+;
             updateDynamicFormSections();
         });
     }
