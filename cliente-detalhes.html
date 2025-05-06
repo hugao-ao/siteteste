@@ -351,7 +351,7 @@
             formInfoContentEl.innerHTML = `<p id="form-loading-state">Carregando informações do formulário...</p>`;
             const { data: clientData, error: clientError } = await supabase
                 .from("clientes")
-                .select("id, nome, projeto_associado, formularios_clientes (id, token_unico, status, dados_formulario, data_preenchimento)")
+                .select("id, nome, projeto, formularios_clientes (id, token_unico, status, dados_formulario, data_preenchimento)")
                 .eq("id", currentClientId)
                 .single();
 
@@ -366,7 +366,7 @@
             // Se o campo projeto_associado não existir ou for diferente de "Planejamento", exibe a mensagem.
             // Considera que se projeto_associado for null ou undefined, o formulário não se aplica.
             const projetoPlanejamentoId = "a75d285a-6607-4141-8f02-870870199803"; // ID do projeto "Planejamento"
-            if (clientData.projeto_associado !== projetoPlanejamentoId) {
+            if (clientData.projeto !== projetoPlanejamentoId) {
                 displayFormNotApplicable();
                 return;
             }
