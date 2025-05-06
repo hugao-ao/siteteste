@@ -130,9 +130,7 @@ function updatePatrimonioPessoaDropdowns() {
         const selectPessoa = entry.querySelector(`select[name^=\"patrimonio_pessoa_associada_\"]`);
         if (selectPessoa) {
             const currentValue = selectPessoa.value;
-            selectPessoa.innerHTML = 
-<option value="" disabled selected>Selecione uma pessoa</option>
-; 
+            selectPessoa.innerHTML = `<option value="" disabled selected>Selecione uma pessoa</option>`;
             const pessoasRenda = getPessoasComRendaParaDropdown();
             let foundCurrent = false;
             pessoasRenda.forEach(pessoa => {
