@@ -399,11 +399,12 @@
 
             if (error) throw error;
 
-            if (data && data.new_form_id && data.new_token) {
+            if (data && data[0] && data[0].id && data[0].token_unico) { // CORRIGIDO para acessar o array e as colunas corretas
                 alert("Link gerado com sucesso!");
                 loadAndManageForm(); // Recarrega para mostrar o novo link
             } else {
-                throw new Error("Não foi possível obter o ID ou token do novo formulário da resposta da função.");
+                console.error("Resposta da função RPC create_new_form_for_client:", data); // Adiciona log para depuração
+                throw new Error("Não foi possível obter o ID ou token do novo formulário da resposta da função. Verifique o console para detalhes da resposta.");
             }
 
         } catch (error) {
