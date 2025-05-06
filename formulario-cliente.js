@@ -18,24 +18,47 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;")
+    .replace(/'/g, "&#x27;")
     .replace(/`/g, "&#x60;");
 };
 
-const formatCurrency = (value) => {
-    if (value === null || value === undefined || value === "") return "";
-    let cleanValue = String(value).replace(/[^\d,.-]/g, '');
-    const commaCount = (cleanValue.match(/,/g) || []).length;
-    if (commaCount > 1) {
-        const parts = cleanValue.split(',');
-        cleanValue = parts.slice(0, -1).join('') + '.' + parts.slice(-1);
-    } else {
-        cleanValue = cleanValue.replace(',', '.');
+// Nova função para limpar o input de moeda durante a digitação
+const handleCurrencyInput = (event) => {
+    let value = event.target.value;
+    // Permite apenas dígitos e um separador decimal (vírgula ou ponto)
+    value = value.replace(/[^\d,.]/g, "");
+    // Garante apenas um separador decimal, tratando múltiplos pontos ou vírgulas
+    const parts = value.split(/[,.]/);
+    if (parts.length > 1) {
+        value = parts[0] + "." + parts.slice(1).join("");
     }
-    
-    const number = parseFloat(cleanValue);
-    if (isNaN(number)) return "";
-    return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    event.target.value = value;
+};
+
+// Função para formatar o valor como moeda brasileira ao perder o foco (blur)
+const formatCurrencyOnBlur = (event) => {
+    let value = event.target.value;
+    if (value === null || value === undefined || String(value).trim() === "") {
+        event.target.value = "";
+        return;
+    }
+    // Converte para número antes de formatar, tratando vírgula como decimal
+    let numericValue = parseFloat(String(value).replace("R$", "").replace(/\./g, "").replace(",", "."));
+    if (isNaN(numericValue)) {
+        event.target.value = "";
+        return;
+    }
+    event.target.value = numericValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
+// Função para converter o valor formatado (R$ X.XXX,XX) para um número float ao salvar
+const parseCurrency = (formattedValue) => {
+    if (formattedValue === null || formattedValue === undefined || typeof formattedValue !== 'string' || formattedValue.trim() === "") {
+        return null;
+    }
+    const numericString = formattedValue.replace(/R\$\s?/, "").replace(/\./g, "").replace(",", ".");
+    const number = parseFloat(numericString);
+    return isNaN(number) ? null : number;
 };
 
 
@@ -313,7 +336,7 @@ function updateDynamicFormSections() {
     updatePerguntaPatrimonioFisicoLabel();
     renderPlanoSaudeQuestions();
     renderSeguroVidaQuestions();
-    updatePatrimonioPessoaDropdowns(); // Adicionado aqui
+    updatePatrimonioPessoaDropdowns();
 }
 
 async function loadForm(token) {
@@ -623,12 +646,8 @@ function attachFormEventListeners(formId) {
 
             const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
             if (valorInput) {
-                valorInput.addEventListener("input", (e) => {
-                    e.target.value = formatCurrency(e.target.value);
-                });
-                 valorInput.addEventListener("blur", (e) => {
-                    e.target.value = formatCurrency(e.target.value);
-                });
+                valorInput.addEventListener("input", handleCurrencyInput);
+                valorInput.addEventListener("blur", formatCurrencyOnBlur);
             }
 
             newPatrimonioEntry.querySelector(".btn-remove-item").addEventListener("click", () => {
@@ -675,9 +694,12 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.tem_dependentes === "sim") {
                     document.querySelectorAll("#dependentes-list .item-entry").forEach(entry => {
-                        const nome = entry.querySelector('input[name="dep_nome"]')?.value;
-                        const idade = entry.querySelector('input[name="dep_idade"]')?.value;
-                        const relacao = entry.querySelector('input[name="dep_relacao"]')?.value;
+                        const nome = entry.querySelector('input[name="dep_nome"]
+z.value;
+                        const idade = entry.querySelector('input[name="dep_idade"]
+z.value;
+                        const relacao = entry.querySelector('input[name="dep_relacao"]
+z.value;
                         if (nome) {
                             dadosFormulario.dependentes.push({
                                 nome: sanitizeInput(nome),
@@ -691,7 +713,8 @@ function attachFormEventListeners(formId) {
                 document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]')?.name;
+                    const radioName = entry.querySelector('input[type="radio"]
+z.name;
                     if (radioName) {
                         const selectedValue = formDataObject.get(radioName);
                         if (personName && selectedValue) {
@@ -707,7 +730,8 @@ function attachFormEventListeners(formId) {
                 document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]')?.name;
+                    const radioName = entry.querySelector('input[type="radio"]
+z.name;
                     if (radioName) {
                         const selectedValue = formDataObject.get(radioName);
                         if (personName && selectedValue) {
@@ -722,19 +746,22 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.possui_patrimonio_fisico === "sim") {
                     document.querySelectorAll("#patrimonio-list .item-entry").forEach((entry, index) => {
-                        const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value;
-                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
-                        const valor = valorRaw ? parseFloat(valorRaw.replace(/[^\d,.-]/g, '').replace(',', '.')) : null;
+                        const qual = entry.querySelector('input[name="patrimonio_qual"]
+z.value;
+                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]
+z.value;
+                        const valor = parseCurrency(valorRaw);
+                        
                         const seguro = formDataObject.get(`patrimonio_seguro_${index}`);
                         const quitado = formDataObject.get(`patrimonio_quitado_${index}`);
                         const pessoaAssociada = entry.querySelector(`select[name="patrimonio_pessoa_associada_${index}"]`)?.value;
                         
-                        if (qual) {
+                        if (qual || valor !== null) { // Salva se tiver descrição ou valor
                             dadosFormulario.patrimonios_fisicos.push({
                                 descricao: sanitizeInput(qual),
                                 valor_estimado: valor,
-                                possui_seguro: seguro,
-                                esta_quitado: quitado,
+                                possui_seguro: seguro || null,
+                                esta_quitado: quitado || null,
                                 pessoa_associada: pessoaAssociada ? sanitizeInput(pessoaAssociada) : null
                             });
                         }
@@ -786,8 +813,8 @@ function populateFormWithExistingData(data) {
             addPersonBtn.click(); 
             const lastPersonEntry = document.querySelector("#pessoas-list .item-entry:last-child");
             if (lastPersonEntry) {
-                lastPersonEntry.querySelector('input[name="pessoa_nome"]').value = pessoa.nome || '';
-                lastPersonEntry.querySelector('select[name="pessoa_autorizacao"]').value = pessoa.autorizacao_financeira || '';
+                lastPersonEntry.querySelector('input[name="pessoa_nome"]' ).value = pessoa.nome || '';
+                lastPersonEntry.querySelector('select[name="pessoa_autorizacao"]' ).value = pessoa.autorizacao_financeira || '';
                 const nomeInput = lastPersonEntry.querySelector('input[name="pessoa_nome"]');
                 const placeholder = lastPersonEntry.querySelector('.person-name-placeholder');
                 if (nomeInput && placeholder) {
@@ -813,9 +840,9 @@ function populateFormWithExistingData(data) {
             addDependenteBtn.click();
             const lastDependenteEntry = document.querySelector("#dependentes-list .item-entry:last-child");
             if (lastDependenteEntry) {
-                lastDependenteEntry.querySelector('input[name="dep_nome"]').value = dep.nome || '';
-                lastDependenteEntry.querySelector('input[name="dep_idade"]').value = dep.idade || '';
-                lastDependenteEntry.querySelector('input[name="dep_relacao"]').value = dep.relacao || '';
+                lastDependenteEntry.querySelector('input[name="dep_nome"]' ).value = dep.nome || '';
+                lastDependenteEntry.querySelector('input[name="dep_idade"]' ).value = dep.idade || '';
+                lastDependenteEntry.querySelector('input[name="dep_relacao"]' ).value = dep.relacao || '';
             }
         });
     }
@@ -867,9 +894,12 @@ function populateFormWithExistingData(data) {
             addPatrimonioBtn.click();
             const lastPatrimonioEntry = document.querySelector("#patrimonio-list .item-entry:last-child");
             if (lastPatrimonioEntry) {
-                lastPatrimonioEntry.querySelector('input[name="patrimonio_qual"]').value = pat.descricao || '';
+                lastPatrimonioEntry.querySelector('input[name="patrimonio_qual"]' ).value = pat.descricao || '';
                 const valorInput = lastPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
-                if (valorInput) valorInput.value = pat.valor_estimado ? formatCurrency(pat.valor_estimado) : '';
+                if (valorInput) {
+                    valorInput.value = pat.valor_estimado !== null && pat.valor_estimado !== undefined ?
+                        pat.valor_estimado.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
+                }
                 
                 const seguroRadio = lastPatrimonioEntry.querySelector(`input[name="patrimonio_seguro_${index}"][value="${pat.possui_seguro}"]`);
                 if (seguroRadio) seguroRadio.checked = true;
@@ -880,11 +910,8 @@ function populateFormWithExistingData(data) {
                 if (pat.pessoa_associada) {
                     const selectPessoa = lastPatrimonioEntry.querySelector(`select[name="patrimonio_pessoa_associada_${index}"]`);
                     if (selectPessoa) {
-                        // As opções já devem ter sido populadas pelo addPatrimonioBtn.click()
                         selectPessoa.value = pat.pessoa_associada;
-                         if (!selectPessoa.value && pat.pessoa_associada) { // Se o valor não foi setado mas deveria
-                            // Isso pode acontecer se a pessoa associada não estiver mais na lista de pessoas com renda
-                            // Adiciona uma opção temporária para exibir o valor salvo, ou deixa como está (selecione)
+                         if (!selectPessoa.value && pat.pessoa_associada) { 
                             console.warn(`Pessoa associada "${pat.pessoa_associada}" não encontrada no dropdown para patrimônio ${index}.`);
                         }
                     }
