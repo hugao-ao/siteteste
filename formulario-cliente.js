@@ -23,32 +23,33 @@ function showMessage(type, text) {
     messageAreaEl.innerHTML = `<div class="message ${type}">${sanitizeInput(text)}</div>`;
 }
 
-// Função para atualizar dinamicamente a pergunta sobre dependentes
+// Função para atualizar dinamicamente a pergunta sobre dependentes (AJUSTADA)
 function updatePerguntaDependentesLabel() {
-    const nomeCompletoInput = document.getElementById("nome_completo");
     const labelTemDependentes = document.getElementById("label_tem_dependentes");
-    if (!nomeCompletoInput || !labelTemDependentes) return;
+    if (!labelTemDependentes) return;
 
-    const nomePreenchedor = sanitizeInput(nomeCompletoInput.value.trim().split(' ')[0]);
-    let pergunta = `${nomePreenchedor || "Você"}, tem dependentes?`;
-
-    const rendaUnicaNaoRadio = document.getElementById("renda_unica_nao");
-    if (rendaUnicaNaoRadio && rendaUnicaNaoRadio.checked) {
-        const outrasPessoasInputs = document.querySelectorAll('#pessoas-list input[name="pessoa_nome"]');
-        const nomesOutrasPessoas = [];
+    const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
+    const outrasPessoasInputs = document.querySelectorAll('#pessoas-list input[name="pessoa_nome"]');
+    
+    let temOutrasPessoasComRenda = false;
+    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         outrasPessoasInputs.forEach(input => {
-            const nome = sanitizeInput(input.value.trim().split(' ')[0]);
-            if (nome) nomesOutrasPessoas.push(nome);
+            if (input.value.trim() !== "") {
+                temOutrasPessoasComRenda = true;
+            }
         });
-
-        if (nomesOutrasPessoas.length > 0) {
-            const nomesConcatenados = nomesOutrasPessoas.join(' e/ou ');
-            pergunta = `${nomePreenchedor || "Você"} e/ou ${nomesConcatenados} têm dependentes?`;
-        } else {
-            pergunta = `${nomePreenchedor || "Você"} tem dependentes?`; // Fallback se não houver outros nomes ainda
-        }
     }
-    labelTemDependentes.textContent = pergunta;
+
+    if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
+        // Apenas o preenchedor tem renda
+        labelTemDependentes.textContent = "Você tem filho/pet/outros parentes que dependem de você?";
+    } else if (temOutrasPessoasComRenda) {
+        // Preenchedor E outras pessoas têm renda
+        labelTemDependentes.textContent = "Vocês têm filho/pet/outros parentes que dependem de vocês?";
+    } else {
+        // Apenas o preenchedor tem renda (caso "Não" esteja marcado para renda única, mas nenhuma outra pessoa adicionada)
+        labelTemDependentes.textContent = "Você tem filho/pet/outros parentes que dependem de você?";
+    }
 }
 
 
@@ -98,11 +99,11 @@ async function loadForm(token) {
     }
 }
 
-// Função para renderizar o formulário HTML (MODIFICADA PARA DEPENDENTES)
+// Função para renderizar o formulário HTML
 function renderActualForm(formData) {
     formContentEl.innerHTML = `
         <form id="client-response-form">
-            <label for="nome_completo">Nome Completo:</label>
+            <label for="nome_completo">Nome Completo (Seu nome):</label>
             <input type="text" id="nome_completo" name="nome_completo" required>
 
             <div class="radio-group">
@@ -121,7 +122,7 @@ function renderActualForm(formData) {
 
             <!-- Seção de Dependentes -->
             <div class="radio-group" style="margin-top: 2rem;">
-                <label id="label_tem_dependentes">Você tem dependentes?</label><br>
+                <label id="label_tem_dependentes">Você tem filho/pet/outros parentes que dependem de você?</label><br> <!-- Texto inicial padrão -->
                 <input type="radio" id="tem_dependentes_sim" name="tem_dependentes" value="sim" required>
                 <label for="tem_dependentes_sim">Sim</label>
                 <input type="radio" id="tem_dependentes_nao" name="tem_dependentes" value="nao">
@@ -139,7 +140,7 @@ function renderActualForm(formData) {
     `;
 
     const nomeCompletoInput = document.getElementById("nome_completo");
-    nomeCompletoInput.addEventListener('input', updatePerguntaDependentesLabel);
+    // nomeCompletoInput.addEventListener('input', updatePerguntaDependentesLabel); // Removido daqui, será chamado em outros pontos
 
     const radioRendaSim = document.getElementById("renda_unica_sim");
     const radioRendaNao = document.getElementById("renda_unica_nao");
@@ -180,6 +181,7 @@ function renderActualForm(formData) {
         pessoasList.appendChild(personEntry);
         const nomeInputPessoa = personEntry.querySelector(`#pessoa_nome_${personId}`);
         const autorizacaoLabel = personEntry.querySelector(`#label_autorizacao_${personId}`);
+        
         nomeInputPessoa.addEventListener('input', () => {
             const nomeDigitado = nomeInputPessoa.value.trim();
             const primeiroNome = nomeDigitado.split(' ')[0];
@@ -188,18 +190,17 @@ function renderActualForm(formData) {
             } else {
                 autorizacaoLabel.textContent = 'Você precisa de autorização de ... para tomar decisões financeiras e agir?';
             }
-            updatePerguntaDependentesLabel(); // Atualiza label de dependentes se nome de pessoa com renda mudar
+            updatePerguntaDependentesLabel(); 
         });
         personEntry.querySelector('.remove-person-btn').addEventListener('click', (e) => {
             const idToRemove = e.target.dataset.id;
             const entryToRemove = pessoasList.querySelector(`.person-entry[data-id="${idToRemove}"]`);
             if (entryToRemove) entryToRemove.remove();
-            updatePerguntaDependentesLabel(); // Atualiza label de dependentes se pessoa com renda for removida
+            updatePerguntaDependentesLabel(); 
         });
-        updatePerguntaDependentesLabel(); // Atualiza ao adicionar nova pessoa com renda
+        updatePerguntaDependentesLabel(); 
     });
 
-    // Listeners para seção de dependentes
     const radioTemDependentesSim = document.getElementById("tem_dependentes_sim");
     const radioTemDependentesNao = document.getElementById("tem_dependentes_nao");
     const dependentesContainer = document.getElementById("dependentes-container");
@@ -219,7 +220,7 @@ function renderActualForm(formData) {
     addDependenteBtn.addEventListener('click', () => {
         const depId = Date.now();
         const depEntry = document.createElement('div');
-        depEntry.classList.add('person-entry'); // Reutilizando a classe para estilo
+        depEntry.classList.add('person-entry'); 
         depEntry.dataset.id = depId;
         depEntry.innerHTML = `
             <button type="button" class="remove-person-btn" data-id="${depId}">Remover</button>
@@ -251,7 +252,6 @@ function renderActualForm(formData) {
     }
 }
 
-// Função para lidar com o envio do formulário (MODIFICADA PARA DEPENDENTES)
 async function handleFormSubmit(event, formData) {
     event.preventDefault();
     messageAreaEl.innerHTML = "";
