@@ -64,14 +64,14 @@ function renderPlanoSaudeQuestions() {
     const pessoasDaCasa = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
-        pessoasDaCasa.push({ id: "preenchedor", nome: sanitizeInput(nomeCompletoInput.value.trim()) });
+        pessoasDaCasa.push({ id: "preenchedor_plano", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
 
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         document.querySelectorAll("#pessoas-list .person-entry").forEach((entry, index) => {
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
-                pessoasDaCasa.push({ id: `outra_pessoa_${index}`, nome: sanitizeInput(nomeInput.value.trim()) });
+                pessoasDaCasa.push({ id: `outra_pessoa_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
             }
         });
     }
@@ -80,31 +80,29 @@ function renderPlanoSaudeQuestions() {
         document.querySelectorAll("#dependentes-list .person-entry").forEach((entry, index) => {
             const nomeInput = entry.querySelector('input[name="dep_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
-                pessoasDaCasa.push({ id: `dependente_${index}`, nome: sanitizeInput(nomeInput.value.trim()) });
+                pessoasDaCasa.push({ id: `dependente_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "dependente" });
             }
         });
     }
 
+    const tituloPlanoSaude = document.getElementById("plano-saude-section-title");
     if (pessoasDaCasa.length === 0) {
         container.innerHTML = "<p>Preencha as informações anteriores para definir as perguntas sobre plano de saúde.</p>";
-        const tituloPlanoSaude = document.getElementById("plano-saude-section-title");
         if(tituloPlanoSaude) tituloPlanoSaude.style.display = 'none';
         return;
     }
     
-    const tituloPlanoSaude = document.getElementById("plano-saude-section-title");
-    if(tituloPlanoSaude) tituloPlanoSaude.style.display = pessoasDaCasa.length > 0 ? 'block' : 'none';
+    if(tituloPlanoSaude) tituloPlanoSaude.style.display = 'block';
 
-    pessoasDaCasa.forEach((pessoa, index) => {
+    pessoasDaCasa.forEach((pessoa) => {
         const primeiroNome = pessoa.nome.split(' ')[0];
         const nomeCapitalizado = capitalizeName(primeiroNome);
-        const personId = `plano_saude_pessoa_${index}`;
+        const personId = `plano_saude_${pessoa.id}`;
 
         const entryDiv = document.createElement("div");
         entryDiv.classList.add("plano-saude-entry");
-        entryDiv.style.marginBottom = "1rem"; // Adiciona espaço entre cada pergunta de pessoa
+        entryDiv.style.marginBottom = "1rem";
         
-        // Ajuste para os radio buttons ficarem na mesma linha usando display: flex
         entryDiv.innerHTML = `
             <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui plano de saúde?</label>
             <div class="radio-options-inline" style="display: flex; align-items: center;">
@@ -122,15 +120,80 @@ function renderPlanoSaudeQuestions() {
                 </span>
             </div>
         `;
-        entryDiv.dataset.personName = pessoa.nome; // Guardar o nome completo para o submit
+        entryDiv.dataset.personName = pessoa.nome; 
+        entryDiv.dataset.personType = pessoa.tipo; 
         container.appendChild(entryDiv);
     });
 }
+
+// Função para renderizar as perguntas sobre seguro de vida
+function renderSeguroVidaQuestions() {
+    const container = document.getElementById("seguro-vida-section-content");
+    if (!container) return;
+    container.innerHTML = ''; // Limpa perguntas anteriores
+
+    const pessoasComRenda = [];
+    const nomeCompletoInput = document.getElementById("nome_completo");
+    if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
+        pessoasComRenda.push({ id: "preenchedor_seguro", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
+    }
+
+    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
+        document.querySelectorAll("#pessoas-list .person-entry").forEach((entry, index) => {
+            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
+            if (nomeInput && nomeInput.value.trim() !== "") {
+                pessoasComRenda.push({ id: `outra_pessoa_seguro_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
+            }
+        });
+    }
+    
+    const tituloSeguroVida = document.getElementById("seguro-vida-section-title");
+    if (pessoasComRenda.length === 0) {
+        container.innerHTML = "<p>Preencha as informações sobre nome e renda para definir as perguntas sobre seguro de vida.</p>";
+        if(tituloSeguroVida) tituloSeguroVida.style.display = 'none';
+        return;
+    }
+
+    if(tituloSeguroVida) tituloSeguroVida.style.display = 'block';
+
+    pessoasComRenda.forEach((pessoa) => {
+        const primeiroNome = pessoa.nome.split(' ')[0];
+        const nomeCapitalizado = capitalizeName(primeiroNome);
+        const personId = `seguro_vida_${pessoa.id}`;
+
+        const entryDiv = document.createElement("div");
+        entryDiv.classList.add("seguro-vida-entry");
+        entryDiv.style.marginBottom = "1rem";
+        
+        entryDiv.innerHTML = `
+            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui seguro de vida?</label>
+            <div class="radio-options-inline" style="display: flex; align-items: center;">
+                <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
+                    <label for="${personId}_sim">Sim</label>
+                </span>
+                <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
+                    <label for="${personId}_nao">Não</label>
+                </span>
+                <span style="display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
+                    <label for="${personId}_naosei">Não sei informar</label>
+                </span>
+            </div>
+        `;
+        entryDiv.dataset.personName = pessoa.nome;
+        entryDiv.dataset.personType = pessoa.tipo; 
+        container.appendChild(entryDiv);
+    });
+}
+
 
 // Função unificada para atualizar seções dinâmicas
 function updateDynamicFormSections() {
     updatePerguntaDependentesLabel();
     renderPlanoSaudeQuestions();
+    renderSeguroVidaQuestions(); // Adiciona chamada para seguro de vida
 }
 
 
@@ -219,6 +282,12 @@ function renderActualForm(formData) {
             <div id="plano-saude-section" style="margin-top: 2rem;">
                 <h3 id="plano-saude-section-title" style="display: none;">Informações sobre Plano de Saúde:</h3>
                 <div id="plano-saude-section-content"></div>
+            </div>
+
+            <!-- Seção de Seguro de Vida -->
+            <div id="seguro-vida-section" style="margin-top: 2rem;">
+                <h3 id="seguro-vida-section-title" style="display: none;">Informações sobre Seguro de Vida:</h3>
+                <div id="seguro-vida-section-content"></div>
             </div>
 
             <button type="submit" style="margin-top: 2rem;">Enviar Resposta</button>
@@ -369,13 +438,14 @@ async function handleFormSubmit(event, formData) {
         outras_pessoas_renda: [],
         tem_dependentes: temDependentesValue === "sim",
         dependentes: [],
-        informacoes_plano_saude: []
+        informacoes_plano_saude: [],
+        informacoes_seguro_vida: [] // Adiciona campo para seguro de vida
     };
 
     if (dadosFormulario.renda_unica === false) {
         document.querySelectorAll("#pessoas-list .person-entry").forEach(entry => {
-            const nome = entry.querySelector('input[name="pessoa_nome"]').value.trim();
-            const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]').value;
+            const nome = entry.querySelector('input[name="pessoa_nome"]").value.trim();
+            const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]").value;
             if (nome) {
                 dadosFormulario.outras_pessoas_renda.push({
                     nome: sanitizeInput(nome),
@@ -387,9 +457,9 @@ async function handleFormSubmit(event, formData) {
 
     if (dadosFormulario.tem_dependentes === true) {
         document.querySelectorAll("#dependentes-list .person-entry").forEach(entry => {
-            const nome = entry.querySelector('input[name="dep_nome"]').value.trim();
-            const idade = entry.querySelector('input[name="dep_idade"]').value;
-            const relacao = entry.querySelector('input[name="dep_relacao"]').value.trim();
+            const nome = entry.querySelector('input[name="dep_nome"]").value.trim();
+            const idade = entry.querySelector('input[name="dep_idade"]").value;
+            const relacao = entry.querySelector('input[name="dep_relacao"]").value.trim();
             if (nome) {
                 dadosFormulario.dependentes.push({
                     nome: sanitizeInput(nome),
@@ -402,12 +472,26 @@ async function handleFormSubmit(event, formData) {
 
     // Coleta de dados do plano de saúde
     document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
-        const nomePessoa = entry.dataset.personName; // Usa o nome completo guardado
+        const nomePessoa = entry.dataset.personName;
         const radioChecked = entry.querySelector('input[type="radio"]:checked');
         if (nomePessoa && radioChecked) {
             dadosFormulario.informacoes_plano_saude.push({
                 nome_pessoa: sanitizeInput(nomePessoa),
-                status_plano: radioChecked.value
+                status_plano: radioChecked.value,
+                tipo_pessoa: entry.dataset.personType
+            });
+        }
+    });
+
+    // Coleta de dados do seguro de vida
+    document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
+        const nomePessoa = entry.dataset.personName;
+        const radioChecked = entry.querySelector('input[type="radio"]:checked');
+        if (nomePessoa && radioChecked) {
+            dadosFormulario.informacoes_seguro_vida.push({
+                nome_pessoa: sanitizeInput(nomePessoa),
+                status_seguro: radioChecked.value,
+                tipo_pessoa: entry.dataset.personType
             });
         }
     });
