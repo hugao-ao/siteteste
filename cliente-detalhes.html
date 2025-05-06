@@ -395,7 +395,7 @@
         this.textContent = "Gerando...";
 
         try {
-            const { data, error } = await supabase.rpc('create_client_form_link', { p_client_id: currentClientId });
+            const { data, error } = await supabase.rpc('create_new_form_for_client', { p_client_id: currentClientId });
 
             if (error) throw error;
 
