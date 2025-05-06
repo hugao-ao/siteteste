@@ -14,7 +14,7 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;") // Corrigido para \'
+    .replace(/\'/g, "&#x27;")
     .replace(/`/g, "&#x60;");
 };
 
@@ -22,6 +22,35 @@ const sanitizeInput = (str) => {
 function showMessage(type, text) {
     messageAreaEl.innerHTML = `<div class="message ${type}">${sanitizeInput(text)}</div>`;
 }
+
+// Função para atualizar dinamicamente a pergunta sobre dependentes
+function updatePerguntaDependentesLabel() {
+    const nomeCompletoInput = document.getElementById("nome_completo");
+    const labelTemDependentes = document.getElementById("label_tem_dependentes");
+    if (!nomeCompletoInput || !labelTemDependentes) return;
+
+    const nomePreenchedor = sanitizeInput(nomeCompletoInput.value.trim().split(' ')[0]);
+    let pergunta = `${nomePreenchedor || "Você"}, tem dependentes?`;
+
+    const rendaUnicaNaoRadio = document.getElementById("renda_unica_nao");
+    if (rendaUnicaNaoRadio && rendaUnicaNaoRadio.checked) {
+        const outrasPessoasInputs = document.querySelectorAll('#pessoas-list input[name="pessoa_nome"]');
+        const nomesOutrasPessoas = [];
+        outrasPessoasInputs.forEach(input => {
+            const nome = sanitizeInput(input.value.trim().split(' ')[0]);
+            if (nome) nomesOutrasPessoas.push(nome);
+        });
+
+        if (nomesOutrasPessoas.length > 0) {
+            const nomesConcatenados = nomesOutrasPessoas.join(' e/ou ');
+            pergunta = `${nomePreenchedor || "Você"} e/ou ${nomesConcatenados} têm dependentes?`;
+        } else {
+            pergunta = `${nomePreenchedor || "Você"} tem dependentes?`; // Fallback se não houver outros nomes ainda
+        }
+    }
+    labelTemDependentes.textContent = pergunta;
+}
+
 
 // Função para buscar dados do formulário e cliente
 async function loadForm(token) {
@@ -32,15 +61,14 @@ async function loadForm(token) {
     }
 
     try {
-        // 1. Busca o formulário pelo token
         const { data: formData, error: formError } = await supabase
             .from("formularios_clientes")
-            .select("*, clientes(nome)") // Inclui o nome do cliente da tabela relacionada
+            .select("*, clientes(nome)")
             .eq("token_unico", token)
-            .single(); // Espera apenas um resultado
+            .single();
 
         if (formError || !formData) {
-            if (formError && formError.code === 'PGRST116') { // Código para "No rows found"
+            if (formError && formError.code === 'PGRST116') {
                  formContentEl.innerHTML = "<p>Link inválido ou expirado.</p>";
                  showMessage("error", "O link para este formulário não é válido ou já foi utilizado.");
             } else {
@@ -49,14 +77,11 @@ async function loadForm(token) {
             return;
         }
 
-        // Atualiza o título com o nome do cliente, se disponível
         if (formData.clientes && formData.clientes.nome) {
             formTitleEl.textContent = `Formulário para ${sanitizeInput(formData.clientes.nome)}`;
         }
 
-        // 2. Verifica o status do formulário
         if (formData.status === "pendente") {
-            // Renderiza o formulário
             renderActualForm(formData);
         } else if (formData.status === "preenchido") {
             formContentEl.innerHTML = "<p>Este formulário já foi preenchido.</p>";
@@ -73,7 +98,7 @@ async function loadForm(token) {
     }
 }
 
-// Função para renderizar o formulário HTML (MODIFICADA)
+// Função para renderizar o formulário HTML (MODIFICADA PARA DEPENDENTES)
 function renderActualForm(formData) {
     formContentEl.innerHTML = `
         <form id="client-response-form">
@@ -91,37 +116,53 @@ function renderActualForm(formData) {
             <div id="outras-pessoas-renda-container" style="display: none;">
                 <label>Outras pessoas com renda na casa:</label>
                 <div id="pessoas-list"></div>
-                <button type="button" id="add-person-btn">+ Adicionar Pessoa</button>
+                <button type="button" id="add-person-btn">+ Adicionar Pessoa com Renda</button>
             </div>
 
-            <button type="submit">Enviar Resposta</button>
+            <!-- Seção de Dependentes -->
+            <div class="radio-group" style="margin-top: 2rem;">
+                <label id="label_tem_dependentes">Você tem dependentes?</label><br>
+                <input type="radio" id="tem_dependentes_sim" name="tem_dependentes" value="sim" required>
+                <label for="tem_dependentes_sim">Sim</label>
+                <input type="radio" id="tem_dependentes_nao" name="tem_dependentes" value="nao">
+                <label for="tem_dependentes_nao">Não</label>
+            </div>
+
+            <div id="dependentes-container" style="display: none;">
+                <label>Dependentes:</label>
+                <div id="dependentes-list"></div>
+                <button type="button" id="add-dependente-btn">+ Adicionar Dependente</button>
+            </div>
+
+            <button type="submit" style="margin-top: 2rem;">Enviar Resposta</button>
         </form>
     `;
 
-    // Adiciona listeners
-    const formElement = document.getElementById("client-response-form");
-    const radioSim = document.getElementById("renda_unica_sim");
-    const radioNao = document.getElementById("renda_unica_nao");
+    const nomeCompletoInput = document.getElementById("nome_completo");
+    nomeCompletoInput.addEventListener('input', updatePerguntaDependentesLabel);
+
+    const radioRendaSim = document.getElementById("renda_unica_sim");
+    const radioRendaNao = document.getElementById("renda_unica_nao");
     const outrasPessoasContainer = document.getElementById("outras-pessoas-renda-container");
     const addPersonBtn = document.getElementById("add-person-btn");
     const pessoasList = document.getElementById("pessoas-list");
 
-    // Listener para mostrar/esconder seção de outras pessoas
-    radioSim.addEventListener('change', () => {
-        if (radioSim.checked) {
+    radioRendaSim.addEventListener('change', () => {
+        if (radioRendaSim.checked) {
             outrasPessoasContainer.style.display = 'none';
-            pessoasList.innerHTML = ''; // Limpa a lista se mudar para Sim
+            pessoasList.innerHTML = '';
         }
+        updatePerguntaDependentesLabel();
     });
-    radioNao.addEventListener('change', () => {
-        if (radioNao.checked) {
+    radioRendaNao.addEventListener('change', () => {
+        if (radioRendaNao.checked) {
             outrasPessoasContainer.style.display = 'block';
         }
+        updatePerguntaDependentesLabel();
     });
 
-    // Listener para adicionar pessoa (MODIFICADO PARA PERGUNTA DINÂMICA)
     addPersonBtn.addEventListener('click', () => {
-        const personId = Date.now(); // ID simples para remover
+        const personId = Date.now();
         const personEntry = document.createElement('div');
         personEntry.classList.add('person-entry');
         personEntry.dataset.id = personId;
@@ -137,94 +178,155 @@ function renderActualForm(formData) {
             </select>
         `;
         pessoasList.appendChild(personEntry);
-
-        // --- NOVO: Listener para atualizar label de autorização dinamicamente ---
-        const nomeInput = personEntry.querySelector(`#pessoa_nome_${personId}`);
+        const nomeInputPessoa = personEntry.querySelector(`#pessoa_nome_${personId}`);
         const autorizacaoLabel = personEntry.querySelector(`#label_autorizacao_${personId}`);
-
-        nomeInput.addEventListener('input', () => {
-            const nomeDigitado = nomeInput.value.trim();
-            const primeiroNome = nomeDigitado.split(' ')[0]; // Pega a primeira palavra
+        nomeInputPessoa.addEventListener('input', () => {
+            const nomeDigitado = nomeInputPessoa.value.trim();
+            const primeiroNome = nomeDigitado.split(' ')[0];
             if (primeiroNome) {
                 autorizacaoLabel.textContent = `Você precisa de autorização de ${sanitizeInput(primeiroNome)} para tomar decisões financeiras e agir?`;
             } else {
-                autorizacaoLabel.textContent = 'Você precisa de autorização de ... para tomar decisões financeiras e agir?'; // Texto padrão
+                autorizacaoLabel.textContent = 'Você precisa de autorização de ... para tomar decisões financeiras e agir?';
             }
+            updatePerguntaDependentesLabel(); // Atualiza label de dependentes se nome de pessoa com renda mudar
         });
-        // --- FIM NOVO ---
-
-        // Adiciona listener para o botão remover desta entrada
         personEntry.querySelector('.remove-person-btn').addEventListener('click', (e) => {
             const idToRemove = e.target.dataset.id;
             const entryToRemove = pessoasList.querySelector(`.person-entry[data-id="${idToRemove}"]`);
-            if (entryToRemove) {
-                entryToRemove.remove();
-            }
+            if (entryToRemove) entryToRemove.remove();
+            updatePerguntaDependentesLabel(); // Atualiza label de dependentes se pessoa com renda for removida
+        });
+        updatePerguntaDependentesLabel(); // Atualiza ao adicionar nova pessoa com renda
+    });
+
+    // Listeners para seção de dependentes
+    const radioTemDependentesSim = document.getElementById("tem_dependentes_sim");
+    const radioTemDependentesNao = document.getElementById("tem_dependentes_nao");
+    const dependentesContainer = document.getElementById("dependentes-container");
+    const addDependenteBtn = document.getElementById("add-dependente-btn");
+    const dependentesList = document.getElementById("dependentes-list");
+
+    radioTemDependentesSim.addEventListener('change', () => {
+        if (radioTemDependentesSim.checked) dependentesContainer.style.display = 'block';
+    });
+    radioTemDependentesNao.addEventListener('change', () => {
+        if (radioTemDependentesNao.checked) {
+            dependentesContainer.style.display = 'none';
+            dependentesList.innerHTML = '';
+        }
+    });
+
+    addDependenteBtn.addEventListener('click', () => {
+        const depId = Date.now();
+        const depEntry = document.createElement('div');
+        depEntry.classList.add('person-entry'); // Reutilizando a classe para estilo
+        depEntry.dataset.id = depId;
+        depEntry.innerHTML = `
+            <button type="button" class="remove-person-btn" data-id="${depId}">Remover</button>
+            <label for="dep_nome_${depId}">Nome do Dependente:</label>
+            <input type="text" id="dep_nome_${depId}" name="dep_nome" required>
+            <label for="dep_idade_${depId}">Idade:</label>
+            <input type="number" id="dep_idade_${depId}" name="dep_idade" min="0" required>
+            <label for="dep_relacao_${depId}">Relação:</label>
+            <select id="dep_relacao_${depId}" name="dep_relacao" required>
+                <option value="">Selecione...</option>
+                <option value="filho">Filho(a)</option>
+                <option value="pet">Pet</option>
+                <option value="outro">Outro</option>
+            </select>
+        `;
+        dependentesList.appendChild(depEntry);
+        depEntry.querySelector('.remove-person-btn').addEventListener('click', (e) => {
+            const idToRemove = e.target.dataset.id;
+            const entryToRemove = dependentesList.querySelector(`.person-entry[data-id="${idToRemove}"]`);
+            if (entryToRemove) entryToRemove.remove();
         });
     });
 
-    // Listener para o envio do formulário
+    updatePerguntaDependentesLabel(); // Chamada inicial para definir o label
+
+    const formElement = document.getElementById("client-response-form");
     if (formElement) {
         formElement.addEventListener("submit", (event) => handleFormSubmit(event, formData));
     }
 }
 
-// Função para lidar com o envio do formulário (MODIFICADA PARA NOVA ESTRUTURA)
+// Função para lidar com o envio do formulário (MODIFICADA PARA DEPENDENTES)
 async function handleFormSubmit(event, formData) {
     event.preventDefault();
-    messageAreaEl.innerHTML = ""; // Limpa mensagens anteriores
+    messageAreaEl.innerHTML = "";
 
     const nomeCompletoInput = document.getElementById("nome_completo");
     const rendaUnicaRadio = document.querySelector('input[name="renda_unica"]:checked');
+    const temDependentesRadio = document.querySelector('input[name="tem_dependentes"]:checked');
 
     const nomeCompleto = sanitizeInput(nomeCompletoInput.value.trim());
     const rendaUnicaValue = rendaUnicaRadio ? rendaUnicaRadio.value : null;
+    const temDependentesValue = temDependentesRadio ? temDependentesRadio.value : null;
 
     if (!nomeCompleto) {
-        showMessage("error", "Por favor, preencha o Nome Completo.");
-        return;
+        showMessage("error", "Por favor, preencha o Nome Completo."); return;
     }
     if (!rendaUnicaValue) {
-        showMessage("error", "Por favor, selecione se você é a única pessoa com renda.");
-        return;
+        showMessage("error", "Por favor, selecione se você é a única pessoa com renda."); return;
+    }
+    if (!temDependentesValue) {
+        showMessage("error", "Por favor, selecione se tem dependentes."); return;
     }
 
     const dadosFormulario = {
         nome_completo: nomeCompleto,
         renda_unica: rendaUnicaValue === 'sim',
-        outras_pessoas_renda: []
+        outras_pessoas_renda: [],
+        tem_dependentes: temDependentesValue === 'sim',
+        dependentes: []
     };
 
-    if (rendaUnicaValue === 'nao') {
+    if (dadosFormulario.renda_unica === false) {
         const personEntries = document.querySelectorAll('#pessoas-list .person-entry');
         for (const entry of personEntries) {
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             const autorizacaoSelect = entry.querySelector('select[name="pessoa_autorizacao"]');
-
             const nome = sanitizeInput(nomeInput.value.trim());
             const autorizacao = autorizacaoSelect.value;
-
             if (!nome || !autorizacao) {
-                showMessage("error", "Por favor, preencha todos os campos para cada pessoa adicionada ou remova a entrada incompleta.");
-                return; // Interrompe o envio
+                showMessage("error", "Por favor, preencha todos os campos para cada pessoa com renda ou remova a entrada incompleta."); return;
             }
             dadosFormulario.outras_pessoas_renda.push({
                 nome: nome,
                 precisa_autorizacao: autorizacao === 'sim'
             });
         }
-        // Opcional: Validar se pelo menos uma pessoa foi adicionada se marcou 'Não'
-        // if (dadosFormulario.outras_pessoas_renda.length === 0) {
-        //     showMessage("error", "Você indicou que não é a única pessoa com renda, por favor, adicione as outras pessoas.");
-        //     return;
-        // }
+    }
+
+    if (dadosFormulario.tem_dependentes === true) {
+        const depEntries = document.querySelectorAll('#dependentes-list .person-entry');
+        for (const entry of depEntries) {
+            const nomeInput = entry.querySelector('input[name="dep_nome"]');
+            const idadeInput = entry.querySelector('input[name="dep_idade"]');
+            const relacaoSelect = entry.querySelector('select[name="dep_relacao"]');
+            const nome = sanitizeInput(nomeInput.value.trim());
+            const idade = idadeInput.value;
+            const relacao = relacaoSelect.value;
+            if (!nome || !idade || !relacao) {
+                showMessage("error", "Por favor, preencha todos os campos para cada dependente ou remova a entrada incompleta."); return;
+            }
+            dadosFormulario.dependentes.push({
+                nome: nome,
+                idade: parseInt(idade),
+                relacao: relacao
+            });
+        }
+        if (dadosFormulario.dependentes.length === 0 && dadosFormulario.tem_dependentes === true) {
+             showMessage("error", "Você indicou que tem dependentes. Por favor, adicione as informações ou marque 'Não'."); return;
+        }
     }
 
     try {
         const { error } = await supabase
             .from("formularios_clientes")
             .update({
-                dados_formulario: dadosFormulario, // Salva o novo objeto JSON
+                dados_formulario: dadosFormulario,
                 status: "preenchido",
                 data_preenchimento: new Date()
             })
@@ -242,10 +344,7 @@ async function handleFormSubmit(event, formData) {
 }
 
 // --- Inicialização ---
-// Pega o token da URL (ex: ?token=valor)
 const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get("token");
-
-// Carrega o formulário baseado no token
 loadForm(token);
 
