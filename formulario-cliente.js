@@ -670,9 +670,7 @@ function attachFormEventListeners(formId) {
                 <button type="button" class="remove-dynamic-entry-btn">Remover</button>
             `;
             patrimonioListEl.appendChild(newPatrimonioEntry);
-
-            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]
-            ');
+            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
             valorInput.addEventListener('input', (e) => {
                 const rawValue = e.target.value.replace(/[^\d]/g, '');
                 if (rawValue) {
