@@ -234,6 +234,8 @@ button {
   font-weight: bold;
   border: none;
   text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+  position: relative; /* Necessário para o pseudo-elemento ::after */
+  overflow: hidden;   /* Necessário para o pseudo-elemento ::after */
 }
 
 button:hover {
@@ -248,13 +250,13 @@ button:active {
 
 /* Botões de Adicionar (Estilo Adicionar Patrimônio) */
 .add-dynamic-entry-btn {
-    background: var(--btn-add-bg) !important; /* Usar !important para garantir prioridade se necessário */
+    background: var(--btn-add-bg) !important;
     color: var(--btn-add-text) !important;
-    border: 1px solid var(--theme-border-color) !important; /* Adicionar uma borda sutil */
+    border: 1px solid var(--theme-border-color) !important; 
 }
 
 .add-dynamic-entry-btn:hover {
-    background: #e0e0c8 !important; /* Um pouco mais escuro no hover */
+    background: #e0e0c8 !important; 
     box-shadow: 0 0 8px rgba(0,0,0,0.2) !important;
 }
 
@@ -266,7 +268,7 @@ button:active {
 }
 
 .remove-dynamic-entry-btn:hover {
-    background: #c82333 !important; /* Mais escuro no hover */
+    background: #c82333 !important; 
     box-shadow: 0 0 8px rgba(0,0,0,0.3) !important;
 }
 
@@ -278,8 +280,27 @@ button:active {
 }
 
 #submit-btn:hover {
-    background: #000066 !important; /* Mais escuro no hover */
+    background: #000066 !important; 
     box-shadow: 0 0 10px rgba(0,0,128,0.5) !important;
+}
+
+/* Botão Excluir Dados e Gerar Novo Link (em cliente-detalhes.html) */
+/* Este botão usa a classe .delete-form-btn */
+#form-section .delete-form-btn {
+    background-color: #c62828 !important; /* Vermelho já definido, mas reforçando com !important */
+    color: white !important;
+    /* Removendo o efeito de brilho especificamente para este botão */
+    overflow: visible !important; /* Permite que o conteúdo não seja cortado se houver algum efeito residual */
+}
+
+#form-section .delete-form-btn::after {
+    display: none !important; /* Remove o pseudo-elemento que cria o brilho */
+}
+
+#form-section .delete-form-btn:hover {
+    background-color: #a12020 !important; /* Mantém o hover escurecido */
+    box-shadow: 0 0 8px rgba(0,0,0,0.3) !important; /* Sombra sutil no hover */
+    transform: translateY(-1px); /* Leve elevação no hover */
 }
 
 table {
@@ -409,6 +430,8 @@ section h2 {
   padding: 0.8rem;
 }
 
+/* Efeito de brilho genérico - pode ser removido ou ajustado se não for desejado em outros botões */
+/* A classe .shiny-effect não está sendo usada nos botões problemáticos, então esta seção pode ser mantida ou removida se o efeito não for mais necessário em lugar nenhum */
 .shiny-effect {
   position: relative;
   overflow: hidden;
@@ -437,7 +460,8 @@ section h2 {
   100% { transform: translateX(75%) translateY(75%) rotate(45deg); }
 }
 
-button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn)::after {
+/* Efeito de brilho para botões genéricos (NÃO SE APLICA A .delete-form-btn, .add-dynamic-entry-btn, .remove-dynamic-entry-btn, #submit-btn) */
+button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn):not(.delete-form-btn):not(.generate-link-btn)::after {
     content: '';
     position: absolute;
     top: -110%;
@@ -457,7 +481,7 @@ button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-ent
     transition: opacity 0.4s ease-in-out;
 }
 
-button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn):hover::after {
+button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn):not(.delete-form-btn):not(.generate-link-btn):hover::after {
     opacity: 1;
     left: -30%;
     transition-property: left, top, opacity;
@@ -465,9 +489,10 @@ button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-ent
     transition-timing-function: ease;
 }
 
-button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn):active::after {
+button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn):not(.delete-form-btn):not(.generate-link-btn):active::after {
     opacity: 0;
 }
+
 
 /* Ajustes para Radio Buttons e seus Labels */
 .radio-group label, 
@@ -498,7 +523,6 @@ button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-ent
 
 .patrimonio-radio-group-item {
     flex: 1 1 auto; /* Permite que cresçam e encolham, base automática */
-    /* min-width: 180px; */ /* Removido para permitir maior flexibilidade com space-between */
 }
 
 .patrimonio-radio-group-item > label { /* Label da pergunta (Possui seguro? / Está quitado?) */
