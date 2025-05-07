@@ -1,3 +1,9 @@
+document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    loadForm(token);
+});
+
 // formulario-cliente.js
 import { supabase } from "./supabase.js";
 
@@ -24,16 +30,14 @@ const sanitizeInput = (str) => {
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined || value === "") return "";
-    // Permite apenas números, vírgula e ponto. Remove R$ e espaços.
     let cleanValue = String(value).replace(/[^\d,.-]/g, 
         '');
-    // Se houver mais de uma vírgula, mantém apenas a última e remove as anteriores como se fossem pontos.
     const commaCount = (cleanValue.match(/,/g) || []).length;
     if (commaCount > 1) {
         const parts = cleanValue.split(',');
         cleanValue = parts.slice(0, -1).join('') + '.' + parts.slice(-1);
     } else {
-        cleanValue = cleanValue.replace(',', '.'); // Troca vírgula por ponto para parseFloat
+        cleanValue = cleanValue.replace(',', '.');
     }
     
     const number = parseFloat(cleanValue);
@@ -95,21 +99,17 @@ function updatePerguntaPatrimonioFisicoLabel() {
     }
 }
 
-// Função para salvar o estado atual dos radios de plano de saúde
 function savePlanoSaudeSelections() {
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
-    planoSaudeSelections = {}; // Limpa seleções antigas
-    container.querySelectorAll(".plano-saude-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]').name; 
-        const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
-        if (selectedRadio) {
-            planoSaudeSelections[nameAttribute] = selectedRadio.value;
+    planoSaudeSelections = {};
+    container.querySelectorAll(".plano-saude-entry .radio-option-vertical-item input[type='radio']").forEach(radio => {
+        if (radio.checked) {
+            planoSaudeSelections[radio.name] = radio.value;
         }
     });
 }
 
-// Função para restaurar o estado dos radios de plano de saúde
 function restorePlanoSaudeSelections() {
     Object.keys(planoSaudeSelections).forEach(nameAttribute => {
         const value = planoSaudeSelections[nameAttribute];
@@ -161,20 +161,20 @@ function renderPlanoSaudeQuestions() {
         entryDiv.classList.add("plano-saude-entry");
         entryDiv.style.marginBottom = "1rem";
         entryDiv.innerHTML = `
-            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui plano de saúde?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center;">
-                <span style="margin-right: 20px; display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">${nomeCapitalizado} possui plano de saúde?</label>
+            <div class="radio-options-vertical-group">
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
                     <label for="${personId}_sim">Sim</label>
-                </span>
-                <span style="margin-right: 20px; display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
+                </div>
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao">
                     <label for="${personId}_nao">Não</label>
-                </span>
-                <span style="display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
+                </div>
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei">
                     <label for="${personId}_naosei">Não sei informar</label>
-                </span>
+                </div>
             </div>
         `;
         entryDiv.dataset.personName = pessoa.nome;
@@ -184,21 +184,17 @@ function renderPlanoSaudeQuestions() {
     restorePlanoSaudeSelections(); 
 }
 
-// Função para salvar o estado atual dos radios de seguro de vida
 function saveSeguroVidaSelections() {
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
     seguroVidaSelections = {}; 
-    container.querySelectorAll(".seguro-vida-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]').name; 
-        const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
-        if (selectedRadio) {
-            seguroVidaSelections[nameAttribute] = selectedRadio.value;
+    container.querySelectorAll(".seguro-vida-entry .radio-option-vertical-item input[type='radio']").forEach(radio => {
+        if (radio.checked) {
+            seguroVidaSelections[radio.name] = radio.value;
         }
     });
 }
 
-// Função para restaurar o estado dos radios de seguro de vida
 function restoreSeguroVidaSelections() {
     Object.keys(seguroVidaSelections).forEach(nameAttribute => {
         const value = seguroVidaSelections[nameAttribute];
@@ -242,20 +238,20 @@ function renderSeguroVidaQuestions() {
         entryDiv.classList.add("seguro-vida-entry");
         entryDiv.style.marginBottom = "1rem";
         entryDiv.innerHTML = `
-            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui seguro de vida?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center;">
-                <span style="margin-right: 20px; display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
+            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">${nomeCapitalizado} possui seguro de vida?</label>
+            <div class="radio-options-vertical-group">
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
                     <label for="${personId}_sim">Sim</label>
-                </span>
-                <span style="margin-right: 20px; display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
+                </div>
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao">
                     <label for="${personId}_nao">Não</label>
-                </span>
-                <span style="display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
+                </div>
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei">
                     <label for="${personId}_naosei">Não sei informar</label>
-                </span>
+                </div>
             </div>
         `;
         entryDiv.dataset.personName = pessoa.nome;
@@ -313,386 +309,485 @@ async function loadForm(token) {
 }
 
 function renderActualForm(formData) {
+    const preenchedorNome = formData.dados_pessoais && formData.dados_pessoais.nome_completo ? sanitizeInput(formData.dados_pessoais.nome_completo) : "";
+
     formContentEl.innerHTML = `
         <form id="client-response-form">
             <label for="nome_completo">Nome Completo (Seu nome):</label>
-            <input type="text" id="nome_completo" name="nome_completo" required>
+            <input type="text" id="nome_completo" name="nome_completo" value="${preenchedorNome}" required>
 
             <div class="radio-group">
-                <label>Você é a única pessoa que possui renda na sua casa?</label><br>
-                <input type="radio" id="renda_unica_sim" name="renda_unica" value="sim" required>
-                <label for="renda_unica_sim">Sim</label>
-                <input type="radio" id="renda_unica_nao" name="renda_unica" value="nao">
-                <label for="renda_unica_nao">Não</label>
-            </div>
-
-            <div id="outras-pessoas-renda-container" style="display: none;">
-                <label>Outras pessoas com renda na casa:</label>
-                <div id="pessoas-list"></div>
-                <button type="button" id="add-person-btn">+ Adicionar Pessoa com Renda</button>
-            </div>
-
-            <div class="radio-group" style="margin-top: 2rem;">
-                <label id="label_tem_dependentes">Você tem filho/pet/outros parentes que dependem de você?</label><br>
-                <input type="radio" id="tem_dependentes_sim" name="tem_dependentes" value="sim" required>
-                <label for="tem_dependentes_sim">Sim</label>
-                <input type="radio" id="tem_dependentes_nao" name="tem_dependentes" value="nao">
-                <label for="tem_dependentes_nao">Não</label>
-            </div>
-
-            <div id="dependentes-container" style="display: none;">
-                <label>Dependentes:</label>
-                <div id="dependentes-list"></div>
-                <button type="button" id="add-dependente-btn">+ Adicionar Dependente</button>
-            </div>
-
-            <!-- Seção de Plano de Saúde -->
-            <div id="plano-saude-section" style="margin-top: 2rem;">
-                <h3 id="plano-saude-section-title" style="display: none;">Informações sobre Plano de Saúde:</h3>
-                <div id="plano-saude-section-content"></div>
-            </div>
-
-            <!-- Seção de Seguro de Vida -->
-            <div id="seguro-vida-section" style="margin-top: 2rem;">
-                <h3 id="seguro-vida-section-title" style="display: none;">Informações sobre Seguro de Vida:</h3>
-                <div id="seguro-vida-section-content"></div>
-            </div>
-
-            <!-- Seção de Patrimônio Físico -->
-            <div id="patrimonio-fisico-section" style="margin-top: 2rem;">
-                 <div class="radio-group">
-                    <label id="label_tem_patrimonio_fisico">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</label><br>
-                    <div class="radio-options-inline-patrimonio">
-                        <input type="radio" id="tem_patrimonio_sim" name="tem_patrimonio" value="sim" required>
-                        <label for="tem_patrimonio_sim">Sim</label>
-                        <input type="radio" id="tem_patrimonio_nao" name="tem_patrimonio" value="nao">
-                        <label for="tem_patrimonio_nao">Não</label>
+                <label>Você é a única pessoa que possui renda na sua casa?</label>
+                <div class="radio-options-vertical-group">
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="renda_unica_sim" name="renda_unica" value="sim" required ${formData.dados_pessoais && formData.dados_pessoais.renda_unica === 'sim' ? 'checked' : ''}>
+                        <label for="renda_unica_sim">Sim</label>
+                    </div>
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="renda_unica_nao" name="renda_unica" value="nao" ${formData.dados_pessoais && formData.dados_pessoais.renda_unica === 'nao' ? 'checked' : ''}>
+                        <label for="renda_unica_nao">Não</label>
                     </div>
                 </div>
-                <div id="patrimonio-list-container" style="display:none;">
-                    <label>Patrimônios:</label>
-                    <div id="patrimonio-list"></div>
-                    <button type="button" id="add-patrimonio-btn">+ Adicionar Patrimônio</button>
-                </div>
             </div>
 
-            <button type="submit" id="submit-btn">Enviar Respostas</button>
+            <div id="outras-pessoas-renda-container" style="display: ${formData.dados_pessoais && formData.dados_pessoais.renda_unica === 'nao' ? 'block' : 'none'}">
+                <label>Outras pessoas com renda na casa:</label>
+                <div id="pessoas-list"></div>
+                <button type="button" id="add-person-btn">Adicionar Pessoa</button>
+            </div>
+            
+            <hr>
+            <h2 id="dependentes-section-title" style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Dependentes</h2>
+            <div class="radio-group">
+                <label id="label_tem_dependentes">Você tem filho/pet/outros parentes que dependem de você?</label>
+                <div class="radio-options-vertical-group">
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="tem_dependentes_sim" name="tem_dependentes" value="sim" required ${formData.dependentes_info && formData.dependentes_info.tem_dependentes === 'sim' ? 'checked' : ''}>
+                        <label for="tem_dependentes_sim">Sim</label>
+                    </div>
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="tem_dependentes_nao" name="tem_dependentes" value="nao" ${formData.dependentes_info && formData.dependentes_info.tem_dependentes === 'nao' ? 'checked' : ''}>
+                        <label for="tem_dependentes_nao">Não</label>
+                    </div>
+                </div>
+            </div>
+            <div id="dependentes-list-container" style="display: ${formData.dependentes_info && formData.dependentes_info.tem_dependentes === 'sim' ? 'block' : 'none'}">
+                <div id="dependentes-list"></div>
+                <button type="button" id="add-dependente-btn">Adicionar Dependente</button>
+            </div>
+
+            <hr>
+            <h2 id="plano-saude-section-title" style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Plano de Saúde</h2>
+            <div id="plano-saude-section-content"></div>
+
+            <hr>
+            <h2 id="seguro-vida-section-title" style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Seguro de Vida</h2>
+            <div id="seguro-vida-section-content"></div>
+
+            <hr>
+            <h2 style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Patrimônio Físico</h2>
+            <div class="radio-group">
+                <label id="label_tem_patrimonio_fisico">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</label>
+                <div class="radio-options-vertical-group">
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="tem_patrimonio_fisico_sim" name="tem_patrimonio_fisico" value="sim" required ${formData.patrimonio_info && formData.patrimonio_info.tem_patrimonio_fisico === 'sim' ? 'checked' : ''}>
+                        <label for="tem_patrimonio_fisico_sim">Sim</label>
+                    </div>
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="tem_patrimonio_fisico_nao" name="tem_patrimonio_fisico" value="nao" ${formData.patrimonio_info && formData.patrimonio_info.tem_patrimonio_fisico === 'nao' ? 'checked' : ''}>
+                        <label for="tem_patrimonio_fisico_nao">Não</label>
+                    </div>
+                </div>
+            </div>
+            <div id="patrimonio-list-container" style="display: ${formData.patrimonio_info && formData.patrimonio_info.tem_patrimonio_fisico === 'sim' ? 'block' : 'none'}">
+                <div id="patrimonio-list"></div>
+                <button type="button" id="add-patrimonio-btn">Adicionar Patrimônio</button>
+            </div>
+
+            <hr>
+            <h2 style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Investimentos</h2>
+            <div class="radio-group">
+                <label>Você possui investimentos (renda fixa, ações, fundos, etc...)?</label>
+                <div class="radio-options-vertical-group">
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="tem_investimentos_sim" name="tem_investimentos" value="sim" required ${formData.investimentos_info && formData.investimentos_info.tem_investimentos === 'sim' ? 'checked' : ''}>
+                        <label for="tem_investimentos_sim">Sim</label>
+                    </div>
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="tem_investimentos_nao" name="tem_investimentos" value="nao" ${formData.investimentos_info && formData.investimentos_info.tem_investimentos === 'nao' ? 'checked' : ''}>
+                        <label for="tem_investimentos_nao">Não</label>
+                    </div>
+                </div>
+            </div>
+            <div id="investimentos-list-container" style="display: ${formData.investimentos_info && formData.investimentos_info.tem_investimentos === 'sim' ? 'block' : 'none'}">
+                <div id="investimentos-list"></div>
+                <button type="button" id="add-investimento-btn">Adicionar Investimento</button>
+            </div>
+
+            <hr>
+            <h2 style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Dívidas</h2>
+            <div class="radio-group">
+                <label>Você possui dívidas (empréstimos, financiamentos, etc...)?</label>
+                <div class="radio-options-vertical-group">
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required ${formData.dividas_info && formData.dividas_info.tem_dividas === 'sim' ? 'checked' : ''}>
+                        <label for="tem_dividas_sim">Sim</label>
+                    </div>
+                    <div class="radio-option-vertical-item">
+                        <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao" ${formData.dividas_info && formData.dividas_info.tem_dividas === 'nao' ? 'checked' : ''}>
+                        <label for="tem_dividas_nao">Não</label>
+                    </div>
+                </div>
+            </div>
+            <div id="dividas-list-container" style="display: ${formData.dividas_info && formData.dividas_info.tem_dividas === 'sim' ? 'block' : 'none'}">
+                <div id="dividas-list"></div>
+                <button type="button" id="add-divida-btn">Adicionar Dívida</button>
+            </div>
+
+            <button type="submit">Enviar Respostas</button>
         </form>
     `;
 
-    attachFormEventListeners(formData.id);
-    updateDynamicFormSections(); 
-}
-
-function attachFormEventListeners(formId) {
-    const clientResponseFormEl = document.getElementById("client-response-form");
-    const nomeCompletoInput = document.getElementById("nome_completo");
-    const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
-    const rendaUnicaNaoRadio = document.getElementById("renda_unica_nao");
-    const outrasPessoasContainerEl = document.getElementById("outras-pessoas-renda-container");
-    const addPersonBtn = document.getElementById("add-person-btn");
-    const pessoasListEl = document.getElementById("pessoas-list");
-
-    const temDependentesSimRadio = document.getElementById("tem_dependentes_sim");
-    const temDependentesNaoRadio = document.getElementById("tem_dependentes_nao");
-    const dependentesContainerEl = document.getElementById("dependentes-container");
-    const addDependenteBtn = document.getElementById("add-dependente-btn");
-    const dependentesListEl = document.getElementById("dependentes-list");
-
-    const temPatrimonioSimRadio = document.getElementById("tem_patrimonio_sim");
-    const temPatrimonioNaoRadio = document.getElementById("tem_patrimonio_nao");
-    const patrimonioListContainerEl = document.getElementById("patrimonio-list-container");
-    const addPatrimonioBtn = document.getElementById("add-patrimonio-btn");
-    const patrimonioListEl = document.getElementById("patrimonio-list");
-
-    if (nomeCompletoInput) {
-        nomeCompletoInput.addEventListener("input", () => {
+    // Event listeners for dynamic sections
+    document.getElementById("nome_completo").addEventListener("input", updateDynamicFormSections);
+    document.querySelectorAll('input[name="renda_unica"]').forEach(radio => {
+        radio.addEventListener("change", () => {
+            document.getElementById("outras-pessoas-renda-container").style.display = document.getElementById("renda_unica_nao").checked ? "block" : "none";
             updateDynamicFormSections();
         });
-    }
-
-    if (rendaUnicaSimRadio) {
-        rendaUnicaSimRadio.addEventListener("change", () => {
-            outrasPessoasContainerEl.style.display = "none";
-            pessoasListEl.innerHTML = ''; 
+    });
+    document.querySelectorAll('input[name="tem_dependentes"]').forEach(radio => {
+        radio.addEventListener("change", () => {
+            document.getElementById("dependentes-list-container").style.display = document.getElementById("tem_dependentes_sim").checked ? "block" : "none";
             updateDynamicFormSections();
         });
-    }
-    if (rendaUnicaNaoRadio) {
-        rendaUnicaNaoRadio.addEventListener("change", () => {
-            outrasPessoasContainerEl.style.display = "block";
-            updateDynamicFormSections();
+    });
+    document.querySelectorAll('input[name="tem_patrimonio_fisico"]').forEach(radio => {
+        radio.addEventListener("change", () => {
+            document.getElementById("patrimonio-list-container").style.display = document.getElementById("tem_patrimonio_fisico_sim").checked ? "block" : "none";
         });
+    });
+    document.querySelectorAll('input[name="tem_investimentos"]').forEach(radio => {
+        radio.addEventListener("change", () => {
+            document.getElementById("investimentos-list-container").style.display = document.getElementById("tem_investimentos_sim").checked ? "block" : "none";
+        });
+    });
+    document.querySelectorAll('input[name="tem_dividas"]').forEach(radio => {
+        radio.addEventListener("change", () => {
+            document.getElementById("dividas-list-container").style.display = document.getElementById("tem_dividas_sim").checked ? "block" : "none";
+        });
+    });
+
+    // Initialize dynamic lists and sections
+    if (formData.dados_pessoais && formData.dados_pessoais.outras_pessoas_renda) {
+        formData.dados_pessoais.outras_pessoas_renda.forEach((pessoa, index) => addPersonItem(pessoa, index));
+    }
+    if (formData.dependentes_info && formData.dependentes_info.dependentes_lista) {
+        formData.dependentes_info.dependentes_lista.forEach((dep, index) => addDependenteItem(dep, index));
+    }
+    if (formData.patrimonio_info && formData.patrimonio_info.patrimonios_lista) {
+        formData.patrimonio_info.patrimonios_lista.forEach((item, index) => addPatrimonioItem(item, index));
+    }
+    if (formData.investimentos_info && formData.investimentos_info.investimentos_lista) {
+        formData.investimentos_info.investimentos_lista.forEach((item, index) => addInvestimentoItem(item, index));
+    }
+    if (formData.dividas_info && formData.dividas_info.dividas_lista) {
+        formData.dividas_info.dividas_lista.forEach((item, index) => addDividaItem(item, index));
     }
 
-    if (addPersonBtn) {
-        addPersonBtn.addEventListener("click", () => {
-            const personIndex = pessoasListEl.children.length;
-            const newPersonEntry = document.createElement("div");
-            newPersonEntry.classList.add("person-entry");
-            newPersonEntry.innerHTML = `
-                <input type="text" name="pessoa_nome" placeholder="Nome da pessoa" required>
-                <label>Você precisa de autorização de <span class="person-name-placeholder"></span> para tomar decisões financeiras e agir?</label>
-                <select name="pessoa_autorizacao" required>
-                    <option value="" disabled selected>Selecione</option>
-                    <option value="sim">Sim</option>
-                    <option value="nao">Não</option>
-                </select>
-                <button type="button" class="remove-person-btn">Remover</button>
-            `;
-            pessoasListEl.appendChild(newPersonEntry);
-            const nomeInput = newPersonEntry.querySelector('input[name="pessoa_nome"]');
-            const placeholder = newPersonEntry.querySelector('.person-name-placeholder');
-            placeholder.textContent = "esta pessoa"; 
+    // Add event listeners for add buttons
+    document.getElementById("add-person-btn").addEventListener("click", () => addPersonItem());
+    document.getElementById("add-dependente-btn").addEventListener("click", () => addDependenteItem());
+    document.getElementById("add-patrimonio-btn").addEventListener("click", () => addPatrimonioItem());
+    document.getElementById("add-investimento-btn").addEventListener("click", () => addInvestimentoItem());
+    document.getElementById("add-divida-btn").addEventListener("click", () => addDividaItem());
 
-            nomeInput.addEventListener('input', () => {
-                const primeiroNome = nomeInput.value.trim().split(' ')[0];
-                placeholder.textContent = primeiroNome ? capitalizeName(primeiroNome) : "esta pessoa";
-                updateDynamicFormSections(); 
-            });
+    updateDynamicFormSections(); // Initial call to render dynamic sections like plano/seguro
 
-            newPersonEntry.querySelector(".remove-person-btn").addEventListener("click", () => {
-                newPersonEntry.remove();
-                updateDynamicFormSections();
-            });
-            updateDynamicFormSections(); 
-        });
-    }
-
-    if (temDependentesSimRadio) {
-        temDependentesSimRadio.addEventListener("change", () => {
-            dependentesContainerEl.style.display = "block";
-            updateDynamicFormSections();
-        });
-    }
-    if (temDependentesNaoRadio) {
-        temDependentesNaoRadio.addEventListener("change", () => {
-            dependentesContainerEl.style.display = "none";
-            dependentesListEl.innerHTML = ''; 
-            updateDynamicFormSections();
-        });
-    }
-    if (addDependenteBtn) {
-        addDependenteBtn.addEventListener("click", () => {
-            const depIndex = dependentesListEl.children.length;
-            const newDependenteEntry = document.createElement("div");
-            newDependenteEntry.classList.add("person-entry"); 
-            newDependenteEntry.innerHTML = `
-                <input type="text" name="dep_nome" placeholder="Nome do dependente" required>
-                <input type="number" name="dep_idade" placeholder="Idade" min="0" required>
-                <input type="text" name="dep_relacao" placeholder="Relação (filho(a), pai, mãe, irmã(o), Pet, etc...):" required>
-                <button type="button" class="remove-dependente-btn">Remover</button>
-            `;
-            dependentesListEl.appendChild(newDependenteEntry);
-            
-            // Adiciona listener ao campo nome do dependente para atualizar seções dinâmicas
-            const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
-            if (nomeDependenteInput) {
-                nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
+    // Form submission
+    document.getElementById("client-response-form").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        // ... (submission logic remains the same)
+        const form = event.target;
+        const data = new FormData(form);
+        const responseData = {
+            token_unico: formData.token_unico,
+            dados_pessoais: {
+                nome_completo: sanitizeInput(data.get("nome_completo")),
+                renda_unica: data.get("renda_unica"),
+                outras_pessoas_renda: []
+            },
+            dependentes_info: {
+                tem_dependentes: data.get("tem_dependentes"),
+                dependentes_lista: []
+            },
+            plano_saude_info: [],
+            seguro_vida_info: [],
+            patrimonio_info: {
+                tem_patrimonio_fisico: data.get("tem_patrimonio_fisico"),
+                patrimonios_lista: []
+            },
+            investimentos_info: {
+                tem_investimentos: data.get("tem_investimentos"),
+                investimentos_lista: []
+            },
+            dividas_info: {
+                tem_dividas: data.get("tem_dividas"),
+                dividas_lista: []
             }
+        };
 
-            newDependenteEntry.querySelector(".remove-dependente-btn").addEventListener("click", () => {
-                newDependenteEntry.remove();
-                updateDynamicFormSections();
-            });
-            updateDynamicFormSections();
-        });
-    }
-
-    if (temPatrimonioSimRadio) {
-        temPatrimonioSimRadio.addEventListener("change", () => {
-            patrimonioListContainerEl.style.display = "block";
-            updateDynamicFormSections();
-        });
-    }
-    if (temPatrimonioNaoRadio) {
-        temPatrimonioNaoRadio.addEventListener("change", () => {
-            patrimonioListContainerEl.style.display = "none";
-            patrimonioListEl.innerHTML = '';
-            updateDynamicFormSections();
-        });
-    }
-    if (addPatrimonioBtn) {
-        addPatrimonioBtn.addEventListener("click", () => {
-            const patrimonioIndex = patrimonioListEl.children.length;
-            const newPatrimonioEntry = document.createElement("div");
-            newPatrimonioEntry.classList.add("patrimonio-entry");
-            newPatrimonioEntry.innerHTML = `
-                <input type="text" name="patrimonio_qual" placeholder="Qual patrimônio? (ex: Apto 50m2, Corolla 2020)" required>
-                <input type="text" name="patrimonio_valor" placeholder="Quanto vale? (R$)" required class="currency-input">
-                <div class="radio-group-patrimonio-item">
-                    <label>Possui seguro?</label>
-                    <div class="radio-options-inline-patrimonio-item">
-                        <input type="radio" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
-                        <input type="radio" name="patrimonio_seguro_${patrimonioIndex}" value="nao"> <label for="patrimonio_seguro_${patrimonioIndex}_nao">Não</label>
-                    </div>
-                </div>
-                <div class="radio-group-patrimonio-item">
-                    <label>Está quitado?</label>
-                    <div class="radio-options-inline-patrimonio-item">
-                         <input type="radio" name="patrimonio_quitado_${patrimonioIndex}" value="sim" required> <label for="patrimonio_quitado_${patrimonioIndex}_sim">Sim</label>
-                         <input type="radio" name="patrimonio_quitado_${patrimonioIndex}" value="nao"> <label for="patrimonio_quitado_${patrimonioIndex}_nao">Não</label>
-                    </div>
-                </div>
-                <button type="button" class="remove-patrimonio-btn">Remover</button>
-            `;
-            patrimonioListEl.appendChild(newPatrimonioEntry);
-
-            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
-            valorInput.addEventListener('input', (e) => {
-                const rawValue = e.target.value.replace(/[^\d]/g, ''); // Remove tudo exceto dígitos
-                if (rawValue) {
-                    const number = parseInt(rawValue, 10) / 100;
-                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                } else {
-                    e.target.value = '';
-                }
-            });
-             valorInput.addEventListener('blur', (e) => { 
-                 const rawValue = e.target.value.replace(/[^\d]/g, '');
-                 if (rawValue) {
-                    const number = parseInt(rawValue, 10) / 100;
-                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-                 } else {
-                    e.target.value = '';
-                 }
-            });
-
-            newPatrimonioEntry.querySelector(".remove-patrimonio-btn").addEventListener("click", () => {
-                newPatrimonioEntry.remove();
-                updateDynamicFormSections();
-            });
-            updateDynamicFormSections();
-        });
-    }
-
-    if (clientResponseFormEl) {
-        clientResponseFormEl.addEventListener("submit", async (event) => {
-            event.preventDefault();
-            const submitButton = document.getElementById("submit-btn");
-            submitButton.disabled = true;
-            submitButton.textContent = "Enviando...";
-
-            try {
-                const formDataObject = new FormData(event.target);
-                const dadosFormulario = {
-                    nome_preenchido: sanitizeInput(formDataObject.get("nome_completo")),
-                    renda_unica: formDataObject.get("renda_unica"),
-                    outras_pessoas_renda: [],
-                    tem_dependentes: formDataObject.get("tem_dependentes"),
-                    dependentes: [],
-                    informacoes_plano_saude: [],
-                    informacoes_seguro_vida: [],
-                    possui_patrimonio_fisico: formDataObject.get("tem_patrimonio"),
-                    patrimonios_fisicos: []
-                };
-
-                if (dadosFormulario.renda_unica === "nao") {
-                    document.querySelectorAll("#pessoas-list .person-entry").forEach(entry => {
-                        const nome = entry.querySelector('input[name="pessoa_nome"]')?.value;
-                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
-                        if (nome) {
-                            dadosFormulario.outras_pessoas_renda.push({
-                                nome: sanitizeInput(nome),
-                                autorizacao_financeira: autorizacao
-                            });
-                        }
-                    });
-                }
-
-                if (dadosFormulario.tem_dependentes === "sim") {
-                    document.querySelectorAll("#dependentes-list .person-entry").forEach(entry => {
-                        const nome = entry.querySelector('input[name="dep_nome"]')?.value;
-                        const idade = entry.querySelector('input[name="dep_idade"]')?.value;
-                        const relacao = entry.querySelector('input[name="dep_relacao"]')?.value;
-                        if (nome) {
-                            dadosFormulario.dependentes.push({
-                                nome: sanitizeInput(nome),
-                                idade: idade ? parseInt(idade) : null,
-                                relacao: sanitizeInput(relacao)
-                            });
-                        }
-                    });
-                }
-
-                document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
-                    const personName = entry.dataset.personName;
-                    const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]')?.name;
-                    const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
-                    if (selectedRadio) {
-                        dadosFormulario.informacoes_plano_saude.push({
-                            nome_pessoa: sanitizeInput(personName),
-                            tipo_pessoa: personType,
-                            possui_plano: selectedRadio.value
-                        });
-                    }
+        // Coletar outras pessoas com renda
+        if (responseData.dados_pessoais.renda_unica === "nao") {
+            document.querySelectorAll("#pessoas-list .person-entry").forEach(entry => {
+                responseData.dados_pessoais.outras_pessoas_renda.push({
+                    nome: sanitizeInput(entry.querySelector('input[name="pessoa_nome"]').value),
+                    parentesco: sanitizeInput(entry.querySelector('select[name="pessoa_parentesco"]').value),
+                    renda_mensal: formatCurrency(entry.querySelector('input[name="pessoa_renda"]').value) || null
                 });
-
-                document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
-                    const personName = entry.dataset.personName;
-                    const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]')?.name;
-                    const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
-                    if (selectedRadio) {
-                        dadosFormulario.informacoes_seguro_vida.push({
-                            nome_pessoa: sanitizeInput(personName),
-                            tipo_pessoa: personType,
-                            possui_seguro: selectedRadio.value
-                        });
-                    }
+            });
+        }
+        // Coletar dependentes
+        if (responseData.dependentes_info.tem_dependentes === "sim") {
+            document.querySelectorAll("#dependentes-list .person-entry").forEach(entry => {
+                responseData.dependentes_info.dependentes_lista.push({
+                    nome: sanitizeInput(entry.querySelector('input[name="dep_nome"]').value),
+                    data_nascimento: sanitizeInput(entry.querySelector('input[name="dep_data_nasc"]').value),
+                    parentesco: sanitizeInput(entry.querySelector('select[name="dep_parentesco"]').value)
                 });
-
-                if (dadosFormulario.possui_patrimonio_fisico === "sim") {
-                    document.querySelectorAll("#patrimonio-list .patrimonio-entry").forEach((entry, index) => {
-                        const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value;
-                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
-                        let valorNumerico = null;
-                        if (valorRaw) {
-                            const cleanedValor = String(valorRaw).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
-                            valorNumerico = parseFloat(cleanedValor);
-                        }
-                        const seguro = entry.querySelector(`input[name="patrimonio_seguro_${index}"]:checked`)?.value;
-                        const quitado = entry.querySelector(`input[name="patrimonio_quitado_${index}"]:checked`)?.value;
-                        if (qual) {
-                            dadosFormulario.patrimonios_fisicos.push({
-                                descricao: sanitizeInput(qual),
-                                valor: !isNaN(valorNumerico) ? valorNumerico : null,
-                                seguro: seguro,
-                                quitado: quitado
-                            });
-                        }
-                    });
-                }
-
-                const { error: updateError } = await supabase
-                    .from("formularios_clientes")
-                    .update({
-                        dados_formulario: dadosFormulario,
-                        status: "preenchido",
-                        data_preenchimento: new Date().toISOString(),
-                    })
-                    .eq("id", formId);
-
-                if (updateError) throw updateError;
-
-                showMessage("success", "Formulário enviado com sucesso!");
-                formContentEl.innerHTML = "<p>Obrigado por preencher o formulário.</p>";
-
-            } catch (error) {
-                console.error("Erro ao enviar formulário:", error);
-                showMessage("error", `Erro ao enviar: ${error.message}`);
-                submitButton.disabled = false;
-                submitButton.textContent = "Enviar Respostas";
+            });
+        }
+        // Coletar Plano de Saúde
+        document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
+            const personName = entry.dataset.personName;
+            const personType = entry.dataset.personType;
+            const radioName = entry.querySelector("input[type='radio']").name;
+            const selectedValue = data.get(radioName);
+            if (selectedValue) {
+                responseData.plano_saude_info.push({
+                    pessoa_nome: personName,
+                    pessoa_tipo: personType,
+                    possui_plano: selectedValue
+                });
             }
         });
-    }
+        // Coletar Seguro de Vida
+        document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
+            const personName = entry.dataset.personName;
+            const personType = entry.dataset.personType;
+            const radioName = entry.querySelector("input[type='radio']").name;
+            const selectedValue = data.get(radioName);
+            if (selectedValue) {
+                responseData.seguro_vida_info.push({
+                    pessoa_nome: personName,
+                    pessoa_tipo: personType,
+                    possui_seguro: selectedValue
+                });
+            }
+        });
+        // Coletar Patrimônios
+        if (responseData.patrimonio_info.tem_patrimonio_fisico === "sim") {
+            document.querySelectorAll("#patrimonio-list .patrimonio-entry").forEach(entry => {
+                const idSuffix = entry.id.split('_').pop();
+                responseData.patrimonio_info.patrimonios_lista.push({
+                    descricao: sanitizeInput(entry.querySelector(`#patrimonio_${idSuffix}_descricao`).value),
+                    valor_estimado: formatCurrency(entry.querySelector(`#patrimonio_${idSuffix}_valor`).value) || null,
+                    possui_seguro: entry.querySelector(`input[name="patrimonio_${idSuffix}_seguro"]:checked`)?.value || 'nao_informado',
+                    esta_quitado: entry.querySelector(`input[name="patrimonio_${idSuffix}_quitado"]:checked`)?.value || 'nao_informado'
+                });
+            });
+        }
+        // Coletar Investimentos
+        if (responseData.investimentos_info.tem_investimentos === "sim") {
+            document.querySelectorAll("#investimentos-list .investimento-entry").forEach(entry => {
+                const idSuffix = entry.id.split('_').pop();
+                responseData.investimentos_info.investimentos_lista.push({
+                    tipo: sanitizeInput(entry.querySelector(`#investimento_${idSuffix}_tipo`).value),
+                    valor_atual: formatCurrency(entry.querySelector(`#investimento_${idSuffix}_valor`).value) || null,
+                    liquidez: sanitizeInput(entry.querySelector(`#investimento_${idSuffix}_liquidez`).value)
+                });
+            });
+        }
+        // Coletar Dívidas
+        if (responseData.dividas_info.tem_dividas === "sim") {
+            document.querySelectorAll("#dividas-list .divida-entry").forEach(entry => {
+                const idSuffix = entry.id.split('_').pop();
+                responseData.dividas_info.dividas_lista.push({
+                    descricao: sanitizeInput(entry.querySelector(`#divida_${idSuffix}_descricao`).value),
+                    saldo_devedor: formatCurrency(entry.querySelector(`#divida_${idSuffix}_saldo`).value) || null,
+                    taxa_juros_anual: sanitizeInput(entry.querySelector(`#divida_${idSuffix}_juros`).value) || null,
+                    prazo_restante_meses: sanitizeInput(entry.querySelector(`#divida_${idSuffix}_prazo`).value) || null,
+                    em_dia: entry.querySelector(`input[name="divida_${idSuffix}_em_dia"]:checked`)?.value || 'nao_informado'
+                });
+            });
+        }
+
+        try {
+            const { error: updateError } = await supabase
+                .from("formularios_clientes")
+                .update({
+                    dados_pessoais: responseData.dados_pessoais,
+                    dependentes_info: responseData.dependentes_info,
+                    plano_saude_info: responseData.plano_saude_info,
+                    seguro_vida_info: responseData.seguro_vida_info,
+                    patrimonio_info: responseData.patrimonio_info,
+                    investimentos_info: responseData.investimentos_info,
+                    dividas_info: responseData.dividas_info,
+                    status: "preenchido",
+                    data_preenchimento: new Date().toISOString()
+                })
+                .eq("token_unico", formData.token_unico);
+
+            if (updateError) throw updateError;
+
+            formContentEl.innerHTML = "<p>Formulário enviado com sucesso!</p>";
+            showMessage("success", "Obrigado por preencher o formulário.");
+
+        } catch (error) {
+            console.error("Erro ao enviar formulário:", error);
+            showMessage("error", `Erro ao enviar: ${error.message}`);
+        }
+    });
 }
 
-// --- Inicialização ---
-document.addEventListener("DOMContentLoaded", () => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
-    loadForm(token);
-});
+// Funções para adicionar/remover itens dinâmicos (pessoas, dependentes, patrimônio, etc.)
+let personIdCounter = 0;
+function addPersonItem(pessoa = {}, index = null) {
+    const list = document.getElementById("pessoas-list");
+    const personDiv = document.createElement("div");
+    const idSuffix = index !== null ? `edit_${index}` : `new_${personIdCounter++}`;
+    personDiv.classList.add("person-entry");
+    personDiv.id = `person_${idSuffix}`;
+    personDiv.innerHTML = `
+        <label for="pessoa_nome_${idSuffix}">Nome:</label>
+        <input type="text" id="pessoa_nome_${idSuffix}" name="pessoa_nome" value="${sanitizeInput(pessoa.nome || '')}" required>
+        <label for="pessoa_parentesco_${idSuffix}">Parentesco:</label>
+        <select id="pessoa_parentesco_${idSuffix}" name="pessoa_parentesco">
+            <option value="conjuge" ${pessoa.parentesco === 'conjuge' ? 'selected' : ''}>Cônjuge</option>
+            <option value="parceiro_a" ${pessoa.parentesco === 'parceiro_a' ? 'selected' : ''}>Parceiro(a)</option>
+            <option value="outro" ${pessoa.parentesco === 'outro' ? 'selected' : ''}>Outro</option>
+        </select>
+        <label for="pessoa_renda_${idSuffix}">Renda Mensal (R$):</label>
+        <input type="text" id="pessoa_renda_${idSuffix}" name="pessoa_renda" value="${formatCurrency(pessoa.renda_mensal || '')}" placeholder="R$ 0,00" oninput="this.value = formatCurrency(this.value)">
+        <button type="button" class="remove-person-btn">Remover</button>
+    `;
+    personDiv.querySelector(".remove-person-btn").addEventListener("click", () => { 
+        personDiv.remove(); 
+        updateDynamicFormSections(); 
+    });
+    list.appendChild(personDiv);
+    personDiv.querySelector('input[name="pessoa_nome"]').addEventListener("input", updateDynamicFormSections);
+}
+
+let dependenteIdCounter = 0;
+function addDependenteItem(dep = {}, index = null) {
+    const list = document.getElementById("dependentes-list");
+    const depDiv = document.createElement("div");
+    const idSuffix = index !== null ? `edit_${index}` : `new_${dependenteIdCounter++}`;
+    depDiv.classList.add("person-entry"); // Reutilizando a classe .person-entry para estilo similar
+    depDiv.id = `dependente_${idSuffix}`;
+    depDiv.innerHTML = `
+        <label for="dep_nome_${idSuffix}">Nome do Dependente:</label>
+        <input type="text" id="dep_nome_${idSuffix}" name="dep_nome" value="${sanitizeInput(dep.nome || '')}" required>
+        <label for="dep_data_nasc_${idSuffix}">Data de Nascimento:</label>
+        <input type="date" id="dep_data_nasc_${idSuffix}" name="dep_data_nasc" value="${sanitizeInput(dep.data_nascimento || '')}">
+        <label for="dep_parentesco_${idSuffix}">Parentesco:</label>
+        <select id="dep_parentesco_${idSuffix}" name="dep_parentesco">
+            <option value="filho_a" ${dep.parentesco === 'filho_a' ? 'selected' : ''}>Filho(a)</option>
+            <option value="enteado_a" ${dep.parentesco === 'enteado_a' ? 'selected' : ''}>Enteado(a)</option>
+            <option value="pai_mae" ${dep.parentesco === 'pai_mae' ? 'selected' : ''}>Pai/Mãe</option>
+            <option value="irmao_a" ${dep.parentesco === 'irmao_a' ? 'selected' : ''}>Irmão/Irmã</option>
+            <option value="pet" ${dep.parentesco === 'pet' ? 'selected' : ''}>Pet</option>
+            <option value="outro" ${dep.parentesco === 'outro' ? 'selected' : ''}>Outro</option>
+        </select>
+        <button type="button" class="remove-person-btn">Remover</button>
+    `;
+    depDiv.querySelector(".remove-person-btn").addEventListener("click", () => { 
+        depDiv.remove(); 
+        updateDynamicFormSections(); 
+    });
+    list.appendChild(depDiv);
+    depDiv.querySelector('input[name="dep_nome"]').addEventListener("input", updateDynamicFormSections);
+}
+
+let patrimonioIdCounter = 0;
+function addPatrimonioItem(item = {}, index = null) {
+    const list = document.getElementById("patrimonio-list");
+    const patrimonioDiv = document.createElement("div");
+    const idSuffix = index !== null ? `edit_${index}` : `new_${patrimonioIdCounter++}`;
+    patrimonioDiv.classList.add("person-entry"); // Reutilizando .person-entry
+    patrimonioDiv.id = `patrimonio_${idSuffix}`;
+    patrimonioDiv.innerHTML = `
+        <label for="patrimonio_${idSuffix}_descricao">Descrição (ex: Carro Sandero 2017, Apto Centro):</label>
+        <input type="text" id="patrimonio_${idSuffix}_descricao" name="patrimonio_descricao" value="${sanitizeInput(item.descricao || '')}" required>
+        <label for="patrimonio_${idSuffix}_valor">Valor Estimado (R$):</label>
+        <input type="text" id="patrimonio_${idSuffix}_valor" name="patrimonio_valor" value="${formatCurrency(item.valor_estimado || '')}" placeholder="R$ 0,00" oninput="this.value = formatCurrency(this.value)">
+        
+        <div class="radio-group" style="margin-top: 0.5rem;">
+            <label>Possui seguro?</label>
+            <div class="radio-options-vertical-group">
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="patrimonio_${idSuffix}_seguro_sim" name="patrimonio_${idSuffix}_seguro" value="sim" ${item.possui_seguro === 'sim' ? 'checked' : ''}>
+                    <label for="patrimonio_${idSuffix}_seguro_sim">Sim</label>
+                </div>
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="patrimonio_${idSuffix}_seguro_nao" name="patrimonio_${idSuffix}_seguro" value="nao" ${item.possui_seguro === 'nao' || !item.possui_seguro ? 'checked' : ''}>
+                    <label for="patrimonio_${idSuffix}_seguro_nao">Não</label>
+                </div>
+            </div>
+        </div>
+
+        <div class="radio-group" style="margin-top: 0.5rem;">
+            <label>Está quitado?</label>
+            <div class="radio-options-vertical-group">
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="patrimonio_${idSuffix}_quitado_sim" name="patrimonio_${idSuffix}_quitado" value="sim" ${item.esta_quitado === 'sim' ? 'checked' : ''}>
+                    <label for="patrimonio_${idSuffix}_quitado_sim">Sim</label>
+                </div>
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="patrimonio_${idSuffix}_quitado_nao" name="patrimonio_${idSuffix}_quitado" value="nao" ${item.esta_quitado === 'nao' || !item.esta_quitado ? 'checked' : ''}>
+                    <label for="patrimonio_${idSuffix}_quitado_nao">Não</label>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="remove-person-btn">Remover Patrimônio</button>
+    `;
+    patrimonioDiv.querySelector(".remove-person-btn").addEventListener("click", () => patrimonioDiv.remove());
+    list.appendChild(patrimonioDiv);
+}
+
+let investimentoIdCounter = 0;
+function addInvestimentoItem(item = {}, index = null) {
+    const list = document.getElementById("investimentos-list");
+    const investimentoDiv = document.createElement("div");
+    const idSuffix = index !== null ? `edit_${index}` : `new_${investimentoIdCounter++}`;
+    investimentoDiv.classList.add("person-entry");
+    investimentoDiv.id = `investimento_${idSuffix}`;
+    investimentoDiv.innerHTML = `
+        <label for="investimento_${idSuffix}_tipo">Tipo de Investimento (ex: CDB, Ações XPTO, Fundo Imobiliário):</label>
+        <input type="text" id="investimento_${idSuffix}_tipo" name="investimento_tipo" value="${sanitizeInput(item.tipo || '')}" required>
+        <label for="investimento_${idSuffix}_valor">Valor Atual (R$):</label>
+        <input type="text" id="investimento_${idSuffix}_valor" name="investimento_valor" value="${formatCurrency(item.valor_atual || '')}" placeholder="R$ 0,00" oninput="this.value = formatCurrency(this.value)">
+        <label for="investimento_${idSuffix}_liquidez">Liquidez (ex: D+0, D+30, Baixa):</label>
+        <input type="text" id="investimento_${idSuffix}_liquidez" name="investimento_liquidez" value="${sanitizeInput(item.liquidez || '')}">
+        <button type="button" class="remove-person-btn">Remover Investimento</button>
+    `;
+    investimentoDiv.querySelector(".remove-person-btn").addEventListener("click", () => investimentoDiv.remove());
+    list.appendChild(investimentoDiv);
+}
+
+let dividaIdCounter = 0;
+function addDividaItem(item = {}, index = null) {
+    const list = document.getElementById("dividas-list");
+    const dividaDiv = document.createElement("div");
+    const idSuffix = index !== null ? `edit_${index}` : `new_${dividaIdCounter++}`;
+    dividaDiv.classList.add("person-entry");
+    dividaDiv.id = `divida_${idSuffix}`;
+    dividaDiv.innerHTML = `
+        <label for="divida_${idSuffix}_descricao">Descrição da Dívida (ex: Financiamento Imobiliário, Empréstimo Pessoal):</label>
+        <input type="text" id="divida_${idSuffix}_descricao" name="divida_descricao" value="${sanitizeInput(item.descricao || '')}" required>
+        <label for="divida_${idSuffix}_saldo">Saldo Devedor (R$):</label>
+        <input type="text" id="divida_${idSuffix}_saldo" name="divida_saldo" value="${formatCurrency(item.saldo_devedor || '')}" placeholder="R$ 0,00" oninput="this.value = formatCurrency(this.value)">
+        <label for="divida_${idSuffix}_juros">Taxa de Juros Anual (%):</label>
+        <input type="text" id="divida_${idSuffix}_juros" name="divida_juros" value="${sanitizeInput(item.taxa_juros_anual || '')}" placeholder="Ex: 12.5">
+        <label for="divida_${idSuffix}_prazo">Prazo Restante (meses):</label>
+        <input type="text" id="divida_${idSuffix}_prazo" name="divida_prazo" value="${sanitizeInput(item.prazo_restante_meses || '')}" placeholder="Ex: 36">
+        <div class="radio-group" style="margin-top: 0.5rem;">
+            <label>A dívida está em dia?</label>
+            <div class="radio-options-vertical-group">
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="divida_${idSuffix}_em_dia_sim" name="divida_${idSuffix}_em_dia" value="sim" ${item.em_dia === 'sim' ? 'checked' : ''}>
+                    <label for="divida_${idSuffix}_em_dia_sim">Sim</label>
+                </div>
+                <div class="radio-option-vertical-item">
+                    <input type="radio" id="divida_${idSuffix}_em_dia_nao" name="divida_${idSuffix}_em_dia" value="nao" ${item.em_dia === 'nao' || !item.em_dia ? 'checked' : ''}>
+                    <label for="divida_${idSuffix}_em_dia_nao">Não</label>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="remove-person-btn">Remover Dívida</button>
+    `;
+    dividaDiv.querySelector(".remove-person-btn").addEventListener("click", () => dividaDiv.remove());
+    list.appendChild(dividaDiv);
+}
 
