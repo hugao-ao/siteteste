@@ -518,8 +518,9 @@ function attachFormEventListeners(formId) {
             const newPatrimonioEntry = document.createElement("div");
             newPatrimonioEntry.classList.add("dynamic-entry-item");
             newPatrimonioEntry.innerHTML = `
-                <input type="text" name="patrimonio_qual" placeholder="Qual patrimônio? (ex: Apto 50m2, Corolla 2020)" required>
-                <input type="text" name="patrimonio_valor" placeholder="Quanto vale? (R$)" required class="cu                <div class=\"question-block-radio-group\">
+                <input type=\"text\" name=\"patrimonio_qual\" placeholder=\"Qual patrimônio? (ex: Apto 50m2, Corolla 2020)\" required>
+                <input type=\"text\" name=\"patrimonio_valor\" placeholder=\"Quanto vale? (R$)\" required class=\"currency-input\">
+                <div class=\"question-block-radio-group\">
                     <span class=\"question-label\">Possui seguro?</span>
                     <div class=\"radio-options-horizontal\">
                         <div class=\"radio-option-item\">
@@ -545,7 +546,9 @@ function attachFormEventListeners(formId) {
                         </div>
                     </div>
                 </div>
-                <button type=\"button\" class=\"remove-item-btn remove-patrimonio-btn\">Remover</button>atrimonioListEl.appendChild(newPatrimonioEntry);
+                <button type=\"button\" class=\"remove-item-btn remove-patrimonio-btn\">Remover</button>
+            `;
+            patrimonioListEl.appendChild(newPatrimonioEntry);
 
             const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
             valorInput.addEventListener('input', (e) => {
