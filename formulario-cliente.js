@@ -10,22 +10,18 @@ const formTitleEl = document.getElementById("form-title");
 let planoSaudeSelections = {};
 let seguroVidaSelections = {};
 
-// --- Funções de Utilidade ---
-const sanitizeInput = (str) => {
+// --- Funções de Utilidade ---const sanitizeInput = (str) => {
   if (str === null || str === undefined) return "";
-   return String(str)
+  return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
+    .replace(/`/g, "&#x60;")
     .replace(/
 \n|
-|\n/g, "<br>")
-    .replace(/	/g, "&emsp;")
-    .replace(//g, "")
-    .replace(//g, "")
-    .replace(/'/g, "&#x27;")
-    .replace(/`/g, "&#x60;");
+|\n/g, "<br>");
 };
 
 const handleCurrencyInput = (event) => {
