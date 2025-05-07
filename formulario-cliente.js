@@ -451,7 +451,7 @@ function attachFormEventListeners(formId) {
                 updateDynamicFormSections(); 
             });
 
-            newPersonEntry.querySelector(".remove-item-btn").addEventListener("click", () => {
+            newPersonEntry.querySelector(".remove-person-btn").addEventListener("click", () => {
                 newPersonEntry.remove();
                 updateDynamicFormSections();
             });
@@ -491,7 +491,7 @@ function attachFormEventListeners(formId) {
                 nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
             }
 
-            newDependenteEntry.querySelector(".remove-item-btn").addEventListener("click", () => {
+            newDependenteEntry.querySelector(".remove-dependente-btn").addEventListener("click", () => {
                 newDependenteEntry.remove();
                 updateDynamicFormSections();
             });
@@ -516,37 +516,25 @@ function attachFormEventListeners(formId) {
         addPatrimonioBtn.addEventListener("click", () => {
             const patrimonioIndex = patrimonioListEl.children.length;
             const newPatrimonioEntry = document.createElement("div");
-            newPatrimonioEntry.classList.add("dynamic-entry-item");
+            newPatrimonioEntry.classList.add("patrimonio-entry");
             newPatrimonioEntry.innerHTML = `
-                <input type=\"text\" name=\"patrimonio_qual\" placeholder=\"Qual patrimônio? (ex: Apto 50m2, Corolla 2020)\" required>
-                <input type=\"text\" name=\"patrimonio_valor\" placeholder=\"Quanto vale? (R$)\" required class=\"currency-input\">
-                <div class=\"question-block-radio-group\">
-                    <span class=\"question-label\">Possui seguro?</span>
-                    <div class=\"radio-options-horizontal\">
-                        <div class=\"radio-option-item\">
-                            <input type=\"radio\" id=\"patrimonio_seguro_sim_${patrimonioIndex}\" name=\"patrimonio_seguro_${patrimonioIndex}\" value=\"sim\" required>
-                            <label for=\"patrimonio_seguro_sim_${patrimonioIndex}\">Sim</label>
-                        </div>
-                        <div class=\"radio-option-item\">
-                            <input type=\"radio\" id=\"patrimonio_seguro_nao_${patrimonioIndex}\" name=\"patrimonio_seguro_${patrimonioIndex}\" value=\"nao\">
-                            <label for=\"patrimonio_seguro_nao_${patrimonioIndex}\">Não</label>
-                        </div>
+                <input type="text" name="patrimonio_qual" placeholder="Qual patrimônio? (ex: Apto 50m2, Corolla 2020)" required>
+                <input type="text" name="patrimonio_valor" placeholder="Quanto vale? (R$)" required class="currency-input">
+                <div class="radio-group-patrimonio-item">
+                    <label>Possui seguro?</label>
+                    <div class="radio-options-inline-patrimonio-item">
+                        <input type="radio" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
+                        <input type="radio" name="patrimonio_seguro_${patrimonioIndex}" value="nao"> <label for="patrimonio_seguro_${patrimonioIndex}_nao">Não</label>
                     </div>
                 </div>
-                <div class=\"question-block-radio-group\">
-                    <span class=\"question-label\">Está quitado?</span>
-                    <div class=\"radio-options-horizontal\">
-                        <div class=\"radio-option-item\">
-                            <input type=\"radio\" id=\"patrimonio_quitado_sim_${patrimonioIndex}\" name=\"patrimonio_quitado_${patrimonioIndex}\" value=\"sim\" required>
-                            <label for=\"patrimonio_quitado_sim_${patrimonioIndex}\">Sim</label>
-                        </div>
-                        <div class=\"radio-option-item\">
-                            <input type=\"radio\" id=\"patrimonio_quitado_nao_${patrimonioIndex}\" name=\"patrimonio_quitado_${patrimonioIndex}\" value=\"nao\">
-                            <label for=\"patrimonio_quitado_nao_${patrimonioIndex}\">Não</label>
-                        </div>
+                <div class="radio-group-patrimonio-item">
+                    <label>Está quitado?</label>
+                    <div class="radio-options-inline-patrimonio-item">
+                         <input type="radio" name="patrimonio_quitado_${patrimonioIndex}" value="sim" required> <label for="patrimonio_quitado_${patrimonioIndex}_sim">Sim</label>
+                         <input type="radio" name="patrimonio_quitado_${patrimonioIndex}" value="nao"> <label for="patrimonio_quitado_${patrimonioIndex}_nao">Não</label>
                     </div>
                 </div>
-                <button type=\"button\" class=\"remove-item-btn remove-patrimonio-btn\">Remover</button>
+                <button type="button" class="remove-patrimonio-btn">Remover</button>
             `;
             patrimonioListEl.appendChild(newPatrimonioEntry);
 
@@ -570,7 +558,7 @@ function attachFormEventListeners(formId) {
                  }
             });
 
-            newPatrimonioEntry.querySelector(".remove-item-btn").addEventListener("click", () => {
+            newPatrimonioEntry.querySelector(".remove-patrimonio-btn").addEventListener("click", () => {
                 newPatrimonioEntry.remove();
                 updateDynamicFormSections();
             });
@@ -707,4 +695,3 @@ document.addEventListener("DOMContentLoaded", () => {
     const token = params.get("token");
     loadForm(token);
 });
-
