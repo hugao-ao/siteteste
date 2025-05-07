@@ -287,9 +287,9 @@ async function loadForm(token) {
             }
             return;
         }
-        if (formData.clientes && formData.clientes.nome) {
-            formTitleEl.textContent = `Formulário para ${capitalizeName(sanitizeInput(formData.clientes.nome))}`;
-        }
+        // MODIFICADO: Alterar título do formulário
+        formTitleEl.textContent = "Formulário de Pré-Diagnóstico"; 
+
         if (formData.status === "pendente") {
             renderActualForm(formData);
         } else if (formData.status === "preenchido") {
@@ -510,15 +510,15 @@ function attachFormEventListeners(formId) {
             newPatrimonioEntry.innerHTML = `
                 <input type="text" name="patrimonio_qual" placeholder="Qual patrimônio? (ex: Apto 50m2, Corolla 2020)" required>
                 <input type="text" name="patrimonio_valor" placeholder="Quanto vale? (R$)" required class="currency-input">
-                <div class="patrimonio-radio-group-container"> <!-- NOVO CONTAINER FLEX -->
-                    <div class="patrimonio-radio-group-item"> <!-- Item para Seguro -->
+                <div class="patrimonio-radio-group-container"> 
+                    <div class="patrimonio-radio-group-item">
                         <label>Possui seguro?</label>
                         <div class="radio-options-inline-patrimonio-item">
                             <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_sim" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
                             <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_nao" name="patrimonio_seguro_${patrimonioIndex}" value="nao"> <label for="patrimonio_seguro_${patrimonioIndex}_nao">Não</label>
                         </div>
                     </div>
-                    <div class="patrimonio-radio-group-item"> <!-- Item para Quitado -->
+                    <div class="patrimonio-radio-group-item">
                         <label>Está quitado?</label>
                         <div class="radio-options-inline-patrimonio-item">
                             <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_sim" name="patrimonio_quitado_${patrimonioIndex}" value="sim" required> <label for="patrimonio_quitado_${patrimonioIndex}_sim">Sim</label>
