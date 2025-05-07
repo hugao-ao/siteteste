@@ -1,0 +1,152 @@
+/* --- Sidebar Styles --- */
+#sidebar {
+  width: 250px; /* Default width */
+  background-color: var(--theme-bg-surface); /* USA VARIÁVEL DE TEMA */
+  padding: 1.5rem 0;
+  display: flex;
+  flex-direction: column;
+  transition: width 0.3s ease, background-color 0.3s ease; /* Add background transition */
+  position: fixed; /* Keep sidebar fixed */
+  left: 0;
+  top: 0;
+  bottom: 0;
+  z-index: 1000; /* Ensure sidebar is on top */
+  border-right: 1px solid var(--theme-border-color); /* USA VARIÁVEL DE TEMA */
+}
+
+#sidebar.collapsed {
+  width: 60px; /* Collapsed width */
+}
+
+#sidebar-toggle {
+  background: none;
+  border: none;
+  color: var(--theme-secondary-lighter); /* USA VARIÁVEL DE TEMA */
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0 1.2rem; /* Adjust padding for toggle */
+  margin-bottom: 1.5rem;
+  text-align: right; /* Align icon to the right when expanded */
+  transition: color 0.3s ease;
+}
+
+#sidebar.collapsed #sidebar-toggle {
+  text-align: center; /* Center icon when collapsed */
+  padding: 0;
+}
+
+.sidebar-menu {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  flex-grow: 1; /* Allow menu to fill space */
+}
+
+.sidebar-menu li a,
+.sidebar-menu li button {
+  display: flex;
+  align-items: center;
+  padding: 0.8rem 1.2rem;
+  color: var(--theme-text-muted); /* USA VARIÁVEL DE TEMA */
+  text-decoration: none;
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden; /* Hide text when collapsed */
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-size: 1rem;
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+.sidebar-menu li button#sidebar-logout-btn {
+  margin-top: auto; /* Push logout to the bottom */
+}
+
+.sidebar-menu li a i,
+.sidebar-menu li button i {
+  margin-right: 0.8rem;
+  font-size: 1.1rem;
+  width: 24px; /* Fixed width for icon */
+  text-align: center;
+}
+
+#sidebar.collapsed .sidebar-menu li a span,
+#sidebar.collapsed .sidebar-menu li button span {
+  display: none; /* Hide text when collapsed */
+}
+
+#sidebar.collapsed .sidebar-menu li a i,
+#sidebar.collapsed .sidebar-menu li button i {
+  margin-right: 0;
+}
+
+/* Use a subtle background color from the theme for hover/active */
+.sidebar-menu li a:hover,
+.sidebar-menu li button:hover,
+.sidebar-menu li a.active,
+.sidebar-menu li button.active {
+  background-color: rgba(var(--theme-primary-rgb, 0, 0, 0), 0.1); /* Usa RGB da primária com alpha, fallback para preto */
+  color: var(--theme-text-light); /* USA VARIÁVEL DE TEMA */
+}
+
+/* Adiciona variáveis RGB para temas (necessário para rgba) */
+.theme-admin {
+  --theme-primary-rgb: 2, 48, 32; /* Emerald Dark */
+}
+.theme-argos {
+   --theme-primary-rgb: 30, 144, 255; /* Dodger Blue */
+}
+.theme-hvc {
+   --theme-primary-rgb: 0, 0, 128; /* Navy */
+}
+.theme-planejamento {
+   --theme-primary-rgb: 0, 100, 0; /* Dark Green */
+}
+.theme-default { /* Fallback */
+   --theme-primary-rgb: 30, 30, 30;
+}
+
+
+/* --- Main Content Styles (related to sidebar) --- */
+/* These should be applied in the specific page's CSS or <style> tag */
+/* Example for #main-content: */
+/*
+#main-content {
+  flex-grow: 1;
+  padding: 2rem;
+  margin-left: 250px; 
+  transition: margin-left 0.3s ease;
+}
+#main-content.sidebar-collapsed {
+  margin-left: 60px; 
+}
+*/
+
+/* --- Responsive adjustments (optional) --- */
+@media (max-width: 768px) {
+  #sidebar {
+    width: 60px; /* Collapse sidebar by default on smaller screens */
+  }
+  #sidebar.collapsed {
+    width: 60px;
+  }
+  /* Adjust main content margin in the specific page's CSS */
+  /* Example: #main-content { margin-left: 60px; } */
+
+  /* Hide text even when not explicitly collapsed on small screens */
+  #sidebar .sidebar-menu li a span,
+  #sidebar .sidebar-menu li button span {
+    display: none;
+  }
+  #sidebar .sidebar-menu li a i,
+  #sidebar .sidebar-menu li button i {
+    margin-right: 0;
+  }
+  #sidebar-toggle {
+    text-align: center;
+    padding: 0;
+  }
+}
+
