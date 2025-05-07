@@ -10,7 +10,8 @@ const formTitleEl = document.getElementById("form-title");
 let planoSaudeSelections = {};
 let seguroVidaSelections = {};
 
-// --- Funções de Utilidade ---const sanitizeInput = (str) => {
+// --- Funções de Utilidade ---
+const sanitizeInput = (str) => {
   if (str === null || str === undefined) {
     return "";
   }
@@ -19,7 +20,7 @@ let seguroVidaSelections = {};
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;")
+    .replace(/	/g, "&#x27;")
     .replace(/`/g, "&#x60;")
     .replace(/
 \n|
@@ -27,89 +28,128 @@ let seguroVidaSelections = {};
 };
 
 const handleCurrencyInput = (event) => {
-    let value = event.target.value;
-    value = value.replace(/[^\d,.]/g, "");
-    const parts = value.split(/[,.]/);
-    if (parts.length > 1) {
-        value = parts[0] + "." + parts.slice(1).join("");
-    }
-    event.target.value = value;
+  let value = event.target.value;
+  value = value.replace(/[^\d,.]/g, "");
+  const parts = value.split(/[,.]/);
+  if (parts.length > 1) {
+    value = parts[0] + "." + parts.slice(1).join("");
+  }
+  event.target.value = value;
 };
 
 const formatCurrencyOnBlur = (event) => {
-    let value = event.target.value;
-    if (value === null || value === undefined || String(value).trim() === "") {
-        event.target.value = "";
-        return;
-    }
-    let numericValue = parseFloat(String(value).replace("R$", "").replace(/\./g, "").replace(",", "."));
-    if (isNaN(numericValue)) {
-        event.target.value = "";
-        return;
-    }
-    event.target.value = numericValue.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  let value = event.target.value;
+  if (value === null || value === undefined || String(value).trim() === "") {
+    event.target.value = "";
+    return;
+  }
+  let numericValue = parseFloat(
+    String(value).replace("R$", "").replace(/
+						\./g, "").replace(",", ".")
+  );
+  if (isNaN(numericValue)) {
+    event.target.value = "";
+    return;
+  }
+  event.target.value = numericValue.toLocaleString("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  });
 };
 
 const parseCurrency = (formattedValue) => {
-    if (formattedValue === null || formattedValue === undefined || typeof formattedValue !== "string" || formattedValue.trim() === "") {
-        return null;
-    }
-    const numericString = formattedValue.replace(/R\$\s?/, "").replace(/\./g, "").replace(",", ".");
-    const number = parseFloat(numericString);
-    return isNaN(number) ? null : number;
+  if (
+    formattedValue === null ||
+    formattedValue === undefined ||
+    typeof formattedValue !== "string" ||
+    formattedValue.trim() === ""
+  ) {
+    return null;
+  }
+  const numericString = formattedValue
+    .replace(/R\$\s?/, "")
+    .replace(/
+						\./g, "")
+    .replace(",", ".");
+  const number = parseFloat(numericString);
+  return isNaN(number) ? null : number;
 };
 
 const capitalizeName = (name) => {
-    if (!name) return "";
-    return name.toLowerCase().split(" ").map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(" ");
+  if (!name) return "";
+  return name
+    .toLowerCase()
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
 };
 
 function showMessage(type, text) {
-    messageAreaEl.innerHTML = `<div class="message ${type}">${sanitizeInput(text)}</div>`;
+  messageAreaEl.innerHTML = `<div class="message ${type}">${sanitizeInput(
+    text
+  )}</div>`;
 }
 
 function updatePerguntaDependentesLabel() {
-    const labelTemDependentes = document.getElementById("label_tem_dependentes");
-    if (!labelTemDependentes) return;
-    const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
-    const outrasPessoasInputs = document.querySelectorAll("#pessoas-list .item-entry input[name=\"pessoa_nome\"]");
-    let temOutrasPessoasComRenda = false;
-    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        outrasPessoasInputs.forEach(input => {
-            if (input.value.trim() !== "") {
-                temOutrasPessoasComRenda = true;
-            }
-        });
-    }
-    if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
-        labelTemDependentes.textContent = "Você tem filho/pet/outros parentes que dependem de você?";
-    } else if (temOutrasPessoasComRenda) {
-        labelTemDependentes.textContent = "Vocês têm filho/pet/outros parentes que dependem de vocês?";
-    } else {
-        labelTemDependentes.textContent = "Você tem filho/pet/outros parentes que dependem de você?";
-    }
+  const labelTemDependentes = document.getElementById("label_tem_dependentes");
+  if (!labelTemDependentes) return;
+  const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
+  const outrasPessoasInputs = document.querySelectorAll(
+    '#pessoas-list .item-entry input[name="pessoa_nome"]'
+  );
+  let temOutrasPessoasComRenda = false;
+  if (
+    document.getElementById("renda_unica_nao") &&
+    document.getElementById("renda_unica_nao").checked
+  ) {
+    outrasPessoasInputs.forEach((input) => {
+      if (input.value.trim() !== "") {
+        temOutrasPessoasComRenda = true;
+      }
+    });
+  }
+  if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
+    labelTemDependentes.textContent =
+      "Você tem filho/pet/outros parentes que dependem de você?";
+  } else if (temOutrasPessoasComRenda) {
+    labelTemDependentes.textContent =
+      "Vocês têm filho/pet/outros parentes que dependem de vocês?";
+  } else {
+    labelTemDependentes.textContent =
+      "Você tem filho/pet/outros parentes que dependem de você?";
+  }
 }
 
 function updatePerguntaPatrimonioFisicoLabel() {
-    const labelTemPatrimonio = document.getElementById("label_tem_patrimonio_fisico");
-    if (!labelTemPatrimonio) return;
-    const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
-    const outrasPessoasInputs = document.querySelectorAll("#pessoas-list .item-entry input[name=\"pessoa_nome\"]");
-    let temOutrasPessoasComRenda = false;
-    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        outrasPessoasInputs.forEach(input => {
-            if (input.value.trim() !== "") {
-                temOutrasPessoasComRenda = true;
-            }
-        });
-    }
-    if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
-        labelTemPatrimonio.textContent = "Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?";
-    } else if (temOutrasPessoasComRenda) {
-        labelTemPatrimonio.textContent = "Vocês possuem patrimônio físico (imóvel, automóvel, jóias, outros...)?";
-    } else {
-        labelTemPatrimonio.textContent = "Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?";
-    }
+  const labelTemPatrimonio = document.getElementById(
+    "label_tem_patrimonio_fisico"
+  );
+  if (!labelTemPatrimonio) return;
+  const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
+  const outrasPessoasInputs = document.querySelectorAll(
+    '#pessoas-list .item-entry input[name="pessoa_nome"]'
+  );
+  let temOutrasPessoasComRenda = false;
+  if (
+    document.getElementById("renda_unica_nao") &&
+    document.getElementById("renda_unica_nao").checked
+  ) {
+    outrasPessoasInputs.forEach((input) => {
+      if (input.value.trim() !== "") {
+        temOutrasPessoasComRenda = true;
+      }
+    });
+  }
+  if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
+    labelTemPatrimonio.textContent =
+      "Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?";
+  } else if (temOutrasPessoasComRenda) {
+    labelTemPatrimonio.textContent =
+      "Vocês possuem patrimônio físico (imóvel, automóvel, jóias, outros...)?";
+  } else {
+    labelTemPatrimonio.textContent =
+      "Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?";
+  }
 }
 
 function getPessoasComRendaParaDropdown() {
@@ -1078,4 +1118,3 @@ BRL
 const urlParams = new URLSearchParams(window.location.search);
 const token = urlParams.get("token");
 loadForm(token);
-
