@@ -10,7 +10,8 @@ const formTitleEl = document.getElementById("form-title");
 let planoSaudeSelections = {};
 let seguroVidaSelections = {};
 
-// --- Funções de Utilidade --const sanitizeInput = (str) => {
+// --- Funções de Utilidade ---
+const sanitizeInput = (str) => {
   if (str === null || str === undefined) {
     return "";
   }
