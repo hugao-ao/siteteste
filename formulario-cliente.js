@@ -451,7 +451,7 @@ function attachFormEventListeners(formId) {
                 updateDynamicFormSections(); 
             });
 
-            newPersonEntry.querySelector(".remove-person-btn").addEventListener("click", () => {
+            newPersonEntry.querySelector(".remove-item-btn").addEventListener("click", () => {
                 newPersonEntry.remove();
                 updateDynamicFormSections();
             });
@@ -491,7 +491,7 @@ function attachFormEventListeners(formId) {
                 nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
             }
 
-            newDependenteEntry.querySelector(".remove-dependente-btn").addEventListener("click", () => {
+            newDependenteEntry.querySelector(".remove-item-btn").addEventListener("click", () => {
                 newDependenteEntry.remove();
                 updateDynamicFormSections();
             });
@@ -570,7 +570,7 @@ function attachFormEventListeners(formId) {
                  }
             });
 
-            newPatrimonioEntry.querySelector(".remove-patrimonio-btn").addEventListener("click", () => {
+            newPatrimonioEntry.querySelector(".remove-item-btn").addEventListener("click", () => {
                 newPatrimonioEntry.remove();
                 updateDynamicFormSections();
             });
