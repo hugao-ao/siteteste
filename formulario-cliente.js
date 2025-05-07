@@ -1,9 +1,3 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get("token");
-    loadForm(token);
-});
-
 // formulario-cliente.js
 import { supabase } from "./supabase.js";
 
@@ -103,7 +97,7 @@ function savePlanoSaudeSelections() {
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
     planoSaudeSelections = {};
-    container.querySelectorAll(".plano-saude-entry .radio-option-vertical-item input[type='radio']").forEach(radio => {
+    container.querySelectorAll(".plano-saude-entry .radio-option-item input[type='radio']").forEach(radio => {
         if (radio.checked) {
             planoSaudeSelections[radio.name] = radio.value;
         }
@@ -158,21 +152,20 @@ function renderPlanoSaudeQuestions() {
         const nomeCapitalizado = capitalizeName(primeiroNome);
         const personId = `plano_saude_${pessoa.id}`;
         const entryDiv = document.createElement("div");
-        entryDiv.classList.add("plano-saude-entry");
+        entryDiv.classList.add("plano-saude-entry", "radio-group");
         entryDiv.style.marginBottom = "1rem";
-        // Utiliza radio-options-horizontal-container para agrupar os itens verticalmente orientados
         entryDiv.innerHTML = `
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">${nomeCapitalizado} possui plano de saúde?</label>
-            <div class="radio-options-horizontal-container">
-                <div class="radio-option-vertical-item">
+            <span class="radio-group-question">${nomeCapitalizado} possui plano de saúde?</span>
+            <div class="radio-options-container">
+                <div class="radio-option-item">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
                     <label for="${personId}_sim">Sim</label>
                 </div>
-                <div class="radio-option-vertical-item">
+                <div class="radio-option-item">
                     <input type="radio" id="${personId}_nao" name="${personId}" value="nao">
                     <label for="${personId}_nao">Não</label>
                 </div>
-                <div class="radio-option-vertical-item">
+                <div class="radio-option-item">
                     <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei">
                     <label for="${personId}_naosei">Não sei informar</label>
                 </div>
@@ -189,7 +182,7 @@ function saveSeguroVidaSelections() {
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
     seguroVidaSelections = {}; 
-    container.querySelectorAll(".seguro-vida-entry .radio-option-vertical-item input[type='radio']").forEach(radio => {
+    container.querySelectorAll(".seguro-vida-entry .radio-option-item input[type='radio']").forEach(radio => {
         if (radio.checked) {
             seguroVidaSelections[radio.name] = radio.value;
         }
@@ -236,21 +229,20 @@ function renderSeguroVidaQuestions() {
         const nomeCapitalizado = capitalizeName(primeiroNome);
         const personId = `seguro_vida_${pessoa.id}`;
         const entryDiv = document.createElement("div");
-        entryDiv.classList.add("seguro-vida-entry");
+        entryDiv.classList.add("seguro-vida-entry", "radio-group");
         entryDiv.style.marginBottom = "1rem";
-        // Utiliza radio-options-horizontal-container para agrupar os itens verticalmente orientados
         entryDiv.innerHTML = `
-            <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">${nomeCapitalizado} possui seguro de vida?</label>
-            <div class="radio-options-horizontal-container">
-                <div class="radio-option-vertical-item">
+            <span class="radio-group-question">${nomeCapitalizado} possui seguro de vida?</span>
+            <div class="radio-options-container">
+                <div class="radio-option-item">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
                     <label for="${personId}_sim">Sim</label>
                 </div>
-                <div class="radio-option-vertical-item">
+                <div class="radio-option-item">
                     <input type="radio" id="${personId}_nao" name="${personId}" value="nao">
                     <label for="${personId}_nao">Não</label>
                 </div>
-                <div class="radio-option-vertical-item">
+                <div class="radio-option-item">
                     <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei">
                     <label for="${personId}_naosei">Não sei informar</label>
                 </div>
@@ -319,13 +311,13 @@ function renderActualForm(formData) {
             <input type="text" id="nome_completo" name="nome_completo" value="${preenchedorNome}" required>
 
             <div class="radio-group">
-                <label>Você é a única pessoa que possui renda na sua casa?</label>
-                <div class="radio-options-vertical-group">
-                    <div class="radio-option-vertical-item">
+                <span class="radio-group-question">Você é a única pessoa que possui renda na sua casa?</span>
+                <div class="radio-options-container">
+                    <div class="radio-option-item">
                         <input type="radio" id="renda_unica_sim" name="renda_unica" value="sim" required ${formData.dados_pessoais && formData.dados_pessoais.renda_unica === 'sim' ? 'checked' : ''}>
                         <label for="renda_unica_sim">Sim</label>
                     </div>
-                    <div class="radio-option-vertical-item">
+                    <div class="radio-option-item">
                         <input type="radio" id="renda_unica_nao" name="renda_unica" value="nao" ${formData.dados_pessoais && formData.dados_pessoais.renda_unica === 'nao' ? 'checked' : ''}>
                         <label for="renda_unica_nao">Não</label>
                     </div>
@@ -341,13 +333,13 @@ function renderActualForm(formData) {
             <hr>
             <h2 id="dependentes-section-title" style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Dependentes</h2>
             <div class="radio-group">
-                <label id="label_tem_dependentes">Você tem filho/pet/outros parentes que dependem de você?</label>
-                <div class="radio-options-vertical-group">
-                    <div class="radio-option-vertical-item">
+                <span class="radio-group-question" id="label_tem_dependentes">Você tem filho/pet/outros parentes que dependem de você?</span>
+                <div class="radio-options-container">
+                    <div class="radio-option-item">
                         <input type="radio" id="tem_dependentes_sim" name="tem_dependentes" value="sim" required ${formData.dependentes_info && formData.dependentes_info.tem_dependentes === 'sim' ? 'checked' : ''}>
                         <label for="tem_dependentes_sim">Sim</label>
                     </div>
-                    <div class="radio-option-vertical-item">
+                    <div class="radio-option-item">
                         <input type="radio" id="tem_dependentes_nao" name="tem_dependentes" value="nao" ${formData.dependentes_info && formData.dependentes_info.tem_dependentes === 'nao' ? 'checked' : ''}>
                         <label for="tem_dependentes_nao">Não</label>
                     </div>
@@ -369,13 +361,13 @@ function renderActualForm(formData) {
             <hr>
             <h2 style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Patrimônio Físico</h2>
             <div class="radio-group">
-                <label id="label_tem_patrimonio_fisico">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</label>
-                <div class="radio-options-vertical-group">
-                    <div class="radio-option-vertical-item">
+                <span class="radio-group-question" id="label_tem_patrimonio_fisico">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</span>
+                <div class="radio-options-container">
+                    <div class="radio-option-item">
                         <input type="radio" id="tem_patrimonio_fisico_sim" name="tem_patrimonio_fisico" value="sim" required ${formData.patrimonio_info && formData.patrimonio_info.tem_patrimonio_fisico === 'sim' ? 'checked' : ''}>
                         <label for="tem_patrimonio_fisico_sim">Sim</label>
                     </div>
-                    <div class="radio-option-vertical-item">
+                    <div class="radio-option-item">
                         <input type="radio" id="tem_patrimonio_fisico_nao" name="tem_patrimonio_fisico" value="nao" ${formData.patrimonio_info && formData.patrimonio_info.tem_patrimonio_fisico === 'nao' ? 'checked' : ''}>
                         <label for="tem_patrimonio_fisico_nao">Não</label>
                     </div>
@@ -389,13 +381,13 @@ function renderActualForm(formData) {
             <hr>
             <h2 style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Investimentos</h2>
             <div class="radio-group">
-                <label>Você possui investimentos (renda fixa, ações, fundos, etc...)?</label>
-                <div class="radio-options-vertical-group">
-                    <div class="radio-option-vertical-item">
+                <span class="radio-group-question">Você possui investimentos (renda fixa, ações, fundos, etc...)?</span>
+                <div class="radio-options-container">
+                    <div class="radio-option-item">
                         <input type="radio" id="tem_investimentos_sim" name="tem_investimentos" value="sim" required ${formData.investimentos_info && formData.investimentos_info.tem_investimentos === 'sim' ? 'checked' : ''}>
                         <label for="tem_investimentos_sim">Sim</label>
                     </div>
-                    <div class="radio-option-vertical-item">
+                    <div class="radio-option-item">
                         <input type="radio" id="tem_investimentos_nao" name="tem_investimentos" value="nao" ${formData.investimentos_info && formData.investimentos_info.tem_investimentos === 'nao' ? 'checked' : ''}>
                         <label for="tem_investimentos_nao">Não</label>
                     </div>
@@ -409,13 +401,13 @@ function renderActualForm(formData) {
             <hr>
             <h2 style="text-align: left; margin-top:1.5rem; margin-bottom:1rem; color: var(--theme-text-light);">Dívidas</h2>
             <div class="radio-group">
-                <label>Você possui dívidas (empréstimos, financiamentos, etc...)?</label>
-                <div class="radio-options-vertical-group">
-                    <div class="radio-option-vertical-item">
+                <span class="radio-group-question">Você possui dívidas (empréstimos, financiamentos, etc...)?</span>
+                <div class="radio-options-container">
+                    <div class="radio-option-item">
                         <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required ${formData.dividas_info && formData.dividas_info.tem_dividas === 'sim' ? 'checked' : ''}>
                         <label for="tem_dividas_sim">Sim</label>
                     </div>
-                    <div class="radio-option-vertical-item">
+                    <div class="radio-option-item">
                         <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao" ${formData.dividas_info && formData.dividas_info.tem_dividas === 'nao' ? 'checked' : ''}>
                         <label for="tem_dividas_nao">Não</label>
                     </div>
@@ -696,7 +688,7 @@ function addPatrimonioItem(item = {}, index = null) {
     const list = document.getElementById("patrimonio-list");
     const patrimonioDiv = document.createElement("div");
     const idSuffix = index !== null ? `edit_${index}` : `new_${patrimonioIdCounter++}`;
-    patrimonioDiv.classList.add("person-entry"); // Reutilizando .person-entry
+    patrimonioDiv.classList.add("person-entry"); 
     patrimonioDiv.id = `patrimonio_${idSuffix}`;
     patrimonioDiv.innerHTML = `
         <label for="patrimonio_${idSuffix}_descricao">Descrição (ex: Carro Sandero 2017, Apto Centro):</label>
@@ -704,30 +696,32 @@ function addPatrimonioItem(item = {}, index = null) {
         <label for="patrimonio_${idSuffix}_valor">Valor Estimado (R$):</label>
         <input type="text" id="patrimonio_${idSuffix}_valor" name="patrimonio_valor" value="${formatCurrency(item.valor_estimado || '')}" placeholder="R$ 0,00" oninput="this.value = formatCurrency(this.value)">
         
-        <div class="radio-group" style="margin-top: 0.5rem;">
-            <label>Possui seguro?</label>
-            <div class="radio-options-vertical-group">
-                <div class="radio-option-vertical-item">
-                    <input type="radio" id="patrimonio_${idSuffix}_seguro_sim" name="patrimonio_${idSuffix}_seguro" value="sim" ${item.possui_seguro === 'sim' ? 'checked' : ''}>
-                    <label for="patrimonio_${idSuffix}_seguro_sim">Sim</label>
-                </div>
-                <div class="radio-option-vertical-item">
-                    <input type="radio" id="patrimonio_${idSuffix}_seguro_nao" name="patrimonio_${idSuffix}_seguro" value="nao" ${item.possui_seguro === 'nao' || !item.possui_seguro ? 'checked' : ''}>
-                    <label for="patrimonio_${idSuffix}_seguro_nao">Não</label>
+        <div class="patrimonio-perguntas-duplas-container">
+            <div class="radio-group-inline">
+                <span class="radio-group-question-inline">Possui seguro?</span>
+                <div class="radio-options-container">
+                    <div class="radio-option-item">
+                        <input type="radio" id="patrimonio_${idSuffix}_seguro_sim" name="patrimonio_${idSuffix}_seguro" value="sim" ${item.possui_seguro === 'sim' ? 'checked' : ''}>
+                        <label for="patrimonio_${idSuffix}_seguro_sim">Sim</label>
+                    </div>
+                    <div class="radio-option-item">
+                        <input type="radio" id="patrimonio_${idSuffix}_seguro_nao" name="patrimonio_${idSuffix}_seguro" value="nao" ${item.possui_seguro === 'nao' || !item.possui_seguro ? 'checked' : ''}>
+                        <label for="patrimonio_${idSuffix}_seguro_nao">Não</label>
+                    </div>
                 </div>
             </div>
-        </div>
 
-        <div class="radio-group" style="margin-top: 0.5rem;">
-            <label>Está quitado?</label>
-            <div class="radio-options-vertical-group">
-                <div class="radio-option-vertical-item">
-                    <input type="radio" id="patrimonio_${idSuffix}_quitado_sim" name="patrimonio_${idSuffix}_quitado" value="sim" ${item.esta_quitado === 'sim' ? 'checked' : ''}>
-                    <label for="patrimonio_${idSuffix}_quitado_sim">Sim</label>
-                </div>
-                <div class="radio-option-vertical-item">
-                    <input type="radio" id="patrimonio_${idSuffix}_quitado_nao" name="patrimonio_${idSuffix}_quitado" value="nao" ${item.esta_quitado === 'nao' || !item.esta_quitado ? 'checked' : ''}>
-                    <label for="patrimonio_${idSuffix}_quitado_nao">Não</label>
+            <div class="radio-group-inline">
+                <span class="radio-group-question-inline">Está quitado?</span>
+                <div class="radio-options-container">
+                    <div class="radio-option-item">
+                        <input type="radio" id="patrimonio_${idSuffix}_quitado_sim" name="patrimonio_${idSuffix}_quitado" value="sim" ${item.esta_quitado === 'sim' ? 'checked' : ''}>
+                        <label for="patrimonio_${idSuffix}_quitado_sim">Sim</label>
+                    </div>
+                    <div class="radio-option-item">
+                        <input type="radio" id="patrimonio_${idSuffix}_quitado_nao" name="patrimonio_${idSuffix}_quitado" value="nao" ${item.esta_quitado === 'nao' || !item.esta_quitado ? 'checked' : ''}>
+                        <label for="patrimonio_${idSuffix}_quitado_nao">Não</label>
+                    </div>
                 </div>
             </div>
         </div>
@@ -774,13 +768,13 @@ function addDividaItem(item = {}, index = null) {
         <label for="divida_${idSuffix}_prazo">Prazo Restante (meses):</label>
         <input type="text" id="divida_${idSuffix}_prazo" name="divida_prazo" value="${sanitizeInput(item.prazo_restante_meses || '')}" placeholder="Ex: 36">
         <div class="radio-group" style="margin-top: 0.5rem;">
-            <label>A dívida está em dia?</label>
-            <div class="radio-options-vertical-group">
-                <div class="radio-option-vertical-item">
+            <span class="radio-group-question">A dívida está em dia?</span>
+            <div class="radio-options-container">
+                <div class="radio-option-item">
                     <input type="radio" id="divida_${idSuffix}_em_dia_sim" name="divida_${idSuffix}_em_dia" value="sim" ${item.em_dia === 'sim' ? 'checked' : ''}>
                     <label for="divida_${idSuffix}_em_dia_sim">Sim</label>
                 </div>
-                <div class="radio-option-vertical-item">
+                <div class="radio-option-item">
                     <input type="radio" id="divida_${idSuffix}_em_dia_nao" name="divida_${idSuffix}_em_dia" value="nao" ${item.em_dia === 'nao' || !item.em_dia ? 'checked' : ''}>
                     <label for="divida_${idSuffix}_em_dia_nao">Não</label>
                 </div>
@@ -791,3 +785,10 @@ function addDividaItem(item = {}, index = null) {
     dividaDiv.querySelector(".remove-person-btn").addEventListener("click", () => dividaDiv.remove());
     list.appendChild(dividaDiv);
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    loadForm(token);
+});
+
