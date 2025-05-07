@@ -39,10 +39,7 @@ const formatCurrencyOnBlur = (event) => {
     event.target.value = "";
     return;
   }
-  let numericValue = parseFloat(
-    String(value).replace("R$", "").replace(/
-						\./g, "").replace(",", ".")
-  );
+  let numericValue = parseFl    String(value).replace("R$", "").replace(/\./g, "").replace(",", "."));
   if (isNaN(numericValue)) {
     event.target.value = "";
     return;
