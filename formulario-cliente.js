@@ -127,7 +127,7 @@ function renderPlanoSaudeQuestions() {
         pessoasDaCasa.push({ id: "preenchedor_plano", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO: .person-entry para .dynamic-entry-item
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `outra_pessoa_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
@@ -135,7 +135,7 @@ function renderPlanoSaudeQuestions() {
         });
     }
     if (document.getElementById("tem_dependentes_sim") && document.getElementById("tem_dependentes_sim").checked) {
-        document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO: .person-entry para .dynamic-entry-item
+        document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach((entry, index) => { 
             const nomeInput = entry.querySelector('input[name="dep_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `dependente_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "dependente" });
@@ -214,7 +214,7 @@ function renderSeguroVidaQuestions() {
         pessoasComRenda.push({ id: "preenchedor_seguro", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO: .person-entry para .dynamic-entry-item
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasComRenda.push({ id: `outra_pessoa_seguro_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
@@ -323,7 +323,7 @@ function renderActualForm(formData) {
             <div id="outras-pessoas-renda-container" style="display: none;">
                 <label>Outras pessoas com renda na casa:</label>
                 <div id="pessoas-list"></div>
-                <button type="button" id="add-person-btn" class="add-dynamic-entry-btn">+ Adicionar Pessoa com Renda</button> <!-- MODIFICADO: Adicionada classe -->
+                <button type="button" id="add-person-btn" class="add-dynamic-entry-btn">+ Adicionar Pessoa com Renda</button>
             </div>
 
             <div class="radio-group" style="margin-top: 2rem;">
@@ -337,22 +337,19 @@ function renderActualForm(formData) {
             <div id="dependentes-container" style="display:none;">
                 <label>Dependentes:</label>
                 <div id="dependentes-list"></div>
-                <button type="button" id="add-dependente-btn" class="add-dynamic-entry-btn">+ Adicionar Dependente</button> <!-- MODIFICADO: Adicionada classe -->
+                <button type="button" id="add-dependente-btn" class="add-dynamic-entry-btn">+ Adicionar Dependente</button>
             </div>
             
-            <!-- Seção de Plano de Saúde -->
             <div id="plano-saude-section" style="margin-top: 2rem;">
                 <h3 id="plano-saude-section-title" style="display: none;">Informações sobre Plano de Saúde:</h3>
                 <div id="plano-saude-section-content"></div>
             </div>
 
-            <!-- Seção de Seguro de Vida -->
             <div id="seguro-vida-section" style="margin-top: 2rem;">
                 <h3 id="seguro-vida-section-title" style="display: none;">Informações sobre Seguro de Vida:</h3>
                 <div id="seguro-vida-section-content"></div>
             </div>
 
-            <!-- Seção de Patrimônio Físico -->
             <div id="patrimonio-fisico-section" style="margin-top: 2rem;">
                  <div class="radio-group">
                     <label id="label_tem_patrimonio_fisico">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</label><br>
@@ -366,7 +363,7 @@ function renderActualForm(formData) {
                 <div id="patrimonio-list-container" style="display:none;">
                     <label>Patrimônios:</label>
                     <div id="patrimonio-list"></div>
-                    <button type="button" id="add-patrimonio-btn">+ Adicionar Patrimônio</button>
+                    <button type="button" id="add-patrimonio-btn" class="add-dynamic-entry-btn">+ Adicionar Patrimônio</button> 
                 </div>
             </div>
 
@@ -423,7 +420,7 @@ function attachFormEventListeners(formId) {
         addPersonBtn.addEventListener("click", () => {
             const personIndex = pessoasListEl.children.length;
             const newPersonEntry = document.createElement("div");
-            newPersonEntry.classList.add("dynamic-entry-item"); // MODIFICADO: .person-entry para .dynamic-entry-item
+            newPersonEntry.classList.add("dynamic-entry-item"); 
             newPersonEntry.innerHTML = `
                 <input type="text" name="pessoa_nome" placeholder="Nome da pessoa" required>
                 <label>Você precisa de autorização de <span class="person-name-placeholder"></span> para tomar decisões financeiras e agir?</label>
@@ -432,7 +429,7 @@ function attachFormEventListeners(formId) {
                     <option value="sim">Sim</option>
                     <option value="nao">Não</option>
                 </select>
-                <button type="button" class="remove-dynamic-entry-btn">Remover</button> <!-- MODIFICADO: .remove-person-btn para .remove-dynamic-entry-btn -->
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
             `;
             pessoasListEl.appendChild(newPersonEntry);
             const nomeInput = newPersonEntry.querySelector('input[name="pessoa_nome"]');
@@ -445,7 +442,7 @@ function attachFormEventListeners(formId) {
                 updateDynamicFormSections(); 
             });
 
-            newPersonEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { // MODIFICADO
+            newPersonEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
                 newPersonEntry.remove();
                 updateDynamicFormSections();
             });
@@ -470,12 +467,12 @@ function attachFormEventListeners(formId) {
         addDependenteBtn.addEventListener("click", () => {
             const depIndex = dependentesListEl.children.length;
             const newDependenteEntry = document.createElement("div");
-            newDependenteEntry.classList.add("dynamic-entry-item"); // MODIFICADO: .person-entry para .dynamic-entry-item
+            newDependenteEntry.classList.add("dynamic-entry-item"); 
             newDependenteEntry.innerHTML = `
                 <input type="text" name="dep_nome" placeholder="Nome do dependente" required>
                 <input type="number" name="dep_idade" placeholder="Idade" min="0" required>
                 <input type="text" name="dep_relacao" placeholder="Relação (filho(a), pai, mãe, irmã(o), Pet, etc...):" required>
-                <button type="button" class="remove-dynamic-entry-btn">Remover</button> <!-- MODIFICADO: .remove-dependente-btn para .remove-dynamic-entry-btn -->
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
             `;
             dependentesListEl.appendChild(newDependenteEntry);
             
@@ -484,7 +481,7 @@ function attachFormEventListeners(formId) {
                 nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
             }
 
-            newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { // MODIFICADO
+            newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
                 newDependenteEntry.remove();
                 updateDynamicFormSections();
             });
@@ -509,25 +506,27 @@ function attachFormEventListeners(formId) {
         addPatrimonioBtn.addEventListener("click", () => {
             const patrimonioIndex = patrimonioListEl.children.length;
             const newPatrimonioEntry = document.createElement("div");
-            newPatrimonioEntry.classList.add("dynamic-entry-item"); // MODIFICADO: .patrimonio-entry para .dynamic-entry-item (para consistência, se aplicável)
+            newPatrimonioEntry.classList.add("dynamic-entry-item"); 
             newPatrimonioEntry.innerHTML = `
                 <input type="text" name="patrimonio_qual" placeholder="Qual patrimônio? (ex: Apto 50m2, Corolla 2020)" required>
                 <input type="text" name="patrimonio_valor" placeholder="Quanto vale? (R$)" required class="currency-input">
-                <div class="radio-group-patrimonio-item">
-                    <label>Possui seguro?</label>
-                    <div class="radio-options-inline-patrimonio-item">
-                        <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_sim" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
-                        <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_nao" name="patrimonio_seguro_${patrimonioIndex}" value="nao"> <label for="patrimonio_seguro_${patrimonioIndex}_nao">Não</label>
+                <div class="patrimonio-radio-group-container"> <!-- NOVO CONTAINER FLEX -->
+                    <div class="patrimonio-radio-group-item"> <!-- Item para Seguro -->
+                        <label>Possui seguro?</label>
+                        <div class="radio-options-inline-patrimonio-item">
+                            <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_sim" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
+                            <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_nao" name="patrimonio_seguro_${patrimonioIndex}" value="nao"> <label for="patrimonio_seguro_${patrimonioIndex}_nao">Não</label>
+                        </div>
+                    </div>
+                    <div class="patrimonio-radio-group-item"> <!-- Item para Quitado -->
+                        <label>Está quitado?</label>
+                        <div class="radio-options-inline-patrimonio-item">
+                            <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_sim" name="patrimonio_quitado_${patrimonioIndex}" value="sim" required> <label for="patrimonio_quitado_${patrimonioIndex}_sim">Sim</label>
+                            <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_nao" name="patrimonio_quitado_${patrimonioIndex}" value="nao"> <label for="patrimonio_quitado_${patrimonioIndex}_nao">Não</label>
+                        </div>
                     </div>
                 </div>
-                <div class="radio-group-patrimonio-item">
-                    <label>Está quitado?</label>
-                    <div class="radio-options-inline-patrimonio-item">
-                         <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_sim" name="patrimonio_quitado_${patrimonioIndex}" value="sim" required> <label for="patrimonio_quitado_${patrimonioIndex}_sim">Sim</label>
-                         <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_nao" name="patrimonio_quitado_${patrimonioIndex}" value="nao"> <label for="patrimonio_quitado_${patrimonioIndex}_nao">Não</label>
-                    </div>
-                </div>
-                <button type="button" class="remove-dynamic-entry-btn">Remover</button> <!-- MODIFICADO: .remove-patrimonio-btn para .remove-dynamic-entry-btn (para consistência) -->
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
             `;
             patrimonioListEl.appendChild(newPatrimonioEntry);
 
@@ -551,7 +550,7 @@ function attachFormEventListeners(formId) {
                  }
             });
 
-            newPatrimonioEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { // MODIFICADO
+            newPatrimonioEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
                 newPatrimonioEntry.remove();
                 updateDynamicFormSections();
             });
@@ -581,7 +580,7 @@ function attachFormEventListeners(formId) {
                 };
 
                 if (dadosFormulario.renda_unica === "nao") {
-                    document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => { // MODIFICADO
+                    document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => { 
                         const nome = entry.querySelector('input[name="pessoa_nome"]')?.value;
                         const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
                         if (nome) {
@@ -594,7 +593,7 @@ function attachFormEventListeners(formId) {
                 }
 
                 if (dadosFormulario.tem_dependentes === "sim") {
-                    document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => { // MODIFICADO
+                    document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => { 
                         const nome = entry.querySelector('input[name="dep_nome"]')?.value;
                         const idade = entry.querySelector('input[name="dep_idade"]')?.value;
                         const relacao = entry.querySelector('input[name="dep_relacao"]')?.value;
@@ -637,7 +636,7 @@ function attachFormEventListeners(formId) {
                 });
 
                 if (dadosFormulario.possui_patrimonio_fisico === "sim") {
-                    document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO
+                    document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach((entry, index) => { 
                         const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value;
                         const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
                         let valorNumerico = null;
