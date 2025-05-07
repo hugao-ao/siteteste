@@ -268,9 +268,10 @@
                 dataHtml += `<p><strong>Patrimônios Físicos:</strong></p><ul>`;
                 data.patrimonios_fisicos.forEach((patrimonio) => {
                     const descPat = patrimonio.descricao ? sanitizeInput(patrimonio.descricao) : "Descrição não informada";
-                    const valorPat = formatCurrencyForDisplay(patrimonio.valor);
-                    const seguroPatText = patrimonio.seguro === "sim" ? "Sim" : (patrimonio.seguro === "nao" ? "Não" : "N/A");
-                    const quitadoPatText = patrimonio.quitado === "sim" ? "Sim" : (patrimonio.quitado === "nao" ? "Não" : "N/A");
+                    // CORREÇÃO APLICADA ABAIXO:
+                    const valorPat = formatCurrencyForDisplay(patrimonio.valor_estimado); 
+                    const seguroPatText = patrimonio.possui_seguro === "sim" ? "Sim" : (patrimonio.possui_seguro === "nao" ? "Não" : "N/A");
+                    const quitadoPatText = patrimonio.esta_quitado === "sim" ? "Sim" : (patrimonio.esta_quitado === "nao" ? "Não" : "N/A");
                     dataHtml += `<li>${descPat} (Valor: ${valorPat}, Seguro: ${seguroPatText}, Quitado: ${quitadoPatText})</li>`;
                 });
                 dataHtml += `</ul>`;
@@ -322,10 +323,10 @@
     }
 
     async function loadAndManageForm() {
-        currentClientId = sessionStorage.getItem("viewing_client_id"); // CORRIGIDO
-        const clientName = sessionStorage.getItem("viewing_client_name"); // CORRIGIDO
+        currentClientId = sessionStorage.getItem("viewing_client_id"); 
+        const clientName = sessionStorage.getItem("viewing_client_name"); 
 
-        console.log("DEBUG: loadAndManageForm - sessionStorage viewing_client_id:", sessionStorage.getItem("viewing_client_id")); // CORRIGIDO
+        console.log("DEBUG: loadAndManageForm - sessionStorage viewing_client_id:", sessionStorage.getItem("viewing_client_id")); 
         console.log("DEBUG: loadAndManageForm - currentClientId variable after reading from sessionStorage:", currentClientId);
 
         if (clientName) {
@@ -338,121 +339,106 @@
             return;
         }
 
-        formInfoContentEl.innerHTML = `<p id="form-loading-state">Carregando informações do formulário para ${sanitizeInput(clientName || 'este cliente')}...</p>`;
-
         try {
-            // Busca o cliente para verificar o projeto
+            formInfoContentEl.innerHTML = `<p id="form-loading-state">Carregando informações do formulário...</p>`;
             const { data: clientData, error: clientError } = await supabase
                 .from("clientes")
-                .select("projeto, id")
+                .select("id, nome, projeto, formularios_clientes ( id, token_unico, status, dados_formulario, data_preenchimento, created_at )")
                 .eq("id", currentClientId)
+                .order("created_at", { foreignTable: "formularios_clientes", ascending: false })
                 .single();
 
             if (clientError) throw clientError;
-            if (!clientData) {
-                formInfoContentEl.innerHTML = "<p>Cliente não encontrado no banco de dados.</p>";
-                return;
-            }
+            if (!clientData) throw new Error("Cliente não encontrado.");
 
-            // Só prossegue com lógica de formulário se for do projeto "Planejamento"
+            console.log("DEBUG: Client data fetched:", clientData);
+
             if (clientData.projeto !== "Planejamento") {
                 displayFormNotApplicable();
                 return;
             }
 
-            // Busca o formulário mais recente para este cliente
-            const { data: forms, error: formsError } = await supabase
-                .from("formularios_clientes")
-                .select("*, cliente_id(*)") // Adicionado cliente_id(*) para pegar dados do cliente se necessário
-                .eq("cliente_id", currentClientId)
-                .order("created_at", { ascending: false });
+            const latestForm = clientData.formularios_clientes && clientData.formularios_clientes.length > 0 
+                ? clientData.formularios_clientes[0] 
+                : null;
 
-            if (formsError) throw formsError;
+            console.log("DEBUG: Latest form determined:", latestForm);
 
-            if (forms && forms.length > 0) {
-                const latestForm = forms[0];
-                if (latestForm.data_preenchimento) {
+            if (latestForm) {
+                if (latestForm.status === "pendente") {
+                    displayFormLink(latestForm);
+                } else if (latestForm.status === "preenchido") {
                     displayFormData(latestForm);
                 } else {
-                    displayFormLink(latestForm);
+                    console.log("DEBUG: Latest form has unknown status:", latestForm.status);
+                    formInfoContentEl.innerHTML = `<p>Status desconhecido do formulário: ${sanitizeInput(latestForm.status)}</p>`;
                 }
             } else {
                 displayGenerateLinkForm();
             }
 
         } catch (error) {
-            console.error("Erro ao carregar ou gerenciar formulário:", error);
-            formInfoContentEl.innerHTML = `<p style="color: red;">Erro ao carregar informações: ${error.message}</p>`;
-        }
-    }
-
-    async function handleGenerateLink() {
-        if (!currentClientId) {
-            alert("ID do cliente não encontrado para gerar link.");
-            return;
-        }
-        this.disabled = true;
-        this.textContent = "Gerando...";
-
-        try {
-            const { data, error } = await supabase.rpc("create_new_form_for_client", { client_id_param: currentClientId });
-
-            if (error) throw error;
-
-            if (data && data[0] && data[0].id && data[0].token_unico) { // CORRIGIDO para acessar o array e as colunas corretas
-                alert("Link gerado com sucesso!");
-                loadAndManageForm(); // Recarrega para mostrar o novo link
-            } else {
-                console.error("Resposta da função RPC create_new_form_for_client:", data); // Adiciona log para depuração
-                throw new Error("Não foi possível obter o ID ou token do novo formulário da resposta da função. Verifique o console para detalhes da resposta.");
-            }
-
-        } catch (error) {
-            console.error("Erro ao gerar link do formulário:", error);
-            alert("Erro ao gerar link: " + error.message);
-            this.disabled = false;
-            this.textContent = "Gerar Link do Formulário";
+            console.error("Erro ao carregar informações do formulário:", error);
+            formInfoContentEl.innerHTML = `<p>Ocorreu um erro ao carregar as informações do formulário: ${sanitizeInput(error.message)}</p>`;
         }
     }
 
     async function handleDeleteForm(event) {
         const formId = event.target.dataset.formId;
-        if (!formId || !currentClientId) {
-            alert("ID do formulário ou do cliente não encontrado para exclusão.");
+        console.log("DEBUG: handleDeleteForm called for formId:", formId);
+        if (!formId) {
+            alert("ID do formulário não encontrado para exclusão.");
             return;
         }
 
-        if (!confirm("Tem certeza que deseja excluir este formulário/link? Se for um link, o cliente não poderá mais usá-lo. Se forem dados preenchidos, serão perdidos.")) {
-            return;
-        }
+        if (confirm("Tem certeza que deseja excluir este link/dados do formulário? Esta ação gerará um novo link automaticamente.")) {
+            try {
+                const { error: deleteError } = await supabase
+                    .from("formularios_clientes")
+                    .delete()
+                    .eq("id", formId);
 
-        event.target.disabled = true;
-        event.target.textContent = "Excluindo...";
+                if (deleteError) throw deleteError;
 
-        try {
-            const { error } = await supabase
-                .from("formularios_clientes")
-                .delete()
-                .eq("id", formId);
+                alert("Link/Dados do formulário excluídos com sucesso. Um novo link será gerado.");
+                await handleGenerateLink(); // Gera um novo link automaticamente
+                // loadAndManageForm(); // Recarrega as informações do formulário
 
-            if (error) throw error;
-
-            alert("Formulário/Link excluído com sucesso! Um novo link será gerado automaticamente se aplicável ou você poderá gerar um.");
-            loadAndManageForm(); // Recarrega para mostrar o estado atual (gerar novo link ou mensagem)
-
-        } catch (error) {
-            console.error("Erro ao excluir formulário:", error);
-            alert("Erro ao excluir: " + error.message);
-            event.target.disabled = false;
-             // Restaura o texto original do botão, dependendo se era um link ou dados
-            const isLinkDeletion = event.target.textContent.includes("Excluir Link");
-            event.target.textContent = isLinkDeletion ? "Excluir Link e Gerar Novo" : "Excluir Dados e Gerar Novo Link";
+            } catch (error) {
+                console.error("Erro ao excluir formulário:", error);
+                alert(`Erro ao excluir formulário: ${error.message}`);
+            }
         }
     }
 
-    // Carrega o formulário ao iniciar a página
-    document.addEventListener("DOMContentLoaded", loadAndManageForm);
+    async function handleGenerateLink() {
+        console.log("DEBUG: handleGenerateLink called for currentClientId:", currentClientId);
+        if (!currentClientId) {
+            alert("ID do cliente não encontrado para gerar novo link.");
+            return;
+        }
+        try {
+            const { data: newForm, error: insertError } = await supabase
+                .from("formularios_clientes")
+                .insert([{ cliente_id: currentClientId, status: "pendente" }])
+                .select()
+                .single(); 
 
+            if (insertError) throw insertError;
+            if (!newForm) throw new Error("Não foi possível criar o novo formulário.");
+
+            console.log("DEBUG: New form generated:", newForm);
+            alert("Novo link de formulário gerado com sucesso!");
+            loadAndManageForm(); // Recarrega para mostrar o novo link
+
+        } catch (error) {
+            console.error("Erro ao gerar novo link do formulário:", error);
+            alert(`Erro ao gerar novo link: ${error.message}`);
+        }
+    }
+
+    // Inicialização
+    document.addEventListener("DOMContentLoaded", loadAndManageForm);
   </script>
 </body>
 </html>
