@@ -11,7 +11,9 @@ let planoSaudeSelections = {};
 let seguroVidaSelections = {};
 
 // --- Funções de Utilidade ---const sanitizeInput = (str) => {
-  if (str === null || str === undefined) return "";
+  if (str === null || str === undefined) {
+    return "";
+  }
   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
