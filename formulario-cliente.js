@@ -10,8 +10,7 @@ const formTitleEl = document.getElementById("form-title");
 let planoSaudeSelections = {};
 let seguroVidaSelections = {};
 
-// --- Funções de Utilidade ---
-const sanitizeInput = (str) => {
+// --- Funções de Utilidade --const sanitizeInput = (str) => {
   if (str === null || str === undefined) {
     return "";
   }
@@ -20,14 +19,10 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/	/g, "&#x27;")
+    .replace(/'/g, "&#x27;")
     .replace(/`/g, "&#x60;")
-    .replace(/
-\n|
-|\n/g, "<br>");
-};
-
-const handleCurrencyInput = (event) => {
+    .replace(/(\r\n|\r|\n)/g, "<br>");
+};const handleCurrencyInput = (event) => {
   let value = event.target.value;
   value = value.replace(/[^\d,.]/g, "");
   const parts = value.split(/[,.]/);
