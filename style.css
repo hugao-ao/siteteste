@@ -550,3 +550,54 @@ button:not(.toggle-password):active::after {
         grid-template-columns: 1fr; /* Uma coluna em telas pequenas */
     }
 }
+
+
+
+/* Estilos para a seção de patrimônio lado a lado */
+.patrimonio-radio-group-container {
+    display: flex;
+    flex-wrap: wrap; /* Permite que os itens quebrem para a próxima linha em telas menores */
+    justify-content: space-between; /* Espaça os itens igualmente, ou use space-around */
+    gap: 1rem; /* Espaço entre os grupos de rádio */
+    margin-bottom: 1rem; /* Margem inferior para o container */
+}
+
+.patrimonio-radio-group-item {
+    flex: 1 1 200px; /* Permite que cresçam e encolham, com uma base de 200px. Ajuste conforme necessário. */
+    min-width: 180px; /* Largura mínima para cada item antes de quebrar */
+    /* border: 1px solid var(--theme-border-color); /* Opcional: para visualização */
+    /* padding: 1rem; */ /* Opcional: para visualização */
+    /* border-radius: 6px; */ /* Opcional: para visualização */
+}
+
+.patrimonio-radio-group-item label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: var(--theme-text-light);
+}
+
+.radio-options-inline-patrimonio-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem; /* Espaço entre as opções de rádio (Sim/Não) */
+}
+
+.radio-options-inline-patrimonio-item input[type="radio"] {
+    margin-right: 0.3rem;
+}
+
+/* Ajustes para responsividade, se necessário */
+@media (max-width: 480px) {
+    .patrimonio-radio-group-container {
+        flex-direction: column; /* Empilha os itens em telas muito pequenas */
+    }
+    .patrimonio-radio-group-item {
+        flex-basis: 100%; /* Ocupa toda a largura quando empilhado */
+        margin-bottom: 1rem; /* Adiciona espaço entre os itens empilhados */
+    }
+    .patrimonio-radio-group-item:last-child {
+        margin-bottom: 0;
+    }
+}
+
