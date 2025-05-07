@@ -160,9 +160,10 @@ function renderPlanoSaudeQuestions() {
         const entryDiv = document.createElement("div");
         entryDiv.classList.add("plano-saude-entry");
         entryDiv.style.marginBottom = "1rem";
+        // Utiliza radio-options-horizontal-container para agrupar os itens verticalmente orientados
         entryDiv.innerHTML = `
             <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">${nomeCapitalizado} possui plano de saúde?</label>
-            <div class="radio-options-vertical-group">
+            <div class="radio-options-horizontal-container">
                 <div class="radio-option-vertical-item">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
                     <label for="${personId}_sim">Sim</label>
@@ -237,9 +238,10 @@ function renderSeguroVidaQuestions() {
         const entryDiv = document.createElement("div");
         entryDiv.classList.add("seguro-vida-entry");
         entryDiv.style.marginBottom = "1rem";
+        // Utiliza radio-options-horizontal-container para agrupar os itens verticalmente orientados
         entryDiv.innerHTML = `
             <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">${nomeCapitalizado} possui seguro de vida?</label>
-            <div class="radio-options-vertical-group">
+            <div class="radio-options-horizontal-container">
                 <div class="radio-option-vertical-item">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required>
                     <label for="${personId}_sim">Sim</label>
@@ -487,7 +489,6 @@ function renderActualForm(formData) {
     // Form submission
     document.getElementById("client-response-form").addEventListener("submit", async (event) => {
         event.preventDefault();
-        // ... (submission logic remains the same)
         const form = event.target;
         const data = new FormData(form);
         const responseData = {
@@ -790,4 +791,3 @@ function addDividaItem(item = {}, index = null) {
     dividaDiv.querySelector(".remove-person-btn").addEventListener("click", () => dividaDiv.remove());
     list.appendChild(dividaDiv);
 }
-
