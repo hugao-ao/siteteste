@@ -8,28 +8,29 @@
   <style>
     /* Estilos específicos da página do formulário, usando variáveis de tema */
     body.theme-planejamento {
+      /* As variáveis de tema (--theme-bg-dark, etc.) serão aplicadas automaticamente */
       display: flex;
       justify-content: center;
       align-items: center;
       min-height: 100vh;
-      background-color: var(--theme-bg-dark);
-      color: var(--theme-text-light);
+      background-color: var(--theme-bg-dark); /* Usa variável de tema */
+      color: var(--theme-text-light); /* Usa variável de tema */
       font-family: var(--font-primary);
       padding: 2rem;
       box-sizing: border-box;
     }
     .form-container {
-      background-color: var(--theme-bg-surface);
+      background-color: var(--theme-bg-surface); /* Usa variável de tema */
       padding: 2rem 3rem;
       border-radius: 8px;
-      box-shadow: 0 4px 15px var(--theme-shadow-color);
+      box-shadow: 0 4px 15px var(--theme-shadow-color); /* Usa variável de tema */
       max-width: 500px;
       width: 100%;
       text-align: center;
-      border: 1px solid var(--theme-border-color);
+      border: 1px solid var(--theme-border-color); /* Usa variável de tema */
     }
     .form-container h1 {
-      color: var(--theme-secondary-lighter);
+      color: var(--theme-secondary-lighter); /* Usa variável de tema */
       margin-bottom: 1.5rem;
     }
     .form-container label {
@@ -37,68 +38,92 @@
       text-align: left;
       margin-bottom: 0.5rem;
       font-weight: bold;
-      color: var(--theme-text-muted);
+      color: var(--theme-text-muted); /* Usa variável de tema */
     }
     .form-container input[type="text"],
+    /* .form-container input[type="radio"], INPUT RADIO ESTILIZADO ABAIXO */
     .form-container select {
       width: 100%;
       padding: 0.8rem;
       margin-bottom: 1.5rem;
-      border: 1px solid var(--theme-border-color);
+      border: 1px solid var(--theme-border-color); /* Usa variável de tema */
       border-radius: 4px;
-      background-color: var(--theme-bg-dark);
-      color: var(--theme-text-light);
+      background-color: var(--theme-bg-dark); /* Usa variável de tema */
+      color: var(--theme-text-light); /* Usa variável de tema */
       box-sizing: border-box;
     }
-    /* Estilos para radio buttons com layout vertical */
-    .radio-group {
+
+    /* Estilos para radio buttons com layout horizontal */
+    .radio-group { /* Mantém a base para o grupo da pergunta */
         text-align: left;
         margin-bottom: 1.5rem;
     }
-    .radio-group > label:first-of-type {
-        /* Estilo para a pergunta principal do grupo de radio */
-        margin-bottom: 0.8rem; /* Aumenta o espaço abaixo da pergunta */
+
+    .radio-group-question { /* Label da pergunta principal */
+        display: block; 
+        margin-bottom: 0.5rem; 
         font-weight: bold;
-        color: var(--theme-text-light); /* Cor mais destacada para a pergunta */
-    }
-    .radio-options-vertical-group {
-        display: flex;
-        flex-direction: row; /* Alterado para row para manter Sim/Não lado a lado */
-        align-items: flex-start; 
-        gap: 1.5rem; /* Espaço entre as opções de rádio */
-        flex-wrap: wrap;
-    }
-    .radio-option-vertical-item {
-        display: flex;
-        flex-direction: column; /* Input acima, label abaixo */
-        align-items: center; /* Centraliza o input e o label */
-        text-align: center;
-    }
-    .radio-option-vertical-item input[type="radio"] {
-        width: auto; /* Tamanho automático para o radio button */
-        margin-bottom: 0.3rem; /* Espaço entre o radio e o label abaixo dele */
-        accent-color: var(--planejamento-primary); /* Cor do radio button quando selecionado */
-    }
-    .radio-option-vertical-item label {
-        font-weight: normal;
         color: var(--theme-text-light);
-        font-size: 0.9rem; /* Tamanho da fonte do label da opção */
-        text-align: center;
-        margin-bottom: 0; /* Remove margem inferior do label da opção */
-        cursor: pointer;
     }
 
-    /* Container para agrupar horizontalmente os .radio-option-vertical-item 
-       (usado em Plano de Saúde e Seguro de Vida onde há 3 opções) */
-    .radio-options-horizontal-container {
-        display: flex;
+    /* Container para as opções de rádio (Sim, Não, etc.) */
+    .radio-options-container {
+        display: flex; 
+        flex-wrap: wrap; 
         gap: 1.5rem; 
-        justify-content: flex-start; 
-        flex-wrap: wrap;
+        align-items: center;
+    }
+
+    /* Cada item de opção individual (input + label) */
+    .radio-option-item {
+        display: flex; 
+        align-items: center; 
+        gap: 0.3rem; 
+    }
+
+    .radio-option-item input[type="radio"] {
+        width: auto; 
+        margin: 0; /* Reset margin */
+        vertical-align: middle; 
+        accent-color: var(--planejamento-primary);
+    }
+
+    .radio-option-item label {
+        font-weight: normal;
+        color: var(--theme-text-light);
+        margin: 0; /* Reset margin */
+        cursor: pointer;
+        display: inline; 
+    }
+
+    /* Para o caso especial de Patrimônio: perguntas duplas na mesma linha */
+    .patrimonio-perguntas-duplas-container {
+        display: flex;
+        justify-content: space-between; 
+        align-items: flex-start; 
+        gap: 1rem; 
+        margin-bottom: 1rem; 
+        flex-wrap: wrap; 
+    }
+
+    .radio-group-inline { 
+        display: flex;
+        flex-direction: column; 
+        gap: 0.5rem; 
+        flex: 1; 
+        min-width: 180px; 
+    }
+
+    .radio-group-inline .radio-group-question-inline { 
+        font-weight: bold;
+        color: var(--theme-text-light);
+        margin-bottom: 0; 
+        display: block;
     }
 
     .form-container button {
       padding: 0.8rem 1.5rem;
+      /* Usa gradiente do tema Planejamento */
       background: linear-gradient(145deg, var(--planejamento-primary-darker), var(--planejamento-primary));
       color: var(--planejamento-secondary-lighter);
       border: none;
@@ -119,15 +144,17 @@
       text-align: center;
     }
     .message.success {
-      background-color: rgba(0, 128, 0, 0.15);
-      color: #90ee90;
+      background-color: rgba(0, 128, 0, 0.15); /* Verde claro Planejamento */
+      color: #90ee90; /* Verde claro */
       border: 1px solid var(--planejamento-primary);
     }
     .message.error {
-      background-color: rgba(198, 40, 40, 0.15);
-      color: #ffcccb;
+      background-color: rgba(198, 40, 40, 0.15); /* Vermelho claro */
+      color: #ffcccb; /* Rosa claro */
       border: 1px solid #c62828;
     }
+
+    /* Estilos para lista dinâmica de pessoas */
     .person-entry {
         background-color: var(--theme-bg-dark);
         border: 1px solid var(--theme-border-color);
@@ -146,7 +173,7 @@
         padding: 0.6rem;
     }
     .person-entry button.remove-person-btn {
-        background: #c62828;
+        background: #c62828; /* Vermelho */
         color: white;
         padding: 0.4rem 0.8rem;
         font-size: 0.8rem;
@@ -155,7 +182,11 @@
      .person-entry button.remove-person-btn:hover {
         background: #a12020;
     }
-    #add-person-btn, #add-dependente-btn, #add-patrimonio-btn, #add-investimento-btn, #add-divida-btn {
+    #add-person-btn, 
+    #add-dependente-btn, 
+    #add-patrimonio-btn, 
+    #add-investimento-btn, 
+    #add-divida-btn {
         background: var(--planejamento-secondary-darker);
         color: var(--theme-bg-dark);
         padding: 0.6rem 1rem;
@@ -163,22 +194,28 @@
         margin-top: 0.5rem;
         display: block; 
         width: 100%;
-        margin-bottom: 1.5rem; /* Adicionado espaço abaixo dos botões de adicionar */
+        margin-bottom: 1.5rem; /* Standardized margin */
+        border: none; /* Ensure no default border interferes */
+        border-radius: 4px; /* Consistent with other buttons */
+        cursor: pointer; /* Standard cursor */
+        text-align: center; /* Ensure text is centered */
     }
-    #add-person-btn:hover, #add-dependente-btn:hover, #add-patrimonio-btn:hover, #add-investimento-btn:hover, #add-divida-btn:hover {
+    #add-person-btn:hover, 
+    #add-dependente-btn:hover, 
+    #add-patrimonio-btn:hover, 
+    #add-investimento-btn:hover, 
+    #add-divida-btn:hover {
          background: var(--planejamento-secondary);
+         box-shadow: 0 0 8px var(--planejamento-shadow-color); /* Add a subtle hover shadow */
     }
-    hr {
-        border: none;
-        border-top: 1px solid var(--theme-border-color);
-        margin: 2rem 0;
-    }
+
   </style>
 </head>
-<body class="theme-planejamento"> 
+<body class="theme-planejamento"> <!-- CLASSE DO TEMA APLICADA AQUI -->
   <div class="form-container">
     <h1 id="form-title">Formulário do Cliente</h1>
     <div id="form-content">
+      <!-- Formulário será carregado aqui ou mensagem de erro/sucesso -->
       <p>Carregando...</p>
     </div>
     <div id="message-area"></div>
@@ -188,3 +225,4 @@
   <script type="module" src="formulario-cliente.js"></script>
 </body>
 </html>
+
