@@ -41,7 +41,7 @@
       color: var(--theme-text-muted); /* Usa variável de tema */
     }
     .form-container input[type="text"],
-    /* .form-container input[type="radio"], INPUT RADIO ESTILIZADO ABAIXO */
+    .form-container input[type="radio"],
     .form-container select {
       width: 100%;
       padding: 0.8rem;
@@ -52,73 +52,22 @@
       color: var(--theme-text-light); /* Usa variável de tema */
       box-sizing: border-box;
     }
-
-    /* Estilos para radio buttons com layout horizontal */
-    .radio-group { /* Mantém a base para o grupo da pergunta */
+    /* Estilos específicos para radio buttons */
+    .radio-group {
         text-align: left;
         margin-bottom: 1.5rem;
     }
-
-    .radio-group-question { /* Label da pergunta principal */
-        display: block; 
-        margin-bottom: 0.5rem; 
-        font-weight: bold;
-        color: var(--theme-text-light);
-    }
-
-    /* Container para as opções de rádio (Sim, Não, etc.) */
-    .radio-options-container {
-        display: flex; 
-        flex-wrap: wrap; 
-        gap: 1.5rem; 
-        align-items: center;
-    }
-
-    /* Cada item de opção individual (input + label) */
-    .radio-option-item {
-        display: flex; 
-        align-items: center; 
-        gap: 0.3rem; 
-    }
-
-    .radio-option-item input[type="radio"] {
-        width: auto; 
-        margin: 0; /* Reset margin */
-        vertical-align: middle; 
-        accent-color: var(--planejamento-primary);
-    }
-
-    .radio-option-item label {
+    .radio-group label {
+        display: inline-block;
+        margin-right: 1.5rem;
         font-weight: normal;
         color: var(--theme-text-light);
-        margin: 0; /* Reset margin */
-        cursor: pointer;
-        display: inline; 
     }
-
-    /* Para o caso especial de Patrimônio: perguntas duplas na mesma linha */
-    .patrimonio-perguntas-duplas-container {
-        display: flex;
-        justify-content: space-between; 
-        align-items: flex-start; 
-        gap: 1rem; 
-        margin-bottom: 1rem; 
-        flex-wrap: wrap; 
-    }
-
-    .radio-group-inline { 
-        display: flex;
-        flex-direction: column; 
-        gap: 0.5rem; 
-        flex: 1; 
-        min-width: 180px; 
-    }
-
-    .radio-group-inline .radio-group-question-inline { 
-        font-weight: bold;
-        color: var(--theme-text-light);
-        margin-bottom: 0; 
-        display: block;
+     .radio-group input[type="radio"] {
+        width: auto;
+        margin-right: 0.5rem;
+        vertical-align: middle;
+        margin-bottom: 0; /* Reset margin */
     }
 
     .form-container button {
@@ -192,13 +141,13 @@
         padding: 0.6rem 1rem;
         font-size: 0.9rem;
         margin-top: 0.5rem;
-        display: block; 
+        display: block; /* Faz ocupar a largura */
         width: 100%;
-        margin-bottom: 1.5rem; /* Standardized margin */
         border: none; /* Ensure no default border interferes */
         border-radius: 4px; /* Consistent with other buttons */
         cursor: pointer; /* Standard cursor */
         text-align: center; /* Ensure text is centered */
+        margin-bottom: 1.5rem; /* Standardized margin */
     }
     #add-person-btn:hover, 
     #add-dependente-btn:hover, 
