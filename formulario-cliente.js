@@ -639,8 +639,7 @@ function attachFormEventListeners(formId) {
                 if (dadosFormulario.possui_patrimonio_fisico === "sim") {
                     document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO
                         const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value;
-                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]
-V')?.value;
+                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
                         let valorNumerico = null;
                         if (valorRaw) {
                             const cleanedValor = String(valorRaw).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
