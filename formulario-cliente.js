@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 // formulario-cliente.js
 import { supabase } from "./supabase.js";
 
@@ -37,6 +38,13 @@ const formatCurrency = (value) => {
     const number = parseFloat(cleanValue);
     if (isNaN(number)) return "";
     return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+};
+
+const parseCurrency = (value) => {
+    if (value === null || value === undefined || String(value).trim() === "") return null;
+    const cleanedValue = String(value).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
+    const number = parseFloat(cleanedValue);
+    return isNaN(number) ? null : number;
 };
 
 
@@ -287,7 +295,6 @@ async function loadForm(token) {
             }
             return;
         }
-        // MODIFICADO: Alterar título do formulário
         formTitleEl.textContent = "Formulário de Pré-Diagnóstico"; 
 
         if (formData.status === "pendente") {
@@ -334,20 +341,42 @@ function renderActualForm(formData) {
                 <label for="tem_dependentes_nao">Não</label>
             </div>
 
-            <div id="dependentes-container" style="display:none;">
+            <div id="dependentes-container" style="display:none; margin-top: 1rem;">
                 <label>Dependentes:</label>
                 <div id="dependentes-list"></div>
                 <button type="button" id="add-dependente-btn" class="add-dynamic-entry-btn">+ Adicionar Dependente</button>
             </div>
-            
-            <div id="plano-saude-section" style="margin-top: 2rem;">
-                <h3 id="plano-saude-section-title" style="display: none;">Informações sobre Plano de Saúde:</h3>
-                <div id="plano-saude-section-content"></div>
+
+            <!-- Seção Dinheiro Guardado ou Investido -->
+            <div id="dinheiro-guardado-section" style="margin-top: 2rem;">
+                <div class="radio-group">
+                    <label>Você tem algum recurso guardado ou investido?</label><br>
+                    <input type="radio" id="tem_dinheiro_guardado_sim" name="tem_dinheiro_guardado" value="sim" required>
+                    <label for="tem_dinheiro_guardado_sim">Sim</label>
+                    <input type="radio" id="tem_dinheiro_guardado_nao" name="tem_dinheiro_guardado" value="nao">
+                    <label for="tem_dinheiro_guardado_nao">Não</label>
+                </div>
+                <div id="dinheiro-guardado-list-container" style="display:none; margin-top: 1rem;">
+                    <label>Recursos Guardados/Investidos:</label>
+                    <div id="dinheiro-guardado-list"></div>
+                    <button type="button" id="add-dinheiro-guardado-btn" class="add-dynamic-entry-btn">+ Adicionar Recurso</button>
+                </div>
             </div>
 
-            <div id="seguro-vida-section" style="margin-top: 2rem;">
-                <h3 id="seguro-vida-section-title" style="display: none;">Informações sobre Seguro de Vida:</h3>
-                <div id="seguro-vida-section-content"></div>
+            <!-- Seção Dívidas -->
+            <div id="dividas-section" style="margin-top: 2rem;">
+                <div class="radio-group">
+                    <label>Você tem alguma dívida?</label><br>
+                    <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
+                    <label for="tem_dividas_sim">Sim</label>
+                    <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao">
+                    <label for="tem_dividas_nao">Não</label>
+                </div>
+                <div id="dividas-list-container" style="display:none; margin-top: 1rem;">
+                    <label>Dívidas:</label>
+                    <div id="dividas-list"></div>
+                    <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">+ Adicionar Dívida</button>
+                </div>
             </div>
 
             <div id="patrimonio-fisico-section" style="margin-top: 2rem;">
@@ -360,11 +389,21 @@ function renderActualForm(formData) {
                         <label for="tem_patrimonio_nao">Não</label>
                     </div>
                 </div>
-                <div id="patrimonio-list-container" style="display:none;">
+                <div id="patrimonio-list-container" style="display:none; margin-top: 1rem;">
                     <label>Patrimônios:</label>
                     <div id="patrimonio-list"></div>
                     <button type="button" id="add-patrimonio-btn" class="add-dynamic-entry-btn">+ Adicionar Patrimônio</button> 
                 </div>
+            </div>
+
+            <div id="plano-saude-section" style="margin-top: 2rem;">
+                <h3 id="plano-saude-section-title" style="display: none; color: var(--theme-secondary-lighter); margin-bottom: 1rem;">Plano de Saúde</h3>
+                <div id="plano-saude-section-content"></div>
+            </div>
+
+            <div id="seguro-vida-section" style="margin-top: 2rem;">
+                <h3 id="seguro-vida-section-title" style="display: none; color: var(--theme-secondary-lighter); margin-bottom: 1rem;">Seguro de Vida</h3>
+                <div id="seguro-vida-section-content"></div>
             </div>
 
             <button type="submit" id="submit-btn">Enviar Respostas</button>
@@ -390,32 +429,46 @@ function attachFormEventListeners(formId) {
     const addDependenteBtn = document.getElementById("add-dependente-btn");
     const dependentesListEl = document.getElementById("dependentes-list");
 
+    // Dinheiro Guardado
+    const temDinheiroGuardadoSimRadio = document.getElementById("tem_dinheiro_guardado_sim");
+    const temDinheiroGuardadoNaoRadio = document.getElementById("tem_dinheiro_guardado_nao");
+    const dinheiroGuardadoListContainerEl = document.getElementById("dinheiro-guardado-list-container");
+    const addDinheiroGuardadoBtn = document.getElementById("add-dinheiro-guardado-btn");
+    const dinheiroGuardadoListEl = document.getElementById("dinheiro-guardado-list");
+
+    // Dívidas
+    const temDividasSimRadio = document.getElementById("tem_dividas_sim");
+    const temDividasNaoRadio = document.getElementById("tem_dividas_nao");
+    const dividasListContainerEl = document.getElementById("dividas-list-container");
+    const addDividaBtn = document.getElementById("add-divida-btn");
+    const dividasListEl = document.getElementById("dividas-list");
+
     const temPatrimonioSimRadio = document.getElementById("tem_patrimonio_sim");
     const temPatrimonioNaoRadio = document.getElementById("tem_patrimonio_nao");
     const patrimonioListContainerEl = document.getElementById("patrimonio-list-container");
     const addPatrimonioBtn = document.getElementById("add-patrimonio-btn");
     const patrimonioListEl = document.getElementById("patrimonio-list");
 
+    // --- Event Listeners Comuns ---
+    [nomeCompletoInput, rendaUnicaSimRadio, rendaUnicaNaoRadio, temDependentesSimRadio, temDependentesNaoRadio, temPatrimonioSimRadio, temPatrimonioNaoRadio, temDinheiroGuardadoSimRadio, temDinheiroGuardadoNaoRadio, temDividasSimRadio, temDividasNaoRadio].forEach(el => {
+        if (el) el.addEventListener("change", updateDynamicFormSections);
+    });
     if (nomeCompletoInput) {
-        nomeCompletoInput.addEventListener("input", () => {
-            updateDynamicFormSections();
-        });
+        nomeCompletoInput.addEventListener("input", updateDynamicFormSections);
     }
 
+    // --- Lógica Pessoas com Renda ---
     if (rendaUnicaSimRadio) {
         rendaUnicaSimRadio.addEventListener("change", () => {
             outrasPessoasContainerEl.style.display = "none";
             pessoasListEl.innerHTML = ''; 
-            updateDynamicFormSections();
         });
     }
     if (rendaUnicaNaoRadio) {
         rendaUnicaNaoRadio.addEventListener("change", () => {
             outrasPessoasContainerEl.style.display = "block";
-            updateDynamicFormSections();
         });
     }
-
     if (addPersonBtn) {
         addPersonBtn.addEventListener("click", () => {
             const personIndex = pessoasListEl.children.length;
@@ -441,7 +494,6 @@ function attachFormEventListeners(formId) {
                 placeholder.textContent = primeiroNome ? capitalizeName(primeiroNome) : "esta pessoa";
                 updateDynamicFormSections(); 
             });
-
             newPersonEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
                 newPersonEntry.remove();
                 updateDynamicFormSections();
@@ -450,22 +502,20 @@ function attachFormEventListeners(formId) {
         });
     }
 
+    // --- Lógica Dependentes ---
     if (temDependentesSimRadio) {
         temDependentesSimRadio.addEventListener("change", () => {
             dependentesContainerEl.style.display = "block";
-            updateDynamicFormSections();
         });
     }
     if (temDependentesNaoRadio) {
         temDependentesNaoRadio.addEventListener("change", () => {
             dependentesContainerEl.style.display = "none";
             dependentesListEl.innerHTML = ''; 
-            updateDynamicFormSections();
         });
     }
     if (addDependenteBtn) {
         addDependenteBtn.addEventListener("click", () => {
-            const depIndex = dependentesListEl.children.length;
             const newDependenteEntry = document.createElement("div");
             newDependenteEntry.classList.add("dynamic-entry-item"); 
             newDependenteEntry.innerHTML = `
@@ -475,12 +525,6 @@ function attachFormEventListeners(formId) {
                 <button type="button" class="remove-dynamic-entry-btn">Remover</button>
             `;
             dependentesListEl.appendChild(newDependenteEntry);
-            
-            const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
-            if (nomeDependenteInput) {
-                nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
-            }
-
             newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
                 newDependenteEntry.remove();
                 updateDynamicFormSections();
@@ -489,17 +533,114 @@ function attachFormEventListeners(formId) {
         });
     }
 
+    // --- Lógica Dinheiro Guardado/Investido ---
+    if (temDinheiroGuardadoSimRadio) {
+        temDinheiroGuardadoSimRadio.addEventListener("change", () => {
+            dinheiroGuardadoListContainerEl.style.display = "block";
+        });
+    }
+    if (temDinheiroGuardadoNaoRadio) {
+        temDinheiroGuardadoNaoRadio.addEventListener("change", () => {
+            dinheiroGuardadoListContainerEl.style.display = "none";
+            dinheiroGuardadoListEl.innerHTML = '';
+        });
+    }
+    if (addDinheiroGuardadoBtn) {
+        addDinheiroGuardadoBtn.addEventListener("click", () => {
+            const newDinheiroEntry = document.createElement("div");
+            newDinheiroEntry.classList.add("dynamic-entry-item");
+            newDinheiroEntry.innerHTML = `
+                <input type="text" name="dinheiro_onde" placeholder="Onde está guardado/investido?" required>
+                <input type="text" name="dinheiro_quanto" placeholder="Quanto? (R$)" required class="currency-input">
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+            `;
+            dinheiroGuardadoListEl.appendChild(newDinheiroEntry);
+            const valorInput = newDinheiroEntry.querySelector('input[name="dinheiro_quanto"]');
+            valorInput.addEventListener('input', (e) => {
+                const rawValue = e.target.value.replace(/[^\d]/g, '');
+                if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                } else {
+                    e.target.value = '';
+                }
+            });
+            valorInput.addEventListener('blur', (e) => { 
+                 const rawValue = e.target.value.replace(/[^\d]/g, '');
+                 if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                 } else {
+                    e.target.value = '';
+                 }
+            });
+            newDinheiroEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => {
+                newDinheiroEntry.remove();
+                updateDynamicFormSections(); 
+            });
+            updateDynamicFormSections(); 
+        });
+    }
+
+    // --- Lógica Dívidas ---
+    if (temDividasSimRadio) {
+        temDividasSimRadio.addEventListener("change", () => {
+            dividasListContainerEl.style.display = "block";
+        });
+    }
+    if (temDividasNaoRadio) {
+        temDividasNaoRadio.addEventListener("change", () => {
+            dividasListContainerEl.style.display = "none";
+            dividasListEl.innerHTML = '';
+        });
+    }
+    if (addDividaBtn) {
+        addDividaBtn.addEventListener("click", () => {
+            const newDividaEntry = document.createElement("div");
+            newDividaEntry.classList.add("dynamic-entry-item");
+            newDividaEntry.innerHTML = `
+                <input type="text" name="divida_para_quem" placeholder="A quem deve?" required>
+                <input type="text" name="divida_quanto" placeholder="Qual o valor da dívida? (R$)" required class="currency-input">
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+            `;
+            dividasListEl.appendChild(newDividaEntry);
+            const valorInput = newDividaEntry.querySelector('input[name="divida_quanto"]');
+            valorInput.addEventListener('input', (e) => {
+                const rawValue = e.target.value.replace(/[^\d]/g, '');
+                if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                } else {
+                    e.target.value = '';
+                }
+            });
+             valorInput.addEventListener('blur', (e) => { 
+                 const rawValue = e.target.value.replace(/[^\d]/g, '');
+                 if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                 } else {
+                    e.target.value = '';
+                 }
+            });
+            newDividaEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => {
+                newDividaEntry.remove();
+                updateDynamicFormSections(); 
+            });
+            updateDynamicFormSections(); 
+        });
+    }
+
+    // --- Lógica Patrimônio Físico ---
     if (temPatrimonioSimRadio) {
         temPatrimonioSimRadio.addEventListener("change", () => {
             patrimonioListContainerEl.style.display = "block";
-            updateDynamicFormSections();
         });
     }
     if (temPatrimonioNaoRadio) {
         temPatrimonioNaoRadio.addEventListener("change", () => {
             patrimonioListContainerEl.style.display = "none";
             patrimonioListEl.innerHTML = '';
-            updateDynamicFormSections();
         });
     }
     if (addPatrimonioBtn) {
@@ -530,7 +671,8 @@ function attachFormEventListeners(formId) {
             `;
             patrimonioListEl.appendChild(newPatrimonioEntry);
 
-            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
+            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]
+            ');
             valorInput.addEventListener('input', (e) => {
                 const rawValue = e.target.value.replace(/[^\d]/g, '');
                 if (rawValue) {
@@ -558,6 +700,7 @@ function attachFormEventListeners(formId) {
         });
     }
 
+    // --- Submissão do Formulário ---
     if (clientResponseFormEl) {
         clientResponseFormEl.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -573,6 +716,10 @@ function attachFormEventListeners(formId) {
                     outras_pessoas_renda: [],
                     tem_dependentes: formDataObject.get("tem_dependentes"),
                     dependentes: [],
+                    tem_dinheiro_guardado: formDataObject.get("tem_dinheiro_guardado"),
+                    dinheiro_guardado_investido: [],
+                    tem_dividas: formDataObject.get("tem_dividas"),
+                    dividas: [],
                     informacoes_plano_saude: [],
                     informacoes_seguro_vida: [],
                     possui_patrimonio_fisico: formDataObject.get("tem_patrimonio"),
@@ -582,7 +729,8 @@ function attachFormEventListeners(formId) {
                 if (dadosFormulario.renda_unica === "nao") {
                     document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => { 
                         const nome = entry.querySelector('input[name="pessoa_nome"]')?.value;
-                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
+                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]
+                        ')?.value;
                         if (nome) {
                             dadosFormulario.outras_pessoas_renda.push({
                                 nome: sanitizeInput(nome),
@@ -595,8 +743,10 @@ function attachFormEventListeners(formId) {
                 if (dadosFormulario.tem_dependentes === "sim") {
                     document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => { 
                         const nome = entry.querySelector('input[name="dep_nome"]')?.value;
-                        const idade = entry.querySelector('input[name="dep_idade"]')?.value;
-                        const relacao = entry.querySelector('input[name="dep_relacao"]')?.value;
+                        const idade = entry.querySelector('input[name="dep_idade"]
+                        ')?.value;
+                        const relacao = entry.querySelector('input[name="dep_relacao"]
+                        ')?.value;
                         if (nome) {
                             dadosFormulario.dependentes.push({
                                 nome: sanitizeInput(nome),
@@ -607,10 +757,37 @@ function attachFormEventListeners(formId) {
                     });
                 }
 
+                if (dadosFormulario.tem_dinheiro_guardado === "sim") {
+                    document.querySelectorAll("#dinheiro-guardado-list .dynamic-entry-item").forEach(entry => {
+                        const onde = entry.querySelector('input[name="dinheiro_onde"]')?.value;
+                        const quantoRaw = entry.querySelector('input[name="dinheiro_quanto"]')?.value;
+                        if (onde) {
+                            dadosFormulario.dinheiro_guardado_investido.push({
+                                onde: sanitizeInput(onde),
+                                quanto: parseCurrency(quantoRaw)
+                            });
+                        }
+                    });
+                }
+
+                if (dadosFormulario.tem_dividas === "sim") {
+                    document.querySelectorAll("#dividas-list .dynamic-entry-item").forEach(entry => {
+                        const para_quem = entry.querySelector('input[name="divida_para_quem"]')?.value;
+                        const quantoRaw = entry.querySelector('input[name="divida_quanto"]')?.value;
+                        if (para_quem) {
+                            dadosFormulario.dividas.push({
+                                para_quem: sanitizeInput(para_quem),
+                                quanto: parseCurrency(quantoRaw)
+                            });
+                        }
+                    });
+                }
+
                 document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]')?.name;
+                    const radioName = entry.querySelector('input[type="radio"]
+                    ')?.name;
                     const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
                     if (selectedRadio) {
                         dadosFormulario.informacoes_plano_saude.push({
@@ -624,7 +801,8 @@ function attachFormEventListeners(formId) {
                 document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]')?.name;
+                    const radioName = entry.querySelector('input[type="radio"]
+                    ')?.name;
                     const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
                     if (selectedRadio) {
                         dadosFormulario.informacoes_seguro_vida.push({
@@ -637,21 +815,18 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.possui_patrimonio_fisico === "sim") {
                     document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach((entry, index) => { 
-                        const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value;
-                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
-                        let valorNumerico = null;
-                        if (valorRaw) {
-                            const cleanedValor = String(valorRaw).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
-                            valorNumerico = parseFloat(cleanedValor);
-                        }
+                        const qual = entry.querySelector('input[name="patrimonio_qual"]
+                        ')?.value;
+                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]
+                        ')?.value;
                         const seguro = entry.querySelector(`input[name="patrimonio_seguro_${index}"]:checked`)?.value;
                         const quitado = entry.querySelector(`input[name="patrimonio_quitado_${index}"]:checked`)?.value;
                         if (qual) {
                             dadosFormulario.patrimonios_fisicos.push({
-                                descricao: sanitizeInput(qual),
-                                valor_estimado: valorNumerico,
-                                possui_seguro: seguro,
-                                esta_quitado: quitado
+                                qual: sanitizeInput(qual),
+                                valor: parseCurrency(valorRaw),
+                                seguro: seguro,
+                                quitado: quitado
                             });
                         }
                     });
@@ -679,12 +854,33 @@ function attachFormEventListeners(formId) {
             }
         });
     }
+    // Adiciona event listeners para os inputs de moeda recém-criados ou já existentes
+    document.querySelectorAll('.currency-input').forEach(input => {
+        input.addEventListener('input', (e) => {
+            const rawValue = e.target.value.replace(/[^\d]/g, '');
+            if (rawValue) {
+                const number = parseInt(rawValue, 10) / 100;
+                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                e.target.value = '';
+            }
+        });
+        input.addEventListener('blur', (e) => { 
+            const rawValue = e.target.value.replace(/[^\d]/g, '');
+            if (rawValue) {
+               const number = parseInt(rawValue, 10) / 100;
+               e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+               e.target.value = '';
+            }
+       });
+    });
 }
 
 // --- Inicialização ---
 document.addEventListener("DOMContentLoaded", () => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const token = urlParams.get("token");
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("token");
     loadForm(token);
 });
 
