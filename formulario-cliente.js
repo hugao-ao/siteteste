@@ -727,8 +727,7 @@ function attachFormEventListeners(formId) {
                 if (dadosFormulario.renda_unica === "nao") {
                     document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => { 
                         const nome = entry.querySelector('input[name="pessoa_nome"]')?.value;
-                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]
-                        ')?.value;
+                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
                         if (nome) {
                             dadosFormulario.outras_pessoas_renda.push({
                                 nome: sanitizeInput(nome),
@@ -740,11 +739,7 @@ function attachFormEventListeners(formId) {
 
                 if (dadosFormulario.tem_dependentes === "sim") {
                     document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => { 
-                        const nome = entry.querySelector('input[name="dep_nome"]')?.value;
-                        const idade = entry.querySelector('input[name="dep_idade"]
-                        ')?.value;
-                        const relacao = entry.querySelector('input[name="dep_relacao"]
-                        ')?.value;
+                        const nome = entry.querySelector('input[name="dep_nome"]')?.value;                        const idade = entry.querySelector('input[name="dep_idade"]')?.valu                        const relacao = entry.querySelector(\'input[name="dep_relacao"]\')?.value;
                         if (nome) {
                             dadosFormulario.dependentes.push({
                                 nome: sanitizeInput(nome),
