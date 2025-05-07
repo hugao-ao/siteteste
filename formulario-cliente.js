@@ -24,16 +24,14 @@ const sanitizeInput = (str) => {
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined || value === "") return "";
-    // Permite apenas números, vírgula e ponto. Remove R$ e espaços.
     let cleanValue = String(value).replace(/[^\d,.-]/g, 
         '');
-    // Se houver mais de uma vírgula, mantém apenas a última e remove as anteriores como se fossem pontos.
     const commaCount = (cleanValue.match(/,/g) || []).length;
     if (commaCount > 1) {
         const parts = cleanValue.split(',');
         cleanValue = parts.slice(0, -1).join('') + '.' + parts.slice(-1);
     } else {
-        cleanValue = cleanValue.replace(',', '.'); // Troca vírgula por ponto para parseFloat
+        cleanValue = cleanValue.replace(',', '.'); 
     }
     
     const number = parseFloat(cleanValue);
@@ -95,11 +93,10 @@ function updatePerguntaPatrimonioFisicoLabel() {
     }
 }
 
-// Função para salvar o estado atual dos radios de plano de saúde
 function savePlanoSaudeSelections() {
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
-    planoSaudeSelections = {}; // Limpa seleções antigas
+    planoSaudeSelections = {}; 
     container.querySelectorAll(".plano-saude-entry").forEach(entry => {
         const nameAttribute = entry.querySelector('input[type="radio"]').name; 
         const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
@@ -109,7 +106,6 @@ function savePlanoSaudeSelections() {
     });
 }
 
-// Função para restaurar o estado dos radios de plano de saúde
 function restorePlanoSaudeSelections() {
     Object.keys(planoSaudeSelections).forEach(nameAttribute => {
         const value = planoSaudeSelections[nameAttribute];
@@ -131,7 +127,7 @@ function renderPlanoSaudeQuestions() {
         pessoasDaCasa.push({ id: "preenchedor_plano", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        document.querySelectorAll("#pessoas-list .person-entry").forEach((entry, index) => {
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO: .person-entry para .dynamic-entry-item
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `outra_pessoa_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
@@ -139,7 +135,7 @@ function renderPlanoSaudeQuestions() {
         });
     }
     if (document.getElementById("tem_dependentes_sim") && document.getElementById("tem_dependentes_sim").checked) {
-        document.querySelectorAll("#dependentes-list .person-entry").forEach((entry, index) => {
+        document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO: .person-entry para .dynamic-entry-item
             const nomeInput = entry.querySelector('input[name="dep_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `dependente_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "dependente" });
@@ -184,7 +180,6 @@ function renderPlanoSaudeQuestions() {
     restorePlanoSaudeSelections(); 
 }
 
-// Função para salvar o estado atual dos radios de seguro de vida
 function saveSeguroVidaSelections() {
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
@@ -198,7 +193,6 @@ function saveSeguroVidaSelections() {
     });
 }
 
-// Função para restaurar o estado dos radios de seguro de vida
 function restoreSeguroVidaSelections() {
     Object.keys(seguroVidaSelections).forEach(nameAttribute => {
         const value = seguroVidaSelections[nameAttribute];
@@ -220,7 +214,7 @@ function renderSeguroVidaQuestions() {
         pessoasComRenda.push({ id: "preenchedor_seguro", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        document.querySelectorAll("#pessoas-list .person-entry").forEach((entry, index) => {
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO: .person-entry para .dynamic-entry-item
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasComRenda.push({ id: `outra_pessoa_seguro_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
@@ -329,7 +323,7 @@ function renderActualForm(formData) {
             <div id="outras-pessoas-renda-container" style="display: none;">
                 <label>Outras pessoas com renda na casa:</label>
                 <div id="pessoas-list"></div>
-                <button type="button" id="add-person-btn">+ Adicionar Pessoa com Renda</button>
+                <button type="button" id="add-person-btn" class="add-dynamic-entry-btn">+ Adicionar Pessoa com Renda</button> <!-- MODIFICADO: Adicionada classe -->
             </div>
 
             <div class="radio-group" style="margin-top: 2rem;">
@@ -340,12 +334,12 @@ function renderActualForm(formData) {
                 <label for="tem_dependentes_nao">Não</label>
             </div>
 
-            <div id="dependentes-container" style="display: none;">
+            <div id="dependentes-container" style="display:none;">
                 <label>Dependentes:</label>
                 <div id="dependentes-list"></div>
-                <button type="button" id="add-dependente-btn">+ Adicionar Dependente</button>
+                <button type="button" id="add-dependente-btn" class="add-dynamic-entry-btn">+ Adicionar Dependente</button> <!-- MODIFICADO: Adicionada classe -->
             </div>
-
+            
             <!-- Seção de Plano de Saúde -->
             <div id="plano-saude-section" style="margin-top: 2rem;">
                 <h3 id="plano-saude-section-title" style="display: none;">Informações sobre Plano de Saúde:</h3>
@@ -429,7 +423,7 @@ function attachFormEventListeners(formId) {
         addPersonBtn.addEventListener("click", () => {
             const personIndex = pessoasListEl.children.length;
             const newPersonEntry = document.createElement("div");
-            newPersonEntry.classList.add("person-entry");
+            newPersonEntry.classList.add("dynamic-entry-item"); // MODIFICADO: .person-entry para .dynamic-entry-item
             newPersonEntry.innerHTML = `
                 <input type="text" name="pessoa_nome" placeholder="Nome da pessoa" required>
                 <label>Você precisa de autorização de <span class="person-name-placeholder"></span> para tomar decisões financeiras e agir?</label>
@@ -438,7 +432,7 @@ function attachFormEventListeners(formId) {
                     <option value="sim">Sim</option>
                     <option value="nao">Não</option>
                 </select>
-                <button type="button" class="remove-person-btn">Remover</button>
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button> <!-- MODIFICADO: .remove-person-btn para .remove-dynamic-entry-btn -->
             `;
             pessoasListEl.appendChild(newPersonEntry);
             const nomeInput = newPersonEntry.querySelector('input[name="pessoa_nome"]');
@@ -451,7 +445,7 @@ function attachFormEventListeners(formId) {
                 updateDynamicFormSections(); 
             });
 
-            newPersonEntry.querySelector(".remove-person-btn").addEventListener("click", () => {
+            newPersonEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { // MODIFICADO
                 newPersonEntry.remove();
                 updateDynamicFormSections();
             });
@@ -476,22 +470,21 @@ function attachFormEventListeners(formId) {
         addDependenteBtn.addEventListener("click", () => {
             const depIndex = dependentesListEl.children.length;
             const newDependenteEntry = document.createElement("div");
-            newDependenteEntry.classList.add("person-entry"); 
+            newDependenteEntry.classList.add("dynamic-entry-item"); // MODIFICADO: .person-entry para .dynamic-entry-item
             newDependenteEntry.innerHTML = `
                 <input type="text" name="dep_nome" placeholder="Nome do dependente" required>
                 <input type="number" name="dep_idade" placeholder="Idade" min="0" required>
                 <input type="text" name="dep_relacao" placeholder="Relação (filho(a), pai, mãe, irmã(o), Pet, etc...):" required>
-                <button type="button" class="remove-dependente-btn">Remover</button>
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button> <!-- MODIFICADO: .remove-dependente-btn para .remove-dynamic-entry-btn -->
             `;
             dependentesListEl.appendChild(newDependenteEntry);
             
-            // Adiciona listener ao campo nome do dependente para atualizar seções dinâmicas
             const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
             if (nomeDependenteInput) {
                 nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
             }
 
-            newDependenteEntry.querySelector(".remove-dependente-btn").addEventListener("click", () => {
+            newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { // MODIFICADO
                 newDependenteEntry.remove();
                 updateDynamicFormSections();
             });
@@ -516,31 +509,31 @@ function attachFormEventListeners(formId) {
         addPatrimonioBtn.addEventListener("click", () => {
             const patrimonioIndex = patrimonioListEl.children.length;
             const newPatrimonioEntry = document.createElement("div");
-            newPatrimonioEntry.classList.add("patrimonio-entry");
+            newPatrimonioEntry.classList.add("dynamic-entry-item"); // MODIFICADO: .patrimonio-entry para .dynamic-entry-item (para consistência, se aplicável)
             newPatrimonioEntry.innerHTML = `
                 <input type="text" name="patrimonio_qual" placeholder="Qual patrimônio? (ex: Apto 50m2, Corolla 2020)" required>
                 <input type="text" name="patrimonio_valor" placeholder="Quanto vale? (R$)" required class="currency-input">
                 <div class="radio-group-patrimonio-item">
                     <label>Possui seguro?</label>
                     <div class="radio-options-inline-patrimonio-item">
-                        <input type="radio" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
-                        <input type="radio" name="patrimonio_seguro_${patrimonioIndex}" value="nao"> <label for="patrimonio_seguro_${patrimonioIndex}_nao">Não</label>
+                        <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_sim" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
+                        <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_nao" name="patrimonio_seguro_${patrimonioIndex}" value="nao"> <label for="patrimonio_seguro_${patrimonioIndex}_nao">Não</label>
                     </div>
                 </div>
                 <div class="radio-group-patrimonio-item">
                     <label>Está quitado?</label>
                     <div class="radio-options-inline-patrimonio-item">
-                         <input type="radio" name="patrimonio_quitado_${patrimonioIndex}" value="sim" required> <label for="patrimonio_quitado_${patrimonioIndex}_sim">Sim</label>
-                         <input type="radio" name="patrimonio_quitado_${patrimonioIndex}" value="nao"> <label for="patrimonio_quitado_${patrimonioIndex}_nao">Não</label>
+                         <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_sim" name="patrimonio_quitado_${patrimonioIndex}" value="sim" required> <label for="patrimonio_quitado_${patrimonioIndex}_sim">Sim</label>
+                         <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_nao" name="patrimonio_quitado_${patrimonioIndex}" value="nao"> <label for="patrimonio_quitado_${patrimonioIndex}_nao">Não</label>
                     </div>
                 </div>
-                <button type="button" class="remove-patrimonio-btn">Remover</button>
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button> <!-- MODIFICADO: .remove-patrimonio-btn para .remove-dynamic-entry-btn (para consistência) -->
             `;
             patrimonioListEl.appendChild(newPatrimonioEntry);
 
             const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
             valorInput.addEventListener('input', (e) => {
-                const rawValue = e.target.value.replace(/[^\d]/g, ''); // Remove tudo exceto dígitos
+                const rawValue = e.target.value.replace(/[^\d]/g, '');
                 if (rawValue) {
                     const number = parseInt(rawValue, 10) / 100;
                     e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -558,7 +551,7 @@ function attachFormEventListeners(formId) {
                  }
             });
 
-            newPatrimonioEntry.querySelector(".remove-patrimonio-btn").addEventListener("click", () => {
+            newPatrimonioEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { // MODIFICADO
                 newPatrimonioEntry.remove();
                 updateDynamicFormSections();
             });
@@ -588,7 +581,7 @@ function attachFormEventListeners(formId) {
                 };
 
                 if (dadosFormulario.renda_unica === "nao") {
-                    document.querySelectorAll("#pessoas-list .person-entry").forEach(entry => {
+                    document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => { // MODIFICADO
                         const nome = entry.querySelector('input[name="pessoa_nome"]')?.value;
                         const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
                         if (nome) {
@@ -601,7 +594,7 @@ function attachFormEventListeners(formId) {
                 }
 
                 if (dadosFormulario.tem_dependentes === "sim") {
-                    document.querySelectorAll("#dependentes-list .person-entry").forEach(entry => {
+                    document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => { // MODIFICADO
                         const nome = entry.querySelector('input[name="dep_nome"]')?.value;
                         const idade = entry.querySelector('input[name="dep_idade"]')?.value;
                         const relacao = entry.querySelector('input[name="dep_relacao"]')?.value;
@@ -644,9 +637,10 @@ function attachFormEventListeners(formId) {
                 });
 
                 if (dadosFormulario.possui_patrimonio_fisico === "sim") {
-                    document.querySelectorAll("#patrimonio-list .patrimonio-entry").forEach((entry, index) => {
+                    document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach((entry, index) => { // MODIFICADO
                         const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value;
-                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
+                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]
+V')?.value;
                         let valorNumerico = null;
                         if (valorRaw) {
                             const cleanedValor = String(valorRaw).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
@@ -657,9 +651,9 @@ function attachFormEventListeners(formId) {
                         if (qual) {
                             dadosFormulario.patrimonios_fisicos.push({
                                 descricao: sanitizeInput(qual),
-                                valor: !isNaN(valorNumerico) ? valorNumerico : null,
-                                seguro: seguro,
-                                quitado: quitado
+                                valor_estimado: valorNumerico,
+                                possui_seguro: seguro,
+                                esta_quitado: quitado
                             });
                         }
                     });
@@ -676,8 +670,8 @@ function attachFormEventListeners(formId) {
 
                 if (updateError) throw updateError;
 
-                showMessage("success", "Formulário enviado com sucesso!");
-                formContentEl.innerHTML = "<p>Obrigado por preencher o formulário.</p>";
+                formContentEl.innerHTML = "<p>Obrigado por preencher o formulário!</p>";
+                showMessage("success", "Suas respostas foram enviadas com sucesso.");
 
             } catch (error) {
                 console.error("Erro ao enviar formulário:", error);
@@ -691,7 +685,8 @@ function attachFormEventListeners(formId) {
 
 // --- Inicialização ---
 document.addEventListener("DOMContentLoaded", () => {
-    const params = new URLSearchParams(window.location.search);
-    const token = params.get("token");
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
     loadForm(token);
 });
+
