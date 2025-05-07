@@ -12,18 +12,20 @@ let seguroVidaSelections = {};
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
-  if (str === null || str === undefined) return "";  return String(str)
+  if (str === null || str === undefined) return "";
+   return String(str)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/
-|
-|
-/g, "<br>") // Garante que todas as quebras de linha virem <br>
-    .replace(/	/g, "&emsp;") // Converte tabs para um espaço visualmente equivalente em HTML
-    .replace(/'/g, "&#x27;") // Converte aspas simples para entidade HTML
-    .replace(/`/g, "&#x60;"); // Converte crases para entidade HTML
+\n|
+|\n/g, "<br>")
+    .replace(/	/g, "&emsp;")
+    .replace(//g, "")
+    .replace(//g, "")
+    .replace(/'/g, "&#x27;")
+    .replace(/`/g, "&#x60;");
 };
 
 const handleCurrencyInput = (event) => {
@@ -135,7 +137,9 @@ function updatePatrimonioPessoaDropdowns() {
         const selectPessoa = entry.querySelector(`select[name^=\"patrimonio_pessoa_associada_\"]`);
         if (selectPessoa) {
             const currentValue = selectPessoa.value;
-            selectPessoa.innerHTML = `<option value="" disabled selected>Selecione uma pessoa</option>`;
+            selectPessoa.innerHTML = 
+<option value="" disabled selected>Selecione uma pessoa</option>
+; 
             const pessoasRenda = getPessoasComRendaParaDropdown();
             let foundCurrent = false;
             pessoasRenda.forEach(pessoa => {
@@ -291,7 +295,9 @@ function renderSeguroVidaQuestions() {
     saveSeguroVidaSelections(); 
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = 
+
+;
     const pessoasComRenda = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
