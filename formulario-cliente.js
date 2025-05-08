@@ -432,7 +432,8 @@ function renderActualForm(formData) {
                 </div>
                 <div id="patrimonio-liquido-list-container" style="display:none;">
                     <label>Dinheiro Guardado ou Investido:</label>
-                    <div id="patrimonio-liquido-list"></div                    <button type="button" id="add-patrimonio-liquido-btn" class="add-dynamic-entry-btn">Adicionar Dinheiro Guardado/Investido</button>
+                    <div id="patrimonio-liquido-list"></div>
+                    <button type="button" id="add-patrimonio-liquido-btn" class="add-dynamic-entry-btn">Adicionar Dinheiro Guardado/Investido</button>
                 </div>
             </div>
 
@@ -488,7 +489,15 @@ function addDividaEntry() {
     dividasListEl.appendChild(entryDiv);
     const currencyInput = entryDiv.querySelector(".currency-input");
     if (currencyInput) {
-        currencyInput.addEventListener("input", formatInputAsCurrency); 
+        currencyInput.addEventListener('input', (e) => {
+            const rawValue = e.target.value.replace(/[^\d]/g, '');
+            if (rawValue) {
+                const number = parseInt(rawValue, 10) / 100;
+                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                e.target.value = '';
+            }
+        }); 
     }
 }
 
@@ -742,39 +751,36 @@ function attachFormEventListeners(formId) {
     const dividasListContainer = document.getElementById("dividas-list-container");
 
     if (temDividasSimRadio && temDividasNaoRadio && dividasListContainer) {
-         const handleDividasChange = () => {
-        console.log("[DEBUG] handleDividasChange triggered. temDividasSimRadio.checked:", temDividasSimRadio.checked);
-        if (dividasListContainer) { 
-            dividasListContainer.style.display = temDividasSimRadio.checked ? "block" : "none";
-            console.log("[DEBUG] dividasListContainer.style.display set to:", dividasListContainer.style.display);
-        } else {
-            console.error("[DEBUG] dividasListContainer não encontrado em handleDividasChange!");
-        }
-        if (!temDividasSimRadio.checked && dividasListEl) { 
-            dividasListEl.innerHTML = "";
-        }
-    };El.innerHTML = "";
+        const handleDividasChange = () => {
+            console.log("[DEBUG] handleDividasChange triggered. temDividasSimRadio.checked:", temDividasSimRadio.checked);
+            if (dividasListContainer) {
+                dividasListContainer.style.display = temDividasSimRadio.checked ? "block" : "none";
+                console.log("[DEBUG] dividasListContainer.style.display set to:", dividasListContainer.style.display);
+            } else {
+                console.error("[DEBUG] dividasListContainer não encontrado em handleDividasChange!");
             }
-            updateDynamicFormSections(); 
-        };         updateDynamicFormSections(); // Update labels, etc.
+            if (!temDividasSimRadio.checked && dividasListEl) {
+                dividasListEl.innerHTML = "";
+            }
         };
 
-        [temDividasSimRadio, temDividasNaoRadio].forEach(radio => {
-            radio.addEventListener("change", handleDividasChange);
+        temDividasSimRadio.addEventListener("change", () => {
+            handleDividasChange();
+            updateDynamicFormSections();
+        });
+        temDividasNaoRadio.addEventListener("change", () => {
+            handleDividasChange();
+            updateDynamicFormSections();
         });
 
-        // Set initial radio state from dadosFormularioExistente (passed to attachFormEventListeners)
-        // This part is crucial and assumes renderActualForm has already populated dadosFormularioExistente correctly.
         if (typeof dadosFormularioExistente !== 'undefined' && dadosFormularioExistente && typeof dadosFormularioExistente.possui_dividas !== 'undefined') {
             if (dadosFormularioExistente.possui_dividas === "sim") {
                 if (temDividasSimRadio) temDividasSimRadio.checked = true;
             } else if (dadosFormularioExistente.possui_dividas === "nao") {
                 if (temDividasNaoRadio) temDividasNaoRadio.checked = true;
             }
+            handleDividasChange(); 
         }
-        // Now, trigger the visibility update based on the (potentially updated) radio state.
-        handleDividasChange();
-
     } else {
         console.error("Falha ao obter elementos para listeners de dívidas (temDividasSimRadio, temDividasNaoRadio, dividasListContainer). Verifique os IDs no HTML gerado.");
     }
