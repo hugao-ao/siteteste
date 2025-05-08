@@ -438,7 +438,7 @@ function renderActualForm(formData) {
             </div>
 
             <!-- Seção de Dívidas -->
-            <div class="form-section" id="dividas-s        <label id="label_tem_dividas" for="tem_dividas_sim">Você possui dívidas?</label>
+            <div class="form-section" id="dividas-s        <h3 id="label_tem_dividas">Você possui dívidas?</h3>
         <div class="radio-group">
             <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
             <label for="tem_dividas_sim" class="radio-label">Sim</label>
