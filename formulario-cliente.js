@@ -475,9 +475,9 @@ function addDividaEntry() {
         </div>
     `;
     dividasListEl.appendChild(entryDiv);
-    entryDiv.querySelector(".currency-input").addEventListener("input", formatInputAsCurrency);
+      entryDiv.querySelector(".currency-input").addEventListener("input", formatInputAsCurrency);
     }
-}
+}}
 
 function addDividaEntry() {
     const dividasListEl = document.getElementById("dividas-list");
