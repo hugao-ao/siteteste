@@ -432,29 +432,28 @@ function renderActualForm(formData) {
                 </div>
                 <div id="patrimonio-liquido-list-container" style="display:none;">
                     <label>Dinheiro Guardado ou Investido:</label>
-                    <div id="patrimonio-liquido-list"></div>
-                    <button type="button" id="add-patrimonio-liquido-btn" class="add-dynamic-entry-btn">+ Adicionar Dinheiro/Investimento</button> 
+                    <div id="patrimonio-liquido-list"></div                    <button type="button" id="add-patrimonio-liquido-btn" class="add-dynamic-entry-btn">Adicionar Dinheiro Guardado/Investido</button>
                 </div>
             </div>
 
-            <div id="dividas-section" style="margin-top: 2rem;">
-                 <div class="radio-group">
-                    <label id="label_tem_dividas">Você possui dívidas?</label><br>
-                    <div class="radio-options-inline-patrimonio">
-                        <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
-                        <label for="tem_dividas_sim">Sim</label>
-                        <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao">
-                        <label for="tem_dividas_nao">Não</label>
-                    </div>
+            <!-- Seção de Dívidas -->
+            <div class="form-section" id="dividas-section">
+                <h3 id="label_tem_dividas">Você possui dívidas?</h3>
+                <div class="radio-options">
+                    <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
+                    <label for="tem_dividas_sim">Sim</label>
+                    <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao">
+                    <label for="tem_dividas_nao">Não</label>
                 </div>
-                <div id="dividas-list-container" style="display:none;">
-                    <label>Dívidas:</label>
-                    <div id="dividas-list"></div>
-                    <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">+ Adicionar Dívida</button> 
+                <div id="dividas-list-container" class="dynamic-list-container" style="display: none;">
+                    <div id="dividas-list" class="dynamic-list"></div>
+                    <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">Adicionar Dívida</button>
                 </div>
             </div>
 
-            <button type="submit" id="submit-btn">Enviar Respostas</button>
+            <div class="form-actions">
+                <button type="submit" id="submit-btn" class="submit-button">Enviar Respostas</button>
+            </div>
         </form>
     `;
 
@@ -476,10 +475,39 @@ function addDividaEntry() {
         </div>
     `;
     dividasListEl.appendChild(entryDiv);
-    entryDiv.querySelector(".currency-input").addEventListener("input", formatInputAsCurrency);
+    entryDiv.querySelector(".currencyInput.addEventListener("input", formatInputAsCurrency);
+    }
 }
 
-function attachFormEventListeners(formId) {
+function addDividaEntry() {
+    const dividasListEl = document.getElementById("dividas-list");
+    if (!dividasListEl) {
+        console.error("Elemento dividas-list não encontrado!");
+        return;
+    }
+    const entryDiv = document.createElement("div");
+    entryDiv.classList.add("dynamic-entry-item");
+    entryDiv.style.display = "flex";
+    entryDiv.style.alignItems = "center";
+    entryDiv.style.marginBottom = "10px";
+
+    entryDiv.innerHTML = `
+        <div style="flex-grow: 1; margin-right: 10px;">
+            <label style="display: block; margin-bottom: 5px;">A quem deve:</label>
+            <input type="text" name="divida_credor" placeholder="Ex: Banco X, Cartão Y" required class="form-input">
+        </div>
+        <div style="flex-grow: 1; margin-right: 10px;">
+            <label style="display: block; margin-bottom: 5px;">Saldo Devedor Atual:</label>
+            <input type="text" name="divida_saldo" placeholder="R$ 1.000,00" required class="form-input currency-input">
+        </div>
+        <button type="button" class="remove-dynamic-entry-btn remove-divida-btn" style="align-self: flex-end; margin-bottom: 5px;">Remover</button>
+    `;
+    dividasListEl.appendChild(entryDiv);
+    const currencyInput = entryDiv.querySelector(".currency-input");
+    if (currencyInput) {
+        currencyInput.addEventListener("input", formatInputAsCurrency); 
+    }
+}unction attachFormEventListeners(formId) {
     const clientResponseFormEl = document.getElementById("client-response-form");
     const nomeCompletoInput = document.getElementById("nome_completo");
     const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
@@ -720,6 +748,62 @@ function attachFormEventListeners(formId) {
             updateDynamicFormSections();
         });
     }
+
+    // --- Listeners para DÍVIDAS ---
+    const addDividaBtn = document.getElementById("add-divida-btn");
+    const dividasListEl = document.getElementById("dividas-list");
+    const temDividasSimRadio = document.getElementById("tem_dividas_sim");
+    const temDividasNaoRadio = document.getElementById("tem_dividas_nao");
+    const dividasListContainer = document.getElementById("dividas-list-container");
+
+    if (temDividasSimRadio && temDividasNaoRadio && dividasListContainer) {
+        const h        const handleDividasChange = () => {
+            console.log("[DEBUG] handleDividasChange triggered. temDividasSimRadio.checked:", temDividasSimRadio.checked);
+            if (dividasListContainer) { 
+                dividasListContainer.style.display = temDividasSimRadio.checked ? "block" : "none";
+                console.log("[DEBUG] dividasListContainer.style.display set to:", dividasListContainer.style.display);
+            } else {
+                console.error("[DEBUG] dividasListContainer não encontrado em handleDividasChange!");
+            }
+            if (!temDividasSimRadio.checked && dividasListEl) { 
+                dividasListEl.innerHTML = "";
+            }
+            updateDynamicFormSections(); 
+        };         updateDynamicFormSections(); // Update labels, etc.
+        };
+
+        [temDividasSimRadio, temDividasNaoRadio].forEach(radio => {
+            radio.addEventListener("change", handleDividasChange);
+        });
+
+        // Set initial radio state from dadosFormularioExistente (passed to attachFormEventListeners)
+        // This part is crucial and assumes renderActualForm has already populated dadosFormularioExistente correctly.
+        if (typeof dadosFormularioExistente !== 'undefined' && dadosFormularioExistente && typeof dadosFormularioExistente.possui_dividas !== 'undefined') {
+            if (dadosFormularioExistente.possui_dividas === "sim") {
+                if (temDividasSimRadio) temDividasSimRadio.checked = true;
+            } else if (dadosFormularioExistente.possui_dividas === "nao") {
+                if (temDividasNaoRadio) temDividasNaoRadio.checked = true;
+            }
+        }
+        // Now, trigger the visibility update based on the (potentially updated) radio state.
+        handleDividasChange();
+
+    } else {
+        console.error("Falha ao obter elementos para listeners de dívidas (temDividasSimRadio, temDividasNaoRadio, dividasListContainer). Verifique os IDs no HTML gerado.");
+    }
+
+    if (addDividaBtn) {
+        addDividaBtn.addEventListener("click", addDividaEntry);
+    }
+
+    if (dividasListEl) {
+        dividasListEl.addEventListener("click", (event) => {
+            if (event.target.classList.contains("remove-divida-btn") || event.target.closest(".remove-divida-btn")) {
+                event.target.closest(".dynamic-entry-item").remove();
+            }
+        });
+    }
+    // --- Fim Listeners para DÍVIDAS ---
 
     if (clientResponseFormEl) {
         clientResponseFormEl.addEventListener("submit", async (event) => {
