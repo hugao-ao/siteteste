@@ -475,7 +475,7 @@ function addDividaEntry() {
         </div>
     `;
     dividasListEl.appendChild(entryDiv);
-    entryDiv.querySelector(".currencyInput.addEventListener("input", formatInputAsCurrency);
+    entryDiv.querySelector(".currency-input").addEventListener("input", formatInputAsCurrency);
     }
 }
 
