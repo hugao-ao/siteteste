@@ -114,11 +114,11 @@ function updatePerguntaPatrimonioLiquidoLabel() {
         });
     }
     if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
-        labelTemPatrimonioLiquido.textContent = "Você possui patrimônio Dinheiro Guardado ou Investido?";
+        labelTemPatrimonioLiquido.textContent = "Você possui Dinheiro Guardado ou Investido?";
     } else if (temOutrasPessoasComRenda) {
-        labelTemPatrimonioLiquido.textContent = "Vocês possuem patrimônio Dinheiro Guardado ou Investido?";
+        labelTemPatrimonioLiquido.textContent = "Vocês possuem Dinheiro Guardado ou Investido?";
     } else {
-        labelTemPatrimonioLiquido.textContent = "Você possui patrimônio Dinheiro Guardado ou Investido?";
+        labelTemPatrimonioLiquido.textContent = "Você possui Dinheiro Guardado ou Investido?";
     }
 }
 
