@@ -490,7 +490,9 @@ function addDividaEntry() {
     if (currencyInput) {
         currencyInput.addEventListener("input", formatInputAsCurrency); 
     }
-}unction attachFormEventListeners(formId) {
+}
+
+function attachFormEventListeners(formId) {
     const clientResponseFormEl = document.getElementById("client-response-form");
     const nomeCompletoInput = document.getElementById("nome_completo");
     const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
