@@ -461,23 +461,6 @@ function renderActualForm(formData) {
     updateDynamicFormSections(); 
 }
 
-function addDividaEntry() {
-    const dividasListEl = document.getElementById("dividas-list");
-    if (!dividasListEl) return;
-
-    const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item");
-    entryDiv.innerHTML = `
-        <div class="form-group-inline">
-            <input type="text" name="divida_credor" placeholder="A quem deve" required>
-            <input type="text" name="divida_saldo" placeholder="Saldo Devedor Atual" class="currency-input" required>
-            <button type="button" class="remove-divida-btn remove-dynamic-entry-btn">-</button>
-        </div>
-    `;
-    dividasListEl.appendChild(entryDiv);
-      entryDiv.querySelector(".currency-input").addEventListener("input", formatInputAsCurrency);
-    }
-}}
 
 function addDividaEntry() {
     const dividasListEl = document.getElementById("dividas-list");
