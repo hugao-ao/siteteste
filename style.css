@@ -1,0 +1,777 @@
+:root {
+  /* Cores Base (Podem ser usadas como fallback ou para elementos comuns) */
+  --emerald-dark: #023020;
+  --gold: #DAA520;
+  --gold-darker: #B8860B;
+  --gold-lighter: #FFEC8B;
+  --bg-dark-default: #121212;
+  --bg-surface-default: #1e1e1e;
+  --text-light-default: #e0e0e0;
+  --text-muted-default: #a0a0a0;
+  --border-color-default: #444444;
+  --shadow-color-default: rgba(218, 165, 32, 0.3);
+  --emerald-glow: rgba(2, 48, 32, 0.6);
+
+  /* Novas cores para botões */
+  --btn-add-bg: #f5f5dc; /* Bege/Marrom claro (como o Adicionar Patrimônio) */
+  --btn-add-text: #333333; /* Texto escuro para contraste */
+  --btn-remove-bg: #dc3545; /* Tom avermelhado (Bootstrap danger) */
+  --btn-remove-text: #ffffff; /* Texto branco */
+  --btn-submit-bg: #000080; /* Azul escuro (Navy) */
+  --btn-submit-text: #ffffff; /* Texto branco */
+
+  /* Cores Tema Admin (Padrão) */
+  --admin-primary: var(--emerald-dark);
+  --admin-secondary: var(--gold);
+  --admin-secondary-darker: var(--gold-darker);
+  --admin-secondary-lighter: var(--gold-lighter);
+  --admin-bg-dark: var(--bg-dark-default);
+  --admin-bg-surface: var(--bg-surface-default);
+  --admin-text-light: var(--text-light-default);
+  --admin-text-muted: var(--text-muted-default);
+  --admin-border-color: var(--border-color-default);
+  --admin-shadow-color: var(--shadow-color-default);
+  --admin-header-bg: var(--emerald-dark);
+  --admin-header-text: var(--gold-lighter);
+
+  /* Cores Tema Argos (Azul MAIS CLARO) */
+  --argos-primary: #1e90ff; 
+  --argos-primary-darker: #1c86ee;
+  --argos-primary-lighter: #4cb2ff;
+  --argos-secondary: #ffffff; 
+  --argos-secondary-darker: #f0f0f0;
+  --argos-secondary-lighter: #ffffff;
+  --argos-bg-dark: #4682B4; 
+  --argos-bg-surface: #B0C4DE; 
+  --argos-text-light: #FFFFFF; 
+  --argos-text-muted: #E0E0E0; 
+  --argos-border-color: #7f8c8d; 
+  --argos-shadow-color: rgba(30, 144, 255, 0.3);
+  --argos-header-bg: var(--argos-primary);
+  --argos-header-text: var(--argos-secondary);
+
+  /* Cores Tema HVC (Azul Escuro) */
+  --hvc-primary: #000080; 
+  --hvc-primary-darker: #000066;
+  --hvc-primary-lighter: #333399;
+  --hvc-secondary: #add8e6; 
+  --hvc-secondary-darker: #87ceeb; 
+  --hvc-secondary-lighter: #e0ffff; 
+  --hvc-bg-dark: #0f0f1f; 
+  --hvc-bg-surface: #191933; 
+  --hvc-text-light: #e6e6fa; 
+  --hvc-text-muted: #C0C0C0; 
+  --hvc-border-color: #483d8b; 
+  --hvc-shadow-color: rgba(0, 0, 128, 0.3);
+  --hvc-header-bg: var(--hvc-primary);
+  --hvc-header-text: var(--hvc-secondary-lighter);
+
+  /* Cores Tema Planejamento (Verde) */
+  --planejamento-primary: #006400; 
+  --planejamento-primary-darker: #004d00;
+  --planejamento-primary-lighter: #008000; 
+  --planejamento-secondary: #f5f5dc; 
+  --planejamento-secondary-darker: #d2b48c; 
+  --planejamento-secondary-lighter: #fffacd; 
+  --planejamento-bg-dark: #1a2a1a; 
+  --planejamento-bg-surface: #2a4a2a; 
+  --planejamento-text-light: #FFFFFF; 
+  --planejamento-text-muted: #C0C0C0; 
+  --planejamento-border-color: #556b2f; 
+  --planejamento-shadow-color: rgba(0, 100, 0, 0.3);
+  --planejamento-header-bg: var(--planejamento-primary);
+  --planejamento-header-text: var(--planejamento-secondary-lighter);
+
+  /* Variáveis Genéricas (serão sobrescritas pelos temas) */
+  --theme-primary: var(--admin-primary);
+  --theme-secondary: var(--admin-secondary);
+  --theme-secondary-darker: var(--admin-secondary-darker);
+  --theme-secondary-lighter: var(--admin-secondary-lighter);
+  --theme-bg-dark: var(--admin-bg-dark);
+  --theme-bg-surface: var(--admin-bg-surface);
+  --theme-text-light: var(--admin-text-light);
+  --theme-text-muted: var(--admin-text-muted);
+  --theme-border-color: var(--admin-border-color);
+  --theme-shadow-color: var(--admin-shadow-color);
+  --theme-header-bg: var(--admin-header-bg);
+  --theme-header-text: var(--admin-header-text);
+
+  --font-primary: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Aplica temas específicos sobrescrevendo variáveis genéricas */
+.theme-admin, body:not([class*="theme-"]) {
+  --theme-primary: var(--admin-primary);
+  --theme-secondary: var(--admin-secondary);
+  --theme-secondary-darker: var(--admin-secondary-darker);
+  --theme-secondary-lighter: var(--admin-secondary-lighter);
+  --theme-bg-dark: var(--admin-bg-dark);
+  --theme-bg-surface: var(--admin-bg-surface);
+  --theme-text-light: var(--admin-text-light);
+  --theme-text-muted: var(--admin-text-muted);
+  --theme-border-color: var(--admin-border-color);
+  --theme-shadow-color: var(--admin-shadow-color);
+  --theme-header-bg: var(--admin-header-bg);
+  --theme-header-text: var(--admin-header-text);
+}
+
+.theme-argos {
+  --theme-primary: var(--argos-primary);
+  --theme-secondary: var(--argos-secondary);
+  --theme-secondary-darker: var(--argos-secondary-darker);
+  --theme-secondary-lighter: var(--argos-secondary-lighter);
+  --theme-bg-dark: var(--argos-bg-dark);
+  --theme-bg-surface: var(--argos-bg-surface);
+  --theme-text-light: var(--argos-text-light);
+  --theme-text-muted: var(--argos-text-muted);
+  --theme-border-color: var(--argos-border-color);
+  --theme-shadow-color: var(--argos-shadow-color);
+  --theme-header-bg: var(--argos-header-bg);
+  --theme-header-text: var(--argos-header-text);
+}
+
+.theme-hvc {
+  --theme-primary: var(--hvc-primary);
+  --theme-secondary: var(--hvc-secondary);
+  --theme-secondary-darker: var(--hvc-secondary-darker);
+  --theme-secondary-lighter: var(--hvc-secondary-lighter);
+  --theme-bg-dark: var(--hvc-bg-dark);
+  --theme-bg-surface: var(--hvc-bg-surface);
+  --theme-text-light: var(--hvc-text-light);
+  --theme-text-muted: var(--hvc-text-muted);
+  --theme-border-color: var(--hvc-border-color);
+  --theme-shadow-color: var(--hvc-shadow-color);
+  --theme-header-bg: var(--hvc-header-bg);
+  --theme-header-text: var(--hvc-header-text);
+}
+
+.theme-planejamento {
+  --theme-primary: var(--planejamento-primary);
+  --theme-secondary: var(--planejamento-secondary);
+  --theme-secondary-darker: var(--planejamento-secondary-darker);
+  --theme-secondary-lighter: var(--planejamento-secondary-lighter);
+  --theme-bg-dark: var(--planejamento-bg-dark);
+  --theme-bg-surface: var(--planejamento-bg-surface);
+  --theme-text-light: var(--planejamento-text-light);
+  --theme-text-muted: var(--planejamento-text-muted);
+  --theme-border-color: var(--planejamento-border-color);
+  --theme-shadow-color: var(--planejamento-shadow-color);
+  --theme-header-bg: var(--planejamento-header-bg);
+  --theme-header-text: var(--planejamento-secondary-lighter);
+}
+
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: var(--font-primary);
+  background-color: var(--theme-bg-dark); 
+  color: var(--theme-text-light); 
+  line-height: 1.6;
+  padding: 0; 
+  margin: 0; 
+  min-height: 100vh;
+  display: flex; 
+}
+
+h1, h2, h3 {
+  color: var(--theme-secondary-lighter); 
+  margin-bottom: 1rem;
+  font-weight: 600;
+}
+
+a {
+  color: var(--theme-secondary); 
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+a:hover {
+  color: var(--theme-secondary-lighter); 
+}
+
+main {
+  flex-grow: 1; 
+  padding: 2rem;
+  background-color: var(--theme-bg-surface); 
+  margin-left: 250px; 
+  transition: margin-left 0.3s ease;
+}
+
+main.sidebar-collapsed {
+    margin-left: 60px;
+}
+
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--theme-border-color); 
+  background-color: var(--theme-bg-dark); 
+  color: var(--theme-text-light); 
+  margin-bottom: 1rem; 
+  transition: all 0.3s ease;
+}
+
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--theme-secondary); 
+  box-shadow: 0 0 5px var(--theme-shadow-color); 
+}
+
+/* Estilo geral de botão (será sobrescrito por classes específicas) */
+button {
+  cursor: pointer;
+  background: linear-gradient(145deg, var(--theme-secondary-darker), var(--theme-secondary)); 
+  color: var(--theme-bg-dark); 
+  font-weight: bold;
+  border: none;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+  position: relative; /* Necessário para o pseudo-elemento ::after */
+  overflow: hidden;   /* Necessário para o pseudo-elemento ::after */
+}
+
+button:hover {
+  background: linear-gradient(145deg, var(--theme-secondary), var(--theme-secondary-lighter)); 
+  box-shadow: 0 0 10px var(--theme-shadow-color); 
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+/* Botões de Adicionar (Estilo Adicionar Patrimônio) */
+.add-dynamic-entry-btn {
+    background: var(--btn-add-bg) !important;
+    color: var(--btn-add-text) !important;
+    border: 1px solid var(--theme-border-color) !important; 
+}
+
+.add-dynamic-entry-btn:hover {
+    background: #e0e0c8 !important; 
+    box-shadow: 0 0 8px rgba(0,0,0,0.2) !important;
+}
+
+/* Botões de Remover */
+.remove-dynamic-entry-btn {
+    background: var(--btn-remove-bg) !important;
+    color: var(--btn-remove-text) !important;
+    border: none !important;
+}
+
+.remove-dynamic-entry-btn:hover {
+    background: #c82333 !important; 
+    box-shadow: 0 0 8px rgba(0,0,0,0.3) !important;
+}
+
+/* Botão de Enviar Respostas */
+#submit-btn {
+    background: var(--btn-submit-bg) !important;
+    color: var(--btn-submit-text) !important;
+    border: none !important;
+}
+
+#submit-btn:hover {
+    background: #000066 !important; 
+    box-shadow: 0 0 10px rgba(0,0,128,0.5) !important;
+}
+
+/* Botão Excluir Dados e Gerar Novo Link (em cliente-detalhes.html) */
+/* Este botão usa a classe .delete-form-btn */
+#form-section .delete-form-btn {
+    background-color: #c62828 !important; /* Vermelho já definido, mas reforçando com !important */
+    color: white !important;
+    /* Removendo o efeito de brilho especificamente para este botão */
+    overflow: visible !important; /* Permite que o conteúdo não seja cortado se houver algum efeito residual */
+}
+
+#form-section .delete-form-btn::after {
+    display: none !important; /* Remove o pseudo-elemento que cria o brilho */
+}
+
+#form-section .delete-form-btn:hover {
+    background-color: #a12020 !important; /* Mantém o hover escurecido */
+    box-shadow: 0 0 8px rgba(0,0,0,0.3) !important; /* Sombra sutil no hover */
+    transform: translateY(-1px); /* Leve elevação no hover */
+}
+
+table {
+  width: 100%;
+  border-collapse: separate; 
+  border-spacing: 0;
+  margin-top: 1.5rem;
+  background-color: var(--theme-bg-dark); 
+  border-radius: 8px;
+  overflow: hidden; 
+  border: 1px solid var(--theme-border-color); 
+}
+
+th, td {
+  padding: 0.8rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--theme-border-color); 
+}
+
+th {
+  background-color: var(--theme-header-bg); 
+  color: var(--theme-header-text); 
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+  letter-spacing: 0.5px;
+}
+
+td {
+  vertical-align: middle;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+td input, td select {
+  width: calc(100% - 10px); 
+  margin-bottom: 0; 
+  padding: 0.5rem;
+}
+
+td button {
+  padding: 0.4rem 0.8rem;
+  font-size: 0.9rem;
+  margin-right: 0.5rem;
+  margin-bottom: 0; 
+}
+
+.toggle-password {
+  background: none;
+  border: none;
+  color: var(--theme-text-muted); 
+  cursor: pointer;
+  padding: 0.2rem;
+  margin-left: 0.5rem;
+  font-size: 1.1rem;
+}
+
+.toggle-password:hover {
+  color: var(--theme-secondary-lighter); 
+  background: none; 
+  box-shadow: none;
+  transform: none;
+}
+
+.error-message {
+  color: #ff6b6b; 
+  background-color: rgba(255, 107, 107, 0.1);
+  padding: 0.75rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  border: 1px solid #ff6b6b;
+  text-align: center;
+  font-size: 0.9rem;
+}
+
+section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--theme-border-color); 
+}
+
+section h2 {
+  margin-bottom: 1.5rem;
+}
+
+#create-user-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    align-items: end; 
+}
+
+#create-user-form input,
+#create-user-form select {
+    width: 100%;
+}
+
+#create-user-form button {
+    grid-column: span 1; 
+}
+
+.login-container {
+  max-width: 400px;
+  margin: 5rem auto; 
+  padding: 2.5rem;
+  background-color: var(--theme-bg-surface); 
+  border-radius: 12px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3), 0 0 10px var(--theme-shadow-color); 
+  border: 1px solid var(--theme-border-color); 
+  text-align: center;
+}
+
+.login-container h2 {
+  margin-bottom: 1.5rem;
+  color: var(--theme-secondary-lighter); 
+}
+
+.login-container input {
+  width: 100%;
+  margin-bottom: 1.2rem;
+}
+
+.login-container button {
+  width: 100%;
+  padding: 0.8rem;
+}
+
+/* Efeito de brilho genérico - pode ser removido ou ajustado se não for desejado em outros botões */
+/* A classe .shiny-effect não está sendo usada nos botões problemáticos, então esta seção pode ser mantida ou removida se o efeito não for mais necessário em lugar nenhum */
+.shiny-effect {
+  position: relative;
+  overflow: hidden;
+}
+
+.shiny-effect::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 70%); 
+  transform: rotate(45deg);
+  animation: shine 4s infinite linear;
+  opacity: 0;
+  transition: opacity 0.5s ease;
+}
+
+.shiny-effect:hover::after {
+    opacity: 1;
+}
+
+@keyframes shine {
+  0% { transform: translateX(-75%) translateY(-75%) rotate(45deg); }
+  100% { transform: translateX(75%) translateY(75%) rotate(45deg); }
+}
+
+/* Efeito de brilho para botões genéricos (NÃO SE APLICA A .delete-form-btn, .add-dynamic-entry-btn, .remove-dynamic-entry-btn, #submit-btn) */
+button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn):not(.delete-form-btn):not(.generate-link-btn)::after {
+    content: '';
+    position: absolute;
+    top: -110%;
+    left: -210%;
+    width: 200%;
+    height: 200%;
+    opacity: 0;
+    transform: rotate(30deg);
+    background: rgba(255, 255, 255, 0.13);
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0.13) 0%,
+        rgba(255, 255, 255, 0.13) 77%,
+        rgba(255, 255, 255, 0.5) 92%,
+        rgba(255, 255, 255, 0.0) 100%
+    );
+    transition: opacity 0.4s ease-in-out;
+}
+
+button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn):not(.delete-form-btn):not(.generate-link-btn):hover::after {
+    opacity: 1;
+    left: -30%;
+    transition-property: left, top, opacity;
+    transition-duration: 0.7s, 0.7s, 0.15s;
+    transition-timing-function: ease;
+}
+
+button:not(.toggle-password):not(.add-dynamic-entry-btn):not(.remove-dynamic-entry-btn):not(#submit-btn):not(.delete-form-btn):not(.generate-link-btn):active::after {
+    opacity: 0;
+}
+
+
+/* Ajustes para Radio Buttons e seus Labels */
+.radio-group label, 
+.radio-options-inline label,
+.radio-options-inline-patrimonio label,
+.radio-options-inline-patrimonio-item label {
+    margin-left: 0.25rem; /* Aproxima o label da bolinha */
+    margin-right: 1rem; /* Espaço antes do próximo radio/label */
+    vertical-align: middle;
+}
+
+.radio-group input[type="radio"],
+.radio-options-inline input[type="radio"],
+.radio-options-inline-patrimonio input[type="radio"],
+.radio-options-inline-patrimonio-item input[type="radio"] {
+    margin-right: 0.1rem; /* Reduz o espaço padrão do input radio */
+    vertical-align: middle;
+}
+
+/* Estilos para a seção de patrimônio lado a lado */
+.patrimonio-radio-group-container {
+    display: flex;
+    flex-wrap: wrap; 
+    justify-content: space-between; /* Aumenta o afastamento entre os dois grupos */
+    gap: 2rem; /* Aumenta o espaço entre os grupos de rádio */
+    margin-bottom: 1rem; 
+}
+
+.patrimonio-radio-group-item {
+    flex: 1 1 auto; /* Permite que cresçam e encolham, base automática */
+}
+
+.patrimonio-radio-group-item > label { /* Label da pergunta (Possui seguro? / Está quitado?) */
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: var(--theme-text-light);
+}
+
+.radio-options-inline-patrimonio-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem; /* Espaço entre as opções de rádio (Sim/Não) e seus labels */
+}
+
+
+@media (max-width: 768px) {
+    body {
+        flex-direction: column; 
+    }
+
+    main {
+        margin-left: 0 !important; 
+        padding: 1.5rem;
+    }
+
+    h1 {
+        font-size: 1.8rem;
+    }
+
+    table, thead, tbody, th, td, tr {
+        display: block;
+    }
+
+    thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+    }
+
+    tr {
+        border: 1px solid var(--theme-border-color); 
+        margin-bottom: 1rem;
+        border-radius: 8px;
+        background-color: var(--theme-bg-surface); 
+    }
+
+    td {
+        border: none;
+        border-bottom: 1px solid var(--theme-border-color); 
+        position: relative;
+        padding-left: 50%; 
+        text-align: right;
+        white-space: normal;
+    }
+
+    td:before {
+        position: absolute;
+        top: 50%;
+        left: 10px;
+        transform: translateY(-50%);
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        color: var(--theme-text-muted);
+        content: attr(data-label);
+    }
+
+    /* Ajustes para responsividade da seção de patrimônio */
+    .patrimonio-radio-group-container {
+        flex-direction: column; 
+        gap: 1rem; /* Reduz o gap quando empilhado */
+    }
+    .patrimonio-radio-group-item {
+        flex-basis: 100%; 
+        margin-bottom: 1rem; 
+    }
+    .patrimonio-radio-group-item:last-child {
+        margin-bottom: 0;
+    }
+}
+
+/* Adicionado para sidebar.css */
+.sidebar {
+    width: 250px;
+    background-color: var(--theme-primary); /* Usa a cor primária do tema */
+    color: var(--theme-header-text); /* Usa a cor de texto do header do tema para consistência */
+    padding: 1.5rem 1rem;
+    height: 100vh;
+    position: fixed; /* Fixa a sidebar */
+    left: 0;
+    top: 0;
+    transition: width 0.3s ease;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+.sidebar.collapsed {
+    width: 60px;
+}
+
+.sidebar-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 0.5rem 0;
+}
+
+.sidebar-logo {
+    max-width: 80%;
+    height: auto;
+    display: block;
+    margin: 0 auto 1rem auto;
+    filter: drop-shadow(0 0 5px var(--theme-secondary-lighter)); /* Efeito de brilho sutil no logo */
+    transition: max-width 0.3s ease, opacity 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-logo {
+    max-width: 40px; /* Logo menor quando colapsado */
+    opacity: 0.8;
+}
+
+.sidebar-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--theme-header-text);
+    transition: opacity 0.3s ease, font-size 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-title {
+    opacity: 0;
+    font-size: 0; /* Esconde o título */
+    height: 0;
+    overflow: hidden;
+}
+
+.sidebar-nav ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.sidebar-nav li a {
+    display: flex;
+    align-items: center;
+    padding: 0.9rem 0.75rem;
+    color: var(--theme-header-text); /* Cor do texto dos links */
+    text-decoration: none;
+    border-radius: 6px;
+    margin-bottom: 0.5rem;
+    transition: background-color 0.3s ease, color 0.3s ease, padding-left 0.3s ease;
+    white-space: nowrap; /* Impede que o texto quebre linha */
+    overflow: hidden; /* Esconde o texto que transborda */
+}
+
+.sidebar-nav li a:hover,
+.sidebar-nav li a.active {
+    background-color: var(--theme-secondary-darker); /* Cor de fundo no hover/ativo */
+    color: var(--theme-bg-dark); /* Cor do texto no hover/ativo */
+    font-weight: 500;
+}
+
+.sidebar-nav li a .icon {
+    margin-right: 1rem;
+    font-size: 1.3rem;
+    min-width: 24px; /* Garante alinhamento dos ícones */
+    text-align: center;
+    transition: margin-right 0.3s ease;
+}
+
+.sidebar.collapsed .sidebar-nav li a {
+    justify-content: center; /* Centraliza o ícone */
+    padding-left: 0.5rem; /* Ajusta padding para ícone */
+    padding-right: 0.5rem;
+}
+
+.sidebar.collapsed .sidebar-nav li a .icon {
+    margin-right: 0;
+}
+
+.sidebar.collapsed .sidebar-nav li a .link-text {
+    opacity: 0;
+    width: 0;
+    overflow: hidden;
+}
+
+.sidebar-footer {
+    margin-top: auto; /* Empurra para o final */
+    padding-top: 1rem;
+    border-top: 1px solid var(--theme-border-color);
+}
+
+#logout-btn {
+    width: 100%;
+    background-color: var(--theme-secondary) !important; /* Cor do botão de logout */
+    color: var(--theme-primary) !important; /* Cor do texto do botão de logout */
+    display: flex;
+    align-items: center;
+    justify-content: center; /* Centraliza conteúdo do botão */
+}
+
+#logout-btn .icon {
+    margin-right: 0.5rem;
+}
+
+.sidebar.collapsed #logout-btn .link-text {
+    display: none; /* Esconde texto do logout quando colapsado */
+}
+
+.sidebar.collapsed #logout-btn .icon {
+    margin-right: 0;
+}
+
+#toggle-sidebar-btn {
+    background: none;
+    border: none;
+    color: var(--theme-header-text);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    position: absolute;
+    top: 10px;
+    right: -15px; /* Posiciona para fora da sidebar */
+    background-color: var(--theme-primary);
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    z-index: 1001; /* Garante que fique sobre outros elementos */
+    transition: transform 0.3s ease, right 0.3s ease;
+}
+
+.sidebar.collapsed #toggle-sidebar-btn {
+    right: -15px; /* Mantém posição quando colapsado */
+    transform: rotate(180deg);
+}
+
+#toggle-sidebar-btn:hover {
+    background-color: var(--theme-secondary-darker);
+    color: var(--theme-bg-dark);
+    transform: translateY(0px) rotate(0deg); /* Remove transform do hover geral de botão */
+}
+
+.sidebar.collapsed #toggle-sidebar-btn:hover {
+    transform: translateY(0px) rotate(180deg); /* Mantém rotação no hover quando colapsado */
+}
+
