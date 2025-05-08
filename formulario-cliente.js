@@ -737,9 +737,9 @@ function attachFormEventListeners(formId) {
                     });
                 }
 
-                if (dadosFormulario.tem_dependentes === "sim") {\n                    document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => {\n                        const nome = entry.querySelector(\'input[name="dep_nome"]\')?.value;
-                        const idade = entry.querySelector(\'input[name="dep_idade"]\')?.value;
-                        const relacao = entry.querySelector(\'input[name="dep_relacao"]\')?.value;
+                if (dadosFormulario.tem_dependentes === "sim") {                    document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => {                        const nome = entry.querySelector('input[name="dep_nome"]')?.value;
+                        const idade = entry.querySelector('input[name="dep_idade"]')?.value;
+                        const relacao = entry.querySelector('input[name="dep_relacao"]')?.value;
                         if (nome) {
                             dadosFormulario.dependentes.push({
                                 nome: sanitizeInput(nome),
