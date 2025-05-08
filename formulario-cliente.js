@@ -39,6 +39,13 @@ const formatCurrency = (value) => {
     return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 };
 
+const parseCurrency = (formattedValue) => {
+    if (formattedValue === null || formattedValue === undefined || formattedValue === "") return null;
+    const cleanValue = String(formattedValue).replace(/R\$\s?/g, '').replace(/\./g, '').replace(/,/g, '.');
+    const number = parseFloat(cleanValue);
+    return isNaN(number) ? null : number;
+};
+
 
 const capitalizeName = (name) => {
     if (!name) return "";
@@ -97,7 +104,7 @@ function updatePerguntaPatrimonioLiquidoLabel() {
     const labelTemPatrimonioLiquido = document.getElementById("label_tem_patrimonio_liquido");
     if (!labelTemPatrimonioLiquido) return;
     const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
-    const outrasPessoasInputs = document.querySelectorAll('#pessoas-list input[name="pessoa_nome"]');
+    const outrasPessoasInputs = document.querySelectorAll("#pessoas-list input[name='pessoa_nome']");
     let temOutrasPessoasComRenda = false;
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         outrasPessoasInputs.forEach(input => {
@@ -112,6 +119,28 @@ function updatePerguntaPatrimonioLiquidoLabel() {
         labelTemPatrimonioLiquido.textContent = "Vocês possuem patrimônio Dinheiro Guardado ou Investido?";
     } else {
         labelTemPatrimonioLiquido.textContent = "Você possui patrimônio Dinheiro Guardado ou Investido?";
+    }
+}
+
+function updatePerguntaDividasLabel() {
+    const labelTemDividas = document.getElementById("label_tem_dividas");
+    if (!labelTemDividas) return;
+    const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
+    const outrasPessoasInputs = document.querySelectorAll("#pessoas-list input[name='pessoa_nome']");
+    let temOutrasPessoasComRenda = false;
+    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
+        outrasPessoasInputs.forEach(input => {
+            if (input.value.trim() !== "") {
+                temOutrasPessoasComRenda = true;
+            }
+        });
+    }
+    if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
+        labelTemDividas.textContent = "Você possui dívidas?";
+    } else if (temOutrasPessoasComRenda) {
+        labelTemDividas.textContent = "Vocês possuem dívidas?";
+    } else {
+        labelTemDividas.textContent = "Você possui dívidas?";
     }
 }
 
@@ -285,6 +314,7 @@ function updateDynamicFormSections() {
     updatePerguntaDependentesLabel();
     updatePerguntaPatrimonioFisicoLabel();
     updatePerguntaPatrimonioLiquidoLabel();
+    updatePerguntaDividasLabel(); // Nova linha
     renderPlanoSaudeQuestions();
     renderSeguroVidaQuestions();
 }
@@ -407,12 +437,46 @@ function renderActualForm(formData) {
                 </div>
             </div>
 
+            <div id="dividas-section" style="margin-top: 2rem;">
+                 <div class="radio-group">
+                    <label id="label_tem_dividas">Você possui dívidas?</label><br>
+                    <div class="radio-options-inline-patrimonio">
+                        <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
+                        <label for="tem_dividas_sim">Sim</label>
+                        <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao">
+                        <label for="tem_dividas_nao">Não</label>
+                    </div>
+                </div>
+                <div id="dividas-list-container" style="display:none;">
+                    <label>Dívidas:</label>
+                    <div id="dividas-list"></div>
+                    <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">+ Adicionar Dívida</button> 
+                </div>
+            </div>
+
             <button type="submit" id="submit-btn">Enviar Respostas</button>
         </form>
     `;
 
     attachFormEventListeners(formData.id);
     updateDynamicFormSections(); 
+}
+
+function addDividaEntry() {
+    const dividasListEl = document.getElementById("dividas-list");
+    if (!dividasListEl) return;
+
+    const entryDiv = document.createElement("div");
+    entryDiv.classList.add("dynamic-entry-item");
+    entryDiv.innerHTML = `
+        <div class="form-group-inline">
+            <input type="text" name="divida_credor" placeholder="A quem deve" required>
+            <input type="text" name="divida_saldo" placeholder="Saldo Devedor Atual" class="currency-input" required>
+            <button type="button" class="remove-divida-btn remove-dynamic-entry-btn">-</button>
+        </div>
+    `;
+    dividasListEl.appendChild(entryDiv);
+    entryDiv.querySelector(".currency-input").addEventListener("input", formatInputAsCurrency);
 }
 
 function attachFormEventListeners(formId) {
@@ -676,8 +740,10 @@ function attachFormEventListeners(formId) {
                     informacoes_seguro_vida: [],
                     possui_patrimonio_fisico: formDataObject.get("tem_patrimonio"),
                     patrimonios_fisicos: [],
-                    possui_patrimonio_liquido: formDataObject.get("tem_patrimonio_liquido"), // Nova linha
-                    patrimonios_liquidos: [] // Nova linha
+                    possui_patrimonio_liquido: formDataObject.get("tem_patrimonio_liquido"),
+                    patrimonios_liquidos: [],
+                    possui_dividas: formDataObject.get("tem_dividas"), // Nova linha para dívidas
+                    dividas_lista: [] // Nova linha para dívidas
                 };
 
                 if (dadosFormulario.renda_unica === "nao") {
@@ -772,6 +838,24 @@ function attachFormEventListeners(formId) {
                             dadosFormulario.patrimonios_liquidos.push({
                                 onde: sanitizeInput(onde),
                                 valor: valorNumerico
+                            });
+                        }
+                    });
+                }
+
+                // Coleta de dados de Dívidas
+                if (dadosFormulario.possui_dividas === "sim") {
+                    document.querySelectorAll("#dividas-list .dynamic-entry-item").forEach(entry => {
+                        const credor = entry.querySelector('input[name="divida_credor"]')?.value;
+                        const saldoRaw = entry.querySelector('input[name="divida_saldo"]')?.value;
+                        let saldoNumerico = null;
+                        if (saldoRaw) {
+                            saldoNumerico = parseCurrency(saldoRaw); // Usando a função parseCurrency existente
+                        }
+                        if (credor) { // Adicionar apenas se o credor for preenchido
+                            dadosFormulario.dividas_lista.push({
+                                credor: sanitizeInput(credor),
+                                saldo: saldoNumerico
                             });
                         }
                     });
