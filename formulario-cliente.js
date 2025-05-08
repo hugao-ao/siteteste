@@ -742,16 +742,18 @@ function attachFormEventListeners(formId) {
     const dividasListContainer = document.getElementById("dividas-list-container");
 
     if (temDividasSimRadio && temDividasNaoRadio && dividasListContainer) {
-        const h        const handleDividasChange = () => {
-            console.log("[DEBUG] handleDividasChange triggered. temDividasSimRadio.checked:", temDividasSimRadio.checked);
-            if (dividasListContainer) { 
-                dividasListContainer.style.display = temDividasSimRadio.checked ? "block" : "none";
-                console.log("[DEBUG] dividasListContainer.style.display set to:", dividasListContainer.style.display);
-            } else {
-                console.error("[DEBUG] dividasListContainer não encontrado em handleDividasChange!");
-            }
-            if (!temDividasSimRadio.checked && dividasListEl) { 
-                dividasListEl.innerHTML = "";
+         const handleDividasChange = () => {
+        console.log("[DEBUG] handleDividasChange triggered. temDividasSimRadio.checked:", temDividasSimRadio.checked);
+        if (dividasListContainer) { 
+            dividasListContainer.style.display = temDividasSimRadio.checked ? "block" : "none";
+            console.log("[DEBUG] dividasListContainer.style.display set to:", dividasListContainer.style.display);
+        } else {
+            console.error("[DEBUG] dividasListContainer não encontrado em handleDividasChange!");
+        }
+        if (!temDividasSimRadio.checked && dividasListEl) { 
+            dividasListEl.innerHTML = "";
+        }
+    };El.innerHTML = "";
             }
             updateDynamicFormSections(); 
         };         updateDynamicFormSections(); // Update labels, etc.
