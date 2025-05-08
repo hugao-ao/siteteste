@@ -279,6 +279,22 @@
                 dataHtml += `<p><strong>Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
             }
 
+            // Exibição do Patrimônio Líquido
+            const possuiPatrimonioLiquidoText = data.possui_patrimonio_liquido === "sim" ? "Sim" : (data.possui_patrimonio_liquido === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
+
+            if (data.possui_patrimonio_liquido === "sim" && Array.isArray(data.patrimonios_liquidos) && data.patrimonios_liquidos.length > 0) {
+                dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong></p><ul>`;
+                data.patrimonios_liquidos.forEach((patrimonio_liquido) => {
+                    const ondePatLiq = patrimonio_liquido.onde ? sanitizeInput(patrimonio_liquido.onde) : "Local não informado";
+                    const valorPatLiq = formatCurrencyForDisplay(patrimonio_liquido.valor);
+                    dataHtml += `<li>${ondePatLiq} (Valor: ${valorPatLiq})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.possui_patrimonio_liquido === "sim") {
+                dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
+            }
+
         } else {
             dataHtml = "<p>Não foi possível carregar os dados detalhados do formulário.</p>";
             console.log("DEBUG: dados_formulario is null or not an object:", formData.dados_formulario); 
