@@ -295,6 +295,22 @@
                 dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
             }
 
+            // Exibição de Dívidas
+            const possuiDividasText = data.possui_dividas === "sim" ? "Sim" : (data.possui_dividas === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Dívidas?</strong> ${possuiDividasText}</p>`;
+
+            if (data.possui_dividas === "sim" && Array.isArray(data.dividas_lista) && data.dividas_lista.length > 0) {
+                dataHtml += `<p><strong>Dívidas:</strong></p><ul>`;
+                data.dividas_lista.forEach((divida) => {
+                    const credorDivida = divida.credor ? sanitizeInput(divida.credor) : "Credor não informado";
+                    const saldoDivida = formatCurrencyForDisplay(divida.saldo);
+                    dataHtml += `<li>A quem deve: ${credorDivida} (Saldo Devedor Atual: ${saldoDivida})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.possui_dividas === "sim") {
+                dataHtml += `<p><strong>Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
+            }
+
         } else {
             dataHtml = "<p>Não foi possível carregar os dados detalhados do formulário.</p>";
             console.log("DEBUG: dados_formulario is null or not an object:", formData.dados_formulario); 
