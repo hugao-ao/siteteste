@@ -93,6 +93,28 @@ function updatePerguntaPatrimonioFisicoLabel() {
     }
 }
 
+function updatePerguntaPatrimonioLiquidoLabel() {
+    const labelTemPatrimonioLiquido = document.getElementById("label_tem_patrimonio_liquido");
+    if (!labelTemPatrimonioLiquido) return;
+    const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
+    const outrasPessoasInputs = document.querySelectorAll('#pessoas-list input[name="pessoa_nome"]');
+    let temOutrasPessoasComRenda = false;
+    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
+        outrasPessoasInputs.forEach(input => {
+            if (input.value.trim() !== "") {
+                temOutrasPessoasComRenda = true;
+            }
+        });
+    }
+    if (rendaUnicaSimRadio && rendaUnicaSimRadio.checked) {
+        labelTemPatrimonioLiquido.textContent = "Você possui patrimônio Dinheiro Guardado ou Investido?";
+    } else if (temOutrasPessoasComRenda) {
+        labelTemPatrimonioLiquido.textContent = "Vocês possuem patrimônio Dinheiro Guardado ou Investido?";
+    } else {
+        labelTemPatrimonioLiquido.textContent = "Você possui patrimônio Dinheiro Guardado ou Investido?";
+    }
+}
+
 function savePlanoSaudeSelections() {
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
@@ -262,6 +284,7 @@ function renderSeguroVidaQuestions() {
 function updateDynamicFormSections() {
     updatePerguntaDependentesLabel();
     updatePerguntaPatrimonioFisicoLabel();
+    updatePerguntaPatrimonioLiquidoLabel();
     renderPlanoSaudeQuestions();
     renderSeguroVidaQuestions();
 }
@@ -361,9 +384,26 @@ function renderActualForm(formData) {
                     </div>
                 </div>
                 <div id="patrimonio-list-container" style="display:none;">
-                    <label>Patrimônios:</label>
+                    <label>Patrimônios Físicos:</label>
                     <div id="patrimonio-list"></div>
-                    <button type="button" id="add-patrimonio-btn" class="add-dynamic-entry-btn">+ Adicionar Patrimônio</button> 
+                    <button type="button" id="add-patrimonio-btn" class="add-dynamic-entry-btn">+ Adicionar Patrimônio Físico</button> 
+                </div>
+            </div>
+
+            <div id="patrimonio-liquido-section" style="margin-top: 2rem;">
+                 <div class="radio-group">
+                    <label id="label_tem_patrimonio_liquido">Você possui patrimônio Dinheiro Guardado ou Investido?</label><br>
+                    <div class="radio-options-inline-patrimonio">
+                        <input type="radio" id="tem_patrimonio_liquido_sim" name="tem_patrimonio_liquido" value="sim" required>
+                        <label for="tem_patrimonio_liquido_sim">Sim</label>
+                        <input type="radio" id="tem_patrimonio_liquido_nao" name="tem_patrimonio_liquido" value="nao">
+                        <label for="tem_patrimonio_liquido_nao">Não</label>
+                    </div>
+                </div>
+                <div id="patrimonio-liquido-list-container" style="display:none;">
+                    <label>Dinheiro Guardado ou Investido:</label>
+                    <div id="patrimonio-liquido-list"></div>
+                    <button type="button" id="add-patrimonio-liquido-btn" class="add-dynamic-entry-btn">+ Adicionar Dinheiro/Investimento</button> 
                 </div>
             </div>
 
@@ -395,6 +435,12 @@ function attachFormEventListeners(formId) {
     const patrimonioListContainerEl = document.getElementById("patrimonio-list-container");
     const addPatrimonioBtn = document.getElementById("add-patrimonio-btn");
     const patrimonioListEl = document.getElementById("patrimonio-list");
+
+    const temPatrimonioLiquidoSimRadio = document.getElementById("tem_patrimonio_liquido_sim");
+    const temPatrimonioLiquidoNaoRadio = document.getElementById("tem_patrimonio_liquido_nao");
+    const patrimonioLiquidoListContainerEl = document.getElementById("patrimonio-liquido-list-container");
+    const addPatrimonioLiquidoBtn = document.getElementById("add-patrimonio-liquido-btn");
+    const patrimonioLiquidoListEl = document.getElementById("patrimonio-liquido-list");
 
     if (nomeCompletoInput) {
         nomeCompletoInput.addEventListener("input", () => {
@@ -558,6 +604,59 @@ function attachFormEventListeners(formId) {
         });
     }
 
+    // Listeners para Patrimônio Líquido
+    if (temPatrimonioLiquidoSimRadio) {
+        temPatrimonioLiquidoSimRadio.addEventListener("change", () => {
+            patrimonioLiquidoListContainerEl.style.display = "block";
+            updateDynamicFormSections();
+        });
+    }
+    if (temPatrimonioLiquidoNaoRadio) {
+        temPatrimonioLiquidoNaoRadio.addEventListener("change", () => {
+            patrimonioLiquidoListContainerEl.style.display = "none";
+            patrimonioLiquidoListEl.innerHTML = '';
+            updateDynamicFormSections();
+        });
+    }
+    if (addPatrimonioLiquidoBtn) {
+        addPatrimonioLiquidoBtn.addEventListener("click", () => {
+            const newPatrimonioLiquidoEntry = document.createElement("div");
+            newPatrimonioLiquidoEntry.classList.add("dynamic-entry-item"); 
+            newPatrimonioLiquidoEntry.innerHTML = `
+                <input type="text" name="patrimonio_liquido_onde" placeholder="Onde está guardado/investido?" required>
+                <input type="text" name="patrimonio_liquido_valor" placeholder="Quanto tem guardado/investido? (R$)" required class="currency-input">
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+            `;
+            patrimonioLiquidoListEl.appendChild(newPatrimonioLiquidoEntry);
+
+            const valorLiquidoInput = newPatrimonioLiquidoEntry.querySelector('input[name="patrimonio_liquido_valor"]');
+            valorLiquidoInput.addEventListener('input', (e) => {
+                const rawValue = e.target.value.replace(/[^\d]/g, '');
+                if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                } else {
+                    e.target.value = '';
+                }
+            });
+            valorLiquidoInput.addEventListener('blur', (e) => { 
+                 const rawValue = e.target.value.replace(/[^\d]/g, '');
+                 if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                 } else {
+                    e.target.value = '';
+                 }
+            });
+
+            newPatrimonioLiquidoEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
+                newPatrimonioLiquidoEntry.remove();
+                updateDynamicFormSections();
+            });
+            updateDynamicFormSections();
+        });
+    }
+
     if (clientResponseFormEl) {
         clientResponseFormEl.addEventListener("submit", async (event) => {
             event.preventDefault();
@@ -576,7 +675,9 @@ function attachFormEventListeners(formId) {
                     informacoes_plano_saude: [],
                     informacoes_seguro_vida: [],
                     possui_patrimonio_fisico: formDataObject.get("tem_patrimonio"),
-                    patrimonios_fisicos: []
+                    patrimonios_fisicos: [],
+                    possui_patrimonio_liquido: formDataObject.get("tem_patrimonio_liquido"), // Nova linha
+                    patrimonios_liquidos: [] // Nova linha
                 };
 
                 if (dadosFormulario.renda_unica === "nao") {
@@ -652,6 +753,25 @@ function attachFormEventListeners(formId) {
                                 valor_estimado: valorNumerico,
                                 possui_seguro: seguro,
                                 esta_quitado: quitado
+                            });
+                        }
+                    });
+                }
+
+                // Coleta de dados do Patrimônio Líquido
+                if (dadosFormulario.possui_patrimonio_liquido === "sim") {
+                    document.querySelectorAll("#patrimonio-liquido-list .dynamic-entry-item").forEach(entry => {
+                        const onde = entry.querySelector('input[name="patrimonio_liquido_onde"]')?.value;
+                        const valorRaw = entry.querySelector('input[name="patrimonio_liquido_valor"]')?.value;
+                        let valorNumerico = null;
+                        if (valorRaw) {
+                            const cleanedValor = String(valorRaw).replace(/[^\d,.-]/g, '').replace('.', '').replace(',', '.');
+                            valorNumerico = parseFloat(cleanedValor);
+                        }
+                        if (onde) {
+                            dadosFormulario.patrimonios_liquidos.push({
+                                onde: sanitizeInput(onde),
+                                valor: valorNumerico
                             });
                         }
                     });
