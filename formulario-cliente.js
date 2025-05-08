@@ -438,15 +438,13 @@ function renderActualForm(formData) {
             </div>
 
             <!-- Seção de Dívidas -->
-            <div class="form-section" id="dividas-section">
-                <h3 id="label_tem_dividas">Você possui dívidas?</h3>
-                <div class="radio-options">
-                    <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
-                    <label for="tem_dividas_sim">Sim</label>
-                    <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao">
-                    <label for="tem_dividas_nao">Não</label>
-                </div>
-                <div id="dividas-list-container" class="dynamic-list-container" style="display: none;">
+            <div class="form-section" id="dividas-s        <label id="label_tem_dividas" for="tem_dividas_sim">Você possui dívidas?</label>
+        <div class="radio-group" style="text-align: center;">
+            <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
+            <label for="tem_dividas_sim" class="radio-label">Sim</label>
+            <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao" required>
+            <label for="tem_dividas_nao" class="radio-label">Não</label>
+        </div>       <div id="dividas-list-container" class="dynamic-list-container" style="display: none;">
                     <div id="dividas-list" class="dynamic-list"></div>
                     <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">Adicionar Dívida</button>
                 </div>
