@@ -466,25 +466,16 @@ function renderActualForm(formData) {
 function addDividaEntry() {
     const dividasListEl = document.getElementById("dividas-list");
     if (!dividasListEl) {
-        console.error("Elemento dividas-list não encontrado!");
+        console.error("Elemento dividas-list não encontrado para adicionar entrada de dívida.");
         return;
     }
-    const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item");
-    entryDiv.style.display = "flex";
-    entryDiv.style.alignItems = "center";
-    entryDiv.style.marginBottom = "10px";
 
+    const entryDiv = document.createElement("div");
+    entryDiv.classList.add("dynamic-entry-item"); 
     entryDiv.innerHTML = `
-        <div style="flex-grow: 1; margin-right: 10px;">
-            <label style="display: block; margin-bottom: 5px;">A quem deve:</label>
-            <input type="text" name="divida_credor" placeholder="Ex: Banco X, Cartão Y" required class="form-input">
-        </div>
-        <div style="flex-grow: 1; margin-right: 10px;">
-            <label style="display: block; margin-bottom: 5px;">Saldo Devedor Atual:</label>
-            <input type="text" name="divida_saldo" placeholder="R$ 1.000,00" required class="form-input currency-input">
-        </div>
-        <button type="button" class="remove-dynamic-entry-btn remove-divida-btn" style="align-self: flex-end; margin-bottom: 5px;">Remover</button>
+        <input type="text" name="divida_credor" placeholder="A quem deve? (Ex: Banco X, Cartão Y)" required class="form-input">
+        <input type="text" name="divida_saldo" placeholder="Saldo Devedor Atual (R$)" required class="form-input currency-input">
+        <button type="button" class="remove-dynamic-entry-btn remove-divida-btn">Remover</button>
     `;
     dividasListEl.appendChild(entryDiv);
     const currencyInput = entryDiv.querySelector(".currency-input");
@@ -497,7 +488,16 @@ function addDividaEntry() {
             } else {
                 e.target.value = '';
             }
-        }); 
+        });
+        currencyInput.addEventListener('blur', (e) => {
+            const rawValue = e.target.value.replace(/[^\d]/g, '');
+            if (rawValue) {
+                const number = parseInt(rawValue, 10) / 100;
+                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                e.target.value = '';
+            }
+        });
     }
 }
 
