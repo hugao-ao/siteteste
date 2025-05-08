@@ -438,15 +438,18 @@ function renderActualForm(formData) {
             </div>
 
             <!-- Seção de Dívidas -->
-            <div class="form-section" i            <div class="form-group">
-                <h3 id="label_tem_dividas" class="form-question-label">Você possui dívidas?</h3>
-                <div class="radio-group" style="text-align: left;">
-                    <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
-                    <label for="tem_dividas_sim" class="radio-label">Sim</label>
-                    <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao" required>
-                    <label for="tem_dividas_nao" class="radio-label">Não</label>
+            <div class="form-section" id="dividas-section">
+                <div class="form-group">
+                    <h3 id="label_tem_dividas" class="form-question-label" style="text-align: left !important; margin-bottom: 0.5rem;">Você possui dívidas?</h3>
+                    <div class="radio-group" style="text-align: left;">
+                        <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
+                        <label for="tem_dividas_sim" class="radio-label">Sim</label>
+                        <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao" required>
+                        <label for="tem_dividas_nao" class="radio-label">Não</label>
+                    </div>
                 </div>
-            </div>dividas-list-container" class="dynamic-list-container" style="display: none;">
+                <div id="dividas-list-container" class="dynamic-list-container" style="display: none;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Dívidas:</label>
                     <div id="dividas-list" class="dynamic-list"></div>
                     <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">Adicionar Dívida</button>
                 </div>
