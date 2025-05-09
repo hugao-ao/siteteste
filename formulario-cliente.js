@@ -17,9 +17,7 @@ const sanitizeInput = (str) => {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/
-/g, "&#x27;") // Corrigido para apóstrofo
+    .replace(/"/g, "&quot;")    .replace(/'/g, "&#x27;") // Corrigido para apóstrofo
     .replace(/`/g, "&#x60;");
 };
 
