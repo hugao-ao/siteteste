@@ -366,6 +366,10 @@ async function loadForm(token) {
                         <input type="text" id="nome_completo" name="nome_completo" value="${sanitizeInput(clienteNome)}" required>
                     </div>
                     <div class="form-group">
+                        <label for="data_nascimento">Data de Nascimento:</label>
+                        <input type="date" id="data_nascimento" name="data_nascimento" required>
+                    </div>
+                    <div class="form-group">
                         <label for="estado_civil">Estado Civil:</label>
                         <select id="estado_civil" name="estado_civil" required>
                             <option value="">Selecione...</option>
@@ -1112,6 +1116,10 @@ function createDependenteEntry(index) {
             <label for="dep_parentesco_${index}">Parentesco:</label>
             <input type="text" id="dep_parentesco_${index}" name="dep_parentesco" required>
         </div>
+        <div class="form-group">
+            <label for="dep_data_nasc_${index}">Data de Nascimento:</label>
+            <input type="date" id="dep_data_nasc_${index}" name="dep_data_nasc" required>
+        </div>
     `;
     return entryDiv;
 }
@@ -1449,4 +1457,5 @@ document.addEventListener("DOMContentLoaded", () => {
     const token = urlParams.get("token");
     loadForm(token);
 });
+
 
