@@ -24,12 +24,10 @@ const sanitizeInput = (str) => {
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined || value === "") return "";
-    let cleanValue = String(value).replace(/[^\d,.-]/g, 
-        
-    // Remove todos os pontos exceto o último (se for separador de milhar)
-    cleanValue = cleanValue.replace(/\.(?=[^.]*\.)/g, 
-        
-    // Substitui a última vírgula por ponto (para decimal)
+    let cleanValue = String(value).replace(/[^\d,.-]/g, '');
+        // Remove todos os pontos exceto o último (se for separador de milhar)
+    cleanValue = cleanValue.replace(/\.(?=[^.]*\.)/g, '');
+        // Substitui a última vírgula por ponto (para decimal)
     cleanValue = cleanValue.replace(",", ".");
     const number = parseFloat(cleanValue);
     if (isNaN(number)) return "R$ 0,00"; // Retorna um valor padrão em caso de NaN
