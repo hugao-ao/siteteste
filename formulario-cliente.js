@@ -1,4 +1,4 @@
-// formulario-cliente.js
+// formulario-cliente.js (versão com nova lógica de IR)
 import { supabase } from "./supabase.js";
 
 // --- Elementos DOM ---
@@ -50,13 +50,16 @@ const parseCurrency = (formattedValue) => {
 
 const capitalizeName = (name) => {
     if (!name) return "";
-    return name.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+    // Capitaliza apenas o primeiro nome para a pergunta do IR
+    const firstName = name.toLowerCase().split(' ')[0];
+    return firstName.charAt(0).toUpperCase() + firstName.slice(1);
 };
 
 function showMessage(type, text) {
     messageAreaEl.innerHTML = `<div class="message ${type}">${sanitizeInput(text)}</div>`;
 }
 
+// --- Funções de Atualização de Rótulos Dinâmicos (mantidas do original) ---
 function updatePerguntaDependentesLabel() {
     const labelTemDependentes = document.getElementById("label_tem_dependentes");
     if (!labelTemDependentes) return;
@@ -145,6 +148,7 @@ function updatePerguntaDividasLabel() {
     }
 }
 
+// --- Funções para Seções Dinâmicas (Plano de Saúde, Seguro de Vida - mantidas do original) ---
 function savePlanoSaudeSelections() {
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
@@ -203,7 +207,7 @@ function renderPlanoSaudeQuestions() {
     if(tituloPlanoSaude) tituloPlanoSaude.style.display = 'block';
     pessoasDaCasa.forEach((pessoa) => {
         const primeiroNome = pessoa.nome.split(' ')[0];
-        const nomeCapitalizado = capitalizeName(primeiroNome);
+        const nomeCapitalizado = capitalizeName(primeiroNome); // Usa a função de capitalizar primeiro nome
         const personId = `plano_saude_${pessoa.id}`;
         const entryDiv = document.createElement("div");
         entryDiv.classList.add("plano-saude-entry");
@@ -282,7 +286,7 @@ function renderSeguroVidaQuestions() {
     if(tituloSeguroVida) tituloSeguroVida.style.display = 'block';
     pessoasComRenda.forEach((pessoa) => {
         const primeiroNome = pessoa.nome.split(' ')[0];
-        const nomeCapitalizado = capitalizeName(primeiroNome);
+        const nomeCapitalizado = capitalizeName(primeiroNome); // Usa a função de capitalizar primeiro nome
         const personId = `seguro_vida_${pessoa.id}`;
         const entryDiv = document.createElement("div");
         entryDiv.classList.add("seguro-vida-entry");
@@ -311,150 +315,12 @@ function renderSeguroVidaQuestions() {
     restoreSeguroVidaSelections(); 
 }
 
-// --- Funções para a seção de Imposto de Renda (INÍCIO) ---
-function saveImpostoRendaSelections() {
-    const container = document.getElementById("imposto-renda-section-content");
-    if (!container) return;
-    impostoRendaSelections = {};
-    container.querySelectorAll(".imposto-renda-entry").forEach(entry => {
-        const personId = entry.dataset.personId;
-        if (!personId) return;
-
-        impostoRendaSelections[personId] = {};
-
-        const declaraIRRadio = entry.querySelector(`input[name="declara_ir_${personId}"]:checked`);
-        if (declaraIRRadio) {
-            impostoRendaSelections[personId].declara_ir = declaraIRRadio.value;
-        }
-
-        const tipoDeclaracaoRadio = entry.querySelector(`input[name="tipo_declaracao_ir_${personId}"]:checked`);
-        if (tipoDeclaracaoRadio) {
-            impostoRendaSelections[personId].tipo_declaracao = tipoDeclaracaoRadio.value;
-        }
-
-        const resultadoDeclaracaoRadio = entry.querySelector(`input[name="resultado_declaracao_ir_${personId}"]:checked`);
-        if (resultadoDeclaracaoRadio) {
-            impostoRendaSelections[personId].resultado_declaracao = resultadoDeclaracaoRadio.value;
-        }
-    });
-}
-
-function restoreImpostoRendaSelections() {
-    Object.keys(impostoRendaSelections).forEach(personId => {
-        const selections = impostoRendaSelections[personId];
-        if (selections.declara_ir) {
-            const radioToSelect = document.querySelector(`input[name="declara_ir_${personId}"][value="${selections.declara_ir}"]`);
-            if (radioToSelect) {
-                radioToSelect.checked = true;
-                // Disparar o evento change para mostrar/ocultar campos dependentes
-                const event = new Event('change', { bubbles: true });
-                radioToSelect.dispatchEvent(event);
-            }
-        }
-        if (selections.tipo_declaracao) {
-            const radioToSelect = document.querySelector(`input[name="tipo_declaracao_ir_${personId}"][value="${selections.tipo_declaracao}"]`);
-            if (radioToSelect) radioToSelect.checked = true;
-        }
-        if (selections.resultado_declaracao) {
-            const radioToSelect = document.querySelector(`input[name="resultado_declaracao_ir_${personId}"][value="${selections.resultado_declaracao}"]`);
-            if (radioToSelect) radioToSelect.checked = true;
-        }
-    });
-}
-
-function renderImpostoRendaQuestions() {
-    saveImpostoRendaSelections();
-    const container = document.getElementById("imposto-renda-section-content");
-    if (!container) return;
-    container.innerHTML = ''; // Limpa o conteúdo anterior
-
-    const pessoasComRenda = [];
-    const nomeCompletoInput = document.getElementById("nome_completo");
-
-    // Adiciona a pessoa que está preenchendo o formulário, se tiver nome
-    if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
-        pessoasComRenda.push({ 
-            id: "preenchedor_ir", 
-            nome: sanitizeInput(nomeCompletoInput.value.trim()), 
-            tipo: "preenchedor" 
-        });
-    }
-
-    // Adiciona outras pessoas com renda, se houver
-    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => {
-            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
-            if (nomeInput && nomeInput.value.trim() !== "") {
-                pessoasComRenda.push({ 
-                    id: `outra_pessoa_ir_${index}`, 
-                    nome: sanitizeInput(nomeInput.value.trim()), 
-                    tipo: "outra_pessoa_renda" 
-                });
-            }
-        });
-    }
-
-    const tituloImpostoRenda = document.getElementById("imposto-renda-section-title");
-    if (pessoasComRenda.length === 0) {
-        container.innerHTML = "<p>Preencha as informações sobre nome e renda para definir as perguntas sobre Imposto de Renda.</p>";
-        if(tituloImpostoRenda) tituloImpostoRenda.style.display = 'none';
-        return;
-    }
-    if(tituloImpostoRenda) tituloImpostoRenda.style.display = 'block';
-
-    pessoasComRenda.forEach((pessoa) => {
-        const primeiroNome = pessoa.nome.split(' ')[0];
-        const nomeCapitalizado = capitalizeName(primeiroNome);
-        const personId = pessoa.id; // Usar o ID já definido para a pessoa
-
-        const entryDiv = document.createElement("div");
-        entryDiv.classList.add("imposto-renda-entry", "dynamic-entry-item"); // Adicionada classe dynamic-entry-item
-        entryDiv.style.marginBottom = "1.5rem";
-        entryDiv.dataset.personId = personId; // Armazena o ID da pessoa para fácil recuperação
-        entryDiv.dataset.personName = pessoa.nome;
-        entryDiv.dataset.personType = pessoa.tipo;
-
-        entryDiv.innerHTML = `
-            <h4 style="color: var(--theme-text-light); margin-bottom: 0.8rem;">Imposto de Renda de ${nomeCapitalizado}</h4>
-            
-            <label for="declara_ir_${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} declara Imposto de Renda?</label>
-            <div class="radio-group" style="margin-bottom: 1rem;">
-                <label><input type="radio" name="declara_ir_${personId}" value="sim" onchange="toggleIRFields('${personId}', this.value)"> Sim</label>
-                <label><input type="radio" name="declara_ir_${personId}" value="nao" onchange="toggleIRFields('${personId}', this.value)"> Não</label>
-                <label><input type="radio" name="declara_ir_${personId}" value="nao_sabe" onchange="toggleIRFields('${personId}', this.value)"> Não sabe informar</label>
-            </div>
-
-            <div id="ir_fields_${personId}" style="display: none; margin-top: 1rem; padding-left: 1rem; border-left: 2px solid var(--theme-border-color);">
-                <label for="tipo_declaracao_ir_${personId}" style="display: block; margin-bottom: 0.5rem;">Qual o tipo da declaração de ${nomeCapitalizado}?</label>
-                <div class="radio-group" style="margin-bottom: 1rem;">
-                    <label><input type="radio" name="tipo_declaracao_ir_${personId}" value="simples"> Simples</label>
-                    <label><input type="radio" name="tipo_declaracao_ir_${personId}" value="completa"> Completa</label>
-                    <label><input type="radio" name="tipo_declaracao_ir_${personId}" value="nao_sabe"> Não sabe informar</label>
-                </div>
-
-                <label for="resultado_declaracao_ir_${personId}" style="display: block; margin-bottom: 0.5rem;">Qual o resultado da declaração de ${nomeCapitalizado}?</label>
-                <div class="radio-group">
-                    <label><input type="radio" name="resultado_declaracao_ir_${personId}" value="paga"> Paga imposto</label>
-                    <label><input type="radio" name="resultado_declaracao_ir_${personId}" value="restitui"> Restitui imposto</label>
-                    <label><input type="radio" name="resultado_declaracao_ir_${personId}" value="isento"> Isento</label>
-                    <label><input type="radio" name="resultado_declaracao_ir_${personId}" value="nao_sabe"> Não sabe informar</label>
-                </div>
-            </div>
-        `;
-        container.appendChild(entryDiv);
-    });
-    restoreImpostoRendaSelections();
-}
-
-// Função global para ser chamada pelo onchange no HTML
-window.toggleIRFields = function(personId, declaraIRValue) {
-    const fieldsDiv = document.getElementById(`ir_fields_${personId}`);
-    if (fieldsDiv) {
-        if (declaraIRValue === 'sim') {
-            fieldsDiv.style.display = 'block';
-        } else {
-            fieldsDiv.style.display = 'none';
-            // Limpar seleções dos campos dependentes se não declara IR ou não sabe
+// --- Funções para a seção de Imposto de Renda (NOVA LÓGICA) ---
+window.toggleIRConditionalFields = function(personId, show) {
+    const conditionalFieldsDiv = document.getElementById(`ir_conditional_fields_${personId}`);
+    if (conditionalFieldsDiv) {
+        conditionalFieldsDiv.style.display = show ? "block" : "none";
+        if (!show) {
             const tipoRadios = document.querySelectorAll(`input[name="tipo_declaracao_ir_${personId}"]`);
             tipoRadios.forEach(radio => radio.checked = false);
             const resultadoRadios = document.querySelectorAll(`input[name="resultado_declaracao_ir_${personId}"]`);
@@ -462,13 +328,139 @@ window.toggleIRFields = function(personId, declaraIRValue) {
         }
     }
 }
-// --- Funções para a seção de Imposto de Renda (FIM) ---
+
+function saveImpostoRendaSelections() {
+    const container = document.getElementById("imposto-renda-section-content");
+    if (!container) return;
+    impostoRendaSelections = {};
+    container.querySelectorAll(".imposto-renda-entry").forEach(entry => {
+        const personId = entry.dataset.personId;
+        if (!personId) return;
+        const declaraIRRadio = entry.querySelector(`input[name="declara_ir_${personId}"]:checked`);
+        const declaraIRValue = declaraIRRadio ? declaraIRRadio.value : null;
+        impostoRendaSelections[personId] = {
+            declara_ir: declaraIRValue,
+            tipo_declaracao: null,
+            resultado_declaracao: null,
+            nome_pessoa: entry.dataset.personFullName // Salvar nome para o resumo
+        };
+        if (declaraIRValue === "sim") {
+            const tipoDeclaracaoRadio = entry.querySelector(`input[name="tipo_declaracao_ir_${personId}"]:checked`);
+            if (tipoDeclaracaoRadio) {
+                impostoRendaSelections[personId].tipo_declaracao = tipoDeclaracaoRadio.value;
+            }
+            const resultadoDeclaracaoRadio = entry.querySelector(`input[name="resultado_declaracao_ir_${personId}"]:checked`);
+            if (resultadoDeclaracaoRadio) {
+                impostoRendaSelections[personId].resultado_declaracao = resultadoDeclaracaoRadio.value;
+            }
+        }
+    });
+}
+
+function restoreImpostoRendaSelections() {
+    Object.keys(impostoRendaSelections).forEach(personId => {
+        const selections = impostoRendaSelections[personId];
+        if (selections && selections.declara_ir) {
+            const declaraIRRadio = document.querySelector(`input[name="declara_ir_${personId}"][value="${selections.declara_ir}"]`);
+            if (declaraIRRadio) {
+                declaraIRRadio.checked = true;
+                toggleIRConditionalFields(personId, selections.declara_ir === "sim");
+            }
+            if (selections.declara_ir === "sim") {
+                if (selections.tipo_declaracao) {
+                    const tipoRadio = document.querySelector(`input[name="tipo_declaracao_ir_${personId}"][value="${selections.tipo_declaracao}"]`);
+                    if (tipoRadio) tipoRadio.checked = true;
+                }
+                if (selections.resultado_declaracao) {
+                    const resultadoRadio = document.querySelector(`input[name="resultado_declaracao_ir_${personId}"][value="${selections.resultado_declaracao}"]`);
+                    if (resultadoRadio) resultadoRadio.checked = true;
+                }
+            }
+        }
+    });
+}
+
+function renderImpostoRendaQuestions() {
+    saveImpostoRendaSelections();
+    const container = document.getElementById("imposto-renda-section-content");
+    if (!container) {
+        console.warn("Contêiner da seção de IR não encontrado para renderização.");
+        return;
+    }
+    container.innerHTML = '';
+    const pessoasComRenda = [];
+    const nomeCompletoInput = document.getElementById("nome_completo");
+    if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
+        pessoasComRenda.push({
+            id: "preenchedor",
+            nome: sanitizeInput(nomeCompletoInput.value.trim()),
+            labelQuestion: "Você declara IR?"
+        });
+    }
+    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => {
+            const nomePessoaInput = entry.querySelector("input[name='pessoa_nome']");
+            if (nomePessoaInput && nomePessoaInput.value.trim() !== "") {
+                const nomeCompletoPessoa = sanitizeInput(nomePessoaInput.value.trim());
+                const primeiroNomeCapitalizado = capitalizeName(nomeCompletoPessoa); // Usa a função de capitalizar primeiro nome
+                pessoasComRenda.push({
+                    id: `outra_pessoa_${index}`,
+                    nome: nomeCompletoPessoa,
+                    labelQuestion: `${primeiroNomeCapitalizado} declara IR?`
+                });
+            }
+        });
+    }
+
+    const tituloImpostoRenda = document.getElementById("imposto-renda-section-title");
+    if (pessoasComRenda.length === 0) {
+        if (tituloImpostoRenda) tituloImpostoRenda.style.display = 'none';
+        container.innerHTML = "<p>Preencha as informações sobre nome e renda para definir as perguntas sobre Imposto de Renda.</p>";
+        return;
+    }
+    if (tituloImpostoRenda) tituloImpostoRenda.style.display = 'block';
+
+    pessoasComRenda.forEach((pessoa) => {
+        const personId = `ir_${pessoa.id}`;
+        const entryDiv = document.createElement("div");
+        entryDiv.classList.add("imposto-renda-entry", "dynamic-entry-item");
+        entryDiv.style.marginBottom = "1.5rem";
+        entryDiv.dataset.personId = personId;
+        entryDiv.dataset.personFullName = pessoa.nome; 
+
+        entryDiv.innerHTML = `
+            <h4 style="color: var(--theme-text-light); margin-bottom: 0.8rem;">${pessoa.labelQuestion}</h4>
+            <div class="radio-group" style="margin-bottom: 1rem;">
+                <label><input type="radio" name="declara_ir_${personId}" value="sim" onchange="window.toggleIRConditionalFields('${personId}', true)"> Sim</label>
+                <label><input type="radio" name="declara_ir_${personId}" value="nao" onchange="window.toggleIRConditionalFields('${personId}', false)"> Não</label>
+            </div>
+            <div id="ir_conditional_fields_${personId}" style="display: none; margin-top: 1rem; padding-left: 1rem; border-left: 2px solid var(--theme-border-color);">
+                <label for="tipo_declaracao_ir_${personId}" style="display: block; margin-bottom: 0.5rem;">Qual o tipo da declaração?</label>
+                <div class="radio-group" style="margin-bottom: 1rem;">
+                    <label><input type="radio" name="tipo_declaracao_ir_${personId}" value="simples"> Simples</label>
+                    <label><input type="radio" name="tipo_declaracao_ir_${personId}" value="completa"> Completa</label>
+                    <label><input type="radio" name="tipo_declaracao_ir_${personId}" value="nao_sabe"> Não sei informar</label>
+                </div>
+                <label for="resultado_declaracao_ir_${personId}" style="display: block; margin-bottom: 0.5rem;">Qual o resultado da declaração?</label>
+                <div class="radio-group">
+                    <label><input type="radio" name="resultado_declaracao_ir_${personId}" value="paga"> Paga</label>
+                    <label><input type="radio" name="resultado_declaracao_ir_${personId}" value="recebe"> Recebe</label>
+                    <label><input type="radio" name="resultado_declaracao_ir_${personId}" value="isento"> Isento</label>
+                    <label><input type="radio" name="resultado_declaracao_ir_${personId}" value="nao_sabe"> Não sei informar</label>
+                </div>
+            </div>
+        `;
+        container.appendChild(entryDiv);
+    });
+    restoreImpostoRendaSelections();
+}
+// --- FIM Funções para a seção de Imposto de Renda ---
 
 function updateDynamicFormSections() {
     updatePerguntaDependentesLabel();
     updatePerguntaPatrimonioFisicoLabel();
     updatePerguntaPatrimonioLiquidoLabel();
-    updatePerguntaDividasLabel(); 
+    updatePerguntaDividasLabel();
     renderPlanoSaudeQuestions();
     renderSeguroVidaQuestions();
     renderImpostoRendaQuestions(); // Adicionada chamada para renderizar IR
@@ -496,16 +488,13 @@ async function loadForm(token) {
             }
             return;
         }
-
         if (formData.status === 'preenchido') {
             formTitleEl.textContent = `Resumo do Formulário de ${sanitizeInput(formData.clientes.nome)}`;
             displaySummary(formData.dados_formulario, formData.clientes.nome);
             return;
         }
-
         formTitleEl.textContent = `Formulário de ${sanitizeInput(formData.clientes.nome)}`;
         renderFormFields(formData.cliente_id, formData.token_unico, formData.dados_formulario || {}); 
-
     } catch (error) {
         console.error("Erro ao carregar formulário:", error);
         formContentEl.innerHTML = "<p>Ocorreu um erro inesperado.</p>";
@@ -514,6 +503,8 @@ async function loadForm(token) {
 }
 
 function renderFormFields(clienteId, token, existingData = {}) {
+    // A estrutura HTML do formulário é gerada aqui.
+    // Precisamos adicionar o contêiner para a seção de IR após a seção de dívidas.
     formContentEl.innerHTML = `
         <form id="cliente-form">
             <input type="hidden" id="cliente_id" value="${clienteId}">
@@ -574,14 +565,6 @@ function renderFormFields(clienteId, token, existingData = {}) {
                 </div>
             </div>
 
-            <!-- Seção Imposto de Renda (NOVA SEÇÃO) -->
-            <div id="imposto-renda-section" style="margin-top: 2rem; border-top: 1px solid var(--theme-border-color); padding-top: 1.5rem;">
-                <h3 id="imposto-renda-section-title" style="color: var(--theme-secondary-lighter); margin-bottom: 1rem; text-align: left; display: none;">Imposto de Renda</h3>
-                <div id="imposto-renda-section-content">
-                    <p>Preencha as informações sobre nome e renda para definir as perguntas sobre Imposto de Renda.</p>
-                </div>
-            </div>
-
             <label id="label_tem_patrimonio_fisico" style="margin-top: 2rem;">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</label>
             <div class="radio-group">
                 <label><input type="radio" id="tem_patrimonio_fisico_sim" name="tem_patrimonio_fisico" value="sim" ${existingData.tem_patrimonio_fisico === 'sim' ? 'checked' : ''} required> Sim</label>
@@ -618,34 +601,36 @@ function renderFormFields(clienteId, token, existingData = {}) {
                 <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">Adicionar Dívida</button>
             </div>
 
+            <!-- Seção Imposto de Renda (NOVA SEÇÃO APÓS DÍVIDAS) -->
+            <div id="imposto-renda-section" style="margin-top: 2rem; border-top: 1px solid var(--theme-border-color); padding-top: 1.5rem;">
+                <h3 id="imposto-renda-section-title" style="color: var(--theme-secondary-lighter); margin-bottom: 1rem; text-align: left; display: block;">Imposto de Renda</h3>
+                <div id="imposto-renda-section-content">
+                    <!-- Conteúdo será renderizado por renderImpostoRendaQuestions() -->
+                </div>
+            </div>
+
             <button type="submit">Enviar Formulário</button>
         </form>
     `;
 
-    // Event listeners e lógica de renderização dinâmica
     setupEventListeners(existingData);
-    updateDynamicFormSections(); // Chama para renderizar seções dinâmicas inicialmente
+    updateDynamicFormSections(); 
     restoreExistingDynamicData(existingData);
 }
 
 function setupEventListeners(existingData) {
     const form = document.getElementById("cliente-form");
     form.addEventListener("submit", handleSubmitForm);
-
-    // Listener para renda mensal (formatação de moeda)
     const rendaMensalInput = document.getElementById("renda_mensal");
     if (rendaMensalInput) {
         rendaMensalInput.addEventListener("input", (e) => {
             const value = parseCurrency(e.target.value);
             e.target.value = formatCurrency(value);
         });
-        // Formatar ao carregar, caso haja valor existente
         if(existingData.renda_mensal) {
             rendaMensalInput.value = formatCurrency(existingData.renda_mensal);
         }
     }
-
-    // Listeners para mostrar/ocultar seções dinâmicas
     document.getElementById("renda_unica_sim")?.addEventListener("change", toggleOutrasPessoasRenda);
     document.getElementById("renda_unica_nao")?.addEventListener("change", toggleOutrasPessoasRenda);
     document.getElementById("tem_dependentes_sim")?.addEventListener("change", toggleDependentes);
@@ -656,23 +641,16 @@ function setupEventListeners(existingData) {
     document.getElementById("tem_patrimonio_liquido_nao")?.addEventListener("change", togglePatrimonioLiquido);
     document.getElementById("tem_dividas_sim")?.addEventListener("change", toggleDividas);
     document.getElementById("tem_dividas_nao")?.addEventListener("change", toggleDividas);
-
-    // Listeners para botões de adicionar entradas dinâmicas
     document.getElementById("add-pessoa-btn")?.addEventListener("click", addPessoaRendaEntry);
     document.getElementById("add-dependente-btn")?.addEventListener("click", addDependenteEntry);
     document.getElementById("add-patrimonio-fisico-btn")?.addEventListener("click", addPatrimonioFisicoEntry);
     document.getElementById("add-patrimonio-liquido-btn")?.addEventListener("click", addPatrimonioLiquidoEntry);
     document.getElementById("add-divida-btn")?.addEventListener("click", addDividaEntry);
-
-    // Listeners para atualizar seções dinâmicas quando nome ou renda mudam
     document.getElementById("nome_completo")?.addEventListener("input", updateDynamicFormSections);
     document.getElementById("renda_unica_sim")?.addEventListener("change", updateDynamicFormSections);
     document.getElementById("renda_unica_nao")?.addEventListener("change", updateDynamicFormSections);
     document.getElementById("tem_dependentes_sim")?.addEventListener("change", updateDynamicFormSections);
     document.getElementById("tem_dependentes_nao")?.addEventListener("change", updateDynamicFormSections);
-
-    // Adicionar listeners para os campos de nome das outras pessoas com renda
-    // Isso é feito dinamicamente em addPessoaRendaEntry
 }
 
 function restoreExistingDynamicData(existingData) {
@@ -691,7 +669,6 @@ function restoreExistingDynamicData(existingData) {
     if (existingData.dividas && existingData.dividas.length > 0) {
         existingData.dividas.forEach(divida => addDividaEntry(divida));
     }
-    // Restaurar seleções de plano de saúde, seguro de vida e IR se existirem nos dados carregados
     if (existingData.plano_saude_info) {
         planoSaudeSelections = existingData.plano_saude_info;
         restorePlanoSaudeSelections();
@@ -702,7 +679,10 @@ function restoreExistingDynamicData(existingData) {
     }
     if (existingData.imposto_renda_info) { // Restaurar dados de IR
         impostoRendaSelections = existingData.imposto_renda_info;
-        restoreImpostoRendaSelections();
+        // É importante que renderImpostoRendaQuestions seja chamado *antes* de restoreImpostoRendaSelections
+        // para que os elementos HTML existam. Isso é tratado em updateDynamicFormSections.
+        // Aqui, apenas garantimos que os dados são carregados no estado.
+        // A restauração visual ocorrerá após a renderização.
     }
 }
 
@@ -713,7 +693,7 @@ function toggleOutrasPessoasRenda() {
         section.style.display = "block";
     } else {
         section.style.display = "none";
-        document.getElementById("pessoas-list").innerHTML = ''; // Limpa a lista se não aplicável
+        document.getElementById("pessoas-list").innerHTML = ''; 
     }
     updateDynamicFormSections();
 }
@@ -724,7 +704,7 @@ function toggleDependentes() {
         section.style.display = "block";
     } else {
         section.style.display = "none";
-        document.getElementById("dependentes-list").innerHTML = ''; // Limpa a lista
+        document.getElementById("dependentes-list").innerHTML = ''; 
     }
     updateDynamicFormSections();
 }
@@ -762,7 +742,7 @@ function toggleDividas() {
     updateDynamicFormSections();
 }
 
-// --- Funções para Adicionar Entradas Dinâmicas ---
+// --- Funções para Adicionar Entradas Dinâmicas (Pessoas, Dependentes, etc. - mantidas do original) ---
 function addPessoaRendaEntry(pessoaData = {}) {
     const list = document.getElementById("pessoas-list");
     const entryDiv = document.createElement("div");
@@ -780,7 +760,6 @@ function addPessoaRendaEntry(pessoaData = {}) {
         this.closest(".dynamic-entry-item").remove(); 
         updateDynamicFormSections(); 
     });
-    // Listener para renda da pessoa (formatação de moeda)
     const pessoaRendaInput = entryDiv.querySelector(`#pessoa_renda_${uniqueId}`);
     if (pessoaRendaInput) {
         pessoaRendaInput.addEventListener("input", (e) => {
@@ -791,9 +770,8 @@ function addPessoaRendaEntry(pessoaData = {}) {
             pessoaRendaInput.value = formatCurrency(pessoaData.renda_mensal);
         }
     }
-    // Adicionar listener ao nome da pessoa para atualizar seções dinâmicas
     entryDiv.querySelector('input[name="pessoa_nome"]').addEventListener('input', updateDynamicFormSections);
-    updateDynamicFormSections(); // Atualiza rótulos e seções dependentes
+    updateDynamicFormSections();
 }
 
 function addDependenteEntry(depData = {}) {
@@ -813,7 +791,6 @@ function addDependenteEntry(depData = {}) {
         this.closest(".dynamic-entry-item").remove(); 
         updateDynamicFormSections(); 
     });
-    // Adicionar listener ao nome do dependente para atualizar seções dinâmicas
     entryDiv.querySelector('input[name="dep_nome"]').addEventListener('input', updateDynamicFormSections);
     updateDynamicFormSections();
 }
@@ -914,6 +891,9 @@ async function handleSubmitForm(event) {
     event.preventDefault();
     showMessage("success", "Enviando dados..."); 
 
+    // Salvar seleções de IR antes de coletar os dados
+    saveImpostoRendaSelections();
+
     const dadosFormulario = {
         cliente_id: document.getElementById("cliente_id").value,
         token_unico: document.getElementById("token_unico").value,
@@ -934,10 +914,9 @@ async function handleSubmitForm(event) {
         dividas: [],
         plano_saude_info: {},
         seguro_vida_info: {},
-        imposto_renda_info: {} // Novo campo para dados de IR
+        imposto_renda_info: impostoRendaSelections // Coleta direta do estado
     };
 
-    // Coletar dados de outras pessoas com renda
     if (dadosFormulario.renda_unica === 'nao') {
         document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(item => {
             dadosFormulario.outras_pessoas_renda.push({
@@ -946,8 +925,6 @@ async function handleSubmitForm(event) {
             });
         });
     }
-
-    // Coletar dados de dependentes
     if (dadosFormulario.tem_dependentes === 'sim') {
         document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(item => {
             dadosFormulario.dependentes.push({
@@ -956,8 +933,6 @@ async function handleSubmitForm(event) {
             });
         });
     }
-
-    // Coletar dados de patrimônio físico
     if (dadosFormulario.tem_patrimonio_fisico === 'sim') {
         document.querySelectorAll("#patrimonio-fisico-list .dynamic-entry-item").forEach(item => {
             dadosFormulario.patrimonio_fisico.push({
@@ -966,8 +941,6 @@ async function handleSubmitForm(event) {
             });
         });
     }
-
-    // Coletar dados de patrimônio líquido
     if (dadosFormulario.tem_patrimonio_liquido === 'sim') {
         document.querySelectorAll("#patrimonio-liquido-list .dynamic-entry-item").forEach(item => {
             dadosFormulario.patrimonio_liquido.push({
@@ -976,8 +949,6 @@ async function handleSubmitForm(event) {
             });
         });
     }
-
-    // Coletar dados de dívidas
     if (dadosFormulario.tem_dividas === 'sim') {
         document.querySelectorAll("#dividas-list .dynamic-entry-item").forEach(item => {
             dadosFormulario.dividas.push({
@@ -987,42 +958,10 @@ async function handleSubmitForm(event) {
             });
         });
     }
-
-    // Coletar dados de Plano de Saúde
-    savePlanoSaudeSelections(); // Garante que as últimas seleções estão no estado
+    savePlanoSaudeSelections();
     dadosFormulario.plano_saude_info = planoSaudeSelections;
-
-    // Coletar dados de Seguro de Vida
-    saveSeguroVidaSelections(); // Garante que as últimas seleções estão no estado
+    saveSeguroVidaSelections();
     dadosFormulario.seguro_vida_info = seguroVidaSelections;
-
-    // Coletar dados de Imposto de Renda (NOVO)
-    saveImpostoRendaSelections(); // Garante que as últimas seleções estão no estado
-    const impostoRendaDataColetada = [];
-    document.querySelectorAll(".imposto-renda-entry").forEach(entry => {
-        const personId = entry.dataset.personId;
-        const personName = entry.dataset.personName;
-        const personType = entry.dataset.personType;
-
-        const declaraIR = entry.querySelector(`input[name="declara_ir_${personId}"]:checked`)?.value || null;
-        let tipoDeclaracao = null;
-        let resultadoDeclaracao = null;
-
-        if (declaraIR === 'sim') {
-            tipoDeclaracao = entry.querySelector(`input[name="tipo_declaracao_ir_${personId}"]:checked`)?.value || null;
-            resultadoDeclaracao = entry.querySelector(`input[name="resultado_declaracao_ir_${personId}"]:checked`)?.value || null;
-        }
-
-        impostoRendaDataColetada.push({
-            pessoa_id: personId,
-            nome: personName,
-            tipo_pessoa: personType, 
-            declara_ir: declaraIR,
-            tipo_declaracao: tipoDeclaracao,
-            resultado_declaracao: resultadoDeclaracao
-        });
-    });
-    dadosFormulario.imposto_renda_info = impostoRendaDataColetada; // Salva o array coletado
 
     try {
         const { data, error } = await supabase
@@ -1034,14 +973,11 @@ async function handleSubmitForm(event) {
             })
             .eq("token_unico", dadosFormulario.token_unico)
             .eq("cliente_id", dadosFormulario.cliente_id);
-
         if (error) throw error;
-
         showMessage("success", "Formulário enviado com sucesso! Obrigado.");
         formContentEl.innerHTML = "<p>Seu formulário foi enviado. Entraremos em contato em breve.</p>";
         formTitleEl.textContent = `Resumo do Formulário de ${sanitizeInput(dadosFormulario.nome_completo)}`;
         displaySummary(dadosFormulario, dadosFormulario.nome_completo);
-
     } catch (error) {
         console.error("Erro ao enviar formulário:", error);
         showMessage("error", `Erro ao enviar: ${error.message}`);
@@ -1058,7 +994,6 @@ function displaySummary(data, nomeCliente) {
     summaryHTML += `<p><strong>Profissão:</strong> ${sanitizeInput(data.profissao)}</p>`;
     summaryHTML += `<p><strong>Renda Mensal:</strong> ${formatCurrency(data.renda_mensal)}</p>`;
     summaryHTML += `<p><strong>Renda da casa é apenas a sua?</strong> ${data.renda_unica === 'sim' ? 'Sim' : 'Não'}</p>`;
-
     if (data.renda_unica === 'nao' && data.outras_pessoas_renda && data.outras_pessoas_renda.length > 0) {
         summaryHTML += `<h4>Outras Pessoas com Renda:</h4><ul>`;
         data.outras_pessoas_renda.forEach(p => {
@@ -1066,7 +1001,6 @@ function displaySummary(data, nomeCliente) {
         });
         summaryHTML += `</ul>`;
     }
-
     summaryHTML += `<p><strong>Tem dependentes?</strong> ${data.tem_dependentes === 'sim' ? 'Sim' : 'Não'}</p>`;
     if (data.tem_dependentes === 'sim' && data.dependentes && data.dependentes.length > 0) {
         summaryHTML += `<h4>Dependentes:</h4><ul>`;
@@ -1075,25 +1009,18 @@ function displaySummary(data, nomeCliente) {
         });
         summaryHTML += `</ul>`;
     }
-
-    // Resumo Plano de Saúde
     if (data.plano_saude_info && Object.keys(data.plano_saude_info).length > 0) {
         summaryHTML += `<h4>Plano de Saúde:</h4><ul>`;
         Object.entries(data.plano_saude_info).forEach(([key, value]) => {
             const nameMatch = key.match(/plano_saude_(preenchedor_plano|outra_pessoa_plano_\d+|dependente_plano_\d+)/);
             let personName = "Pessoa não identificada"; 
-            // Tentar encontrar o nome da pessoa baseado no ID salvo nos data attributes durante a renderização
-            // Esta parte pode precisar de ajuste para buscar o nome corretamente no resumo.
-            // Por simplicidade, vamos usar o ID por enquanto se o nome não for facilmente recuperável aqui.
             if (nameMatch && nameMatch[1]) {
                 personName = capitalizeName(nameMatch[1].replace(/_plano|_\d+/g, ' ').replace(/preenchedor/g, data.nome_completo.split(' ')[0] || 'Preenchedor').replace(/outra pessoa/g, 'Outra Pessoa').replace(/dependente/g, 'Dependente'));
             }
-            summaryHTML += `<li>${personName}: ${value === 'sim' ? 'Sim' : (value === 'nao' ? 'Não' : 'Não sabe informar')}</li>`;
+            summaryHTML += `<li>${personName}: ${value === 'sim' ? 'Sim' : (value === 'nao' ? 'Não' : 'Não sei informar')}</li>`;
         });
         summaryHTML += `</ul>`;
     }
-
-    // Resumo Seguro de Vida
     if (data.seguro_vida_info && Object.keys(data.seguro_vida_info).length > 0) {
         summaryHTML += `<h4>Seguro de Vida:</h4><ul>`;
         Object.entries(data.seguro_vida_info).forEach(([key, value]) => {
@@ -1102,25 +1029,10 @@ function displaySummary(data, nomeCliente) {
             if (nameMatch && nameMatch[1]) {
                  personName = capitalizeName(nameMatch[1].replace(/_seguro|_\d+/g, ' ').replace(/preenchedor/g, data.nome_completo.split(' ')[0] || 'Preenchedor').replace(/outra pessoa/g, 'Outra Pessoa'));
             }
-            summaryHTML += `<li>${personName}: ${value === 'sim' ? 'Sim' : (value === 'nao' ? 'Não' : 'Não sabe informar')}</li>`;
+            summaryHTML += `<li>${personName}: ${value === 'sim' ? 'Sim' : (value === 'nao' ? 'Não' : 'Não sei informar')}</li>`;
         });
         summaryHTML += `</ul>`;
     }
-    
-    // Resumo Imposto de Renda (NOVO)
-    if (data.imposto_renda_info && data.imposto_renda_info.length > 0) {
-        summaryHTML += `<h4>Imposto de Renda:</h4>`;
-        data.imposto_renda_info.forEach(irPessoa => {
-            summaryHTML += `<div style="margin-left: 20px; margin-bottom: 10px;"><strong>${sanitizeInput(irPessoa.nome)}:</strong><br>`;
-            summaryHTML += `Declara IR? ${irPessoa.declara_ir === 'sim' ? 'Sim' : (irPessoa.declara_ir === 'nao' ? 'Não' : 'Não sabe informar')}<br>`;
-            if (irPessoa.declara_ir === 'sim') {
-                summaryHTML += `Tipo: ${irPessoa.tipo_declaracao || 'Não informado'}<br>`;
-                summaryHTML += `Resultado: ${irPessoa.resultado_declaracao || 'Não informado'}`;
-            }
-            summaryHTML += `</div>`;
-        });
-    }
-
     summaryHTML += `<p style="margin-top:1.5rem;"><strong>Possui patrimônio físico?</strong> ${data.tem_patrimonio_fisico === 'sim' ? 'Sim' : 'Não'}</p>`;
     if (data.tem_patrimonio_fisico === 'sim' && data.patrimonio_fisico && data.patrimonio_fisico.length > 0) {
         summaryHTML += `<h4>Patrimônio Físico:</h4><ul>`;
@@ -1129,7 +1041,6 @@ function displaySummary(data, nomeCliente) {
         });
         summaryHTML += `</ul>`;
     }
-
     summaryHTML += `<p><strong>Possui dinheiro guardado/investido?</strong> ${data.tem_patrimonio_liquido === 'sim' ? 'Sim' : 'Não'}</p>`;
     if (data.tem_patrimonio_liquido === 'sim' && data.patrimonio_liquido && data.patrimonio_liquido.length > 0) {
         summaryHTML += `<h4>Patrimônio Líquido (Investimentos):</h4><ul>`;
@@ -1138,7 +1049,6 @@ function displaySummary(data, nomeCliente) {
         });
         summaryHTML += `</ul>`;
     }
-
     summaryHTML += `<p><strong>Possui dívidas?</strong> ${data.tem_dividas === 'sim' ? 'Sim' : 'Não'}</p>`;
     if (data.tem_dividas === 'sim' && data.dividas && data.dividas.length > 0) {
         summaryHTML += `<h4>Dívidas:</h4><ul>`;
@@ -1146,6 +1056,24 @@ function displaySummary(data, nomeCliente) {
             summaryHTML += `<li>${sanitizeInput(d.descricao)} - Saldo: ${formatCurrency(d.saldo_devedor)}, Prestação: ${formatCurrency(d.prestacao_mensal)}</li>`;
         });
         summaryHTML += `</ul>`;
+    }
+
+    // Resumo Imposto de Renda (NOVA LÓGICA)
+    if (data.imposto_renda_info && Object.keys(data.imposto_renda_info).length > 0) {
+        summaryHTML += `<h4 style="margin-top:1.5rem;">Imposto de Renda:</h4>`;
+        Object.values(data.imposto_renda_info).forEach(irPessoa => {
+            if (!irPessoa || !irPessoa.nome_pessoa) return; // Pular se não houver dados ou nome
+            summaryHTML += `<div style="margin-left: 10px; margin-bottom: 10px;"><strong>${sanitizeInput(irPessoa.nome_pessoa)}:</strong><br>`;
+            const declara = irPessoa.declara_ir;
+            summaryHTML += `Declara IR? ${declara === 'sim' ? 'Sim' : (declara === 'nao' ? 'Não' : 'Não informado')}<br>`;
+            if (declara === 'sim') {
+                const tipo = irPessoa.tipo_declaracao;
+                const resultado = irPessoa.resultado_declaracao;
+                summaryHTML += `Tipo: ${tipo ? sanitizeInput(tipo) : 'Não informado'}<br>`;
+                summaryHTML += `Resultado: ${resultado ? sanitizeInput(resultado) : 'Não informado'}`;
+            }
+            summaryHTML += `</div>`;
+        });
     }
 
     summaryHTML += `</div>`;
