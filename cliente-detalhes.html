@@ -326,200 +326,239 @@
                     // Informações básicas sobre declaração
                     let irInfoText = `${nomePessoaIR}: ${statusIRText}`;
                     
-                    // Adicionar informações de tipo e resultado quando declara = sim
+                    // Adicionar informações de tipo e resultado se declara IR
                     if (info.declara === "sim") {
-                        // Tipo de IR
                         let tipoIRText = "N/A";
-                        if (info.tipo_ir === "simples") tipoIRText = "Simples";
-                        else if (info.tipo_ir === "completa") tipoIRText = "Dedução Completa";
-                        else if (info.tipo_ir === "nao_sei") tipoIRText = "Não Sei Informar";
+                        if (info.tipo === "simples") tipoIRText = "Simples";
+                        else if (info.tipo === "completa") tipoIRText = "Dedução Completa";
+                        else if (info.tipo === "nao_sei") tipoIRText = "Não sei informar";
                         
-                        // Resultado do IR
                         let resultadoIRText = "N/A";
-                        if (info.resultado_ir === "paga") resultadoIRText = "Paga";
-                        else if (info.resultado_ir === "recebe") resultadoIRText = "Recebe";
-                        else if (info.resultado_ir === "isento") resultadoIRText = "Isento";
-                        else if (info.resultado_ir === "nao_sei") resultadoIRText = "Não Sei Informar";
+                        if (info.resultado === "paga") resultadoIRText = "Paga";
+                        else if (info.resultado === "recebe") resultadoIRText = "Recebe";
+                        else if (info.resultado === "isento") resultadoIRText = "Isento";
+                        else if (info.resultado === "nao_sei") resultadoIRText = "Não sei informar";
                         
-                        // Adicionar informações detalhadas
-                        dataHtml += `<li>${irInfoText}
-                            <ul>
-                                <li>Tipo: ${tipoIRText}</li>
-                                <li>Resultado: ${resultadoIRText}</li>
-                            </ul>
-                        </li>`;
-                    } else {
-                        // Apenas informação básica quando não declara ou não sabe
-                        dataHtml += `<li>${irInfoText}</li>`;
+                        irInfoText += ` (Tipo: ${tipoIRText}, Resultado: ${resultadoIRText})`;
                     }
+                    
+                    dataHtml += `<li>${irInfoText}</li>`;
                 });
                 dataHtml += `</ul>`;
             }
+            
+            // Exibição de Orçamento
+            if (data.orcamento && typeof data.orcamento === "object") {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Orçamento:</strong></p>`;
+                
+                // Verificar o tipo de orçamento (conjunto ou individual)
+                if (data.orcamento.tipo === "conjunto" && data.orcamento.dados && data.orcamento.dados.conjunto) {
+                    // Exibir orçamento conjunto
+                    dataHtml += `<p><strong>Tipo de Orçamento:</strong> Conjunto da casa</p>`;
+                    dataHtml += `<ul>`;
+                    
+                    const entradas = formatCurrencyForDisplay(data.orcamento.dados.conjunto.entradas);
+                    const despesasFixas = formatCurrencyForDisplay(data.orcamento.dados.conjunto.despesas_fixas);
+                    const despesasVariaveis = formatCurrencyForDisplay(data.orcamento.dados.conjunto.despesas_variaveis);
+                    const valorPoupado = formatCurrencyForDisplay(data.orcamento.dados.conjunto.valor_poupado);
+                    
+                    dataHtml += `<li>Entradas totais mensais: ${entradas}</li>`;
+                    dataHtml += `<li>Despesas fixas mensais: ${despesasFixas}</li>`;
+                    dataHtml += `<li>Despesas variáveis mensais: ${despesasVariaveis}</li>`;
+                    dataHtml += `<li>Valor poupado/investido mensal: ${valorPoupado}</li>`;
+                    
+                    dataHtml += `</ul>`;
+                } else if (data.orcamento.tipo === "individual" && data.orcamento.dados) {
+                    // Exibir orçamento individual por pessoa
+                    dataHtml += `<p><strong>Tipo de Orçamento:</strong> Individual por pessoa</p>`;
+                    
+                    Object.entries(data.orcamento.dados).forEach(([nome, info]) => {
+                        if (typeof info === "object") {
+                            const nomePessoa = sanitizeInput(nome);
+                            
+                            dataHtml += `<p><strong>Orçamento de ${nomePessoa}:</strong></p>`;
+                            dataHtml += `<ul>`;
+                            
+                            const entradas = formatCurrencyForDisplay(info.entradas);
+                            const despesasFixas = formatCurrencyForDisplay(info.despesas_fixas);
+                            const despesasVariaveis = formatCurrencyForDisplay(info.despesas_variaveis);
+                            const valorPoupado = formatCurrencyForDisplay(info.valor_poupado);
+                            
+                            dataHtml += `<li>Entradas totais mensais: ${entradas}</li>`;
+                            dataHtml += `<li>Despesas fixas mensais: ${despesasFixas}</li>`;
+                            dataHtml += `<li>Despesas variáveis mensais: ${despesasVariaveis}</li>`;
+                            dataHtml += `<li>Valor poupado/investido mensal: ${valorPoupado}</li>`;
+                            
+                            dataHtml += `</ul>`;
+                        }
+                    });
+                }
+            }
 
+            // Exibir data de preenchimento
+            if (data.data_preenchimento) {
+                const dataPreenchimento = new Date(data.data_preenchimento);
+                const dataFormatada = dataPreenchimento.toLocaleDateString('pt-BR', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+                dataHtml += `<p style="margin-top: 1.5rem;"><strong>Formulário preenchido em:</strong> ${dataFormatada}</p>`;
+            }
+
+            // Adicionar botão para excluir dados e gerar novo link
+            dataHtml += `
+                <div style="margin-top: 1.5rem; text-align: center;">
+                    <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
+                </div>
+            `;
         } else {
-            dataHtml = "<p>Não foi possível carregar os dados detalhados do formulário.</p>";
-            console.log("DEBUG: dados_formulario is null or not an object:", formData.dados_formulario); 
+            dataHtml = "<p>Erro ao carregar dados do formulário.</p>";
         }
 
-        formInfoContentEl.innerHTML = `
-            <p>Formulário preenchido em: ${new Date(formData.data_preenchimento).toLocaleString("pt-BR")}</p>
-            <div class="form-data-display">
-                ${dataHtml}
-            </div>
-            <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
-        `;
+        formInfoContentEl.innerHTML = dataHtml;
+
+        // Adicionar evento ao botão de excluir
         const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
         if (deleteBtn) {
             deleteBtn.addEventListener("click", handleDeleteForm);
         }
     }
 
-    async function handleDeleteForm(e) {
-        console.log("DEBUG: Delete button clicked"); 
-        const formId = e.target.dataset.formId;
-        if (!formId) {
-            console.error("Erro: ID do formulário não encontrado no botão de exclusão.");
-            return;
-        }
-        
+    async function handleDeleteForm(event) {
+        const formId = event.target.dataset.formId;
+        if (!formId) return;
+
         if (!confirm("Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.")) {
             return;
         }
-        
+
         try {
+            // Excluir formulário
             const { error } = await supabase
-                .from("formularios_clientes")
+                .from('formularios_clientes')
                 .delete()
-                .eq("id", formId);
-                
-            if (error) throw error;
-            
-            // Após excluir, gerar um novo formulário
-            await generateNewForm();
-            
+                .eq('id', formId);
+
+            if (error) {
+                throw new Error(`Erro ao excluir formulário: ${error.message}`);
+            }
+
+            // Gerar novo token
+            await generateNewFormLink(currentClientId);
+
         } catch (error) {
             console.error("Erro ao excluir formulário:", error);
             alert(`Erro ao excluir formulário: ${error.message}`);
         }
     }
 
-    async function generateNewForm() {
-        console.log("DEBUG: Generating new form for client ID:", currentClientId); 
-        if (!currentClientId) {
-            console.error("Erro: ID do cliente não definido para gerar novo formulário.");
-            return;
-        }
-        
+    async function generateNewFormLink(clienteId) {
         try {
             // Gerar token único
-            const token = crypto.randomUUID();
-            
+            const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+
             // Inserir novo formulário
             const { data, error } = await supabase
-                .from("formularios_clientes")
+                .from('formularios_clientes')
                 .insert([
                     {
-                        cliente_id: currentClientId,
+                        cliente_id: clienteId,
                         token_unico: token,
-                        status: "pendente"
+                        status: 'pendente'
                     }
                 ]);
-                
-            if (error) throw error;
-            
-            // Recarregar dados do formulário
-            loadFormData();
-            
+
+            if (error) {
+                throw new Error(`Erro ao gerar novo link: ${error.message}`);
+            }
+
+            // Recarregar dados
+            await loadClienteData(clienteId);
+
         } catch (error) {
-            console.error("Erro ao gerar novo formulário:", error);
-            alert(`Erro ao gerar novo formulário: ${error.message}`);
+            console.error("Erro ao gerar novo link:", error);
+            alert(`Erro ao gerar novo link: ${error.message}`);
         }
     }
 
-    async function loadFormData() {
-        console.log("DEBUG: Loading form data for client ID:", currentClientId); 
-        if (!currentClientId) {
-            console.error("Erro: ID do cliente não definido para carregar formulário.");
-            return;
-        }
-        
+    async function loadClienteData(clienteId) {
         try {
-            // Buscar o formulário mais recente para este cliente
-            const { data: formData, error: formError } = await supabase
-                .from("formularios_clientes")
-                .select("*")
-                .eq("cliente_id", currentClientId)
-                .order("created_at", { ascending: false })
-                .limit(1);
-                
-            if (formError) throw formError;
-            
-            if (!formData || formData.length === 0) {
-                // Nenhum formulário encontrado, gerar um novo
-                await generateNewForm();
+            // Obter dados do cliente
+            const { data: clienteData, error: clienteError } = await supabase
+                .from('clientes')
+                .select('name')
+                .eq('id', clienteId)
+                .single();
+
+            if (clienteError) {
+                throw new Error(`Erro ao carregar dados do cliente: ${clienteError.message}`);
+            }
+
+            // Atualizar nome do cliente
+            clientNameDisplay.textContent = clienteData.name || "Cliente";
+
+            // Obter formulários do cliente
+            const { data: formulariosData, error: formulariosError } = await supabase
+                .from('formularios_clientes')
+                .select('*')
+                .eq('cliente_id', clienteId)
+                .order('created_at', { ascending: false });
+
+            if (formulariosError) {
+                throw new Error(`Erro ao carregar formulários: ${formulariosError.message}`);
+            }
+
+            // Verificar se há formulários
+            if (!formulariosData || formulariosData.length === 0) {
+                // Gerar novo link
+                await generateNewFormLink(clienteId);
                 return;
             }
-            
-            const latestForm = formData[0];
-            
-            if (latestForm.status === "pendente") {
-                // Formulário pendente, mostrar link
+
+            // Obter o formulário mais recente
+            const latestForm = formulariosData[0];
+
+            // Verificar status do formulário
+            if (latestForm.status === 'pendente') {
+                // Exibir link para preenchimento
                 displayFormLink(latestForm);
-            } else if (latestForm.status === "preenchido") {
-                // Formulário preenchido, mostrar dados
+            } else if (latestForm.status === 'preenchido') {
+                // Exibir dados preenchidos
                 displayFormData(latestForm);
             } else {
-                // Status desconhecido
-                formInfoContentEl.innerHTML = `<p>Status do formulário desconhecido: ${latestForm.status}</p>`;
+                // Status desconhecido, gerar novo link
+                await generateNewFormLink(clienteId);
             }
-            
-        } catch (error) {
-            console.error("Erro ao carregar dados do formulário:", error);
-            formInfoContentEl.innerHTML = `<p>Erro ao carregar dados do formulário: ${error.message}</p>`;
-        }
-    }
 
-    async function loadClientDetails() {
-        // Obter ID do cliente da URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const clientId = urlParams.get("id");
-        
-        if (!clientId) {
-            formInfoContentEl.innerHTML = "<p>ID do cliente não especificado na URL.</p>";
-            return;
-        }
-        
-        currentClientId = clientId; // Armazenar ID do cliente para uso posterior
-        
-        try {
-            // Buscar detalhes do cliente
-            const { data: clientData, error: clientError } = await supabase
-                .from("clientes")
-                .select("*")
-                .eq("id", clientId)
-                .single();
-                
-            if (clientError) throw clientError;
-            
-            if (!clientData) {
-                formInfoContentEl.innerHTML = "<p>Cliente não encontrado.</p>";
-                return;
-            }
-            
-            // Atualizar nome do cliente na página
-            clientNameDisplay.textContent = clientData.nome || "Cliente";
-            
-            // Carregar dados do formulário
-            loadFormData();
-            
         } catch (error) {
-            console.error("Erro ao carregar detalhes do cliente:", error);
-            formInfoContentEl.innerHTML = `<p>Erro ao carregar detalhes do cliente: ${error.message}</p>`;
+            console.error("Erro ao carregar dados:", error);
+            formInfoContentEl.innerHTML = `<div class="error-message">Erro ao carregar dados: ${error.message}</div>`;
         }
     }
 
     // Inicializar página
-    document.addEventListener("DOMContentLoaded", loadClientDetails);
+    document.addEventListener("DOMContentLoaded", async () => {
+        try {
+            // Obter ID do cliente da URL
+            const urlParams = new URLSearchParams(window.location.search);
+            const clienteId = urlParams.get('id');
+
+            if (!clienteId) {
+                formInfoContentEl.innerHTML = `<div class="error-message">ID do cliente não especificado na URL.</div>`;
+                return;
+            }
+
+            currentClientId = clienteId; // Salvar ID para uso posterior
+            await loadClienteData(clienteId);
+
+        } catch (error) {
+            console.error("Erro ao inicializar página:", error);
+            formInfoContentEl.innerHTML = `<div class="error-message">Erro ao inicializar página: ${error.message}</div>`;
+        }
+    });
   </script>
 </body>
 </html>
