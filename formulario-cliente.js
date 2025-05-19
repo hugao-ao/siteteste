@@ -1185,18 +1185,8 @@ async function initForm() {
             return;
         }
         
-        // Buscar informações do cliente
-        const { data: clientData, error: clientError } = await supabase
-            .from("clientes")
-            .select("nome")
-            .eq("id", formData.cliente_id)
-            .single();
-        
-        if (clientError || !clientData) {
-            formTitleEl.textContent = "Formulário de Planejamento";
-        } else {
-            formTitleEl.textContent = `Formulário de Planejamento - ${clientData.nome}`;
-        }
+        // Definir o título do formulário como "Formulário Pré Diagnóstico"
+        formTitleEl.textContent = "Formulário Pré Diagnóstico";
         
         // Renderizar formulário
         renderForm(formData);
