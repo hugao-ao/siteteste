@@ -489,7 +489,7 @@
             // Obter dados do cliente
             const { data: clienteData, error: clienteError } = await supabase
                 .from('clientes')
-                .select('name')
+                .select('nome') // Alterado de 'name' para 'nome'
                 .eq('id', clienteId)
                 .single();
 
@@ -498,7 +498,7 @@
             }
 
             // Atualizar nome do cliente
-            clientNameDisplay.textContent = clienteData.name || "Cliente";
+            clientNameDisplay.textContent = clienteData.nome || "Cliente"; // Alterado de 'name' para 'nome'
 
             // Obter formulários do cliente
             const { data: formulariosData, error: formulariosError } = await supabase
