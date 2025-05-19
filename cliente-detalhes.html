@@ -205,9 +205,9 @@
             const rendaUnicaText = data.renda_unica === "sim" ? "Sim" : (data.renda_unica === "nao" ? "Não" : "N/A");
             dataHtml += `<p><strong>Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
 
-            if (data.renda_unica === "nao" && Array.isArray(data.pessoas_com_renda) && data.pessoas_com_renda.length > 0) {
+            if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas) && data.outras_pessoas.length > 0) {
                 dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong></p><ul>`;
-                data.pessoas_com_renda.forEach((pessoa) => {
+                data.outras_pessoas.forEach((pessoa) => {
                     const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : "Nome não informado";
                     const autorizacaoText = pessoa.autorizacao === "sim" ? "Sim" : (pessoa.autorizacao === "nao" ? "Não" : "Não informado");
                     dataHtml += `<li>${nomePessoa} (Precisa de autorização: ${autorizacaoText})</li>`;
@@ -313,7 +313,7 @@
                 dataHtml += `<p><strong>Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
             }
             
-            // Exibição de Imposto de Renda
+            // Exibição de Imposto de Renda com informações adicionais
             if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
                 dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Imposto de Renda:</strong></p><ul>`;
                 Object.entries(data.impostos_renda).forEach(([nome, info]) => {
@@ -323,7 +323,35 @@
                     else if (info.declara === "nao") statusIRText = "Não";
                     else if (info.declara === "nao_sei") statusIRText = "Não sei informar";
                     
-                    dataHtml += `<li>${nomePessoaIR}: ${statusIRText}</li>`;
+                    // Informações básicas sobre declaração
+                    let irInfoText = `${nomePessoaIR}: ${statusIRText}`;
+                    
+                    // Adicionar informações de tipo e resultado quando declara = sim
+                    if (info.declara === "sim") {
+                        // Tipo de IR
+                        let tipoIRText = "N/A";
+                        if (info.tipo_ir === "simples") tipoIRText = "Simples";
+                        else if (info.tipo_ir === "completa") tipoIRText = "Dedução Completa";
+                        else if (info.tipo_ir === "nao_sei") tipoIRText = "Não Sei Informar";
+                        
+                        // Resultado do IR
+                        let resultadoIRText = "N/A";
+                        if (info.resultado_ir === "paga") resultadoIRText = "Paga";
+                        else if (info.resultado_ir === "recebe") resultadoIRText = "Recebe";
+                        else if (info.resultado_ir === "isento") resultadoIRText = "Isento";
+                        else if (info.resultado_ir === "nao_sei") resultadoIRText = "Não Sei Informar";
+                        
+                        // Adicionar informações detalhadas
+                        dataHtml += `<li>${irInfoText}
+                            <ul>
+                                <li>Tipo: ${tipoIRText}</li>
+                                <li>Resultado: ${resultadoIRText}</li>
+                            </ul>
+                        </li>`;
+                    } else {
+                        // Apenas informação básica quando não declara ou não sabe
+                        dataHtml += `<li>${irInfoText}</li>`;
+                    }
                 });
                 dataHtml += `</ul>`;
             }
