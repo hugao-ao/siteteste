@@ -242,12 +242,12 @@ function renderImpostoRendaQuestions() {
         entryDiv.style.marginBottom = "1rem";
         entryDiv.innerHTML = `
             <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">Você declara imposto de renda?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center;">
+            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap;">
                 <span style="margin-right: 20px; display: flex; align-items: center;">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
                     <label for="${personId}_sim">Sim</label>
                 </span>
-                <span style="margin-right: 20px; display: flex; align-items: center;">
+                <span style="display: flex; align-items: center;">
                     <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
                     <label for="${personId}_nao">Não</label>
                 </span>
@@ -255,16 +255,16 @@ function renderImpostoRendaQuestions() {
             <div class="imposto-renda-additional-questions" style="display: none; margin-top: 1rem; margin-left: 1.5rem; padding-left: 1rem; border-left: 2px solid #ddd;">
                 <div style="margin-bottom: 0.8rem;">
                     <label for="${personId}_tipo" style="display: block; margin-bottom: 0.5rem;">Qual o tipo?</label>
-                    <div class="radio-options-inline" style="display: flex; flex-wrap: wrap; align-items: center;">
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_tipo_simples" name="${personId}_tipo" value="simples" style="margin-right: 5px;">
                             <label for="${personId}_tipo_simples">Simples</label>
                         </span>
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_tipo_completa" name="${personId}_tipo" value="completa" style="margin-right: 5px;">
                             <label for="${personId}_tipo_completa">Dedução Completa</label>
                         </span>
-                        <span style="display: flex; align-items: center;">
+                        <span style="display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_tipo_naosei" name="${personId}_tipo" value="nao_sei" style="margin-right: 5px;">
                             <label for="${personId}_tipo_naosei">Não Sei Informar</label>
                         </span>
@@ -272,20 +272,20 @@ function renderImpostoRendaQuestions() {
                 </div>
                 <div>
                     <label for="${personId}_resultado" style="display: block; margin-bottom: 0.5rem;">Qual o resultado?</label>
-                    <div class="radio-options-inline" style="display: flex; flex-wrap: wrap; align-items: center;">
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_resultado_paga" name="${personId}_resultado" value="paga" style="margin-right: 5px;">
                             <label for="${personId}_resultado_paga">Paga</label>
                         </span>
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_resultado_recebe" name="${personId}_resultado" value="recebe" style="margin-right: 5px;">
                             <label for="${personId}_resultado_recebe">Recebe</label>
                         </span>
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_resultado_isento" name="${personId}_resultado" value="isento" style="margin-right: 5px;">
                             <label for="${personId}_resultado_isento">Isento</label>
                         </span>
-                        <span style="display: flex; align-items: center;">
+                        <span style="display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_resultado_naosei" name="${personId}_resultado" value="nao_sei" style="margin-right: 5px;">
                             <label for="${personId}_resultado_naosei">Não Sei Informar</label>
                         </span>
@@ -324,16 +324,16 @@ function renderImpostoRendaQuestions() {
                 entryDiv.style.marginBottom = "1rem";
                 entryDiv.innerHTML = `
                     <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} declara imposto de renda?</label>
-                    <div class="radio-options-inline" style="display: flex; align-items: center;">
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
                             <label for="${personId}_sim">Sim</label>
                         </span>
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
                             <label for="${personId}_nao">Não</label>
                         </span>
-                        <span style="display: flex; align-items: center;">
+                        <span style="display: flex; align-items: center; white-space: nowrap;">
                             <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
                             <label for="${personId}_naosei">Não sei informar</label>
                         </span>
@@ -341,16 +341,16 @@ function renderImpostoRendaQuestions() {
                     <div class="imposto-renda-additional-questions" style="display: none; margin-top: 1rem; margin-left: 1.5rem; padding-left: 1rem; border-left: 2px solid #ddd;">
                         <div style="margin-bottom: 0.8rem;">
                             <label for="${personId}_tipo" style="display: block; margin-bottom: 0.5rem;">Qual o tipo?</label>
-                            <div class="radio-options-inline" style="display: flex; flex-wrap: wrap; align-items: center;">
-                                <span style="margin-right: 20px; display: flex; align-items: center;">
+                            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+                                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                                     <input type="radio" id="${personId}_tipo_simples" name="${personId}_tipo" value="simples" style="margin-right: 5px;">
                                     <label for="${personId}_tipo_simples">Simples</label>
                                 </span>
-                                <span style="margin-right: 20px; display: flex; align-items: center;">
+                                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                                     <input type="radio" id="${personId}_tipo_completa" name="${personId}_tipo" value="completa" style="margin-right: 5px;">
                                     <label for="${personId}_tipo_completa">Dedução Completa</label>
                                 </span>
-                                <span style="display: flex; align-items: center;">
+                                <span style="display: flex; align-items: center; white-space: nowrap;">
                                     <input type="radio" id="${personId}_tipo_naosei" name="${personId}_tipo" value="nao_sei" style="margin-right: 5px;">
                                     <label for="${personId}_tipo_naosei">Não Sei Informar</label>
                                 </span>
@@ -358,20 +358,20 @@ function renderImpostoRendaQuestions() {
                         </div>
                         <div>
                             <label for="${personId}_resultado" style="display: block; margin-bottom: 0.5rem;">Qual o resultado?</label>
-                            <div class="radio-options-inline" style="display: flex; flex-wrap: wrap; align-items: center;">
-                                <span style="margin-right: 20px; display: flex; align-items: center;">
+                            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+                                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                                     <input type="radio" id="${personId}_resultado_paga" name="${personId}_resultado" value="paga" style="margin-right: 5px;">
                                     <label for="${personId}_resultado_paga">Paga</label>
                                 </span>
-                                <span style="margin-right: 20px; display: flex; align-items: center;">
+                                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                                     <input type="radio" id="${personId}_resultado_recebe" name="${personId}_resultado" value="recebe" style="margin-right: 5px;">
                                     <label for="${personId}_resultado_recebe">Recebe</label>
                                 </span>
-                                <span style="margin-right: 20px; display: flex; align-items: center;">
+                                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                                     <input type="radio" id="${personId}_resultado_isento" name="${personId}_resultado" value="isento" style="margin-right: 5px;">
                                     <label for="${personId}_resultado_isento">Isento</label>
                                 </span>
-                                <span style="display: flex; align-items: center;">
+                                <span style="display: flex; align-items: center; white-space: nowrap;">
                                     <input type="radio" id="${personId}_resultado_naosei" name="${personId}_resultado" value="nao_sei" style="margin-right: 5px;">
                                     <label for="${personId}_resultado_naosei">Não Sei Informar</label>
                                 </span>
@@ -472,16 +472,16 @@ function renderPlanoSaudeQuestions() {
         entryDiv.style.marginBottom = "1rem";
         entryDiv.innerHTML = `
             <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui plano de saúde?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center;">
-                <span style="margin-right: 20px; display: flex; align-items: center;">
+            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
                     <label for="${personId}_sim">Sim</label>
                 </span>
-                <span style="margin-right: 20px; display: flex; align-items: center;">
+                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                     <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
                     <label for="${personId}_nao">Não</label>
                 </span>
-                <span style="display: flex; align-items: center;">
+                <span style="display: flex; align-items: center; white-space: nowrap;">
                     <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
                     <label for="${personId}_naosei">Não sei informar</label>
                 </span>
@@ -551,16 +551,16 @@ function renderSeguroVidaQuestions() {
         entryDiv.style.marginBottom = "1rem";
         entryDiv.innerHTML = `
             <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui seguro de vida?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center;">
-                <span style="margin-right: 20px; display: flex; align-items: center;">
+            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
                     <label for="${personId}_sim">Sim</label>
                 </span>
-                <span style="margin-right: 20px; display: flex; align-items: center;">
+                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                     <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
                     <label for="${personId}_nao">Não</label>
                 </span>
-                <span style="display: flex; align-items: center;">
+                <span style="display: flex; align-items: center; white-space: nowrap;">
                     <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
                     <label for="${personId}_naosei">Não sei informar</label>
                 </span>
