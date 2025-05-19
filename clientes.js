@@ -322,182 +322,268 @@ function renderClients(clients) {
         let assignmentHtml = '';
         if (isAdmin) {
             const visibilitySelect = `
-                <select class="client-input assignment-visibility" data-field="visibility" id="visibility-${client.id}" data-client-id="${client.id}">
-                    <option value="TODOS" ${client.visibility === 'TODOS' ? 'selected' : ''}>TODOS (Projeto)</option>
-                    <option value="INDIVIDUAL" ${client.visibility !== 'TODOS' ? 'selected' : ''}>Individual</option>
+                <select class="client-input" data-field="visibility" id="visibility-${client.id}">
+                    <option value="INDIVIDUAL" ${client.visibility === 'INDIVIDUAL' ? 'selected' : ''}>Individual</option>
+                    <option value="TODOS" ${client.visibility === 'TODOS' ? 'selected' : ''}>Todos</option>
                 </select>
             `;
-            const userSelect = `
-                <select class="client-input assignment-user" data-field="assigned_to_user_id" id="assignment-${client.id}" ${client.visibility === 'TODOS' ? 'style="display:none;"' : ''}>
-                    <option value="">Ninguém</option>
-                    ${allUsers.map(user =>
-                        `<option value="${user.id}" ${client.assigned_to_user_id === user.id ? 'selected' : ''}>${sanitizeInput(user.usuario)}</option>`
-                    ).join('')}
-                </select>
+
+            const userOptions = allUsers.map(user => {
+                return `<option value="${user.id}" ${client.assigned_to_user_id === user.id ? 'selected' : ''}>${sanitizeInput(user.usuario)}</option>`;
+            }).join('');
+
+            assignmentHtml = `
+                <div>
+                    ${visibilitySelect}
+                    <select class="client-input" data-field="assigned_to_user_id" id="assigned-${client.id}">
+                        <option value="">Nenhum</option>
+                        ${userOptions}
+                    </select>
+                </div>
             `;
-            assignmentHtml = `${visibilitySelect}<br>${userSelect}`;
         } else {
-            if (client.visibility === 'TODOS') {
-                assignmentHtml = '<span class="status-todos">TODOS</span>';
-            } else if (client.assigned_to_user_id) {
-                const assignedUser = allUsers.find(u => u.id === client.assigned_to_user_id);
-                assignmentHtml = `<span class="status-individual">${assignedUser ? sanitizeInput(assignedUser.usuario) : 'Atribuído'}</span>`;
-            } else {
-                assignmentHtml = '<span style="color:gray">Não atribuído</span>';
-            }
+            const visibilityText = client.visibility === 'TODOS' ? '<span class="status-todos">TODOS</span>' : '<span class="status-individual">Individual</span>';
+            const assignedUserName = allUsers.find(u => u.id === client.assigned_to_user_id)?.usuario || 'Nenhum';
+            assignmentHtml = `${visibilityText} / ${sanitizeInput(assignedUserName)}`;
         }
+
+        const formButtonHtml = `
+            <button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Formulários">
+                <i class="fa-solid fa-file-lines"></i> ${formCount}
+            </button>
+        `;
+
+        const actionsHtml = `
+            <button class="view-details-btn" data-client-id="${client.id}" title="Ver Detalhes">
+                <i class="fa-solid fa-eye"></i>
+            </button>
+            ${canEditDelete ? `<button class="delete-btn" data-id="${client.id}" title="Excluir Cliente"><i class="fa-solid fa-trash-can"></i></button>` : ''}
+        `;
 
         tr.innerHTML = `
             <td data-label="Nome">${nomeHtml}</td>
             <td data-label="WhatsApp">${whatsappHtml}</td>
             <td data-label="Projeto">${projectHtml}</td>
             <td data-label="Status/Atribuição">${assignmentHtml}</td>
-            <td data-label="Formulários" style="text-align: center;">
-                ${formCount > 0
-                    // <<< CORREÇÃO: Adiciona data-client-name ao botão de formulários >>>
-                    ? `<button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}">${formCount} <i class="fa-solid fa-list-check"></i></button>`
-                    : '0'
-                }
-            </td>
-            <td data-label="Ações" style="text-align: center;">
-                <button class="view-details-btn" data-client-id="${client.id}" title="Ver Detalhes do Cliente"><i class="fa-solid fa-address-card"></i></button>
-                ${canEditDelete ? `<button class="delete-btn" data-id="${client.id}" title="Excluir Cliente"><i class="fa-solid fa-trash-can"></i></button>` : ''}
-            </td>
+            <td data-label="Formulários">${formButtonHtml}</td>
+            <td data-label="Ações">${actionsHtml}</td>
         `;
+
         clientsTableBody.appendChild(tr);
     });
     console.log("clientes.js: renderClients() CONCLUÍDO.");
 }
 
-// --- Salvar Todas as Alterações de Clientes --- 
-async function saveAllClientChanges() {
-    console.log("clientes.js: saveAllClientChanges() chamado.");
-    if (modifiedClientIds.size === 0) {
-        alert("Nenhuma alteração detectada para salvar.");
-        return;
-    }
-    if (!confirm(`Salvar alterações para ${modifiedClientIds.size} cliente(s)?`)) return;
+// --- Marcar Cliente como Modificado --- 
+function markClientAsModified(event) {
+    const input = event.target;
+    if (!input || !input.classList.contains('client-input')) return;
 
-    saveAllClientsBtn.disabled = true;
-    saveAllClientsBtn.textContent = 'Salvando...';
-    let hasError = false;
-    const updates = [];
+    const row = input.closest('tr');
+    if (!row) return;
 
-    for (const id of modifiedClientIds) {
-        const row = clientsTableBody.querySelector(`tr[data-client-id="${id}"]`);
-        if (!row) {
-            console.warn(`clientes.js: Linha não encontrada para cliente modificado ID: ${id}`);
-            continue;
-        }
+    const clientId = row.dataset.clientId;
+    if (!clientId) return;
 
-        const nomeInput = document.getElementById(`nome-${id}`);
-        const whatsappInput = document.getElementById(`whatsapp-${id}`);
-        const projectSelect = document.getElementById(`project-${id}`);
-        const visibilitySelect = document.getElementById(`visibility-${id}`);
-        const assignmentSelect = document.getElementById(`assignment-${id}`);
+    const field = input.dataset.field;
+    if (!field) return;
 
-        const nome = nomeInput ? nomeInput.value.trim() : row.dataset.originalNome;
-        const whatsapp = whatsappInput ? whatsappInput.value.trim() : row.dataset.originalWhatsapp;
-        const projeto = projectSelect ? projectSelect.value : row.dataset.originalProjeto;
-        const visibility = visibilitySelect ? visibilitySelect.value : row.dataset.originalVisibility;
-        const assigned_to_user_id = (visibility === 'INDIVIDUAL' && assignmentSelect) ? (assignmentSelect.value || null) : null;
-
-        if (!nome) {
-            alert(`Erro: Nome não pode estar vazio (ID: ${id}).`);
-            hasError = true; break;
-        }
-        updates.push({ id, nome, whatsapp, projeto: projeto || null, visibility, assigned_to_user_id });
+    let originalValue;
+    switch (field) {
+        case 'nome':
+            originalValue = row.dataset.originalNome;
+            break;
+        case 'whatsapp':
+            originalValue = row.dataset.originalWhatsapp;
+            break;
+        case 'projeto':
+            originalValue = row.dataset.originalProjeto;
+            break;
+        case 'visibility':
+            originalValue = row.dataset.originalVisibility;
+            break;
+        case 'assigned_to_user_id':
+            originalValue = row.dataset.originalAssignedTo;
+            break;
+        default:
+            originalValue = '';
     }
 
-    if (hasError) {
-        saveAllClientsBtn.disabled = false;
-        saveAllClientsBtn.textContent = 'Salvar Todas as Alterações';
-        return;
-    }
-
-    console.log("clientes.js: Enviando atualizações de clientes:", updates);
-    try {
-        const { error } = await supabase.from('clientes').upsert(updates, { onConflict: 'id' });
-        if (error) throw error;
-        alert(`Alterações salvas com sucesso para ${updates.length} cliente(s)!`);
-        modifiedClientIds.clear();
-        updates.forEach(update => {
-            const row = clientsTableBody.querySelector(`tr[data-client-id="${update.id}"]`);
-            if(row) {
-                row.classList.remove('modified');
-                row.dataset.originalNome = update.nome;
-                row.dataset.originalWhatsapp = update.whatsapp;
-                row.dataset.originalProjeto = update.projeto || '';
-                row.dataset.originalVisibility = update.visibility;
-                row.dataset.originalAssignedTo = update.assigned_to_user_id || '';
+    const currentValue = input.value;
+    if (currentValue !== originalValue) {
+        row.classList.add('modified');
+        modifiedClientIds.add(clientId);
+        if (saveAllClientsBtn) saveAllClientsBtn.disabled = false;
+    } else {
+        // Verificar se outros campos na mesma linha ainda estão modificados
+        const otherModifiedInputs = row.querySelectorAll('.client-input');
+        let stillModified = false;
+        otherModifiedInputs.forEach(otherInput => {
+            if (otherInput !== input) {
+                const otherField = otherInput.dataset.field;
+                let otherOriginalValue;
+                switch (otherField) {
+                    case 'nome':
+                        otherOriginalValue = row.dataset.originalNome;
+                        break;
+                    case 'whatsapp':
+                        otherOriginalValue = row.dataset.originalWhatsapp;
+                        break;
+                    case 'projeto':
+                        otherOriginalValue = row.dataset.originalProjeto;
+                        break;
+                    case 'visibility':
+                        otherOriginalValue = row.dataset.originalVisibility;
+                        break;
+                    case 'assigned_to_user_id':
+                        otherOriginalValue = row.dataset.originalAssignedTo;
+                        break;
+                    default:
+                        otherOriginalValue = '';
+                }
+                if (otherInput.value !== otherOriginalValue) {
+                    stillModified = true;
+                }
             }
         });
-    } catch (error) {
-        console.error("clientes.js: Erro ao salvar clientes em lote:", error);
-        alert("Erro ao salvar alterações: " + error.message);
-    } finally {
-        saveAllClientsBtn.disabled = true;
-        saveAllClientsBtn.textContent = 'Salvar Todas as Alterações';
-        console.log("clientes.js: saveAllClientChanges() concluído.");
-    }
-}
-
-// --- Marcar Linha como Modificada --- 
-function markClientAsModified(event) {
-    const target = event.target;
-    if (!target.matches('.client-input')) return;
-    const row = target.closest('tr');
-    if (row && row.dataset.clientId) {
-        const clientId = row.dataset.clientId;
-        if (target.classList.contains('assignment-visibility')) {
-            const userSelect = row.querySelector('.assignment-user');
-            if (userSelect) userSelect.style.display = target.value === 'TODOS' ? 'none' : 'block';
+        if (!stillModified) {
+            row.classList.remove('modified');
+            modifiedClientIds.delete(clientId);
+            if (modifiedClientIds.size === 0 && saveAllClientsBtn) saveAllClientsBtn.disabled = true;
         }
-        modifiedClientIds.add(clientId);
-        row.classList.add('modified');
-        if (saveAllClientsBtn) saveAllClientsBtn.disabled = false;
     }
 }
 
-// --- Operações CRUD (addClient, deleteClient mantidas) ---
+// --- Adicionar Cliente --- 
 async function addClient(event) {
     event.preventDefault();
     console.log("clientes.js: addClient() chamado.");
-    try {
-        const nome = newClientNameInput.value.trim();
-        const whatsapp = newClientWhatsappInput.value.trim();
-        const projeto = newClientProjectSelect.value;
-        if (!nome || !whatsapp || !projeto) throw new Error("Preencha Nome, WhatsApp e Projeto.");
 
-        const { error } = await supabase
-            .from("clientes")
-            .insert({ nome, whatsapp, projeto, criado_por_id: currentUserId, visibility: 'INDIVIDUAL', assigned_to_user_id: currentUserId })
-            .select();
+    const name = newClientNameInput.value.trim();
+    const whatsapp = newClientWhatsappInput.value.trim();
+    const project = newClientProjectSelect.value;
+
+    if (!name || !whatsapp || !project) {
+        alert("Por favor, preencha todos os campos.");
+        return;
+    }
+
+    try {
+        const { data, error } = await supabase.from("clientes").insert([
+            {
+                nome: name,
+                whatsapp: whatsapp,
+                projeto: project,
+                criado_por_id: currentUserId,
+                visibility: "INDIVIDUAL",
+                assigned_to_user_id: currentUserId
+            }
+        ]).select();
+
         if (error) {
-             console.error("clientes.js: Erro ao adicionar cliente (Supabase):", error);
-             if (error.code === '42703') {
-                 if (error.message.includes('projeto')) throw new Error("Erro DB: Coluna 'projeto' não existe.");
-                 if (error.message.includes('criado_por_id')) throw new Error("Erro DB: Coluna 'criado_por_id' não existe.");
-             }
+            console.error("clientes.js: Erro ao adicionar cliente (Supabase):", error);
             throw error;
         }
-        alert("Cliente adicionado!");
-        addClientForm.reset();
-        if (newClientProjectSelect.disabled) newClientProjectSelect.value = currentUserProjeto;
+
+        alert("Cliente adicionado com sucesso!");
+        newClientNameInput.value = "";
+        newClientWhatsappInput.value = "";
+        if (!filterProject) newClientProjectSelect.value = "";
+
+        // Recarregar lista de clientes
         const urlParams = new URLSearchParams(window.location.search);
-        loadClients(urlParams.get('projeto')); // Recarrega a lista
+        loadClients(urlParams.get('projeto'));
+        console.log("clientes.js: Cliente adicionado com sucesso.");
     } catch (error) {
         console.error("clientes.js: Erro GERAL em addClient:", error);
         alert("Erro ao adicionar cliente: " + error.message);
     }
 }
 
-async function deleteClient(id) {
-    console.log(`clientes.js: deleteClient() chamado para ID: ${id}`);
+// --- Salvar Alterações em Clientes --- 
+async function saveAllClientChanges() {
+    console.log("clientes.js: saveAllClientChanges() chamado.");
+    if (modifiedClientIds.size === 0) {
+        alert("Nenhuma alteração para salvar.");
+        return;
+    }
+
     try {
-        const { count, error: countError } = await supabase
+        const updates = [];
+        modifiedClientIds.forEach(clientId => {
+            const row = clientsTableBody.querySelector(`tr[data-client-id="${clientId}"]`);
+            if (!row) return;
+
+            const updateData = { id: clientId };
+            
+            const nomeInput = row.querySelector(`input[data-field="nome"]`);
+            if (nomeInput) updateData.nome = nomeInput.value.trim();
+            
+            const whatsappInput = row.querySelector(`input[data-field="whatsapp"]`);
+            if (whatsappInput) updateData.whatsapp = whatsappInput.value.trim();
+            
+            const projetoSelect = row.querySelector(`select[data-field="projeto"]`);
+            if (projetoSelect) updateData.projeto = projetoSelect.value;
+            
+            const visibilitySelect = row.querySelector(`select[data-field="visibility"]`);
+            if (visibilitySelect) updateData.visibility = visibilitySelect.value;
+            
+            const assignedSelect = row.querySelector(`select[data-field="assigned_to_user_id"]`);
+            if (assignedSelect) updateData.assigned_to_user_id = assignedSelect.value || null;
+            
+            updates.push(updateData);
+        });
+
+        if (updates.length === 0) {
+            alert("Nenhuma alteração válida para salvar.");
+            return;
+        }
+
+        const { error } = await supabase.from("clientes").upsert(updates);
+        if (error) {
+            console.error("clientes.js: Erro ao salvar alterações (Supabase):", error);
+            throw error;
+        }
+
+        alert("Alterações salvas com sucesso!");
+        
+        // Atualizar valores originais e limpar marcações
+        updates.forEach(update => {
+            const row = clientsTableBody.querySelector(`tr[data-client-id="${update.id}"]`);
+            if (!row) return;
+            
+            if (update.nome !== undefined) row.dataset.originalNome = update.nome;
+            if (update.whatsapp !== undefined) row.dataset.originalWhatsapp = update.whatsapp;
+            if (update.projeto !== undefined) row.dataset.originalProjeto = update.projeto;
+            if (update.visibility !== undefined) row.dataset.originalVisibility = update.visibility;
+            if (update.assigned_to_user_id !== undefined) row.dataset.originalAssignedTo = update.assigned_to_user_id || '';
+            
+            row.classList.remove('modified');
+        });
+        
+        modifiedClientIds.clear();
+        if (saveAllClientsBtn) saveAllClientsBtn.disabled = true;
+        console.log("clientes.js: Alterações salvas com sucesso.");
+    } catch (error) {
+        console.error("clientes.js: Erro GERAL em saveAllClientChanges:", error);
+        alert("Erro ao salvar alterações: " + error.message);
+    }
+}
+
+// --- Excluir Cliente --- 
+async function deleteClient(id) {
+    console.log(`clientes.js: deleteClient() chamado para Cliente ID: ${id}`);
+    if (!id) {
+        console.error("clientes.js: ID do cliente não fornecido para exclusão.");
+        return;
+    }
+
+    try {
+        // Verificar se há formulários associados
+        let count = 0;
+        const { data: countData, error: countError } = await supabase
             .from('formularios_clientes')
-            .select('*', { count: 'exact', head: true })
+            .select('id', { count: 'exact', head: true })
             .eq('cliente_id', id);
         if (countError) {
             console.error("clientes.js: Erro ao contar formulários para exclusão:", countError);
@@ -630,21 +716,13 @@ function handleTableClick(event) {
     const id = targetButton.dataset.id; // Para delete-btn de cliente
 
     if (targetButton.classList.contains("view-details-btn")) {
-        // <<< CORREÇÃO: Define sessionStorage antes de redirecionar >>>
-        if (clientId && row) { // Check if row exists to get the name
-            const clientName = row.dataset.originalNome; // Get name from row dataset
-            if (clientName !== undefined) { // Check if name was found
-                console.log(`clientes.js: Setting sessionStorage for viewing client ID: ${clientId}, Name: ${clientName}`);
-                sessionStorage.setItem("viewing_client_id", clientId);
-                sessionStorage.setItem("viewing_client_name", clientName);
-                window.location.href = `cliente-detalhes.html`; // Redirect without ID in URL
-            } else {
-                 console.error(`clientes.js: Could not find client name for ID ${clientId} in row dataset.`);
-                 alert("Erro: Não foi possível obter o nome do cliente para ver os detalhes.");
-            }
+        // CORREÇÃO: Redireciona para cliente-detalhes.html com o parâmetro id na URL
+        if (clientId) {
+            console.log(`clientes.js: Redirecionando para detalhes do cliente ID: ${clientId}`);
+            window.location.href = `cliente-detalhes.html?id=${clientId}`;
         } else {
-             console.error("clientes.js: Client ID or table row not found for view-details-btn.");
-             alert("Erro: ID do cliente não encontrado para ver os detalhes.");
+            console.error("clientes.js: Client ID not found for view-details-btn.");
+            alert("Erro: ID do cliente não encontrado para ver os detalhes.");
         }
     } else if (targetButton.classList.contains("delete-btn")) {
         if (id) deleteClient(id);
@@ -674,4 +752,3 @@ function handleDeleteFormClick(event) {
 // --- Inicialização chamada pelo HTML via DOMContentLoaded --- 
 console.log("clientes.js: Script carregado.");
 document.addEventListener("DOMContentLoaded", initializeDashboard);
-
