@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Painel de Administração</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome for icons -->
+  <style>
+    body {
+      display: flex; /* Use flexbox for layout */
+      margin: 0; /* Remove default body margin */
+      min-height: 100vh; /* Ensure body takes full viewport height */
+    }
+
+    /* --- Sidebar Styles (Importado de sidebar.css ou injetado) --- */
+    /* Estilos da sidebar são gerenciados por sidebar.js e style.css/sidebar.css */
+
+    /* --- Main Content Styles --- */
+    #main-content {
+      flex-grow: 1; /* Allow main content to fill remaining space */
+      padding: 2rem;
+      margin-left: 250px; /* Initial margin to accommodate sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--theme-bg-surface);
+      color: var(--theme-text-light);
+    }
+
+    #main-content.sidebar-collapsed {
+      margin-left: 60px; /* Adjusted margin when sidebar is collapsed */
+    }
+
+    /* --- Tab Content (Now Sections) --- */
+    .content-section {
+      display: none; /* Hide all sections by default */
+    }
+    .content-section.active {
+      display: block; /* Show the active section */
+    }
+
+    /* --- Responsive adjustments (optional) --- */
+    @media (max-width: 768px) {
+        /* Estilos da sidebar já tratados em sidebar.css e sidebar.js */
+        #main-content {
+            margin-left: 60px !important; /* Garante margem correta em telas pequenas */
+        }
+    }
+
+    /* Tabela e Formulário */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1rem; /* Reduzido espaço antes do botão */
+    }
+    th, td {
+      border: 1px solid var(--theme-border-color);
+      padding: 0.8rem;
+      text-align: left;
+      vertical-align: middle; /* Alinha verticalmente */
+    }
+    th {
+      background-color: var(--theme-header-bg);
+      color: var(--theme-header-text);
+    }
+    td input, td select {
+        width: calc(100% - 10px);
+        padding: 5px;
+        background-color: var(--theme-bg-dark);
+        color: var(--theme-text-light);
+        border: 1px solid var(--theme-border-color);
+        border-radius: 4px;
+    }
+    td button {
+        margin-right: 5px;
+        padding: 0.4rem 0.8rem;
+    }
+    .toggle-password {
+        cursor: pointer;
+        margin-left: 5px;
+        background: none;
+        border: none;
+        color: var(--theme-text-muted);
+        padding: 0;
+    }
+    .toggle-password:hover {
+        color: var(--theme-secondary-lighter);
+    }
+
+    /* Estilo para linha modificada (opcional) */
+    tr.modified td {
+        background-color: rgba(var(--theme-secondary-rgb, 218, 165, 32), 0.1); /* Usa cor secundária com alpha */
+    }
+
+    #create-user-form {
+        margin-bottom: 2rem;
+        display: grid; /* Mudado para grid */
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        align-items: end;
+    }
+    #create-user-form input, #create-user-form select {
+        width: 100%; /* Ocupa toda a célula do grid */
+    }
+    #create-user-form button {
+       /* O botão se ajustará ao grid */
+    }
+
+    /* Botão Salvar Tudo */
+    #save-all-users-btn {
+        display: block; /* Para ocupar largura total */
+        width: fit-content; /* Ajusta largura ao conteúdo */
+        margin: 1rem 0 2rem auto; /* Margem superior/inferior e alinha à direita */
+        padding: 0.8rem 1.5rem;
+    }
+    #save-all-users-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+    }
+
+    /* --- Project Button Styles (mantidos) --- */
+    .project-buttons-container {
+        display: flex;
+        gap: 1.5rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+    .project-btn {
+        padding: 1rem 2rem;
+        border: none;
+        border-radius: 5px;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: transform 0.2s ease, box-shadow 0.3s ease;
+        position: relative;
+        overflow: hidden;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+    }
+    .project-btn::before {
+        content: ";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 50%;
+        height: 100%;
+        background: linear-gradient(120deg, rgba(255, 255, 255, 0) 0%, rgba(255, 255, 255, 0.4) 50%, rgba(255, 255, 255, 0) 100%);
+        transform: skewX(-25deg);
+        transition: left 0.6s ease;
+    }
+    .project-btn:hover::before { left: 120%; }
+    .project-btn:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2); }
+    .project-btn:active { transform: translateY(-1px); box-shadow: 0 5px 10px rgba(0, 0, 0, 0.2); }
+    .project-btn-argos { background: linear-gradient(145deg, #1e90ff, #4682b4); color: white; text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3); }
+    .project-btn-hvc { background: linear-gradient(145deg, #000080, #191970); color: #e0e0e0; text-shadow: 0 0 5px #ffffff, 0 0 10px #c0c0c0; }
+    .project-btn-planejamento { background: linear-gradient(145deg, #006400, #2e8b57); color: #fffacd; text-shadow: 0 0 5px #ffd700, 0 0 8px #daa520; }
+
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada dinamicamente por sidebar.js -->
+
+  <!-- Main Content Area -->
+  <main id="main-content">
+    <!-- Content sections will be shown/hidden by JS -->
+    <div id="content-painel" class="content-section active">
+        <h1>Painel Administrativo</h1>
+        <p>Bem-vindo ao painel de administração. Use o menu lateral para navegar.</p>
+        
+        <!-- Project Buttons (agora links) -->
+        <div class="project-buttons-container">
+            <a href="admin-projeto-dashboard.html?projeto=Argos" class="project-btn project-btn-argos">ARGOS</a>
+            <a href="admin-projeto-dashboard.html?projeto=Hvc" class="project-btn project-btn-hvc">HVC</a>
+            <a href="admin-projeto-dashboard.html?projeto=Planejamento" class="project-btn project-btn-planejamento">PLANEJAMENTO</a>
+        </div>
+    </div>
+
+    <div id="content-gerenciar-usuarios" class="content-section">
+      <section>
+        <h2>Cadastrar Novo Usuário</h2>
+        <form id="create-user-form">
+            <input type="text"     id="new-user"  placeholder="Novo usuário" required />
+            <input type="password" id="new-pass"  placeholder="Senha" required />
+            <input type="email"    id="new-email" placeholder="E-mail" required />
+            <select id="new-level">
+                <option value="usuario">usuario</option>
+                <option value="admin">admin</option>
+            </select>
+            <select id="new-project">
+                <option value="" disabled selected>Selecione o Projeto</option>
+                <option value="Hvc">Hvc</option>
+                <option value="Argos">Argos</option>
+                <option value="Planejamento">Planejamento</option>
+            </select>
+            <button type="submit" id="create-user-btn">Criar Usuário</button>
+        </form>
+      </section>
+      <section>
+        <h2>Usuários Cadastrados (Gerenciamento)</h2>
+        <table id="manage-users-table">
+          <thead>
+            <tr>
+              <th>Usuário</th>
+              <th>Senha</th>
+              <th>E-mail</th>
+              <th>Nível</th>
+              <th>Projeto</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- preenchido dinamicamente por admin.js -->
+          </tbody>
+        </table>
+        <!-- Botão para Salvar Todas as Alterações (Adicionado aqui) -->
+        <button id="save-all-users-btn" disabled>Salvar Todas as Alterações</button>
+      </section>
+    </div>
+
+    <!-- Seção Lista de Usuários Removida (mantido do original) -->
+
+    <!-- Gerenciar Clientes will navigate to clientes-dashboard.html, so no content section needed here -->
+
+  </main>
+
+  <!-- Scripts originais mantidos -->
+  <script type="module" src="permissions.js"></script>
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="admin.js"></script>
+  <!-- Script para injetar a sidebar (mantido do original) -->
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    injectSidebar("main-content"); // Passa o ID do container principal
+  </script>
+
+</body>
+</html>
+
