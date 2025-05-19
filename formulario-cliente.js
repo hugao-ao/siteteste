@@ -9,7 +9,7 @@ const formTitleEl = document.getElementById("form-title");
 // --- Estado para preservar seleções ---
 let planoSaudeSelections = {};
 let seguroVidaSelections = {};
-let impostoRendaSelections = {}; // Estado para preservar seleções de imposto de renda
+let impostoRendaSelections = {}; // Novo estado para preservar seleções de imposto de renda
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
@@ -435,7 +435,7 @@ function updateDynamicFormSections() {
     updatePerguntaDependentesLabel();
     updatePerguntaPatrimonioFisicoLabel();
     updatePerguntaPatrimonioLiquidoLabel();
-    updatePerguntaDividasLabel();
+    updatePerguntaDividasLabel(); // Nova linha
     renderPlanoSaudeQuestions();
     renderSeguroVidaQuestions();
     renderImpostoRendaQuestions(); // Chamada para renderizar perguntas de imposto de renda
@@ -577,7 +577,7 @@ function renderActualForm(formData) {
                 </div>
             </div>
             
-            <!-- Nova seção de Imposto de Renda (movida para depois das dívidas) -->
+            <!-- Nova seção de Imposto de Renda (após dívidas) -->
             <div id="imposto-renda-section" style="margin-top: 2rem;">
                 <h3 id="imposto-renda-section-title" style="display: none;">Informações sobre Imposto de Renda:</h3>
                 <div id="imposto-renda-section-content"></div>
@@ -632,257 +632,282 @@ function addDividaEntry() {
     }
 }
 
-function addPatrimonioLiquidoEntry() {
-    const patrimonioLiquidoListEl = document.getElementById("patrimonio-liquido-list");
-    if (!patrimonioLiquidoListEl) {
-        console.error("Elemento patrimonio-liquido-list não encontrado para adicionar entrada de patrimônio líquido.");
-        return;
-    }
-
-    const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item"); 
-    entryDiv.innerHTML = `
-        <input type="text" name="patrimonio_liquido_tipo" placeholder="Tipo (Ex: Poupança, CDB, Ações)" required>
-        <input type="text" name="patrimonio_liquido_valor" placeholder="Valor (R$)" required class="currency-input">
-        <button type="button" class="remove-dynamic-entry-btn remove-patrimonio-liquido-btn">Remover</button>
-    `;
-    patrimonioLiquidoListEl.appendChild(entryDiv);
-    const currencyInput = entryDiv.querySelector(".currency-input");
-    if (currencyInput) {
-        currencyInput.addEventListener('input', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-        currencyInput.addEventListener('blur', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-    }
-}
-
-function addPatrimonioEntry() {
-    const patrimonioListEl = document.getElementById("patrimonio-list");
-    if (!patrimonioListEl) {
-        console.error("Elemento patrimonio-list não encontrado para adicionar entrada de patrimônio.");
-        return;
-    }
-
-    const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item"); 
-    entryDiv.innerHTML = `
-        <input type="text" name="patrimonio_tipo" placeholder="Tipo (Ex: Casa, Carro, Jóias)" required>
-        <input type="text" name="patrimonio_valor" placeholder="Valor Estimado (R$)" required class="currency-input">
-        <button type="button" class="remove-dynamic-entry-btn remove-patrimonio-btn">Remover</button>
-    `;
-    patrimonioListEl.appendChild(entryDiv);
-    const currencyInput = entryDiv.querySelector(".currency-input");
-    if (currencyInput) {
-        currencyInput.addEventListener('input', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-        currencyInput.addEventListener('blur', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-    }
-}
-
-function addDependenteEntry() {
-    const dependentesListEl = document.getElementById("dependentes-list");
-    if (!dependentesListEl) {
-        console.error("Elemento dependentes-list não encontrado para adicionar entrada de dependente.");
-        return;
-    }
-
-    const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item"); 
-    entryDiv.innerHTML = `
-        <input type="text" name="dep_nome" placeholder="Nome do Dependente" required>
-        <select name="dep_tipo" required>
-            <option value="">Selecione o Tipo</option>
-            <option value="filho">Filho(a)</option>
-            <option value="pet">Pet</option>
-            <option value="parente">Outro Parente</option>
-        </select>
-        <button type="button" class="remove-dynamic-entry-btn remove-dependente-btn">Remover</button>
-    `;
-    dependentesListEl.appendChild(entryDiv);
-}
-
-function addPersonEntry() {
-    const pessoasListEl = document.getElementById("pessoas-list");
-    if (!pessoasListEl) {
-        console.error("Elemento pessoas-list não encontrado para adicionar entrada de pessoa.");
-        return;
-    }
-
-    const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item"); 
-    entryDiv.innerHTML = `
-        <input type="text" name="pessoa_nome" placeholder="Nome da Pessoa" required>
-        <button type="button" class="remove-dynamic-entry-btn remove-person-btn">Remover</button>
-    `;
-    pessoasListEl.appendChild(entryDiv);
-    updateDynamicFormSections();
-}
-
 function attachFormEventListeners(formId) {
-    const form = document.getElementById("client-response-form");
+    const clientResponseFormEl = document.getElementById("client-response-form");
     const nomeCompletoInput = document.getElementById("nome_completo");
     const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
     const rendaUnicaNaoRadio = document.getElementById("renda_unica_nao");
-    const outrasPessoasRendaContainer = document.getElementById("outras-pessoas-renda-container");
+    const outrasPessoasContainerEl = document.getElementById("outras-pessoas-renda-container");
     const addPersonBtn = document.getElementById("add-person-btn");
+    const pessoasListEl = document.getElementById("pessoas-list");
+
     const temDependentesSimRadio = document.getElementById("tem_dependentes_sim");
     const temDependentesNaoRadio = document.getElementById("tem_dependentes_nao");
-    const dependentesContainer = document.getElementById("dependentes-container");
+    const dependentesContainerEl = document.getElementById("dependentes-container");
     const addDependenteBtn = document.getElementById("add-dependente-btn");
+    const dependentesListEl = document.getElementById("dependentes-list");
+
     const temPatrimonioSimRadio = document.getElementById("tem_patrimonio_sim");
     const temPatrimonioNaoRadio = document.getElementById("tem_patrimonio_nao");
-    const patrimonioListContainer = document.getElementById("patrimonio-list-container");
+    const patrimonioListContainerEl = document.getElementById("patrimonio-list-container");
     const addPatrimonioBtn = document.getElementById("add-patrimonio-btn");
+    const patrimonioListEl = document.getElementById("patrimonio-list");
+
     const temPatrimonioLiquidoSimRadio = document.getElementById("tem_patrimonio_liquido_sim");
     const temPatrimonioLiquidoNaoRadio = document.getElementById("tem_patrimonio_liquido_nao");
-    const patrimonioLiquidoListContainer = document.getElementById("patrimonio-liquido-list-container");
+    const patrimonioLiquidoListContainerEl = document.getElementById("patrimonio-liquido-list-container");
     const addPatrimonioLiquidoBtn = document.getElementById("add-patrimonio-liquido-btn");
+    const patrimonioLiquidoListEl = document.getElementById("patrimonio-liquido-list");
+
     const temDividasSimRadio = document.getElementById("tem_dividas_sim");
     const temDividasNaoRadio = document.getElementById("tem_dividas_nao");
-    const dividasListContainer = document.getElementById("dividas-list-container");
+    const dividasListContainerEl = document.getElementById("dividas-list-container");
     const addDividaBtn = document.getElementById("add-divida-btn");
+    const dividasListEl = document.getElementById("dividas-list");
 
     if (nomeCompletoInput) {
-        nomeCompletoInput.addEventListener("input", updateDynamicFormSections);
-    }
-
-    if (rendaUnicaSimRadio && rendaUnicaNaoRadio && outrasPessoasRendaContainer) {
-        rendaUnicaSimRadio.addEventListener("change", () => {
-            outrasPessoasRendaContainer.style.display = "none";
+        nomeCompletoInput.addEventListener("input", () => {
             updateDynamicFormSections();
         });
+    }
+
+    if (rendaUnicaSimRadio) {
+        rendaUnicaSimRadio.addEventListener("change", () => {
+            outrasPessoasContainerEl.style.display = "none";
+            pessoasListEl.innerHTML = ''; 
+            updateDynamicFormSections();
+        });
+    }
+    if (rendaUnicaNaoRadio) {
         rendaUnicaNaoRadio.addEventListener("change", () => {
-            outrasPessoasRendaContainer.style.display = "block";
-            if (document.querySelectorAll("#pessoas-list .dynamic-entry-item").length === 0) {
-                addPersonEntry();
-            }
+            outrasPessoasContainerEl.style.display = "block";
             updateDynamicFormSections();
         });
     }
 
     if (addPersonBtn) {
         addPersonBtn.addEventListener("click", () => {
-            addPersonEntry();
-            updateDynamicFormSections();
+            const personIndex = pessoasListEl.children.length;
+            const newPersonEntry = document.createElement("div");
+            newPersonEntry.classList.add("dynamic-entry-item"); 
+            newPersonEntry.innerHTML = `
+                <input type="text" name="pessoa_nome" placeholder="Nome da pessoa" required>
+                <label>Você precisa de autorização de <span class="person-name-placeholder"></span> para tomar decisões financeiras e agir?</label>
+                <select name="pessoa_autorizacao" required>
+                    <option value="" disabled selected>Selecione</option>
+                    <option value="sim">Sim</option>
+                    <option value="nao">Não</option>
+                </select>
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+            `;
+            pessoasListEl.appendChild(newPersonEntry);
+            const nomeInput = newPersonEntry.querySelector('input[name="pessoa_nome"]');
+            const placeholder = newPersonEntry.querySelector('.person-name-placeholder');
+            placeholder.textContent = "esta pessoa"; 
+
+            nomeInput.addEventListener('input', () => {
+                const primeiroNome = nomeInput.value.trim().split(' ')[0];
+                placeholder.textContent = primeiroNome ? capitalizeName(primeiroNome) : "esta pessoa";
+                updateDynamicFormSections(); 
+            });
+
+            newPersonEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
+                newPersonEntry.remove();
+                updateDynamicFormSections();
+            });
+            updateDynamicFormSections(); 
         });
     }
 
-    if (temDependentesSimRadio && temDependentesNaoRadio && dependentesContainer) {
+    if (temDependentesSimRadio) {
         temDependentesSimRadio.addEventListener("change", () => {
-            dependentesContainer.style.display = "block";
-            if (document.querySelectorAll("#dependentes-list .dynamic-entry-item").length === 0) {
-                addDependenteEntry();
-            }
-            updateDynamicFormSections();
-        });
-        temDependentesNaoRadio.addEventListener("change", () => {
-            dependentesContainer.style.display = "none";
+            dependentesContainerEl.style.display = "block";
             updateDynamicFormSections();
         });
     }
-
+    if (temDependentesNaoRadio) {
+        temDependentesNaoRadio.addEventListener("change", () => {
+            dependentesContainerEl.style.display = "none";
+            dependentesListEl.innerHTML = ''; 
+            updateDynamicFormSections();
+        });
+    }
     if (addDependenteBtn) {
         addDependenteBtn.addEventListener("click", () => {
-            addDependenteEntry();
+            const depIndex = dependentesListEl.children.length;
+            const newDependenteEntry = document.createElement("div");
+            newDependenteEntry.classList.add("dynamic-entry-item"); 
+            newDependenteEntry.innerHTML = `
+                <input type="text" name="dep_nome" placeholder="Nome do dependente" required>
+                <input type="number" name="dep_idade" placeholder="Idade" min="0" required>
+                <input type="text" name="dep_relacao" placeholder="Relação (filho(a), pai, mãe, irmã(o), Pet, etc...):" required>
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+            `;
+            dependentesListEl.appendChild(newDependenteEntry);
+            
+            const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
+            if (nomeDependenteInput) {
+                nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
+            }
+
+            newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
+                newDependenteEntry.remove();
+                updateDynamicFormSections();
+            });
             updateDynamicFormSections();
         });
     }
 
-    if (temPatrimonioSimRadio && temPatrimonioNaoRadio && patrimonioListContainer) {
+    if (temPatrimonioSimRadio) {
         temPatrimonioSimRadio.addEventListener("change", () => {
-            patrimonioListContainer.style.display = "block";
-            if (document.querySelectorAll("#patrimonio-list .dynamic-entry-item").length === 0) {
-                addPatrimonioEntry();
-            }
+            patrimonioListContainerEl.style.display = "block";
+            updateDynamicFormSections();
         });
+    }
+    if (temPatrimonioNaoRadio) {
         temPatrimonioNaoRadio.addEventListener("change", () => {
-            patrimonioListContainer.style.display = "none";
+            patrimonioListContainerEl.style.display = "none";
+            patrimonioListEl.innerHTML = '';
+            updateDynamicFormSections();
         });
     }
-
     if (addPatrimonioBtn) {
-        addPatrimonioBtn.addEventListener("click", addPatrimonioEntry);
+        addPatrimonioBtn.addEventListener("click", () => {
+            const patrimonioIndex = patrimonioListEl.children.length;
+            const newPatrimonioEntry = document.createElement("div");
+            newPatrimonioEntry.classList.add("dynamic-entry-item"); 
+            newPatrimonioEntry.innerHTML = `
+                <input type="text" name="patrimonio_qual" placeholder="Qual patrimônio? (ex: Apto 50m2, Corolla 2020)" required>
+                <input type="text" name="patrimonio_valor" placeholder="Quanto vale? (R$)" required class="currency-input">
+                <div class="patrimonio-radio-group-container"> 
+                    <div class="patrimonio-radio-group-item">
+                        <label>Possui seguro?</label>
+                        <div class="radio-options-inline-patrimonio-item">
+                            <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_sim" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
+                            <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_nao" name="patrimonio_seguro_${patrimonioIndex}" value="nao"> <label for="patrimonio_seguro_${patrimonioIndex}_nao">Não</label>
+                        </div>
+                    </div>
+                    <div class="patrimonio-radio-group-item">
+                        <label>Está quitado?</label>
+                        <div class="radio-options-inline-patrimonio-item">
+                            <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_sim" name="patrimonio_quitado_${patrimonioIndex}" value="sim" required> <label for="patrimonio_quitado_${patrimonioIndex}_sim">Sim</label>
+                            <input type="radio" id="patrimonio_quitado_${patrimonioIndex}_nao" name="patrimonio_quitado_${patrimonioIndex}" value="nao"> <label for="patrimonio_quitado_${patrimonioIndex}_nao">Não</label>
+                        </div>
+                    </div>
+                </div>
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+            `;
+            patrimonioListEl.appendChild(newPatrimonioEntry);
+
+            const valorInput = newPatrimonioEntry.querySelector('input[name="patrimonio_valor"]');
+            valorInput.addEventListener('input', (e) => {
+                const rawValue = e.target.value.replace(/[^\d]/g, '');
+                if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                } else {
+                    e.target.value = '';
+                }
+            });
+             valorInput.addEventListener('blur', (e) => { 
+                 const rawValue = e.target.value.replace(/[^\d]/g, '');
+                 if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                 } else {
+                    e.target.value = '';
+                 }
+            });
+
+            newPatrimonioEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
+                newPatrimonioEntry.remove();
+                updateDynamicFormSections();
+            });
+            updateDynamicFormSections();
+        });
     }
 
-    if (temPatrimonioLiquidoSimRadio && temPatrimonioLiquidoNaoRadio && patrimonioLiquidoListContainer) {
+    // Listeners para Patrimônio Líquido
+    if (temPatrimonioLiquidoSimRadio) {
         temPatrimonioLiquidoSimRadio.addEventListener("change", () => {
-            patrimonioLiquidoListContainer.style.display = "block";
-            if (document.querySelectorAll("#patrimonio-liquido-list .dynamic-entry-item").length === 0) {
-                addPatrimonioLiquidoEntry();
-            }
+            patrimonioLiquidoListContainerEl.style.display = "block";
+            updateDynamicFormSections();
         });
+    }
+    if (temPatrimonioLiquidoNaoRadio) {
         temPatrimonioLiquidoNaoRadio.addEventListener("change", () => {
-            patrimonioLiquidoListContainer.style.display = "none";
+            patrimonioLiquidoListContainerEl.style.display = "none";
+            patrimonioLiquidoListEl.innerHTML = '';
+            updateDynamicFormSections();
+        });
+    }
+    if (addPatrimonioLiquidoBtn) {
+        addPatrimonioLiquidoBtn.addEventListener("click", () => {
+            const patrimonioLiquidoIndex = patrimonioLiquidoListEl.children.length;
+            const newPatrimonioLiquidoEntry = document.createElement("div");
+            newPatrimonioLiquidoEntry.classList.add("dynamic-entry-item"); 
+            newPatrimonioLiquidoEntry.innerHTML = `
+                <input type="text" name="patrimonio_liquido_qual" placeholder="Qual tipo de investimento? (ex: Poupança, CDB, Ações)" required>
+                <input type="text" name="patrimonio_liquido_valor" placeholder="Quanto vale? (R$)" required class="currency-input">
+                <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+            `;
+            patrimonioLiquidoListEl.appendChild(newPatrimonioLiquidoEntry);
+
+            const valorInput = newPatrimonioLiquidoEntry.querySelector('input[name="patrimonio_liquido_valor"]');
+            valorInput.addEventListener('input', (e) => {
+                const rawValue = e.target.value.replace(/[^\d]/g, '');
+                if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                } else {
+                    e.target.value = '';
+                }
+            });
+             valorInput.addEventListener('blur', (e) => { 
+                 const rawValue = e.target.value.replace(/[^\d]/g, '');
+                 if (rawValue) {
+                    const number = parseInt(rawValue, 10) / 100;
+                    e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                 } else {
+                    e.target.value = '';
+                 }
+            });
+
+            newPatrimonioLiquidoEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
+                newPatrimonioLiquidoEntry.remove();
+                updateDynamicFormSections();
+            });
+            updateDynamicFormSections();
         });
     }
 
-    if (addPatrimonioLiquidoBtn) {
-        addPatrimonioLiquidoBtn.addEventListener("click", addPatrimonioLiquidoEntry);
-    }
-
-    if (temDividasSimRadio && temDividasNaoRadio && dividasListContainer) {
+    // Listeners para Dívidas
+    if (temDividasSimRadio) {
         temDividasSimRadio.addEventListener("change", () => {
-            dividasListContainer.style.display = "block";
-            if (document.querySelectorAll("#dividas-list .dynamic-entry-item").length === 0) {
+            dividasListContainerEl.style.display = "block";
+            if (dividasListEl.children.length === 0) {
                 addDividaEntry();
             }
+            updateDynamicFormSections();
         });
+    }
+    if (temDividasNaoRadio) {
         temDividasNaoRadio.addEventListener("change", () => {
-            dividasListContainer.style.display = "none";
+            dividasListContainerEl.style.display = "none";
+            dividasListEl.innerHTML = '';
+            updateDynamicFormSections();
+        });
+    }
+    if (addDividaBtn) {
+        addDividaBtn.addEventListener("click", () => {
+            addDividaEntry();
+            updateDynamicFormSections();
         });
     }
 
-    if (addDividaBtn) {
-        addDividaBtn.addEventListener("click", addDividaEntry);
-    }
-
-    document.addEventListener("click", (e) => {
-        if (e.target.classList.contains("remove-person-btn")) {
-            e.target.closest(".dynamic-entry-item").remove();
-            updateDynamicFormSections();
-        } else if (e.target.classList.contains("remove-dependente-btn")) {
-            e.target.closest(".dynamic-entry-item").remove();
-            updateDynamicFormSections();
-        } else if (e.target.classList.contains("remove-patrimonio-btn")) {
-            e.target.closest(".dynamic-entry-item").remove();
-        } else if (e.target.classList.contains("remove-patrimonio-liquido-btn")) {
-            e.target.closest(".dynamic-entry-item").remove();
-        } else if (e.target.classList.contains("remove-divida-btn")) {
-            e.target.closest(".dynamic-entry-item").remove();
-        }
-    });
-
-    if (form) {
-        form.addEventListener("submit", async (e) => {
+    // Listener para o formulário
+    if (clientResponseFormEl) {
+        clientResponseFormEl.addEventListener("submit", async (e) => {
             e.preventDefault();
             
             // Validação básica
@@ -907,15 +932,16 @@ function attachFormEventListeners(formId) {
                 dividas: [],
                 planos_saude: {},
                 seguros_vida: {},
-                impostos_renda: {} // Campo para armazenar respostas sobre imposto de renda
+                impostos_renda: {} // Novo campo para armazenar respostas sobre imposto de renda
             };
 
             // Coleta de pessoas com renda
             if (formData.renda_unica === "nao") {
                 document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => {
                     const nome = entry.querySelector('input[name="pessoa_nome"]').value.trim();
+                    const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]').value;
                     if (nome) {
-                        formData.pessoas_com_renda.push({ nome });
+                        formData.pessoas_com_renda.push({ nome, autorizacao });
                     }
                 });
             }
@@ -924,21 +950,24 @@ function attachFormEventListeners(formId) {
             if (formData.tem_dependentes === "sim") {
                 document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => {
                     const nome = entry.querySelector('input[name="dep_nome"]').value.trim();
-                    const tipo = entry.querySelector('select[name="dep_tipo"]').value;
-                    if (nome && tipo) {
-                        formData.dependentes.push({ nome, tipo });
+                    const idade = entry.querySelector('input[name="dep_idade"]').value;
+                    const relacao = entry.querySelector('input[name="dep_relacao"]').value.trim();
+                    if (nome && idade && relacao) {
+                        formData.dependentes.push({ nome, idade: parseInt(idade), relacao });
                     }
                 });
             }
 
             // Coleta de patrimônios físicos
             if (formData.tem_patrimonio === "sim") {
-                document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach(entry => {
-                    const tipo = entry.querySelector('input[name="patrimonio_tipo"]').value.trim();
+                document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach((entry, index) => {
+                    const qual = entry.querySelector('input[name="patrimonio_qual"]').value.trim();
                     const valorInput = entry.querySelector('input[name="patrimonio_valor"]').value;
                     const valor = parseCurrency(valorInput);
-                    if (tipo) {
-                        formData.patrimonios.push({ tipo, valor });
+                    const seguro = entry.querySelector(`input[name="patrimonio_seguro_${index}"]:checked`).value;
+                    const quitado = entry.querySelector(`input[name="patrimonio_quitado_${index}"]:checked`).value;
+                    if (qual) {
+                        formData.patrimonios.push({ qual, valor, seguro, quitado });
                     }
                 });
             }
@@ -946,11 +975,11 @@ function attachFormEventListeners(formId) {
             // Coleta de patrimônios líquidos
             if (formData.tem_patrimonio_liquido === "sim") {
                 document.querySelectorAll("#patrimonio-liquido-list .dynamic-entry-item").forEach(entry => {
-                    const tipo = entry.querySelector('input[name="patrimonio_liquido_tipo"]').value.trim();
+                    const qual = entry.querySelector('input[name="patrimonio_liquido_qual"]').value.trim();
                     const valorInput = entry.querySelector('input[name="patrimonio_liquido_valor"]').value;
                     const valor = parseCurrency(valorInput);
-                    if (tipo) {
-                        formData.patrimonios_liquidos.push({ tipo, valor });
+                    if (qual) {
+                        formData.patrimonios_liquidos.push({ qual, valor });
                     }
                 });
             }
