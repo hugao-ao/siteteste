@@ -9,7 +9,7 @@ const formTitleEl = document.getElementById("form-title");
 // --- Estado para preservar seleções ---
 let planoSaudeSelections = {};
 let seguroVidaSelections = {};
-let impostoRendaSelections = {}; // Novo estado para preservar seleções de imposto de renda
+let impostoRendaSelections = {}; // Estado para preservar seleções de imposto de renda
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
@@ -436,9 +436,9 @@ function updateDynamicFormSections() {
     updatePerguntaPatrimonioFisicoLabel();
     updatePerguntaPatrimonioLiquidoLabel();
     updatePerguntaDividasLabel();
-    renderImpostoRendaQuestions(); // Nova chamada para renderizar perguntas de imposto de renda
     renderPlanoSaudeQuestions();
     renderSeguroVidaQuestions();
+    renderImpostoRendaQuestions(); // Chamada para renderizar perguntas de imposto de renda
 }
 
 async function loadForm(token) {
@@ -499,12 +499,6 @@ function renderActualForm(formData) {
                 <label>Outras pessoas com renda na casa:</label>
                 <div id="pessoas-list"></div>
                 <button type="button" id="add-person-btn" class="add-dynamic-entry-btn">+ Adicionar Pessoa com Renda</button>
-            </div>
-            
-            <!-- Nova seção de Imposto de Renda -->
-            <div id="imposto-renda-section" style="margin-top: 2rem;">
-                <h3 id="imposto-renda-section-title" style="display: none;">Informações sobre Imposto de Renda:</h3>
-                <div id="imposto-renda-section-content"></div>
             </div>
 
             <div class="radio-group" style="margin-top: 2rem;">
@@ -568,8 +562,8 @@ function renderActualForm(formData) {
             <!-- Seção de Dívidas -->
             <div class="form-section" id="dividas-section">
                 <div class="form-group">
-                    <h3 id="label_tem_dividas" class="form-question-label" style="text-align: left !important; margin-bottom: 0.5rem;">Você possui dívidas?</h3>
-                    <div class="radio-group" style="text-align: left;">
+                    <h3 id="label_tem_dividas" class="form-question-label" style="text-align: center !important; margin-bottom: 0.5rem;">Você possui dívidas?</h3>
+                    <div class="radio-group" style="text-align: center;">
                         <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
                         <label for="tem_dividas_sim" class="radio-label">Sim</label>
                         <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao" required>
@@ -581,6 +575,12 @@ function renderActualForm(formData) {
                     <div id="dividas-list" class="dynamic-list"></div>
                     <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">Adicionar Dívida</button>
                 </div>
+            </div>
+            
+            <!-- Nova seção de Imposto de Renda (movida para depois das dívidas) -->
+            <div id="imposto-renda-section" style="margin-top: 2rem;">
+                <h3 id="imposto-renda-section-title" style="display: none;">Informações sobre Imposto de Renda:</h3>
+                <div id="imposto-renda-section-content"></div>
             </div>
 
             <div class="form-actions">
@@ -741,31 +741,9 @@ function addPersonEntry() {
     entryDiv.classList.add("dynamic-entry-item"); 
     entryDiv.innerHTML = `
         <input type="text" name="pessoa_nome" placeholder="Nome da Pessoa" required>
-        <input type="text" name="pessoa_renda" placeholder="Renda Mensal (R$)" required class="currency-input">
         <button type="button" class="remove-dynamic-entry-btn remove-person-btn">Remover</button>
     `;
     pessoasListEl.appendChild(entryDiv);
-    const currencyInput = entryDiv.querySelector(".currency-input");
-    if (currencyInput) {
-        currencyInput.addEventListener('input', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-        currencyInput.addEventListener('blur', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-    }
     updateDynamicFormSections();
 }
 
@@ -929,17 +907,15 @@ function attachFormEventListeners(formId) {
                 dividas: [],
                 planos_saude: {},
                 seguros_vida: {},
-                impostos_renda: {} // Novo campo para armazenar respostas sobre imposto de renda
+                impostos_renda: {} // Campo para armazenar respostas sobre imposto de renda
             };
 
             // Coleta de pessoas com renda
             if (formData.renda_unica === "nao") {
                 document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => {
                     const nome = entry.querySelector('input[name="pessoa_nome"]').value.trim();
-                    const rendaInput = entry.querySelector('input[name="pessoa_renda"]').value;
-                    const renda = parseCurrency(rendaInput);
                     if (nome) {
-                        formData.pessoas_com_renda.push({ nome, renda });
+                        formData.pessoas_com_renda.push({ nome });
                     }
                 });
             }
