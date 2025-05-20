@@ -9,8 +9,8 @@ const formTitleEl = document.getElementById("form-title");
 // --- Estado para preservar seleções ---
 let planoSaudeSelections = {};
 let seguroVidaSelections = {};
-let impostoRendaSelections = {}; // Estado para preservar seleções de imposto de renda
-let orcamentoSelections = {}; // Estado para preservar seleções de orçamento
+let impostoRendaSelections = {}; // Novo estado para imposto de renda
+let orcamentoSelections = {}; // Novo estado para orçamento
 
 // --- Funções de Utilidade ---
 const sanitizeInput = (str) => {
@@ -146,64 +146,253 @@ function updatePerguntaDividasLabel() {
     }
 }
 
-// Função para salvar as seleções de imposto de renda
+function savePlanoSaudeSelections() {
+    const container = document.getElementById("plano-saude-section-content");
+    if (!container) return;
+    planoSaudeSelections = {}; 
+    container.querySelectorAll(".plano-saude-entry").forEach(entry => {
+        const nameAttribute = entry.querySelector('input[type="radio"]').name; 
+        const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
+        if (selectedRadio) {
+            planoSaudeSelections[nameAttribute] = selectedRadio.value;
+        }
+    });
+}
+
+function restorePlanoSaudeSelections() {
+    Object.keys(planoSaudeSelections).forEach(nameAttribute => {
+        const value = planoSaudeSelections[nameAttribute];
+        const radioToSelect = document.querySelector(`input[name="${nameAttribute}"][value="${value}"]`);
+        if (radioToSelect) {
+            radioToSelect.checked = true;
+        }
+    });
+}
+
+function renderPlanoSaudeQuestions() {
+    savePlanoSaudeSelections(); 
+    const container = document.getElementById("plano-saude-section-content");
+    if (!container) return;
+    container.innerHTML = '';
+    const pessoasDaCasa = [];
+    const nomeCompletoInput = document.getElementById("nome_completo");
+    if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
+        pessoasDaCasa.push({ id: "preenchedor_plano", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
+    }
+    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
+            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
+            if (nomeInput && nomeInput.value.trim() !== "") {
+                pessoasDaCasa.push({ id: `outra_pessoa_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
+            }
+        });
+    }
+    if (document.getElementById("tem_dependentes_sim") && document.getElementById("tem_dependentes_sim").checked) {
+        document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach((entry, index) => { 
+            const nomeInput = entry.querySelector('input[name="dep_nome"]');
+            if (nomeInput && nomeInput.value.trim() !== "") {
+                pessoasDaCasa.push({ id: `dependente_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "dependente" });
+            }
+        });
+    }
+    const tituloPlanoSaude = document.getElementById("plano-saude-section-title");
+    if (pessoasDaCasa.length === 0) {
+        container.innerHTML = "<p>Preencha as informações anteriores para definir as perguntas sobre plano de saúde.</p>";
+        if(tituloPlanoSaude) tituloPlanoSaude.style.display = 'none';
+        return;
+    }
+    if(tituloPlanoSaude) tituloPlanoSaude.style.display = 'block';
+    pessoasDaCasa.forEach((pessoa) => {
+        const primeiroNome = pessoa.nome.split(' ')[0];
+        const nomeCapitalizado = capitalizeName(primeiroNome);
+        const personId = `plano_saude_${pessoa.id}`;
+        const entryDiv = document.createElement("div");
+        entryDiv.classList.add("plano-saude-entry");
+        entryDiv.style.marginBottom = "1rem";
+        entryDiv.innerHTML = `
+            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui plano de saúde?</label>
+            <div class="radio-options-inline" style="display: flex; align-items: center;">
+                <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
+                    <label for="${personId}_sim">Sim</label>
+                </span>
+                <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
+                    <label for="${personId}_nao">Não</label>
+                </span>
+                <span style="display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
+                    <label for="${personId}_naosei">Não sei informar</label>
+                </span>
+            </div>
+        `;
+        entryDiv.dataset.personName = pessoa.nome;
+        entryDiv.dataset.personType = pessoa.tipo;
+        container.appendChild(entryDiv);
+    });
+    restorePlanoSaudeSelections(); 
+}
+
+function saveSeguroVidaSelections() {
+    const container = document.getElementById("seguro-vida-section-content");
+    if (!container) return;
+    seguroVidaSelections = {}; 
+    container.querySelectorAll(".seguro-vida-entry").forEach(entry => {
+        const nameAttribute = entry.querySelector('input[type="radio"]').name; 
+        const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
+        if (selectedRadio) {
+            seguroVidaSelections[nameAttribute] = selectedRadio.value;
+        }
+    });
+}
+
+function restoreSeguroVidaSelections() {
+    Object.keys(seguroVidaSelections).forEach(nameAttribute => {
+        const value = seguroVidaSelections[nameAttribute];
+        const radioToSelect = document.querySelector(`input[name="${nameAttribute}"][value="${value}"]`);
+        if (radioToSelect) {
+            radioToSelect.checked = true;
+        }
+    });
+}
+
+function renderSeguroVidaQuestions() {
+    saveSeguroVidaSelections(); 
+    const container = document.getElementById("seguro-vida-section-content");
+    if (!container) return;
+    container.innerHTML = '';
+    const pessoasComRenda = [];
+    const nomeCompletoInput = document.getElementById("nome_completo");
+    if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
+        pessoasComRenda.push({ id: "preenchedor_seguro", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
+    }
+    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
+            const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
+            if (nomeInput && nomeInput.value.trim() !== "") {
+                pessoasComRenda.push({ id: `outra_pessoa_seguro_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
+            }
+        });
+    }
+    const tituloSeguroVida = document.getElementById("seguro-vida-section-title");
+    if (pessoasComRenda.length === 0) {
+        container.innerHTML = "<p>Preencha as informações sobre nome e renda para definir as perguntas sobre seguro de vida.</p>";
+        if(tituloSeguroVida) tituloSeguroVida.style.display = 'none';
+        return;
+    }
+    if(tituloSeguroVida) tituloSeguroVida.style.display = 'block';
+    pessoasComRenda.forEach((pessoa) => {
+        const primeiroNome = pessoa.nome.split(' ')[0];
+        const nomeCapitalizado = capitalizeName(primeiroNome);
+        const personId = `seguro_vida_${pessoa.id}`;
+        const entryDiv = document.createElement("div");
+        entryDiv.classList.add("seguro-vida-entry");
+        entryDiv.style.marginBottom = "1rem";
+        entryDiv.innerHTML = `
+            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui seguro de vida?</label>
+            <div class="radio-options-inline" style="display: flex; align-items: center;">
+                <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
+                    <label for="${personId}_sim">Sim</label>
+                </span>
+                <span style="margin-right: 20px; display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
+                    <label for="${personId}_nao">Não</label>
+                </span>
+                <span style="display: flex; align-items: center;">
+                    <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
+                    <label for="${personId}_naosei">Não sei informar</label>
+                </span>
+            </div>
+        `;
+        entryDiv.dataset.personName = pessoa.nome;
+        entryDiv.dataset.personType = pessoa.tipo;
+        container.appendChild(entryDiv);
+    });
+    restoreSeguroVidaSelections(); 
+}
+
+// Funções para Imposto de Renda
 function saveImpostoRendaSelections() {
     const container = document.getElementById("imposto-renda-section-content");
     if (!container) return;
     impostoRendaSelections = {}; 
     
-    // Salvar seleções de declaração de IR
+    // Salvar seleções de declaração
     container.querySelectorAll(".imposto-renda-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]').name; 
+        const nameAttribute = entry.querySelector('input[type="radio"]').name;
         const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
         if (selectedRadio) {
-            impostoRendaSelections[nameAttribute] = selectedRadio.value;
+            const personName = entry.dataset.personName;
+            if (!impostoRendaSelections[personName]) {
+                impostoRendaSelections[personName] = {};
+            }
+            impostoRendaSelections[personName].declara = selectedRadio.value;
             
-            // Salvar seleções de tipo e resultado para respostas "sim"
+            // Salvar seleções de tipo e resultado se declara = sim
             if (selectedRadio.value === "sim") {
-                // Salvar tipo de IR
-                const tipoNameAttribute = `${nameAttribute}_tipo`;
-                const tipoSelectedRadio = entry.querySelector(`input[name="${tipoNameAttribute}"]:checked`);
+                const tipoNameAttribute = `tipo_${nameAttribute}`;
+                const resultadoNameAttribute = `resultado_${nameAttribute}`;
+                
+                const tipoSelectedRadio = document.querySelector(`input[name="${tipoNameAttribute}"]:checked`);
+                const resultadoSelectedRadio = document.querySelector(`input[name="${resultadoNameAttribute}"]:checked`);
+                
                 if (tipoSelectedRadio) {
-                    impostoRendaSelections[tipoNameAttribute] = tipoSelectedRadio.value;
+                    impostoRendaSelections[personName].tipo = tipoSelectedRadio.value;
                 }
                 
-                // Salvar resultado de IR
-                const resultadoNameAttribute = `${nameAttribute}_resultado`;
-                const resultadoSelectedRadio = entry.querySelector(`input[name="${resultadoNameAttribute}"]:checked`);
                 if (resultadoSelectedRadio) {
-                    impostoRendaSelections[resultadoNameAttribute] = resultadoSelectedRadio.value;
+                    impostoRendaSelections[personName].resultado = resultadoSelectedRadio.value;
                 }
             }
         }
     });
 }
 
-// Função para restaurar as seleções de imposto de renda
 function restoreImpostoRendaSelections() {
-    Object.keys(impostoRendaSelections).forEach(nameAttribute => {
-        const value = impostoRendaSelections[nameAttribute];
-        const radioToSelect = document.querySelector(`input[name="${nameAttribute}"][value="${value}"]`);
-        if (radioToSelect) {
-            radioToSelect.checked = true;
-            
-            // Se for uma seleção de declaração de IR com valor "sim", mostrar perguntas adicionais
-            if (nameAttribute.indexOf("_tipo") === -1 && nameAttribute.indexOf("_resultado") === -1 && value === "sim") {
-                const entryDiv = radioToSelect.closest('.imposto-renda-entry');
-                if (entryDiv) {
-                    const additionalQuestionsDiv = entryDiv.querySelector('.imposto-renda-additional-questions');
-                    if (additionalQuestionsDiv) {
-                        additionalQuestionsDiv.style.display = 'block';
+    Object.keys(impostoRendaSelections).forEach(personName => {
+        const personData = impostoRendaSelections[personName];
+        
+        // Restaurar seleção de declaração
+        const entries = document.querySelectorAll(`.imposto-renda-entry[data-person-name="${personName}"]`);
+        entries.forEach(entry => {
+            const nameAttribute = entry.querySelector('input[type="radio"]').name;
+            const radioToSelect = document.querySelector(`input[name="${nameAttribute}"][value="${personData.declara}"]`);
+            if (radioToSelect) {
+                radioToSelect.checked = true;
+                
+                // Mostrar/ocultar perguntas adicionais com base na seleção
+                const additionalQuestions = entry.querySelector('.imposto-renda-additional-questions');
+                if (additionalQuestions) {
+                    additionalQuestions.style.display = personData.declara === "sim" ? "block" : "none";
+                }
+                
+                // Restaurar seleções de tipo e resultado se declara = sim
+                if (personData.declara === "sim") {
+                    const tipoNameAttribute = `tipo_${nameAttribute}`;
+                    const resultadoNameAttribute = `resultado_${nameAttribute}`;
+                    
+                    if (personData.tipo) {
+                        const tipoRadioToSelect = document.querySelector(`input[name="${tipoNameAttribute}"][value="${personData.tipo}"]`);
+                        if (tipoRadioToSelect) {
+                            tipoRadioToSelect.checked = true;
+                        }
+                    }
+                    
+                    if (personData.resultado) {
+                        const resultadoRadioToSelect = document.querySelector(`input[name="${resultadoNameAttribute}"][value="${personData.resultado}"]`);
+                        if (resultadoRadioToSelect) {
+                            resultadoRadioToSelect.checked = true;
+                        }
                     }
                 }
             }
-        }
+        });
     });
 }
 
-// Função para renderizar as perguntas de imposto de renda
 function renderImpostoRendaQuestions() {
-    saveImpostoRendaSelections(); 
+    saveImpostoRendaSelections();
     const container = document.getElementById("imposto-renda-section-content");
     if (!container) return;
     container.innerHTML = '';
@@ -214,13 +403,11 @@ function renderImpostoRendaQuestions() {
         pessoasComRenda.push({ id: "preenchedor_ir", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
     
-    let temOutrasPessoasComRenda = false;
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasComRenda.push({ id: `outra_pessoa_ir_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
-                temOutrasPessoasComRenda = true;
             }
         });
     }
@@ -234,267 +421,223 @@ function renderImpostoRendaQuestions() {
     
     if(tituloImpostoRenda) tituloImpostoRenda.style.display = 'block';
     
-    // Pergunta para o preenchedor (sempre exibida)
-    const preenchedor = pessoasComRenda.find(p => p.tipo === "preenchedor");
-    if (preenchedor) {
-        const personId = `imposto_renda_${preenchedor.id}`;
-        const entryDiv = document.createElement("div");
-        entryDiv.classList.add("imposto-renda-entry");
-        entryDiv.style.marginBottom = "1rem";
-        entryDiv.innerHTML = `
-            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">Você declara imposto de renda?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
-                <span style="margin-right: 20px; display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
-                    <label for="${personId}_sim" style="font-size: 14px;">Sim</label>
-                </span>
-                <span style="display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
-                    <label for="${personId}_nao" style="font-size: 14px;">Não</label>
-                </span>
-            </div>
-            <div class="imposto-renda-additional-questions" style="display: none; margin-top: 1rem; margin-left: 1.5rem; padding-left: 1rem; border-left: 2px solid #ddd;">
-                <div style="margin-bottom: 0.8rem;">
-                    <label for="${personId}_tipo" style="display: block; margin-bottom: 0.5rem;">Qual o tipo?</label>
-                    <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_tipo_simples" name="${personId}_tipo" value="simples" style="margin-right: 3px;">
-                            <label for="${personId}_tipo_simples" style="font-size: 13px;">Simples</label>
-                        </span>
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_tipo_completa" name="${personId}_tipo" value="completa" style="margin-right: 3px;">
-                            <label for="${personId}_tipo_completa" style="font-size: 13px;">Dedução Completa</label>
-                        </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_tipo_naosei" name="${personId}_tipo" value="nao_sei" style="margin-right: 3px;">
-                            <label for="${personId}_tipo_naosei" style="font-size: 13px;">Não Sei Informar</label>
-                        </span>
-                    </div>
-                </div>
-                <div>
-                    <label for="${personId}_resultado" style="display: block; margin-bottom: 0.5rem;">Qual o resultado?</label>
-                    <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_resultado_paga" name="${personId}_resultado" value="paga" style="margin-right: 3px;">
-                            <label for="${personId}_resultado_paga" style="font-size: 13px;">Paga</label>
-                        </span>
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_resultado_recebe" name="${personId}_resultado" value="recebe" style="margin-right: 3px;">
-                            <label for="${personId}_resultado_recebe" style="font-size: 13px;">Recebe</label>
-                        </span>
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_resultado_isento" name="${personId}_resultado" value="isento" style="margin-right: 3px;">
-                            <label for="${personId}_resultado_isento" style="font-size: 13px;">Isento</label>
-                        </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_resultado_naosei" name="${personId}_resultado" value="nao_sei" style="margin-right: 3px;">
-                            <label for="${personId}_resultado_naosei" style="font-size: 13px;">Não Sei Informar</label>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        `;
-        entryDiv.dataset.personName = preenchedor.nome;
-        entryDiv.dataset.personType = preenchedor.tipo;
-        container.appendChild(entryDiv);
-        
-        // Adicionar evento para mostrar/ocultar perguntas adicionais
-        const simRadio = entryDiv.querySelector(`#${personId}_sim`);
-        const naoRadio = entryDiv.querySelector(`#${personId}_nao`);
-        const additionalQuestions = entryDiv.querySelector('.imposto-renda-additional-questions');
-        
-        simRadio.addEventListener('change', function() {
-            if (this.checked) {
-                additionalQuestions.style.display = 'block';
-            }
-        });
-        
-        naoRadio.addEventListener('change', function() {
-            if (this.checked) {
-                additionalQuestions.style.display = 'none';
-            }
-        });
-    }
-    
-    // Perguntas para outras pessoas com renda
-    pessoasComRenda.filter(p => p.tipo === "outra_pessoa_renda").forEach(pessoa => {
+    pessoasComRenda.forEach((pessoa) => {
+        const primeiroNome = pessoa.nome.split(' ')[0];
+        const nomeCapitalizado = capitalizeName(primeiroNome);
         const personId = `imposto_renda_${pessoa.id}`;
         const entryDiv = document.createElement("div");
         entryDiv.classList.add("imposto-renda-entry");
         entryDiv.style.marginBottom = "1rem";
-        entryDiv.innerHTML = `
-            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${pessoa.nome} declara imposto de renda?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
-                <span style="margin-right: 20px; display: flex; align-items: center;">
-                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" style="margin-right: 5px;">
-                    <label for="${personId}_sim" style="font-size: 14px;">Sim</label>
+        
+        // Pergunta principal sobre declaração de IR
+        let perguntaIR = "";
+        if (pessoa.tipo === "preenchedor") {
+            perguntaIR = "Você declara imposto de renda?";
+        } else {
+            perguntaIR = `${nomeCapitalizado} declara imposto de renda?`;
+        }
+        
+        // Opções de resposta para a pergunta principal
+        let opcoesHTML = `
+            <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${perguntaIR}</label>
+            <div class="radio-options-inline" style="display: flex; flex-wrap: nowrap; width: 100%; align-items: center; font-size: 13px;">
+                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
+                    <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 5px;">
+                    <label for="${personId}_sim">Sim</label>
                 </span>
-                <span style="margin-right: 20px; display: flex; align-items: center;">
+                <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
                     <input type="radio" id="${personId}_nao" name="${personId}" value="nao" style="margin-right: 5px;">
-                    <label for="${personId}_nao" style="font-size: 14px;">Não</label>
+                    <label for="${personId}_nao">Não</label>
                 </span>
-                <span style="display: flex; align-items: center;">
+        `;
+        
+        // Adicionar opção "Não Sei Informar" apenas para outras pessoas (não para o preenchedor)
+        if (pessoa.tipo !== "preenchedor") {
+            opcoesHTML += `
+                <span style="display: flex; align-items: center; white-space: nowrap;">
                     <input type="radio" id="${personId}_naosei" name="${personId}" value="nao_sei" style="margin-right: 5px;">
-                    <label for="${personId}_naosei" style="font-size: 14px;">Não Sei Informar</label>
+                    <label for="${personId}_naosei">Não Sei Informar</label>
                 </span>
-            </div>
-            <div class="imposto-renda-additional-questions" style="display: none; margin-top: 1rem; margin-left: 1.5rem; padding-left: 1rem; border-left: 2px solid #ddd;">
-                <div style="margin-bottom: 0.8rem;">
-                    <label for="${personId}_tipo" style="display: block; margin-bottom: 0.5rem;">Qual o tipo?</label>
-                    <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_tipo_simples" name="${personId}_tipo" value="simples" style="margin-right: 3px;">
-                            <label for="${personId}_tipo_simples" style="font-size: 13px;">Simples</label>
+            `;
+        }
+        
+        opcoesHTML += `</div>`;
+        
+        // Perguntas adicionais que aparecem quando a resposta é "Sim"
+        const perguntasAdicionaisHTML = `
+            <div class="imposto-renda-additional-questions" style="display: none; margin-left: 20px; border-left: 2px solid var(--theme-border-color); padding-left: 15px; margin-top: 10px;">
+                <div style="margin-bottom: 10px;">
+                    <label for="tipo_${personId}" style="display: block; margin-bottom: 0.5rem;">Qual o tipo?</label>
+                    <div class="radio-options-inline" style="display: flex; flex-wrap: nowrap; width: 100%; align-items: center; font-size: 13px;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
+                            <input type="radio" id="tipo_${personId}_simples" name="tipo_${personId}" value="simples" style="margin-right: 5px;">
+                            <label for="tipo_${personId}_simples">Simples</label>
                         </span>
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_tipo_completa" name="${personId}_tipo" value="completa" style="margin-right: 3px;">
-                            <label for="${personId}_tipo_completa" style="font-size: 13px;">Dedução Completa</label>
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
+                            <input type="radio" id="tipo_${personId}_completa" name="tipo_${personId}" value="completa" style="margin-right: 5px;">
+                            <label for="tipo_${personId}_completa">Dedução Completa</label>
                         </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_tipo_naosei" name="${personId}_tipo" value="nao_sei" style="margin-right: 3px;">
-                            <label for="${personId}_tipo_naosei" style="font-size: 13px;">Não Sei Informar</label>
+                        <span style="display: flex; align-items: center; white-space: nowrap;">
+                            <input type="radio" id="tipo_${personId}_naosei" name="tipo_${personId}" value="nao_sei" style="margin-right: 5px;">
+                            <label for="tipo_${personId}_naosei">Não Sei Informar</label>
                         </span>
                     </div>
                 </div>
+                
                 <div>
-                    <label for="${personId}_resultado" style="display: block; margin-bottom: 0.5rem;">Qual o resultado?</label>
-                    <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_resultado_paga" name="${personId}_resultado" value="paga" style="margin-right: 3px;">
-                            <label for="${personId}_resultado_paga" style="font-size: 13px;">Paga</label>
+                    <label for="resultado_${personId}" style="display: block; margin-bottom: 0.5rem;">Qual o resultado?</label>
+                    <div class="radio-options-inline" style="display: flex; flex-wrap: nowrap; width: 100%; align-items: center; font-size: 13px;">
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
+                            <input type="radio" id="resultado_${personId}_paga" name="resultado_${personId}" value="paga" style="margin-right: 5px;">
+                            <label for="resultado_${personId}_paga">Paga</label>
                         </span>
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_resultado_recebe" name="${personId}_resultado" value="recebe" style="margin-right: 3px;">
-                            <label for="${personId}_resultado_recebe" style="font-size: 13px;">Recebe</label>
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
+                            <input type="radio" id="resultado_${personId}_recebe" name="resultado_${personId}" value="recebe" style="margin-right: 5px;">
+                            <label for="resultado_${personId}_recebe">Recebe</label>
                         </span>
-                        <span style="margin-right: 15px; display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_resultado_isento" name="${personId}_resultado" value="isento" style="margin-right: 3px;">
-                            <label for="${personId}_resultado_isento" style="font-size: 13px;">Isento</label>
+                        <span style="margin-right: 20px; display: flex; align-items: center; white-space: nowrap;">
+                            <input type="radio" id="resultado_${personId}_isento" name="resultado_${personId}" value="isento" style="margin-right: 5px;">
+                            <label for="resultado_${personId}_isento">Isento</label>
                         </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="${personId}_resultado_naosei" name="${personId}_resultado" value="nao_sei" style="margin-right: 3px;">
-                            <label for="${personId}_resultado_naosei" style="font-size: 13px;">Não Sei Informar</label>
+                        <span style="display: flex; align-items: center; white-space: nowrap;">
+                            <input type="radio" id="resultado_${personId}_naosei" name="resultado_${personId}" value="nao_sei" style="margin-right: 5px;">
+                            <label for="resultado_${personId}_naosei">Não Sei Informar</label>
                         </span>
                     </div>
                 </div>
             </div>
         `;
+        
+        entryDiv.innerHTML = opcoesHTML + perguntasAdicionaisHTML;
         entryDiv.dataset.personName = pessoa.nome;
         entryDiv.dataset.personType = pessoa.tipo;
-        container.appendChild(entryDiv);
         
         // Adicionar evento para mostrar/ocultar perguntas adicionais
-        const simRadio = entryDiv.querySelector(`#${personId}_sim`);
-        const naoRadio = entryDiv.querySelector(`#${personId}_nao`);
-        const naoSeiRadio = entryDiv.querySelector(`#${personId}_naosei`);
+        container.appendChild(entryDiv);
+        
+        // Adicionar listeners para mostrar/ocultar perguntas adicionais
+        const simRadio = document.getElementById(`${personId}_sim`);
+        const naoRadio = document.getElementById(`${personId}_nao`);
+        const naoSeiRadio = document.getElementById(`${personId}_naosei`);
         const additionalQuestions = entryDiv.querySelector('.imposto-renda-additional-questions');
         
-        simRadio.addEventListener('change', function() {
-            if (this.checked) {
-                additionalQuestions.style.display = 'block';
-            }
-        });
+        if (simRadio && additionalQuestions) {
+            simRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    additionalQuestions.style.display = 'block';
+                }
+            });
+        }
         
-        naoRadio.addEventListener('change', function() {
-            if (this.checked) {
-                additionalQuestions.style.display = 'none';
-            }
-        });
+        if (naoRadio && additionalQuestions) {
+            naoRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    additionalQuestions.style.display = 'none';
+                }
+            });
+        }
         
-        naoSeiRadio.addEventListener('change', function() {
-            if (this.checked) {
-                additionalQuestions.style.display = 'none';
-            }
-        });
+        if (naoSeiRadio && additionalQuestions) {
+            naoSeiRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    additionalQuestions.style.display = 'none';
+                }
+            });
+        }
     });
     
     restoreImpostoRendaSelections();
 }
 
-// Função para salvar as seleções de orçamento
+// Funções para Orçamento
 function saveOrcamentoSelections() {
     const container = document.getElementById("orcamento-section-content");
     if (!container) return;
     orcamentoSelections = {};
     
     // Salvar tipo de orçamento (conjunto ou individual)
-    const tipoOrcamentoRadios = container.querySelectorAll('input[name="tipo_orcamento"]');
+    const tipoOrcamentoRadios = document.querySelectorAll('input[name="tipo_orcamento"]');
     tipoOrcamentoRadios.forEach(radio => {
         if (radio.checked) {
-            orcamentoSelections.tipo_orcamento = radio.value;
+            orcamentoSelections.tipo = radio.value;
         }
     });
     
     // Salvar valores de orçamento conjunto
-    const orcamentoConjuntoDiv = container.querySelector('#orcamento-conjunto');
+    const orcamentoConjuntoDiv = document.getElementById("orcamento-conjunto");
     if (orcamentoConjuntoDiv) {
-        const entradasInput = orcamentoConjuntoDiv.querySelector('input[name="orcamento_conjunto_entradas"]');
-        const despesasFixasInput = orcamentoConjuntoDiv.querySelector('input[name="orcamento_conjunto_despesas_fixas"]');
-        const despesasVariaveisInput = orcamentoConjuntoDiv.querySelector('input[name="orcamento_conjunto_despesas_variaveis"]');
-        const valorPoupadoInput = orcamentoConjuntoDiv.querySelector('input[name="orcamento_conjunto_valor_poupado"]');
-        
-        if (entradasInput) orcamentoSelections.orcamento_conjunto_entradas = entradasInput.value;
-        if (despesasFixasInput) orcamentoSelections.orcamento_conjunto_despesas_fixas = despesasFixasInput.value;
-        if (despesasVariaveisInput) orcamentoSelections.orcamento_conjunto_despesas_variaveis = despesasVariaveisInput.value;
-        if (valorPoupadoInput) orcamentoSelections.orcamento_conjunto_valor_poupado = valorPoupadoInput.value;
+        orcamentoSelections.conjunto = {
+            entradas: document.getElementById("orcamento_conjunto_entradas")?.value || "",
+            despesas_fixas: document.getElementById("orcamento_conjunto_despesas_fixas")?.value || "",
+            despesas_variaveis: document.getElementById("orcamento_conjunto_despesas_variaveis")?.value || "",
+            valor_poupado: document.getElementById("orcamento_conjunto_valor_poupado")?.value || ""
+        };
     }
     
     // Salvar valores de orçamento individual
-    container.querySelectorAll('.orcamento-individual-entry').forEach(entry => {
-        const personId = entry.dataset.personId;
-        if (!personId) return;
-        
-        const entradasInput = entry.querySelector(`input[name="orcamento_${personId}_entradas"]`);
-        const despesasFixasInput = entry.querySelector(`input[name="orcamento_${personId}_despesas_fixas"]`);
-        const despesasVariaveisInput = entry.querySelector(`input[name="orcamento_${personId}_despesas_variaveis"]`);
-        const valorPoupadoInput = entry.querySelector(`input[name="orcamento_${personId}_valor_poupado"]`);
-        
-        if (entradasInput) orcamentoSelections[`orcamento_${personId}_entradas`] = entradasInput.value;
-        if (despesasFixasInput) orcamentoSelections[`orcamento_${personId}_despesas_fixas`] = despesasFixasInput.value;
-        if (despesasVariaveisInput) orcamentoSelections[`orcamento_${personId}_despesas_variaveis`] = despesasVariaveisInput.value;
-        if (valorPoupadoInput) orcamentoSelections[`orcamento_${personId}_valor_poupado`] = valorPoupadoInput.value;
+    orcamentoSelections.individual = {};
+    document.querySelectorAll(".orcamento-individual-entry").forEach(entry => {
+        const personName = entry.dataset.personName;
+        if (personName) {
+            const personId = entry.dataset.personId;
+            orcamentoSelections.individual[personName] = {
+                entradas: document.getElementById(`orcamento_${personId}_entradas`)?.value || "",
+                despesas_fixas: document.getElementById(`orcamento_${personId}_despesas_fixas`)?.value || "",
+                despesas_variaveis: document.getElementById(`orcamento_${personId}_despesas_variaveis`)?.value || "",
+                valor_poupado: document.getElementById(`orcamento_${personId}_valor_poupado`)?.value || ""
+            };
+        }
     });
 }
 
-// Função para restaurar as seleções de orçamento
 function restoreOrcamentoSelections() {
     // Restaurar tipo de orçamento
-    if (orcamentoSelections.tipo_orcamento) {
-        const tipoRadio = document.querySelector(`input[name="tipo_orcamento"][value="${orcamentoSelections.tipo_orcamento}"]`);
+    if (orcamentoSelections.tipo) {
+        const tipoRadio = document.querySelector(`input[name="tipo_orcamento"][value="${orcamentoSelections.tipo}"]`);
         if (tipoRadio) {
             tipoRadio.checked = true;
-            // Mostrar/ocultar seções correspondentes
-            const orcamentoConjuntoDiv = document.getElementById('orcamento-conjunto');
-            const orcamentoIndividualDiv = document.getElementById('orcamento-individual');
+            
+            // Mostrar/ocultar seções com base no tipo
+            const orcamentoConjuntoDiv = document.getElementById("orcamento-conjunto");
+            const orcamentoIndividualDiv = document.getElementById("orcamento-individual");
+            
             if (orcamentoConjuntoDiv && orcamentoIndividualDiv) {
-                if (orcamentoSelections.tipo_orcamento === 'conjunto') {
-                    orcamentoConjuntoDiv.style.display = 'block';
-                    orcamentoIndividualDiv.style.display = 'none';
+                if (orcamentoSelections.tipo === "conjunto") {
+                    orcamentoConjuntoDiv.style.display = "block";
+                    orcamentoIndividualDiv.style.display = "none";
                 } else {
-                    orcamentoConjuntoDiv.style.display = 'none';
-                    orcamentoIndividualDiv.style.display = 'block';
+                    orcamentoConjuntoDiv.style.display = "none";
+                    orcamentoIndividualDiv.style.display = "block";
                 }
             }
         }
     }
     
     // Restaurar valores de orçamento conjunto
-    Object.keys(orcamentoSelections).forEach(key => {
-        if (key.startsWith('orcamento_conjunto_')) {
-            const input = document.querySelector(`input[name="${key}"]`);
-            if (input) input.value = orcamentoSelections[key];
-        }
-    });
+    if (orcamentoSelections.conjunto) {
+        document.getElementById("orcamento_conjunto_entradas").value = orcamentoSelections.conjunto.entradas || "";
+        document.getElementById("orcamento_conjunto_despesas_fixas").value = orcamentoSelections.conjunto.despesas_fixas || "";
+        document.getElementById("orcamento_conjunto_despesas_variaveis").value = orcamentoSelections.conjunto.despesas_variaveis || "";
+        document.getElementById("orcamento_conjunto_valor_poupado").value = orcamentoSelections.conjunto.valor_poupado || "";
+    }
     
     // Restaurar valores de orçamento individual
-    Object.keys(orcamentoSelections).forEach(key => {
-        if (key.startsWith('orcamento_') && !key.startsWith('orcamento_conjunto_')) {
-            const input = document.querySelector(`input[name="${key}"]`);
-            if (input) input.value = orcamentoSelections[key];
-        }
-    });
+    if (orcamentoSelections.individual) {
+        Object.keys(orcamentoSelections.individual).forEach(personName => {
+            const entry = document.querySelector(`.orcamento-individual-entry[data-person-name="${personName}"]`);
+            if (entry) {
+                const personId = entry.dataset.personId;
+                const personData = orcamentoSelections.individual[personName];
+                
+                document.getElementById(`orcamento_${personId}_entradas`).value = personData.entradas || "";
+                document.getElementById(`orcamento_${personId}_despesas_fixas`).value = personData.despesas_fixas || "";
+                document.getElementById(`orcamento_${personId}_despesas_variaveis`).value = personData.despesas_variaveis || "";
+                document.getElementById(`orcamento_${personId}_valor_poupado`).value = personData.valor_poupado || "";
+            }
+        });
+    }
     
-    // Aplicar formatação de moeda para todos os campos de valor
+    // Formatar valores monetários
     document.querySelectorAll('input[data-type="currency"]').forEach(input => {
         if (input.value) {
             input.value = formatCurrency(input.value);
@@ -502,7 +645,6 @@ function restoreOrcamentoSelections() {
     });
 }
 
-// Função para renderizar as perguntas de orçamento
 function renderOrcamentoQuestions() {
     saveOrcamentoSelections();
     const container = document.getElementById("orcamento-section-content");
@@ -512,16 +654,14 @@ function renderOrcamentoQuestions() {
     const pessoasComRenda = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
-        pessoasComRenda.push({ id: "preenchedor", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
+        pessoasComRenda.push({ id: "preenchedor_orcamento", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
     
-    let temOutrasPessoasComRenda = false;
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
         document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
-                pessoasComRenda.push({ id: `outra_pessoa_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
-                temOutrasPessoasComRenda = true;
+                pessoasComRenda.push({ id: `outra_pessoa_orcamento_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
             }
         });
     }
@@ -535,24 +675,24 @@ function renderOrcamentoQuestions() {
     
     if(tituloOrcamento) tituloOrcamento.style.display = 'block';
     
-    // Lógica condicional: se há apenas o preenchedor com renda, mostrar diretamente os campos individuais
-    // Se há mais pessoas com renda, mostrar opção de escolha entre conjunto e individual
-    if (pessoasComRenda.length === 1 && pessoasComRenda[0].tipo === "preenchedor") {
-        // Apenas o preenchedor tem renda - mostrar campos individuais diretamente
-        renderOrcamentoIndividual(container, pessoasComRenda);
+    // Se houver apenas uma pessoa com renda, mostrar diretamente os campos de orçamento individual
+    if (pessoasComRenda.length === 1) {
+        const pessoa = pessoasComRenda[0];
+        const orcamentoIndividualHTML = criarCamposOrcamentoIndividual(pessoa);
+        container.innerHTML = orcamentoIndividualHTML;
     } else {
-        // Há mais pessoas com renda - mostrar opção de escolha
-        container.innerHTML = `
-            <div style="margin-bottom: 1.5rem;">
+        // Se houver mais de uma pessoa com renda, mostrar opção de escolha
+        const escolhaHTML = `
+            <div class="orcamento-tipo-escolha" style="margin-bottom: 1.5rem;">
                 <label style="display: block; margin-bottom: 0.5rem;">Como deseja informar o orçamento?</label>
-                <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+                <div class="radio-options-inline" style="display: flex; align-items: center;">
                     <span style="margin-right: 20px; display: flex; align-items: center;">
-                        <input type="radio" id="orcamento_tipo_conjunto" name="tipo_orcamento" value="conjunto" style="margin-right: 5px;">
-                        <label for="orcamento_tipo_conjunto" style="font-size: 14px;">Orçamento conjunto da casa</label>
+                        <input type="radio" id="tipo_orcamento_conjunto" name="tipo_orcamento" value="conjunto" required style="margin-right: 5px;">
+                        <label for="tipo_orcamento_conjunto">Orçamento conjunto da casa</label>
                     </span>
                     <span style="display: flex; align-items: center;">
-                        <input type="radio" id="orcamento_tipo_individual" name="tipo_orcamento" value="individual" style="margin-right: 5px;">
-                        <label for="orcamento_tipo_individual" style="font-size: 14px;">Orçamento individual por pessoa</label>
+                        <input type="radio" id="tipo_orcamento_individual" name="tipo_orcamento" value="individual" style="margin-right: 5px;">
+                        <label for="tipo_orcamento_individual">Orçamento individual por pessoa</label>
                     </span>
                 </div>
             </div>
@@ -560,533 +700,98 @@ function renderOrcamentoQuestions() {
             <div id="orcamento-conjunto" style="display: none;">
                 <div style="margin-bottom: 1rem;">
                     <label for="orcamento_conjunto_entradas" style="display: block; margin-bottom: 0.5rem;">Entradas totais mensais (R$)</label>
-                    <input type="text" id="orcamento_conjunto_entradas" name="orcamento_conjunto_entradas" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%;">
+                    <input type="text" id="orcamento_conjunto_entradas" data-type="currency" style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label for="orcamento_conjunto_despesas_fixas" style="display: block; margin-bottom: 0.5rem;">Despesas fixas mensais (R$)</label>
-                    <input type="text" id="orcamento_conjunto_despesas_fixas" name="orcamento_conjunto_despesas_fixas" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%;">
+                    <input type="text" id="orcamento_conjunto_despesas_fixas" data-type="currency" style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label for="orcamento_conjunto_despesas_variaveis" style="display: block; margin-bottom: 0.5rem;">Despesas variáveis mensais (R$)</label>
-                    <input type="text" id="orcamento_conjunto_despesas_variaveis" name="orcamento_conjunto_despesas_variaveis" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%;">
+                    <input type="text" id="orcamento_conjunto_despesas_variaveis" data-type="currency" style="width: 100%;">
                 </div>
                 <div style="margin-bottom: 1rem;">
                     <label for="orcamento_conjunto_valor_poupado" style="display: block; margin-bottom: 0.5rem;">Valor poupado/investido mensal (R$)</label>
-                    <input type="text" id="orcamento_conjunto_valor_poupado" name="orcamento_conjunto_valor_poupado" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%;">
+                    <input type="text" id="orcamento_conjunto_valor_poupado" data-type="currency" style="width: 100%;">
                 </div>
             </div>
             
             <div id="orcamento-individual" style="display: none;">
-                <!-- Será preenchido dinamicamente -->
+                ${pessoasComRenda.map(pessoa => criarCamposOrcamentoIndividual(pessoa)).join('')}
             </div>
         `;
         
-        // Adicionar eventos para mostrar/ocultar seções correspondentes
-        const conjuntoRadio = container.querySelector('#orcamento_tipo_conjunto');
-        const individualRadio = container.querySelector('#orcamento_tipo_individual');
-        const orcamentoConjuntoDiv = container.querySelector('#orcamento-conjunto');
-        const orcamentoIndividualDiv = container.querySelector('#orcamento-individual');
+        container.innerHTML = escolhaHTML;
         
-        conjuntoRadio.addEventListener('change', function() {
-            if (this.checked) {
-                orcamentoConjuntoDiv.style.display = 'block';
-                orcamentoIndividualDiv.style.display = 'none';
-            }
-        });
+        // Adicionar listeners para mostrar/ocultar seções com base na escolha
+        const tipoConjuntoRadio = document.getElementById("tipo_orcamento_conjunto");
+        const tipoIndividualRadio = document.getElementById("tipo_orcamento_individual");
+        const orcamentoConjuntoDiv = document.getElementById("orcamento-conjunto");
+        const orcamentoIndividualDiv = document.getElementById("orcamento-individual");
         
-        individualRadio.addEventListener('change', function() {
-            if (this.checked) {
-                orcamentoConjuntoDiv.style.display = 'none';
-                orcamentoIndividualDiv.style.display = 'block';
-                renderOrcamentoIndividual(orcamentoIndividualDiv, pessoasComRenda);
-            }
-        });
+        if (tipoConjuntoRadio && orcamentoConjuntoDiv && orcamentoIndividualDiv) {
+            tipoConjuntoRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    orcamentoConjuntoDiv.style.display = "block";
+                    orcamentoIndividualDiv.style.display = "none";
+                }
+            });
+        }
         
-        // Se já tiver uma seleção anterior, aplicar
-        if (orcamentoSelections.tipo_orcamento === 'individual') {
-            individualRadio.checked = true;
-            orcamentoConjuntoDiv.style.display = 'none';
-            orcamentoIndividualDiv.style.display = 'block';
-            renderOrcamentoIndividual(orcamentoIndividualDiv, pessoasComRenda);
-        } else {
-            // Por padrão, selecionar orçamento conjunto
-            conjuntoRadio.checked = true;
-            orcamentoConjuntoDiv.style.display = 'block';
-            orcamentoIndividualDiv.style.display = 'none';
+        if (tipoIndividualRadio && orcamentoConjuntoDiv && orcamentoIndividualDiv) {
+            tipoIndividualRadio.addEventListener('change', function() {
+                if (this.checked) {
+                    orcamentoConjuntoDiv.style.display = "none";
+                    orcamentoIndividualDiv.style.display = "block";
+                }
+            });
         }
     }
     
-    // Adicionar eventos de formatação de moeda para todos os campos de valor
-    container.querySelectorAll('input[data-type="currency"]').forEach(input => {
-        input.addEventListener('focus', function() {
-            let value = this.value.replace(/[^\d]/g, '');
+    // Adicionar formatação de moeda para os campos de valor
+    document.querySelectorAll('input[data-type="currency"]').forEach(input => {
+        input.addEventListener('input', function(e) {
+            let value = e.target.value;
+            e.target.value = formatCurrency(value);
+        });
+        
+        input.addEventListener('blur', function(e) {
+            let value = e.target.value;
             if (value) {
-                value = (parseFloat(value) / 100).toFixed(2).replace('.', ',');
-                this.value = value;
-            } else {
-                this.value = '';
+                e.target.value = formatCurrency(value);
             }
-        });
-        
-        input.addEventListener('blur', function() {
-            if (this.value) {
-                this.value = formatCurrency(this.value);
-            }
-        });
-        
-        input.addEventListener('input', function() {
-            this.value = this.value.replace(/[^0-9,]/g, '');
         });
     });
     
     restoreOrcamentoSelections();
 }
 
-// Função auxiliar para renderizar campos de orçamento individual
-function renderOrcamentoIndividual(container, pessoasComRenda) {
-    if (!container) return;
+function criarCamposOrcamentoIndividual(pessoa) {
+    const primeiroNome = pessoa.nome.split(' ')[0];
+    const nomeCapitalizado = capitalizeName(primeiroNome);
+    const personId = pessoa.id;
     
-    // Se for o contêiner principal, criar um div para orçamento individual
-    let orcamentoIndividualDiv = container;
-    if (container.id === "orcamento-section-content") {
-        orcamentoIndividualDiv = document.createElement("div");
-        orcamentoIndividualDiv.id = "orcamento-individual";
-        container.appendChild(orcamentoIndividualDiv);
-    } else {
-        // Limpar o contêiner existente
-        orcamentoIndividualDiv.innerHTML = '';
-    }
-    
-    // Renderizar campos para cada pessoa com renda
-    pessoasComRenda.forEach(pessoa => {
-        const entryDiv = document.createElement("div");
-        entryDiv.classList.add("orcamento-individual-entry");
-        entryDiv.dataset.personId = pessoa.id;
-        entryDiv.dataset.personName = pessoa.nome;
-        entryDiv.style.marginBottom = "1.5rem";
-        
-        const nomeExibicao = pessoa.tipo === "preenchedor" ? "Você" : pessoa.nome;
-        
-        entryDiv.innerHTML = `
-            <h4 style="margin-bottom: 1rem; font-weight: bold;">${nomeExibicao}</h4>
+    return `
+        <div class="orcamento-individual-entry" data-person-name="${pessoa.nome}" data-person-id="${personId}">
+            <h4 style="margin-top: 0; margin-bottom: 1rem;">${nomeCapitalizado}</h4>
             <div style="margin-bottom: 1rem;">
-                <label for="orcamento_${pessoa.id}_entradas" style="display: block; margin-bottom: 0.5rem;">Entradas totais mensais (R$)</label>
-                <input type="text" id="orcamento_${pessoa.id}_entradas" name="orcamento_${pessoa.id}_entradas" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%;">
+                <label for="orcamento_${personId}_entradas" style="display: block; margin-bottom: 0.5rem;">Entradas totais mensais (R$)</label>
+                <input type="text" id="orcamento_${personId}_entradas" data-type="currency" style="width: 100%;">
             </div>
             <div style="margin-bottom: 1rem;">
-                <label for="orcamento_${pessoa.id}_despesas_fixas" style="display: block; margin-bottom: 0.5rem;">Despesas fixas mensais (R$)</label>
-                <input type="text" id="orcamento_${pessoa.id}_despesas_fixas" name="orcamento_${pessoa.id}_despesas_fixas" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%;">
+                <label for="orcamento_${personId}_despesas_fixas" style="display: block; margin-bottom: 0.5rem;">Despesas fixas mensais (R$)</label>
+                <input type="text" id="orcamento_${personId}_despesas_fixas" data-type="currency" style="width: 100%;">
             </div>
             <div style="margin-bottom: 1rem;">
-                <label for="orcamento_${pessoa.id}_despesas_variaveis" style="display: block; margin-bottom: 0.5rem;">Despesas variáveis mensais (R$)</label>
-                <input type="text" id="orcamento_${pessoa.id}_despesas_variaveis" name="orcamento_${pessoa.id}_despesas_variaveis" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%;">
+                <label for="orcamento_${personId}_despesas_variaveis" style="display: block; margin-bottom: 0.5rem;">Despesas variáveis mensais (R$)</label>
+                <input type="text" id="orcamento_${personId}_despesas_variaveis" data-type="currency" style="width: 100%;">
             </div>
-            <div style="margin-bottom: 1rem;">
-                <label for="orcamento_${pessoa.id}_valor_poupado" style="display: block; margin-bottom: 0.5rem;">Valor poupado/investido mensal (R$)</label>
-                <input type="text" id="orcamento_${pessoa.id}_valor_poupado" name="orcamento_${pessoa.id}_valor_poupado" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%;">
-            </div>
-        `;
-        
-        orcamentoIndividualDiv.appendChild(entryDiv);
-    });
-}
-
-function savePlanoSaudeSelections() {
-    const container = document.getElementById("plano-saude-section-content");
-    if (!container) return;
-    planoSaudeSelections = {};
-    
-    // Salvar seleção principal
-    const temPlanoSaudeRadios = container.querySelectorAll('input[name="tem_plano_saude"]');
-    temPlanoSaudeRadios.forEach(radio => {
-        if (radio.checked) {
-            planoSaudeSelections.tem_plano_saude = radio.value;
-        }
-    });
-    
-    // Salvar seleções de tipo de plano
-    const tipoPlanoRadios = container.querySelectorAll('input[name="tipo_plano_saude"]');
-    tipoPlanoRadios.forEach(radio => {
-        if (radio.checked) {
-            planoSaudeSelections.tipo_plano_saude = radio.value;
-        }
-    });
-    
-    // Salvar seleções de cobertura
-    const coberturaPlanoRadios = container.querySelectorAll('input[name="cobertura_plano_saude"]');
-    coberturaPlanoRadios.forEach(radio => {
-        if (radio.checked) {
-            planoSaudeSelections.cobertura_plano_saude = radio.value;
-        }
-    });
-    
-    // Salvar valor do plano
-    const valorPlanoInput = container.querySelector('input[name="valor_plano_saude"]');
-    if (valorPlanoInput) {
-        planoSaudeSelections.valor_plano_saude = valorPlanoInput.value;
-    }
-}
-
-function restorePlanoSaudeSelections() {
-    // Restaurar seleção principal
-    if (planoSaudeSelections.tem_plano_saude) {
-        const radio = document.querySelector(`input[name="tem_plano_saude"][value="${planoSaudeSelections.tem_plano_saude}"]`);
-        if (radio) {
-            radio.checked = true;
-            // Mostrar/ocultar detalhes do plano
-            const detalhesPlano = document.getElementById("detalhes-plano-saude");
-            if (detalhesPlano) {
-                detalhesPlano.style.display = planoSaudeSelections.tem_plano_saude === "sim" ? "block" : "none";
-            }
-        }
-    }
-    
-    // Restaurar seleções de tipo de plano
-    if (planoSaudeSelections.tipo_plano_saude) {
-        const radio = document.querySelector(`input[name="tipo_plano_saude"][value="${planoSaudeSelections.tipo_plano_saude}"]`);
-        if (radio) radio.checked = true;
-    }
-    
-    // Restaurar seleções de cobertura
-    if (planoSaudeSelections.cobertura_plano_saude) {
-        const radio = document.querySelector(`input[name="cobertura_plano_saude"][value="${planoSaudeSelections.cobertura_plano_saude}"]`);
-        if (radio) radio.checked = true;
-    }
-    
-    // Restaurar valor do plano
-    if (planoSaudeSelections.valor_plano_saude) {
-        const input = document.querySelector('input[name="valor_plano_saude"]');
-        if (input) input.value = planoSaudeSelections.valor_plano_saude;
-    }
-}
-
-function renderPlanoSaudeQuestions() {
-    savePlanoSaudeSelections();
-    const container = document.getElementById("plano-saude-section-content");
-    if (!container) return;
-    
-    const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
-    const outrasPessoasInputs = document.querySelectorAll('#pessoas-list input[name="pessoa_nome"]');
-    let temOutrasPessoasComRenda = false;
-    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        outrasPessoasInputs.forEach(input => {
-            if (input.value.trim() !== "") {
-                temOutrasPessoasComRenda = true;
-            }
-        });
-    }
-    
-    let labelText = "Você possui plano de saúde?";
-    if (temOutrasPessoasComRenda) {
-        labelText = "Vocês possuem plano de saúde?";
-    }
-    
-    container.innerHTML = `
-        <div style="margin-bottom: 1rem;">
-            <label id="label_tem_plano_saude" style="display: block; margin-bottom: 0.5rem;">${labelText}</label>
-            <div style="display: flex; align-items: center;">
-                <span style="margin-right: 20px; display: flex; align-items: center;">
-                    <input type="radio" id="tem_plano_saude_sim" name="tem_plano_saude" value="sim" required style="margin-right: 5px;">
-                    <label for="tem_plano_saude_sim">Sim</label>
-                </span>
-                <span style="display: flex; align-items: center;">
-                    <input type="radio" id="tem_plano_saude_nao" name="tem_plano_saude" value="nao" style="margin-right: 5px;">
-                    <label for="tem_plano_saude_nao">Não</label>
-                </span>
-            </div>
-        </div>
-        
-        <div id="detalhes-plano-saude" style="display: none; margin-left: 1.5rem; padding-left: 1rem; border-left: 2px solid #ddd;">
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem;">Tipo de plano:</label>
-                <div style="display: flex; flex-wrap: wrap;">
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="tipo_plano_saude_individual" name="tipo_plano_saude" value="individual" style="margin-right: 5px;">
-                        <label for="tipo_plano_saude_individual">Individual</label>
-                    </span>
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="tipo_plano_saude_familiar" name="tipo_plano_saude" value="familiar" style="margin-right: 5px;">
-                        <label for="tipo_plano_saude_familiar">Familiar</label>
-                    </span>
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="tipo_plano_saude_empresarial" name="tipo_plano_saude" value="empresarial" style="margin-right: 5px;">
-                        <label for="tipo_plano_saude_empresarial">Empresarial</label>
-                    </span>
-                    <span style="margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="tipo_plano_saude_nao_sei" name="tipo_plano_saude" value="nao_sei" style="margin-right: 5px;">
-                        <label for="tipo_plano_saude_nao_sei">Não sei informar</label>
-                    </span>
-                </div>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem;">Cobertura:</label>
-                <div style="display: flex; flex-wrap: wrap;">
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="cobertura_plano_saude_basica" name="cobertura_plano_saude" value="basica" style="margin-right: 5px;">
-                        <label for="cobertura_plano_saude_basica">Básica</label>
-                    </span>
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="cobertura_plano_saude_intermediaria" name="cobertura_plano_saude" value="intermediaria" style="margin-right: 5px;">
-                        <label for="cobertura_plano_saude_intermediaria">Intermediária</label>
-                    </span>
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="cobertura_plano_saude_completa" name="cobertura_plano_saude" value="completa" style="margin-right: 5px;">
-                        <label for="cobertura_plano_saude_completa">Completa</label>
-                    </span>
-                    <span style="margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="cobertura_plano_saude_nao_sei" name="cobertura_plano_saude" value="nao_sei" style="margin-right: 5px;">
-                        <label for="cobertura_plano_saude_nao_sei">Não sei informar</label>
-                    </span>
-                </div>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <label for="valor_plano_saude" style="display: block; margin-bottom: 0.5rem;">Valor mensal aproximado:</label>
-                <input type="text" id="valor_plano_saude" name="valor_plano_saude" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%; max-width: 300px;">
+            <div style="margin-bottom: 1.5rem;">
+                <label for="orcamento_${personId}_valor_poupado" style="display: block; margin-bottom: 0.5rem;">Valor poupado/investido mensal (R$)</label>
+                <input type="text" id="orcamento_${personId}_valor_poupado" data-type="currency" style="width: 100%;">
             </div>
         </div>
     `;
-    
-    // Adicionar eventos para mostrar/ocultar detalhes do plano
-    const simRadio = container.querySelector('#tem_plano_saude_sim');
-    const naoRadio = container.querySelector('#tem_plano_saude_nao');
-    const detalhesPlano = container.querySelector('#detalhes-plano-saude');
-    
-    simRadio.addEventListener('change', function() {
-        if (this.checked) {
-            detalhesPlano.style.display = 'block';
-        }
-    });
-    
-    naoRadio.addEventListener('change', function() {
-        if (this.checked) {
-            detalhesPlano.style.display = 'none';
-        }
-    });
-    
-    // Adicionar evento de formatação de moeda para o campo de valor
-    const valorPlanoInput = container.querySelector('#valor_plano_saude');
-    valorPlanoInput.addEventListener('focus', function() {
-        let value = this.value.replace(/[^\d]/g, '');
-        if (value) {
-            value = (parseFloat(value) / 100).toFixed(2).replace('.', ',');
-            this.value = value;
-        } else {
-            this.value = '';
-        }
-    });
-    
-    valorPlanoInput.addEventListener('blur', function() {
-        if (this.value) {
-            this.value = formatCurrency(this.value);
-        }
-    });
-    
-    valorPlanoInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^0-9,]/g, '');
-    });
-    
-    restorePlanoSaudeSelections();
-}
-
-function saveSeguroVidaSelections() {
-    const container = document.getElementById("seguro-vida-section-content");
-    if (!container) return;
-    seguroVidaSelections = {};
-    
-    // Salvar seleção principal
-    const temSeguroVidaRadios = container.querySelectorAll('input[name="tem_seguro_vida"]');
-    temSeguroVidaRadios.forEach(radio => {
-        if (radio.checked) {
-            seguroVidaSelections.tem_seguro_vida = radio.value;
-        }
-    });
-    
-    // Salvar seleções de tipo de seguro
-    const tipoSeguroRadios = container.querySelectorAll('input[name="tipo_seguro_vida"]');
-    tipoSeguroRadios.forEach(radio => {
-        if (radio.checked) {
-            seguroVidaSelections.tipo_seguro_vida = radio.value;
-        }
-    });
-    
-    // Salvar seleções de cobertura
-    const coberturaSeguroRadios = container.querySelectorAll('input[name="cobertura_seguro_vida"]');
-    coberturaSeguroRadios.forEach(radio => {
-        if (radio.checked) {
-            seguroVidaSelections.cobertura_seguro_vida = radio.value;
-        }
-    });
-    
-    // Salvar valor do seguro
-    const valorSeguroInput = container.querySelector('input[name="valor_seguro_vida"]');
-    if (valorSeguroInput) {
-        seguroVidaSelections.valor_seguro_vida = valorSeguroInput.value;
-    }
-}
-
-function restoreSeguroVidaSelections() {
-    // Restaurar seleção principal
-    if (seguroVidaSelections.tem_seguro_vida) {
-        const radio = document.querySelector(`input[name="tem_seguro_vida"][value="${seguroVidaSelections.tem_seguro_vida}"]`);
-        if (radio) {
-            radio.checked = true;
-            // Mostrar/ocultar detalhes do seguro
-            const detalhesSeguro = document.getElementById("detalhes-seguro-vida");
-            if (detalhesSeguro) {
-                detalhesSeguro.style.display = seguroVidaSelections.tem_seguro_vida === "sim" ? "block" : "none";
-            }
-        }
-    }
-    
-    // Restaurar seleções de tipo de seguro
-    if (seguroVidaSelections.tipo_seguro_vida) {
-        const radio = document.querySelector(`input[name="tipo_seguro_vida"][value="${seguroVidaSelections.tipo_seguro_vida}"]`);
-        if (radio) radio.checked = true;
-    }
-    
-    // Restaurar seleções de cobertura
-    if (seguroVidaSelections.cobertura_seguro_vida) {
-        const radio = document.querySelector(`input[name="cobertura_seguro_vida"][value="${seguroVidaSelections.cobertura_seguro_vida}"]`);
-        if (radio) radio.checked = true;
-    }
-    
-    // Restaurar valor do seguro
-    if (seguroVidaSelections.valor_seguro_vida) {
-        const input = document.querySelector('input[name="valor_seguro_vida"]');
-        if (input) input.value = seguroVidaSelections.valor_seguro_vida;
-    }
-}
-
-function renderSeguroVidaQuestions() {
-    saveSeguroVidaSelections();
-    const container = document.getElementById("seguro-vida-section-content");
-    if (!container) return;
-    
-    const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
-    const outrasPessoasInputs = document.querySelectorAll('#pessoas-list input[name="pessoa_nome"]');
-    let temOutrasPessoasComRenda = false;
-    if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        outrasPessoasInputs.forEach(input => {
-            if (input.value.trim() !== "") {
-                temOutrasPessoasComRenda = true;
-            }
-        });
-    }
-    
-    let labelText = "Você possui seguro de vida?";
-    if (temOutrasPessoasComRenda) {
-        labelText = "Vocês possuem seguro de vida?";
-    }
-    
-    container.innerHTML = `
-        <div style="margin-bottom: 1rem;">
-            <label id="label_tem_seguro_vida" style="display: block; margin-bottom: 0.5rem;">${labelText}</label>
-            <div style="display: flex; align-items: center;">
-                <span style="margin-right: 20px; display: flex; align-items: center;">
-                    <input type="radio" id="tem_seguro_vida_sim" name="tem_seguro_vida" value="sim" required style="margin-right: 5px;">
-                    <label for="tem_seguro_vida_sim">Sim</label>
-                </span>
-                <span style="display: flex; align-items: center;">
-                    <input type="radio" id="tem_seguro_vida_nao" name="tem_seguro_vida" value="nao" style="margin-right: 5px;">
-                    <label for="tem_seguro_vida_nao">Não</label>
-                </span>
-            </div>
-        </div>
-        
-        <div id="detalhes-seguro-vida" style="display: none; margin-left: 1.5rem; padding-left: 1rem; border-left: 2px solid #ddd;">
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem;">Tipo de seguro:</label>
-                <div style="display: flex; flex-wrap: wrap;">
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="tipo_seguro_vida_individual" name="tipo_seguro_vida" value="individual" style="margin-right: 5px;">
-                        <label for="tipo_seguro_vida_individual">Individual</label>
-                    </span>
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="tipo_seguro_vida_familiar" name="tipo_seguro_vida" value="familiar" style="margin-right: 5px;">
-                        <label for="tipo_seguro_vida_familiar">Familiar</label>
-                    </span>
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="tipo_seguro_vida_empresarial" name="tipo_seguro_vida" value="empresarial" style="margin-right: 5px;">
-                        <label for="tipo_seguro_vida_empresarial">Empresarial</label>
-                    </span>
-                    <span style="margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="tipo_seguro_vida_nao_sei" name="tipo_seguro_vida" value="nao_sei" style="margin-right: 5px;">
-                        <label for="tipo_seguro_vida_nao_sei">Não sei informar</label>
-                    </span>
-                </div>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <label style="display: block; margin-bottom: 0.5rem;">Cobertura:</label>
-                <div style="display: flex; flex-wrap: wrap;">
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="cobertura_seguro_vida_basica" name="cobertura_seguro_vida" value="basica" style="margin-right: 5px;">
-                        <label for="cobertura_seguro_vida_basica">Básica</label>
-                    </span>
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="cobertura_seguro_vida_intermediaria" name="cobertura_seguro_vida" value="intermediaria" style="margin-right: 5px;">
-                        <label for="cobertura_seguro_vida_intermediaria">Intermediária</label>
-                    </span>
-                    <span style="margin-right: 20px; margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="cobertura_seguro_vida_completa" name="cobertura_seguro_vida" value="completa" style="margin-right: 5px;">
-                        <label for="cobertura_seguro_vida_completa">Completa</label>
-                    </span>
-                    <span style="margin-bottom: 10px; display: flex; align-items: center;">
-                        <input type="radio" id="cobertura_seguro_vida_nao_sei" name="cobertura_seguro_vida" value="nao_sei" style="margin-right: 5px;">
-                        <label for="cobertura_seguro_vida_nao_sei">Não sei informar</label>
-                    </span>
-                </div>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <label for="valor_seguro_vida" style="display: block; margin-bottom: 0.5rem;">Valor mensal aproximado:</label>
-                <input type="text" id="valor_seguro_vida" name="valor_seguro_vida" class="form-input" data-type="currency" placeholder="R$ 0,00" style="width: 100%; max-width: 300px;">
-            </div>
-        </div>
-    `;
-    
-    // Adicionar eventos para mostrar/ocultar detalhes do seguro
-    const simRadio = container.querySelector('#tem_seguro_vida_sim');
-    const naoRadio = container.querySelector('#tem_seguro_vida_nao');
-    const detalhesSeguro = container.querySelector('#detalhes-seguro-vida');
-    
-    simRadio.addEventListener('change', function() {
-        if (this.checked) {
-            detalhesSeguro.style.display = 'block';
-        }
-    });
-    
-    naoRadio.addEventListener('change', function() {
-        if (this.checked) {
-            detalhesSeguro.style.display = 'none';
-        }
-    });
-    
-    // Adicionar evento de formatação de moeda para o campo de valor
-    const valorSeguroInput = container.querySelector('#valor_seguro_vida');
-    valorSeguroInput.addEventListener('focus', function() {
-        let value = this.value.replace(/[^\d]/g, '');
-        if (value) {
-            value = (parseFloat(value) / 100).toFixed(2).replace('.', ',');
-            this.value = value;
-        } else {
-            this.value = '';
-        }
-    });
-    
-    valorSeguroInput.addEventListener('blur', function() {
-        if (this.value) {
-            this.value = formatCurrency(this.value);
-        }
-    });
-    
-    valorSeguroInput.addEventListener('input', function() {
-        this.value = this.value.replace(/[^0-9,]/g, '');
-    });
-    
-    restoreSeguroVidaSelections();
 }
 
 function updateDynamicFormSections() {
@@ -1096,704 +801,746 @@ function updateDynamicFormSections() {
     updatePerguntaDividasLabel();
     renderPlanoSaudeQuestions();
     renderSeguroVidaQuestions();
-    renderImpostoRendaQuestions();
-    renderOrcamentoQuestions();
+    renderImpostoRendaQuestions(); // Nova função para imposto de renda
+    renderOrcamentoQuestions(); // Nova função para orçamento
 }
 
-function addPessoaComRenda() {
-    const pessoasList = document.getElementById("pessoas-list");
-    if (!pessoasList) return;
-    
-    const newIndex = pessoasList.querySelectorAll(".dynamic-entry-item").length;
-    const newEntryItem = document.createElement("div");
-    newEntryItem.classList.add("dynamic-entry-item");
-    newEntryItem.style.marginBottom = "1rem";
-    newEntryItem.innerHTML = `
-        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-            <input type="text" name="pessoa_nome" class="form-input" placeholder="Nome" style="flex: 1; margin-right: 0.5rem;" oninput="this.value = capitalizeName(this.value); updateDynamicFormSections();">
-            <button type="button" class="btn-remove" onclick="removePessoaComRenda(this)" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">Remover</button>
-        </div>
-    `;
-    
-    pessoasList.appendChild(newEntryItem);
-    updateDynamicFormSections();
-}
-
-function removePessoaComRenda(button) {
-    const entryItem = button.closest(".dynamic-entry-item");
-    if (entryItem) {
-        entryItem.remove();
-        updateDynamicFormSections();
-    }
-}
-
-function addDependente() {
-    const dependentesList = document.getElementById("dependentes-list");
-    if (!dependentesList) return;
-    
-    const newIndex = dependentesList.querySelectorAll(".dynamic-entry-item").length;
-    const newEntryItem = document.createElement("div");
-    newEntryItem.classList.add("dynamic-entry-item");
-    newEntryItem.style.marginBottom = "1rem";
-    newEntryItem.innerHTML = `
-        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-            <input type="text" name="dependente_nome" class="form-input" placeholder="Nome" style="flex: 1; margin-right: 0.5rem;" oninput="this.value = capitalizeName(this.value)">
-            <input type="number" name="dependente_idade" class="form-input" placeholder="Idade" style="width: 80px; margin-right: 0.5rem;" min="0" max="120">
-            <select name="dependente_relacao" class="form-select" style="width: 120px; margin-right: 0.5rem;">
-                <option value="">Relação</option>
-                <option value="Filho(a)">Filho(a)</option>
-                <option value="Cônjuge">Cônjuge</option>
-                <option value="Pai/Mãe">Pai/Mãe</option>
-                <option value="Irmão(ã)">Irmão(ã)</option>
-                <option value="Avô/Avó">Avô/Avó</option>
-                <option value="Neto(a)">Neto(a)</option>
-                <option value="Sobrinho(a)">Sobrinho(a)</option>
-                <option value="Tio(a)">Tio(a)</option>
-                <option value="Primo(a)">Primo(a)</option>
-                <option value="Enteado(a)">Enteado(a)</option>
-                <option value="Sogro(a)">Sogro(a)</option>
-                <option value="Cunhado(a)">Cunhado(a)</option>
-                <option value="Pet">Pet</option>
-                <option value="Outro">Outro</option>
-            </select>
-            <button type="button" class="btn-remove" onclick="removeDependente(this)" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">Remover</button>
-        </div>
-    `;
-    
-    dependentesList.appendChild(newEntryItem);
-}
-
-function removeDependente(button) {
-    const entryItem = button.closest(".dynamic-entry-item");
-    if (entryItem) {
-        entryItem.remove();
-    }
-}
-
-function addPatrimonioFisico() {
-    const patrimoniosList = document.getElementById("patrimonios-list");
-    if (!patrimoniosList) return;
-    
-    const newIndex = patrimoniosList.querySelectorAll(".dynamic-entry-item").length;
-    const newEntryItem = document.createElement("div");
-    newEntryItem.classList.add("dynamic-entry-item");
-    newEntryItem.style.marginBottom = "1rem";
-    newEntryItem.innerHTML = `
-        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-            <input type="text" name="patrimonio_descricao" class="form-input" placeholder="Descrição" style="flex: 1; margin-right: 0.5rem;">
-            <input type="text" name="patrimonio_valor" class="form-input" placeholder="Valor aproximado" style="width: 150px; margin-right: 0.5rem;" data-type="currency" oninput="this.value = this.value.replace(/[^0-9,]/g, '')" onfocus="let value = this.value.replace(/[^\d]/g, ''); if (value) { value = (parseFloat(value) / 100).toFixed(2).replace('.', ','); this.value = value; } else { this.value = ''; }" onblur="if (this.value) { this.value = formatCurrency(this.value); }">
-            <button type="button" class="btn-remove" onclick="removePatrimonioFisico(this)" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">Remover</button>
-        </div>
-    `;
-    
-    patrimoniosList.appendChild(newEntryItem);
-}
-
-function removePatrimonioFisico(button) {
-    const entryItem = button.closest(".dynamic-entry-item");
-    if (entryItem) {
-        entryItem.remove();
-    }
-}
-
-function addPatrimonioLiquido() {
-    const patrimoniosList = document.getElementById("patrimonios-liquidos-list");
-    if (!patrimoniosList) return;
-    
-    const newIndex = patrimoniosList.querySelectorAll(".dynamic-entry-item").length;
-    const newEntryItem = document.createElement("div");
-    newEntryItem.classList.add("dynamic-entry-item");
-    newEntryItem.style.marginBottom = "1rem";
-    newEntryItem.innerHTML = `
-        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-            <input type="text" name="patrimonio_liquido_descricao" class="form-input" placeholder="Descrição" style="flex: 1; margin-right: 0.5rem;">
-            <input type="text" name="patrimonio_liquido_valor" class="form-input" placeholder="Valor aproximado" style="width: 150px; margin-right: 0.5rem;" data-type="currency" oninput="this.value = this.value.replace(/[^0-9,]/g, '')" onfocus="let value = this.value.replace(/[^\d]/g, ''); if (value) { value = (parseFloat(value) / 100).toFixed(2).replace('.', ','); this.value = value; } else { this.value = ''; }" onblur="if (this.value) { this.value = formatCurrency(this.value); }">
-            <button type="button" class="btn-remove" onclick="removePatrimonioLiquido(this)" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">Remover</button>
-        </div>
-    `;
-    
-    patrimoniosList.appendChild(newEntryItem);
-}
-
-function removePatrimonioLiquido(button) {
-    const entryItem = button.closest(".dynamic-entry-item");
-    if (entryItem) {
-        entryItem.remove();
-    }
-}
-
-function addDivida() {
-    const dividasList = document.getElementById("dividas-list");
-    if (!dividasList) return;
-    
-    const newIndex = dividasList.querySelectorAll(".dynamic-entry-item").length;
-    const newEntryItem = document.createElement("div");
-    newEntryItem.classList.add("dynamic-entry-item");
-    newEntryItem.style.marginBottom = "1rem";
-    newEntryItem.innerHTML = `
-        <div style="display: flex; align-items: center; margin-bottom: 0.5rem;">
-            <input type="text" name="divida_descricao" class="form-input" placeholder="Descrição" style="flex: 1; margin-right: 0.5rem;">
-            <input type="text" name="divida_valor" class="form-input" placeholder="Valor total" style="width: 150px; margin-right: 0.5rem;" data-type="currency" oninput="this.value = this.value.replace(/[^0-9,]/g, '')" onfocus="let value = this.value.replace(/[^\d]/g, ''); if (value) { value = (parseFloat(value) / 100).toFixed(2).replace('.', ','); this.value = value; } else { this.value = ''; }" onblur="if (this.value) { this.value = formatCurrency(this.value); }">
-            <button type="button" class="btn-remove" onclick="removeDivida(this)" style="background-color: #dc3545; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer;">Remover</button>
-        </div>
-    `;
-    
-    dividasList.appendChild(newEntryItem);
-}
-
-function removeDivida(button) {
-    const entryItem = button.closest(".dynamic-entry-item");
-    if (entryItem) {
-        entryItem.remove();
-    }
-}
-
-function toggleSection(sectionId) {
-    const section = document.getElementById(sectionId);
-    if (section) {
-        section.style.display = section.style.display === "none" ? "block" : "none";
-    }
-}
-
-function showSuccessMessage(clienteId, clienteNome) {
-    formContentEl.style.display = "none";
-    messageAreaEl.innerHTML = `
-        <div class="message success">
-            <h3>Formulário enviado com sucesso!</h3>
-            <p>Obrigado por preencher o formulário. Suas respostas foram registradas.</p>
-        </div>
-    `;
-}
-
-async function handleFormSubmit(event) {
-    event.preventDefault();
-    
-    // Salvar seleções antes de enviar
-    savePlanoSaudeSelections();
-    saveSeguroVidaSelections();
-    saveImpostoRendaSelections();
-    saveOrcamentoSelections();
-    
-    // Coletar dados do formulário
-    const formData = new FormData(event.target);
-    const formDataObj = {};
-    
-    // Processar campos básicos
-    formData.forEach((value, key) => {
-        formDataObj[key] = value;
-    });
-    
-    // Processar nome completo
-    const nomeCompleto = formDataObj.nome_completo || "";
-    
-    // Processar renda única
-    const rendaUnica = formDataObj.renda_unica === "sim";
-    
-    // Processar outras pessoas com renda
-    const outrasPessoas = [];
-    document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(item => {
-        const nomeInput = item.querySelector('input[name="pessoa_nome"]');
-        if (nomeInput && nomeInput.value.trim() !== "") {
-            outrasPessoas.push({
-                nome: nomeInput.value.trim()
-            });
-        }
-    });
-    
-    // Processar dependentes
-    const temDependentes = formDataObj.tem_dependentes === "sim";
-    const dependentes = [];
-    if (temDependentes) {
-        document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(item => {
-            const nomeInput = item.querySelector('input[name="dependente_nome"]');
-            const idadeInput = item.querySelector('input[name="dependente_idade"]');
-            const relacaoSelect = item.querySelector('select[name="dependente_relacao"]');
-            
-            if (nomeInput && nomeInput.value.trim() !== "") {
-                dependentes.push({
-                    nome: nomeInput.value.trim(),
-                    idade: idadeInput ? idadeInput.value : "",
-                    relacao: relacaoSelect ? relacaoSelect.value : ""
-                });
-            }
-        });
-    }
-    
-    // Processar patrimônio físico
-    const temPatrimonioFisico = formDataObj.tem_patrimonio_fisico === "sim";
-    const patrimoniosFisicos = [];
-    if (temPatrimonioFisico) {
-        document.querySelectorAll("#patrimonios-list .dynamic-entry-item").forEach(item => {
-            const descricaoInput = item.querySelector('input[name="patrimonio_descricao"]');
-            const valorInput = item.querySelector('input[name="patrimonio_valor"]');
-            
-            if (descricaoInput && descricaoInput.value.trim() !== "") {
-                patrimoniosFisicos.push({
-                    descricao: descricaoInput.value.trim(),
-                    valor: valorInput ? parseCurrency(valorInput.value) : null
-                });
-            }
-        });
-    }
-    
-    // Processar patrimônio líquido
-    const temPatrimonioLiquido = formDataObj.tem_patrimonio_liquido === "sim";
-    const patrimoniosLiquidos = [];
-    if (temPatrimonioLiquido) {
-        document.querySelectorAll("#patrimonios-liquidos-list .dynamic-entry-item").forEach(item => {
-            const descricaoInput = item.querySelector('input[name="patrimonio_liquido_descricao"]');
-            const valorInput = item.querySelector('input[name="patrimonio_liquido_valor"]');
-            
-            if (descricaoInput && descricaoInput.value.trim() !== "") {
-                patrimoniosLiquidos.push({
-                    descricao: descricaoInput.value.trim(),
-                    valor: valorInput ? parseCurrency(valorInput.value) : null
-                });
-            }
-        });
-    }
-    
-    // Processar dívidas
-    const temDividas = formDataObj.tem_dividas === "sim";
-    const dividas = [];
-    if (temDividas) {
-        document.querySelectorAll("#dividas-list .dynamic-entry-item").forEach(item => {
-            const descricaoInput = item.querySelector('input[name="divida_descricao"]');
-            const valorInput = item.querySelector('input[name="divida_valor"]');
-            
-            if (descricaoInput && descricaoInput.value.trim() !== "") {
-                dividas.push({
-                    descricao: descricaoInput.value.trim(),
-                    valor: valorInput ? parseCurrency(valorInput.value) : null
-                });
-            }
-        });
-    }
-    
-    // Processar plano de saúde
-    const temPlanoSaude = formDataObj.tem_plano_saude === "sim";
-    const planoSaude = temPlanoSaude ? {
-        tipo: formDataObj.tipo_plano_saude || "",
-        cobertura: formDataObj.cobertura_plano_saude || "",
-        valor: parseCurrency(formDataObj.valor_plano_saude)
-    } : null;
-    
-    // Processar seguro de vida
-    const temSeguroVida = formDataObj.tem_seguro_vida === "sim";
-    const seguroVida = temSeguroVida ? {
-        tipo: formDataObj.tipo_seguro_vida || "",
-        cobertura: formDataObj.cobertura_seguro_vida || "",
-        valor: parseCurrency(formDataObj.valor_seguro_vida)
-    } : null;
-    
-    // Processar imposto de renda
-    const impostosRenda = {};
-    document.querySelectorAll(".imposto-renda-entry").forEach(entry => {
-        const personName = entry.dataset.personName;
-        const personType = entry.dataset.personType;
-        if (!personName) return;
-        
-        const nameAttribute = entry.querySelector('input[type="radio"]').name;
-        const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
-        
-        if (selectedRadio) {
-            const declaraIR = selectedRadio.value;
-            impostosRenda[personName] = { declara: declaraIR };
-            
-            // Se declara IR, adicionar tipo e resultado
-            if (declaraIR === "sim") {
-                const tipoNameAttribute = `${nameAttribute}_tipo`;
-                const tipoSelectedRadio = entry.querySelector(`input[name="${tipoNameAttribute}"]:checked`);
-                if (tipoSelectedRadio) {
-                    impostosRenda[personName].tipo = tipoSelectedRadio.value;
-                }
-                
-                const resultadoNameAttribute = `${nameAttribute}_resultado`;
-                const resultadoSelectedRadio = entry.querySelector(`input[name="${resultadoNameAttribute}"]:checked`);
-                if (resultadoSelectedRadio) {
-                    impostosRenda[personName].resultado = resultadoSelectedRadio.value;
-                }
-            }
-        }
-    });
-    
-    // Processar orçamento
-    const orcamento = { tipo: "individual", dados: {} };
-    
-    // Verificar se há escolha de tipo de orçamento
-    const tipoOrcamentoRadio = document.querySelector('input[name="tipo_orcamento"]:checked');
-    if (tipoOrcamentoRadio) {
-        orcamento.tipo = tipoOrcamentoRadio.value;
-    }
-    
-    // Processar orçamento conjunto
-    if (orcamento.tipo === "conjunto") {
-        const entradasInput = document.querySelector('input[name="orcamento_conjunto_entradas"]');
-        const despesasFixasInput = document.querySelector('input[name="orcamento_conjunto_despesas_fixas"]');
-        const despesasVariaveisInput = document.querySelector('input[name="orcamento_conjunto_despesas_variaveis"]');
-        const valorPoupadoInput = document.querySelector('input[name="orcamento_conjunto_valor_poupado"]');
-        
-        orcamento.dados.conjunto = {
-            entradas: entradasInput ? parseCurrency(entradasInput.value) : null,
-            despesas_fixas: despesasFixasInput ? parseCurrency(despesasFixasInput.value) : null,
-            despesas_variaveis: despesasVariaveisInput ? parseCurrency(despesasVariaveisInput.value) : null,
-            valor_poupado: valorPoupadoInput ? parseCurrency(valorPoupadoInput.value) : null
-        };
-    } else {
-        // Processar orçamento individual
-        document.querySelectorAll('.orcamento-individual-entry').forEach(entry => {
-            const personId = entry.dataset.personId;
-            const personName = entry.dataset.personName;
-            if (!personId || !personName) return;
-            
-            const entradasInput = entry.querySelector(`input[name="orcamento_${personId}_entradas"]`);
-            const despesasFixasInput = entry.querySelector(`input[name="orcamento_${personId}_despesas_fixas"]`);
-            const despesasVariaveisInput = entry.querySelector(`input[name="orcamento_${personId}_despesas_variaveis"]`);
-            const valorPoupadoInput = entry.querySelector(`input[name="orcamento_${personId}_valor_poupado"]`);
-            
-            orcamento.dados[personName] = {
-                entradas: entradasInput ? parseCurrency(entradasInput.value) : null,
-                despesas_fixas: despesasFixasInput ? parseCurrency(despesasFixasInput.value) : null,
-                despesas_variaveis: despesasVariaveisInput ? parseCurrency(despesasVariaveisInput.value) : null,
-                valor_poupado: valorPoupadoInput ? parseCurrency(valorPoupadoInput.value) : null
-            };
-        });
-    }
-    
-    // Montar objeto final
-    const clienteData = {
-        nome_completo: nomeCompleto,
-        renda_unica: rendaUnica,
-        outras_pessoas: outrasPessoas,
-        tem_dependentes: temDependentes,
-        dependentes: dependentes,
-        tem_patrimonio_fisico: temPatrimonioFisico,
-        patrimonios_fisicos: patrimoniosFisicos,
-        tem_patrimonio_liquido: temPatrimonioLiquido,
-        patrimonios_liquidos: patrimoniosLiquidos,
-        tem_dividas: temDividas,
-        dividas: dividas,
-        tem_plano_saude: temPlanoSaude,
-        plano_saude: planoSaude,
-        tem_seguro_vida: temSeguroVida,
-        seguro_vida: seguroVida,
-        impostos_renda: impostosRenda,
-        orcamento: orcamento,
-        data_preenchimento: new Date().toISOString()
-    };
-    
-    try {
-        // Obter ID do cliente da URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const clienteId = urlParams.get('id');
-        
-        if (!clienteId) {
-            throw new Error("ID do cliente não especificado na URL");
-        }
-        
-        // Verificar se o formulário já foi preenchido
-        const { data: formulariosExistentes, error: errorCheck } = await supabase
-            .from('formularios_clientes')
-            .select('*')
-            .eq('cliente_id', clienteId);
-        
-        if (errorCheck) {
-            throw new Error(`Erro ao verificar formulários existentes: ${errorCheck.message}`);
-        }
-        
-        let result;
-        if (formulariosExistentes && formulariosExistentes.length > 0) {
-            // Atualizar formulário existente
-            result = await supabase
-                .from('formularios_clientes')
-                .update({
-                    dados_formulario: clienteData,
-                    status: 'preenchido'
-                })
-                .eq('cliente_id', clienteId);
-        } else {
-            // Inserir novo formulário
-            result = await supabase
-                .from('formularios_clientes')
-                .insert([
-                    {
-                        cliente_id: clienteId,
-                        dados_formulario: clienteData,
-                        status: 'preenchido'
-                    }
-                ]);
-        }
-        
-        if (result.error) {
-            throw new Error(`Erro ao salvar formulário: ${result.error.message}`);
-        }
-        
-        // Obter nome do cliente para exibir na mensagem de sucesso
-        const { data: clienteData, error: clienteError } = await supabase
-            .from('clientes')
-            .select('name')
-            .eq('id', clienteId)
-            .single();
-        
-        const clienteNome = clienteError ? "Cliente" : (clienteData?.name || "Cliente");
-        
-        // Mostrar mensagem de sucesso
-        showSuccessMessage(clienteId, clienteNome);
-        
-    } catch (error) {
-        console.error("Erro ao enviar formulário:", error);
-        showMessage("error", `Erro ao enviar formulário: ${error.message}`);
-    }
-}
-
-async function initForm() {
-    // Definir título do formulário
-    if (formTitleEl) {
-        formTitleEl.textContent = "Formulário Pré Diagnóstico";
-    }
-    
-    // Obter ID do cliente da URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const clienteId = urlParams.get('id');
-    
-    if (!clienteId) {
-        formContentEl.innerHTML = `<div class="error-message">ID do cliente não especificado na URL.</div>`;
+async function loadForm(token) {
+    if (!token) {
+        formContentEl.innerHTML = "<p>Link inválido.</p>";
+        showMessage("error", "Token não encontrado na URL.");
         return;
     }
-    
     try {
-        // Verificar se o formulário já foi preenchido
-        const { data: formulariosExistentes, error: errorCheck } = await supabase
-            .from('formularios_clientes')
-            .select('*')
-            .eq('cliente_id', clienteId);
-        
-        if (errorCheck) {
-            throw new Error(`Erro ao verificar formulários existentes: ${errorCheck.message}`);
-        }
-        
-        // Se o formulário já foi preenchido, mostrar mensagem
-        if (formulariosExistentes && formulariosExistentes.length > 0 && formulariosExistentes[0].status === 'preenchido') {
-            const { data: clienteData, error: clienteError } = await supabase
-                .from('clientes')
-                .select('name')
-                .eq('id', clienteId)
-                .single();
-            
-            const clienteNome = clienteError ? "Cliente" : (clienteData?.name || "Cliente");
-            
-            formContentEl.innerHTML = `
-                <div class="message info">
-                    <p>Este formulário já foi preenchido anteriormente.</p>
-                    <button id="btn-preencher-novamente" class="btn-primary" style="margin-top: 1rem;">Preencher Novamente</button>
-                </div>
-            `;
-            
-            document.getElementById("btn-preencher-novamente").addEventListener("click", () => {
-                renderFormulario();
-            });
-            
+        const { data: formData, error: formError } = await supabase
+            .from("formularios_clientes")
+            .select("*, clientes(nome)")
+            .eq("token_unico", token)
+            .single();
+        if (formError || !formData) {
+            if (formError && formError.code === 'PGRST116') {
+                 formContentEl.innerHTML = "<p>Link inválido ou expirado.</p>";
+                 showMessage("error", "O link para este formulário não é válido ou já foi utilizado.");
+            } else {
+                formContentEl.innerHTML = "<p>Erro ao carregar formulário.</p>";
+                showMessage("error", `Erro ao carregar formulário: ${formError?.message || "Desconhecido"}`);
+            }
             return;
         }
-        
-        // Renderizar formulário
-        renderFormulario();
-        
+
+        if (formData.status === "preenchido") {
+            formContentEl.innerHTML = "<p>Este formulário já foi preenchido.</p>";
+            showMessage("error", "Este formulário já foi preenchido anteriormente.");
+            return;
+        }
+
+        const clienteNome = formData.clientes?.nome || "Cliente";
+        formTitleEl.textContent = "Formulário Pré Diagnóstico";
+
+        // Criar formulário
+        let formHTML = `
+            <form id="client-response-form">
+                <div class="form-group">
+                    <label for="nome_completo">Nome Completo</label>
+                    <input type="text" id="nome_completo" name="nome_completo" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Única pessoa com renda na casa?</label>
+                    <div class="radio-group">
+                        <input type="radio" id="renda_unica_sim" name="renda_unica" value="sim" required>
+                        <label for="renda_unica_sim">Sim</label>
+                        <input type="radio" id="renda_unica_nao" name="renda_unica" value="nao">
+                        <label for="renda_unica_nao">Não</label>
+                    </div>
+                </div>
+
+                <div id="outras-pessoas-section" style="display: none;">
+                    <h3>Outras pessoas com renda na casa:</h3>
+                    <div id="pessoas-list"></div>
+                    <button type="button" id="add-pessoa-btn" class="add-dynamic-entry-btn">+ Adicionar Pessoa com Renda</button>
+                </div>
+
+                <div class="form-group">
+                    <label id="label_tem_dependentes">Você tem filho/pet/outros parentes que dependem de você?</label>
+                    <div class="radio-group">
+                        <input type="radio" id="tem_dependentes_sim" name="tem_dependentes" value="sim" required>
+                        <label for="tem_dependentes_sim">Sim</label>
+                        <input type="radio" id="tem_dependentes_nao" name="tem_dependentes" value="nao">
+                        <label for="tem_dependentes_nao">Não</label>
+                    </div>
+                </div>
+
+                <div id="dependentes-section" style="display: none;">
+                    <h3>Dependentes:</h3>
+                    <div id="dependentes-list"></div>
+                    <button type="button" id="add-dependente-btn" class="add-dynamic-entry-btn">+ Adicionar Dependente</button>
+                </div>
+
+                <!-- Seção de Plano de Saúde -->
+                <h3 id="plano-saude-section-title" style="display: none;">Informações sobre Plano de Saúde:</h3>
+                <div id="plano-saude-section-content"></div>
+
+                <!-- Seção de Seguro de Vida -->
+                <h3 id="seguro-vida-section-title" style="display: none;">Informações sobre Seguro de Vida:</h3>
+                <div id="seguro-vida-section-content"></div>
+
+                <!-- Seção de Patrimônio Físico -->
+                <div class="form-group">
+                    <label id="label_tem_patrimonio_fisico">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</label>
+                    <div class="radio-group">
+                        <input type="radio" id="tem_patrimonio_sim" name="tem_patrimonio" value="sim" required>
+                        <label for="tem_patrimonio_sim">Sim</label>
+                        <input type="radio" id="tem_patrimonio_nao" name="tem_patrimonio" value="nao">
+                        <label for="tem_patrimonio_nao">Não</label>
+                    </div>
+                </div>
+
+                <div id="patrimonio-section" style="display: none;">
+                    <h3>Patrimônios Físicos:</h3>
+                    <div id="patrimonio-list"></div>
+                    <button type="button" id="add-patrimonio-btn" class="add-dynamic-entry-btn">+ Adicionar Patrimônio</button>
+                </div>
+
+                <!-- Seção de Patrimônio Líquido -->
+                <div class="form-group">
+                    <label id="label_tem_patrimonio_liquido">Você possui Dinheiro Guardado ou Investido?</label>
+                    <div class="radio-group">
+                        <input type="radio" id="tem_patrimonio_liquido_sim" name="tem_patrimonio_liquido" value="sim" required>
+                        <label for="tem_patrimonio_liquido_sim">Sim</label>
+                        <input type="radio" id="tem_patrimonio_liquido_nao" name="tem_patrimonio_liquido" value="nao">
+                        <label for="tem_patrimonio_liquido_nao">Não</label>
+                    </div>
+                </div>
+
+                <div id="patrimonio-liquido-section" style="display: none;">
+                    <h3>Dinheiro Guardado ou Investido:</h3>
+                    <div id="patrimonio-liquido-list"></div>
+                    <button type="button" id="add-patrimonio-liquido-btn" class="add-dynamic-entry-btn">+ Adicionar Item</button>
+                </div>
+
+                <!-- Seção de Dívidas -->
+                <div class="form-group" style="text-align: center;">
+                    <label id="label_tem_dividas" style="display: inline-block;">Você possui dívidas?</label>
+                    <div class="radio-group" style="display: inline-block; margin-left: 10px;">
+                        <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
+                        <label for="tem_dividas_sim">Sim</label>
+                        <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao">
+                        <label for="tem_dividas_nao">Não</label>
+                    </div>
+                </div>
+
+                <div id="dividas-section" style="display: none;">
+                    <h3>Dívidas:</h3>
+                    <div id="dividas-list"></div>
+                    <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">+ Adicionar Dívida</button>
+                </div>
+                
+                <!-- Seção de Imposto de Renda -->
+                <h3 id="imposto-renda-section-title" style="display: none;">Informações sobre Imposto de Renda:</h3>
+                <div id="imposto-renda-section-content"></div>
+                
+                <!-- Seção de Orçamento -->
+                <h3 id="orcamento-section-title" style="display: none;">Informações sobre Orçamento:</h3>
+                <div id="orcamento-section-content"></div>
+
+                <button type="submit" id="submit-btn">Enviar Respostas</button>
+            </form>
+        `;
+
+        formContentEl.innerHTML = formHTML;
+
+        // Salvar ID do formulário para uso posterior
+        const formId = formData.id;
+        const clientResponseFormEl = document.getElementById("client-response-form");
+
+        // --- Listeners para RENDA ÚNICA ---
+        const rendaUnicaSimRadio = document.getElementById("renda_unica_sim");
+        const rendaUnicaNaoRadio = document.getElementById("renda_unica_nao");
+        const outrasPessoasSection = document.getElementById("outras-pessoas-section");
+
+        if (rendaUnicaSimRadio && rendaUnicaNaoRadio && outrasPessoasSection) {
+            rendaUnicaSimRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    outrasPessoasSection.style.display = "none";
+                    updateDynamicFormSections();
+                }
+            });
+
+            rendaUnicaNaoRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    outrasPessoasSection.style.display = "block";
+                    updateDynamicFormSections();
+                }
+            });
+        }
+
+        // --- Listeners para OUTRAS PESSOAS COM RENDA ---
+        const addPessoaBtn = document.getElementById("add-pessoa-btn");
+        const pessoasList = document.getElementById("pessoas-list");
+
+        if (addPessoaBtn && pessoasList) {
+            addPessoaBtn.addEventListener("click", function() {
+                const newIndex = pessoasList.children.length;
+                const newPessoaHTML = `
+                    <div class="dynamic-entry-item">
+                        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+                        <label for="pessoa_nome_${newIndex}">Nome</label>
+                        <input type="text" name="pessoa_nome" id="pessoa_nome_${newIndex}" required>
+                        <label for="pessoa_autorizacao_${newIndex}">Precisa de autorização para acessar informações financeiras?</label>
+                        <select name="pessoa_autorizacao" id="pessoa_autorizacao_${newIndex}" required>
+                            <option value="sim">Sim</option>
+                            <option value="nao">Não</option>
+                        </select>
+                    </div>
+                `;
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newPessoaHTML;
+                const newPessoaEl = tempDiv.firstElementChild;
+                
+                // Adicionar listener para o botão de remover
+                const removeBtn = newPessoaEl.querySelector('.remove-dynamic-entry-btn');
+                removeBtn.addEventListener('click', function() {
+                    newPessoaEl.remove();
+                    updateDynamicFormSections();
+                });
+                
+                // Adicionar listener para o campo de nome para atualizar as perguntas dinâmicas
+                const nomeInput = newPessoaEl.querySelector('input[name="pessoa_nome"]');
+                nomeInput.addEventListener('input', updateDynamicFormSections);
+                
+                pessoasList.appendChild(newPessoaEl);
+                updateDynamicFormSections();
+            });
+        }
+
+        // --- Listeners para DEPENDENTES ---
+        const temDependentesSimRadio = document.getElementById("tem_dependentes_sim");
+        const temDependentesNaoRadio = document.getElementById("tem_dependentes_nao");
+        const dependentesSection = document.getElementById("dependentes-section");
+
+        if (temDependentesSimRadio && temDependentesNaoRadio && dependentesSection) {
+            temDependentesSimRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    dependentesSection.style.display = "block";
+                    updateDynamicFormSections();
+                }
+            });
+
+            temDependentesNaoRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    dependentesSection.style.display = "none";
+                    updateDynamicFormSections();
+                }
+            });
+        }
+
+        const addDependenteBtn = document.getElementById("add-dependente-btn");
+        const dependentesList = document.getElementById("dependentes-list");
+
+        if (addDependenteBtn && dependentesList) {
+            addDependenteBtn.addEventListener("click", function() {
+                const newIndex = dependentesList.children.length;
+                const newDependenteHTML = `
+                    <div class="dynamic-entry-item">
+                        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+                        <label for="dep_nome_${newIndex}">Nome</label>
+                        <input type="text" name="dep_nome" id="dep_nome_${newIndex}" required>
+                        <label for="dep_idade_${newIndex}">Idade</label>
+                        <input type="number" name="dep_idade" id="dep_idade_${newIndex}" min="0" max="120">
+                        <label for="dep_relacao_${newIndex}">Relação (ex: Filho, Sobrinho, Pet)</label>
+                        <input type="text" name="dep_relacao" id="dep_relacao_${newIndex}">
+                    </div>
+                `;
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newDependenteHTML;
+                const newDependenteEl = tempDiv.firstElementChild;
+                
+                // Adicionar listener para o botão de remover
+                const removeBtn = newDependenteEl.querySelector('.remove-dynamic-entry-btn');
+                removeBtn.addEventListener('click', function() {
+                    newDependenteEl.remove();
+                    updateDynamicFormSections();
+                });
+                
+                // Adicionar listener para o campo de nome para atualizar as perguntas dinâmicas
+                const nomeInput = newDependenteEl.querySelector('input[name="dep_nome"]');
+                nomeInput.addEventListener('input', updateDynamicFormSections);
+                
+                dependentesList.appendChild(newDependenteEl);
+                updateDynamicFormSections();
+            });
+        }
+
+        // --- Listeners para PATRIMÔNIO FÍSICO ---
+        const temPatrimonioSimRadio = document.getElementById("tem_patrimonio_sim");
+        const temPatrimonioNaoRadio = document.getElementById("tem_patrimonio_nao");
+        const patrimonioSection = document.getElementById("patrimonio-section");
+
+        if (temPatrimonioSimRadio && temPatrimonioNaoRadio && patrimonioSection) {
+            temPatrimonioSimRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    patrimonioSection.style.display = "block";
+                }
+            });
+
+            temPatrimonioNaoRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    patrimonioSection.style.display = "none";
+                }
+            });
+        }
+
+        const addPatrimonioBtn = document.getElementById("add-patrimonio-btn");
+        const patrimonioList = document.getElementById("patrimonio-list");
+
+        if (addPatrimonioBtn && patrimonioList) {
+            addPatrimonioBtn.addEventListener("click", function() {
+                const newIndex = patrimonioList.children.length;
+                const newPatrimonioHTML = `
+                    <div class="dynamic-entry-item">
+                        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+                        <label for="patrimonio_qual_${newIndex}">Qual patrimônio?</label>
+                        <input type="text" name="patrimonio_qual" id="patrimonio_qual_${newIndex}" required>
+                        <label for="patrimonio_valor_${newIndex}">Valor estimado</label>
+                        <input type="text" name="patrimonio_valor" id="patrimonio_valor_${newIndex}" data-type="currency">
+                        
+                        <div style="margin-top: 0.8rem;">
+                            <label>Possui seguro?</label>
+                            <div class="radio-group">
+                                <input type="radio" id="patrimonio_seguro_${newIndex}_sim" name="patrimonio_seguro_${newIndex}" value="sim" required>
+                                <label for="patrimonio_seguro_${newIndex}_sim">Sim</label>
+                                <input type="radio" id="patrimonio_seguro_${newIndex}_nao" name="patrimonio_seguro_${newIndex}" value="nao">
+                                <label for="patrimonio_seguro_${newIndex}_nao">Não</label>
+                            </div>
+                        </div>
+                        
+                        <div style="margin-top: 0.8rem;">
+                            <label>Está quitado?</label>
+                            <div class="radio-group">
+                                <input type="radio" id="patrimonio_quitado_${newIndex}_sim" name="patrimonio_quitado_${newIndex}" value="sim" required>
+                                <label for="patrimonio_quitado_${newIndex}_sim">Sim</label>
+                                <input type="radio" id="patrimonio_quitado_${newIndex}_nao" name="patrimonio_quitado_${newIndex}" value="nao">
+                                <label for="patrimonio_quitado_${newIndex}_nao">Não</label>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newPatrimonioHTML;
+                const newPatrimonioEl = tempDiv.firstElementChild;
+                
+                // Adicionar listener para o botão de remover
+                const removeBtn = newPatrimonioEl.querySelector('.remove-dynamic-entry-btn');
+                removeBtn.addEventListener('click', function() {
+                    newPatrimonioEl.remove();
+                });
+                
+                // Adicionar formatação de moeda para o campo de valor
+                const valorInput = newPatrimonioEl.querySelector('input[data-type="currency"]');
+                valorInput.addEventListener('input', function(e) {
+                    let value = e.target.value;
+                    e.target.value = formatCurrency(value);
+                });
+                
+                valorInput.addEventListener('blur', function(e) {
+                    let value = e.target.value;
+                    if (value) {
+                        e.target.value = formatCurrency(value);
+                    }
+                });
+                
+                patrimonioList.appendChild(newPatrimonioEl);
+            });
+        }
+
+        // --- Listeners para PATRIMÔNIO LÍQUIDO ---
+        const temPatrimonioLiquidoSimRadio = document.getElementById("tem_patrimonio_liquido_sim");
+        const temPatrimonioLiquidoNaoRadio = document.getElementById("tem_patrimonio_liquido_nao");
+        const patrimonioLiquidoSection = document.getElementById("patrimonio-liquido-section");
+
+        if (temPatrimonioLiquidoSimRadio && temPatrimonioLiquidoNaoRadio && patrimonioLiquidoSection) {
+            temPatrimonioLiquidoSimRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    patrimonioLiquidoSection.style.display = "block";
+                }
+            });
+
+            temPatrimonioLiquidoNaoRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    patrimonioLiquidoSection.style.display = "none";
+                }
+            });
+        }
+
+        const addPatrimonioLiquidoBtn = document.getElementById("add-patrimonio-liquido-btn");
+        const patrimonioLiquidoList = document.getElementById("patrimonio-liquido-list");
+
+        if (addPatrimonioLiquidoBtn && patrimonioLiquidoList) {
+            addPatrimonioLiquidoBtn.addEventListener("click", function() {
+                const newIndex = patrimonioLiquidoList.children.length;
+                const newPatrimonioLiquidoHTML = `
+                    <div class="dynamic-entry-item">
+                        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+                        <label for="patrimonio_liquido_onde_${newIndex}">Onde está guardado/investido?</label>
+                        <input type="text" name="patrimonio_liquido_onde" id="patrimonio_liquido_onde_${newIndex}" required>
+                        <label for="patrimonio_liquido_valor_${newIndex}">Valor</label>
+                        <input type="text" name="patrimonio_liquido_valor" id="patrimonio_liquido_valor_${newIndex}" data-type="currency">
+                    </div>
+                `;
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newPatrimonioLiquidoHTML;
+                const newPatrimonioLiquidoEl = tempDiv.firstElementChild;
+                
+                // Adicionar listener para o botão de remover
+                const removeBtn = newPatrimonioLiquidoEl.querySelector('.remove-dynamic-entry-btn');
+                removeBtn.addEventListener('click', function() {
+                    newPatrimonioLiquidoEl.remove();
+                });
+                
+                // Adicionar formatação de moeda para o campo de valor
+                const valorInput = newPatrimonioLiquidoEl.querySelector('input[data-type="currency"]');
+                valorInput.addEventListener('input', function(e) {
+                    let value = e.target.value;
+                    e.target.value = formatCurrency(value);
+                });
+                
+                valorInput.addEventListener('blur', function(e) {
+                    let value = e.target.value;
+                    if (value) {
+                        e.target.value = formatCurrency(value);
+                    }
+                });
+                
+                patrimonioLiquidoList.appendChild(newPatrimonioLiquidoEl);
+            });
+        }
+
+        // --- Listeners para DÍVIDAS ---
+        const temDividasSimRadio = document.getElementById("tem_dividas_sim");
+        const temDividasNaoRadio = document.getElementById("tem_dividas_nao");
+        const dividasSection = document.getElementById("dividas-section");
+
+        if (temDividasSimRadio && temDividasNaoRadio && dividasSection) {
+            temDividasSimRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    dividasSection.style.display = "block";
+                }
+            });
+
+            temDividasNaoRadio.addEventListener("change", function() {
+                if (this.checked) {
+                    dividasSection.style.display = "none";
+                }
+            });
+        }
+
+        const addDividaBtn = document.getElementById("add-divida-btn");
+        const dividasList = document.getElementById("dividas-list");
+
+        if (addDividaBtn && dividasList) {
+            addDividaBtn.addEventListener("click", function() {
+                const newIndex = dividasList.children.length;
+                const newDividaHTML = `
+                    <div class="dynamic-entry-item">
+                        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+                        <label for="divida_credor_${newIndex}">A quem deve?</label>
+                        <input type="text" name="divida_credor" id="divida_credor_${newIndex}" required>
+                        <label for="divida_saldo_${newIndex}">Saldo Devedor Atual</label>
+                        <input type="text" name="divida_saldo" id="divida_saldo_${newIndex}" data-type="currency">
+                    </div>
+                `;
+                
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = newDividaHTML;
+                const newDividaEl = tempDiv.firstElementChild;
+                
+                // Adicionar listener para o botão de remover
+                const removeBtn = newDividaEl.querySelector('.remove-dynamic-entry-btn');
+                removeBtn.addEventListener('click', function() {
+                    newDividaEl.remove();
+                });
+                
+                // Adicionar formatação de moeda para o campo de valor
+                const valorInput = newDividaEl.querySelector('input[data-type="currency"]');
+                valorInput.addEventListener('input', function(e) {
+                    let value = e.target.value;
+                    e.target.value = formatCurrency(value);
+                });
+                
+                valorInput.addEventListener('blur', function(e) {
+                    let value = e.target.value;
+                    if (value) {
+                        e.target.value = formatCurrency(value);
+                    }
+                });
+                
+                dividasList.appendChild(newDividaEl);
+            });
+        }
+        // --- Fim Listeners para DÍVIDAS ---
+
+        // Adicionar listeners para atualizar perguntas dinâmicas quando o nome é alterado
+        const nomeCompletoInput = document.getElementById("nome_completo");
+        if (nomeCompletoInput) {
+            nomeCompletoInput.addEventListener("input", updateDynamicFormSections);
+        }
+
+        if (clientResponseFormEl) {
+            clientResponseFormEl.addEventListener("submit", async (event) => {
+                event.preventDefault();
+                const submitButton = document.getElementById("submit-btn");
+                submitButton.disabled = true;
+                submitButton.textContent = "Enviando...";
+
+                try {
+                    const formDataObject = new FormData(event.target);
+                    const dadosFormulario = {
+                        nome_completo: sanitizeInput(formDataObject.get("nome_completo")),
+                        renda_unica: formDataObject.get("renda_unica"),
+                        outras_pessoas: [],
+                        tem_dependentes: formDataObject.get("tem_dependentes"),
+                        dependentes: [],
+                        planos_saude: {},
+                        seguros_vida: {},
+                        tem_patrimonio: formDataObject.get("tem_patrimonio"),
+                        patrimonios: [],
+                        tem_patrimonio_liquido: formDataObject.get("tem_patrimonio_liquido"),
+                        patrimonios_liquidos: [],
+                        tem_dividas: formDataObject.get("tem_dividas"),
+                        dividas: [],
+                        impostos_renda: {}, // Novo objeto para imposto de renda
+                        orcamento: {} // Novo objeto para orçamento
+                    };
+
+                    if (dadosFormulario.renda_unica === "nao") {
+                        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => { 
+                            const nome = entry.querySelector('input[name="pessoa_nome"]')?.value;
+                            const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
+                            if (nome) {
+                                dadosFormulario.outras_pessoas.push({
+                                    nome: sanitizeInput(nome),
+                                    autorizacao: autorizacao
+                                });
+                            }
+                        });
+                    }
+
+                    if (dadosFormulario.tem_dependentes === "sim") {
+                        document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => { 
+                            const nome = entry.querySelector('input[name="dep_nome"]')?.value;
+                            const idade = entry.querySelector('input[name="dep_idade"]')?.value;
+                            const relacao = entry.querySelector('input[name="dep_relacao"]')?.value;
+                            if (nome) {
+                                dadosFormulario.dependentes.push({
+                                    nome: sanitizeInput(nome),
+                                    idade: idade ? parseInt(idade) : null,
+                                    relacao: sanitizeInput(relacao)
+                                });
+                            }
+                        });
+                    }
+
+                    document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
+                        const personName = entry.dataset.personName;
+                        const personType = entry.dataset.personType;
+                        const radioName = entry.querySelector('input[type="radio"]')?.name;
+                        const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
+                        if (selectedRadio) {
+                            dadosFormulario.planos_saude[personName] = {
+                                tipo_pessoa: personType,
+                                possui: selectedRadio.value
+                            };
+                        }
+                    });
+
+                    document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
+                        const personName = entry.dataset.personName;
+                        const personType = entry.dataset.personType;
+                        const radioName = entry.querySelector('input[type="radio"]')?.name;
+                        const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
+                        if (selectedRadio) {
+                            dadosFormulario.seguros_vida[personName] = {
+                                tipo_pessoa: personType,
+                                possui: selectedRadio.value
+                            };
+                        }
+                    });
+
+                    if (dadosFormulario.tem_patrimonio === "sim") {
+                        document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach((entry, index) => { 
+                            const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value;
+                            const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
+                            let valorNumerico = null;
+                            if (valorRaw) {
+                                valorNumerico = parseCurrency(valorRaw);
+                            }
+                            const seguro = entry.querySelector(`input[name="patrimonio_seguro_${index}"]:checked`)?.value;
+                            const quitado = entry.querySelector(`input[name="patrimonio_quitado_${index}"]:checked`)?.value;
+                            if (qual) {
+                                dadosFormulario.patrimonios.push({
+                                    qual: sanitizeInput(qual),
+                                    valor: valorNumerico,
+                                    seguro: seguro,
+                                    quitado: quitado
+                                });
+                            }
+                        });
+                    }
+
+                    // Coleta de dados do Patrimônio Líquido
+                    if (dadosFormulario.tem_patrimonio_liquido === "sim") {
+                        document.querySelectorAll("#patrimonio-liquido-list .dynamic-entry-item").forEach(entry => {
+                            const onde = entry.querySelector('input[name="patrimonio_liquido_onde"]')?.value;
+                            const valorRaw = entry.querySelector('input[name="patrimonio_liquido_valor"]')?.value;
+                            let valorNumerico = null;
+                            if (valorRaw) {
+                                valorNumerico = parseCurrency(valorRaw);
+                            }
+                            if (onde) {
+                                dadosFormulario.patrimonios_liquidos.push({
+                                    onde: sanitizeInput(onde),
+                                    valor: valorNumerico
+                                });
+                            }
+                        });
+                    }
+
+                    // Coleta de dados de Dívidas
+                    if (dadosFormulario.tem_dividas === "sim") {
+                        document.querySelectorAll("#dividas-list .dynamic-entry-item").forEach(entry => {
+                            const credor = entry.querySelector('input[name="divida_credor"]')?.value;
+                            const saldoRaw = entry.querySelector('input[name="divida_saldo"]')?.value;
+                            let saldoNumerico = null;
+                            if (saldoRaw) {
+                                saldoNumerico = parseCurrency(saldoRaw);
+                            }
+                            if (credor) {
+                                dadosFormulario.dividas.push({
+                                    credor: sanitizeInput(credor),
+                                    saldo: saldoNumerico
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Coleta de dados de Imposto de Renda
+                    document.querySelectorAll("#imposto-renda-section-content .imposto-renda-entry").forEach(entry => {
+                        const personName = entry.dataset.personName;
+                        const personType = entry.dataset.personType;
+                        const radioName = entry.querySelector('input[type="radio"]')?.name;
+                        const selectedRadio = entry.querySelector(`input[name="${radioName}"]:checked`);
+                        
+                        if (selectedRadio) {
+                            dadosFormulario.impostos_renda[personName] = {
+                                tipo_pessoa: personType,
+                                declara: selectedRadio.value
+                            };
+                            
+                            // Se declara imposto de renda, coletar informações adicionais
+                            if (selectedRadio.value === "sim") {
+                                const tipoNameAttribute = `tipo_${radioName}`;
+                                const resultadoNameAttribute = `resultado_${radioName}`;
+                                
+                                const tipoSelectedRadio = document.querySelector(`input[name="${tipoNameAttribute}"]:checked`);
+                                const resultadoSelectedRadio = document.querySelector(`input[name="${resultadoNameAttribute}"]:checked`);
+                                
+                                if (tipoSelectedRadio) {
+                                    dadosFormulario.impostos_renda[personName].tipo = tipoSelectedRadio.value;
+                                }
+                                
+                                if (resultadoSelectedRadio) {
+                                    dadosFormulario.impostos_renda[personName].resultado = resultadoSelectedRadio.value;
+                                }
+                            }
+                        }
+                    });
+                    
+                    // Coleta de dados de Orçamento
+                    const tipoOrcamentoRadios = document.querySelectorAll('input[name="tipo_orcamento"]');
+                    let tipoOrcamento = "individual"; // Padrão para quando há apenas uma pessoa
+                    
+                    // Se houver mais de uma pessoa com renda, verificar a escolha
+                    if (tipoOrcamentoRadios.length > 0) {
+                        tipoOrcamentoRadios.forEach(radio => {
+                            if (radio.checked) {
+                                tipoOrcamento = radio.value;
+                            }
+                        });
+                    }
+                    
+                    dadosFormulario.orcamento.tipo = tipoOrcamento;
+                    dadosFormulario.orcamento.dados = {};
+                    
+                    if (tipoOrcamento === "conjunto") {
+                        // Coletar dados do orçamento conjunto
+                        const entradasRaw = document.getElementById("orcamento_conjunto_entradas")?.value;
+                        const despesasFixasRaw = document.getElementById("orcamento_conjunto_despesas_fixas")?.value;
+                        const despesasVariaveisRaw = document.getElementById("orcamento_conjunto_despesas_variaveis")?.value;
+                        const valorPoupadoRaw = document.getElementById("orcamento_conjunto_valor_poupado")?.value;
+                        
+                        dadosFormulario.orcamento.dados.conjunto = {
+                            entradas: parseCurrency(entradasRaw),
+                            despesas_fixas: parseCurrency(despesasFixasRaw),
+                            despesas_variaveis: parseCurrency(despesasVariaveisRaw),
+                            valor_poupado: parseCurrency(valorPoupadoRaw)
+                        };
+                    } else {
+                        // Coletar dados do orçamento individual
+                        document.querySelectorAll(".orcamento-individual-entry").forEach(entry => {
+                            const personName = entry.dataset.personName;
+                            const personId = entry.dataset.personId;
+                            
+                            const entradasRaw = document.getElementById(`orcamento_${personId}_entradas`)?.value;
+                            const despesasFixasRaw = document.getElementById(`orcamento_${personId}_despesas_fixas`)?.value;
+                            const despesasVariaveisRaw = document.getElementById(`orcamento_${personId}_despesas_variaveis`)?.value;
+                            const valorPoupadoRaw = document.getElementById(`orcamento_${personId}_valor_poupado`)?.value;
+                            
+                            dadosFormulario.orcamento.dados[personName] = {
+                                entradas: parseCurrency(entradasRaw),
+                                despesas_fixas: parseCurrency(despesasFixasRaw),
+                                despesas_variaveis: parseCurrency(despesasVariaveisRaw),
+                                valor_poupado: parseCurrency(valorPoupadoRaw)
+                            };
+                        });
+                    }
+
+                    const { error: updateError } = await supabase
+                        .from("formularios_clientes")
+                        .update({
+                            dados_formulario: dadosFormulario,
+                            status: "preenchido",
+                            data_preenchimento: new Date().toISOString(),
+                        })
+                        .eq("id", formId);
+
+                    if (updateError) throw updateError;
+
+                    formContentEl.innerHTML = "<p>Formulário enviado com sucesso!</p>";
+                    showMessage("success", "Obrigado por preencher o formulário. Suas respostas foram registradas.");
+
+                } catch (error) {
+                    console.error("Erro ao enviar formulário:", error);
+                    showMessage("error", `Erro ao enviar: ${error.message}`);
+                    submitButton.disabled = false;
+                    submitButton.textContent = "Enviar Respostas";
+                }
+            });
+        }
     } catch (error) {
-        console.error("Erro ao inicializar formulário:", error);
-        formContentEl.innerHTML = `<div class="error-message">Erro ao carregar formulário: ${error.message}</div>`;
+        console.error("Erro ao carregar formulário:", error);
+        formContentEl.innerHTML = "<p>Erro ao carregar formulário.</p>";
+        showMessage("error", `Erro ao carregar formulário: ${error.message}`);
     }
 }
 
-function renderFormulario() {
-    formContentEl.innerHTML = `
-        <form id="cliente-form">
-            <div class="form-section">
-                <h3>Informações Básicas</h3>
-                <div style="margin-bottom: 1rem;">
-                    <label for="nome_completo" style="display: block; margin-bottom: 0.5rem;">Nome Completo</label>
-                    <input type="text" id="nome_completo" name="nome_completo" class="form-input" required style="width: 100%;" oninput="this.value = capitalizeName(this.value); updateDynamicFormSections();">
-                </div>
-                
-                <div style="margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem;">Você é a única pessoa com renda na casa?</label>
-                    <div style="display: flex; align-items: center;">
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
-                            <input type="radio" id="renda_unica_sim" name="renda_unica" value="sim" required style="margin-right: 5px;" onchange="updateDynamicFormSections();">
-                            <label for="renda_unica_sim">Sim</label>
-                        </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="renda_unica_nao" name="renda_unica" value="nao" style="margin-right: 5px;" onchange="updateDynamicFormSections();">
-                            <label for="renda_unica_nao">Não</label>
-                        </span>
-                    </div>
-                </div>
-                
-                <div id="outras-pessoas-section" style="display: none; margin-bottom: 1rem;">
-                    <label style="display: block; margin-bottom: 0.5rem;">Outras pessoas com renda na casa:</label>
-                    <div id="pessoas-list"></div>
-                    <button type="button" onclick="addPessoaComRenda()" class="btn-add" style="background-color: #28a745; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%;">
-                        <span style="margin-right: 5px;">+</span> Adicionar Pessoa com Renda
-                    </button>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h3>Dependentes</h3>
-                <div style="margin-bottom: 1rem;">
-                    <label id="label_tem_dependentes" style="display: block; margin-bottom: 0.5rem;">Você tem filho/pet/outros parentes que dependem de você?</label>
-                    <div style="display: flex; align-items: center;">
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
-                            <input type="radio" id="tem_dependentes_sim" name="tem_dependentes" value="sim" required style="margin-right: 5px;" onchange="document.getElementById('dependentes-section').style.display = this.checked ? 'block' : 'none';">
-                            <label for="tem_dependentes_sim">Sim</label>
-                        </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="tem_dependentes_nao" name="tem_dependentes" value="nao" style="margin-right: 5px;" onchange="document.getElementById('dependentes-section').style.display = 'none';">
-                            <label for="tem_dependentes_nao">Não</label>
-                        </span>
-                    </div>
-                </div>
-                
-                <div id="dependentes-section" style="display: none; margin-bottom: 1rem;">
-                    <div id="dependentes-list"></div>
-                    <button type="button" onclick="addDependente()" class="btn-add" style="background-color: #28a745; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%;">
-                        <span style="margin-right: 5px;">+</span> Adicionar Dependente
-                    </button>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h3>Patrimônio Físico</h3>
-                <div style="margin-bottom: 1rem;">
-                    <label id="label_tem_patrimonio_fisico" style="display: block; margin-bottom: 0.5rem;">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</label>
-                    <div style="display: flex; align-items: center;">
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
-                            <input type="radio" id="tem_patrimonio_fisico_sim" name="tem_patrimonio_fisico" value="sim" required style="margin-right: 5px;" onchange="document.getElementById('patrimonios-section').style.display = this.checked ? 'block' : 'none';">
-                            <label for="tem_patrimonio_fisico_sim">Sim</label>
-                        </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="tem_patrimonio_fisico_nao" name="tem_patrimonio_fisico" value="nao" style="margin-right: 5px;" onchange="document.getElementById('patrimonios-section').style.display = 'none';">
-                            <label for="tem_patrimonio_fisico_nao">Não</label>
-                        </span>
-                    </div>
-                </div>
-                
-                <div id="patrimonios-section" style="display: none; margin-bottom: 1rem;">
-                    <div id="patrimonios-list"></div>
-                    <button type="button" onclick="addPatrimonioFisico()" class="btn-add" style="background-color: #28a745; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%;">
-                        <span style="margin-right: 5px;">+</span> Adicionar Patrimônio
-                    </button>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h3>Patrimônio Líquido</h3>
-                <div style="margin-bottom: 1rem;">
-                    <label id="label_tem_patrimonio_liquido" style="display: block; margin-bottom: 0.5rem;">Você possui Dinheiro Guardado ou Investido?</label>
-                    <div style="display: flex; align-items: center;">
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
-                            <input type="radio" id="tem_patrimonio_liquido_sim" name="tem_patrimonio_liquido" value="sim" required style="margin-right: 5px;" onchange="document.getElementById('patrimonios-liquidos-section').style.display = this.checked ? 'block' : 'none';">
-                            <label for="tem_patrimonio_liquido_sim">Sim</label>
-                        </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="tem_patrimonio_liquido_nao" name="tem_patrimonio_liquido" value="nao" style="margin-right: 5px;" onchange="document.getElementById('patrimonios-liquidos-section').style.display = 'none';">
-                            <label for="tem_patrimonio_liquido_nao">Não</label>
-                        </span>
-                    </div>
-                </div>
-                
-                <div id="patrimonios-liquidos-section" style="display: none; margin-bottom: 1rem;">
-                    <div id="patrimonios-liquidos-list"></div>
-                    <button type="button" onclick="addPatrimonioLiquido()" class="btn-add" style="background-color: #28a745; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%;">
-                        <span style="margin-right: 5px;">+</span> Adicionar Patrimônio Líquido
-                    </button>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h3>Dívidas</h3>
-                <div style="margin-bottom: 1rem; text-align: center;">
-                    <label id="label_tem_dividas" style="display: block; margin-bottom: 0.5rem;">Você possui dívidas?</label>
-                    <div style="display: flex; align-items: center; justify-content: center;">
-                        <span style="margin-right: 20px; display: flex; align-items: center;">
-                            <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required style="margin-right: 5px;" onchange="document.getElementById('dividas-section').style.display = this.checked ? 'block' : 'none';">
-                            <label for="tem_dividas_sim">Sim</label>
-                        </span>
-                        <span style="display: flex; align-items: center;">
-                            <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao" style="margin-right: 5px;" onchange="document.getElementById('dividas-section').style.display = 'none';">
-                            <label for="tem_dividas_nao">Não</label>
-                        </span>
-                    </div>
-                </div>
-                
-                <div id="dividas-section" style="display: none; margin-bottom: 1rem;">
-                    <div id="dividas-list"></div>
-                    <button type="button" onclick="addDivida()" class="btn-add" style="background-color: #28a745; color: white; border: none; border-radius: 4px; padding: 0.5rem 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%;">
-                        <span style="margin-right: 5px;">+</span> Adicionar Dívida
-                    </button>
-                </div>
-            </div>
-            
-            <div class="form-section">
-                <h3 id="imposto-renda-section-title">Informações sobre Imposto de Renda:</h3>
-                <div id="imposto-renda-section-content"></div>
-            </div>
-            
-            <div class="form-section">
-                <h3 id="orcamento-section-title">Informações sobre Orçamento:</h3>
-                <div id="orcamento-section-content"></div>
-            </div>
-            
-            <div class="form-section">
-                <h3>Plano de Saúde</h3>
-                <div id="plano-saude-section-content"></div>
-            </div>
-            
-            <div class="form-section">
-                <h3>Seguro de Vida</h3>
-                <div id="seguro-vida-section-content"></div>
-            </div>
-            
-            <div style="margin-top: 2rem; text-align: center;">
-                <button type="submit" class="btn-primary" style="background-color: #007bff; color: white; border: none; border-radius: 4px; padding: 0.75rem 2rem; cursor: pointer; font-size: 1.1rem;">Enviar Respostas</button>
-            </div>
-        </form>
-    `;
-    
-    // Adicionar eventos
-    document.getElementById("renda_unica_sim").addEventListener("change", function() {
-        if (this.checked) {
-            document.getElementById("outras-pessoas-section").style.display = "none";
-        }
-    });
-    
-    document.getElementById("renda_unica_nao").addEventListener("change", function() {
-        if (this.checked) {
-            document.getElementById("outras-pessoas-section").style.display = "block";
-        }
-    });
-    
-    document.getElementById("cliente-form").addEventListener("submit", handleFormSubmit);
-    
-    // Inicializar seções dinâmicas
-    updateDynamicFormSections();
-}
-
-// Inicializar formulário quando o DOM estiver pronto
-document.addEventListener("DOMContentLoaded", initForm);
-
-// Exportar funções para uso global
-window.addPessoaComRenda = addPessoaComRenda;
-window.removePessoaComRenda = removePessoaComRenda;
-window.addDependente = addDependente;
-window.removeDependente = removeDependente;
-window.addPatrimonioFisico = addPatrimonioFisico;
-window.removePatrimonioFisico = removePatrimonioFisico;
-window.addPatrimonioLiquido = addPatrimonioLiquido;
-window.removePatrimonioLiquido = removePatrimonioLiquido;
-window.addDivida = addDivida;
-window.removeDivida = removeDivida;
-window.toggleSection = toggleSection;
-window.updateDynamicFormSections = updateDynamicFormSections;
-window.capitalizeName = capitalizeName;
-window.formatCurrency = formatCurrency;
+// --- Inicialização ---
+document.addEventListener("DOMContentLoaded", () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get("token");
+    loadForm(token);
+});
