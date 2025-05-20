@@ -166,14 +166,6 @@
         return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     };
 
-    // Função para gerar UUID v4 válido
-    function uuidv4() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-
     function displayFormLink(latestForm) {
         console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); 
         const token = latestForm.token_unico;
@@ -212,6 +204,10 @@
 
             const rendaUnicaText = data.renda_unica === "sim" ? "Sim" : (data.renda_unica === "nao" ? "Não" : "N/A");
             dataHtml += `<p><strong>Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
+
+            // Exibir o orçamento mensal
+            const orcamentoMensal = formatCurrencyForDisplay(data.orcamento_mensal);
+            dataHtml += `<p><strong>Orçamento Mensal:</strong> ${orcamentoMensal}</p>`;
 
             if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas) && data.outras_pessoas.length > 0) {
                 dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong></p><ul>`;
@@ -334,18 +330,18 @@
                     // Informações básicas sobre declaração
                     let irInfoText = `${nomePessoaIR}: ${statusIRText}`;
                     
-                    // Adicionar informações de tipo e resultado se declara IR
+                    // Adicionar informações adicionais se declara IR
                     if (info.declara === "sim") {
-                        let tipoIRText = "N/A";
-                        if (info.tipo === "simples") tipoIRText = "Simples";
-                        else if (info.tipo === "completa") tipoIRText = "Dedução Completa";
-                        else if (info.tipo === "nao_sei") tipoIRText = "Não sei informar";
+                        let tipoIRText = "Tipo não informado";
+                        if (info.tipo_ir === "simples") tipoIRText = "Simples";
+                        else if (info.tipo_ir === "completa") tipoIRText = "Dedução Completa";
+                        else if (info.tipo_ir === "nao_sei") tipoIRText = "Não Sei Informar";
                         
-                        let resultadoIRText = "N/A";
-                        if (info.resultado === "paga") resultadoIRText = "Paga";
-                        else if (info.resultado === "recebe") resultadoIRText = "Recebe";
-                        else if (info.resultado === "isento") resultadoIRText = "Isento";
-                        else if (info.resultado === "nao_sei") resultadoIRText = "Não sei informar";
+                        let resultadoIRText = "Resultado não informado";
+                        if (info.resultado_ir === "paga") resultadoIRText = "Paga";
+                        else if (info.resultado_ir === "recebe") resultadoIRText = "Recebe";
+                        else if (info.resultado_ir === "isento") resultadoIRText = "Isento";
+                        else if (info.resultado_ir === "nao_sei") resultadoIRText = "Não Sei Informar";
                         
                         irInfoText += ` (Tipo: ${tipoIRText}, Resultado: ${resultadoIRText})`;
                     }
@@ -354,219 +350,159 @@
                 });
                 dataHtml += `</ul>`;
             }
-            
-            // Exibição de Orçamento
-            if (data.orcamento && typeof data.orcamento === "object") {
-                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Orçamento:</strong></p>`;
-                
-                // Verificar o tipo de orçamento (conjunto ou individual)
-                if (data.orcamento.tipo === "conjunto" && data.orcamento.dados && data.orcamento.dados.conjunto) {
-                    // Exibir orçamento conjunto
-                    dataHtml += `<p><strong>Tipo de Orçamento:</strong> Conjunto da casa</p>`;
-                    dataHtml += `<ul>`;
-                    
-                    const entradas = formatCurrencyForDisplay(data.orcamento.dados.conjunto.entradas);
-                    const despesasFixas = formatCurrencyForDisplay(data.orcamento.dados.conjunto.despesas_fixas);
-                    const despesasVariaveis = formatCurrencyForDisplay(data.orcamento.dados.conjunto.despesas_variaveis);
-                    const valorPoupado = formatCurrencyForDisplay(data.orcamento.dados.conjunto.valor_poupado);
-                    
-                    dataHtml += `<li>Entradas totais mensais: ${entradas}</li>`;
-                    dataHtml += `<li>Despesas fixas mensais: ${despesasFixas}</li>`;
-                    dataHtml += `<li>Despesas variáveis mensais: ${despesasVariaveis}</li>`;
-                    dataHtml += `<li>Valor poupado/investido mensal: ${valorPoupado}</li>`;
-                    
-                    dataHtml += `</ul>`;
-                } else if (data.orcamento.tipo === "individual" && data.orcamento.dados) {
-                    // Exibir orçamento individual por pessoa
-                    dataHtml += `<p><strong>Tipo de Orçamento:</strong> Individual por pessoa</p>`;
-                    
-                    Object.entries(data.orcamento.dados).forEach(([nome, info]) => {
-                        if (typeof info === "object") {
-                            const nomePessoa = sanitizeInput(nome);
-                            
-                            dataHtml += `<p><strong>Orçamento de ${nomePessoa}:</strong></p>`;
-                            dataHtml += `<ul>`;
-                            
-                            const entradas = formatCurrencyForDisplay(info.entradas);
-                            const despesasFixas = formatCurrencyForDisplay(info.despesas_fixas);
-                            const despesasVariaveis = formatCurrencyForDisplay(info.despesas_variaveis);
-                            const valorPoupado = formatCurrencyForDisplay(info.valor_poupado);
-                            
-                            dataHtml += `<li>Entradas totais mensais: ${entradas}</li>`;
-                            dataHtml += `<li>Despesas fixas mensais: ${despesasFixas}</li>`;
-                            dataHtml += `<li>Despesas variáveis mensais: ${despesasVariaveis}</li>`;
-                            dataHtml += `<li>Valor poupado/investido mensal: ${valorPoupado}</li>`;
-                            
-                            dataHtml += `</ul>`;
-                        }
-                    });
-                }
-            }
-
-            // Exibir data de preenchimento
-            if (data.data_preenchimento) {
-                const dataPreenchimento = new Date(data.data_preenchimento);
-                const dataFormatada = dataPreenchimento.toLocaleDateString('pt-BR', { 
-                    day: '2-digit', 
-                    month: '2-digit', 
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                dataHtml += `<p style="margin-top: 1.5rem;"><strong>Formulário preenchido em:</strong> ${dataFormatada}</p>`;
-            }
-
-            // Adicionar botão para excluir dados e gerar novo link
-            dataHtml += `
-                <div style="margin-top: 1.5rem; text-align: center;">
-                    <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
-                </div>
-            `;
-        } else {
-            dataHtml = "<p>Erro ao carregar dados do formulário.</p>";
         }
-
+        
+        // Adicionar botão para gerar novo link
+        dataHtml += `
+            <div style="margin-top: 2rem; text-align: center;">
+                <button class="generate-link-btn" data-client-id="${formData.cliente_id}">Gerar Novo Link de Formulário</button>
+            </div>
+        `;
+        
         formInfoContentEl.innerHTML = dataHtml;
-
-        // Adicionar evento ao botão de excluir
-        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
-        if (deleteBtn) {
-            deleteBtn.addEventListener("click", handleDeleteForm);
+        
+        // Adicionar event listener para o botão de gerar novo link
+        const generateLinkBtn = formInfoContentEl.querySelector(".generate-link-btn");
+        if (generateLinkBtn) {
+            generateLinkBtn.addEventListener("click", handleGenerateNewLink);
         }
     }
 
-    async function handleDeleteForm(event) {
-        const formId = event.target.dataset.formId;
+    async function handleDeleteForm(e) {
+        const formId = e.target.dataset.formId;
         if (!formId) return;
-
-        if (!confirm("Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.")) {
-            return;
-        }
-
+        
         try {
-            // Excluir formulário
-            const { error } = await supabase
-                .from('formularios_clientes')
+            // Excluir o formulário atual
+            const { error: deleteError } = await supabase
+                .from("formularios_clientes")
                 .delete()
-                .eq('id', formId);
-
-            if (error) {
-                throw new Error(`Erro ao excluir formulário: ${error.message}`);
-            }
-
-            // Gerar novo token
-            await generateNewFormLink(currentClientId);
-
+                .eq("id", formId);
+            
+            if (deleteError) throw deleteError;
+            
+            // Recarregar a página para mostrar o novo estado
+            window.location.reload();
+            
         } catch (error) {
             console.error("Erro ao excluir formulário:", error);
-            alert(`Erro ao excluir formulário: ${error.message}`);
+            alert("Ocorreu um erro ao excluir o formulário. Por favor, tente novamente.");
         }
     }
 
-    async function generateNewFormLink(clienteId) {
+    async function handleGenerateNewLink(e) {
+        const clientId = e.target.dataset.clientId;
+        if (!clientId) return;
+        
         try {
-            // Gerar token único no formato UUID v4
-            const token = uuidv4();
-
-            // Inserir novo formulário
-            const { data, error } = await supabase
-                .from('formularios_clientes')
+            // Gerar token único
+            const token = crypto.randomUUID();
+            
+            // Criar novo formulário
+            const { data: newForm, error } = await supabase
+                .from("formularios_clientes")
                 .insert([
                     {
-                        cliente_id: clienteId,
+                        cliente_id: clientId,
                         token_unico: token,
-                        status: 'pendente'
+                        status: "pendente"
                     }
-                ]);
-
-            if (error) {
-                throw new Error(`Erro ao gerar novo link: ${error.message}`);
-            }
-
-            // Recarregar dados
-            await loadClienteData(clienteId);
-
+                ])
+                .select()
+                .single();
+            
+            if (error) throw error;
+            
+            // Recarregar a página para mostrar o novo link
+            window.location.reload();
+            
         } catch (error) {
             console.error("Erro ao gerar novo link:", error);
-            alert(`Erro ao gerar novo link: ${error.message}`);
+            alert("Ocorreu um erro ao gerar o novo link. Por favor, tente novamente.");
         }
     }
 
-    async function loadClienteData(clienteId) {
-        try {
-            // Obter dados do cliente
-            const { data: clienteData, error: clienteError } = await supabase
-                .from('clientes')
-                .select('nome') // Alterado de 'name' para 'nome'
-                .eq('id', clienteId)
-                .single();
-
-            if (clienteError) {
-                throw new Error(`Erro ao carregar dados do cliente: ${clienteError.message}`);
-            }
-
-            // Atualizar nome do cliente
-            clientNameDisplay.textContent = clienteData.nome || "Cliente"; // Alterado de 'name' para 'nome'
-
-            // Obter formulários do cliente
-            const { data: formulariosData, error: formulariosError } = await supabase
-                .from('formularios_clientes')
-                .select('*')
-                .eq('cliente_id', clienteId)
-                .order('created_at', { ascending: false });
-
-            if (formulariosError) {
-                throw new Error(`Erro ao carregar formulários: ${formulariosError.message}`);
-            }
-
-            // Verificar se há formulários
-            if (!formulariosData || formulariosData.length === 0) {
-                // Gerar novo link
-                await generateNewFormLink(clienteId);
-                return;
-            }
-
-            // Obter o formulário mais recente
-            const latestForm = formulariosData[0];
-
-            // Verificar status do formulário
-            if (latestForm.status === 'pendente') {
-                // Exibir link para preenchimento
-                displayFormLink(latestForm);
-            } else if (latestForm.status === 'preenchido') {
-                // Exibir dados preenchidos
-                displayFormData(latestForm);
-            } else {
-                // Status desconhecido, gerar novo link
-                await generateNewFormLink(clienteId);
-            }
-
-        } catch (error) {
-            console.error("Erro ao carregar dados:", error);
-            formInfoContentEl.innerHTML = `<div class="error-message">Erro ao carregar dados: ${error.message}</div>`;
-        }
-    }
-
-    // Inicializar página
-    document.addEventListener("DOMContentLoaded", async () => {
+    async function loadClientDetails() {
         try {
             // Obter ID do cliente da URL
             const urlParams = new URLSearchParams(window.location.search);
-            const clienteId = urlParams.get('id');
-
-            if (!clienteId) {
-                formInfoContentEl.innerHTML = `<div class="error-message">ID do cliente não especificado na URL.</div>`;
+            const clientId = urlParams.get("id");
+            
+            if (!clientId) {
+                formInfoContentEl.innerHTML = `
+                    <div class="error-message">
+                        <h2>Cliente não encontrado</h2>
+                        <p>O ID do cliente não foi fornecido na URL.</p>
+                    </div>
+                `;
                 return;
             }
-
-            currentClientId = clienteId; // Salvar ID para uso posterior
-            await loadClienteData(clienteId);
-
+            
+            currentClientId = clientId; // Armazenar ID do cliente no escopo mais amplo
+            
+            // Buscar dados do cliente
+            const { data: clientData, error: clientError } = await supabase
+                .from("clientes")
+                .select("*")
+                .eq("id", clientId)
+                .single();
+            
+            if (clientError || !clientData) {
+                formInfoContentEl.innerHTML = `
+                    <div class="error-message">
+                        <h2>Cliente não encontrado</h2>
+                        <p>Não foi possível encontrar o cliente com o ID fornecido.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Atualizar nome do cliente na página
+            clientNameDisplay.textContent = clientData.nome || "Cliente";
+            
+            // Buscar formulário mais recente do cliente
+            const { data: formData, error: formError } = await supabase
+                .from("formularios_clientes")
+                .select("*")
+                .eq("cliente_id", clientId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .single();
+            
+            if (formError) {
+                // Se não houver formulário, mostrar botão para criar
+                formInfoContentEl.innerHTML = `
+                    <p>Este cliente ainda não possui um formulário.</p>
+                    <button class="generate-link-btn" data-client-id="${clientId}">Gerar Link de Formulário</button>
+                `;
+                
+                const generateLinkBtn = formInfoContentEl.querySelector(".generate-link-btn");
+                if (generateLinkBtn) {
+                    generateLinkBtn.addEventListener("click", handleGenerateNewLink);
+                }
+                return;
+            }
+            
+            // Exibir informações do formulário com base no status
+            if (formData.status === "pendente") {
+                displayFormLink(formData);
+            } else if (formData.status === "preenchido") {
+                displayFormData(formData);
+            }
+            
         } catch (error) {
-            console.error("Erro ao inicializar página:", error);
-            formInfoContentEl.innerHTML = `<div class="error-message">Erro ao inicializar página: ${error.message}</div>`;
+            console.error("Erro ao carregar detalhes do cliente:", error);
+            formInfoContentEl.innerHTML = `
+                <div class="error-message">
+                    <h2>Erro ao carregar dados</h2>
+                    <p>Ocorreu um erro ao carregar os dados do cliente. Por favor, tente novamente mais tarde.</p>
+                </div>
+            `;
         }
-    });
+    }
+
+    // Inicializar a página
+    document.addEventListener("DOMContentLoaded", loadClientDetails);
   </script>
 </body>
 </html>
