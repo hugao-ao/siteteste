@@ -714,6 +714,49 @@ function addDividaEntry() {
     }
 }
 
+function addObjetivoEntry() {
+    const objetivosListEl = document.getElementById("objetivos-list");
+    if (!objetivosListEl) {
+        console.error("Elemento objetivos-list não encontrado para adicionar entrada de objetivo.");
+        return;
+    }
+
+    const entryDiv = document.createElement("div");
+    entryDiv.classList.add("dynamic-entry-item"); 
+    entryDiv.innerHTML = `
+        <input type="text" name="objetivo_descricao" placeholder="Descrição do objetivo" required class="form-input">
+        <input type="text" name="objetivo_valor" placeholder="Valor estimado (R$)" required class="form-input currency-input">
+        <button type="button" class="remove-dynamic-entry-btn remove-objetivo-btn">Remover</button>
+    `;
+    objetivosListEl.appendChild(entryDiv);
+    
+    // Adicionar formatação de moeda para o campo de valor
+    const currencyInput = entryDiv.querySelector(".currency-input");
+    if (currencyInput) {
+        currencyInput.addEventListener('input', (e) => {
+            const rawValue = e.target.value.replace(/[^\d]/g, '');
+            if (rawValue) {
+                const number = parseInt(rawValue, 10) / 100;
+                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                e.target.value = '';
+            }
+        });
+        currencyInput.addEventListener('blur', (e) => {
+            const rawValue = e.target.value.replace(/[^\d]/g, '');
+            if (rawValue) {
+                const number = parseInt(rawValue, 10) / 100;
+                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                e.target.value = '';
+            }
+        });
+    }
+}
+
+
+
+
 function attachFormEventListeners(formId) {
     const clientResponseFormEl = document.getElementById("client-response-form");
     const nomeCompletoInput = document.getElementById("nome_completo");
@@ -1305,7 +1348,32 @@ function renderForm(formData) {
                 <h3 id="imposto-renda-section-title" style="display: none;">Informações sobre Imposto de Renda:</h3>
                 <div id="imposto-renda-section-content"></div>
             </div>
+            
+            <!-- SEÇÃO DE INFORMAÇÕES FINANCEIRAS -->
+            <div id="informacoes-financeiras-section" style="margin-top: 2rem;">
+                <h3 style="text-align: center; margin-bottom: 1.5rem;">Informações Financeiras</h3>
+                
+                <!-- Campo de Orçamento -->
+                <div class="form-group">
+                    <label for="orcamento_mensal">Orçamento Mensal Estimado para o Projeto:</label>
+                    <input type="text" id="orcamento_mensal" name="orcamento_mensal" placeholder="R$ 0,00" class="currency-input">
+                </div>
+            </div>
+            <!-- FIM SEÇÃO DE INFORMAÇÕES FINANCEIRAS -->
 
+                          <!-- SEÇÃO DE PRINCIPAIS OBJETIVOS -->
+              <div class="form-section" id="objetivos-section" style="margin-top: 2rem;">
+                  <div class="form-group">
+                      <h3 class="form-question-label" style="text-align: center !important; margin-bottom: 0.5rem;">Principais Objetivos</h3>
+                  </div>
+                  <div id="objetivos-list-container" class="dynamic-list-container">
+                      <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Objetivos:</label>
+                      <div id="objetivos-list" class="dynamic-list"></div>
+                      <button type="button" id="add-objetivo-btn" class="add-dynamic-entry-btn">Adicionar Objetivo</button>
+                  </div>
+              </div>
+              <!-- FIM SEÇÃO DE PRINCIPAIS OBJETIVOS -->
+            
             <div class="form-actions">
                 <button type="submit" id="submit-btn" class="submit-button">Enviar Respostas</button>
             </div>
