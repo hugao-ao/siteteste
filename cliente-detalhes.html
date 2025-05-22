@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detalhes do Cliente</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome -->
+  <style>
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+    #main-content-detalhes {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--theme-bg-surface);
+      color: var(--theme-text-light);
+      /* text-align: center; /* REMOVIDO - Deixar alinhamento padrão */
+    }
+    #main-content-detalhes.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
+
+    h1 {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: var(--theme-secondary-lighter); /* Ajustado para tema */
+    }
+
+    /* --- Seção do Formulário --- */
+    #form-section {
+        background-color: var(--theme-bg-dark);
+        padding: 1.5rem 2rem;
+        margin-top: 2rem;
+        border-radius: 8px;
+        border: 1px solid var(--theme-border-color);
+        text-align: left;
+    }
+    #form-section h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+    }
+    #form-section p {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
+    #form-section .form-link-container {
+        background-color: var(--theme-bg-surface);
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        word-wrap: break-word; /* Quebra links longos */
+    }
+    #form-section .form-link-container a {
+        color: var(--theme-secondary-lighter); /* Ajustado para tema */
+        text-decoration: none;
+        font-weight: bold;
+    }
+    #form-section .form-link-container a:hover {
+        text-decoration: underline;
+    }
+    #form-section .form-data-display {
+        margin-bottom: 1rem;
+    }
+    #form-section .form-data-display strong {
+        color: var(--theme-secondary-lighter);
+    }
+    #form-section .form-data-display ul {
+        list-style: none;
+        padding-left: 1rem;
+        margin-top: 0.5rem;
+        border-left: 2px solid var(--theme-border-color);
+    }
+    #form-section .form-data-display li {
+        margin-bottom: 0.5rem;
+    }
+    #form-section .delete-form-btn {
+        background-color: #c62828; /* Vermelho */
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background-color 0.3s ease;
+        margin-top: 0.5rem; /* Adiciona espaço acima do botão */
+    }
+    #form-section .delete-form-btn:hover {
+        background-color: #a12020;
+    }
+    #form-section .generate-link-btn {
+        background-color: var(--theme-primary); /* Ajustado para tema */
+        color: var(--theme-secondary-lighter);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background-color 0.3s ease;
+    }
+    #form-section .generate-link-btn:hover {
+        background-color: var(--theme-primary-lighter);
+    }
+    #form-loading-state {
+        text-align: center;
+        padding: 1rem;
+        color: var(--theme-text-muted);
+    }
+
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-detalhes">
+
+    <h1>Detalhes do <span id="client-name-display">Cliente</span></h1>
+
+    <!-- Seção para informações do formulário -->
+    <section id="form-section">
+      <h2>Formulário do Cliente (Planejamento)</h2>
+      <div id="form-info-content">
+        <p id="form-loading-state">Carregando informações do formulário...</p>
+        <!-- Conteúdo dinâmico (link, dados preenchidos ou mensagem) será inserido aqui -->
+      </div>
+    </section>
+
+    <!-- Outros detalhes do cliente podem ir aqui no futuro -->
+
+  </main>
+
+  <script type="module">
+    import { injectSidebar } from "./sidebar.js";
+    import { supabase } from "./supabase.js"; // Importa supabase
+
+    injectSidebar("main-content-detalhes"); // Passa o ID do container principal
+
+    const clientNameDisplay = document.getElementById("client-name-display");
+    const formInfoContentEl = document.getElementById("form-info-content");
+    let currentClientId; // Declarada em escopo mais amplo
+
+    const sanitizeInput = (str) => {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/\'/g, "&#x27;") 
+        .replace(/`/g, "&#x60;");
+    };
+
+    const formatCurrencyForDisplay = (value) => {
+        if (value === null || value === undefined) return "N/A";
+        const number = parseFloat(value);
+        if (isNaN(number)) return "Valor inválido";
+        return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    };
+
+    function displayFormLink(latestForm) {
+        console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); 
+        const token = latestForm.token_unico;
+        const formId = latestForm.id;
+        const link = `${window.location.origin}/formulario-cliente.html?token=${token}`;
+        console.log("DEBUG: Setting innerHTML for pending form link..."); 
+        formInfoContentEl.innerHTML = `
+            <p>Este cliente ainda não preencheu o formulário.</p>
+            <p>Compartilhe o link abaixo com o cliente:</p>
+            <div class="form-link-container">
+                <a href="${link}" target="_blank">${link}</a>
+            </div>
+            <p><small>(Este link é único e só pode ser usado uma vez)</small></p>
+            <button class="delete-form-btn" data-form-id="${formId}">Excluir Link e Gerar Novo</button>
+        `;
+        console.log("DEBUG: innerHTML set. Querying for delete button..."); 
+        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
+        if (deleteBtn) {
+            console.log("DEBUG: Delete button found:", deleteBtn); 
+            console.log("DEBUG: Adding event listener to delete button..."); 
+            deleteBtn.addEventListener("click", handleDeleteForm);
+            console.log("DEBUG: Event listener added."); 
+        } else {
+            console.log("DEBUG: Delete button not found in DOM after setting innerHTML."); 
+        }
+    }
+
+    function displayFormData(formData) {
+        console.log("DEBUG: Entering displayFormData for completed form:", formData); 
+        let dataHtml = "";
+        if (formData.dados_formulario && typeof formData.dados_formulario === "object") {
+            const data = formData.dados_formulario;
+
+            const nomeCompleto = data.nome_completo ? sanitizeInput(data.nome_completo) : "N/A";
+            dataHtml += `<p><strong>Nome Completo:</strong> ${nomeCompleto}</p>`;
+
+            const rendaUnicaText = data.renda_unica === "sim" ? "Sim" : (data.renda_unica === "nao" ? "Não" : "N/A");
+            dataHtml += `<p><strong>Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
+
+            if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas) && data.outras_pessoas.length > 0) {
+                dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong></p><ul>`;
+                data.outras_pessoas.forEach((pessoa) => {
+                    const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : "Nome não informado";
+                    const autorizacaoText = pessoa.autorizacao === "sim" ? "Sim" : (pessoa.autorizacao === "nao" ? "Não" : "Não informado");
+                    dataHtml += `<li>${nomePessoa} (Precisa de autorização: ${autorizacaoText})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.renda_unica === "nao") {
+                 dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
+            }
+
+            const temDependentesText = data.tem_dependentes === "sim" ? "Sim" : (data.tem_dependentes === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Tem dependentes?</strong> ${temDependentesText}</p>`;
+
+            if (data.tem_dependentes === "sim" && Array.isArray(data.dependentes) && data.dependentes.length > 0) {
+                dataHtml += `<p><strong>Dependentes:</strong></p><ul>`;
+                data.dependentes.forEach((dependente) => {
+                    const nomeDep = dependente.nome ? sanitizeInput(dependente.nome) : "Nome não informado";
+                    const idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
+                    const relacaoDep = dependente.relacao ? sanitizeInput(dependente.relacao) : "N/A";
+                    dataHtml += `<li>${nomeDep} (Idade: ${idadeDep}, Relação: ${relacaoDep})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.tem_dependentes === "sim") {
+                dataHtml += `<p><strong>Dependentes:</strong> Nenhum dependente adicionado.</p>`;
+            }
+
+            // Exibição de Planos de Saúde
+            if (data.planos_saude && Object.keys(data.planos_saude).length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong></p><ul>`;
+                Object.entries(data.planos_saude).forEach(([nome, info]) => {
+                    const nomePessoaPlano = sanitizeInput(nome);
+                    let statusPlanoText = "N/A";
+                    if (info.possui === "sim") statusPlanoText = "Sim";
+                    else if (info.possui === "nao") statusPlanoText = "Não";
+                    else if (info.possui === "nao_sei") statusPlanoText = "Não sei informar";
+                    
+                    dataHtml += `<li>${nomePessoaPlano}: ${statusPlanoText}</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+
+            // Exibição de Seguros de Vida
+            if (data.seguros_vida && Object.keys(data.seguros_vida).length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Seguro de Vida:</strong></p><ul>`;
+                Object.entries(data.seguros_vida).forEach(([nome, info]) => {
+                    const nomePessoaSeguro = sanitizeInput(nome);
+                    let statusSeguroText = "N/A";
+                    if (info.possui === "sim") statusSeguroText = "Sim";
+                    else if (info.possui === "nao") statusSeguroText = "Não";
+                    else if (info.possui === "nao_sei") statusSeguroText = "Não sei informar";
+                    
+                    dataHtml += `<li>${nomePessoaSeguro}: ${statusSeguroText}</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+
+            // Exibição de Patrimônio Físico
+            const possuiPatrimonioText = data.tem_patrimonio === "sim" ? "Sim" : (data.tem_patrimonio === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
+
+            if (data.tem_patrimonio === "sim" && Array.isArray(data.patrimonios) && data.patrimonios.length > 0) {
+                dataHtml += `<p><strong>Patrimônios Físicos:</strong></p><ul>`;
+                data.patrimonios.forEach((patrimonio) => {
+                    const descPat = patrimonio.qual ? sanitizeInput(patrimonio.qual) : "Descrição não informada";
+                    const valorPat = formatCurrencyForDisplay(patrimonio.valor); 
+                    const seguroPatText = patrimonio.seguro === "sim" ? "Sim" : (patrimonio.seguro === "nao" ? "Não" : "N/A");
+                    const quitadoPatText = patrimonio.quitado === "sim" ? "Sim" : (patrimonio.quitado === "nao" ? "Não" : "N/A");
+                    dataHtml += `<li>${descPat} (Valor: ${valorPat}, Seguro: ${seguroPatText}, Quitado: ${quitadoPatText})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.tem_patrimonio === "sim") {
+                dataHtml += `<p><strong>Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
+            }
+
+            // Exibição do Patrimônio Líquido
+            const possuiPatrimonioLiquidoText = data.tem_patrimonio_liquido === "sim" ? "Sim" : (data.tem_patrimonio_liquido === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
+
+            if (data.tem_patrimonio_liquido === "sim" && Array.isArray(data.patrimonios_liquidos) && data.patrimonios_liquidos.length > 0) {
+                dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong></p><ul>`;
+                data.patrimonios_liquidos.forEach((patrimonio_liquido) => {
+                    const ondePatLiq = patrimonio_liquido.qual ? sanitizeInput(patrimonio_liquido.qual) : "Local não informado";
+                    const valorPatLiq = formatCurrencyForDisplay(patrimonio_liquido.valor);
+                    dataHtml += `<li>${ondePatLiq} (Valor: ${valorPatLiq})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.tem_patrimonio_liquido === "sim") {
+                dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
+            }
+
+            // Exibição de Dívidas
+            const possuiDividasText = data.tem_dividas === "sim" ? "Sim" : (data.tem_dividas === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Dívidas?</strong> ${possuiDividasText}</p>`;
+
+            if (data.tem_dividas === "sim" && Array.isArray(data.dividas) && data.dividas.length > 0) {
+                dataHtml += `<p><strong>Dívidas:</strong></p><ul>`;
+                data.dividas.forEach((divida) => {
+                    const credorDivida = divida.credor ? sanitizeInput(divida.credor) : "Credor não informado";
+                    const saldoDivida = formatCurrencyForDisplay(divida.saldo);
+                    dataHtml += `<li>A quem deve: ${credorDivida} (Saldo Devedor Atual: ${saldoDivida})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.tem_dividas === "sim") {
+                dataHtml += `<p><strong>Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
+            }
+            
+            // Exibição de Imposto de Renda com informações adicionais
+            if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Imposto de Renda:</strong></p><ul>`;
+                Object.entries(data.impostos_renda).forEach(([nome, info]) => {
+                    const nomePessoaIR = sanitizeInput(nome);
+                    let statusIRText = "N/A";
+                    if (info.declara === "sim") statusIRText = "Sim";
+                    else if (info.declara === "nao") statusIRText = "Não";
+                    else if (info.declara === "nao_sei") statusIRText = "Não sei informar";
+                    
+                    // Informações básicas sobre declaração
+                    let irInfoText = `${nomePessoaIR}: ${statusIRText}`;
+                    
+                    // Adicionar informações de tipo e resultado quando declara = sim
+                    if (info.declara === "sim") {
+                        // Tipo de IR
+                        let tipoIRText = "N/A";
+                        if (info.tipo_ir === "simples") tipoIRText = "Simples";
+                        else if (info.tipo_ir === "completa") tipoIRText = "Dedução Completa";
+                        else if (info.tipo_ir === "nao_sei") tipoIRText = "Não Sei Informar";
+                        
+                        // Resultado do IR
+                        let resultadoIRText = "N/A";
+                        if (info.resultado_ir === "paga") resultadoIRText = "Paga";
+                        else if (info.resultado_ir === "recebe") resultadoIRText = "Recebe";
+                        else if (info.resultado_ir === "isento") resultadoIRText = "Isento";
+                        else if (info.resultado_ir === "nao_sei") resultadoIRText = "Não Sei Informar";
+                        
+                        // Adicionar informações detalhadas
+                        dataHtml += `<li>${irInfoText}
+                            <ul>
+                                <li>Tipo: ${tipoIRText}</li>
+                                <li>Resultado: ${resultadoIRText}</li>
+                            </ul>
+                        </li>`;
+                    } else {
+                        // Apenas informação básica quando não declara ou não sabe
+                        dataHtml += `<li>${irInfoText}</li>`;
+                    }
+                });
+                dataHtml += `</ul>`;
+            }
+
+        } else {
+            dataHtml = "<p>Não foi possível carregar os dados detalhados do formulário.</p>";
+            console.log("DEBUG: dados_formulario is null or not an object:", formData.dados_formulario); 
+        }
+
+        formInfoContentEl.innerHTML = `
+            <p>Formulário preenchido em: ${new Date(formData.data_preenchimento).toLocaleString("pt-BR")}</p>
+            <div class="form-data-display">
+                ${dataHtml}
+            </div>
+            <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
+        `;
+        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
+        if (deleteBtn) {
+            deleteBtn.addEventListener("click", handleDeleteForm);
+        }
+    }
+
+    async function handleDeleteForm(e) {
+        console.log("DEBUG: Delete button clicked"); 
+        const formId = e.target.dataset.formId;
+        if (!formId) {
+            console.error("Erro: ID do formulário não encontrado no botão de exclusão.");
+            return;
+        }
+        
+        if (!confirm("Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.")) {
+            return;
+        }
+        
+        try {
+            const { error } = await supabase
+                .from("formularios_clientes")
+                .delete()
+                .eq("id", formId);
+                
+            if (error) throw error;
+            
+            // Após excluir, gerar um novo formulário
+            await generateNewForm();
+            
+        } catch (error) {
+            console.error("Erro ao excluir formulário:", error);
+            alert(`Erro ao excluir formulário: ${error.message}`);
+        }
+    }
+
+    async function generateNewForm() {
+        console.log("DEBUG: Generating new form for client ID:", currentClientId); 
+        if (!currentClientId) {
+            console.error("Erro: ID do cliente não definido para gerar novo formulário.");
+            return;
+        }
+        
+        try {
+            // Gerar token único
+            const token = crypto.randomUUID();
+            
+            // Inserir novo formulário
+            const { data, error } = await supabase
+                .from("formularios_clientes")
+                .insert([
+                    {
+                        cliente_id: currentClientId,
+                        token_unico: token,
+                        status: "pendente"
+                    }
+                ]);
+                
+            if (error) throw error;
+            
+            // Recarregar dados do formulário
+            loadFormData();
+            
+        } catch (error) {
+            console.error("Erro ao gerar novo formulário:", error);
+            alert(`Erro ao gerar novo formulário: ${error.message}`);
+        }
+    }
+
+    async function loadFormData() {
+        console.log("DEBUG: Loading form data for client ID:", currentClientId); 
+        if (!currentClientId) {
+            console.error("Erro: ID do cliente não definido para carregar formulário.");
+            return;
+        }
+        
+        try {
+            // Buscar o formulário mais recente para este cliente
+            const { data: formData, error: formError } = await supabase
+                .from("formularios_clientes")
+                .select("*")
+                .eq("cliente_id", currentClientId)
+                .order("created_at", { ascending: false })
+                .limit(1);
+                
+            if (formError) throw formError;
+            
+            if (!formData || formData.length === 0) {
+                // Nenhum formulário encontrado, gerar um novo
+                await generateNewForm();
+                return;
+            }
+            
+            const latestForm = formData[0];
+            
+            if (latestForm.status === "pendente") {
+                // Formulário pendente, mostrar link
+                displayFormLink(latestForm);
+            } else if (latestForm.status === "preenchido") {
+                // Formulário preenchido, mostrar dados
+                displayFormData(latestForm);
+            } else {
+                // Status desconhecido
+                formInfoContentEl.innerHTML = `<p>Status do formulário desconhecido: ${latestForm.status}</p>`;
+            }
+            
+        } catch (error) {
+            console.error("Erro ao carregar dados do formulário:", error);
+            formInfoContentEl.innerHTML = `<p>Erro ao carregar dados do formulário: ${error.message}</p>`;
+        }
+    }
+
+    async function loadClientDetails() {
+        // Obter ID do cliente da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const clientId = urlParams.get("id");
+        
+        if (!clientId) {
+            formInfoContentEl.innerHTML = "<p>ID do cliente não especificado na URL.</p>";
+            return;
+        }
+        
+        currentClientId = clientId; // Armazenar ID do cliente para uso posterior
+        
+        try {
+            // Buscar detalhes do cliente
+            const { data: clientData, error: clientError } = await supabase
+                .from("clientes")
+                .select("*")
+                .eq("id", clientId)
+                .single();
+                
+            if (clientError) throw clientError;
+            
+            if (!clientData) {
+                formInfoContentEl.innerHTML = "<p>Cliente não encontrado.</p>";
+                return;
+            }
+            
+            // Atualizar nome do cliente na página
+            clientNameDisplay.textContent = clientData.nome || "Cliente";
+            
+            // Carregar dados do formulário
+            loadFormData();
+            
+        } catch (error) {
+            console.error("Erro ao carregar detalhes do cliente:", error);
+            formInfoContentEl.innerHTML = `<p>Erro ao carregar detalhes do cliente: ${error.message}</p>`;
+        }
+    }
+
+    // Inicializar página
+    document.addEventListener("DOMContentLoaded", loadClientDetails);
+  </script>
+</body>
+</html>
