@@ -313,10 +313,33 @@
                 dataHtml += `<p><strong>Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
             }
             
-            // Exibição do Orçamento Mensal (NOVO)
-            if (data.orcamento_mensal !== undefined && data.orcamento_mensal !== null) {
-                const orcamentoFormatado = formatCurrencyForDisplay(data.orcamento_mensal);
-                dataHtml += `<p style="margin-top: 1rem;"><strong>Orçamento Mensal Estimado para o Projeto:</strong> ${orcamentoFormatado}</p>`;
+            // Exibição das Informações Financeiras (NOVO)
+            if (data.orcamento_mensal !== undefined || data.renda_mensal_total !== undefined || 
+                data.despesas_fixas_mensais !== undefined || data.despesas_variaveis_mensais !== undefined) {
+                
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações Financeiras:</strong></p><ul>`;
+                
+                if (data.orcamento_mensal !== undefined && data.orcamento_mensal !== null) {
+                    const orcamentoFormatado = formatCurrencyForDisplay(data.orcamento_mensal);
+                    dataHtml += `<li>Orçamento Mensal Estimado para o Projeto: ${orcamentoFormatado}</li>`;
+                }
+                
+                if (data.renda_mensal_total !== undefined && data.renda_mensal_total !== null) {
+                    const rendaFormatada = formatCurrencyForDisplay(data.renda_mensal_total);
+                    dataHtml += `<li>Renda Mensal Total: ${rendaFormatada}</li>`;
+                }
+                
+                if (data.despesas_fixas_mensais !== undefined && data.despesas_fixas_mensais !== null) {
+                    const despesasFixasFormatadas = formatCurrencyForDisplay(data.despesas_fixas_mensais);
+                    dataHtml += `<li>Despesas Fixas Mensais Totais: ${despesasFixasFormatadas}</li>`;
+                }
+                
+                if (data.despesas_variaveis_mensais !== undefined && data.despesas_variaveis_mensais !== null) {
+                    const despesasVariaveisFormatadas = formatCurrencyForDisplay(data.despesas_variaveis_mensais);
+                    dataHtml += `<li>Despesas Variáveis Mensais Totais: ${despesasVariaveisFormatadas}</li>`;
+                }
+                
+                dataHtml += `</ul>`;
             }
             
             // Exibição de Imposto de Renda com informações adicionais
