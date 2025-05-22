@@ -1084,15 +1084,30 @@ function attachFormEventListeners(formId) {
                     }
                 });
                 
-                // Coletar dados do orçamento mensal
+                // Coletar dados financeiros
                 const orcamentoMensalInput = document.getElementById("orcamento_mensal");
                 const orcamentoMensalRaw = orcamentoMensalInput ? orcamentoMensalInput.value : "";
                 const orcamentoMensal = parseCurrency(orcamentoMensalRaw);
                 
+                const rendaMensalInput = document.getElementById("renda_mensal_total");
+                const rendaMensalRaw = rendaMensalInput ? rendaMensalInput.value : "";
+                const rendaMensal = parseCurrency(rendaMensalRaw);
+                
+                const despesasFixasInput = document.getElementById("despesas_fixas_mensais");
+                const despesasFixasRaw = despesasFixasInput ? despesasFixasInput.value : "";
+                const despesasFixas = parseCurrency(despesasFixasRaw);
+                
+                const despesasVariaveisInput = document.getElementById("despesas_variaveis_mensais");
+                const despesasVariaveisRaw = despesasVariaveisInput ? despesasVariaveisInput.value : "";
+                const despesasVariaveis = parseCurrency(despesasVariaveisRaw);
+                
                 // Preparar dados para envio
                 const dadosFormulario = {
                     nome_completo: nomeCompleto,
-                    orcamento_mensal: orcamentoMensal, // Novo campo de orçamento
+                    orcamento_mensal: orcamentoMensal,
+                    renda_mensal_total: rendaMensal,
+                    despesas_fixas_mensais: despesasFixas,
+                    despesas_variaveis_mensais: despesasVariaveis,
                     renda_unica: rendaUnica,
                     outras_pessoas: outrasPessoas,
                     tem_dependentes: temDependentes,
@@ -1216,13 +1231,6 @@ function renderForm(formData) {
                 <input type="text" id="nome_completo" name="nome_completo" required>
             </div>
 
-            <!-- NOVO CAMPO ORÇAMENTO -->
-            <div class="form-group">
-                <label for="orcamento_mensal">Orçamento Mensal Estimado para o Projeto:</label>
-                <input type="text" id="orcamento_mensal" name="orcamento_mensal" placeholder="R$ 0,00">
-            </div>
-            <!-- FIM NOVO CAMPO ORÇAMENTO -->
-
             <div class="radio-group">
                 <label>Você é a única pessoa com renda na casa?</label><br>
                 <input type="radio" id="renda_unica_sim" name="renda_unica" value="sim" required>
@@ -1318,6 +1326,36 @@ function renderForm(formData) {
                 <h3 id="imposto-renda-section-title" style="display: none;">Informações sobre Imposto de Renda:</h3>
                 <div id="imposto-renda-section-content"></div>
             </div>
+
+            <!-- SEÇÃO DE INFORMAÇÕES FINANCEIRAS -->
+            <div id="informacoes-financeiras-section" style="margin-top: 2rem;">
+                <h3 style="text-align: center; margin-bottom: 1.5rem;">Informações Financeiras</h3>
+                
+                <!-- Campo de Orçamento -->
+                <div class="form-group">
+                    <label for="orcamento_mensal">Orçamento Mensal Estimado para o Projeto:</label>
+                    <input type="text" id="orcamento_mensal" name="orcamento_mensal" placeholder="R$ 0,00">
+                </div>
+                
+                <!-- Campo de Renda Mensal Total -->
+                <div class="form-group">
+                    <label for="renda_mensal_total">Renda Mensal Total:</label>
+                    <input type="text" id="renda_mensal_total" name="renda_mensal_total" placeholder="R$ 0,00">
+                </div>
+                
+                <!-- Campo de Despesas Fixas Mensais -->
+                <div class="form-group">
+                    <label for="despesas_fixas_mensais">Despesas Fixas Mensais Totais (contas, boletos, mensalidades...):</label>
+                    <input type="text" id="despesas_fixas_mensais" name="despesas_fixas_mensais" placeholder="R$ 0,00">
+                </div>
+                
+                <!-- Campo de Despesas Variáveis Mensais -->
+                <div class="form-group">
+                    <label for="despesas_variaveis_mensais">Despesas Variáveis Mensais Totais (gasolina, feira, lazer...):</label>
+                    <input type="text" id="despesas_variaveis_mensais" name="despesas_variaveis_mensais" placeholder="R$ 0,00">
+                </div>
+            </div>
+            <!-- FIM SEÇÃO DE INFORMAÇÕES FINANCEIRAS -->
 
             <div class="form-actions">
                 <button type="submit" id="submit-btn" class="submit-button">Enviar Respostas</button>
