@@ -313,6 +313,12 @@
                 dataHtml += `<p><strong>Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
             }
             
+            // Exibição do Orçamento Mensal (NOVO)
+            if (data.orcamento_mensal !== undefined && data.orcamento_mensal !== null) {
+                const orcamentoFormatado = formatCurrencyForDisplay(data.orcamento_mensal);
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Orçamento Mensal Estimado para o Projeto:</strong> ${orcamentoFormatado}</p>`;
+            }
+            
             // Exibição de Imposto de Renda com informações adicionais
             if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
                 dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Imposto de Renda:</strong></p><ul>`;
