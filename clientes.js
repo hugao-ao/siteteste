@@ -1,4 +1,4 @@
-// clientes.js
+// clientes.js - Versão modificada com permissões para usuários
 import { supabase } from "./supabase.js";
 
 // --- Elementos DOM ---
@@ -7,6 +7,7 @@ const addClientForm = document.getElementById("add-client-form");
 const newClientNameInput = document.getElementById("new-client-name");
 const newClientWhatsappInput = document.getElementById("new-client-whatsapp");
 const newClientProjectSelect = document.getElementById("new-client-project");
+const newClientVisibilitySelect = document.getElementById("new-client-visibility"); // Novo elemento para visibilidade
 const clientsTableBody = document.querySelector("#clients-table tbody");
 const saveAllClientsBtn = document.getElementById("save-all-clients-btn");
 // Modal Elements
@@ -131,9 +132,15 @@ async function initializeDashboard() {
             if (newClientProjectSelect) newClientProjectSelect.disabled = false;
         } else {
             if (adminViewIndicator) adminViewIndicator.style.display = 'none';
-            if (addClientForm) addClientForm.style.display = 'none';
+            // MODIFICADO: Mostrar formulário para usuários normais
+            if (addClientForm) addClientForm.style.display = 'grid';
             const addClientTitle = addClientForm?.previousElementSibling;
-            if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'none';
+            if (addClientTitle && addClientTitle.tagName === 'H2') addClientTitle.style.display = 'block';
+            // Configurar projeto para o projeto do usuário
+            if (newClientProjectSelect && currentUserProjeto) {
+                newClientProjectSelect.value = currentUserProjeto;
+                newClientProjectSelect.disabled = true;
+            }
         }
     }
     console.log(`clientes.js: Contexto final - isAdmin: ${isAdmin}, currentUserId: ${currentUserId}, currentUserProjeto: ${currentUserProjeto}`);
@@ -294,7 +301,14 @@ function renderClients(clients) {
         tr.dataset.originalVisibility = client.visibility || 'INDIVIDUAL';
         tr.dataset.originalAssignedTo = client.assigned_to_user_id || '';
 
-        const canEditDelete = isAdmin || client.criado_por_id === currentUserId || (client.visibility === 'TODOS' && client.projeto === currentUserProjeto);
+        // MODIFICADO: Lógica de permissão para edição/exclusão
+        // Usuários podem editar/excluir:
+        // 1. Clientes que eles mesmos criaram (criado_por_id === currentUserId)
+        // 2. Clientes marcados como TODOS no projeto do usuário (visibility === 'TODOS' && projeto === currentUserProjeto)
+        const canEditDelete = isAdmin || 
+                             client.criado_por_id === currentUserId || 
+                             (client.visibility === 'TODOS' && client.projeto === currentUserProjeto);
+                             
         const formCount = client.formularios_clientes && client.formularios_clientes.length > 0 ? client.formularios_clientes[0].count : 0;
 
         const nomeHtml = canEditDelete
@@ -341,6 +355,15 @@ function renderClients(clients) {
                     </select>
                 </div>
             `;
+        } else if (canEditDelete && client.criado_por_id === currentUserId) {
+            // MODIFICADO: Permitir que usuários alterem a visibilidade de seus próprios clientes
+            const visibilitySelect = `
+                <select class="client-input" data-field="visibility" id="visibility-${client.id}">
+                    <option value="INDIVIDUAL" ${client.visibility === 'INDIVIDUAL' ? 'selected' : ''}>Individual</option>
+                    <option value="TODOS" ${client.visibility === 'TODOS' ? 'selected' : ''}>Todos</option>
+                </select>
+            `;
+            assignmentHtml = visibilitySelect;
         } else {
             const visibilityText = client.visibility === 'TODOS' ? '<span class="status-todos">TODOS</span>' : '<span class="status-individual">Individual</span>';
             const assignedUserName = allUsers.find(u => u.id === client.assigned_to_user_id)?.usuario || 'Nenhum';
@@ -462,6 +485,12 @@ async function addClient(event) {
     const name = newClientNameInput.value.trim();
     const whatsapp = newClientWhatsappInput.value.trim();
     const project = newClientProjectSelect.value;
+    
+    // MODIFICADO: Obter visibilidade do select (se existir) ou definir com base no contexto
+    let visibility = "INDIVIDUAL"; // Valor padrão
+    if (newClientVisibilitySelect && !isAdmin) {
+        visibility = newClientVisibilitySelect.value;
+    }
 
     if (!name || !whatsapp || !project) {
         alert("Por favor, preencha todos os campos.");
@@ -475,7 +504,7 @@ async function addClient(event) {
                 whatsapp: whatsapp,
                 projeto: project,
                 criado_por_id: currentUserId,
-                visibility: "INDIVIDUAL",
+                visibility: visibility,
                 assigned_to_user_id: currentUserId
             }
         ]).select();
@@ -488,7 +517,8 @@ async function addClient(event) {
         alert("Cliente adicionado com sucesso!");
         newClientNameInput.value = "";
         newClientWhatsappInput.value = "";
-        if (!filterProject) newClientProjectSelect.value = "";
+        if (newClientVisibilitySelect) newClientVisibilitySelect.value = "INDIVIDUAL";
+        if (!isAdmin && newClientProjectSelect) newClientProjectSelect.value = currentUserProjeto;
 
         // Recarregar lista de clientes
         const urlParams = new URLSearchParams(window.location.search);
@@ -579,6 +609,27 @@ async function deleteClient(id) {
     }
 
     try {
+        // MODIFICADO: Verificar permissões antes de excluir
+        const { data: clientData, error: clientError } = await supabase
+            .from('clientes')
+            .select('criado_por_id, visibility, projeto')
+            .eq('id', id)
+            .single();
+            
+        if (clientError) {
+            console.error("clientes.js: Erro ao verificar cliente para exclusão:", clientError);
+            throw new Error("Erro ao verificar permissões: " + clientError.message);
+        }
+        
+        // Verificar permissões
+        const canDelete = isAdmin || 
+                         clientData.criado_por_id === currentUserId || 
+                         (clientData.visibility === 'TODOS' && clientData.projeto === currentUserProjeto);
+                         
+        if (!canDelete) {
+            throw new Error("Você não tem permissão para excluir este cliente.");
+        }
+
         // Verificar se há formulários associados
         let count = 0;
         const { data: countData, error: countError } = await supabase
@@ -588,6 +639,8 @@ async function deleteClient(id) {
         if (countError) {
             console.error("clientes.js: Erro ao contar formulários para exclusão:", countError);
             // Não lança erro aqui, permite excluir cliente mesmo se contagem falhar
+        } else if (countData) {
+            count = countData.count || 0;
         }
 
         let confirmMessage = "Excluir este cliente?";
@@ -615,7 +668,7 @@ async function deleteClient(id) {
     }
 }
 
-// --- Lógica do Modal de Formulários (CORRIGIDO) --- 
+// --- Lógica do Modal de Formulários --- 
 async function showClientFormsModal(clientId, clientName) {
     console.log(`clientes.js: showClientFormsModal() chamado para Cliente ID: ${clientId}, Nome: ${clientName}`);
     if (!formsModal || !modalTitle || !clientFormsList || !noFormsMessage) {
@@ -634,7 +687,6 @@ async function showClientFormsModal(clientId, clientName) {
 async function loadClientForms(clientId) {
     console.log(`clientes.js: loadClientForms() chamado para Cliente ID: ${clientId}`);
     try {
-        // <<< CORREÇÃO: Removido 'tipo_formulario' do select >>>
         const { data: forms, error } = await supabase
             .from('formularios_clientes')
             .select('id, created_at') // Seleciona apenas id e created_at
@@ -643,10 +695,6 @@ async function loadClientForms(clientId) {
 
         if (error) {
             console.error("clientes.js: Erro ao carregar formulários (Supabase):", error);
-            // <<< CORREÇÃO: Verifica se o erro é sobre a coluna inexistente >>>
-            if (error.code === '42703' && error.message.includes('tipo_formulario')) {
-                 throw new Error("Erro DB: A coluna 'tipo_formulario' não existe na tabela 'formularios_clientes'. Remova-a da consulta ou adicione-a no Supabase.");
-            }
             throw error;
         }
 
@@ -660,11 +708,10 @@ async function loadClientForms(clientId) {
             forms.forEach(form => {
                 const li = document.createElement('li');
                 const formDate = new Date(form.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
-                // <<< CORREÇÃO: Usa texto genérico já que tipo_formulario não existe >>>
                 li.innerHTML = `
                     <span class="form-info">Formulário - ${formDate}</span>
                     <div class="form-actions">
-                        <button class="delete-form-btn" data-form-id="${form.id}" data-client-id="${clientId}" title="Excluir Formulário"><i class="fa-solid fa-trash-can"></i> Excluir</button>
+                        <button class="delete-form-btn" data-form-id="${form.id}" data-client-id="${clientId}" title="Excluir Formulário"><i class="fa-solid fa-trash-can"></i></button>
                     </div>
                 `;
                 clientFormsList.appendChild(li);
@@ -672,83 +719,112 @@ async function loadClientForms(clientId) {
         }
     } catch (error) {
         console.error("clientes.js: Erro GERAL em loadClientForms:", error);
-        clientFormsList.innerHTML = `<li>Erro ao carregar formulários: ${error.message}</li>`;
-        noFormsMessage.style.display = 'none';
+        clientFormsList.innerHTML = `<li style="color: red;">Erro ao carregar formulários: ${error.message}</li>`;
     }
 }
 
+// --- Excluir Formulário --- 
 async function deleteForm(formId, clientId) {
     console.log(`clientes.js: deleteForm() chamado para Formulário ID: ${formId}, Cliente ID: ${clientId}`);
-    if (!confirm("Tem certeza que deseja excluir este formulário permanentemente?")) {
-        console.log("clientes.js: Exclusão de formulário cancelada.");
+    if (!formId || !clientId) {
+        console.error("clientes.js: IDs não fornecidos para exclusão de formulário.");
         return;
     }
 
     try {
-        const { error } = await supabase
-            .from('formularios_clientes')
-            .delete()
-            .eq('id', formId);
+        // MODIFICADO: Verificar permissões antes de excluir formulário
+        const { data: clientData, error: clientError } = await supabase
+            .from('clientes')
+            .select('criado_por_id, visibility, projeto')
+            .eq('id', clientId)
+            .single();
+            
+        if (clientError) {
+            console.error("clientes.js: Erro ao verificar cliente para exclusão de formulário:", clientError);
+            throw new Error("Erro ao verificar permissões: " + clientError.message);
+        }
+        
+        // Verificar permissões
+        const canDelete = isAdmin || 
+                         clientData.criado_por_id === currentUserId || 
+                         (clientData.visibility === 'TODOS' && clientData.projeto === currentUserProjeto);
+                         
+        if (!canDelete) {
+            throw new Error("Você não tem permissão para excluir formulários deste cliente.");
+        }
 
-        if (error) {
-            console.error("clientes.js: Erro ao excluir formulário (Supabase):", error);
-            throw error;
+        if (!confirm("Tem certeza que deseja excluir este formulário?")) {
+            console.log("clientes.js: Exclusão de formulário cancelada pelo usuário.");
+            return;
+        }
+
+        const { error: deleteError } = await supabase.from("formularios_clientes").delete().eq("id", formId);
+        if (deleteError) {
+            console.error("clientes.js: Erro ao excluir formulário (Supabase):", deleteError);
+            throw deleteError;
         }
 
         alert("Formulário excluído com sucesso!");
-        await loadClientForms(clientId); // Recarrega modal
-        const urlParams = new URLSearchParams(window.location.search);
-        loadClients(urlParams.get('projeto')); // Recarrega tabela principal
-        console.log(`clientes.js: Formulário ID ${formId} excluído.`);
+        // Atualizar contagem de formulários na tabela
+        const formButton = clientsTableBody.querySelector(`button.view-forms-btn[data-client-id="${clientId}"]`);
+        if (formButton) {
+            const formCountText = formButton.textContent.trim();
+            const formCount = parseInt(formCountText);
+            if (!isNaN(formCount) && formCount > 0) {
+                formButton.innerHTML = `<i class="fa-solid fa-file-lines"></i> ${formCount - 1}`;
+            }
+        }
+        // Recarregar formulários no modal
+        await loadClientForms(clientId);
+        console.log(`clientes.js: Formulário ID ${formId} excluído com sucesso.`);
     } catch (error) {
         console.error("clientes.js: Erro GERAL em deleteForm:", error);
         alert("Erro ao excluir formulário: " + error.message);
     }
 }
 
-// --- Manipuladores de Eventos --- 
+// --- Manipulador de Cliques na Tabela --- 
 function handleTableClick(event) {
-    const targetButton = event.target.closest('button');
-    if (!targetButton) return;
-
-    const row = targetButton.closest('tr'); // Get the table row
-    const clientId = targetButton.dataset.clientId || row?.dataset.clientId;
-    const id = targetButton.dataset.id; // Para delete-btn de cliente
-
-    if (targetButton.classList.contains("view-details-btn")) {
-        // CORREÇÃO: Redireciona para cliente-detalhes.html com o parâmetro id na URL
-        if (clientId) {
-            console.log(`clientes.js: Redirecionando para detalhes do cliente ID: ${clientId}`);
-            window.location.href = `cliente-detalhes.html?id=${clientId}`;
-        } else {
-            console.error("clientes.js: Client ID not found for view-details-btn.");
-            alert("Erro: ID do cliente não encontrado para ver os detalhes.");
-        }
-    } else if (targetButton.classList.contains("delete-btn")) {
-        if (id) deleteClient(id);
-    } else if (targetButton.classList.contains("view-forms-btn")) {
-        // <<< CORREÇÃO: Usa nome do dataset do botão, que foi adicionado em renderClients >>>
-        const clientNameFromButton = targetButton.dataset.clientName;
-        if (clientId && clientNameFromButton) {
-            showClientFormsModal(clientId, clientNameFromButton);
-        } else {
-             console.error(`clientes.js: Client ID (${clientId}) or Name (${clientNameFromButton}) not found for view-forms-btn.`);
-             alert("Erro: Não foi possível obter informações do cliente para mostrar formulários.");
-        }
+    const target = event.target;
+    
+    // Botão de exclusão de cliente
+    if (target.classList.contains("delete-btn") || target.closest(".delete-btn")) {
+        const deleteBtn = target.classList.contains("delete-btn") ? target : target.closest(".delete-btn");
+        const id = deleteBtn.dataset.id;
+        deleteClient(id);
+        return;
+    }
+    
+    // Botão de visualização de formulários
+    if (target.classList.contains("view-forms-btn") || target.closest(".view-forms-btn")) {
+        const formBtn = target.classList.contains("view-forms-btn") ? target : target.closest(".view-forms-btn");
+        const clientId = formBtn.dataset.clientId;
+        const clientName = formBtn.dataset.clientName;
+        showClientFormsModal(clientId, clientName);
+        return;
+    }
+    
+    // Botão de visualização de detalhes
+    if (target.classList.contains("view-details-btn") || target.closest(".view-details-btn")) {
+        const detailsBtn = target.classList.contains("view-details-btn") ? target : target.closest(".view-details-btn");
+        const clientId = detailsBtn.dataset.clientId;
+        window.location.href = `cliente-detalhes.html?id=${clientId}`;
+        return;
     }
 }
 
+// --- Manipulador de Cliques no Modal de Formulários --- 
 function handleDeleteFormClick(event) {
-    const targetButton = event.target.closest('.delete-form-btn');
-    if (targetButton) {
-        const formId = targetButton.dataset.formId;
-        const clientId = targetButton.dataset.clientId;
-        if (formId && clientId) {
-            deleteForm(formId, clientId);
-        }
+    const target = event.target;
+    
+    // Botão de exclusão de formulário
+    if (target.classList.contains("delete-form-btn") || target.closest(".delete-form-btn")) {
+        const deleteBtn = target.classList.contains("delete-form-btn") ? target : target.closest(".delete-form-btn");
+        const formId = deleteBtn.dataset.formId;
+        const clientId = deleteBtn.dataset.clientId;
+        deleteForm(formId, clientId);
     }
 }
 
-// --- Inicialização chamada pelo HTML via DOMContentLoaded --- 
-console.log("clientes.js: Script carregado.");
+// --- Inicialização --- 
 document.addEventListener("DOMContentLoaded", initializeDashboard);
