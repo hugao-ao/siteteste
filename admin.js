@@ -303,17 +303,43 @@ function markUserAsModified(event) {
 // async function saveUser(id) { ... } // REMOVIDA
 
 async function deleteUser(id) {
-  if (!confirm("Tem certeza que deseja excluir este usuário?")) return;
+  if (!confirm("Tem certeza que deseja excluir este usuário? Os clientes associados serão transferidos para o administrador.")) return;
   
   try {
-    const { error } = await supabase
-      .from("credenciais")
-      .delete()
-      .eq("id", id);
-
-    if (error) throw error;
+    // 1. Obter o ID do administrador (assumindo que existe um usuário com nível 'admin')
+    const { data: adminData, error: adminError } = await supabase
+        .from('credenciais')
+        .select('id')
+        .eq('nivel', 'admin')
+        .single();
+        
+    if (adminError || !adminData) {
+        throw new Error('Não foi possível encontrar o administrador: ' + (adminError?.message || 'Administrador não encontrado'));
+    }
     
-    alert("Usuário excluído com sucesso!");
+    const adminId = adminData.id;
+    
+    // 2. Transferir todos os clientes do usuário a ser excluído para o administrador
+    const { error: updateError } = await supabase
+        .from('clientes')
+        .update({ criado_por_id: adminId })
+        .eq('criado_por_id', id);
+        
+    if (updateError) {
+        throw new Error('Erro ao transferir clientes: ' + updateError.message);
+    }
+    
+    // 3. Excluir o usuário após a transferência bem-sucedida
+    const { error: deleteError } = await supabase
+        .from("credenciais")
+        .delete()
+        .eq("id", id);
+        
+    if (deleteError) {
+        throw new Error('Erro ao excluir usuário: ' + deleteError.message);
+    }
+    
+    alert("Usuário excluído com sucesso e clientes transferidos para o administrador!");
     const manageRowToRemove = manageTableBody.querySelector(`tr[data-user-id="${id}"]`);
     if (manageRowToRemove) manageRowToRemove.remove();
     modifiedUserIds.delete(id); // Remove do set de modificados se estava lá
