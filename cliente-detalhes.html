@@ -356,6 +356,61 @@
                 dataHtml += `</ul>`;
             }
 
+            // ===== INÍCIO DAS NOVAS SEÇÕES =====
+            
+            // Exibição de Orçamento - Entradas de Renda
+            if (Array.isArray(data.orcamento_renda) && data.orcamento_renda.length > 0) {
+                dataHtml += `<p style="margin-top: 1.5rem;"><strong>Orçamento - Entradas de Renda:</strong></p><ul>`;
+                data.orcamento_renda.forEach((renda) => {
+                    const descricaoRenda = renda.descricao ? sanitizeInput(renda.descricao) : "Descrição não informada";
+                    const valorRenda = formatCurrencyForDisplay(renda.valor);
+                    dataHtml += `<li>${descricaoRenda} (Valor: ${valorRenda})</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+
+            // Exibição de Orçamento - Despesas Fixas
+            if (Array.isArray(data.orcamento_despesas_fixas) && data.orcamento_despesas_fixas.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Orçamento - Despesas Fixas:</strong></p><ul>`;
+                data.orcamento_despesas_fixas.forEach((despesa) => {
+                    const descricaoDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
+                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
+                    dataHtml += `<li>${descricaoDespesa} (Valor: ${valorDespesa})</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+
+            // Exibição de Orçamento - Despesas Variáveis
+            if (Array.isArray(data.orcamento_despesas_variaveis) && data.orcamento_despesas_variaveis.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Orçamento - Despesas Variáveis:</strong></p><ul>`;
+                data.orcamento_despesas_variaveis.forEach((despesa) => {
+                    const descricaoDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
+                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
+                    dataHtml += `<li>${descricaoDespesa} (Valor Médio: ${valorDespesa})</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+
+            // Exibição de Objetivos Financeiros
+            if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
+                dataHtml += `<p style="margin-top: 1.5rem;"><strong>Objetivos Financeiros:</strong></p><ul>`;
+                data.objetivos.forEach((objetivo) => {
+                    const descricaoObjetivo = objetivo.descricao ? sanitizeInput(objetivo.descricao) : "Objetivo não informado";
+                    const valorObjetivo = formatCurrencyForDisplay(objetivo.valor);
+                    const prazoObjetivo = objetivo.prazo ? sanitizeInput(objetivo.prazo) : "Prazo não informado";
+                    dataHtml += `<li>${descricaoObjetivo} (Valor: ${valorObjetivo}, Prazo: ${prazoObjetivo})</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+
+            // Exibição de Informações Adicionais
+            if (data.info_adicionais && data.info_adicionais.trim() !== "") {
+                dataHtml += `<p style="margin-top: 1.5rem;"><strong>Informações Adicionais:</strong></p>`;
+                dataHtml += `<p style="white-space: pre-wrap; background-color: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 4px;">${sanitizeInput(data.info_adicionais)}</p>`;
+            }
+            
+            // ===== FIM DAS NOVAS SEÇÕES =====
+
         } else {
             dataHtml = "<p>Não foi possível carregar os dados detalhados do formulário.</p>";
             console.log("DEBUG: dados_formulario is null or not an object:", formData.dados_formulario); 
