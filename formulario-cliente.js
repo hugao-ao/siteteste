@@ -19,22 +19,21 @@ const sanitizeInput = (str) => {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
-    .replace(/\'/g, "&#x27;")
+    .replace(/\'/g, "&#x27;") // Correção: usar aspas simples escapadas
     .replace(/`/g, "&#x60;");
 };
 
 const formatCurrency = (value) => {
     if (value === null || value === undefined || value === "") return "";
-    let cleanValue = String(value).replace(/[^\d,.-]/g, 
-        '');
+    let cleanValue = String(value).replace(/[^\d,.-]/g, ''); // Correção: remover espaço extra
     const commaCount = (cleanValue.match(/,/g) || []).length;
     if (commaCount > 1) {
         const parts = cleanValue.split(',');
         cleanValue = parts.slice(0, -1).join('') + '.' + parts.slice(-1);
     } else {
-        cleanValue = cleanValue.replace(',', '.'); 
+        cleanValue = cleanValue.replace(',', '.');
     }
-    
+
     const number = parseFloat(cleanValue);
     if (isNaN(number)) return "";
     return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -57,6 +56,7 @@ function showMessage(type, text) {
     messageAreaEl.innerHTML = `<div class="message ${type}">${sanitizeInput(text)}</div>`;
 }
 
+// --- Funções de Atualização de Labels Dinâmicos (EXISTENTES) ---
 function updatePerguntaDependentesLabel() {
     const labelTemDependentes = document.getElementById("label_tem_dependentes");
     if (!labelTemDependentes) return;
@@ -145,19 +145,23 @@ function updatePerguntaDividasLabel() {
     }
 }
 
+// --- Funções de Renderização e Gerenciamento de Seções Dinâmicas (EXISTENTES) ---
+
+// ... (Funções save/restore/render para Imposto de Renda, Plano de Saúde, Seguro de Vida - MANTIDAS COMO ESTÃO) ...
+
 // Função para salvar as seleções de imposto de renda
 function saveImpostoRendaSelections() {
     const container = document.getElementById("imposto-renda-section-content");
     if (!container) return;
-    impostoRendaSelections = {}; 
-    
+    impostoRendaSelections = {};
+
     // Salvar seleções de declaração de IR
     container.querySelectorAll(".imposto-renda-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]').name; 
+        const nameAttribute = entry.querySelector('input[type="radio"]').name;
         const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
         if (selectedRadio) {
             impostoRendaSelections[nameAttribute] = selectedRadio.value;
-            
+
             // Salvar seleções de tipo e resultado para respostas "sim"
             if (selectedRadio.value === "sim") {
                 // Salvar tipo de IR
@@ -166,7 +170,7 @@ function saveImpostoRendaSelections() {
                 if (tipoSelectedRadio) {
                     impostoRendaSelections[tipoNameAttribute] = tipoSelectedRadio.value;
                 }
-                
+
                 // Salvar resultado de IR
                 const resultadoNameAttribute = `${nameAttribute}_resultado`;
                 const resultadoSelectedRadio = entry.querySelector(`input[name="${resultadoNameAttribute}"]:checked`);
@@ -185,7 +189,7 @@ function restoreImpostoRendaSelections() {
         const radioToSelect = document.querySelector(`input[name="${nameAttribute}"][value="${value}"]`);
         if (radioToSelect) {
             radioToSelect.checked = true;
-            
+
             // Se for uma seleção de declaração de IR com valor "sim", mostrar perguntas adicionais
             if (nameAttribute.indexOf("_tipo") === -1 && nameAttribute.indexOf("_resultado") === -1 && value === "sim") {
                 const entryDiv = radioToSelect.closest('.imposto-renda-entry');
@@ -202,20 +206,20 @@ function restoreImpostoRendaSelections() {
 
 // Função para renderizar as perguntas de imposto de renda
 function renderImpostoRendaQuestions() {
-    saveImpostoRendaSelections(); 
+    saveImpostoRendaSelections();
     const container = document.getElementById("imposto-renda-section-content");
     if (!container) return;
     container.innerHTML = '';
-    
+
     const pessoasComRenda = [];
     const nomeCompletoInput = document.getElementById("nome_completo");
     if (nomeCompletoInput && nomeCompletoInput.value.trim() !== "") {
         pessoasComRenda.push({ id: "preenchedor_ir", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
-    
+
     let temOutrasPessoasComRenda = false;
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => {
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasComRenda.push({ id: `outra_pessoa_ir_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
@@ -223,16 +227,16 @@ function renderImpostoRendaQuestions() {
             }
         });
     }
-    
+
     const tituloImpostoRenda = document.getElementById("imposto-renda-section-title");
     if (pessoasComRenda.length === 0) {
         container.innerHTML = "<p>Preencha as informações sobre nome e renda para definir as perguntas sobre imposto de renda.</p>";
         if(tituloImpostoRenda) tituloImpostoRenda.style.display = 'none';
         return;
     }
-    
+
     if(tituloImpostoRenda) tituloImpostoRenda.style.display = 'block';
-    
+
     // Pergunta para o preenchedor (sempre exibida)
     const preenchedor = pessoasComRenda.find(p => p.tipo === "preenchedor");
     if (preenchedor) {
@@ -296,12 +300,12 @@ function renderImpostoRendaQuestions() {
         entryDiv.dataset.personName = preenchedor.nome;
         entryDiv.dataset.personType = preenchedor.tipo;
         container.appendChild(entryDiv);
-        
+
         // Adicionar evento para mostrar/ocultar perguntas adicionais
         const simRadio = entryDiv.querySelector(`#${personId}_sim`);
         const naoRadio = entryDiv.querySelector(`#${personId}_nao`);
         const additionalQuestions = entryDiv.querySelector('.imposto-renda-additional-questions');
-        
+
         if (simRadio && naoRadio && additionalQuestions) {
             simRadio.addEventListener('change', () => {
                 additionalQuestions.style.display = 'block';
@@ -311,7 +315,7 @@ function renderImpostoRendaQuestions() {
             });
         }
     }
-    
+
     // Perguntas para outras pessoas com renda (se houver)
     if (temOutrasPessoasComRenda) {
         pessoasComRenda.forEach((pessoa) => {
@@ -382,13 +386,13 @@ function renderImpostoRendaQuestions() {
                 entryDiv.dataset.personName = pessoa.nome;
                 entryDiv.dataset.personType = pessoa.tipo;
                 container.appendChild(entryDiv);
-                
+
                 // Adicionar evento para mostrar/ocultar perguntas adicionais
                 const simRadio = entryDiv.querySelector(`#${personId}_sim`);
                 const naoRadio = entryDiv.querySelector(`#${personId}_nao`);
                 const naoSeiRadio = entryDiv.querySelector(`#${personId}_naosei`);
                 const additionalQuestions = entryDiv.querySelector('.imposto-renda-additional-questions');
-                
+
                 if (simRadio && naoRadio && naoSeiRadio && additionalQuestions) {
                     simRadio.addEventListener('change', () => {
                         additionalQuestions.style.display = 'block';
@@ -403,16 +407,16 @@ function renderImpostoRendaQuestions() {
             }
         });
     }
-    
+
     restoreImpostoRendaSelections();
 }
 
 function savePlanoSaudeSelections() {
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
-    planoSaudeSelections = {}; 
+    planoSaudeSelections = {};
     container.querySelectorAll(".plano-saude-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]').name; 
+        const nameAttribute = entry.querySelector('input[type="radio"]').name;
         const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
         if (selectedRadio) {
             planoSaudeSelections[nameAttribute] = selectedRadio.value;
@@ -431,7 +435,7 @@ function restorePlanoSaudeSelections() {
 }
 
 function renderPlanoSaudeQuestions() {
-    savePlanoSaudeSelections(); 
+    savePlanoSaudeSelections();
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
     container.innerHTML = '';
@@ -441,7 +445,7 @@ function renderPlanoSaudeQuestions() {
         pessoasDaCasa.push({ id: "preenchedor_plano", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => {
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `outra_pessoa_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
@@ -449,7 +453,7 @@ function renderPlanoSaudeQuestions() {
         });
     }
     if (document.getElementById("tem_dependentes_sim") && document.getElementById("tem_dependentes_sim").checked) {
-        document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach((entry, index) => { 
+        document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach((entry, index) => {
             const nomeInput = entry.querySelector('input[name="dep_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasDaCasa.push({ id: `dependente_plano_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "dependente" });
@@ -497,9 +501,9 @@ function renderPlanoSaudeQuestions() {
 function saveSeguroVidaSelections() {
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
-    seguroVidaSelections = {}; 
+    seguroVidaSelections = {};
     container.querySelectorAll(".seguro-vida-entry").forEach(entry => {
-        const nameAttribute = entry.querySelector('input[type="radio"]').name; 
+        const nameAttribute = entry.querySelector('input[type="radio"]').name;
         const selectedRadio = entry.querySelector(`input[name="${nameAttribute}"]:checked`);
         if (selectedRadio) {
             seguroVidaSelections[nameAttribute] = selectedRadio.value;
@@ -518,7 +522,7 @@ function restoreSeguroVidaSelections() {
 }
 
 function renderSeguroVidaQuestions() {
-    saveSeguroVidaSelections(); 
+    saveSeguroVidaSelections();
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
     container.innerHTML = '';
@@ -528,7 +532,7 @@ function renderSeguroVidaQuestions() {
         pessoasComRenda.push({ id: "preenchedor_seguro", nome: sanitizeInput(nomeCompletoInput.value.trim()), tipo: "preenchedor" });
     }
     if (document.getElementById("renda_unica_nao") && document.getElementById("renda_unica_nao").checked) {
-        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => { 
+        document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach((entry, index) => {
             const nomeInput = entry.querySelector('input[name="pessoa_nome"]');
             if (nomeInput && nomeInput.value.trim() !== "") {
                 pessoasComRenda.push({ id: `outra_pessoa_seguro_${index}`, nome: sanitizeInput(nomeInput.value.trim()), tipo: "outra_pessoa_renda" });
@@ -573,31 +577,63 @@ function renderSeguroVidaQuestions() {
     restoreSeguroVidaSelections();
 }
 
-function updateDynamicFormSections() {
-    updatePerguntaDependentesLabel();
-    updatePerguntaPatrimonioFisicoLabel();
-    updatePerguntaPatrimonioLiquidoLabel();
-    updatePerguntaDividasLabel();
-    renderPlanoSaudeQuestions();
-    renderSeguroVidaQuestions();
-    renderImpostoRendaQuestions();
+// --- Funções para Adicionar Entradas Dinâmicas (EXISTENTES e NOVAS) ---
+
+// Função auxiliar para adicionar listener de formatação de moeda
+function addCurrencyFormatting(inputElement) {
+    if (!inputElement) return;
+    inputElement.addEventListener('input', (e) => {
+        const rawValue = e.target.value.replace(/[^\d]/g, '');
+        if (rawValue) {
+            // Evita divisão por zero ou NaN se rawValue for apenas '0'
+            const number = parseInt(rawValue, 10);
+            if (!isNaN(number)) {
+                 e.target.value = (number / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                 e.target.value = '';
+            }
+        } else {
+            e.target.value = '';
+        }
+    });
+    inputElement.addEventListener('blur', (e) => {
+        // Reaplica formatação no blur para garantir consistência
+        const rawValue = e.target.value.replace(/[^\d]/g, '');
+        if (rawValue) {
+            const number = parseInt(rawValue, 10);
+             if (!isNaN(number)) {
+                 e.target.value = (number / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+            } else {
+                 e.target.value = '';
+            }
+        } else {
+            e.target.value = '';
+        }
+    });
+     // Formata o valor inicial se houver (útil para preenchimento futuro)
+    const initialRawValue = inputElement.value.replace(/[^\d]/g, '');
+    if (initialRawValue) {
+        const initialNumber = parseInt(initialRawValue, 10);
+        if (!isNaN(initialNumber)) {
+            inputElement.value = (initialNumber / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+    }
 }
 
 function addPatrimonioEntry() {
     const patrimonioListEl = document.getElementById("patrimonio-list");
     if (!patrimonioListEl) {
-        console.error("Elemento patrimonio-list não encontrado para adicionar entrada de patrimônio.");
+        console.error("Elemento patrimonio-list não encontrado.");
         return;
     }
-
     const patrimonioIndex = patrimonioListEl.children.length;
     const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item"); 
+    entryDiv.classList.add("dynamic-entry-item");
     entryDiv.innerHTML = `
-        <input type="text" name="patrimonio_qual" placeholder="Qual patrimônio? (ex: Apto 50m2, Corolla 2020)" required class="form-input">
-        <input type="text" name="patrimonio_valor" placeholder="Quanto vale? (R$)" required class="form-input currency-input">
-        <div class="patrimonio-radio-group-container"> 
-            <div class="patrimonio-radio-group-item">
+        <input type="text" name="patrimonio_qual" placeholder="Qual? (Ex: Apartamento, Carro)" required>
+        <input type="text" name="patrimonio_valor" placeholder="Valor Estimado (R$)" required class="currency-input">
+        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; flex-wrap: wrap;">
+            <div class="patrimonio-radio-group-item" style="margin-bottom: 0.5rem;">
                 <label>Possui seguro?</label>
                 <div class="radio-options-inline-patrimonio-item">
                     <input type="radio" id="patrimonio_seguro_${patrimonioIndex}_sim" name="patrimonio_seguro_${patrimonioIndex}" value="sim" required> <label for="patrimonio_seguro_${patrimonioIndex}_sim">Sim</label>
@@ -615,148 +651,128 @@ function addPatrimonioEntry() {
         <button type="button" class="remove-dynamic-entry-btn remove-patrimonio-btn">Remover</button>
     `;
     patrimonioListEl.appendChild(entryDiv);
-    const currencyInput = entryDiv.querySelector(".currency-input");
-    if (currencyInput) {
-        currencyInput.addEventListener('input', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-        currencyInput.addEventListener('blur', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-    }
+    addCurrencyFormatting(entryDiv.querySelector(".currency-input"));
 }
 
 function addPatrimonioLiquidoEntry() {
     const patrimonioLiquidoListEl = document.getElementById("patrimonio-liquido-list");
     if (!patrimonioLiquidoListEl) {
-        console.error("Elemento patrimonio-liquido-list não encontrado para adicionar entrada de patrimônio líquido.");
+        console.error("Elemento patrimonio-liquido-list não encontrado.");
         return;
     }
 
     const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item"); 
+    entryDiv.classList.add("dynamic-entry-item");
     entryDiv.innerHTML = `
         <input type="text" name="patrimonio_liquido_qual" placeholder="Qual? (Ex: Poupança, Tesouro Direto, CDB)" required class="form-input">
         <input type="text" name="patrimonio_liquido_valor" placeholder="Quanto? (R$)" required class="form-input currency-input">
         <button type="button" class="remove-dynamic-entry-btn remove-patrimonio-liquido-btn">Remover</button>
     `;
     patrimonioLiquidoListEl.appendChild(entryDiv);
-    const currencyInput = entryDiv.querySelector(".currency-input");
-    if (currencyInput) {
-        currencyInput.addEventListener('input', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-        currencyInput.addEventListener('blur', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-    }
+    addCurrencyFormatting(entryDiv.querySelector(".currency-input"));
 }
 
 function addDividaEntry() {
     const dividasListEl = document.getElementById("dividas-list");
     if (!dividasListEl) {
-        console.error("Elemento dividas-list não encontrado para adicionar entrada de dívida.");
+        console.error("Elemento dividas-list não encontrado.");
         return;
     }
 
     const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item"); 
+    entryDiv.classList.add("dynamic-entry-item");
     entryDiv.innerHTML = `
         <input type="text" name="divida_credor" placeholder="A quem deve? (Ex: Banco X, Cartão Y)" required class="form-input">
         <input type="text" name="divida_saldo" placeholder="Saldo Devedor Atual (R$)" required class="form-input currency-input">
         <button type="button" class="remove-dynamic-entry-btn remove-divida-btn">Remover</button>
     `;
     dividasListEl.appendChild(entryDiv);
-    const currencyInput = entryDiv.querySelector(".currency-input");
-    if (currencyInput) {
-        currencyInput.addEventListener('input', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-        currencyInput.addEventListener('blur', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
+    addCurrencyFormatting(entryDiv.querySelector(".currency-input"));
+}
+
+// --- NOVAS Funções para Adicionar Entradas Dinâmicas (Orçamento, Objetivos) ---
+
+function addRendaEntry() {
+    const rendaListEl = document.getElementById("renda-list");
+    if (!rendaListEl) {
+        console.error("Elemento renda-list não encontrado.");
+        return;
     }
+    const entryDiv = document.createElement("div");
+    entryDiv.classList.add("dynamic-entry-item");
+    entryDiv.innerHTML = `
+        <input type="text" name="renda_descricao" placeholder="Descrição da Renda (Ex: Salário)" required class="form-input">
+        <input type="text" name="renda_valor" placeholder="Valor Mensal (R$)" required class="form-input currency-input">
+        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+    `;
+    rendaListEl.appendChild(entryDiv);
+    addCurrencyFormatting(entryDiv.querySelector(".currency-input"));
+}
+
+function addDespesaFixaEntry() {
+    const despesasListEl = document.getElementById("despesas-fixas-list");
+    if (!despesasListEl) {
+        console.error("Elemento despesas-fixas-list não encontrado.");
+        return;
+    }
+    const entryDiv = document.createElement("div");
+    entryDiv.classList.add("dynamic-entry-item");
+    entryDiv.innerHTML = `
+        <input type="text" name="despesa_fixa_descricao" placeholder="Descrição (Ex: Aluguel, Condomínio)" required class="form-input">
+        <input type="text" name="despesa_fixa_valor" placeholder="Valor Mensal (R$)" required class="form-input currency-input">
+        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+    `;
+    despesasListEl.appendChild(entryDiv);
+    addCurrencyFormatting(entryDiv.querySelector(".currency-input"));
+}
+
+function addDespesaVariavelEntry() {
+    const despesasListEl = document.getElementById("despesas-variaveis-list");
+    if (!despesasListEl) {
+        console.error("Elemento despesas-variaveis-list não encontrado.");
+        return;
+    }
+    const entryDiv = document.createElement("div");
+    entryDiv.classList.add("dynamic-entry-item");
+    entryDiv.innerHTML = `
+        <input type="text" name="despesa_variavel_descricao" placeholder="Descrição (Ex: Alimentação, Lazer)" required class="form-input">
+        <input type="text" name="despesa_variavel_valor" placeholder="Valor Médio Mensal (R$)" required class="form-input currency-input">
+        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
+    `;
+    despesasListEl.appendChild(entryDiv);
+    addCurrencyFormatting(entryDiv.querySelector(".currency-input"));
 }
 
 function addObjetivoEntry() {
     const objetivosListEl = document.getElementById("objetivos-list");
     if (!objetivosListEl) {
-        console.error("Elemento objetivos-list não encontrado para adicionar entrada de objetivo.");
+        console.error("Elemento objetivos-list não encontrado.");
         return;
     }
-
     const entryDiv = document.createElement("div");
-    entryDiv.classList.add("dynamic-entry-item"); 
+    entryDiv.classList.add("dynamic-entry-item");
     entryDiv.innerHTML = `
-        <input type="text" name="objetivo_descricao" placeholder="Descrição do objetivo" required class="form-input">
-        <input type="text" name="objetivo_valor" placeholder="Valor estimado (R$)" required class="form-input currency-input">
-        <button type="button" class="remove-dynamic-entry-btn remove-objetivo-btn">Remover</button>
+        <input type="text" name="objetivo_descricao" placeholder="Qual o objetivo? (Ex: Viagem, Carro)" required class="form-input">
+        <input type="text" name="objetivo_valor" placeholder="Valor Estimado (R$)" required class="form-input currency-input">
+        <input type="text" name="objetivo_prazo" placeholder="Prazo (Ex: 1 ano, Dez/2026)" required class="form-input">
+        <button type="button" class="remove-dynamic-entry-btn">Remover</button>
     `;
     objetivosListEl.appendChild(entryDiv);
-    
-    // Adicionar formatação de moeda para o campo de valor
-    const currencyInput = entryDiv.querySelector(".currency-input");
-    if (currencyInput) {
-        currencyInput.addEventListener('input', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-        currencyInput.addEventListener('blur', (e) => {
-            const rawValue = e.target.value.replace(/[^\d]/g, '');
-            if (rawValue) {
-                const number = parseInt(rawValue, 10) / 100;
-                e.target.value = number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-            } else {
-                e.target.value = '';
-            }
-        });
-    }
+    addCurrencyFormatting(entryDiv.querySelector("input[name='objetivo_valor']"));
 }
 
+// --- Função Principal de Atualização Dinâmica --- (EXISTENTE)
+function updateDynamicFormSections() {
+    updatePerguntaDependentesLabel();
+    updatePerguntaPatrimonioFisicoLabel();
+    updatePerguntaPatrimonioLiquidoLabel();
+    updatePerguntaDividasLabel();
+    renderPlanoSaudeQuestions();
+    renderSeguroVidaQuestions();
+    renderImpostoRendaQuestions();
+}
 
-
-
+// --- Função para Anexar Event Listeners --- (MODIFICADA)
 function attachFormEventListeners(formId) {
     const clientResponseFormEl = document.getElementById("client-response-form");
     const nomeCompletoInput = document.getElementById("nome_completo");
@@ -790,6 +806,13 @@ function attachFormEventListeners(formId) {
     const addDividaBtn = document.getElementById("add-divida-btn");
     const dividasListEl = document.getElementById("dividas-list");
 
+    // --- NOVOS Seletores para Orçamento e Objetivos ---
+    const addRendaBtn = document.getElementById("add-renda-btn");
+    const addDespesaFixaBtn = document.getElementById("add-despesa-fixa-btn");
+    const addDespesaVariavelBtn = document.getElementById("add-despesa-variavel-btn");
+    const addObjetivoBtn = document.getElementById("add-objetivo-btn");
+
+    // --- Listeners EXISTENTES --- (Mantidos)
     if (nomeCompletoInput) {
         nomeCompletoInput.addEventListener("input", () => {
             updateDynamicFormSections();
@@ -798,23 +821,24 @@ function attachFormEventListeners(formId) {
 
     if (rendaUnicaSimRadio) {
         rendaUnicaSimRadio.addEventListener("change", () => {
-            outrasPessoasContainerEl.style.display = "none";
-            pessoasListEl.innerHTML = ''; 
+            if(outrasPessoasContainerEl) outrasPessoasContainerEl.style.display = "none";
+            if(pessoasListEl) pessoasListEl.innerHTML = '';
             updateDynamicFormSections();
         });
     }
     if (rendaUnicaNaoRadio) {
         rendaUnicaNaoRadio.addEventListener("change", () => {
-            outrasPessoasContainerEl.style.display = "block";
+            if(outrasPessoasContainerEl) outrasPessoasContainerEl.style.display = "block";
             updateDynamicFormSections();
         });
     }
 
     if (addPersonBtn) {
         addPersonBtn.addEventListener("click", () => {
+            if (!pessoasListEl) return;
             const personIndex = pessoasListEl.children.length;
             const newPersonEntry = document.createElement("div");
-            newPersonEntry.classList.add("dynamic-entry-item"); 
+            newPersonEntry.classList.add("dynamic-entry-item");
             newPersonEntry.innerHTML = `
                 <input type="text" name="pessoa_nome" placeholder="Nome da pessoa" required>
                 <label>Você precisa de autorização de <span class="person-name-placeholder"></span> para tomar decisões financeiras e agir?</label>
@@ -828,40 +852,41 @@ function attachFormEventListeners(formId) {
             pessoasListEl.appendChild(newPersonEntry);
             const nomeInput = newPersonEntry.querySelector('input[name="pessoa_nome"]');
             const placeholder = newPersonEntry.querySelector('.person-name-placeholder');
-            placeholder.textContent = "esta pessoa"; 
+            placeholder.textContent = "esta pessoa";
 
             nomeInput.addEventListener('input', () => {
                 const primeiroNome = nomeInput.value.trim().split(' ')[0];
                 placeholder.textContent = primeiroNome ? capitalizeName(primeiroNome) : "esta pessoa";
-                updateDynamicFormSections(); 
+                updateDynamicFormSections();
             });
 
-            newPersonEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
+            newPersonEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => {
                 newPersonEntry.remove();
                 updateDynamicFormSections();
             });
-            updateDynamicFormSections(); 
+            updateDynamicFormSections();
         });
     }
 
     if (temDependentesSimRadio) {
         temDependentesSimRadio.addEventListener("change", () => {
-            dependentesContainerEl.style.display = "block";
+            if(dependentesContainerEl) dependentesContainerEl.style.display = "block";
             updateDynamicFormSections();
         });
     }
     if (temDependentesNaoRadio) {
         temDependentesNaoRadio.addEventListener("change", () => {
-            dependentesContainerEl.style.display = "none";
-            dependentesListEl.innerHTML = ''; 
+            if(dependentesContainerEl) dependentesContainerEl.style.display = "none";
+            if(dependentesListEl) dependentesListEl.innerHTML = '';
             updateDynamicFormSections();
         });
     }
     if (addDependenteBtn) {
         addDependenteBtn.addEventListener("click", () => {
+            if (!dependentesListEl) return;
             const depIndex = dependentesListEl.children.length;
             const newDependenteEntry = document.createElement("div");
-            newDependenteEntry.classList.add("dynamic-entry-item"); 
+            newDependenteEntry.classList.add("dynamic-entry-item");
             newDependenteEntry.innerHTML = `
                 <input type="text" name="dep_nome" placeholder="Nome do dependente" required>
                 <input type="number" name="dep_idade" placeholder="Idade" min="0" required>
@@ -869,13 +894,13 @@ function attachFormEventListeners(formId) {
                 <button type="button" class="remove-dynamic-entry-btn">Remover</button>
             `;
             dependentesListEl.appendChild(newDependenteEntry);
-            
+
             const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
             if (nomeDependenteInput) {
                 nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
             }
 
-            newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => { 
+            newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => {
                 newDependenteEntry.remove();
                 updateDynamicFormSections();
             });
@@ -885,250 +910,248 @@ function attachFormEventListeners(formId) {
 
     if (temPatrimonioSimRadio) {
         temPatrimonioSimRadio.addEventListener("change", () => {
-            patrimonioListContainerEl.style.display = "block";
+            if(patrimonioListContainerEl) patrimonioListContainerEl.style.display = "block";
             updateDynamicFormSections();
         });
     }
     if (temPatrimonioNaoRadio) {
         temPatrimonioNaoRadio.addEventListener("change", () => {
-            patrimonioListContainerEl.style.display = "none";
-            patrimonioListEl.innerHTML = '';
+            if(patrimonioListContainerEl) patrimonioListContainerEl.style.display = "none";
+            if(patrimonioListEl) patrimonioListEl.innerHTML = '';
             updateDynamicFormSections();
         });
     }
     if (addPatrimonioBtn) {
-        addPatrimonioBtn.addEventListener("click", () => {
-            addPatrimonioEntry();
-        });
+        addPatrimonioBtn.addEventListener("click", addPatrimonioEntry);
     }
 
     if (temPatrimonioLiquidoSimRadio) {
         temPatrimonioLiquidoSimRadio.addEventListener("change", () => {
-            patrimonioLiquidoListContainerEl.style.display = "block";
+            if(patrimonioLiquidoListContainerEl) patrimonioLiquidoListContainerEl.style.display = "block";
             updateDynamicFormSections();
         });
     }
     if (temPatrimonioLiquidoNaoRadio) {
         temPatrimonioLiquidoNaoRadio.addEventListener("change", () => {
-            patrimonioLiquidoListContainerEl.style.display = "none";
-            patrimonioLiquidoListEl.innerHTML = '';
+            if(patrimonioLiquidoListContainerEl) patrimonioLiquidoListContainerEl.style.display = "none";
+            if(patrimonioLiquidoListEl) patrimonioLiquidoListEl.innerHTML = '';
             updateDynamicFormSections();
         });
     }
     if (addPatrimonioLiquidoBtn) {
-        addPatrimonioLiquidoBtn.addEventListener("click", () => {
-            addPatrimonioLiquidoEntry();
-        });
+        addPatrimonioLiquidoBtn.addEventListener("click", addPatrimonioLiquidoEntry);
     }
 
     if (temDividasSimRadio) {
         temDividasSimRadio.addEventListener("change", () => {
-            dividasListContainerEl.style.display = "block";
+            if(dividasListContainerEl) dividasListContainerEl.style.display = "block";
             updateDynamicFormSections();
         });
     }
     if (temDividasNaoRadio) {
         temDividasNaoRadio.addEventListener("change", () => {
-            dividasListContainerEl.style.display = "none";
-            dividasListEl.innerHTML = '';
+            if(dividasListContainerEl) dividasListContainerEl.style.display = "none";
+            if(dividasListEl) dividasListEl.innerHTML = '';
             updateDynamicFormSections();
         });
     }
     if (addDividaBtn) {
-        addDividaBtn.addEventListener("click", () => {
-            addDividaEntry();
-        });
+        addDividaBtn.addEventListener("click", addDividaEntry);
     }
 
+    // --- NOVOS Listeners para Orçamento e Objetivos ---
+    if (addRendaBtn) {
+        addRendaBtn.addEventListener("click", addRendaEntry);
+    }
+    if (addDespesaFixaBtn) {
+        addDespesaFixaBtn.addEventListener("click", addDespesaFixaEntry);
+    }
+    if (addDespesaVariavelBtn) {
+        addDespesaVariavelBtn.addEventListener("click", addDespesaVariavelEntry);
+    }
+    if (addObjetivoBtn) {
+        addObjetivoBtn.addEventListener("click", addObjetivoEntry);
+    }
+
+    // --- Listener de SUBMIT --- (MODIFICADO)
     if (clientResponseFormEl) {
         clientResponseFormEl.addEventListener("submit", async (e) => {
             e.preventDefault();
-            
+
             try {
                 const formData = new FormData(clientResponseFormEl);
+                // --- Coleta de dados EXISTENTES --- (Mantida)
                 const nomeCompleto = formData.get("nome_completo");
                 const rendaUnica = formData.get("renda_unica");
                 const temDependentes = formData.get("tem_dependentes");
                 const temPatrimonio = formData.get("tem_patrimonio");
                 const temPatrimonioLiquido = formData.get("tem_patrimonio_liquido");
                 const temDividas = formData.get("tem_dividas");
-                
+
+                // Validação básica (pode ser expandida se necessário)
                 if (!nomeCompleto || !rendaUnica || !temDependentes || !temPatrimonio || !temPatrimonioLiquido || !temDividas) {
-                    showMessage("error", "Por favor, preencha todos os campos obrigatórios.");
+                    showMessage("error", "Por favor, preencha todos os campos obrigatórios das seções iniciais.");
+                    // Rolar para o topo para o usuário ver a mensagem
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                 }
-                
-                // Coletar dados de outras pessoas com renda
+
+                // --- Coleta de dados das listas dinâmicas EXISTENTES --- (Mantida)
                 const outrasPessoas = [];
                 if (rendaUnica === "nao") {
-                    const pessoasEntries = document.querySelectorAll("#pessoas-list .dynamic-entry-item");
-                    pessoasEntries.forEach(entry => {
-                        const nome = entry.querySelector('input[name="pessoa_nome"]').value.trim();
-                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]').value;
+                    document.querySelectorAll("#pessoas-list .dynamic-entry-item").forEach(entry => {
+                        const nome = entry.querySelector('input[name="pessoa_nome"]')?.value.trim();
+                        const autorizacao = entry.querySelector('select[name="pessoa_autorizacao"]')?.value;
                         if (nome) {
-                            outrasPessoas.push({
-                                nome,
-                                autorizacao
-                            });
+                            outrasPessoas.push({ nome, autorizacao });
                         }
                     });
                 }
-                
-                // Coletar dados de dependentes
+
                 const dependentes = [];
                 if (temDependentes === "sim") {
-                    const dependentesEntries = document.querySelectorAll("#dependentes-list .dynamic-entry-item");
-                    dependentesEntries.forEach(entry => {
-                        const nome = entry.querySelector('input[name="dep_nome"]').value.trim();
-                        const idade = entry.querySelector('input[name="dep_idade"]').value;
-                        const relacao = entry.querySelector('input[name="dep_relacao"]').value.trim();
+                    document.querySelectorAll("#dependentes-list .dynamic-entry-item").forEach(entry => {
+                        const nome = entry.querySelector('input[name="dep_nome"]')?.value.trim();
+                        const idade = entry.querySelector('input[name="dep_idade"]')?.value;
+                        const relacao = entry.querySelector('input[name="dep_relacao"]')?.value.trim();
                         if (nome && idade && relacao) {
-                            dependentes.push({
-                                nome,
-                                idade: parseInt(idade, 10),
-                                relacao
-                            });
+                            dependentes.push({ nome, idade: parseInt(idade, 10), relacao });
                         }
                     });
                 }
-                
-                // Coletar dados de plano de saúde
+
                 const planosSaude = {};
                 document.querySelectorAll("#plano-saude-section-content .plano-saude-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]').name;
+                    const radioName = entry.querySelector('input[type="radio"]')?.name;
                     const selectedValue = entry.querySelector(`input[name="${radioName}"]:checked`)?.value;
                     if (personName && selectedValue) {
-                        planosSaude[personName] = {
-                            tipo: personType,
-                            possui: selectedValue
-                        };
+                        planosSaude[personName] = { tipo: personType, possui: selectedValue };
                     }
                 });
-                
-                // Coletar dados de seguro de vida
+
                 const segurosVida = {};
                 document.querySelectorAll("#seguro-vida-section-content .seguro-vida-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]').name;
+                    const radioName = entry.querySelector('input[type="radio"]')?.name;
                     const selectedValue = entry.querySelector(`input[name="${radioName}"]:checked`)?.value;
                     if (personName && selectedValue) {
-                        segurosVida[personName] = {
-                            tipo: personType,
-                            possui: selectedValue
-                        };
+                        segurosVida[personName] = { tipo: personType, possui: selectedValue };
                     }
                 });
-                
-                // Coletar dados de patrimônio físico
+
                 const patrimonios = [];
                 if (temPatrimonio === "sim") {
-                    const patrimonioEntries = document.querySelectorAll("#patrimonio-list .dynamic-entry-item");
-                    patrimonioEntries.forEach(entry => {
-                        const qual = entry.querySelector('input[name="patrimonio_qual"]').value.trim();
-                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]').value;
+                    document.querySelectorAll("#patrimonio-list .dynamic-entry-item").forEach(entry => {
+                        const qual = entry.querySelector('input[name="patrimonio_qual"]')?.value.trim();
+                        const valorRaw = entry.querySelector('input[name="patrimonio_valor"]')?.value;
                         const valor = parseCurrency(valorRaw);
-                        
-                        // Encontrar os radio buttons de seguro e quitado para este patrimônio
                         const radioButtons = entry.querySelectorAll('input[type="radio"]');
                         let seguro = null;
                         let quitado = null;
-                        
                         radioButtons.forEach(radio => {
-                            if (radio.name.includes('patrimonio_seguro') && radio.checked) {
-                                seguro = radio.value;
-                            }
-                            if (radio.name.includes('patrimonio_quitado') && radio.checked) {
-                                quitado = radio.value;
-                            }
+                            if (radio.name.includes('patrimonio_seguro') && radio.checked) seguro = radio.value;
+                            if (radio.name.includes('patrimonio_quitado') && radio.checked) quitado = radio.value;
                         });
-                        
                         if (qual && valor !== null && seguro && quitado) {
-                            patrimonios.push({
-                                qual,
-                                valor,
-                                seguro,
-                                quitado
-                            });
+                            patrimonios.push({ qual, valor, seguro, quitado });
                         }
                     });
                 }
-                
-                // Coletar dados de patrimônio líquido
+
                 const patrimoniosLiquidos = [];
                 if (temPatrimonioLiquido === "sim") {
-                    const patrimonioLiquidoEntries = document.querySelectorAll("#patrimonio-liquido-list .dynamic-entry-item");
-                    patrimonioLiquidoEntries.forEach(entry => {
-                        const qual = entry.querySelector('input[name="patrimonio_liquido_qual"]').value.trim();
-                        const valorRaw = entry.querySelector('input[name="patrimonio_liquido_valor"]').value;
+                    document.querySelectorAll("#patrimonio-liquido-list .dynamic-entry-item").forEach(entry => {
+                        const qual = entry.querySelector('input[name="patrimonio_liquido_qual"]')?.value.trim();
+                        const valorRaw = entry.querySelector('input[name="patrimonio_liquido_valor"]')?.value;
                         const valor = parseCurrency(valorRaw);
-                        
                         if (qual && valor !== null) {
-                            patrimoniosLiquidos.push({
-                                qual,
-                                valor
-                            });
+                            patrimoniosLiquidos.push({ qual, valor });
                         }
                     });
                 }
-                
-                // Coletar dados de dívidas
+
                 const dividas = [];
                 if (temDividas === "sim") {
-                    const dividaEntries = document.querySelectorAll("#dividas-list .dynamic-entry-item");
-                    dividaEntries.forEach(entry => {
-                        const credor = entry.querySelector('input[name="divida_credor"]').value.trim();
-                        const saldoRaw = entry.querySelector('input[name="divida_saldo"]').value;
+                    document.querySelectorAll("#dividas-list .dynamic-entry-item").forEach(entry => {
+                        const credor = entry.querySelector('input[name="divida_credor"]')?.value.trim();
+                        const saldoRaw = entry.querySelector('input[name="divida_saldo"]')?.value;
                         const saldo = parseCurrency(saldoRaw);
-                        
                         if (credor && saldo !== null) {
-                            dividas.push({
-                                credor,
-                                saldo
-                            });
+                            dividas.push({ credor, saldo });
                         }
                     });
                 }
-                
-                // Coletar dados de imposto de renda
+
                 const impostosRenda = {};
                 document.querySelectorAll("#imposto-renda-section-content .imposto-renda-entry").forEach(entry => {
                     const personName = entry.dataset.personName;
                     const personType = entry.dataset.personType;
-                    const radioName = entry.querySelector('input[type="radio"]').name;
+                    const radioName = entry.querySelector('input[type="radio"]')?.name;
                     const selectedValue = entry.querySelector(`input[name="${radioName}"]:checked`)?.value;
-                    
                     if (personName && selectedValue) {
-                        const impostoInfo = {
-                            tipo: personType,
-                            declara: selectedValue
-                        };
-                        
-                        // Se a resposta for "sim", coletar tipo e resultado
+                        const impostoInfo = { tipo: personType, declara: selectedValue };
                         if (selectedValue === "sim") {
                             const tipoRadioName = `${radioName}_tipo`;
                             const resultadoRadioName = `${radioName}_resultado`;
-                            
                             const tipoSelectedValue = entry.querySelector(`input[name="${tipoRadioName}"]:checked`)?.value;
                             const resultadoSelectedValue = entry.querySelector(`input[name="${resultadoRadioName}"]:checked`)?.value;
-                            
-                            if (tipoSelectedValue) {
-                                impostoInfo.tipo_ir = tipoSelectedValue;
-                            }
-                            
-                            if (resultadoSelectedValue) {
-                                impostoInfo.resultado_ir = resultadoSelectedValue;
-                            }
+                            if (tipoSelectedValue) impostoInfo.tipo_ir = tipoSelectedValue;
+                            if (resultadoSelectedValue) impostoInfo.resultado_ir = resultadoSelectedValue;
                         }
-                        
                         impostosRenda[personName] = impostoInfo;
                     }
                 });
-                
-                // Preparar dados para envio
+
+                // --- NOVA Coleta de dados para Orçamento, Objetivos e Info Adicionais ---
+                const orcamentoRenda = [];
+                document.querySelectorAll("#renda-list .dynamic-entry-item").forEach(entry => {
+                    const descricao = entry.querySelector('input[name="renda_descricao"]')?.value.trim();
+                    const valorRaw = entry.querySelector('input[name="renda_valor"]')?.value;
+                    const valor = parseCurrency(valorRaw);
+                    if (descricao && valor !== null) {
+                        orcamentoRenda.push({ descricao, valor });
+                    }
+                });
+
+                const orcamentoDespesasFixas = [];
+                document.querySelectorAll("#despesas-fixas-list .dynamic-entry-item").forEach(entry => {
+                    const descricao = entry.querySelector('input[name="despesa_fixa_descricao"]')?.value.trim();
+                    const valorRaw = entry.querySelector('input[name="despesa_fixa_valor"]')?.value;
+                    const valor = parseCurrency(valorRaw);
+                    if (descricao && valor !== null) {
+                        orcamentoDespesasFixas.push({ descricao, valor });
+                    }
+                });
+
+                const orcamentoDespesasVariaveis = [];
+                document.querySelectorAll("#despesas-variaveis-list .dynamic-entry-item").forEach(entry => {
+                    const descricao = entry.querySelector('input[name="despesa_variavel_descricao"]')?.value.trim();
+                    const valorRaw = entry.querySelector('input[name="despesa_variavel_valor"]')?.value;
+                    const valor = parseCurrency(valorRaw);
+                    if (descricao && valor !== null) {
+                        orcamentoDespesasVariaveis.push({ descricao, valor });
+                    }
+                });
+
+                const objetivos = [];
+                document.querySelectorAll("#objetivos-list .dynamic-entry-item").forEach(entry => {
+                    const descricao = entry.querySelector('input[name="objetivo_descricao"]')?.value.trim();
+                    const valorRaw = entry.querySelector('input[name="objetivo_valor"]')?.value;
+                    const valor = parseCurrency(valorRaw);
+                    const prazo = entry.querySelector('input[name="objetivo_prazo"]')?.value.trim();
+                    if (descricao && valor !== null && prazo) {
+                        objetivos.push({ descricao, valor, prazo });
+                    }
+                });
+
+                const infoAdicionais = formData.get("info_adicionais")?.trim() || "";
+
+                // --- Preparar dados para envio (com novos campos) ---
                 const dadosFormulario = {
+                    // Campos existentes
                     nome_completo: nomeCompleto,
                     renda_unica: rendaUnica,
                     outras_pessoas: outrasPessoas,
@@ -1142,10 +1165,16 @@ function attachFormEventListeners(formId) {
                     patrimonios_liquidos: patrimoniosLiquidos,
                     tem_dividas: temDividas,
                     dividas: dividas,
-                    impostos_renda: impostosRenda
+                    impostos_renda: impostosRenda,
+                    // Novos campos
+                    orcamento_renda: orcamentoRenda,
+                    orcamento_despesas_fixas: orcamentoDespesasFixas,
+                    orcamento_despesas_variaveis: orcamentoDespesasVariaveis,
+                    objetivos: objetivos,
+                    info_adicionais: infoAdicionais
                 };
-                
-                // Enviar dados para o servidor
+
+                // --- Enviar dados para o servidor --- (Mantido)
                 const { error } = await supabase
                     .from("formularios_clientes")
                     .update({
@@ -1154,43 +1183,49 @@ function attachFormEventListeners(formId) {
                         data_preenchimento: new Date().toISOString()
                     })
                     .eq("id", formId);
-                
+
                 if (error) throw error;
-                
-                // Mostrar mensagem de sucesso
+
+                // --- Mostrar mensagem de sucesso --- (Mantido)
                 formContentEl.innerHTML = `
                     <div class="success-message">
                         <h2>Formulário enviado com sucesso!</h2>
                         <p>Obrigado por preencher o formulário. Suas respostas foram registradas.</p>
                     </div>
                 `;
-                
+                // Rolar para o topo para o usuário ver a mensagem
+                 window.scrollTo({ top: 0, behavior: 'smooth' });
+
             } catch (error) {
                 console.error("Erro ao enviar formulário:", error);
                 showMessage("error", `Erro ao enviar formulário: ${error.message}`);
+                 // Rolar para o topo para o usuário ver a mensagem
+                 window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
     }
-    
-    // Adicionar listeners para remover entradas dinâmicas
+
+    // --- Listener Global para Remover Entradas Dinâmicas --- (Mantido)
     document.addEventListener("click", (e) => {
         if (e.target.classList.contains("remove-dynamic-entry-btn")) {
             const entryItem = e.target.closest(".dynamic-entry-item");
             if (entryItem) {
                 entryItem.remove();
-                updateDynamicFormSections();
+                // Chama a função de atualização principal se necessário (ex: se remoção afetar IR/Plano/Seguro)
+                // Neste caso, a remoção de orçamento/objetivos não afeta as seções condicionais, então não precisa chamar updateDynamicFormSections()
+                // updateDynamicFormSections();
             }
         }
     });
 }
 
-// --- Inicialização ---
+// --- Inicialização --- (Mantida)
 async function initForm() {
     try {
         // Obter token da URL
         const urlParams = new URLSearchParams(window.location.search);
         const token = urlParams.get("token");
-        
+
         if (!token) {
             formContentEl.innerHTML = `
                 <div class="error-message">
@@ -1200,14 +1235,14 @@ async function initForm() {
             `;
             return;
         }
-        
+
         // Verificar se o token existe e está pendente
         const { data: formData, error } = await supabase
             .from("formularios_clientes")
             .select("id, cliente_id, status, dados_formulario")
             .eq("token_unico", token)
             .single();
-        
+
         if (error || !formData) {
             formContentEl.innerHTML = `
                 <div class="error-message">
@@ -1217,7 +1252,7 @@ async function initForm() {
             `;
             return;
         }
-        
+
         if (formData.status === "preenchido") {
             formContentEl.innerHTML = `
                 <div class="info-message">
@@ -1227,13 +1262,13 @@ async function initForm() {
             `;
             return;
         }
-        
+
         // Definir o título do formulário como "Formulário Pré Diagnóstico"
         formTitleEl.textContent = "Formulário Pré Diagnóstico";
-        
+
         // Renderizar formulário
         renderForm(formData);
-        
+
     } catch (error) {
         console.error("Erro ao inicializar formulário:", error);
         formContentEl.innerHTML = `
@@ -1245,9 +1280,12 @@ async function initForm() {
     }
 }
 
+// --- Função para Renderizar o Formulário --- (MODIFICADA)
 function renderForm(formData) {
+    // Estrutura HTML base do formulário com as seções existentes e as NOVAS seções
     formContentEl.innerHTML = `
         <form id="client-response-form" class="client-form">
+            <!-- Seções Existentes (Nome, Renda Única, Outras Pessoas, Dependentes) -->
             <div class="form-group">
                 <label for="nome_completo">Nome Completo:</label>
                 <input type="text" id="nome_completo" name="nome_completo" required>
@@ -1280,7 +1318,8 @@ function renderForm(formData) {
                 <div id="dependentes-list"></div>
                 <button type="button" id="add-dependente-btn" class="add-dynamic-entry-btn">+ Adicionar Dependente</button>
             </div>
-            
+
+            <!-- Seções Condicionais Existentes (Plano Saúde, Seguro Vida) -->
             <div id="plano-saude-section" style="margin-top: 2rem;">
                 <h3 id="plano-saude-section-title" style="display: none;">Informações sobre Plano de Saúde:</h3>
                 <div id="plano-saude-section-content"></div>
@@ -1291,7 +1330,8 @@ function renderForm(formData) {
                 <div id="seguro-vida-section-content"></div>
             </div>
 
-            <div id="patrimonio-fisico-section" style="margin-top: 2rem;">
+            <!-- Seções Existentes (Patrimônio Físico, Líquido, Dívidas) -->
+             <div id="patrimonio-fisico-section" style="margin-top: 2rem;">
                  <div class="radio-group">
                     <label id="label_tem_patrimonio_fisico">Você possui patrimônio físico (imóvel, automóvel, jóias, outros...)?</label><br>
                     <div class="radio-options-inline-patrimonio">
@@ -1304,13 +1344,13 @@ function renderForm(formData) {
                 <div id="patrimonio-list-container" style="display:none;">
                     <label>Patrimônios Físicos:</label>
                     <div id="patrimonio-list"></div>
-                    <button type="button" id="add-patrimonio-btn" class="add-dynamic-entry-btn">+ Adicionar Patrimônio Físico</button> 
+                    <button type="button" id="add-patrimonio-btn" class="add-dynamic-entry-btn">+ Adicionar Patrimônio Físico</button>
                 </div>
             </div>
 
             <div id="patrimonio-liquido-section" style="margin-top: 2rem;">
                  <div class="radio-group">
-                    <label id="label_tem_patrimonio_liquido">Você possui patrimônio Dinheiro Guardado ou Investido?</label><br>
+                    <label id="label_tem_patrimonio_liquido">Você possui Dinheiro Guardado ou Investido?</label><br> <!-- Corrigido texto -->
                     <div class="radio-options-inline-patrimonio">
                         <input type="radio" id="tem_patrimonio_liquido_sim" name="tem_patrimonio_liquido" value="sim" required>
                         <label for="tem_patrimonio_liquido_sim">Sim</label>
@@ -1321,15 +1361,14 @@ function renderForm(formData) {
                 <div id="patrimonio-liquido-list-container" style="display:none;">
                     <label>Dinheiro Guardado ou Investido:</label>
                     <div id="patrimonio-liquido-list"></div>
-                    <button type="button" id="add-patrimonio-liquido-btn" class="add-dynamic-entry-btn">Adicionar Dinheiro Guardado/Investido</button>
+                    <button type="button" id="add-patrimonio-liquido-btn" class="add-dynamic-entry-btn">+ Adicionar Dinheiro Guardado/Investido</button> <!-- Corrigido texto botão -->
                 </div>
             </div>
 
-            <!-- Seção de Dívidas -->
-            <div class="form-section" id="dividas-section">
+            <div class="form-section" id="dividas-section" style="margin-top: 2rem;"> <!-- Adicionado margin-top -->
                 <div class="form-group">
-                    <h3 id="label_tem_dividas" class="form-question-label" style="text-align: center !important; margin-bottom: 0.5rem;">Você possui dívidas?</h3>
-                    <div class="radio-group" style="text-align: center;">
+                    <h3 id="label_tem_dividas" class="form-question-label" style="text-align: left !important; margin-bottom: 0.5rem;">Você possui dívidas?</h3> <!-- Alinhado à esquerda -->
+                    <div class="radio-group" style="text-align: left;"> <!-- Alinhado à esquerda -->
                         <input type="radio" id="tem_dividas_sim" name="tem_dividas" value="sim" required>
                         <label for="tem_dividas_sim" class="radio-label">Sim</label>
                         <input type="radio" id="tem_dividas_nao" name="tem_dividas" value="nao" required>
@@ -1339,49 +1378,76 @@ function renderForm(formData) {
                 <div id="dividas-list-container" class="dynamic-list-container" style="display: none;">
                     <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Dívidas:</label>
                     <div id="dividas-list" class="dynamic-list"></div>
-                    <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">Adicionar Dívida</button>
+                    <button type="button" id="add-divida-btn" class="add-dynamic-entry-btn">+ Adicionar Dívida</button>
                 </div>
             </div>
-            
-            <!-- Nova seção de Imposto de Renda (após dívidas) -->
+
+            <!-- Seção Condicional Existente (Imposto de Renda) -->
             <div id="imposto-renda-section" style="margin-top: 2rem;">
                 <h3 id="imposto-renda-section-title" style="display: none;">Informações sobre Imposto de Renda:</h3>
                 <div id="imposto-renda-section-content"></div>
             </div>
-            
-            <!-- SEÇÃO DE INFORMAÇÕES FINANCEIRAS -->
-            <div id="informacoes-financeiras-section" style="margin-top: 2rem;">
-                <h3 style="text-align: center; margin-bottom: 1.5rem;">Informações Financeiras</h3>
-                
-                <!-- Campo de Orçamento -->
-                <div class="form-group">
-                    <label for="orcamento_mensal">Orçamento Mensal Estimado para o Projeto:</label>
-                    <input type="text" id="orcamento_mensal" name="orcamento_mensal" placeholder="R$ 0,00" class="currency-input">
+
+            <!-- ================================================== -->
+            <!-- ========= NOVAS SEÇÕES ADICIONADAS ABAIXO ========= -->
+            <!-- ================================================== -->
+
+            <!-- Seção Orçamento -->
+            <div id="orcamento-section" style="margin-top: 2rem; border-top: 1px solid var(--theme-border-color); padding-top: 1.5rem;">
+                <h3 style="margin-bottom: 1.5rem;">Orçamento Mensal</h3>
+
+                <!-- Entradas de Renda -->
+                <div id="renda-container" style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Entradas de Renda:</label>
+                    <div id="renda-list"></div>
+                    <button type="button" id="add-renda-btn" class="add-dynamic-entry-btn">+ Adicionar Renda</button>
+                </div>
+
+                <!-- Despesas Fixas -->
+                <div id="despesas-fixas-container" style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Despesas Fixas:</label>
+                    <div id="despesas-fixas-list"></div>
+                    <button type="button" id="add-despesa-fixa-btn" class="add-dynamic-entry-btn">+ Adicionar Despesa Fixa</button>
+                </div>
+
+                <!-- Despesas Variáveis -->
+                <div id="despesas-variaveis-container">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Despesas Variáveis:</label>
+                    <div id="despesas-variaveis-list"></div>
+                    <button type="button" id="add-despesa-variavel-btn" class="add-dynamic-entry-btn">+ Adicionar Despesa Variável</button>
                 </div>
             </div>
-            <!-- FIM SEÇÃO DE INFORMAÇÕES FINANCEIRAS -->
 
-                          <!-- SEÇÃO DE PRINCIPAIS OBJETIVOS -->
-              <div class="form-section" id="objetivos-section" style="margin-top: 2rem;">
-                  <div class="form-group">
-                      <h3 class="form-question-label" style="text-align: center !important; margin-bottom: 0.5rem;">Principais Objetivos</h3>
-                  </div>
-                  <div id="objetivos-list-container" class="dynamic-list-container">
-                      <label style="display: block; margin-bottom: 0.5rem; font-weight: bold;">Objetivos:</label>
-                      <div id="objetivos-list" class="dynamic-list"></div>
-                      <button type="button" id="add-objetivo-btn" class="add-dynamic-entry-btn">Adicionar Objetivo</button>
-                  </div>
-              </div>
-              <!-- FIM SEÇÃO DE PRINCIPAIS OBJETIVOS -->
-            
-            <div class="form-actions">
+            <!-- Seção Objetivos -->
+            <div id="objetivos-section" style="margin-top: 2rem; border-top: 1px solid var(--theme-border-color); padding-top: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">Objetivos Financeiros</h3>
+                <div id="objetivos-list"></div>
+                <button type="button" id="add-objetivo-btn" class="add-dynamic-entry-btn">+ Adicionar Objetivo</button>
+            </div>
+
+            <!-- Seção Informações Adicionais -->
+            <div id="info-adicionais-section" style="margin-top: 2rem; border-top: 1px solid var(--theme-border-color); padding-top: 1.5rem;">
+                <h3 style="margin-bottom: 1rem;">Informações Relevantes Adicionais</h3>
+                <textarea id="info_adicionais" name="info_adicionais" rows="4" placeholder="Algo mais que considera importante para o planejamento? (Opcional)" style="width: 100%; padding: 0.8rem; border: 1px solid var(--theme-border-color); border-radius: 4px; background-color: var(--theme-bg-dark); color: var(--theme-text-light); box-sizing: border-box;"></textarea>
+            </div>
+
+            <!-- ================================================== -->
+            <!-- ========= FIM DAS NOVAS SEÇÕES ADICIONADAS ========= -->
+            <!-- ================================================== -->
+
+            <!-- Botão de Envio (Existente) -->
+            <div class="form-actions" style="margin-top: 2.5rem;">
                 <button type="submit" id="submit-btn" class="submit-button">Enviar Respostas</button>
             </div>
         </form>
     `;
 
+    // Anexa todos os event listeners (incluindo os novos)
     attachFormEventListeners(formData.id);
-    updateDynamicFormSections(); 
+    // Atualiza as seções dinâmicas iniciais (IR, Plano, Seguro)
+    updateDynamicFormSections();
 }
 
+// --- Ponto de Entrada Principal --- (Mantido)
 document.addEventListener("DOMContentLoaded", initForm);
+
