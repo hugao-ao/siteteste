@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mensagens WhatsApp - Clientes</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+    #main-content-mensagens {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+    }
+    #main-content-mensagens.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
+
+    /* Estilos específicos para esta página */
+    .mensagens-container {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-top: 1.5rem;
+    }
+
+    .search-container {
+      margin-bottom: 1.5rem;
+    }
+
+    #search-input {
+      width: 100%;
+      max-width: 400px;
+      padding: 0.75rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-input);
+      color: var(--text-light);
+    }
+
+    .clientes-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .clientes-table th {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 2px solid var(--border-color);
+      color: var(--text-accent);
+    }
+
+    .clientes-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .clientes-table tr:hover {
+      background-color: var(--bg-hover);
+    }
+
+    .action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      color: var(--text-accent);
+      font-size: 1.1rem;
+    }
+
+    .action-btn:hover {
+      color: var(--accent-color);
+    }
+
+    /* Modal de Edição de Mensagem */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-content {
+      background-color: var(--bg-card);
+      margin: 10% auto;
+      padding: 1.5rem;
+      border-radius: 8px;
+      width: 80%;
+      max-width: 600px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-light);
+    }
+
+    .modal-body {
+      margin-bottom: 1.5rem;
+    }
+
+    .modal-body textarea {
+      width: 100%;
+      min-height: 120px;
+      padding: 0.75rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-input);
+      color: var(--text-light);
+      resize: vertical;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+
+    .modal-btn {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: 500;
+    }
+
+    .cancel-btn {
+      background-color: var(--bg-button-secondary);
+      color: var(--text-light);
+      border: 1px solid var(--border-color);
+    }
+
+    .save-btn {
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      .clientes-table {
+        display: block;
+        overflow-x: auto;
+      }
+      
+      .modal-content {
+        width: 95%;
+        margin: 5% auto;
+      }
+    }
+
+    /* Mensagem de carregamento e erro */
+    .loading-message, .error-message {
+      text-align: center;
+      padding: 2rem;
+      font-size: 1.1rem;
+    }
+
+    .error-message {
+      color: #e74c3c;
+    }
+
+    /* Estilo para quando não há clientes */
+    .no-clients-message {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-mensagens">
+    <h1>Mensagens WhatsApp - Clientes</h1>
+    
+    <div class="mensagens-container">
+      <div class="search-container">
+        <input type="text" id="search-input" placeholder="Buscar por nome ou CPF...">
+      </div>
+      
+      <div id="clientes-table-container">
+        <div class="loading-message">Carregando clientes...</div>
+      </div>
+    </div>
+
+    <!-- Modal de Edição de Mensagem -->
+    <div id="mensagem-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 id="modal-cliente-nome">Mensagem para: </h3>
+          <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <textarea id="mensagem-texto" placeholder="Digite a mensagem personalizada...">Em desenvolvimento.</textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="modal-btn cancel-btn">Cancelar</button>
+          <button class="modal-btn save-btn">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    import { supabase } from './supabase.js';
+    
+    // Injetar a sidebar
+    injectSidebar("main-content-mensagens");
+    
+    // Elementos DOM
+    const clientesTableContainer = document.getElementById('clientes-table-container');
+    const searchInput = document.getElementById('search-input');
+    const mensagemModal = document.getElementById('mensagem-modal');
+    const modalClienteNome = document.getElementById('modal-cliente-nome');
+    const mensagemTexto = document.getElementById('mensagem-texto');
+    const closeModalBtn = document.querySelector('.close-modal');
+    const cancelBtn = document.querySelector('.cancel-btn');
+    const saveBtn = document.querySelector('.save-btn');
+    
+    // Variáveis globais
+    let allClientes = [];
+    let currentClienteId = null;
+    let isAdmin = false;
+    
+    // Verificar autenticação e nível do usuário
+    async function checkAuth() {
+      const nivel = sessionStorage.getItem("nivel");
+      const projeto = sessionStorage.getItem("projeto");
+      const userId = sessionStorage.getItem("user_id");
+      
+      if (!nivel || !projeto) {
+        alert("Acesso não autorizado. Faça login.");
+        window.location.href = "index.html";
+        return false;
+      }
+      
+      if (nivel === "admin") {
+        isAdmin = true;
+      } else if (nivel === "usuario" && projeto === "Planejamento") {
+        isAdmin = false;
+      } else {
+        alert("Acesso não autorizado para este módulo.");
+        window.location.href = "index.html";
+        return false;
+      }
+      
+      return true;
+    }
+    
+    // Carregar clientes com base no nível do usuário
+    async function loadClientes() {
+      try {
+        clientesTableContainer.innerHTML = '<div class="loading-message">Carregando clientes...</div>';
+        
+        const userId = sessionStorage.getItem("user_id");
+        let query;
+        
+        if (isAdmin) {
+          // Administrador vê todos os clientes do projeto Planejamento
+          query = supabase
+            .from('clientes')
+            .select(`
+              id,
+              nome,
+              whatsapp,
+              visibility,
+              dados_cadastrais (
+                nome_completo,
+                cpf,
+                whatsapp,
+                conjuge
+              )
+            `)
+            .eq('projeto', 'Planejamento');
+        } else {
+          // Usuário comum vê apenas clientes com visibilidade TODOS ou atribuídos a ele
+          query = supabase
+            .from('clientes')
+            .select(`
+              id,
+              nome,
+              whatsapp,
+              visibility,
+              dados_cadastrais (
+                nome_completo,
+                cpf,
+                whatsapp,
+                conjuge
+              )
+            `)
+            .eq('projeto', 'Planejamento')
+            .or(`visibility.eq.TODOS,assigned_to_user_id.eq.${userId}`);
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) throw error;
+        
+        allClientes = data;
+        renderClientesTable(allClientes);
+        
+        // Carregar mensagens personalizadas
+        await loadMensagens();
+      } catch (error) {
+        console.error('Erro ao carregar clientes:', error);
+        clientesTableContainer.innerHTML = `
+          <div class="error-message">
+            Erro ao carregar clientes: ${error.message || 'Desconhecido'}
+          </div>
+        `;
+      }
+    }
+    
+    // Carregar mensagens personalizadas para os clientes
+    async function loadMensagens() {
+      try {
+        if (allClientes.length === 0) return;
+        
+        const clienteIds = allClientes.map(cliente => cliente.id);
+        
+        const { data, error } = await supabase
+          .from('mensagens_clientes')
+          .select('cliente_id, mensagem')
+          .in('cliente_id', clienteIds);
+        
+        if (error) throw error;
+        
+        // Associar mensagens aos clientes
+        if (data && data.length > 0) {
+          data.forEach(mensagem => {
+            const cliente = allClientes.find(c => c.id === mensagem.cliente_id);
+            if (cliente) {
+              cliente.mensagem = mensagem.mensagem;
+            }
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao carregar mensagens:', error);
+      }
+    }
+    
+    // Renderizar tabela de clientes
+    function renderClientesTable(clientes) {
+      if (!clientes || clientes.length === 0) {
+        clientesTableContainer.innerHTML = '<div class="no-clients-message">Nenhum cliente encontrado.</div>';
+        return;
+      }
+      
+      const tableHTML = `
+        <table class="clientes-table">
+          <thead>
+            <tr>
+              <th>Nome do Cliente</th>
+              <th>CPF</th>
+              <th>WhatsApp</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${clientes.map(cliente => {
+              // Obter dados do cliente e dados cadastrais
+              const dadosCadastrais = cliente.dados_cadastrais || {};
+              const nome = dadosCadastrais.nome_completo || cliente.nome || 'Nome não disponível';
+              const cpf = dadosCadastrais.cpf || 'CPF não disponível';
+              
+              // Formatar WhatsApp conforme regra
+              let whatsappDisplay = dadosCadastrais.whatsapp || cliente.whatsapp || 'Não disponível';
+              const conjuge = dadosCadastrais.conjuge || {};
+              const whatsappConjuge = conjuge.whatsapp;
+              
+              if (whatsappConjuge) {
+                whatsappDisplay = `${whatsappDisplay} / ${whatsappConjuge}`;
+              }
+              
+              return `
+                <tr data-id="${cliente.id}">
+                  <td>${nome}</td>
+                  <td>${cpf}</td>
+                  <td>${whatsappDisplay}</td>
+                  <td>
+                    <button class="action-btn edit-msg-btn" title="Editar mensagem">
+                      <i class="fas fa-comment-alt"></i>
+                    </button>
+                    <button class="action-btn whats-btn" title="Enviar WhatsApp (em desenvolvimento)">
+                      <i class="fab fa-whatsapp"></i>
+                    </button>
+                  </td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+      
+      clientesTableContainer.innerHTML = tableHTML;
+      
+      // Adicionar event listeners aos botões
+      document.querySelectorAll('.edit-msg-btn').forEach(btn => {
+        btn.addEventListener('click', handleEditMessage);
+      });
+    }
+    
+    // Filtrar clientes com base na busca
+    function filterClientes(searchTerm) {
+      if (!searchTerm) {
+        renderClientesTable(allClientes);
+        return;
+      }
+      
+      const searchTermLower = searchTerm.toLowerCase();
+      const filteredClientes = allClientes.filter(cliente => {
+        const dadosCadastrais = cliente.dados_cadastrais || {};
+        const nome = (dadosCadastrais.nome_completo || cliente.nome || '').toLowerCase();
+        const cpf = (dadosCadastrais.cpf || '').toLowerCase();
+        
+        return nome.includes(searchTermLower) || cpf.includes(searchTermLower);
+      });
+      
+      renderClientesTable(filteredClientes);
+    }
+    
+    // Manipular clique no botão de editar mensagem
+    function handleEditMessage(event) {
+      const row = event.target.closest('tr');
+      currentClienteId = row.dataset.id;
+      
+      const cliente = allClientes.find(c => c.id === currentClienteId);
+      if (!cliente) return;
+      
+      const dadosCadastrais = cliente.dados_cadastrais || {};
+      const nome = dadosCadastrais.nome_completo || cliente.nome || 'Cliente';
+      
+      modalClienteNome.textContent = `Mensagem para: ${nome}`;
+      mensagemTexto.value = cliente.mensagem || 'Em desenvolvimento.';
+      
+      mensagemModal.style.display = 'block';
+    }
+    
+    // Salvar mensagem personalizada
+    async function saveMensagem() {
+      if (!currentClienteId) return;
+      
+      const mensagem = mensagemTexto.value.trim();
+      const userId = sessionStorage.getItem("user_id");
+      
+      try {
+        // Verificar se já existe uma mensagem para este cliente
+        const { data: existingData, error: existingError } = await supabase
+          .from('mensagens_clientes')
+          .select('id')
+          .eq('cliente_id', currentClienteId)
+          .maybeSingle();
+        
+        if (existingError) throw existingError;
+        
+        let result;
+        
+        if (existingData) {
+          // Atualizar mensagem existente
+          result = await supabase
+            .from('mensagens_clientes')
+            .update({
+              mensagem: mensagem,
+              updated_at: new Date().toISOString()
+            })
+            .eq('cliente_id', currentClienteId);
+        } else {
+          // Inserir nova mensagem
+          result = await supabase
+            .from('mensagens_clientes')
+            .insert({
+              cliente_id: currentClienteId,
+              mensagem: mensagem,
+              created_by: userId
+            });
+        }
+        
+        if (result.error) throw result.error;
+        
+        // Atualizar cliente na lista local
+        const cliente = allClientes.find(c => c.id === currentClienteId);
+        if (cliente) {
+          cliente.mensagem = mensagem;
+        }
+        
+        // Fechar modal e atualizar tabela
+        mensagemModal.style.display = 'none';
+        renderClientesTable(allClientes);
+        
+      } catch (error) {
+        console.error('Erro ao salvar mensagem:', error);
+        alert(`Erro ao salvar mensagem: ${error.message || 'Desconhecido'}`);
+      }
+    }
+    
+    // Event Listeners
+    searchInput.addEventListener('input', (e) => {
+      filterClientes(e.target.value);
+    });
+    
+    closeModalBtn.addEventListener('click', () => {
+      mensagemModal.style.display = 'none';
+    });
+    
+    cancelBtn.addEventListener('click', () => {
+      mensagemModal.style.display = 'none';
+    });
+    
+    saveBtn.addEventListener('click', saveMensagem);
+    
+    // Fechar modal ao clicar fora dele
+    window.addEventListener('click', (e) => {
+      if (e.target === mensagemModal) {
+        mensagemModal.style.display = 'none';
+      }
+    });
+    
+    // Inicialização
+    document.addEventListener('DOMContentLoaded', async () => {
+      const authOk = await checkAuth();
+      if (authOk) {
+        await loadClientes();
+      }
+    });
+  </script>
+</body>
+</html>
