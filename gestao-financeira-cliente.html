@@ -513,6 +513,8 @@
             else if (cat.tipo === 'DESPESA_VARIAVEL') categoriasMap.DESPESA_VARIAVEL = cat.id;
             else if (cat.tipo === 'INVESTIMENTO') categoriasMap.INVESTIMENTO = cat.id;
           });
+          
+          console.log("Categorias carregadas:", categoriasMap);
         } else {
           // Se não existirem categorias, criar as padrões
           await createDefaultCategorias();
@@ -547,6 +549,8 @@
             else if (cat.tipo === 'DESPESA_VARIAVEL') categoriasMap.DESPESA_VARIAVEL = cat.id;
             else if (cat.tipo === 'INVESTIMENTO') categoriasMap.INVESTIMENTO = cat.id;
           });
+          
+          console.log("Categorias padrão criadas:", categoriasMap);
         }
       } catch (error) {
         console.error('Erro ao criar categorias padrão:', error);
@@ -909,10 +913,27 @@
       
       // Event listener para clicar no label de subcategoria
       subcategoriaLabel.addEventListener('click', () => {
-        const categoriaSelecionada = categoriaItemSelect.value;
+        // Obter a categoria atual, mesmo se o campo estiver desabilitado
+        let categoriaSelecionada;
+        
+        // Se o tipo for ENTRADA, a categoria é sempre RECEITA
+        if (tipoItemSelect.value === 'ENTRADA') {
+          categoriaSelecionada = 'RECEITA';
+        } else {
+          categoriaSelecionada = categoriaItemSelect.value;
+        }
         
         if (!categoriaSelecionada) {
           alert('Por favor, selecione uma categoria antes de gerenciar subcategorias.');
+          return;
+        }
+        
+        console.log("Categoria selecionada para subcategorias:", categoriaSelecionada);
+        console.log("ID da categoria:", categoriasMap[categoriaSelecionada]);
+        
+        // Verificar se o ID da categoria existe
+        if (!categoriasMap[categoriaSelecionada]) {
+          alert('Erro: ID da categoria não encontrado. Por favor, recarregue a página.');
           return;
         }
         
