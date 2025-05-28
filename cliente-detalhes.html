@@ -113,7 +113,7 @@
         text-decoration: underline;
     }
     
-    /* Estilos para exibição dos dados do formulário */
+    /* Estilos ADICIONADOS para exibição dos dados do formulário */
     .form-data-display {
         margin-top: 1.5rem;
         padding-top: 1rem;
@@ -142,6 +142,7 @@
     .form-data-display strong {
         color: var(--theme-secondary-lighter);
     }
+    /* FIM dos estilos ADICIONADOS */
     
     #form-section .delete-form-btn {
         background-color: #c62828; /* Vermelho */
@@ -412,23 +413,24 @@
         <!-- Conteúdo dinâmico (link, status, botões) será inserido aqui pelo JS -->
         <div id="form-actions-container"></div>
         
-        <!-- NOVAS SEÇÕES PARA EXIBIR DADOS DO FORMULÁRIO -->
-        <div id="form-data-display-container" style="display: none;">
+        <!-- ### INÍCIO DO BLOCO ADICIONADO ### -->
+        <!-- Container para exibir os dados do formulário preenchido -->
+        <div id="form-data-display-container" style="display: none; margin-top: 1.5rem; padding-top: 1rem; border-top: 1px dashed var(--theme-border-color);">
             <!-- Orçamento -->
             <div class="form-data-display" id="form-data-orcamento">
                 <h3>Orçamento Informado</h3>
                 <div id="orcamento-renda-display"></div>
-                <div id="orcamento-fixa-display"></div>
-                <div id="orcamento-variavel-display"></div>
+                <div id="orcamento-fixa-display" style="margin-top: 1rem;"></div>
+                <div id="orcamento-variavel-display" style="margin-top: 1rem;"></div>
             </div>
             <!-- Informações Adicionais -->
-            <div class="form-data-display" id="form-data-adicionais">
+            <div class="form-data-display" id="form-data-adicionais" style="margin-top: 1.5rem;">
                 <h3>Informações Adicionais Relevantes</h3>
                 <div id="adicionais-display"></div>
             </div>
-            <!-- Outros dados do formulário podem ser adicionados aqui se necessário -->
+            <!-- Outros dados do formulário podem ser adicionados aqui se necessário no futuro -->
         </div>
-        <!-- FIM DAS NOVAS SEÇÕES -->
+        <!-- ### FIM DO BLOCO ADICIONADO ### -->
       </div>
     </section>
     
@@ -516,13 +518,16 @@
     // --- Elementos DOM --- 
     const clientNameDisplay = document.getElementById("client-name-display");
     const formInfoContentEl = document.getElementById("form-info-content");
-    const formLoadingStateEl = document.getElementById("form-loading-state");
-    const formActionsContainerEl = document.getElementById("form-actions-container"); // Container para status, link e botões
+    const formLoadingStateEl = document.getElementById("form-loading-state"); // Mantido para estado de carregamento inicial
+    const formActionsContainerEl = document.getElementById("form-actions-container"); // ADICIONADO para status/link/botões
+    
+    // ### INÍCIO DAS CONSTANTES ADICIONADAS ###
     const formDataDisplayContainerEl = document.getElementById("form-data-display-container"); // Container GERAL para os dados
     const orcamentoRendaDisplayEl = document.getElementById("orcamento-renda-display");
     const orcamentoFixaDisplayEl = document.getElementById("orcamento-fixa-display");
     const orcamentoVariavelDisplayEl = document.getElementById("orcamento-variavel-display");
     const adicionaisDisplayEl = document.getElementById("adicionais-display");
+    // ### FIM DAS CONSTANTES ADICIONADAS ###
 
     const navButtonsSection = document.getElementById("nav-buttons-section");
     const formSection = document.getElementById("form-section");
@@ -548,33 +553,36 @@
     const whatsappInput = document.getElementById("whatsapp");
     const conjugeNomeInput = document.getElementById("conjuge-nome");
     const conjugeWhatsappInput = document.getElementById("conjuge-whatsapp");
-    const saveDadosBtn = document.getElementById("save-dados-btn");
+    const saveDadosBtn = document.getElementById("save-dados-btn"); // Adicionado seletor para botão salvar
     
     let currentClientId = null;
     let currentClientData = null;
     let currentClientProjeto = null;
     let currentFormSubmission = null; // Armazena a última submissão do formulário
 
-    // --- Funções Utilitárias (Copiadas/Adaptadas de formulario-cliente.js) ---
+    // ### INÍCIO DAS FUNÇÕES UTILITÁRIAS ADICIONADAS/VERIFICADAS ###
     const sanitizeInput = (str) => {
       if (str === null || str === undefined) return "";
       return String(str)
         .replace(/&/g, "&amp;")
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
+        .replace(/\"/g, "&quot;")
         .replace(/\'/g, "&#x27;")
         .replace(/`/g, "&#x60;");
     };
 
     const formatCurrency = (value) => {
         if (value === null || value === undefined || value === "") return "Não informado";
-        const number = parseFloat(value);
+        // Tenta converter para número, tratando possíveis formatos de entrada
+        const cleanValue = String(value).replace(/R\$\s?/g, '').replace(/\./g, '').replace(/,/g, '.');
+        const number = parseFloat(cleanValue);
         if (isNaN(number)) return "Valor inválido";
         return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
+    // ### FIM DAS FUNÇÕES UTILITÁRIAS ADICIONADAS/VERIFICADAS ###
 
-    // --- Funções Principais ---
+    // --- Funções Principais --- 
 
     // Função para carregar dados do cliente e formulário
     async function loadClientDetails() {
@@ -628,21 +636,24 @@
       }
     }
 
-    // Função para carregar informações do formulário
+    // Função para carregar informações do formulário (MODIFICADA)
     async function loadFormInfo() {
       if (!currentClientId) return;
       if (formLoadingStateEl) formLoadingStateEl.style.display = 'block';
       if (formActionsContainerEl) formActionsContainerEl.innerHTML = ''; // Limpa ações anteriores
+      
+      // ### INÍCIO DA MODIFICAÇÃO: Limpar e esconder displays ###
       if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'none'; // Esconde dados anteriores
       if (orcamentoRendaDisplayEl) orcamentoRendaDisplayEl.innerHTML = '';
       if (orcamentoFixaDisplayEl) orcamentoFixaDisplayEl.innerHTML = '';
       if (orcamentoVariavelDisplayEl) orcamentoVariavelDisplayEl.innerHTML = '';
       if (adicionaisDisplayEl) adicionaisDisplayEl.innerHTML = '';
+      // ### FIM DA MODIFICAÇÃO ###
 
       try {
         const { data: formSubmissions, error: formError } = await supabase
           .from("formularios_clientes")
-          .select("id, token_unico, status, data_preenchimento, dados_formulario")
+          .select("id, token_unico, status, data_preenchimento, dados_formulario") // Inclui dados_formulario
           .eq("cliente_id", currentClientId)
           .order("created_at", { ascending: false })
           .limit(1);
@@ -661,56 +672,57 @@
           
           if (formActionsContainerEl) formActionsContainerEl.innerHTML = statusHtml;
 
-          // --- EXIBIR DADOS DO FORMULÁRIO (ORÇAMENTO E ADICIONAIS) ---
+          // ### INÍCIO DA MODIFICAÇÃO: Exibir dados do formulário ###
           if (dados_formulario) {
             try {
+                // Tenta parsear o JSON. Se já for objeto, usa diretamente.
                 const formData = typeof dados_formulario === 'string' ? JSON.parse(dados_formulario) : dados_formulario;
                 
-                // Exibir Orçamento
-                let orcamentoHtml = '';
+                // --- Exibir Orçamento ---
+                let orcamentoRendaHtml = '<h4>Rendas:</h4>';
                 if (formData.orcamentoRenda && formData.orcamentoRenda.length > 0) {
-                    orcamentoHtml += '<h4>Rendas:</h4><ul>';
+                    orcamentoRendaHtml += '<ul>';
                     formData.orcamentoRenda.forEach(item => {
-                        orcamentoHtml += `<li>${sanitizeInput(item.descricao)}: ${formatCurrency(item.valor)}</li>`;
+                        orcamentoRendaHtml += `<li>${sanitizeInput(item.descricao || 'Descrição não informada')}: ${formatCurrency(item.valor)}</li>`;
                     });
-                    orcamentoHtml += '</ul>';
+                    orcamentoRendaHtml += '</ul>';
                 } else {
-                    orcamentoHtml += '<p>Nenhuma renda informada.</p>';
+                    orcamentoRendaHtml += '<p>Nenhuma renda informada.</p>';
                 }
-                 if (orcamentoRendaDisplayEl) orcamentoRendaDisplayEl.innerHTML = orcamentoHtml;
+                if (orcamentoRendaDisplayEl) orcamentoRendaDisplayEl.innerHTML = orcamentoRendaHtml;
 
-                orcamentoHtml = ''; // Resetar para despesas fixas
+                let orcamentoFixaHtml = '<h4>Despesas Fixas:</h4>';
                 if (formData.orcamentoDespesasFixas && formData.orcamentoDespesasFixas.length > 0) {
-                    orcamentoHtml += '<h4>Despesas Fixas:</h4><ul>';
+                    orcamentoFixaHtml += '<ul>';
                     formData.orcamentoDespesasFixas.forEach(item => {
-                        orcamentoHtml += `<li>${sanitizeInput(item.descricao)}: ${formatCurrency(item.valor)}</li>`;
+                        orcamentoFixaHtml += `<li>${sanitizeInput(item.descricao || 'Descrição não informada')}: ${formatCurrency(item.valor)}</li>`;
                     });
-                    orcamentoHtml += '</ul>';
+                    orcamentoFixaHtml += '</ul>';
                 } else {
-                     orcamentoHtml += '<p>Nenhuma despesa fixa informada.</p>';
+                     orcamentoFixaHtml += '<p>Nenhuma despesa fixa informada.</p>';
                 }
-                if (orcamentoFixaDisplayEl) orcamentoFixaDisplayEl.innerHTML = orcamentoHtml;
+                if (orcamentoFixaDisplayEl) orcamentoFixaDisplayEl.innerHTML = orcamentoFixaHtml;
 
-                orcamentoHtml = ''; // Resetar para despesas variáveis
+                let orcamentoVariavelHtml = '<h4>Despesas Variáveis (Média):</h4>';
                 if (formData.orcamentoDespesasVariaveis && formData.orcamentoDespesasVariaveis.length > 0) {
-                    orcamentoHtml += '<h4>Despesas Variáveis (Média):</h4><ul>';
+                    orcamentoVariavelHtml += '<ul>';
                     formData.orcamentoDespesasVariaveis.forEach(item => {
-                        orcamentoHtml += `<li>${sanitizeInput(item.descricao)}: ${formatCurrency(item.valor)}</li>`;
+                        orcamentoVariavelHtml += `<li>${sanitizeInput(item.descricao || 'Descrição não informada')}: ${formatCurrency(item.valor)}</li>`;
                     });
-                    orcamentoHtml += '</ul>';
+                    orcamentoVariavelHtml += '</ul>';
                 } else {
-                    orcamentoHtml += '<p>Nenhuma despesa variável informada.</p>';
+                    orcamentoVariavelHtml += '<p>Nenhuma despesa variável informada.</p>';
                 }
-                if (orcamentoVariavelDisplayEl) orcamentoVariavelDisplayEl.innerHTML = orcamentoHtml;
+                if (orcamentoVariavelDisplayEl) orcamentoVariavelDisplayEl.innerHTML = orcamentoVariavelHtml;
 
-                // Exibir Informações Adicionais
+                // --- Exibir Informações Adicionais ---
                 if (formData.informacoesAdicionais && formData.informacoesAdicionais.trim() !== '') {
                     if (adicionaisDisplayEl) adicionaisDisplayEl.innerHTML = `<p>${sanitizeInput(formData.informacoesAdicionais)}</p>`;
                 } else {
                     if (adicionaisDisplayEl) adicionaisDisplayEl.innerHTML = '<p>Nenhuma informação adicional fornecida.</p>';
                 }
                 
-                // Mostrar o container geral dos dados do formulário
+                // Mostrar o container geral dos dados do formulário APENAS se houver dados
                 if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'block';
 
             } catch (parseError) {
@@ -719,8 +731,10 @@
                  if (formActionsContainerEl) formActionsContainerEl.innerHTML += `<p style="color: red;">Erro ao carregar detalhes do formulário.</p>`;
             }
           } else {
-             if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'none'; // Esconde se não há dados
+             // Se dados_formulario for null ou vazio, esconde o container
+             if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'none'; 
           }
+          // ### FIM DA MODIFICAÇÃO ###
 
         } else {
           // Nenhum formulário encontrado, oferecer gerar link
@@ -742,7 +756,7 @@
       }
     }
 
-    // Função para gerar link do formulário
+    // Função para gerar link do formulário (Mantida como no original)
     async function generateFormLink() {
         if (!currentClientId) return;
         const button = formActionsContainerEl.querySelector('.generate-link-btn');
@@ -759,7 +773,7 @@
                 .insert({
                     cliente_id: currentClientId,
                     token_unico: uniqueToken,
-                    status: 'pendente' 
+                    status: 'pendente' // Status inicial
                 })
                 .select('id') // Retorna o ID para o botão de excluir
                 .single();
@@ -771,6 +785,7 @@
 
             // 4. Exibir o link e botão de excluir
             if (formActionsContainerEl) {
+                 // Limpa o conteúdo anterior e adiciona o novo
                  formActionsContainerEl.innerHTML = `
                     <p>Link gerado! Envie para o cliente:</p>
                     <div class="form-link-container">
@@ -779,18 +794,23 @@
                     <button class="delete-form-btn" data-form-id="${data.id}">Excluir este Link/Formulário</button>
                  `;
             }
-             // Recarrega as informações para atualizar o estado geral
-            await loadFormInfo(); 
+             // Recarrega as informações para atualizar o estado geral (incluindo o status e dados se já existirem)
+            // await loadFormInfo(); // Comentado para evitar loop se chamado de dentro do loadFormInfo
 
         } catch (error) {
             console.error("Erro ao gerar link do formulário:", error);
             alert(`Erro ao gerar link: ${error.message}`);
-            if (button) button.disabled = false;
-            if (button) button.textContent = 'Gerar Link do Formulário';
+            // Restaura o botão em caso de erro
+            if (formActionsContainerEl) {
+                 formActionsContainerEl.innerHTML = `
+                    <p>Erro ao gerar link.</p>
+                    <button class="generate-link-btn">Gerar Link do Formulário</button>
+                 `;
+            }
         }
     }
 
-    // Função para excluir formulário/link
+    // Função para excluir formulário/link (Mantida como no original)
     async function deleteFormSubmission(formId) {
         if (!formId) return;
 
@@ -806,7 +826,7 @@
             if (error) throw error;
 
             alert("Formulário/Link excluído com sucesso!");
-            await loadFormInfo(); // Recarrega a seção do formulário
+            await loadFormInfo(); // Recarrega a seção do formulário para mostrar "Nenhum formulário..."
 
         } catch (error) {
             console.error("Erro ao excluir formulário:", error);
@@ -814,7 +834,7 @@
         }
     }
 
-    // Função para preencher o formulário de dados cadastrais
+    // Função para preencher o formulário de dados cadastrais (Mantida como no original)
     function populateDadosCadastraisForm(dadosCadastrais, clientData) {
         if (dadosCadastraisForm) {
             if (dadosCadastrais) {
@@ -839,7 +859,7 @@
         }
     }
 
-    // Função para salvar dados cadastrais
+    // Função para salvar dados cadastrais (Mantida como no original)
     async function saveDadosCadastrais(event) {
         event.preventDefault();
         if (!currentClientId || !currentClientData) return;
@@ -928,7 +948,7 @@
         }
     }
 
-    // Função para mostrar a seção correta
+    // Função para mostrar a seção correta (Mantida como no original)
     function showSection(sectionName) {
       // Esconde todas as seções principais
       if (formSection) formSection.style.display = "none";
@@ -964,25 +984,25 @@
 
     // --- Event Listeners --- 
 
-    // Listeners para botões de navegação
+    // Listeners para botões de navegação (Mantidos como no original)
     if (btnFormulario) btnFormulario.addEventListener('click', () => showSection('form'));
     if (btnDiagnostico) btnDiagnostico.addEventListener('click', () => showSection('diagnostico'));
     if (btnPlano) btnPlano.addEventListener('click', () => showSection('plano'));
 
-    // Listeners para botões do plano financeiro
+    // Listeners para botões do plano financeiro (Mantidos como no original)
     if (btnDadosCadastrais) btnDadosCadastrais.addEventListener('click', () => showSection('dados-cadastrais'));
     // Adicionar listeners para btnGestao e btnImplementacoes quando implementados
     if (btnGestao) btnGestao.addEventListener('click', () => alert('Seção Gestão Financeira em desenvolvimento.'));
     if (btnImplementacoes) btnImplementacoes.addEventListener('click', () => alert('Seção Implementações em desenvolvimento.'));
 
-    // Listener para o formulário de dados cadastrais
+    // Listener para o formulário de dados cadastrais (Mantido como no original)
     if (dadosCadastraisForm) {
         dadosCadastraisForm.addEventListener('submit', saveDadosCadastrais);
     }
 
-    // Listener para cliques na área de informações do formulário (delegação de eventos)
-    if (formInfoContentEl) {
-        formInfoContentEl.addEventListener('click', (event) => {
+    // Listener para cliques na área de informações do formulário (MODIFICADO para usar formActionsContainerEl)
+    if (formActionsContainerEl) {
+        formActionsContainerEl.addEventListener('click', (event) => {
             if (event.target.classList.contains('generate-link-btn')) {
                 generateFormLink();
             }
@@ -999,3 +1019,4 @@
   </script>
 </body>
 </html>
+
