@@ -804,20 +804,21 @@
               }
             
             // Exibição de Objetivos Financeiros
-            if (data.objetivos && Array.isArray(data.objetivos) && data.objetivos.length) {
-            if (data.objetivos && Array.isArray(data.objetivos) && data.objetivos.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong></p><ul>`;
-                data.objetivos.forEach((objetivo) => {
-                    const descObjetivo = objetivo.descricao ? sanitizeInput(objetivo.descricao) : "Descrição não informada";
-                    const valorObjetivo = formatCurrencyForDisplay(objetivo.valor);
-                    const prazoObjetivo = objetivo.prazo ? sanitizeInput(objetivo.prazo) : "Prazo não informado";
-                    dataHtml += `<li>${descObjetivo} (Valor: ${valorObjetivo}, Prazo: ${prazoObjetivo})</li>`;
-                });
-                dataHtml += `</ul>`;
-            } else {
-                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Objetivos:</strong> Nenhum objetivo informado.</p>`;
+                if (Array.isArray(data.objetivos)) {
+                  if (data.objetivos.length > 0) {
+                    dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong></p><ul>`;
+                    data.objetivos.forEach((objetivo) => {
+                      const descObjetivo = objetivo.descricao ? sanitizeInput(objetivo.descricao) : "Descrição não informada";
+                      const valorObjetivo = formatCurrencyForDisplay(objetivo.valor);
+                      const prazoObjetivo = objetivo.prazo ? sanitizeInput(objetivo.prazo) : "Prazo não informado";
+                      dataHtml += `<li>${descObjetivo} (Valor: ${valorObjetivo}, Prazo: ${prazoObjetivo})</li>`;
+                    });
+                    dataHtml += `</ul>`;
+                  } else {
+                    dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong> Nenhum objetivo adicionado.</p>`;
+                  }
                 }
-              }
+
             
            // Exibição de Informações Adicionais
               if (
