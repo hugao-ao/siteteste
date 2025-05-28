@@ -141,7 +141,7 @@
         cursor: pointer;
         font-size: 0.9rem;
         transition: background-color 0.3s ease;
-        margin-top: 0.5rem; /* Adiciona espaço acima do botão */
+        margin-top: 1.5rem; /* Adiciona espaço acima do botão */
     }
     
     #form-section .delete-form-btn:hover {
@@ -604,18 +604,19 @@
 
     function displayFormData(formData) {
         console.log("DEBUG: Entering displayFormData for completed form:", formData); 
-        let dataHtml = "";
+        let dataHtml = "<div class=\"form-data-display\">"; // Abre a div principal
         if (formData.dados_formulario && typeof formData.dados_formulario === "object") {
             const data = formData.dados_formulario;
 
+            // --- Seções Existentes --- 
             const nomeCompleto = data.nome_completo ? sanitizeInput(data.nome_completo) : "N/A";
-            dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Nome Completo:</strong> ${nomeCompleto}</p>`;
+            dataHtml += `<p><strong>Nome Completo:</strong> ${nomeCompleto}</p>`;
 
             const rendaUnicaText = data.renda_unica === "sim" ? "Sim" : (data.renda_unica === "nao" ? "Não" : "N/A");
-            dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
+            dataHtml += `<p><strong>Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
 
             if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas) && data.outras_pessoas.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Outras pessoas com renda na casa:</strong></p><ul>`;
+                dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong></p><ul>`;
                 data.outras_pessoas.forEach((pessoa) => {
                     const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : "Nome não informado";
                     const autorizacaoText = pessoa.autorizacao === "sim" ? "Sim" : (pessoa.autorizacao === "nao" ? "Não" : "Não informado");
@@ -623,14 +624,14 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.renda_unica === "nao") {
-                 dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
+                 dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
             }
 
             const temDependentesText = data.tem_dependentes === "sim" ? "Sim" : (data.tem_dependentes === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Tem dependentes?</strong> ${temDependentesText}</p>`;
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Tem dependentes?</strong> ${temDependentesText}</p>`;
 
             if (data.tem_dependentes === "sim" && Array.isArray(data.dependentes) && data.dependentes.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dependentes:</strong></p><ul>`;
+                dataHtml += `<p><strong>Dependentes:</strong></p><ul>`;
                 data.dependentes.forEach((dependente) => {
                     const nomeDep = dependente.nome ? sanitizeInput(dependente.nome) : "Nome não informado";
                     const idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
@@ -639,12 +640,12 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.tem_dependentes === "sim") {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dependentes:</strong> Nenhum dependente adicionado.</p>`;
+                dataHtml += `<p><strong>Dependentes:</strong> Nenhum dependente adicionado.</p>`;
             }
 
             // Exibição de Planos de Saúde
             if (data.planos_saude && Object.keys(data.planos_saude).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Plano de Saúde:</strong></p><ul>`;
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong></p><ul>`;
                 Object.entries(data.planos_saude).forEach(([nome, info]) => {
                     const nomePessoaPlano = sanitizeInput(nome);
                     let statusPlanoText = "N/A";
@@ -659,7 +660,7 @@
 
             // Exibição de Seguros de Vida
             if (data.seguros_vida && Object.keys(data.seguros_vida).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Seguro de Vida:</strong></p><ul>`;
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Seguro de Vida:</strong></p><ul>`;
                 Object.entries(data.seguros_vida).forEach(([nome, info]) => {
                     const nomePessoaSeguro = sanitizeInput(nome);
                     let statusSeguroText = "N/A";
@@ -674,10 +675,10 @@
 
             // Exibição de Patrimônio Físico
             const possuiPatrimonioText = data.tem_patrimonio === "sim" ? "Sim" : (data.tem_patrimonio === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
 
             if (data.tem_patrimonio === "sim" && Array.isArray(data.patrimonios) && data.patrimonios.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Patrimônios Físicos:</strong></p><ul>`;
+                dataHtml += `<p><strong>Patrimônios Físicos:</strong></p><ul>`;
                 data.patrimonios.forEach((patrimonio) => {
                     const descPat = patrimonio.qual ? sanitizeInput(patrimonio.qual) : "Descrição não informada";
                     const valorPat = formatCurrencyForDisplay(patrimonio.valor); 
@@ -687,15 +688,15 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.tem_patrimonio === "sim") {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
+                dataHtml += `<p><strong>Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
             }
 
             // Exibição do Patrimônio Líquido
             const possuiPatrimonioLiquidoText = data.tem_patrimonio_liquido === "sim" ? "Sim" : (data.tem_patrimonio_liquido === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
 
             if (data.tem_patrimonio_liquido === "sim" && Array.isArray(data.patrimonios_liquidos) && data.patrimonios_liquidos.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dinheiro Guardado ou Investido:</strong></p><ul>`;
+                dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong></p><ul>`;
                 data.patrimonios_liquidos.forEach((patrimonio_liquido) => {
                     const ondePatLiq = patrimonio_liquido.qual ? sanitizeInput(patrimonio_liquido.qual) : "Local não informado";
                     const valorPatLiq = formatCurrencyForDisplay(patrimonio_liquido.valor);
@@ -703,15 +704,15 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.tem_patrimonio_liquido === "sim") {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
+                dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
             }
 
             // Exibição de Dívidas
             const possuiDividasText = data.tem_dividas === "sim" ? "Sim" : (data.tem_dividas === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dívidas?</strong> ${possuiDividasText}</p>`;
+            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Dívidas?</strong> ${possuiDividasText}</p>`;
 
             if (data.tem_dividas === "sim" && Array.isArray(data.dividas) && data.dividas.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dívidas:</strong></p><ul>`;
+                dataHtml += `<p><strong>Dívidas:</strong></p><ul>`;
                 data.dividas.forEach((divida) => {
                     const credorDivida = divida.credor ? sanitizeInput(divida.credor) : "Credor não informado";
                     const saldoDivida = formatCurrencyForDisplay(divida.saldo);
@@ -719,12 +720,12 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.tem_dividas === "sim") {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
+                dataHtml += `<p><strong>Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
             }
-            
-            // Exibição de Imposto de Renda com informações adicionais
+
+            // Exibição de Imposto de Renda
             if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Imposto de Renda:</strong></p><ul>`;
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Imposto de Renda:</strong></p><ul>`;
                 Object.entries(data.impostos_renda).forEach(([nome, info]) => {
                     const nomePessoaIR = sanitizeInput(nome);
                     let statusIRText = "N/A";
@@ -732,13 +733,12 @@
                     else if (info.declara === "nao") statusIRText = "Não";
                     else if (info.declara === "nao_sei") statusIRText = "Não sei informar";
                     
-                    // Informações básicas sobre declaração
                     let irInfoText = `${nomePessoaIR}: ${statusIRText}`;
                     
-                    // Adicionar informações sobre contador se disponíveis
-                    if (info.declara === "sim" && info.contador !== undefined) {
-                        const contadorText = info.contador === "sim" ? "Sim" : (info.contador === "nao" ? "Não" : "N/A");
-                        irInfoText += ` (Usa contador: ${contadorText})`;
+                    if (info.declara === "sim") {
+                        const tipoIR = info.tipo_ir ? sanitizeInput(info.tipo_ir.replace("_", " ")) : "N/A";
+                        const resultadoIR = info.resultado_ir ? sanitizeInput(info.resultado_ir.replace("_", " ")) : "N/A";
+                        irInfoText += ` (Tipo: ${tipoIR}, Resultado: ${resultadoIR})`;
                     }
                     
                     dataHtml += `<li>${irInfoText}</li>`;
@@ -746,64 +746,48 @@
                 dataHtml += `</ul>`;
             }
             
-           // Exibição de Orçamento (Entradas de Renda)
-              if (
-                data.orcamento_renda &&
-                Array.isArray(data.orcamento_renda)
-              ) {
-                if (data.orcamento_renda.length > 0) {
-                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p><ul>`;
-                  data.orcamento_renda.forEach((entrada) => {
+            // --- NOVAS SEÇÕES --- 
+            
+            // Exibição de Orçamento (Entradas de Renda)
+            // Verifica se existe a chave 'orcamento_renda' e se é um array com itens
+            if (data.orcamento_renda && Array.isArray(data.orcamento_renda) && data.orcamento_renda.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Entradas de Renda:</strong></p><ul>`;
+                data.orcamento_renda.forEach((entrada) => {
                     const descEntrada = entrada.descricao ? sanitizeInput(entrada.descricao) : "Descrição não informada";
                     const valorEntrada = formatCurrencyForDisplay(entrada.valor);
                     dataHtml += `<li>${descEntrada}: ${valorEntrada}</li>`;
-                  });
-                  dataHtml += `</ul>`;
-                } else {
-                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong> Nenhuma entrada informada.</p>`;
-                }
-              }
-              
-              // Exibição de Orçamento (Despesas Fixas)
-              if (
-                data.orcamento_despesas_fixas &&
-                Array.isArray(data.orcamento_despesas_fixas)
-              ) {
-                if (data.orcamento_despesas_fixas.length > 0) {
-                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong></p><ul>`;
-                  data.orcamento_despesas_fixas.forEach((despesa) => {
+                });
+                dataHtml += `</ul>`;
+            }
+            
+            // Exibição de Orçamento (Despesas Fixas)
+            // Verifica se existe a chave 'orcamento_despesas_fixas' e se é um array com itens
+            if (data.orcamento_despesas_fixas && Array.isArray(data.orcamento_despesas_fixas) && data.orcamento_despesas_fixas.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Despesas Fixas:</strong></p><ul>`;
+                data.orcamento_despesas_fixas.forEach((despesa) => {
                     const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
                     const valorDespesa = formatCurrencyForDisplay(despesa.valor);
                     dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
-                  });
-                  dataHtml += `</ul>`;
-                } else {
-                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong> Nenhuma despesa fixa informada.</p>`;
-                }
-              }
-              
-              // Exibição de Orçamento (Despesas Variáveis)
-              if (
-                data.orcamento_despesas_variaveis &&
-                Array.isArray(data.orcamento_despesas_variaveis)
-              ) {
-                if (data.orcamento_despesas_variaveis.length > 0) {
-                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong></p><ul>`;
-                  data.orcamento_despesas_variaveis.forEach((despesa) => {
+                });
+                dataHtml += `</ul>`;
+            }
+            
+            // Exibição de Orçamento (Despesas Variáveis)
+            // Verifica se existe a chave 'orcamento_despesas_variaveis' e se é um array com itens
+            if (data.orcamento_despesas_variaveis && Array.isArray(data.orcamento_despesas_variaveis) && data.orcamento_despesas_variaveis.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Despesas Variáveis:</strong></p><ul>`;
+                data.orcamento_despesas_variaveis.forEach((despesa) => {
                     const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
                     const valorDespesa = formatCurrencyForDisplay(despesa.valor);
                     dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
-                  });
-                  dataHtml += `</ul>`;
-                } else {
-                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong> Nenhuma despesa variável informada.</p>`;
-                }
-              }
+                });
+                dataHtml += `</ul>`;
+            }
             
             // Exibição de Objetivos Financeiros
-            if (data.objetivos && Array.isArray(data.objetivos) && data.objetivos.length) {
+            // Verifica se existe a chave 'objetivos' e se é um array com itens
             if (data.objetivos && Array.isArray(data.objetivos) && data.objetivos.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong></p><ul>`;
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Objetivos Financeiros:</strong></p><ul>`;
                 data.objetivos.forEach((objetivo) => {
                     const descObjetivo = objetivo.descricao ? sanitizeInput(objetivo.descricao) : "Descrição não informada";
                     const valorObjetivo = formatCurrencyForDisplay(objetivo.valor);
@@ -811,26 +795,21 @@
                     dataHtml += `<li>${descObjetivo} (Valor: ${valorObjetivo}, Prazo: ${prazoObjetivo})</li>`;
                 });
                 dataHtml += `</ul>`;
-            } else {
-                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Objetivos:</strong> Nenhum objetivo informado.</p>`;
-                }
-              }
-            
-           // Exibição de Informações Adicionais
-              if (
-                typeof data.info_adicionais === "string" &&
-                data.info_adicionais.trim() !== ""
-              ) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
-                dataHtml += `<p>${sanitizeInput(data.info_adicionais)}</p>`;
-              } else {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
-                dataHtml += `<p>Nenhuma informação adicional fornecida.</p>`;
-              }
-            
-             } else {
-              dataHtml = "<p>Não foi possível carregar os dados do formulário.</p>";
             }
+            
+            // Exibição de Informações Adicionais
+            // Verifica se existe a chave 'info_adicionais' e se tem conteúdo
+            if (data.info_adicionais && data.info_adicionais.trim() !== "") {
+                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações Adicionais:</strong></p>`;
+                // Usar <pre> para preservar quebras de linha e espaços
+                dataHtml += `<pre style="white-space: pre-wrap; word-wrap: break-word; background-color: var(--theme-bg-surface); padding: 0.5rem; border-radius: 4px;">${sanitizeInput(data.info_adicionais)}</pre>`;
+            }
+            
+        } else {
+            dataHtml += "<p>Não foi possível carregar os dados detalhados do formulário.</p>";
+        }
+
+        dataHtml += "</div>"; // Fecha a div principal form-data-display
 
         // Adicionar botão para excluir formulário e gerar novo
         dataHtml += `
@@ -1032,19 +1011,19 @@
         try {
             // Verificar se a tabela dados_cadastrais existe
             const { data: tableExists, error: tableError } = await supabase
-                .from('dados_cadastrais')
+                .from('dados_cadastrais_clientes') // Corrigido nome da tabela
                 .select('id')
                 .limit(1);
                 
             if (tableError && tableError.code === '42P01') {
                 // Tabela não existe, criar a tabela
-                console.log("Tabela dados_cadastrais não existe, será criada automaticamente pelo backend");
+                console.log("Tabela dados_cadastrais_clientes não existe, será criada automaticamente pelo backend");
                 // Não podemos criar tabelas diretamente via API, isso deve ser feito no Supabase
             }
             
             // Buscar dados cadastrais do cliente
             const { data, error } = await supabase
-                .from('dados_cadastrais')
+                .from('dados_cadastrais_clientes') // Corrigido nome da tabela
                 .select('*')
                 .eq('cliente_id', clientId)
                 .single();
@@ -1057,13 +1036,13 @@
                 // Preencher o formulário com os dados existentes
                 dadosCadastraisId = data.id;
                 nomeCompletoInput.value = data.nome_completo || '';
-                cpfInput.value = data.cpf || '';
+                cpfInput.value = data.cpf ? formatCPF(data.cpf) : ''; // Formatar CPF ao carregar
                 emailInput.value = data.email || '';
-                whatsappInput.value = data.whatsapp || '';
+                whatsappInput.value = data.whatsapp ? formatWhatsApp(data.whatsapp) : ''; // Formatar WhatsApp ao carregar
                 
                 if (data.conjuge && typeof data.conjuge === 'object') {
                     conjugeNomeInput.value = data.conjuge.nome || '';
-                    conjugeWhatsappInput.value = data.conjuge.whatsapp || '';
+                    conjugeWhatsappInput.value = data.conjuge.whatsapp ? formatWhatsApp(data.conjuge.whatsapp) : ''; // Formatar WhatsApp do cônjuge
                 }
             } else {
                 // Não há dados cadastrais, inicializar com dados do cliente
@@ -1077,7 +1056,7 @@
                 
                 if (clientData) {
                     nomeCompletoInput.value = clientData.nome || '';
-                    whatsappInput.value = clientData.whatsapp || '';
+                    whatsappInput.value = clientData.whatsapp ? formatWhatsApp(clientData.whatsapp) : ''; // Formatar WhatsApp
                 }
                 
                 dadosCadastraisId = null;
@@ -1093,7 +1072,7 @@
         event.preventDefault();
         
         // Validar campos obrigatórios
-        const cpf = cpfInput.value.trim();
+        const cpf = cpfInput.value.trim().replace(/\D/g, ''); // Remove máscara para salvar
         const whatsapp = whatsappInput.value.trim();
         const conjugeNome = conjugeNomeInput.value.trim();
         const conjugeWhatsapp = conjugeWhatsappInput.value.trim();
@@ -1131,39 +1110,40 @@
             const dadosCadastrais = {
                 cliente_id: currentClientId,
                 nome_completo: nomeCompletoInput.value.trim(),
-                cpf: cpfInput.value.trim(),
+                cpf: cpf, // Salva CPF sem máscara
                 email: emailInput.value.trim(),
-                whatsapp: whatsappInput.value.trim(),
-                conjuge: conjugeNomeInput.value.trim() ? {
-                    nome: conjugeNomeInput.value.trim(),
-                    whatsapp: conjugeWhatsappInput.value.trim()
-                } : null
+                whatsapp: whatsapp, // Salva WhatsApp com máscara (+55...)
+                conjuge: {
+                    nome: conjugeNome,
+                    whatsapp: conjugeWhatsapp
+                }
             };
             
             let result;
-            
             if (dadosCadastraisId) {
-                // Atualizar dados existentes
+                // Atualizar registro existente
                 result = await supabase
-                    .from('dados_cadastrais')
+                    .from('dados_cadastrais_clientes') // Corrigido nome da tabela
                     .update(dadosCadastrais)
-                    .eq('id', dadosCadastraisId)
-                    .select();
+                    .eq('id', dadosCadastraisId);
             } else {
-                // Inserir novos dados
+                // Inserir novo registro
                 result = await supabase
-                    .from('dados_cadastrais')
-                    .insert([dadosCadastrais])
-                    .select();
+                    .from('dados_cadastrais_clientes') // Corrigido nome da tabela
+                    .insert(dadosCadastrais)
+                    .select(); // Seleciona para obter o ID
+                
+                // Se inseriu, atualiza o dadosCadastraisId
+                if (result.data && result.data.length > 0) {
+                    dadosCadastraisId = result.data[0].id;
+                }
             }
             
-            if (result.error) throw result.error;
-            
-            if (result.data && result.data.length > 0) {
-                dadosCadastraisId = result.data[0].id;
-            }
+            const { error } = result;
+            if (error) throw error;
             
             alert("Dados cadastrais salvos com sucesso!");
+            
         } catch (error) {
             console.error("Erro ao salvar dados cadastrais:", error);
             alert("Erro ao salvar dados cadastrais: " + error.message);
@@ -1172,77 +1152,45 @@
     
     // Função para configurar os botões de navegação
     function setupNavigationButtons() {
-        // Botão Formulário
-        btnFormulario.addEventListener("click", () => {
-            showSection("form");
+        const buttons = [btnFormulario, btnDiagnostico, btnPlano];
+        const sections = [formSection, diagnosticoSection, planoSection];
+        
+        buttons.forEach((button, index) => {
+            button.addEventListener("click", () => {
+                // Remover classe 'active' de todos os botões
+                buttons.forEach(btn => btn.classList.remove("active"));
+                // Adicionar classe 'active' ao botão clicado
+                button.classList.add("active");
+                
+                // Ocultar todas as seções
+                sections.forEach(section => section.style.display = "none");
+                dadosCadastraisSection.style.display = "none"; // Oculta dados cadastrais também
+                
+                // Mostrar a seção correspondente
+                sections[index].style.display = "block";
+            });
         });
         
-        // Botão Diagnóstico Financeiro
-        btnDiagnostico.addEventListener("click", () => {
-            showSection("diagnostico");
-        });
-        
-        // Botão Plano Financeiro
-        btnPlano.addEventListener("click", () => {
-            showSection("plano");
-        });
-        
-        // Botão Dados Cadastrais
-        btnDadosCadastrais.addEventListener("click", () => {
-            showSection("dados-cadastrais");
-        });
-        
-        // Botões do Plano Financeiro (sem ação por enquanto)
-        btnGestao.addEventListener("click", () => {
-            alert("Funcionalidade em desenvolvimento");
-        });
-        
-        btnImplementacoes.addEventListener("click", () => {
-            alert("Funcionalidade em desenvolvimento");
-        });
-        
-        // Formulário de dados cadastrais
-        dadosCadastraisForm.addEventListener("submit", saveDadosCadastrais);
-        
-        // Adicionar formatação automática para CPF
-        cpfInput.addEventListener("input", function(e) {
-            const cursorPosition = this.selectionStart;
-            const originalLength = this.value.length;
-            
-            this.value = formatCPF(this.value);
-            
-            // Ajustar posição do cursor após formatação
-            const newLength = this.value.length;
-            const cursorAdjustment = newLength - originalLength;
-            this.setSelectionRange(cursorPosition + cursorAdjustment, cursorPosition + cursorAdjustment);
-        });
-        
-        // Adicionar formatação automática para WhatsApp
-        whatsappInput.addEventListener("input", function() {
-            this.value = formatWhatsApp(this.value);
-        });
-        
-        // Adicionar formatação automática para WhatsApp do Cônjuge
-        conjugeWhatsappInput.addEventListener("input", function() {
-            this.value = formatWhatsApp(this.value);
-        });
+        // Configurar botões dentro da seção Plano Financeiro
+        btnDadosCadastrais.addEventListener("click", () => showSection("dados-cadastrais"));
+        // Adicionar listeners para outros botões do plano (Gestão, Implementações) se necessário
+        // btnGestao.addEventListener("click", () => showSection("gestao"));
+        // btnImplementacoes.addEventListener("click", () => showSection("implementacoes"));
     }
     
-    // Função para mostrar a seção selecionada
-    function showSection(section) {
-        // Ocultar todas as seções
+    // Função para mostrar seções específicas
+    function showSection(sectionName) {
+        // Ocultar todas as seções principais
         formSection.style.display = "none";
         diagnosticoSection.style.display = "none";
         planoSection.style.display = "none";
         dadosCadastraisSection.style.display = "none";
         
-        // Remover classe active de todos os botões
-        btnFormulario.classList.remove("active");
-        btnDiagnostico.classList.remove("active");
-        btnPlano.classList.remove("active");
+        // Remover classe 'active' dos botões de navegação principais
+        [btnFormulario, btnDiagnostico, btnPlano].forEach(btn => btn.classList.remove("active"));
         
-        // Mostrar a seção selecionada e ativar o botão correspondente
-        switch (section) {
+        // Mostrar a seção solicitada e ativar o botão correspondente
+        switch (sectionName) {
             case "form":
                 formSection.style.display = "block";
                 btnFormulario.classList.add("active");
@@ -1257,14 +1205,47 @@
                 break;
             case "dados-cadastrais":
                 dadosCadastraisSection.style.display = "block";
-                btnPlano.classList.add("active");
+                // Manter o botão 'Plano Financeiro' ativo, pois Dados Cadastrais é uma subseção
+                btnPlano.classList.add("active"); 
                 break;
+            // Adicionar casos para outras subseções do plano se necessário
+            // case "gestao":
+            //     // Mostrar seção de gestão
+            //     btnPlano.classList.add("active");
+            //     break;
+            // case "implementacoes":
+            //     // Mostrar seção de implementações
+            //     btnPlano.classList.add("active");
+            //     break;
         }
     }
 
-    // Inicializar a página
+    // --- Inicialização --- 
     document.addEventListener("DOMContentLoaded", loadClientDetails);
-  </script>
+    
+    // Adicionar listener para o formulário de dados cadastrais
+    if (dadosCadastraisForm) {
+        dadosCadastraisForm.addEventListener("submit", saveDadosCadastrais);
+        
+        // Adicionar listeners para formatação de CPF e WhatsApp
+        if (cpfInput) {
+            cpfInput.addEventListener('input', (e) => {
+                e.target.value = formatCPF(e.target.value);
+            });
+        }
+        if (whatsappInput) {
+            whatsappInput.addEventListener('input', (e) => {
+                e.target.value = formatWhatsApp(e.target.value);
+            });
+        }
+        if (conjugeWhatsappInput) {
+            conjugeWhatsappInput.addEventListener('input', (e) => {
+                e.target.value = formatWhatsApp(e.target.value);
+            });
+        }
+    }
 
+  </script>
 </body>
 </html>
+
