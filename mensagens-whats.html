@@ -453,6 +453,46 @@
       }
     }
     
+    // Função para formatar número de WhatsApp (remover o + inicial)
+    function formatWhatsAppNumber(number) {
+      if (!number) return '';
+      // Remove o + inicial se existir
+      return number.toString().replace(/^\+/, '');
+    }
+    
+    // Função para abrir WhatsApp com mensagem personalizada
+    function openWhatsApp(event) {
+      const row = event.target.closest('tr');
+      const clienteId = row.dataset.id;
+      
+      const cliente = allClientes.find(c => c.id === clienteId);
+      if (!cliente) return;
+      
+      const dadosCadastraisArray = cliente.dados_cadastrais || [];
+      const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === clienteId) || {};
+      
+      // Obter número de WhatsApp (priorizar dados cadastrais)
+      let whatsapp = dadosCadastrais.whatsapp || cliente.whatsapp || '';
+      
+      // Se não tiver WhatsApp, alertar e sair
+      if (!whatsapp || whatsapp.trim() === '') {
+        alert('Este cliente não possui número de WhatsApp cadastrado.');
+        return;
+      }
+      
+      // Formatar número (remover o + inicial)
+      whatsapp = formatWhatsAppNumber(whatsapp);
+      
+      // Obter mensagem personalizada
+      const mensagem = cliente.mensagem || 'Em desenvolvimento.';
+      
+      // Construir URL do WhatsApp
+      const whatsappUrl = `https://api.whatsapp.com/send?phone=${whatsapp}&text=${encodeURIComponent(mensagem)}`;
+      
+      // Abrir em nova aba
+      window.open(whatsappUrl, '_blank');
+    }
+    
     // Renderizar tabela de clientes
     function renderClientesTable(clientes) {
       if (!clientes || clientes.length === 0) {
@@ -515,7 +555,7 @@
                     <button class="action-btn edit-msg-btn" title="Editar mensagem">
                       <i class="fas fa-comment-alt"></i>
                     </button>
-                    <button class="action-btn whats-btn" title="Enviar WhatsApp (em desenvolvimento)">
+                    <button class="action-btn whats-btn" title="Enviar WhatsApp">
                       <i class="fab fa-whatsapp"></i>
                     </button>
                   </td>
@@ -531,6 +571,11 @@
       // Adicionar event listeners aos botões
       document.querySelectorAll('.edit-msg-btn').forEach(btn => {
         btn.addEventListener('click', handleEditMessage);
+      });
+      
+      // Adicionar event listeners aos botões de WhatsApp
+      document.querySelectorAll('.whats-btn').forEach(btn => {
+        btn.addEventListener('click', openWhatsApp);
       });
     }
     
