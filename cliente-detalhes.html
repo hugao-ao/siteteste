@@ -746,38 +746,59 @@
                 dataHtml += `</ul>`;
             }
             
-            // Exibição de Orçamento (Entradas de Renda)
-            if (data.orcamento && data.orcamento.entradas_renda && Array.isArray(data.orcamento.entradas_renda) && data.orcamento.entradas_renda.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p><ul>`;
-                data.orcamento.entradas_renda.forEach((entrada) => {
+           // Exibição de Orçamento (Entradas de Renda)
+              if (
+                data.orcamento &&
+                Array.isArray(data.orcamento.entradas_renda)
+              ) {
+                if (data.orcamento.entradas_renda.length > 0) {
+                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p><ul>`;
+                  data.orcamento.entradas_renda.forEach((entrada) => {
                     const descEntrada = entrada.descricao ? sanitizeInput(entrada.descricao) : "Descrição não informada";
                     const valorEntrada = formatCurrencyForDisplay(entrada.valor);
                     dataHtml += `<li>${descEntrada}: ${valorEntrada}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-            
-            // Exibição de Orçamento (Despesas Fixas)
-            if (data.orcamento && data.orcamento.despesas_fixas && Array.isArray(data.orcamento.despesas_fixas) && data.orcamento.despesas_fixas.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong></p><ul>`;
-                data.orcamento.despesas_fixas.forEach((despesa) => {
+                  });
+                  dataHtml += `</ul>`;
+                } else {
+                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong> Nenhuma entrada informada.</p>`;
+                }
+              }
+              
+              // Exibição de Orçamento (Despesas Fixas)
+              if (
+                data.orcamento &&
+                Array.isArray(data.orcamento.despesas_fixas)
+              ) {
+                if (data.orcamento.despesas_fixas.length > 0) {
+                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong></p><ul>`;
+                  data.orcamento.despesas_fixas.forEach((despesa) => {
                     const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
                     const valorDespesa = formatCurrencyForDisplay(despesa.valor);
                     dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-            
-            // Exibição de Orçamento (Despesas Variáveis)
-            if (data.orcamento && data.orcamento.despesas_variaveis && Array.isArray(data.orcamento.despesas_variaveis) && data.orcamento.despesas_variaveis.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong></p><ul>`;
-                data.orcamento.despesas_variaveis.forEach((despesa) => {
+                  });
+                  dataHtml += `</ul>`;
+                } else {
+                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong> Nenhuma despesa fixa informada.</p>`;
+                }
+              }
+              
+              // Exibição de Orçamento (Despesas Variáveis)
+              if (
+                data.orcamento &&
+                Array.isArray(data.orcamento.despesas_variaveis)
+              ) {
+                if (data.orcamento.despesas_variaveis.length > 0) {
+                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong></p><ul>`;
+                  data.orcamento.despesas_variaveis.forEach((despesa) => {
                     const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
                     const valorDespesa = formatCurrencyForDisplay(despesa.valor);
                     dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
+                  });
+                  dataHtml += `</ul>`;
+                } else {
+                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong> Nenhuma despesa variável informada.</p>`;
+                }
+              }
             
             // Exibição de Objetivos Financeiros
             if (data.objetivos && Array.isArray(data.objetivos) && data.objetivos.length > 0) {
@@ -791,14 +812,21 @@
                 dataHtml += `</ul>`;
             }
             
-            // Exibição de Informações Adicionais
-            if (data.informacoes_adicionais) {
+           // Exibição de Informações Adicionais
+              if (
+                typeof data.informacoes_adicionais === "string" &&
+                data.informacoes_adicionais.trim() !== ""
+              ) {
                 dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
                 dataHtml += `<p>${sanitizeInput(data.informacoes_adicionais)}</p>`;
+              } else {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
+                dataHtml += `<p>Nenhuma informação adicional fornecida.</p>`;
+              }
+            
+             } else {
+              dataHtml = "<p>Não foi possível carregar os dados do formulário.</p>";
             }
-        } else {
-            dataHtml = "<p>Não foi possível carregar os dados do formulário.</p>";
-        }
 
         // Adicionar botão para excluir formulário e gerar novo
         dataHtml += `
