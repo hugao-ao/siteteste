@@ -426,8 +426,8 @@
               const nome = dadosCadastrais.nome_completo || cliente.nome || 'Nome não disponível';
               
               // Verificar se os dados cadastrais específicos existem
-              const temCpf = dadosCadastrais && dadosCadastrais.cpf;
-              const temWhatsapp = (dadosCadastrais && dadosCadastrais.whatsapp) || cliente.whatsapp;
+              const temCpf = dadosCadastrais && dadosCadastrais.cpf && dadosCadastrais.cpf.trim() !== '';
+              const temWhatsapp = (dadosCadastrais && dadosCadastrais.whatsapp && dadosCadastrais.whatsapp.trim() !== '') || (cliente.whatsapp && cliente.whatsapp.trim() !== '');
               
               // Preparar CPF e WhatsApp
               let cpfDisplay, whatsappDisplay;
