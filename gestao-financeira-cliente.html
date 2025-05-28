@@ -173,7 +173,8 @@
       top: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
+      overflow: auto;
+      background-color: rgba(0, 0, 0, 0.7);
     }
     
     .modal-content {
@@ -184,6 +185,8 @@
       width: 80%;
       max-width: 500px;
       box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      position: relative;
+      z-index: 1001;
     }
     
     .modal-header {
@@ -221,6 +224,7 @@
       border: 1px solid var(--border-color);
       border-radius: 4px;
       padding: 0.5rem;
+      background-color: var(--bg-surface);
     }
     
     .subcategoria-item {
@@ -229,6 +233,7 @@
       align-items: center;
       padding: 0.5rem;
       border-bottom: 1px solid var(--border-color);
+      background-color: var(--bg-card);
     }
     
     .subcategoria-item:last-child {
@@ -435,6 +440,15 @@
     let subcategoriasRemovidas = [];
     let subcategoriasAdicionadas = [];
     
+    // Mapeamento de categorias para IDs (será preenchido dinamicamente)
+    let categoriasMap = {
+      // Valores iniciais padrão que serão substituídos pelos UUIDs reais
+      "RECEITA": null,
+      "DESPESA_FIXA": null,
+      "DESPESA_VARIAVEL": null,
+      "INVESTIMENTO": null
+    };
+    
     // Função para obter parâmetros da URL
     function getUrlParams() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -481,6 +495,63 @@
       }
     }
     
+    // Função para carregar categorias financeiras
+    async function loadCategorias() {
+      try {
+        const { data, error } = await supabase
+          .from('categorias_financeiras')
+          .select('*');
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Preencher o mapeamento de categorias
+          data.forEach(cat => {
+            if (cat.tipo === 'RECEITA') categoriasMap.RECEITA = cat.id;
+            else if (cat.tipo === 'DESPESA_FIXA') categoriasMap.DESPESA_FIXA = cat.id;
+            else if (cat.tipo === 'DESPESA_VARIAVEL') categoriasMap.DESPESA_VARIAVEL = cat.id;
+            else if (cat.tipo === 'INVESTIMENTO') categoriasMap.INVESTIMENTO = cat.id;
+          });
+        } else {
+          // Se não existirem categorias, criar as padrões
+          await createDefaultCategorias();
+        }
+      } catch (error) {
+        console.error('Erro ao carregar categorias:', error);
+      }
+    }
+    
+    // Função para criar categorias padrão
+    async function createDefaultCategorias() {
+      try {
+        const categoriasDefault = [
+          { tipo: 'RECEITA', descricao: 'Receita' },
+          { tipo: 'DESPESA_FIXA', descricao: 'Despesa Fixa' },
+          { tipo: 'DESPESA_VARIAVEL', descricao: 'Despesa Variável' },
+          { tipo: 'INVESTIMENTO', descricao: 'Investimento' }
+        ];
+        
+        const { data, error } = await supabase
+          .from('categorias_financeiras')
+          .insert(categoriasDefault)
+          .select();
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          // Preencher o mapeamento de categorias
+          data.forEach(cat => {
+            if (cat.tipo === 'RECEITA') categoriasMap.RECEITA = cat.id;
+            else if (cat.tipo === 'DESPESA_FIXA') categoriasMap.DESPESA_FIXA = cat.id;
+            else if (cat.tipo === 'DESPESA_VARIAVEL') categoriasMap.DESPESA_VARIAVEL = cat.id;
+            else if (cat.tipo === 'INVESTIMENTO') categoriasMap.INVESTIMENTO = cat.id;
+          });
+        }
+      } catch (error) {
+        console.error('Erro ao criar categorias padrão:', error);
+      }
+    }
+    
     // Função para carregar subcategorias
     async function loadSubcategorias() {
       try {
@@ -505,12 +576,14 @@
       
       // Filtrar subcategorias pela categoria selecionada
       const categoriaSelecionada = categoriaItemSelect.value;
+      
+      // Obter o ID real da categoria selecionada
+      const categoriaId = categoriasMap[categoriaSelecionada];
+      
+      if (!categoriaId) return; // Se não tiver categoria selecionada ou mapeada, sair
+      
       const subcategoriasFiltradas = subcategorias.filter(sub => {
-        // Se não há categoria selecionada, mostrar todas
-        if (!categoriaSelecionada) return true;
-        
-        // Verificar se a subcategoria pertence à categoria selecionada
-        return sub.categoria_id === categoriaSelecionada;
+        return sub.categoria_id === categoriaId;
       });
       
       // Adicionar opções filtradas
@@ -527,8 +600,16 @@
       // Limpar lista atual
       subcategoriasListEl.innerHTML = '';
       
+      // Obter o ID real da categoria atual
+      const categoriaId = categoriasMap[categoriaAtual];
+      
+      if (!categoriaId) {
+        subcategoriasListEl.innerHTML = '<div class="subcategoria-item"><span>Erro: Categoria não encontrada.</span></div>';
+        return;
+      }
+      
       // Filtrar subcategorias pela categoria atual
-      const subcategoriasFiltradas = subcategorias.filter(sub => sub.categoria_id === categoriaAtual);
+      const subcategoriasFiltradas = subcategorias.filter(sub => sub.categoria_id === categoriaId);
       
       if (subcategoriasFiltradas.length === 0) {
         subcategoriasListEl.innerHTML = '<div class="subcategoria-item"><span>Nenhuma subcategoria encontrada.</span></div>';
@@ -673,9 +754,17 @@
         return;
       }
       
+      // Obter o ID real da categoria atual
+      const categoriaId = categoriasMap[categoriaAtual];
+      
+      if (!categoriaId) {
+        alert('Erro: Categoria não encontrada.');
+        return;
+      }
+      
       // Verificar se já existe uma subcategoria com o mesmo nome para esta categoria
       const existingSubcategoria = subcategorias.find(sub => 
-        sub.categoria_id === categoriaAtual && 
+        sub.categoria_id === categoriaId && 
         sub.nome.toLowerCase() === nome.toLowerCase()
       );
       
@@ -690,7 +779,7 @@
       // Adicionar à lista local
       const novaSubcategoria = {
         id: tempId,
-        categoria_id: categoriaAtual,
+        categoria_id: categoriaId,
         nome: nome,
         cliente_id: clienteId
       };
@@ -713,13 +802,19 @@
       try {
         // 1. Adicionar novas subcategorias
         if (subcategoriasAdicionadas.length > 0) {
-          const { error: addError } = await supabase
-            .from('subcategorias_financeiras')
-            .insert(subcategoriasAdicionadas.map(sub => ({
+          // Filtrar subcategorias temporárias e preparar para inserção
+          const subcategoriasParaAdicionar = subcategoriasAdicionadas.map(sub => {
+            // Garantir que estamos usando o ID real da categoria
+            return {
               categoria_id: sub.categoria_id,
               nome: sub.nome,
               cliente_id: clienteId
-            })));
+            };
+          });
+          
+          const { error: addError } = await supabase
+            .from('subcategorias_financeiras')
+            .insert(subcategoriasParaAdicionar);
           
           if (addError) throw addError;
         }
@@ -774,6 +869,7 @@
     // Inicializar a página
     document.addEventListener('DOMContentLoaded', async () => {
       await loadClienteData();
+      await loadCategorias(); // Carregar categorias antes das subcategorias
       await loadSubcategorias();
       
       // Event listener para mudança de categoria
