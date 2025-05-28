@@ -21,6 +21,7 @@ function createAdminSidebarHTML(projectContext = null) {
         <li class="sub-menu-header"><span>Gerenciamento ${managementLabel}</span></li>
         <li class="sub-menu"><a href="${userManagementLink}" id="nav-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
         <li class="sub-menu"><a href="${clientManagementLink}" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+        <li class="sub-menu"><a href="#" id="nav-mensagens-whats-admin"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
     `;
 
     return `
@@ -52,6 +53,7 @@ function createUserSidebarHTML(userProject) {
       <ul class="sidebar-menu">
         <li><a href="${homePage}" id="nav-painel-inicial"><i class="fas fa-home"></i> <span>Painel Inicial</span></a></li>
         <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+        <li><a href="#" id="nav-mensagens-whats-usuario"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
         <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
       </ul>
     </nav>
