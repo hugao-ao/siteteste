@@ -609,13 +609,13 @@
             const data = formData.dados_formulario;
 
             const nomeCompleto = data.nome_completo ? sanitizeInput(data.nome_completo) : "N/A";
-            dataHtml += `<p><strong>Nome Completo:</strong> ${nomeCompleto}</p>`;
+            dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Nome Completo:</strong> ${nomeCompleto}</p>`;
 
             const rendaUnicaText = data.renda_unica === "sim" ? "Sim" : (data.renda_unica === "nao" ? "Não" : "N/A");
-            dataHtml += `<p><strong>Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
+            dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
 
             if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas) && data.outras_pessoas.length > 0) {
-                dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong></p><ul>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Outras pessoas com renda na casa:</strong></p><ul>`;
                 data.outras_pessoas.forEach((pessoa) => {
                     const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : "Nome não informado";
                     const autorizacaoText = pessoa.autorizacao === "sim" ? "Sim" : (pessoa.autorizacao === "nao" ? "Não" : "Não informado");
@@ -623,14 +623,14 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.renda_unica === "nao") {
-                 dataHtml += `<p><strong>Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
+                 dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
             }
 
             const temDependentesText = data.tem_dependentes === "sim" ? "Sim" : (data.tem_dependentes === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong>Tem dependentes?</strong> ${temDependentesText}</p>`;
+            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Tem dependentes?</strong> ${temDependentesText}</p>`;
 
             if (data.tem_dependentes === "sim" && Array.isArray(data.dependentes) && data.dependentes.length > 0) {
-                dataHtml += `<p><strong>Dependentes:</strong></p><ul>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dependentes:</strong></p><ul>`;
                 data.dependentes.forEach((dependente) => {
                     const nomeDep = dependente.nome ? sanitizeInput(dependente.nome) : "Nome não informado";
                     const idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
@@ -639,12 +639,12 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.tem_dependentes === "sim") {
-                dataHtml += `<p><strong>Dependentes:</strong> Nenhum dependente adicionado.</p>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dependentes:</strong> Nenhum dependente adicionado.</p>`;
             }
 
             // Exibição de Planos de Saúde
             if (data.planos_saude && Object.keys(data.planos_saude).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Plano de Saúde:</strong></p><ul>`;
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Plano de Saúde:</strong></p><ul>`;
                 Object.entries(data.planos_saude).forEach(([nome, info]) => {
                     const nomePessoaPlano = sanitizeInput(nome);
                     let statusPlanoText = "N/A";
@@ -659,7 +659,7 @@
 
             // Exibição de Seguros de Vida
             if (data.seguros_vida && Object.keys(data.seguros_vida).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Seguro de Vida:</strong></p><ul>`;
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Seguro de Vida:</strong></p><ul>`;
                 Object.entries(data.seguros_vida).forEach(([nome, info]) => {
                     const nomePessoaSeguro = sanitizeInput(nome);
                     let statusSeguroText = "N/A";
@@ -674,10 +674,10 @@
 
             // Exibição de Patrimônio Físico
             const possuiPatrimonioText = data.tem_patrimonio === "sim" ? "Sim" : (data.tem_patrimonio === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
+            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
 
             if (data.tem_patrimonio === "sim" && Array.isArray(data.patrimonios) && data.patrimonios.length > 0) {
-                dataHtml += `<p><strong>Patrimônios Físicos:</strong></p><ul>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Patrimônios Físicos:</strong></p><ul>`;
                 data.patrimonios.forEach((patrimonio) => {
                     const descPat = patrimonio.qual ? sanitizeInput(patrimonio.qual) : "Descrição não informada";
                     const valorPat = formatCurrencyForDisplay(patrimonio.valor); 
@@ -687,15 +687,15 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.tem_patrimonio === "sim") {
-                dataHtml += `<p><strong>Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
             }
 
             // Exibição do Patrimônio Líquido
             const possuiPatrimonioLiquidoText = data.tem_patrimonio_liquido === "sim" ? "Sim" : (data.tem_patrimonio_liquido === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
+            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
 
             if (data.tem_patrimonio_liquido === "sim" && Array.isArray(data.patrimonios_liquidos) && data.patrimonios_liquidos.length > 0) {
-                dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong></p><ul>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dinheiro Guardado ou Investido:</strong></p><ul>`;
                 data.patrimonios_liquidos.forEach((patrimonio_liquido) => {
                     const ondePatLiq = patrimonio_liquido.qual ? sanitizeInput(patrimonio_liquido.qual) : "Local não informado";
                     const valorPatLiq = formatCurrencyForDisplay(patrimonio_liquido.valor);
@@ -703,15 +703,15 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.tem_patrimonio_liquido === "sim") {
-                dataHtml += `<p><strong>Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
             }
 
             // Exibição de Dívidas
             const possuiDividasText = data.tem_dividas === "sim" ? "Sim" : (data.tem_dividas === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong>Possui Dívidas?</strong> ${possuiDividasText}</p>`;
+            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dívidas?</strong> ${possuiDividasText}</p>`;
 
             if (data.tem_dividas === "sim" && Array.isArray(data.dividas) && data.dividas.length > 0) {
-                dataHtml += `<p><strong>Dívidas:</strong></p><ul>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dívidas:</strong></p><ul>`;
                 data.dividas.forEach((divida) => {
                     const credorDivida = divida.credor ? sanitizeInput(divida.credor) : "Credor não informado";
                     const saldoDivida = formatCurrencyForDisplay(divida.saldo);
@@ -719,12 +719,12 @@
                 });
                 dataHtml += `</ul>`;
             } else if (data.tem_dividas === "sim") {
-                dataHtml += `<p><strong>Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
             }
             
             // Exibição de Imposto de Renda com informações adicionais
             if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong>Informações sobre Imposto de Renda:</strong></p><ul>`;
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Imposto de Renda:</strong></p><ul>`;
                 Object.entries(data.impostos_renda).forEach(([nome, info]) => {
                     const nomePessoaIR = sanitizeInput(nome);
                     let statusIRText = "N/A";
@@ -744,6 +744,57 @@
                     dataHtml += `<li>${irInfoText}</li>`;
                 });
                 dataHtml += `</ul>`;
+            }
+            
+            // Exibição de Orçamento (Entradas de Renda)
+            if (data.orcamento && data.orcamento.entradas_renda && Array.isArray(data.orcamento.entradas_renda) && data.orcamento.entradas_renda.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p><ul>`;
+                data.orcamento.entradas_renda.forEach((entrada) => {
+                    const descEntrada = entrada.descricao ? sanitizeInput(entrada.descricao) : "Descrição não informada";
+                    const valorEntrada = formatCurrencyForDisplay(entrada.valor);
+                    dataHtml += `<li>${descEntrada}: ${valorEntrada}</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+            
+            // Exibição de Orçamento (Despesas Fixas)
+            if (data.orcamento && data.orcamento.despesas_fixas && Array.isArray(data.orcamento.despesas_fixas) && data.orcamento.despesas_fixas.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong></p><ul>`;
+                data.orcamento.despesas_fixas.forEach((despesa) => {
+                    const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
+                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
+                    dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+            
+            // Exibição de Orçamento (Despesas Variáveis)
+            if (data.orcamento && data.orcamento.despesas_variaveis && Array.isArray(data.orcamento.despesas_variaveis) && data.orcamento.despesas_variaveis.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong></p><ul>`;
+                data.orcamento.despesas_variaveis.forEach((despesa) => {
+                    const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
+                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
+                    dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+            
+            // Exibição de Objetivos Financeiros
+            if (data.objetivos && Array.isArray(data.objetivos) && data.objetivos.length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong></p><ul>`;
+                data.objetivos.forEach((objetivo) => {
+                    const descObjetivo = objetivo.descricao ? sanitizeInput(objetivo.descricao) : "Descrição não informada";
+                    const valorObjetivo = formatCurrencyForDisplay(objetivo.valor);
+                    const prazoObjetivo = objetivo.prazo ? sanitizeInput(objetivo.prazo) : "Prazo não informado";
+                    dataHtml += `<li>${descObjetivo} (Valor: ${valorObjetivo}, Prazo: ${prazoObjetivo})</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+            
+            // Exibição de Informações Adicionais
+            if (data.informacoes_adicionais) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
+                dataHtml += `<p>${sanitizeInput(data.informacoes_adicionais)}</p>`;
             }
         } else {
             dataHtml = "<p>Não foi possível carregar os dados do formulário.</p>";
