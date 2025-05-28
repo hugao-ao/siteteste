@@ -331,8 +331,15 @@
                 conjuge
               )
             `)
-            .eq('projeto', 'Planejamento')
-            .or(`visibility.eq.TODOS,assigned_to_user_id.eq.${userId}`);
+            .eq('projeto', 'Planejamento');
+            
+          // Só adiciona o filtro de assigned_to_user_id se userId for válido
+          if (userId && userId !== 'null' && userId !== 'undefined') {
+            query = query.or(`visibility.eq.TODOS,assigned_to_user_id.eq.${userId}`);
+          } else {
+            // Se não tiver ID válido, mostra apenas os com visibilidade TODOS
+            query = query.eq('visibility', 'TODOS');
+          }
         }
         
         const { data, error } = await query;
