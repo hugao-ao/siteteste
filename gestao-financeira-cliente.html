@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gestão Financeira - Cliente</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+    #main-content-gestao-financeira {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+    }
+    #main-content-gestao-financeira.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
+    
+    .gestao-container {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-top: 1.5rem;
+    }
+    
+    .form-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      align-items: flex-end;
+    }
+    
+    .form-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+    
+    .form-group select,
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-input);
+      color: var(--text-light);
+    }
+    
+    .btn {
+      padding: 0.75rem 1.5rem;
+      border: none;
+      border-radius: 4px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    
+    .btn-primary {
+      background-color: var(--accent-color);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background-color: var(--accent-color-darker);
+    }
+    
+    .btn-secondary {
+      background-color: var(--bg-button-secondary);
+      color: var(--text-light);
+      border: 1px solid var(--border-color);
+    }
+    
+    .btn-secondary:hover {
+      background-color: var(--bg-hover);
+    }
+    
+    .table-container {
+      margin-top: 2rem;
+      overflow-x: auto;
+    }
+    
+    .financeiro-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .financeiro-table th {
+      text-align: left;
+      padding: 0.75rem;
+      border-bottom: 2px solid var(--border-color);
+      color: var(--text-accent);
+    }
+    
+    .financeiro-table td {
+      padding: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .financeiro-table tr:hover {
+      background-color: var(--bg-hover);
+    }
+    
+    .action-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      margin-right: 0.5rem;
+      color: var(--text-accent);
+      font-size: 1.1rem;
+    }
+    
+    .action-btn:hover {
+      color: var(--accent-color);
+    }
+    
+    .receita {
+      color: #27ae60;
+    }
+    
+    .saida {
+      color: #e74c3c;
+    }
+    
+    .subcategoria-container {
+      position: relative;
+    }
+    
+    .subcategoria-actions {
+      position: absolute;
+      right: 0;
+      top: 0;
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .subcategoria-actions button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+    
+    .subcategoria-actions button:hover {
+      color: var(--accent-color);
+    }
+    
+    .alert {
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1.5rem;
+      display: none;
+    }
+    
+    .alert-success {
+      background-color: rgba(39, 174, 96, 0.2);
+      border: 1px solid #27ae60;
+      color: #27ae60;
+    }
+    
+    .alert-error {
+      background-color: rgba(231, 76, 60, 0.2);
+      border: 1px solid #e74c3c;
+      color: #e74c3c;
+    }
+    
+    /* Modal para adicionar subcategoria */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+    
+    .modal-content {
+      background-color: var(--bg-card);
+      margin: 10% auto;
+      padding: 1.5rem;
+      border-radius: 8px;
+      width: 80%;
+      max-width: 500px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+    
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: var(--text-light);
+    }
+    
+    .modal-body {
+      margin-bottom: 1.5rem;
+    }
+    
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 0.75rem;
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-gestao-financeira">
+    <h1 id="cliente-nome">Gestão Financeira - Cliente</h1>
+    
+    <div class="gestao-container">
+      <div id="alert-success" class="alert alert-success">
+        Item adicionado com sucesso!
+      </div>
+      
+      <div id="alert-error" class="alert alert-error">
+        Erro ao adicionar item. Tente novamente.
+      </div>
+      
+      <form id="item-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tipo-item">Tipo:</label>
+            <select id="tipo-item" required>
+              <option value="" disabled selected>Selecione o tipo</option>
+              <option value="RECEITA">RECEITA</option>
+              <option value="SAIDA">SAÍDA</option>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label for="descricao-item">Descrição:</label>
+            <input type="text" id="descricao-item" placeholder="Descrição do item" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="categoria-item">Categoria:</label>
+            <select id="categoria-item" required>
+              <option value="" disabled selected>Selecione a categoria</option>
+              <option value="DESPESA_FIXA">Despesa Fixa</option>
+              <option value="DESPESA_VARIAVEL">Despesa Variável</option>
+              <option value="INVESTIMENTO">Investimento</option>
+            </select>
+          </div>
+          
+          <div class="form-group subcategoria-container">
+            <label for="subcategoria-item">Subcategoria (opcional):</label>
+            <select id="subcategoria-item">
+              <option value="" selected>Sem subcategoria</option>
+              <!-- Opções serão carregadas dinamicamente -->
+            </select>
+            <div class="subcategoria-actions">
+              <button type="button" id="btn-add-subcategoria" title="Adicionar subcategoria">
+                <i class="fas fa-plus"></i>
+              </button>
+              <button type="button" id="btn-remove-subcategoria" title="Remover subcategoria">
+                <i class="fas fa-minus"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <button type="submit" class="btn btn-primary">Adicionar Item</button>
+          </div>
+        </div>
+      </form>
+      
+      <div class="table-container">
+        <table class="financeiro-table">
+          <thead>
+            <tr>
+              <th>Tipo</th>
+              <th>Descrição</th>
+              <th>Categoria</th>
+              <th>Subcategoria</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="itens-table-body">
+            <!-- Itens serão carregados dinamicamente -->
+            <tr>
+              <td colspan="5" class="text-center">Nenhum item financeiro cadastrado.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    
+    <!-- Modal para adicionar subcategoria -->
+    <div id="subcategoria-modal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Adicionar Subcategoria</h3>
+          <button class="close-modal">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="form-group">
+            <label for="categoria-modal">Categoria:</label>
+            <select id="categoria-modal" required>
+              <option value="DESPESA_FIXA">Despesa Fixa</option>
+              <option value="DESPESA_VARIAVEL">Despesa Variável</option>
+              <option value="INVESTIMENTO">Investimento</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="nome-subcategoria">Nome da Subcategoria:</label>
+            <input type="text" id="nome-subcategoria" placeholder="Nome da subcategoria" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn btn-secondary" id="btn-cancel-subcategoria">Cancelar</button>
+          <button class="btn btn-primary" id="btn-save-subcategoria">Salvar</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    import { supabase } from './supabase.js';
+    
+    // Injetar a sidebar
+    injectSidebar("main-content-gestao-financeira");
+    
+    // Elementos DOM
+    const clienteNome = document.getElementById('cliente-nome');
+    const itemForm = document.getElementById('item-form');
+    const tipoItemSelect = document.getElementById('tipo-item');
+    const descricaoItemInput = document.getElementById('descricao-item');
+    const categoriaItemSelect = document.getElementById('categoria-item');
+    const subcategoriaItemSelect = document.getElementById('subcategoria-item');
+    const btnAddSubcategoria = document.getElementById('btn-add-subcategoria');
+    const btnRemoveSubcategoria = document.getElementById('btn-remove-subcategoria');
+    const itensTableBody = document.getElementById('itens-table-body');
+    const alertSuccess = document.getElementById('alert-success');
+    const alertError = document.getElementById('alert-error');
+    
+    // Modal de subcategoria
+    const subcategoriaModal = document.getElementById('subcategoria-modal');
+    const categoriaModal = document.getElementById('categoria-modal');
+    const nomeSubcategoriaInput = document.getElementById('nome-subcategoria');
+    const btnCancelSubcategoria = document.getElementById('btn-cancel-subcategoria');
+    const btnSaveSubcategoria = document.getElementById('btn-save-subcategoria');
+    const closeModalBtn = document.querySelector('.close-modal');
+    
+    // Variáveis globais
+    let clienteId = null;
+    let subcategorias = [];
+    
+    // Função para obter parâmetros da URL
+    function getUrlParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return {
+        id: urlParams.get('id')
+      };
+    }
+    
+    // Função para carregar dados do cliente
+    async function loadClienteData() {
+      try {
+        const { id } = getUrlParams();
+        if (!id) {
+          alert('ID do cliente não especificado.');
+          window.location.href = 'clientes-dashboard.html';
+          return;
+        }
+        
+        clienteId = id;
+        
+        const { data, error } = await supabase
+          .from('clientes')
+          .select(`
+            *,
+            dados_cadastrais(*)
+          `)
+          .eq('id', id)
+          .single();
+        
+        if (error) throw error;
+        
+        if (data) {
+          // Obter nome do cliente
+          const dadosCadastraisArray = data.dados_cadastrais || [];
+          const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === data.id) || {};
+          const nome = dadosCadastrais.nome_completo || data.nome || 'Cliente';
+          
+          // Atualizar título da página
+          clienteNome.textContent = `Gestão Financeira - ${nome}`;
+          document.title = `Gestão Financeira - ${nome}`;
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados do cliente:', error);
+      }
+    }
+    
+    // Função para carregar subcategorias
+    async function loadSubcategorias() {
+      try {
+        const { data, error } = await supabase
+          .from('subcategorias_financeiras')
+          .select('*')
+          .or(`cliente_id.is.null,cliente_id.eq.${clienteId}`);
+        
+        if (error) throw error;
+        
+        subcategorias = data || [];
+        updateSubcategoriasSelect();
+      } catch (error) {
+        console.error('Erro ao carregar subcategorias:', error);
+      }
+    }
+    
+    // Função para atualizar o select de subcategorias
+    function updateSubcategoriasSelect() {
+      // Limpar opções atuais
+      subcategoriaItemSelect.innerHTML = '<option value="" selected>Sem subcategoria</option>';
+      
+      // Filtrar subcategorias pela categoria selecionada
+      const categoriaSelecionada = categoriaItemSelect.value;
+      const subcategoriasFiltradas = subcategorias.filter(sub => {
+        // Se não há categoria selecionada, mostrar todas
+        if (!categoriaSelecionada) return true;
+        
+        // Mapear valores do select para tipos de categoria no banco
+        let tipoCategoria;
+        if (categoriaSelecionada === 'DESPESA_FIXA') {
+          tipoCategoria = 'DESPESA_FIXA';
+        } else if (categoriaSelecionada === 'DESPESA_VARIAVEL') {
+          tipoCategoria = 'DESPESA_VARIAVEL';
+        } else if (categoriaSelecionada === 'INVESTIMENTO') {
+          tipoCategoria = 'INVESTIMENTO';
+        }
+        
+        // Verificar se a subcategoria pertence à categoria selecionada
+        return sub.categoria_id === tipoCategoria;
+      });
+      
+      // Adicionar opções filtradas
+      subcategoriasFiltradas.forEach(sub => {
+        const option = document.createElement('option');
+        option.value = sub.id;
+        option.textContent = sub.nome;
+        subcategoriaItemSelect.appendChild(option);
+      });
+    }
+    
+    // Função para adicionar subcategoria
+    async function addSubcategoria() {
+      const categoria = categoriaModal.value;
+      const nome = nomeSubcategoriaInput.value.trim();
+      
+      if (!nome) {
+        alert('Por favor, informe o nome da subcategoria.');
+        return;
+      }
+      
+      try {
+        // Verificar se já existe uma subcategoria com o mesmo nome para esta categoria
+        const { data: existingData, error: existingError } = await supabase
+          .from('subcategorias_financeiras')
+          .select('*')
+          .eq('nome', nome)
+          .eq('categoria_id', categoria)
+          .or(`cliente_id.is.null,cliente_id.eq.${clienteId}`);
+        
+        if (existingError) throw existingError;
+        
+        if (existingData && existingData.length > 0) {
+          alert('Já existe uma subcategoria com este nome para esta categoria.');
+          return;
+        }
+        
+        // Inserir nova subcategoria
+        const { data, error } = await supabase
+          .from('subcategorias_financeiras')
+          .insert({
+            categoria_id: categoria,
+            nome: nome,
+            cliente_id: clienteId // Associar ao cliente atual
+          });
+        
+        if (error) throw error;
+        
+        // Recarregar subcategorias
+        await loadSubcategorias();
+        
+        // Fechar modal
+        subcategoriaModal.style.display = 'none';
+        nomeSubcategoriaInput.value = '';
+      } catch (error) {
+        console.error('Erro ao adicionar subcategoria:', error);
+        alert('Erro ao adicionar subcategoria. Tente novamente.');
+      }
+    }
+    
+    // Função para remover subcategoria selecionada
+    async function removeSubcategoria() {
+      const subcategoriaId = subcategoriaItemSelect.value;
+      
+      if (!subcategoriaId) {
+        alert('Por favor, selecione uma subcategoria para remover.');
+        return;
+      }
+      
+      if (!confirm('Tem certeza que deseja remover esta subcategoria? Todos os itens associados a ela ficarão sem subcategoria.')) {
+        return;
+      }
+      
+      try {
+        // Remover subcategoria
+        const { error } = await supabase
+          .from('subcategorias_financeiras')
+          .delete()
+          .eq('id', subcategoriaId)
+          .eq('cliente_id', clienteId); // Garantir que só remove subcategorias do cliente
+        
+        if (error) {
+          // Se não conseguir remover (pode ser uma subcategoria global)
+          alert('Esta subcategoria não pode ser removida pois é uma subcategoria global ou está sendo usada por outros clientes.');
+          return;
+        }
+        
+        // Atualizar itens que usavam esta subcategoria
+        await supabase
+          .from('itens_financeiros')
+          .update({ subcategoria_id: null })
+          .eq('subcategoria_id', subcategoriaId);
+        
+        // Recarregar subcategorias
+        await loadSubcategorias();
+      } catch (error) {
+        console.error('Erro ao remover subcategoria:', error);
+        alert('Erro ao remover subcategoria. Tente novamente.');
+      }
+    }
+    
+    // Event Listeners
+    document.addEventListener("DOMContentLoaded", async () => {
+      // Verificar autenticação
+      const nivel = sessionStorage.getItem("nivel");
+      const projeto = sessionStorage.getItem("projeto");
+      
+      if (!nivel || (nivel !== 'admin' && projeto !== 'Planejamento')) {
+        alert("Acesso não autorizado.");
+        window.location.href = "index.html";
+        return;
+      }
+      
+      // Carregar dados do cliente
+      await loadClienteData();
+      
+      // Carregar subcategorias
+      await loadSubcategorias();
+      
+      // Event listener para mudança de categoria
+      categoriaItemSelect.addEventListener('change', updateSubcategoriasSelect);
+      
+      // Event listener para adicionar subcategoria
+      btnAddSubcategoria.addEventListener('click', () => {
+        // Pré-selecionar categoria atual
+        categoriaModal.value = categoriaItemSelect.value || 'DESPESA_FIXA';
+        subcategoriaModal.style.display = 'block';
+      });
+      
+      // Event listener para remover subcategoria
+      btnRemoveSubcategoria.addEventListener('click', removeSubcategoria);
+      
+      // Event listeners para o modal
+      btnSaveSubcategoria.addEventListener('click', addSubcategoria);
+      btnCancelSubcategoria.addEventListener('click', () => {
+        subcategoriaModal.style.display = 'none';
+      });
+      closeModalBtn.addEventListener('click', () => {
+        subcategoriaModal.style.display = 'none';
+      });
+      
+      // Fechar modal ao clicar fora dele
+      window.addEventListener('click', (e) => {
+        if (e.target === subcategoriaModal) {
+          subcategoriaModal.style.display = 'none';
+        }
+      });
+      
+      // Event listener para o formulário de item
+      itemForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // Implementação futura para adicionar itens financeiros
+        alert('Funcionalidade de adicionar itens será implementada na próxima fase.');
+      });
+    });
+  </script>
+</body>
+</html>
