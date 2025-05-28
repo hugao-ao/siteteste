@@ -221,6 +221,16 @@
       color: var(--text-muted);
       font-style: italic;
     }
+    
+    /* Estilo para debug info */
+    .debug-info {
+      margin-top: 1rem;
+      padding: 1rem;
+      background-color: rgba(0, 0, 0, 0.2);
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 0.8rem;
+    }
   </style>
 </head>
 <body>
@@ -236,6 +246,9 @@
       <div id="clientes-table-container">
         <div class="loading-message">Carregando clientes...</div>
       </div>
+      
+      <!-- Área de debug (para desenvolvimento) -->
+      <div id="debug-info" class="debug-info" style="display: none;"></div>
     </div>
 
     <!-- Modal de Edição de Mensagem -->
@@ -272,11 +285,34 @@
     const closeModalBtn = document.querySelector('.close-modal');
     const cancelBtn = document.querySelector('.cancel-btn');
     const saveBtn = document.querySelector('.save-btn');
+    const debugInfo = document.getElementById('debug-info');
     
     // Variáveis globais
     let allClientes = [];
     let currentClienteId = null;
     let isAdmin = false;
+    let currentUserId = null;
+    
+    // Função para debug
+    function logDebug(message, data = null) {
+      console.log(message, data);
+      
+      // Descomente para mostrar debug na interface
+      // debugInfo.style.display = 'block';
+      // const content = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+      // debugInfo.innerHTML += `<p><strong>${message}:</strong> ${content || ''}</p>`;
+    }
+    
+    // Função para normalizar UUID (remover espaços, converter para minúsculas)
+    function normalizeUUID(uuid) {
+      if (!uuid) return '';
+      return String(uuid).trim().toLowerCase();
+    }
+    
+    // Função para comparar UUIDs com segurança
+    function compareUUIDs(uuid1, uuid2) {
+      return normalizeUUID(uuid1) === normalizeUUID(uuid2);
+    }
     
     // Verificar autenticação e nível do usuário
     async function checkAuth() {
@@ -284,9 +320,11 @@
       const projeto = sessionStorage.getItem("projeto");
       const userId = sessionStorage.getItem("id");
       
-      console.log("Nível do usuário:", nivel);
-      console.log("Projeto do usuário:", projeto);
-      console.log("ID do usuário:", userId);
+      currentUserId = userId;
+      
+      logDebug("Nível do usuário", nivel);
+      logDebug("Projeto do usuário", projeto);
+      logDebug("ID do usuário", userId);
       
       if (!nivel) {
         alert("Acesso não autorizado. Faça login.");
@@ -296,10 +334,10 @@
       
       if (nivel === "admin") {
         isAdmin = true;
-        console.log("Usuário é admin");
+        logDebug("Usuário é admin", true);
       } else if (nivel === "usuario" && projeto === "Planejamento") {
         isAdmin = false;
-        console.log("Usuário é comum do projeto Planejamento");
+        logDebug("Usuário é comum do projeto Planejamento", true);
       } else if (nivel === "usuario" && projeto !== "Planejamento") {
         alert("Acesso não autorizado para este módulo.");
         window.location.href = "index.html";
@@ -314,62 +352,62 @@
       try {
         clientesTableContainer.innerHTML = '<div class="loading-message">Carregando clientes...</div>';
         
-        const userId = sessionStorage.getItem("id");
+        const userId = currentUserId;
         let clientesData = [];
         
         // Verificar se o ID do usuário é válido
         const isValidUserId = userId && userId !== 'null' && userId !== 'undefined';
-        console.log("ID do usuário válido:", isValidUserId);
+        logDebug("ID do usuário válido", isValidUserId);
         
+        // Buscar todos os clientes do projeto Planejamento
+        const { data, error } = await supabase
+          .from('clientes')
+          .select(`
+            *,
+            dados_cadastrais(*)
+          `)
+          .eq('projeto', 'Planejamento');
+          
+        if (error) throw error;
+        
+        logDebug("Total de clientes do projeto Planejamento", data.length);
+        
+        // Filtrar os clientes com base no nível do usuário
         if (isAdmin) {
-          // Administrador vê todos os clientes do projeto Planejamento
-          const { data, error } = await supabase
-            .from('clientes')
-            .select(`
-              *,
-              dados_cadastrais(*)
-            `)
-            .eq('projeto', 'Planejamento');
-            
-          if (error) throw error;
+          // Administrador vê todos os clientes
           clientesData = data;
-          console.log("Admin - Clientes carregados:", clientesData.length);
+          logDebug("Admin - Todos os clientes", clientesData.length);
         } else if (isValidUserId) {
-          // SOLUÇÃO SIMPLIFICADA: Buscar todos os clientes do projeto e filtrar no JavaScript
-          const { data, error } = await supabase
-            .from('clientes')
-            .select(`
-              *,
-              dados_cadastrais(*)
-            `)
-            .eq('projeto', 'Planejamento');
+          // Usuário comum - Filtrar no JavaScript para garantir comparação correta de UUIDs
+          clientesData = data.filter(cliente => {
+            // Cliente tem visibilidade TODOS
+            const isTodos = cliente.visibility === 'TODOS';
             
-          if (error) throw error;
+            // Cliente está atribuído ao usuário atual (INDIVIDUAL)
+            const isAssignedToUser = cliente.assigned_to_user_id && compareUUIDs(cliente.assigned_to_user_id, userId);
+            
+            // Log para depuração de cada cliente
+            if (isAssignedToUser) {
+              logDebug(`Cliente atribuído ao usuário: ${cliente.nome}`, {
+                cliente_id: cliente.id,
+                assigned_to_user_id: cliente.assigned_to_user_id,
+                userId: userId,
+                isMatch: compareUUIDs(cliente.assigned_to_user_id, userId)
+              });
+            }
+            
+            return isTodos || isAssignedToUser;
+          });
           
-          // Filtrar no JavaScript para garantir que todos os clientes corretos sejam exibidos
-          clientesData = data.filter(cliente => 
-            cliente.visibility === 'TODOS' || 
-            (cliente.assigned_to_user_id && cliente.assigned_to_user_id === userId)
-          );
-          
-          console.log("Clientes totais do projeto:", data.length);
-          console.log("Clientes filtrados para o usuário:", clientesData.length);
-          console.log("Clientes TODOS:", data.filter(c => c.visibility === 'TODOS').length);
-          console.log("Clientes INDIVIDUAL do usuário:", data.filter(c => c.assigned_to_user_id === userId).length);
+          logDebug("Usuário - Clientes filtrados", {
+            total: clientesData.length,
+            todos: data.filter(c => c.visibility === 'TODOS').length,
+            individual: data.filter(c => compareUUIDs(c.assigned_to_user_id, userId)).length
+          });
         } else {
           // Se não tiver ID válido, mostra apenas os com visibilidade TODOS
-          const { data, error } = await supabase
-            .from('clientes')
-            .select(`
-              *,
-              dados_cadastrais(*)
-            `)
-            .eq('projeto', 'Planejamento')
-            .eq('visibility', 'TODOS');
-            
-          if (error) throw error;
-          clientesData = data;
-          console.log("Usuário sem ID - Clientes TODOS:", clientesData.length);
+          clientesData = data.filter(cliente => cliente.visibility === 'TODOS');
+          logDebug("Usuário sem ID - Clientes TODOS", clientesData.length);
         }
         
         allClientes = clientesData;
