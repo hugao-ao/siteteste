@@ -71,13 +71,6 @@
       color: var(--text-light);
     }
     
-    .form-group select:disabled,
-    .form-group input:disabled {
-        background-color: var(--bg-disabled);
-        cursor: not-allowed;
-        opacity: 0.7;
-    }
-
     .form-group input[type="date"] {
       /* Estilo específico para campos de data, se necessário */
       padding: calc(0.75rem - 1px); /* Ajuste para consistência */
@@ -549,26 +542,6 @@
   <script type="module">
     import { injectSidebar } from './sidebar.js';
     import { supabase } from './supabase.js';
-    import {
-      loadClienteData,
-      loadCategoriasFinanceiras,
-      createDefaultCategorias,
-      loadSubcategoriasFinanceiras,
-      loadFormasPagamento,
-      addItemFinanceiro,
-      updateItemFinanceiro,
-      removeItemFinanceiro,
-      loadItensFinanceiros,
-      addSubcategoria,
-      removeSubcategoria,
-      addFormaPagamento,
-      updateFormaPagamento,
-      removeFormaPagamento,
-      formatCurrency,
-      formatDate,
-      getFirstDayOfCurrentYear,
-      traduzirPeriodoRepeticao
-    } from './js/gestao-financeira.js';
     
     // Injetar a sidebar
     injectSidebar("main-content-gestao-financeira");
@@ -647,7 +620,7 @@
     }
     
     // Carregar dados do cliente
-    async function loadCliente() {
+    async function loadClienteData() {
       try {
         const { id } = getUrlParams();
         if (!id) {
@@ -658,7 +631,16 @@
         
         clienteId = id;
         
-        const data = await loadClienteData(clienteId);
+        const { data, error } = await supabase
+          .from('clientes')
+          .select(`
+            *,
+            dados_cadastrais(*)
+          `)
+          .eq('id', id)
+          .single();
+        
+        if (error) throw error;
         
         if (data) {
           const dadosCadastraisArray = data.dados_cadastrais || [];
@@ -675,7 +657,11 @@
     // Carregar categorias financeiras
     async function loadCategorias() {
       try {
-        const data = await loadCategoriasFinanceiras();
+        const { data, error } = await supabase
+          .from('categorias_financeiras')
+          .select('*');
+        
+        if (error) throw error;
         
         if (data && data.length > 0) {
           data.forEach(cat => {
@@ -687,17 +673,54 @@
           console.log("Categorias carregadas:", categoriasMap);
         } else {
           await createDefaultCategorias();
-          await loadCategorias(); // Recarregar após criar
         }
       } catch (error) {
         console.error('Erro ao carregar categorias:', error);
       }
     }
     
-    // Carregar subcategorias
-    async function loadSubs() {
+    // Criar categorias padrão
+    async function createDefaultCategorias() {
       try {
-        subcategorias = await loadSubcategoriasFinanceiras(clienteId);
+        const categoriasDefault = [
+          { tipo: 'RECEITA', nome: 'Receita', descricao: 'Entradas de dinheiro e receitas' },
+          { tipo: 'DESPESA_FIXA', nome: 'Despesa Fixa', descricao: 'Despesas que ocorrem regularmente com valor fixo' },
+          { tipo: 'DESPESA_VARIAVEL', nome: 'Despesa Variável', descricao: 'Despesas que variam em valor ou frequência' },
+          { tipo: 'INVESTIMENTO', nome: 'Investimento', descricao: 'Aplicações financeiras e investimentos' }
+        ];
+        
+        const { data, error } = await supabase
+          .from('categorias_financeiras')
+          .insert(categoriasDefault)
+          .select();
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          data.forEach(cat => {
+            if (cat.tipo === 'RECEITA') categoriasMap.RECEITA = cat.id;
+            else if (cat.tipo === 'DESPESA_FIXA') categoriasMap.DESPESA_FIXA = cat.id;
+            else if (cat.tipo === 'DESPESA_VARIAVEL') categoriasMap.DESPESA_VARIAVEL = cat.id;
+            else if (cat.tipo === 'INVESTIMENTO') categoriasMap.INVESTIMENTO = cat.id;
+          });
+          console.log("Categorias padrão criadas:", categoriasMap);
+        }
+      } catch (error) {
+        console.error('Erro ao criar categorias padrão:', error);
+      }
+    }
+    
+    // Carregar subcategorias
+    async function loadSubcategorias() {
+      try {
+        const { data, error } = await supabase
+          .from('subcategorias_financeiras')
+          .select('*')
+          .or(`cliente_id.is.null,cliente_id.eq.${clienteId}`);
+        
+        if (error) throw error;
+        
+        subcategorias = data || [];
         updateSubcategoriasSelect();
       } catch (error) {
         console.error('Erro ao carregar subcategorias:', error);
@@ -705,9 +728,16 @@
     }
     
     // Carregar formas de pagamento
-    async function loadFormas() {
+    async function loadFormasPagamento() {
       try {
-        formasPagamento = await loadFormasPagamento(clienteId);
+        const { data, error } = await supabase
+          .from('formas_pagamento')
+          .select('*')
+          .or(`cliente_id.is.null,cliente_id.eq.${clienteId}`);
+        
+        if (error) throw error;
+        
+        formasPagamento = data || [];
         updateFormasSelect();
       } catch (error) {
         console.error('Erro ao carregar formas de pagamento:', error);
@@ -720,9 +750,6 @@
       const categoriaSelecionada = categoriaItemSelect.value;
       const categoriaId = categoriasMap[categoriaSelecionada];
       
-      // Habilitar/desabilitar select de subcategoria (mas manter label clicável)
-      subcategoriaItemSelect.disabled = !categoriaId;
-      
       if (!categoriaId) return;
       
       const subcategoriasFiltradas = subcategorias.filter(sub => sub.categoria_id === categoriaId);
@@ -734,32 +761,16 @@
       });
     }
     
-    // Atualizar select de formas de pagamento (com filtro por VIA)
+    // Atualizar select de formas de pagamento
     function updateFormasSelect() {
-      const viaSelecionada = viaItemSelect.value;
-      const valorAtual = formaItemSelect.value;
       formaItemSelect.innerHTML = '<option value="SEM_PREENCHIMENTO" selected>[sem preenchimento]</option>';
-      
       formasPagamento.forEach(forma => {
-        // Filtrar conforme VIA
-        if (viaSelecionada === 'DEBITO' && forma.tipo !== 'CONTA') return;
-        if (viaSelecionada === 'CREDITO' && forma.tipo !== 'CARTAO_CREDITO') return;
-        
         const option = document.createElement('option');
         option.value = forma.id;
         option.textContent = forma.nome;
         formaItemSelect.appendChild(option);
       });
-      
-      // Tentar manter a seleção anterior se ainda for válida
-      if (formaItemSelect.querySelector(`option[value="${valorAtual}"]`)) {
-        formaItemSelect.value = valorAtual;
-      } else {
-        // Se a seleção anterior não for mais válida, resetar para [sem preenchimento]
-        formaItemSelect.value = 'SEM_PREENCHIMENTO';
-      }
-      
-      // Aplicar regras de TIPO (que também afeta a habilitação)
+      // Aplicar regras de TIPO
       handleTipoChange();
     }
     
@@ -1112,7 +1123,7 @@
           const { error: deleteError } = await supabase.from('subcategorias_financeiras').delete().in('id', subcategoriasRemovidas);
           if (deleteError) throw deleteError;
         }
-        await loadSubs(); // Recarrega do banco
+        await loadSubcategorias();
         subcategoriasAdicionadas = []; subcategoriasModificadas = []; subcategoriasRemovidas = [];
         subcategoriaModal.style.display = 'none';
         showSuccessAlert('Subcategorias atualizadas com sucesso!');
@@ -1137,7 +1148,7 @@
           const { error: deleteError } = await supabase.from('formas_pagamento').delete().in('id', formasRemovidas);
           if (deleteError) throw deleteError;
         }
-        await loadFormas(); // Recarrega do banco
+        await loadFormasPagamento();
         formasAdicionadas = []; formasModificadas = []; formasRemovidas = [];
         formaModal.style.display = 'none';
         showSuccessAlert('Formas de pagamento atualizadas com sucesso!');
@@ -1196,22 +1207,15 @@
         opt.style.display = (opt.value === 'SEM_PREENCHIMENTO' && !isEntrada) ? 'none' : '';
       });
       
-      // Atualizar subcategorias e formas com base nas novas seleções
       updateSubcategoriasSelect();
-      updateFormasSelect(); 
-    }
-    
-    // Lidar com mudança de VIA
-    function handleViaChange() {
-      updateFormasSelect(); // Apenas atualiza as opções de FORMA
     }
     
     // --- Inicialização --- 
     document.addEventListener('DOMContentLoaded', async () => {
-      await loadCliente();
+      await loadClienteData();
       await loadCategorias();
-      await loadSubs();
-      await loadFormas();
+      await loadSubcategorias();
+      await loadFormasPagamento();
       
       // Preencher select de repetição numérica
       for (let i = 1; i <= 31; i++) {
@@ -1221,29 +1225,17 @@
         repeteNumeroSelect.appendChild(option);
       }
       
-      // Definir data inicial padrão
-      dataInicialInput.value = getFirstDayOfCurrentYear();
-      
       // Event listeners
       categoriaItemSelect.addEventListener('change', updateSubcategoriasSelect);
       tipoItemSelect.addEventListener('change', handleTipoChange);
-      viaItemSelect.addEventListener('change', handleViaChange); 
       
       // Abrir modal de subcategorias
       subcategoriaLabel.addEventListener('click', () => {
         let catSel;
         if (tipoItemSelect.value === 'ENTRADA') catSel = 'RECEITA';
         else catSel = categoriaItemSelect.value;
-        
-        if (!catSel) { 
-          showErrorAlert('Selecione uma categoria primeiro para gerenciar subcategorias.'); 
-          return; 
-        }
-        if (!categoriasMap[catSel]) { 
-          showErrorAlert('Erro: ID da categoria não encontrado. Recarregue a página.'); 
-          return; 
-        }
-        
+        if (!catSel) { alert('Selecione uma categoria.'); return; }
+        if (!categoriasMap[catSel]) { alert('Erro: ID da categoria não encontrado.'); return; }
         categoriaAtual = catSel;
         subcategoriasAdicionadas = []; subcategoriasModificadas = []; subcategoriasRemovidas = [];
         renderSubcategoriasList();
@@ -1252,8 +1244,6 @@
       
       // Abrir modal de formas de pagamento
       formaLabel.addEventListener('click', () => {
-        // Permitir abrir mesmo se TIPO for ENTRADA, para gerenciar formas existentes
-        // A lógica de seleção no formulário principal já impede o uso para ENTRADA
         formasAdicionadas = []; formasModificadas = []; formasRemovidas = [];
         renderFormasList();
         formaModal.style.display = 'block';
@@ -1265,89 +1255,80 @@
       btnSaveSubcategoria.addEventListener('click', saveSubcategoriasChanges);
       btnCancelSubcategoria.addEventListener('click', () => {
         subcategoriasAdicionadas = []; subcategoriasModificadas = []; subcategoriasRemovidas = [];
-        loadSubs(); // Recarrega original
+        loadSubcategorias(); // Recarrega original
         subcategoriaModal.style.display = 'none';
       });
-      closeModalSubcategoriaBtn.addEventListener('click', () => {
-        subcategoriasAdicionadas = []; subcategoriasModificadas = []; subcategoriasRemovidas = [];
-        loadSubs(); // Recarrega original
-        subcategoriaModal.style.display = 'none';
-      });
+      closeModalSubcategoriaBtn.addEventListener('click', () => btnCancelSubcategoria.click()); // Reutiliza lógica de cancelamento
       
       // Event listeners para modal de forma de pagamento
-      btnAddFormaModal.addEventListener('click', addFormaTemp);
-      novaFormaNomeInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addFormaTemp(); } });
       novaFormaTipoSelect.addEventListener('change', () => {
         novaFormaCartaoFields.classList.toggle('visible', novaFormaTipoSelect.value === 'CARTAO_CREDITO');
       });
+      btnAddFormaModal.addEventListener('click', addFormaTemp);
       btnSaveForma.addEventListener('click', saveFormasChanges);
       btnCancelForma.addEventListener('click', () => {
         formasAdicionadas = []; formasModificadas = []; formasRemovidas = [];
-        loadFormas(); // Recarrega original
+        loadFormasPagamento(); // Recarrega original
         formaModal.style.display = 'none';
       });
-      closeModalFormaBtn.addEventListener('click', () => {
-        formasAdicionadas = []; formasModificadas = []; formasRemovidas = [];
-        loadFormas(); // Recarrega original
-        formaModal.style.display = 'none';
+      closeModalFormaBtn.addEventListener('click', () => btnCancelForma.click()); // Reutiliza lógica de cancelamento
+      
+      // Fechar modais ao clicar fora
+      window.addEventListener('click', (e) => {
+        if (e.target === subcategoriaModal) closeModalSubcategoriaBtn.click();
+        if (e.target === formaModal) closeModalFormaBtn.click();
       });
       
-      // Submissão do formulário de item financeiro
+      // Event listener para o formulário de item
       itemForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        // Validações
         const tipo = tipoItemSelect.value;
         const categoria = categoriaItemSelect.value;
-        const descricao = descricaoItemInput.value.trim();
-        const subcategoriaId = subcategoriaItemSelect.value || null;
         const via = viaItemSelect.value;
-        const formaPagamentoId = formaItemSelect.value === 'SEM_PREENCHIMENTO' ? null : formaItemSelect.value;
-        const repeteNumero = parseInt(repeteNumeroSelect.value);
-        const repetePeriodo = repetePeriodoSelect.value;
-        const dataInicial = dataInicialInput.value;
-        const dataFinal = dataFinalInput.value || null;
+        const forma = formaItemSelect.value;
+        const repeteNum = repeteNumeroSelect.value;
+        const repetePer = repetePeriodoSelect.value;
         
-        // Validações
-        if (!tipo) { showErrorAlert('Selecione o Tipo.'); return; }
-        if (!categoria) { showErrorAlert('Selecione a Categoria.'); return; }
-        if (!descricao) { showErrorAlert('Informe a Descrição.'); return; }
-        if (tipo === 'SAIDA' && via === 'SEM_PREENCHIMENTO') { showErrorAlert('Selecione a Via (Débito ou Crédito) para Saídas.'); return; }
-        if (tipo === 'SAIDA' && !formaPagamentoId) { showErrorAlert('Selecione a Forma de Pagamento para Saídas.'); return; }
-        if (!dataInicial) { showErrorAlert('Informe a Data Inicial.'); return; }
+        if (tipo === 'SAIDA') {
+          if (via === 'SEM_PREENCHIMENTO') { showErrorAlert('Selecione a VIA para SAÍDA.'); return; }
+          if (forma === 'SEM_PREENCHIMENTO') { showErrorAlert('Selecione a FORMA para SAÍDA.'); return; }
+        }
+        if (repetePer !== 'NAO_REPETE' && !repeteNum) { showErrorAlert('Selecione o número para a repetição.'); return; }
         
-        const categoriaId = categoriasMap[categoria];
-        if (!categoriaId) { showErrorAlert('Erro: Categoria inválida.'); return; }
+        // Obter dados do formulário
+        const itemData = {
+          cliente_id: clienteId,
+          tipo: tipo,
+          categoria_id: categoriasMap[categoria],
+          descricao: descricaoItemInput.value,
+          subcategoria_id: subcategoriaItemSelect.value || null,
+          via: tipo === 'SAIDA' ? via : null,
+          forma_pagamento_id: tipo === 'SAIDA' ? (forma || null) : null,
+          repete_numero: repetePer !== 'NAO_REPETE' ? parseInt(repeteNum) : null,
+          repete_periodo: repetePer,
+          data_inicial: dataInicialInput.value || `${new Date().getFullYear()}-01-01`, // Default para 01/01 do ano vigente
+          data_final: dataFinalInput.value || null
+        };
         
         try {
-          await addItemFinanceiro(
-            clienteId,
-            tipo,
-            categoriaId,
-            descricao,
-            subcategoriaId,
-            via,
-            formaPagamentoId,
-            repeteNumero,
-            repetePeriodo,
-            dataInicial,
-            dataFinal
-          );
+          const { error } = await supabase.from('itens_financeiros').insert([itemData]);
+          if (error) throw error;
           
           showSuccessAlert('Item adicionado com sucesso!');
-          itemForm.reset();
-          dataInicialInput.value = getFirstDayOfCurrentYear(); // Resetar data inicial padrão
-          handleTipoChange(); // Resetar estados dos selects
-          // TODO: Recarregar e renderizar a tabela de itens
+          itemForm.reset(); // Limpar formulário
+          handleTipoChange(); // Resetar regras dinâmicas
+          // TODO: Recarregar e exibir a tabela de itens
+          
         } catch (error) {
           showErrorAlert(`Erro ao adicionar item: ${error.message}`);
         }
       });
       
-      // Inicializar estado dos selects
+      // Inicializar estado dos campos dinâmicos
       handleTipoChange();
     });
-    
   </script>
 </body>
 </html>
-
