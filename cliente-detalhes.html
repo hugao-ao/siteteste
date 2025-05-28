@@ -249,6 +249,106 @@
         font-size: 2rem;
         margin-bottom: 0.5rem;
     }
+
+    /* --- Seção de Dados Cadastrais --- */
+    #dados-cadastrais-section {
+        background-color: var(--theme-bg-dark);
+        padding: 1.5rem 2rem;
+        margin-top: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--theme-border-color);
+        text-align: left;
+        display: none; /* Inicialmente oculto */
+    }
+    
+    #dados-cadastrais-section h2 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+        color: var(--theme-secondary-lighter);
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 0.8rem;
+        border-radius: 4px;
+        border: 1px solid var(--theme-border-color);
+        background-color: var(--theme-bg-surface);
+        color: var(--theme-text-light);
+        font-size: 1rem;
+    }
+    
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--theme-secondary);
+        box-shadow: 0 0 0 2px rgba(var(--theme-secondary-rgb), 0.2);
+    }
+    
+    .required-field::after {
+        content: " *";
+        color: #e53935;
+    }
+    
+    .form-group .error-message {
+        color: #e53935;
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+        display: none;
+    }
+    
+    .conjuge-section {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px dashed var(--theme-border-color);
+    }
+    
+    .conjuge-section h3 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: var(--theme-secondary-lighter);
+    }
+    
+    .form-actions {
+        margin-top: 2rem;
+        text-align: right;
+    }
+    
+    .save-btn {
+        background-color: var(--theme-primary);
+        color: var(--theme-secondary-lighter);
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .save-btn:hover {
+        background-color: var(--theme-primary-lighter);
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .save-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
     
     /* Responsividade */
     @media (max-width: 768px) {
@@ -313,6 +413,10 @@
     <section id="plano-section">
       <h2>Plano Financeiro</h2>
       <div id="plano-buttons">
+        <button id="btn-dados-cadastrais" class="plano-button">
+          <i class="fas fa-user-edit"></i>
+          Dados Cadastrais
+        </button>
         <button id="btn-gestao" class="plano-button">
           <i class="fas fa-wallet"></i>
           Gestão Financeira
@@ -322,6 +426,53 @@
           Implementações
         </button>
       </div>
+    </section>
+    
+    <!-- Seção para Dados Cadastrais -->
+    <section id="dados-cadastrais-section">
+      <h2>Dados Cadastrais</h2>
+      <form id="dados-cadastrais-form">
+        <div class="form-group">
+          <label for="nome-completo">Nome Completo</label>
+          <input type="text" id="nome-completo" name="nome-completo" placeholder="Digite o nome completo">
+        </div>
+        
+        <div class="form-group">
+          <label for="cpf" class="required-field">CPF</label>
+          <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" required>
+          <div class="error-message" id="cpf-error">CPF é obrigatório</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" placeholder="exemplo@email.com">
+        </div>
+        
+        <div class="form-group">
+          <label for="whatsapp" class="required-field">WhatsApp</label>
+          <input type="text" id="whatsapp" name="whatsapp" placeholder="+55 (00) 00000-0000" required>
+          <div class="error-message" id="whatsapp-error">WhatsApp é obrigatório</div>
+        </div>
+        
+        <div class="conjuge-section">
+          <h3>Informações do Cônjuge</h3>
+          
+          <div class="form-group">
+            <label for="conjuge-nome">Nome do Cônjuge</label>
+            <input type="text" id="conjuge-nome" name="conjuge-nome" placeholder="Digite o nome do cônjuge">
+          </div>
+          
+          <div class="form-group">
+            <label for="conjuge-whatsapp" class="required-field">WhatsApp do Cônjuge</label>
+            <input type="text" id="conjuge-whatsapp" name="conjuge-whatsapp" placeholder="+55 (00) 00000-0000">
+            <div class="error-message" id="conjuge-whatsapp-error">WhatsApp do cônjuge é obrigatório quando o nome é preenchido</div>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="submit" class="save-btn" id="save-dados-btn">Salvar Dados</button>
+        </div>
+      </form>
     </section>
 
   </main>
@@ -338,6 +489,7 @@
     const formSection = document.getElementById("form-section");
     const diagnosticoSection = document.getElementById("diagnostico-section");
     const planoSection = document.getElementById("plano-section");
+    const dadosCadastraisSection = document.getElementById("dados-cadastrais-section");
     
     // Botões de navegação
     const btnFormulario = document.getElementById("btn-formulario");
@@ -345,11 +497,22 @@
     const btnPlano = document.getElementById("btn-plano");
     
     // Botões do plano financeiro
+    const btnDadosCadastrais = document.getElementById("btn-dados-cadastrais");
     const btnGestao = document.getElementById("btn-gestao");
     const btnImplementacoes = document.getElementById("btn-implementacoes");
     
+    // Formulário de dados cadastrais
+    const dadosCadastraisForm = document.getElementById("dados-cadastrais-form");
+    const nomeCompletoInput = document.getElementById("nome-completo");
+    const cpfInput = document.getElementById("cpf");
+    const emailInput = document.getElementById("email");
+    const whatsappInput = document.getElementById("whatsapp");
+    const conjugeNomeInput = document.getElementById("conjuge-nome");
+    const conjugeWhatsappInput = document.getElementById("conjuge-whatsapp");
+    
     let currentClientId; // Declarada em escopo mais amplo
     let clienteProjeto; // Para armazenar o projeto do cliente
+    let dadosCadastraisId; // Para armazenar o ID do registro de dados cadastrais
 
     const sanitizeInput = (str) => {
       if (str === null || str === undefined) return "";
@@ -685,6 +848,9 @@
                 
                 // Mostrar a seção de formulário por padrão
                 showSection("form");
+                
+                // Carregar dados cadastrais do cliente
+                await loadDadosCadastrais(clientId);
             } else {
                 // Para outros projetos, mostrar apenas a seção de formulário
                 formSection.style.display = "block";
@@ -735,6 +901,149 @@
         }
     }
     
+    // Função para carregar dados cadastrais do cliente
+    async function loadDadosCadastrais(clientId) {
+        try {
+            // Verificar se a tabela dados_cadastrais existe
+            const { data: tableExists, error: tableError } = await supabase
+                .from('dados_cadastrais')
+                .select('id')
+                .limit(1);
+                
+            if (tableError && tableError.code === '42P01') {
+                // Tabela não existe, criar a tabela
+                console.log("Tabela dados_cadastrais não existe, será criada automaticamente pelo backend");
+                // Não podemos criar tabelas diretamente via API, isso deve ser feito no Supabase
+            }
+            
+            // Buscar dados cadastrais do cliente
+            const { data, error } = await supabase
+                .from('dados_cadastrais')
+                .select('*')
+                .eq('cliente_id', clientId)
+                .single();
+                
+            if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+                throw error;
+            }
+            
+            if (data) {
+                // Preencher o formulário com os dados existentes
+                dadosCadastraisId = data.id;
+                nomeCompletoInput.value = data.nome_completo || '';
+                cpfInput.value = data.cpf || '';
+                emailInput.value = data.email || '';
+                whatsappInput.value = data.whatsapp || '';
+                
+                if (data.conjuge && typeof data.conjuge === 'object') {
+                    conjugeNomeInput.value = data.conjuge.nome || '';
+                    conjugeWhatsappInput.value = data.conjuge.whatsapp || '';
+                }
+            } else {
+                // Não há dados cadastrais, inicializar com dados do cliente
+                const { data: clientData, error: clientError } = await supabase
+                    .from('clientes')
+                    .select('nome, whatsapp')
+                    .eq('id', clientId)
+                    .single();
+                    
+                if (clientError) throw clientError;
+                
+                if (clientData) {
+                    nomeCompletoInput.value = clientData.nome || '';
+                    whatsappInput.value = clientData.whatsapp || '';
+                }
+                
+                dadosCadastraisId = null;
+            }
+        } catch (error) {
+            console.error("Erro ao carregar dados cadastrais:", error);
+            alert("Erro ao carregar dados cadastrais. Por favor, tente novamente.");
+        }
+    }
+    
+    // Função para salvar dados cadastrais
+    async function saveDadosCadastrais(event) {
+        event.preventDefault();
+        
+        // Validar campos obrigatórios
+        const cpf = cpfInput.value.trim();
+        const whatsapp = whatsappInput.value.trim();
+        const conjugeNome = conjugeNomeInput.value.trim();
+        const conjugeWhatsapp = conjugeWhatsappInput.value.trim();
+        
+        let isValid = true;
+        
+        // Resetar mensagens de erro
+        document.getElementById('cpf-error').style.display = 'none';
+        document.getElementById('whatsapp-error').style.display = 'none';
+        document.getElementById('conjuge-whatsapp-error').style.display = 'none';
+        
+        // Validar CPF
+        if (!cpf) {
+            document.getElementById('cpf-error').style.display = 'block';
+            isValid = false;
+        }
+        
+        // Validar WhatsApp
+        if (!whatsapp) {
+            document.getElementById('whatsapp-error').style.display = 'block';
+            isValid = false;
+        }
+        
+        // Validar WhatsApp do Cônjuge apenas se o nome do cônjuge for preenchido
+        if (conjugeNome && !conjugeWhatsapp) {
+            document.getElementById('conjuge-whatsapp-error').style.display = 'block';
+            isValid = false;
+        }
+        
+        if (!isValid) {
+            return;
+        }
+        
+        try {
+            const dadosCadastrais = {
+                cliente_id: currentClientId,
+                nome_completo: nomeCompletoInput.value.trim(),
+                cpf: cpfInput.value.trim(),
+                email: emailInput.value.trim(),
+                whatsapp: whatsappInput.value.trim(),
+                conjuge: conjugeNomeInput.value.trim() ? {
+                    nome: conjugeNomeInput.value.trim(),
+                    whatsapp: conjugeWhatsappInput.value.trim()
+                } : null
+            };
+            
+            let result;
+            
+            if (dadosCadastraisId) {
+                // Atualizar dados existentes
+                result = await supabase
+                    .from('dados_cadastrais')
+                    .update(dadosCadastrais)
+                    .eq('id', dadosCadastraisId)
+                    .select();
+            } else {
+                // Inserir novos dados
+                result = await supabase
+                    .from('dados_cadastrais')
+                    .insert([dadosCadastrais])
+                    .select();
+            }
+            
+            if (result.error) throw result.error;
+            
+            if (result.data && result.data.length > 0) {
+                dadosCadastraisId = result.data[0].id;
+            }
+            
+            alert("Dados cadastrais salvos com sucesso!");
+        } catch (error) {
+            console.error("Erro ao salvar dados cadastrais:", error);
+            alert("Erro ao salvar dados cadastrais: " + error.message);
+        }
+    }
+    
     // Função para configurar os botões de navegação
     function setupNavigationButtons() {
         // Botão Formulário
@@ -752,6 +1061,11 @@
             showSection("plano");
         });
         
+        // Botão Dados Cadastrais
+        btnDadosCadastrais.addEventListener("click", () => {
+            showSection("dados-cadastrais");
+        });
+        
         // Botões do Plano Financeiro (sem ação por enquanto)
         btnGestao.addEventListener("click", () => {
             alert("Funcionalidade em desenvolvimento");
@@ -760,6 +1074,9 @@
         btnImplementacoes.addEventListener("click", () => {
             alert("Funcionalidade em desenvolvimento");
         });
+        
+        // Formulário de dados cadastrais
+        dadosCadastraisForm.addEventListener("submit", saveDadosCadastrais);
     }
     
     // Função para mostrar a seção selecionada
@@ -768,6 +1085,7 @@
         formSection.style.display = "none";
         diagnosticoSection.style.display = "none";
         planoSection.style.display = "none";
+        dadosCadastraisSection.style.display = "none";
         
         // Remover classe active de todos os botões
         btnFormulario.classList.remove("active");
@@ -786,6 +1104,10 @@
                 break;
             case "plano":
                 planoSection.style.display = "block";
+                btnPlano.classList.add("active");
+                break;
+            case "dados-cadastrais":
+                dadosCadastraisSection.style.display = "block";
                 btnPlano.classList.add("active");
                 break;
         }
