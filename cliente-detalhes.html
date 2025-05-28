@@ -723,28 +723,31 @@
             }
             
             // Exibição de Imposto de Renda com informações adicionais
-            if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Imposto de Renda:</strong></p><ul>`;
-                Object.entries(data.impostos_renda).forEach(([nome, info]) => {
+                if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
+                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Imposto de Renda:</strong></p><ul>`;
+                  
+                  Object.entries(data.impostos_renda).forEach(([nome, info]) => {
                     const nomePessoaIR = sanitizeInput(nome);
                     let statusIRText = "N/A";
+                    
                     if (info.declara === "sim") statusIRText = "Sim";
                     else if (info.declara === "nao") statusIRText = "Não";
                     else if (info.declara === "nao_sei") statusIRText = "Não sei informar";
-                    
-                    // Informações básicas sobre declaração
-                    let irInfoText = `${nomePessoaIR}: ${statusIRText}`;
-                    
-                    // Adicionar informações sobre contador se disponíveis
-                    if (info.declara === "sim" && info.contador !== undefined) {
-                        const contadorText = info.contador === "sim" ? "Sim" : (info.contador === "nao" ? "Não" : "N/A");
-                        irInfoText += ` (Usa contador: ${contadorText})`;
+                
+                    let detalhes = `Declara: ${statusIRText}`;
+                
+                    if (info.declara === "sim") {
+                      const tipoIR = info.tipo_ir ? sanitizeInput(info.tipo_ir) : "Tipo não informado";
+                      const resultadoIR = info.resultado_ir ? sanitizeInput(info.resultado_ir) : "Resultado não informado";
+                      detalhes += ` | Tipo: ${tipoIR} | Resultado: ${resultadoIR}`;
                     }
-                    
-                    dataHtml += `<li>${irInfoText}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
+                
+                    dataHtml += `<li>${nomePessoaIR}: ${detalhes}</li>`;
+                  });
+                
+                  dataHtml += `</ul>`;
+                }
+
             
            // Exibição de Orçamento (Entradas de Renda)
               if (
