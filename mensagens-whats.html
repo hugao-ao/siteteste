@@ -26,6 +26,18 @@
       margin-left: 60px; /* Margin for collapsed sidebar */
     }
     /* --- End Sidebar Integration Styles --- */
+    
+    /* Estilo para links de clientes */
+    .cliente-link {
+      color: var(--text-light);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+    
+    .cliente-link:hover {
+      color: var(--accent-color);
+      text-decoration: underline;
+    }
 
     /* Estilos específicos para esta página */
     .mensagens-container {
@@ -405,7 +417,7 @@
               
               return `
                 <tr data-id="${cliente.id}">
-                  <td>${nome}</td>
+                  <td><a href="cliente-detalhes.html?id=${cliente.id}" class="cliente-link">${nome}</a></td>
                   <td>${cpf}</td>
                   <td>${whatsappDisplay}</td>
                   <td>
