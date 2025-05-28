@@ -1,3 +1,5 @@
+// gestao-financeira-filtro.js
+
 // Função para filtrar formas de pagamento com base na via selecionada
 function filtrarFormasPorVia() {
   // Obter os elementos do DOM
@@ -20,14 +22,14 @@ function filtrarFormasPorVia() {
     formaItemSelect.remove(1);
   }
   
-  // Se não houver formas de pagamento carregadas, não há o que filtrar
-  if (!window.formasPagamento || !Array.isArray(window.formasPagamento)) {
+  // Verificar se as formas de pagamento estão disponíveis no escopo atual
+  if (typeof formasPagamento === 'undefined' || !Array.isArray(formasPagamento)) {
     console.warn('Formas de pagamento não disponíveis para filtragem');
     return;
   }
   
   // Filtrar as formas de pagamento com base na via selecionada
-  const formasFiltradas = window.formasPagamento.filter(forma => {
+  const formasFiltradas = formasPagamento.filter(forma => {
     if (viaSelecionada === 'DEBITO') {
       return forma.tipo === 'CONTA';
     } else if (viaSelecionada === 'CREDITO') {
@@ -65,45 +67,38 @@ function filtrarFormasPorVia() {
   }
 }
 
-// Função para modificar o carregamento de formas de pagamento
-function modificarLoadFormasPagamento() {
-  // Armazenar a função original
-  const originalLoadFormasPagamento = window.loadFormasPagamento;
+// Função para inicializar a filtragem quando o DOM estiver pronto
+document.addEventListener('DOMContentLoaded', function() {
+  console.log('Inicializando filtragem de formas por via');
   
-  // Substituir pela nova função que chama a original e depois aplica o filtro
-  window.loadFormasPagamento = async function() {
-    // Chamar a função original para carregar todas as formas
-    await originalLoadFormasPagamento.apply(this, arguments);
-    
-    // Aplicar o filtro com base na via atual
-    filtrarFormasPorVia();
-  };
-}
-
-// Função para adicionar o event listener ao select de via
-function adicionarEventListenerVia() {
+  // Adicionar event listener ao select de via
   const viaItemSelect = document.getElementById('via-item');
-  
   if (viaItemSelect) {
     viaItemSelect.addEventListener('change', filtrarFormasPorVia);
     console.log('Event listener adicionado ao select de via');
   } else {
     console.error('Elemento via-item não encontrado');
   }
-}
-
-// Função de inicialização
-function inicializarFiltragem() {
-  // Modificar a função de carregamento
-  modificarLoadFormasPagamento();
   
-  // Adicionar o event listener quando o DOM estiver pronto
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', adicionarEventListenerVia);
-  } else {
-    adicionarEventListenerVia();
-  }
-}
-
-// Inicializar a filtragem
-inicializarFiltragem();
+  // Modificar a função de carregamento de formas de pagamento
+  // Aguardar até que a função original esteja disponível
+  const checkForLoadFunction = setInterval(function() {
+    if (typeof loadFormasPagamento === 'function') {
+      clearInterval(checkForLoadFunction);
+      
+      // Armazenar a função original
+      const originalLoadFormasPagamento = loadFormasPagamento;
+      
+      // Substituir pela nova função que chama a original e depois aplica o filtro
+      window.loadFormasPagamento = async function() {
+        // Chamar a função original para carregar todas as formas
+        await originalLoadFormasPagamento.apply(this, arguments);
+        
+        // Aplicar o filtro com base na via atual
+        setTimeout(filtrarFormasPorVia, 100); // Pequeno atraso para garantir que os dados estejam disponíveis
+      };
+      
+      console.log('Função loadFormasPagamento modificada com sucesso');
+    }
+  }, 100);
+});
