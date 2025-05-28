@@ -325,40 +325,35 @@
           clientesData = data;
           console.log("Admin - Clientes carregados:", clientesData.length);
         } else {
-          // Usuário comum - Primeiro busca clientes com visibilidade TODOS
-          const { data: todosDados, error: todosError } = await supabase
-            .from('clientes')
-            .select(`
-              *,
-              dados_cadastrais(*)
-            `)
-            .eq('projeto', 'Planejamento')
-            .eq('visibility', 'TODOS');
-            
-          if (todosError) throw todosError;
-          console.log("Usuário - Clientes TODOS:", todosDados.length);
-          
-          // Depois busca clientes atribuídos individualmente ao usuário
+          // Usuário comum - Busca todos os clientes do projeto Planejamento que são TODOS ou atribuídos ao usuário
           if (userId && userId !== 'null' && userId !== 'undefined') {
-            const { data: individuaisDados, error: individuaisError } = await supabase
+            // Consulta única com OR para buscar clientes TODOS ou atribuídos ao usuário
+            const { data, error } = await supabase
               .from('clientes')
               .select(`
                 *,
                 dados_cadastrais(*)
               `)
               .eq('projeto', 'Planejamento')
-              .eq('assigned_to_user_id', userId);
+              .or(`visibility.eq.TODOS,assigned_to_user_id.eq.${userId}`);
               
-            if (individuaisError) throw individuaisError;
-            console.log("Usuário - Clientes individuais:", individuaisDados.length);
-            
-            // Combina os resultados, evitando duplicatas
-            const todoIds = new Set(todosDados.map(c => c.id));
-            const uniqueIndividuais = individuaisDados.filter(c => !todoIds.has(c.id));
-            clientesData = [...todosDados, ...uniqueIndividuais];
-            console.log("Usuário - Total de clientes após combinação:", clientesData.length);
+            if (error) throw error;
+            clientesData = data;
+            console.log("Usuário - Total de clientes:", clientesData.length);
           } else {
-            clientesData = todosDados;
+            // Se não tiver ID válido, mostra apenas os com visibilidade TODOS
+            const { data, error } = await supabase
+              .from('clientes')
+              .select(`
+                *,
+                dados_cadastrais(*)
+              `)
+              .eq('projeto', 'Planejamento')
+              .eq('visibility', 'TODOS');
+              
+            if (error) throw error;
+            clientesData = data;
+            console.log("Usuário sem ID - Clientes TODOS:", clientesData.length);
           }
         }
         
