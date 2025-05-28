@@ -54,6 +54,12 @@
       font-weight: 500;
     }
     
+    .subcategoria-label {
+      color: #DAA520; /* Dourado */
+      text-decoration: underline;
+      cursor: pointer;
+    }
+    
     .form-group select,
     .form-group input {
       width: 100%;
@@ -139,36 +145,6 @@
       color: #e74c3c;
     }
     
-    .subcategoria-container {
-      position: relative;
-    }
-    
-    .subcategoria-actions {
-      position: absolute;
-      right: 10px;
-      top: 30px;
-      display: flex;
-      gap: 0.5rem;
-    }
-    
-    .subcategoria-actions button {
-      background-color: var(--accent-color);
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-      color: white;
-      width: 24px;
-      height: 24px;
-      border-radius: 4px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .subcategoria-actions button:hover {
-      background-color: var(--accent-color-darker);
-    }
-    
     .alert {
       padding: 1rem;
       border-radius: 4px;
@@ -188,7 +164,7 @@
       color: #e74c3c;
     }
     
-    /* Modal para adicionar subcategoria */
+    /* Modal para gerenciar subcategorias */
     .modal {
       display: none;
       position: fixed;
@@ -236,6 +212,87 @@
       justify-content: flex-end;
       gap: 0.75rem;
     }
+    
+    /* Estilos para a lista de subcategorias no modal */
+    .subcategorias-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border-color);
+      border-radius: 4px;
+      padding: 0.5rem;
+    }
+    
+    .subcategoria-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+    
+    .subcategoria-item:last-child {
+      border-bottom: none;
+    }
+    
+    .subcategoria-item-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .subcategoria-item-actions button {
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-accent);
+      font-size: 1rem;
+    }
+    
+    .subcategoria-item-actions button:hover {
+      color: var(--accent-color);
+    }
+    
+    .add-subcategoria-form {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .add-subcategoria-form input {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--border-color);
+      background-color: var(--bg-input);
+      color: var(--text-light);
+    }
+    
+    .add-subcategoria-form button {
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    
+    .add-subcategoria-form button:hover {
+      background-color: var(--accent-color-darker);
+    }
+    
+    .edit-mode {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+    
+    .edit-input {
+      flex: 1;
+      padding: 0.5rem;
+      border-radius: 4px;
+      border: 1px solid var(--accent-color);
+      background-color: var(--bg-input);
+      color: var(--text-light);
+      margin-right: 0.5rem;
+    }
   </style>
 </head>
 <body>
@@ -264,11 +321,6 @@
           </div>
           
           <div class="form-group">
-            <label for="descricao-item">Descrição:</label>
-            <input type="text" id="descricao-item" placeholder="Descrição do item" required>
-          </div>
-          
-          <div class="form-group">
             <label for="categoria-item">Categoria:</label>
             <select id="categoria-item" required>
               <option value="" disabled selected>Selecione a categoria</option>
@@ -279,20 +331,17 @@
             </select>
           </div>
           
-          <div class="form-group subcategoria-container">
-            <label for="subcategoria-item">Subcategoria (opcional):</label>
+          <div class="form-group">
+            <label for="descricao-item">Descrição:</label>
+            <input type="text" id="descricao-item" placeholder="Descrição do item" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="subcategoria-item" class="subcategoria-label">Subcategoria (opcional):</label>
             <select id="subcategoria-item">
               <option value="" selected>Sem subcategoria</option>
               <!-- Opções serão carregadas dinamicamente -->
             </select>
-            <div class="subcategoria-actions">
-              <button type="button" id="btn-add-subcategoria" title="Adicionar subcategoria">
-                <i class="fas fa-plus"></i>
-              </button>
-              <button type="button" id="btn-remove-subcategoria" title="Remover subcategoria">
-                <i class="fas fa-minus"></i>
-              </button>
-            </div>
           </div>
           
           <div class="form-group">
@@ -306,8 +355,8 @@
           <thead>
             <tr>
               <th>Tipo</th>
-              <th>Descrição</th>
               <th>Categoria</th>
+              <th>Descrição</th>
               <th>Subcategoria</th>
               <th>Ações</th>
             </tr>
@@ -322,22 +371,29 @@
       </div>
     </div>
     
-    <!-- Modal para adicionar subcategoria -->
+    <!-- Modal para gerenciar subcategorias -->
     <div id="subcategoria-modal" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>Adicionar Subcategoria</h3>
+          <h3>Gerenciar Subcategorias</h3>
           <button class="close-modal">&times;</button>
         </div>
         <div class="modal-body">
-          <div class="form-group">
-            <label for="nome-subcategoria">Nome da Subcategoria:</label>
-            <input type="text" id="nome-subcategoria" placeholder="Nome da subcategoria" required>
+          <div class="add-subcategoria-form">
+            <input type="text" id="nova-subcategoria" placeholder="Nome da nova subcategoria">
+            <button type="button" id="btn-add-subcategoria-modal">Adicionar</button>
+          </div>
+          
+          <div class="subcategorias-list" id="subcategorias-list">
+            <!-- Lista de subcategorias será carregada dinamicamente -->
+            <div class="subcategoria-item">
+              <span>Carregando subcategorias...</span>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn btn-secondary" id="btn-cancel-subcategoria">Cancelar</button>
-          <button class="btn btn-primary" id="btn-save-subcategoria">Salvar</button>
+          <button class="btn btn-primary" id="btn-save-subcategoria">Salvar Alterações</button>
         </div>
       </div>
     </div>
@@ -357,15 +413,16 @@
     const descricaoItemInput = document.getElementById('descricao-item');
     const categoriaItemSelect = document.getElementById('categoria-item');
     const subcategoriaItemSelect = document.getElementById('subcategoria-item');
-    const btnAddSubcategoria = document.getElementById('btn-add-subcategoria');
-    const btnRemoveSubcategoria = document.getElementById('btn-remove-subcategoria');
+    const subcategoriaLabel = document.querySelector('.subcategoria-label');
     const itensTableBody = document.getElementById('itens-table-body');
     const alertSuccess = document.getElementById('alert-success');
     const alertError = document.getElementById('alert-error');
     
     // Modal de subcategoria
     const subcategoriaModal = document.getElementById('subcategoria-modal');
-    const nomeSubcategoriaInput = document.getElementById('nome-subcategoria');
+    const subcategoriasListEl = document.getElementById('subcategorias-list');
+    const novaSubcategoriaInput = document.getElementById('nova-subcategoria');
+    const btnAddSubcategoriaModal = document.getElementById('btn-add-subcategoria-modal');
     const btnCancelSubcategoria = document.getElementById('btn-cancel-subcategoria');
     const btnSaveSubcategoria = document.getElementById('btn-save-subcategoria');
     const closeModalBtn = document.querySelector('.close-modal');
@@ -374,6 +431,9 @@
     let clienteId = null;
     let subcategorias = [];
     let categoriaAtual = null;
+    let subcategoriasModificadas = [];
+    let subcategoriasRemovidas = [];
+    let subcategoriasAdicionadas = [];
     
     // Função para obter parâmetros da URL
     function getUrlParams() {
@@ -462,101 +522,252 @@
       });
     }
     
-    // Função para adicionar subcategoria
-    async function addSubcategoria() {
-      const nome = nomeSubcategoriaInput.value.trim();
+    // Função para renderizar a lista de subcategorias no modal
+    function renderSubcategoriasList() {
+      // Limpar lista atual
+      subcategoriasListEl.innerHTML = '';
+      
+      // Filtrar subcategorias pela categoria atual
+      const subcategoriasFiltradas = subcategorias.filter(sub => sub.categoria_id === categoriaAtual);
+      
+      if (subcategoriasFiltradas.length === 0) {
+        subcategoriasListEl.innerHTML = '<div class="subcategoria-item"><span>Nenhuma subcategoria encontrada.</span></div>';
+        return;
+      }
+      
+      // Adicionar subcategorias à lista
+      subcategoriasFiltradas.forEach(sub => {
+        const item = document.createElement('div');
+        item.className = 'subcategoria-item';
+        item.dataset.id = sub.id;
+        
+        const span = document.createElement('span');
+        span.textContent = sub.nome;
+        
+        const actions = document.createElement('div');
+        actions.className = 'subcategoria-item-actions';
+        
+        const editBtn = document.createElement('button');
+        editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+        editBtn.title = 'Editar';
+        editBtn.addEventListener('click', () => {
+          // Entrar no modo de edição
+          item.classList.add('edit-mode');
+          
+          // Substituir o span por um input
+          const input = document.createElement('input');
+          input.type = 'text';
+          input.className = 'edit-input';
+          input.value = sub.nome;
+          
+          // Substituir as ações por botões de confirmar/cancelar
+          const confirmBtn = document.createElement('button');
+          confirmBtn.innerHTML = '<i class="fas fa-check"></i>';
+          confirmBtn.title = 'Confirmar';
+          confirmBtn.addEventListener('click', () => {
+            // Atualizar o nome da subcategoria na lista local
+            const subcategoriaIndex = subcategorias.findIndex(s => s.id === sub.id);
+            if (subcategoriaIndex !== -1) {
+              const novoNome = input.value.trim();
+              if (novoNome) {
+                subcategorias[subcategoriaIndex].nome = novoNome;
+                
+                // Adicionar à lista de modificadas se não for uma subcategoria recém-adicionada
+                if (!subcategoriasAdicionadas.some(s => s.id === sub.id)) {
+                  const existingIndex = subcategoriasModificadas.findIndex(s => s.id === sub.id);
+                  if (existingIndex !== -1) {
+                    subcategoriasModificadas[existingIndex].nome = novoNome;
+                  } else {
+                    subcategoriasModificadas.push({...subcategorias[subcategoriaIndex]});
+                  }
+                } else {
+                  // Atualizar na lista de adicionadas
+                  const addedIndex = subcategoriasAdicionadas.findIndex(s => s.id === sub.id);
+                  if (addedIndex !== -1) {
+                    subcategoriasAdicionadas[addedIndex].nome = novoNome;
+                  }
+                }
+                
+                // Atualizar a visualização
+                span.textContent = novoNome;
+              }
+            }
+            
+            // Sair do modo de edição
+            item.classList.remove('edit-mode');
+            item.replaceChild(span, input);
+            actions.innerHTML = '';
+            actions.appendChild(editBtn);
+            actions.appendChild(deleteBtn);
+          });
+          
+          const cancelBtn = document.createElement('button');
+          cancelBtn.innerHTML = '<i class="fas fa-times"></i>';
+          cancelBtn.title = 'Cancelar';
+          cancelBtn.addEventListener('click', () => {
+            // Sair do modo de edição sem salvar
+            item.classList.remove('edit-mode');
+            item.replaceChild(span, input);
+            actions.innerHTML = '';
+            actions.appendChild(editBtn);
+            actions.appendChild(deleteBtn);
+          });
+          
+          // Substituir o conteúdo
+          item.replaceChild(input, span);
+          actions.innerHTML = '';
+          actions.appendChild(confirmBtn);
+          actions.appendChild(cancelBtn);
+          
+          // Focar no input
+          input.focus();
+        });
+        
+        const deleteBtn = document.createElement('button');
+        deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+        deleteBtn.title = 'Excluir';
+        deleteBtn.addEventListener('click', () => {
+          // Remover da lista local
+          subcategorias = subcategorias.filter(s => s.id !== sub.id);
+          
+          // Se for uma subcategoria recém-adicionada, remover da lista de adicionadas
+          const addedIndex = subcategoriasAdicionadas.findIndex(s => s.id === sub.id);
+          if (addedIndex !== -1) {
+            subcategoriasAdicionadas.splice(addedIndex, 1);
+          } else {
+            // Adicionar à lista de removidas
+            subcategoriasRemovidas.push(sub.id);
+            
+            // Remover da lista de modificadas se estiver lá
+            const modifiedIndex = subcategoriasModificadas.findIndex(s => s.id === sub.id);
+            if (modifiedIndex !== -1) {
+              subcategoriasModificadas.splice(modifiedIndex, 1);
+            }
+          }
+          
+          // Remover da visualização
+          item.remove();
+          
+          // Atualizar mensagem se não houver mais subcategorias
+          if (subcategoriasListEl.children.length === 0) {
+            subcategoriasListEl.innerHTML = '<div class="subcategoria-item"><span>Nenhuma subcategoria encontrada.</span></div>';
+          }
+        });
+        
+        actions.appendChild(editBtn);
+        actions.appendChild(deleteBtn);
+        
+        item.appendChild(span);
+        item.appendChild(actions);
+        
+        subcategoriasListEl.appendChild(item);
+      });
+    }
+    
+    // Função para adicionar subcategoria temporariamente no modal
+    function addSubcategoriaTemp() {
+      const nome = novaSubcategoriaInput.value.trim();
       
       if (!nome) {
         alert('Por favor, informe o nome da subcategoria.');
         return;
       }
       
+      // Verificar se já existe uma subcategoria com o mesmo nome para esta categoria
+      const existingSubcategoria = subcategorias.find(sub => 
+        sub.categoria_id === categoriaAtual && 
+        sub.nome.toLowerCase() === nome.toLowerCase()
+      );
+      
+      if (existingSubcategoria) {
+        alert('Já existe uma subcategoria com este nome para esta categoria.');
+        return;
+      }
+      
+      // Criar ID temporário
+      const tempId = 'temp_' + Date.now();
+      
+      // Adicionar à lista local
+      const novaSubcategoria = {
+        id: tempId,
+        categoria_id: categoriaAtual,
+        nome: nome,
+        cliente_id: clienteId
+      };
+      
+      subcategorias.push(novaSubcategoria);
+      subcategoriasAdicionadas.push(novaSubcategoria);
+      
+      // Limpar input
+      novaSubcategoriaInput.value = '';
+      
+      // Atualizar visualização
+      renderSubcategoriasList();
+      
+      // Focar no input para adicionar outra
+      novaSubcategoriaInput.focus();
+    }
+    
+    // Função para salvar todas as alterações de subcategorias
+    async function saveSubcategoriasChanges() {
       try {
-        // Verificar se já existe uma subcategoria com o mesmo nome para esta categoria
-        const { data: existingData, error: existingError } = await supabase
-          .from('subcategorias_financeiras')
-          .select('*')
-          .eq('nome', nome)
-          .eq('categoria_id', categoriaAtual)
-          .or(`cliente_id.is.null,cliente_id.eq.${clienteId}`);
-        
-        if (existingError) throw existingError;
-        
-        if (existingData && existingData.length > 0) {
-          alert('Já existe uma subcategoria com este nome para esta categoria.');
-          return;
+        // 1. Adicionar novas subcategorias
+        if (subcategoriasAdicionadas.length > 0) {
+          const { error: addError } = await supabase
+            .from('subcategorias_financeiras')
+            .insert(subcategoriasAdicionadas.map(sub => ({
+              categoria_id: sub.categoria_id,
+              nome: sub.nome,
+              cliente_id: clienteId
+            })));
+          
+          if (addError) throw addError;
         }
         
-        // Inserir nova subcategoria
-        const { data, error } = await supabase
-          .from('subcategorias_financeiras')
-          .insert({
-            categoria_id: categoriaAtual,
-            nome: nome,
-            cliente_id: clienteId // Associar ao cliente atual
-          });
+        // 2. Atualizar subcategorias modificadas
+        for (const sub of subcategoriasModificadas) {
+          const { error: updateError } = await supabase
+            .from('subcategorias_financeiras')
+            .update({ nome: sub.nome })
+            .eq('id', sub.id);
+          
+          if (updateError) throw updateError;
+        }
         
-        if (error) throw error;
+        // 3. Remover subcategorias
+        if (subcategoriasRemovidas.length > 0) {
+          const { error: deleteError } = await supabase
+            .from('subcategorias_financeiras')
+            .delete()
+            .in('id', subcategoriasRemovidas);
+          
+          if (deleteError) throw deleteError;
+        }
         
-        // Recarregar subcategorias
+        // Recarregar subcategorias do servidor
         await loadSubcategorias();
+        
+        // Limpar listas de alterações
+        subcategoriasAdicionadas = [];
+        subcategoriasModificadas = [];
+        subcategoriasRemovidas = [];
         
         // Fechar modal
         subcategoriaModal.style.display = 'none';
-        nomeSubcategoriaInput.value = '';
         
         // Mostrar alerta de sucesso
-        alertSuccess.textContent = 'Subcategoria adicionada com sucesso!';
+        alertSuccess.textContent = 'Subcategorias atualizadas com sucesso!';
         alertSuccess.style.display = 'block';
         setTimeout(() => {
           alertSuccess.style.display = 'none';
         }, 3000);
       } catch (error) {
-        console.error('Erro ao adicionar subcategoria:', error);
-        alertError.textContent = `Erro ao adicionar subcategoria: ${error.message}`;
+        console.error('Erro ao salvar alterações de subcategorias:', error);
+        alertError.textContent = `Erro ao salvar alterações: ${error.message}`;
         alertError.style.display = 'block';
         setTimeout(() => {
           alertError.style.display = 'none';
         }, 3000);
-      }
-    }
-    
-    // Função para remover subcategoria
-    async function removeSubcategoria() {
-      const subcategoriaId = subcategoriaItemSelect.value;
-      
-      if (!subcategoriaId) {
-        alert('Por favor, selecione uma subcategoria para remover.');
-        return;
-      }
-      
-      if (confirm('Tem certeza que deseja remover esta subcategoria?')) {
-        try {
-          const { error } = await supabase
-            .from('subcategorias_financeiras')
-            .delete()
-            .eq('id', subcategoriaId)
-            .eq('cliente_id', clienteId); // Garantir que só remove subcategorias do cliente
-          
-          if (error) throw error;
-          
-          // Recarregar subcategorias
-          await loadSubcategorias();
-          
-          // Mostrar alerta de sucesso
-          alertSuccess.textContent = 'Subcategoria removida com sucesso!';
-          alertSuccess.style.display = 'block';
-          setTimeout(() => {
-            alertSuccess.style.display = 'none';
-          }, 3000);
-        } catch (error) {
-          console.error('Erro ao remover subcategoria:', error);
-          alertError.textContent = `Erro ao remover subcategoria: ${error.message}`;
-          alertError.style.display = 'block';
-          setTimeout(() => {
-            alertError.style.display = 'none';
-          }, 3000);
-        }
       }
     }
     
@@ -577,9 +788,19 @@
           categoriaItemSelect.value = 'RECEITA';
           categoriaItemSelect.disabled = true;
         } else {
-          // Se for SAÍDA, habilitar a seleção de categoria
+          // Se for SAÍDA, habilitar a seleção de categoria e remover Receita das opções
           categoriaItemSelect.disabled = false;
-          // Remover a opção Receita da lista de seleção
+          
+          // Esconder a opção Receita
+          Array.from(categoriaItemSelect.options).forEach(option => {
+            if (option.value === 'RECEITA') {
+              option.style.display = 'none';
+            } else {
+              option.style.display = '';
+            }
+          });
+          
+          // Se a categoria atual for Receita, resetar
           if (categoriaItemSelect.value === 'RECEITA') {
             categoriaItemSelect.value = '';
           }
@@ -589,39 +810,98 @@
         updateSubcategoriasSelect();
       });
       
-      // Event listener para botão de adicionar subcategoria
-      btnAddSubcategoria.addEventListener('click', () => {
+      // Event listener para clicar no label de subcategoria
+      subcategoriaLabel.addEventListener('click', () => {
         const categoriaSelecionada = categoriaItemSelect.value;
         
         if (!categoriaSelecionada) {
-          alert('Por favor, selecione uma categoria antes de adicionar subcategorias.');
+          alert('Por favor, selecione uma categoria antes de gerenciar subcategorias.');
           return;
         }
         
         // Armazenar categoria atual para uso no modal
         categoriaAtual = categoriaSelecionada;
         
+        // Limpar listas de alterações
+        subcategoriasAdicionadas = [];
+        subcategoriasModificadas = [];
+        subcategoriasRemovidas = [];
+        
+        // Renderizar lista de subcategorias
+        renderSubcategoriasList();
+        
         // Abrir modal
         subcategoriaModal.style.display = 'block';
       });
       
-      // Event listener para botão de remover subcategoria
-      btnRemoveSubcategoria.addEventListener('click', removeSubcategoria);
-      
       // Event listeners para modal de subcategoria
-      btnSaveSubcategoria.addEventListener('click', addSubcategoria);
-      btnCancelSubcategoria.addEventListener('click', () => {
-        subcategoriaModal.style.display = 'none';
-        nomeSubcategoriaInput.value = '';
+      btnAddSubcategoriaModal.addEventListener('click', addSubcategoriaTemp);
+      
+      // Permitir adicionar subcategoria com Enter
+      novaSubcategoriaInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          addSubcategoriaTemp();
+        }
       });
-      closeModalBtn.addEventListener('click', () => {
+      
+      btnSaveSubcategoria.addEventListener('click', saveSubcategoriasChanges);
+      
+      btnCancelSubcategoria.addEventListener('click', () => {
+        // Descartar alterações
+        subcategoriasAdicionadas = [];
+        subcategoriasModificadas = [];
+        subcategoriasRemovidas = [];
+        
+        // Recarregar subcategorias
+        loadSubcategorias();
+        
+        // Fechar modal
         subcategoriaModal.style.display = 'none';
+      });
+      
+      closeModalBtn.addEventListener('click', () => {
+        // Perguntar se deseja descartar alterações
+        if (subcategoriasAdicionadas.length > 0 || subcategoriasModificadas.length > 0 || subcategoriasRemovidas.length > 0) {
+          if (confirm('Há alterações não salvas. Deseja descartar essas alterações?')) {
+            // Descartar alterações
+            subcategoriasAdicionadas = [];
+            subcategoriasModificadas = [];
+            subcategoriasRemovidas = [];
+            
+            // Recarregar subcategorias
+            loadSubcategorias();
+            
+            // Fechar modal
+            subcategoriaModal.style.display = 'none';
+          }
+        } else {
+          // Fechar modal sem perguntar se não há alterações
+          subcategoriaModal.style.display = 'none';
+        }
       });
       
       // Fechar modal ao clicar fora dele
       window.addEventListener('click', (e) => {
         if (e.target === subcategoriaModal) {
-          subcategoriaModal.style.display = 'none';
+          // Perguntar se deseja descartar alterações
+          if (subcategoriasAdicionadas.length > 0 || subcategoriasModificadas.length > 0 || subcategoriasRemovidas.length > 0) {
+            if (confirm('Há alterações não salvas. Deseja descartar essas alterações?')) {
+              // Descartar alterações
+              subcategoriasAdicionadas = [];
+              subcategoriasModificadas = [];
+              subcategoriasRemovidas = [];
+              
+              // Recarregar subcategorias
+              loadSubcategorias();
+              
+              // Fechar modal
+              subcategoriaModal.style.display = 'none';
+            }
+          } else {
+            // Fechar modal sem perguntar se não há alterações
+            subcategoriaModal.style.display = 'none';
+          }
         }
       });
       
