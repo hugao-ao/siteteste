@@ -257,9 +257,9 @@
     async function checkAuth() {
       const nivel = sessionStorage.getItem("nivel");
       const projeto = sessionStorage.getItem("projeto");
-      const userId = sessionStorage.getItem("user_id");
+      const userId = sessionStorage.getItem("id"); // Corrigido: usando "id" em vez de "user_id"
       
-      if (!nivel || !projeto) {
+      if (!nivel) {
         alert("Acesso não autorizado. Faça login.");
         window.location.href = "index.html";
         return false;
@@ -269,7 +269,7 @@
         isAdmin = true;
       } else if (nivel === "usuario" && projeto === "Planejamento") {
         isAdmin = false;
-      } else {
+      } else if (nivel === "usuario" && projeto !== "Planejamento") {
         alert("Acesso não autorizado para este módulo.");
         window.location.href = "index.html";
         return false;
@@ -283,7 +283,7 @@
       try {
         clientesTableContainer.innerHTML = '<div class="loading-message">Carregando clientes...</div>';
         
-        const userId = sessionStorage.getItem("user_id");
+        const userId = sessionStorage.getItem("id"); // Corrigido: usando "id" em vez de "user_id"
         let query;
         
         if (isAdmin) {
@@ -472,7 +472,7 @@
       if (!currentClienteId) return;
       
       const mensagem = mensagemTexto.value.trim();
-      const userId = sessionStorage.getItem("user_id");
+      const userId = sessionStorage.getItem("id"); // Corrigido: usando "id" em vez de "user_id"
       
       try {
         // Verificar se já existe uma mensagem para este cliente
