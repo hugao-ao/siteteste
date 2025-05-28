@@ -113,23 +113,34 @@
         text-decoration: underline;
     }
     
-    #form-section .form-data-display {
-        margin-bottom: 1rem;
+    /* Estilos para exibição dos dados do formulário */
+    .form-data-display {
+        margin-top: 1.5rem;
+        padding-top: 1rem;
+        border-top: 1px dashed var(--theme-border-color);
     }
-    
-    #form-section .form-data-display strong {
+    .form-data-display h3 {
         color: var(--theme-secondary-lighter);
+        margin-bottom: 0.8rem;
     }
-    
-    #form-section .form-data-display ul {
+    .form-data-display ul {
         list-style: none;
         padding-left: 1rem;
         margin-top: 0.5rem;
         border-left: 2px solid var(--theme-border-color);
     }
-    
-    #form-section .form-data-display li {
+    .form-data-display li {
         margin-bottom: 0.5rem;
+    }
+     .form-data-display p {
+        white-space: pre-wrap; /* Preserva quebras de linha */
+        background-color: var(--theme-bg-surface);
+        padding: 0.8rem;
+        border-radius: 4px;
+        border: 1px solid var(--theme-border-color);
+    }
+    .form-data-display strong {
+        color: var(--theme-secondary-lighter);
     }
     
     #form-section .delete-form-btn {
@@ -398,7 +409,26 @@
       <h2>Formulário do Cliente</h2>
       <div id="form-info-content">
         <p id="form-loading-state">Carregando informações do formulário...</p>
-        <!-- Conteúdo dinâmico (link, dados preenchidos ou mensagem) será inserido aqui -->
+        <!-- Conteúdo dinâmico (link, status, botões) será inserido aqui pelo JS -->
+        <div id="form-actions-container"></div>
+        
+        <!-- NOVAS SEÇÕES PARA EXIBIR DADOS DO FORMULÁRIO -->
+        <div id="form-data-display-container" style="display: none;">
+            <!-- Orçamento -->
+            <div class="form-data-display" id="form-data-orcamento">
+                <h3>Orçamento Informado</h3>
+                <div id="orcamento-renda-display"></div>
+                <div id="orcamento-fixa-display"></div>
+                <div id="orcamento-variavel-display"></div>
+            </div>
+            <!-- Informações Adicionais -->
+            <div class="form-data-display" id="form-data-adicionais">
+                <h3>Informações Adicionais Relevantes</h3>
+                <div id="adicionais-display"></div>
+            </div>
+            <!-- Outros dados do formulário podem ser adicionados aqui se necessário -->
+        </div>
+        <!-- FIM DAS NOVAS SEÇÕES -->
       </div>
     </section>
     
@@ -483,8 +513,17 @@
 
     injectSidebar("main-content-detalhes"); // Passa o ID do container principal
 
+    // --- Elementos DOM --- 
     const clientNameDisplay = document.getElementById("client-name-display");
     const formInfoContentEl = document.getElementById("form-info-content");
+    const formLoadingStateEl = document.getElementById("form-loading-state");
+    const formActionsContainerEl = document.getElementById("form-actions-container"); // Container para status, link e botões
+    const formDataDisplayContainerEl = document.getElementById("form-data-display-container"); // Container GERAL para os dados
+    const orcamentoRendaDisplayEl = document.getElementById("orcamento-renda-display");
+    const orcamentoFixaDisplayEl = document.getElementById("orcamento-fixa-display");
+    const orcamentoVariavelDisplayEl = document.getElementById("orcamento-variavel-display");
+    const adicionaisDisplayEl = document.getElementById("adicionais-display");
+
     const navButtonsSection = document.getElementById("nav-buttons-section");
     const formSection = document.getElementById("form-section");
     const diagnosticoSection = document.getElementById("diagnostico-section");
@@ -509,11 +548,14 @@
     const whatsappInput = document.getElementById("whatsapp");
     const conjugeNomeInput = document.getElementById("conjuge-nome");
     const conjugeWhatsappInput = document.getElementById("conjuge-whatsapp");
+    const saveDadosBtn = document.getElementById("save-dados-btn");
     
-    let currentClientId; // Declarada em escopo mais amplo
-    let clienteProjeto; // Para armazenar o projeto do cliente
-    let dadosCadastraisId; // Para armazenar o ID do registro de dados cadastrais
+    let currentClientId = null;
+    let currentClientData = null;
+    let currentClientProjeto = null;
+    let currentFormSubmission = null; // Armazena a última submissão do formulário
 
+    // --- Funções Utilitárias (Copiadas/Adaptadas de formulario-cliente.js) ---
     const sanitizeInput = (str) => {
       if (str === null || str === undefined) return "";
       return String(str)
@@ -521,718 +563,439 @@
         .replace(/</g, "&lt;")
         .replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;")
-        .replace(/\'/g, "&#x27;") 
+        .replace(/\'/g, "&#x27;")
         .replace(/`/g, "&#x60;");
     };
 
-    const formatCurrencyForDisplay = (value) => {
-        if (value === null || value === undefined) return "N/A";
+    const formatCurrency = (value) => {
+        if (value === null || value === undefined || value === "") return "Não informado";
         const number = parseFloat(value);
         if (isNaN(number)) return "Valor inválido";
-        return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+        return number.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
     };
-    
-    // Função para formatar CPF
-    function formatCPF(cpf) {
-        // Remove todos os caracteres não numéricos
-        cpf = cpf.replace(/\D/g, '');
+
+    // --- Funções Principais ---
+
+    // Função para carregar dados do cliente e formulário
+    async function loadClientDetails() {
+      const urlParams = new URLSearchParams(window.location.search);
+      currentClientId = urlParams.get("id");
+
+      if (!currentClientId) {
+        alert("ID do cliente não fornecido.");
+        window.location.href = "clientes-dashboard.html"; // Redireciona se não houver ID
+        return;
+      }
+
+      try {
+        // Buscar dados do cliente
+        const { data: clientData, error: clientError } = await supabase
+          .from("clientes")
+          .select("*, dados_cadastrais(*)") // Junta dados cadastrais
+          .eq("id", currentClientId)
+          .single();
+
+        if (clientError) throw clientError;
+        if (!clientData) throw new Error("Cliente não encontrado.");
         
-        // Limita a 11 dígitos
-        cpf = cpf.substring(0, 11);
+        currentClientData = clientData;
+        currentClientProjeto = clientData.projeto;
         
-        // Aplica a máscara xxx.xxx.xxx-xx
-        if (cpf.length > 9) {
-            return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-        } else if (cpf.length > 6) {
-            return cpf.replace(/(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
-        } else if (cpf.length > 3) {
-            return cpf.replace(/(\d{3})(\d{3})/, '$1.$2');
+        // Atualizar nome na página
+        if (clientNameDisplay) {
+            clientNameDisplay.textContent = sanitizeInput(clientData.nome || "Cliente");
+        }
+        document.title = `Detalhes - ${sanitizeInput(clientData.nome || "Cliente")}`;
+
+        // Mostrar/Ocultar botões de navegação com base no projeto
+        if (currentClientProjeto === "Planejamento") {
+          if (navButtonsSection) navButtonsSection.style.display = "flex";
+          showSection("form"); // Mostra a seção do formulário por padrão para Planejamento
+          await loadFormInfo(); // Carrega informações do formulário
         } else {
-            return cpf;
+          if (navButtonsSection) navButtonsSection.style.display = "none";
+          // Para outros projetos, talvez mostrar Dados Cadastrais por padrão?
+          showSection("dados-cadastrais"); 
         }
-    }
-    
-    // Função para formatar WhatsApp
-    function formatWhatsApp(whatsapp) {
-        // Remove todos os caracteres não numéricos, exceto o sinal de +
-        let formatted = whatsapp.replace(/[^\d+]/g, '');
-        
-        // Se não começar com +, adiciona +
-        if (!formatted.startsWith('+')) {
-            formatted = '+' + formatted;
-        }
-        
-        // Garante que o formato seja +[ddi][ddd][número]
-        return formatted;
-    }
-    
-    // Função para gerar UUID v4 válido
-    function generateUUID() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            var r = Math.random() * 16 | 0,
-                v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
+
+        // Preencher formulário de dados cadastrais
+        populateDadosCadastraisForm(clientData.dados_cadastrais ? clientData.dados_cadastrais[0] : null, clientData);
+
+      } catch (error) {
+        console.error("Erro ao carregar detalhes do cliente:", error);
+        alert(`Erro ao carregar dados: ${error.message}`);
+        if (clientNameDisplay) clientNameDisplay.textContent = "Erro";
+      }
     }
 
-    function displayFormLink(latestForm) {
-        console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); 
-        const token = latestForm.token_unico;
-        const formId = latestForm.id;
-        const link = `${window.location.origin}/formulario-cliente.html?token=${token}`;
-        console.log("DEBUG: Setting innerHTML for pending form link..."); 
-        formInfoContentEl.innerHTML = `
-            <p>Este cliente ainda não preencheu o formulário.</p>
-            <p>Compartilhe o link abaixo com o cliente:</p>
-            <div class="form-link-container">
-                <a href="${link}" target="_blank">${link}</a>
-            </div>
-            <p><small>(Este link é único e só pode ser usado uma vez)</small></p>
-            <button class="delete-form-btn" data-form-id="${formId}">Excluir Link e Gerar Novo</button>
-        `;
-        console.log("DEBUG: innerHTML set. Querying for delete button..."); 
-        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
-        if (deleteBtn) {
-            console.log("DEBUG: Delete button found:", deleteBtn); 
-            console.log("DEBUG: Adding event listener to delete button..."); 
-            deleteBtn.addEventListener("click", handleDeleteForm);
-            console.log("DEBUG: Event listener added."); 
+    // Função para carregar informações do formulário
+    async function loadFormInfo() {
+      if (!currentClientId) return;
+      if (formLoadingStateEl) formLoadingStateEl.style.display = 'block';
+      if (formActionsContainerEl) formActionsContainerEl.innerHTML = ''; // Limpa ações anteriores
+      if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'none'; // Esconde dados anteriores
+      if (orcamentoRendaDisplayEl) orcamentoRendaDisplayEl.innerHTML = '';
+      if (orcamentoFixaDisplayEl) orcamentoFixaDisplayEl.innerHTML = '';
+      if (orcamentoVariavelDisplayEl) orcamentoVariavelDisplayEl.innerHTML = '';
+      if (adicionaisDisplayEl) adicionaisDisplayEl.innerHTML = '';
+
+      try {
+        const { data: formSubmissions, error: formError } = await supabase
+          .from("formularios_clientes")
+          .select("id, token_unico, status, data_preenchimento, dados_formulario")
+          .eq("cliente_id", currentClientId)
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (formError) throw formError;
+
+        currentFormSubmission = formSubmissions && formSubmissions.length > 0 ? formSubmissions[0] : null;
+
+        if (currentFormSubmission) {
+          const { id: formId, token_unico, status, data_preenchimento, dados_formulario } = currentFormSubmission;
+          const formattedDate = data_preenchimento ? new Date(data_preenchimento).toLocaleString('pt-BR') : 'N/A';
+          let statusHtml = `<p><strong>Status do Último Formulário:</strong> ${sanitizeInput(status)} (Preenchido em: ${formattedDate})</p>`;
+          
+          // Adiciona botão de excluir formulário
+          statusHtml += `<button class="delete-form-btn" data-form-id="${formId}">Excluir este Formulário</button>`;
+          
+          if (formActionsContainerEl) formActionsContainerEl.innerHTML = statusHtml;
+
+          // --- EXIBIR DADOS DO FORMULÁRIO (ORÇAMENTO E ADICIONAIS) ---
+          if (dados_formulario) {
+            try {
+                const formData = typeof dados_formulario === 'string' ? JSON.parse(dados_formulario) : dados_formulario;
+                
+                // Exibir Orçamento
+                let orcamentoHtml = '';
+                if (formData.orcamentoRenda && formData.orcamentoRenda.length > 0) {
+                    orcamentoHtml += '<h4>Rendas:</h4><ul>';
+                    formData.orcamentoRenda.forEach(item => {
+                        orcamentoHtml += `<li>${sanitizeInput(item.descricao)}: ${formatCurrency(item.valor)}</li>`;
+                    });
+                    orcamentoHtml += '</ul>';
+                } else {
+                    orcamentoHtml += '<p>Nenhuma renda informada.</p>';
+                }
+                 if (orcamentoRendaDisplayEl) orcamentoRendaDisplayEl.innerHTML = orcamentoHtml;
+
+                orcamentoHtml = ''; // Resetar para despesas fixas
+                if (formData.orcamentoDespesasFixas && formData.orcamentoDespesasFixas.length > 0) {
+                    orcamentoHtml += '<h4>Despesas Fixas:</h4><ul>';
+                    formData.orcamentoDespesasFixas.forEach(item => {
+                        orcamentoHtml += `<li>${sanitizeInput(item.descricao)}: ${formatCurrency(item.valor)}</li>`;
+                    });
+                    orcamentoHtml += '</ul>';
+                } else {
+                     orcamentoHtml += '<p>Nenhuma despesa fixa informada.</p>';
+                }
+                if (orcamentoFixaDisplayEl) orcamentoFixaDisplayEl.innerHTML = orcamentoHtml;
+
+                orcamentoHtml = ''; // Resetar para despesas variáveis
+                if (formData.orcamentoDespesasVariaveis && formData.orcamentoDespesasVariaveis.length > 0) {
+                    orcamentoHtml += '<h4>Despesas Variáveis (Média):</h4><ul>';
+                    formData.orcamentoDespesasVariaveis.forEach(item => {
+                        orcamentoHtml += `<li>${sanitizeInput(item.descricao)}: ${formatCurrency(item.valor)}</li>`;
+                    });
+                    orcamentoHtml += '</ul>';
+                } else {
+                    orcamentoHtml += '<p>Nenhuma despesa variável informada.</p>';
+                }
+                if (orcamentoVariavelDisplayEl) orcamentoVariavelDisplayEl.innerHTML = orcamentoHtml;
+
+                // Exibir Informações Adicionais
+                if (formData.informacoesAdicionais && formData.informacoesAdicionais.trim() !== '') {
+                    if (adicionaisDisplayEl) adicionaisDisplayEl.innerHTML = `<p>${sanitizeInput(formData.informacoesAdicionais)}</p>`;
+                } else {
+                    if (adicionaisDisplayEl) adicionaisDisplayEl.innerHTML = '<p>Nenhuma informação adicional fornecida.</p>';
+                }
+                
+                // Mostrar o container geral dos dados do formulário
+                if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'block';
+
+            } catch (parseError) {
+                console.error("Erro ao processar dados_formulario JSON:", parseError);
+                 if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'none'; // Esconde se deu erro
+                 if (formActionsContainerEl) formActionsContainerEl.innerHTML += `<p style="color: red;">Erro ao carregar detalhes do formulário.</p>`;
+            }
+          } else {
+             if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'none'; // Esconde se não há dados
+          }
+
         } else {
-            console.log("DEBUG: Delete button not found in DOM after setting innerHTML."); 
+          // Nenhum formulário encontrado, oferecer gerar link
+          if (formActionsContainerEl) {
+              formActionsContainerEl.innerHTML = `
+                <p>Nenhum formulário preenchido por este cliente ainda.</p>
+                <button class="generate-link-btn">Gerar Link do Formulário</button>
+              `;
+          }
+           if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'none'; // Esconde container de dados
+        }
+
+      } catch (error) {
+        console.error("Erro ao carregar informações do formulário:", error);
+        if (formActionsContainerEl) formActionsContainerEl.innerHTML = `<p style="color: red;">Erro ao carregar status do formulário: ${error.message}</p>`;
+        if (formDataDisplayContainerEl) formDataDisplayContainerEl.style.display = 'none'; // Esconde container de dados
+      } finally {
+         if (formLoadingStateEl) formLoadingStateEl.style.display = 'none';
+      }
+    }
+
+    // Função para gerar link do formulário
+    async function generateFormLink() {
+        if (!currentClientId) return;
+        const button = formActionsContainerEl.querySelector('.generate-link-btn');
+        if (button) button.disabled = true;
+        if (button) button.textContent = 'Gerando...';
+
+        try {
+            // 1. Gerar um token único (UUID)
+            const uniqueToken = crypto.randomUUID();
+
+            // 2. Salvar no banco 'formularios_clientes'
+            const { data, error } = await supabase
+                .from('formularios_clientes')
+                .insert({
+                    cliente_id: currentClientId,
+                    token_unico: uniqueToken,
+                    status: 'pendente' 
+                })
+                .select('id') // Retorna o ID para o botão de excluir
+                .single();
+
+            if (error) throw error;
+
+            // 3. Montar o link
+            const formUrl = `${window.location.origin}/formulario-cliente.html?token=${uniqueToken}`;
+
+            // 4. Exibir o link e botão de excluir
+            if (formActionsContainerEl) {
+                 formActionsContainerEl.innerHTML = `
+                    <p>Link gerado! Envie para o cliente:</p>
+                    <div class="form-link-container">
+                        <a href="${formUrl}" target="_blank">${formUrl}</a>
+                    </div>
+                    <button class="delete-form-btn" data-form-id="${data.id}">Excluir este Link/Formulário</button>
+                 `;
+            }
+             // Recarrega as informações para atualizar o estado geral
+            await loadFormInfo(); 
+
+        } catch (error) {
+            console.error("Erro ao gerar link do formulário:", error);
+            alert(`Erro ao gerar link: ${error.message}`);
+            if (button) button.disabled = false;
+            if (button) button.textContent = 'Gerar Link do Formulário';
         }
     }
 
-    function displayFormData(formData) {
-        console.log("DEBUG: Entering displayFormData for completed form:", formData); 
-        let dataHtml = "";
-        if (formData.dados_formulario && typeof formData.dados_formulario === "object") {
-            const data = formData.dados_formulario;
+    // Função para excluir formulário/link
+    async function deleteFormSubmission(formId) {
+        if (!formId) return;
 
-            const nomeCompleto = data.nome_completo ? sanitizeInput(data.nome_completo) : "N/A";
-            dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Nome Completo:</strong> ${nomeCompleto}</p>`;
+        const confirmed = confirm("Tem certeza que deseja excluir este formulário/link? Esta ação não pode ser desfeita.");
+        if (!confirmed) return;
 
-            const rendaUnicaText = data.renda_unica === "sim" ? "Sim" : (data.renda_unica === "nao" ? "Não" : "N/A");
-            dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
-
-            if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas) && data.outras_pessoas.length > 0) {
-                dataHtml += `<ul>`;
-                data.outras_pessoas.forEach((pessoa) => {
-                    const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : "Nome não informado";
-                    const autorizacaoText = pessoa.autorizacao === "sim" ? "Sim" : (pessoa.autorizacao === "nao" ? "Não" : "Não informado");
-                    dataHtml += `<li>${nomePessoa} (Precisa de autorização: ${autorizacaoText})</li>`;
-                });
-                dataHtml += `</ul>`;
-            } else if (data.renda_unica === "nao") {
-                 dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
-            }
-
-            const temDependentesText = data.tem_dependentes === "sim" ? "Sim" : (data.tem_dependentes === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Tem dependentes?</strong> ${temDependentesText}</p>`;
-
-            if (data.tem_dependentes === "sim" && Array.isArray(data.dependentes) && data.dependentes.length > 0) {
-                dataHtml += `<ul>`;
-                data.dependentes.forEach((dependente) => {
-                    const nomeDep = dependente.nome ? sanitizeInput(dependente.nome) : "Nome não informado";
-                    const idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
-                    const relacaoDep = dependente.relacao ? sanitizeInput(dependente.relacao) : "N/A";
-                    dataHtml += `<li>${nomeDep} (Idade: ${idadeDep}, Relação: ${relacaoDep})</li>`;
-                });
-                dataHtml += `</ul>`;
-            } else if (data.tem_dependentes === "sim") {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dependentes:</strong> Nenhum dependente adicionado.</p>`;
-            }
-
-            // Exibição de Planos de Saúde
-            if (data.planos_saude && Object.keys(data.planos_saude).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Plano de Saúde:</strong></p><ul>`;
-                Object.entries(data.planos_saude).forEach(([nome, info]) => {
-                    const nomePessoaPlano = sanitizeInput(nome);
-                    let statusPlanoText = "N/A";
-                    if (info.possui === "sim") statusPlanoText = "Sim";
-                    else if (info.possui === "nao") statusPlanoText = "Não";
-                    else if (info.possui === "nao_sei") statusPlanoText = "Não sei informar";
-                    
-                    dataHtml += `<li>${nomePessoaPlano}: ${statusPlanoText}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-
-            // Exibição de Seguros de Vida
-            if (data.seguros_vida && Object.keys(data.seguros_vida).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Seguro de Vida:</strong></p><ul>`;
-                Object.entries(data.seguros_vida).forEach(([nome, info]) => {
-                    const nomePessoaSeguro = sanitizeInput(nome);
-                    let statusSeguroText = "N/A";
-                    if (info.possui === "sim") statusSeguroText = "Sim";
-                    else if (info.possui === "nao") statusSeguroText = "Não";
-                    else if (info.possui === "nao_sei") statusSeguroText = "Não sei informar";
-                    
-                    dataHtml += `<li>${nomePessoaSeguro}: ${statusSeguroText}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-
-            // Exibição de Patrimônio Físico
-            const possuiPatrimonioText = data.tem_patrimonio === "sim" ? "Sim" : (data.tem_patrimonio === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
-
-            if (data.tem_patrimonio === "sim" && Array.isArray(data.patrimonios) && data.patrimonios.length > 0) {
-                dataHtml += `<ul>`;
-                data.patrimonios.forEach((patrimonio) => {
-                    const descPat = patrimonio.qual ? sanitizeInput(patrimonio.qual) : "Descrição não informada";
-                    const valorPat = formatCurrencyForDisplay(patrimonio.valor); 
-                    const seguroPatText = patrimonio.seguro === "sim" ? "Sim" : (patrimonio.seguro === "nao" ? "Não" : "N/A");
-                    const quitadoPatText = patrimonio.quitado === "sim" ? "Sim" : (patrimonio.quitado === "nao" ? "Não" : "N/A");
-                    dataHtml += `<li>${descPat} (Valor: ${valorPat}, Seguro: ${seguroPatText}, Quitado: ${quitadoPatText})</li>`;
-                });
-                dataHtml += `</ul>`;
-            } else if (data.tem_patrimonio === "sim") {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
-            }
-
-            // Exibição do Patrimônio Líquido
-            const possuiPatrimonioLiquidoText = data.tem_patrimonio_liquido === "sim" ? "Sim" : (data.tem_patrimonio_liquido === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
-
-            if (data.tem_patrimonio_liquido === "sim" && Array.isArray(data.patrimonios_liquidos) && data.patrimonios_liquidos.length > 0) {
-                dataHtml += `<ul>`;
-                data.patrimonios_liquidos.forEach((patrimonio_liquido) => {
-                    const ondePatLiq = patrimonio_liquido.qual ? sanitizeInput(patrimonio_liquido.qual) : "Local não informado";
-                    const valorPatLiq = formatCurrencyForDisplay(patrimonio_liquido.valor);
-                    dataHtml += `<li>${ondePatLiq} (Valor: ${valorPatLiq})</li>`;
-                });
-                dataHtml += `</ul>`;
-            } else if (data.tem_patrimonio_liquido === "sim") {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
-            }
-
-            // Exibição de Dívidas
-            const possuiDividasText = data.tem_dividas === "sim" ? "Sim" : (data.tem_dividas === "nao" ? "Não" : "N/A");
-            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dívidas?</strong> ${possuiDividasText}</p>`;
-
-            if (data.tem_dividas === "sim" && Array.isArray(data.dividas) && data.dividas.length > 0) {
-                dataHtml += `<ul>`;
-                data.dividas.forEach((divida) => {
-                    const credorDivida = divida.credor ? sanitizeInput(divida.credor) : "Credor não informado";
-                    const saldoDivida = formatCurrencyForDisplay(divida.saldo);
-                    dataHtml += `<li>A quem deve: ${credorDivida} (Saldo Devedor Atual: ${saldoDivida})</li>`;
-                });
-                dataHtml += `</ul>`;
-            } else if (data.tem_dividas === "sim") {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
-            }
-            
-            // Exibição de Imposto de Renda com informações adicionais
-            if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Imposto de Renda:</strong></p><ul>`;
-                Object.entries(data.impostos_renda).forEach(([nome, info]) => {
-                    const nomePessoaIR = sanitizeInput(nome);
-                    let statusIRText = "N/A";
-                    if (info.declara === "sim") statusIRText = "Sim";
-                    else if (info.declara === "nao") statusIRText = "Não";
-                    else if (info.declara === "nao_sei") statusIRText = "Não sei informar";
-                    
-                    // Informações básicas sobre declaração
-                    let irInfoText = `${nomePessoaIR}: ${statusIRText}`;
-                    
-                    // Adicionar informações sobre contador se disponíveis
-                    if (info.declara === "sim" && info.contador !== undefined) {
-                        const contadorText = info.contador === "sim" ? "Sim" : (info.contador === "nao" ? "Não" : "N/A");
-                        irInfoText += ` (Usa contador: ${contadorText})`;
-                    }
-                    
-                    dataHtml += `<li>${irInfoText}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-            
-            // Exibição de Orçamento (Entradas de Renda)
-            if (data.orcamento && data.orcamento.entradas_renda && Array.isArray(data.orcamento.entradas_renda) && data.orcamento.entradas_renda.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p><ul>`;
-                data.orcamento.entradas_renda.forEach((entrada) => {
-                    const descEntrada = entrada.descricao ? sanitizeInput(entrada.descricao) : "Descrição não informada";
-                    const valorEntrada = formatCurrencyForDisplay(entrada.valor);
-                    dataHtml += `<li>${descEntrada}: ${valorEntrada}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-            
-            // Exibição de Orçamento (Despesas Fixas)
-            if (data.orcamento && data.orcamento.despesas_fixas && Array.isArray(data.orcamento.despesas_fixas) && data.orcamento.despesas_fixas.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong></p><ul>`;
-                data.orcamento.despesas_fixas.forEach((despesa) => {
-                    const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
-                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
-                    dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-            
-            // Exibição de Orçamento (Despesas Variáveis)
-            if (data.orcamento && data.orcamento.despesas_variaveis && Array.isArray(data.orcamento.despesas_variaveis) && data.orcamento.despesas_variaveis.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong></p><ul>`;
-                data.orcamento.despesas_variaveis.forEach((despesa) => {
-                    const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
-                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
-                    dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-            
-            // Exibição de Objetivos Financeiros
-            if (data.objetivos && Array.isArray(data.objetivos) && data.objetivos.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong></p><ul>`;
-                data.objetivos.forEach((objetivo) => {
-                    const descObjetivo = objetivo.descricao ? sanitizeInput(objetivo.descricao) : "Descrição não informada";
-                    const valorObjetivo = formatCurrencyForDisplay(objetivo.valor);
-                    const prazoObjetivo = objetivo.prazo ? sanitizeInput(objetivo.prazo) : "Prazo não informado";
-                    dataHtml += `<li>${descObjetivo} (Valor: ${valorObjetivo}, Prazo: ${prazoObjetivo})</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-            
-            // Exibição de Informações Adicionais
-            if (data.informacoes_adicionais) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
-                dataHtml += `<p>${sanitizeInput(data.informacoes_adicionais)}</p>`;
-            }
-        } else {
-            dataHtml = "<p>Não foi possível carregar os dados do formulário.</p>";
-        }
-
-        // Adicionar botão para excluir formulário e gerar novo
-        dataHtml += `
-            <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Formulário e Gerar Novo</button>
-        `;
-
-        formInfoContentEl.innerHTML = dataHtml;
-        
-        // Adicionar event listener para o botão de excluir
-        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
-        if (deleteBtn) {
-            deleteBtn.addEventListener("click", handleDeleteForm);
-        }
-    }
-
-    function displayNoFormMessage() {
-        console.log("DEBUG: Entering displayNoFormMessage"); 
-        formInfoContentEl.innerHTML = `
-            <p>Este cliente ainda não possui um formulário.</p>
-            <button class="generate-link-btn" id="generate-form-btn">Gerar Link de Formulário</button>
-        `;
-        
-        const generateBtn = document.getElementById("generate-form-btn");
-        if (generateBtn) {
-            generateBtn.addEventListener("click", handleGenerateForm);
-        }
-    }
-
-    async function handleDeleteForm(event) {
-        console.log("DEBUG: Entering handleDeleteForm"); 
-        const formId = event.currentTarget.dataset.formId;
-        if (!formId) {
-            console.error("DEBUG: Form ID not found in button dataset"); 
-            return;
-        }
-        
-        if (!confirm("Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.")) {
-            return;
-        }
-        
         try {
             const { error } = await supabase
-                .from("formularios_clientes")
+                .from('formularios_clientes')
                 .delete()
-                .eq("id", formId);
-                
+                .eq('id', formId);
+
             if (error) throw error;
-            
-            alert("Formulário excluído com sucesso!");
-            
-            // Gerar novo formulário automaticamente
-            await handleGenerateForm();
-            
+
+            alert("Formulário/Link excluído com sucesso!");
+            await loadFormInfo(); // Recarrega a seção do formulário
+
         } catch (error) {
-            console.error("DEBUG: Error deleting form:", error); 
-            alert("Erro ao excluir formulário: " + error.message);
+            console.error("Erro ao excluir formulário:", error);
+            alert(`Erro ao excluir: ${error.message}`);
         }
     }
 
-    async function handleGenerateForm() {
-        console.log("DEBUG: Entering handleGenerateForm"); 
-        if (!currentClientId) {
-            console.error("DEBUG: Client ID not available"); 
-            return;
-        }
-        
-        try {
-            formInfoContentEl.innerHTML = '<p id="form-loading-state">Gerando novo formulário...</p>';
-            
-            // Gerar UUID válido para o token
-            const token = generateUUID();
-            
-            // Inserir novo formulário
-            const { data, error } = await supabase
-                .from("formularios_clientes")
-                .insert([
-                    {
-                        cliente_id: currentClientId,
-                        token_unico: token,
-                        status: "pendente", // Alterado para pendente
-                        data_preenchimento: null,
-                        dados_formulario: null
-                    }
-                ])
-                .select();
-                
-            if (error) throw error;
-            
-            if (data && data.length > 0) {
-                displayFormLink(data[0]);
-            } else {
-                throw new Error("Nenhum dado retornado após inserção");
-            }
-            
-        } catch (error) {
-            console.error("DEBUG: Error generating form:", error); 
-            formInfoContentEl.innerHTML = `<p style="color: red;">Erro ao gerar formulário: ${error.message}</p>`;
-        }
-    }
-
-    async function loadClientDetails() {
-        console.log("DEBUG: Entering loadClientDetails"); 
-        const urlParams = new URLSearchParams(window.location.search);
-        const clientId = urlParams.get("id");
-        
-        if (!clientId) {
-            console.error("DEBUG: No client ID in URL"); 
-            window.location.href = "clientes-dashboard.html";
-            return;
-        }
-        
-        currentClientId = clientId;
-        
-        try {
-            // Carregar informações do cliente
-            const { data: clientData, error: clientError } = await supabase
-                .from("clientes")
-                .select("*")
-                .eq("id", clientId)
-                .single();
-                
-            if (clientError) throw clientError;
-            
-            if (!clientData) {
-                throw new Error("Cliente não encontrado");
-            }
-            
-            // Armazenar o projeto do cliente
-            clienteProjeto = clientData.projeto;
-            
-            // Atualizar nome do cliente na página
-            clientNameDisplay.textContent = clientData.nome || "Cliente";
-            
-            // Verificar se o cliente é do projeto Planejamento
-            if (clientData.projeto === "Planejamento") {
-                // Mostrar os botões de navegação
-                navButtonsSection.style.display = "flex";
-                
-                // Configurar os botões de navegação
-                setupNavigationButtons();
-                
-                // Mostrar a seção de formulário por padrão
-                showSection("form");
-                
-                // Carregar dados cadastrais do cliente
-                await loadDadosCadastrais(clientId);
-            } else {
-                // Para outros projetos, mostrar apenas a seção de formulário
-                formSection.style.display = "block";
-            }
-            
-            // Carregar formulário do cliente
-            await loadClientForm(clientId);
-            
-        } catch (error) {
-            console.error("DEBUG: Error loading client details:", error); 
-            alert("Erro ao carregar detalhes do cliente: " + error.message);
-            window.location.href = "clientes-dashboard.html";
-        }
-    }
-
-    async function loadClientForm(clientId) {
-        console.log(`DEBUG: Entering loadClientForm for client ID: ${clientId}`); 
-        try {
-            // Buscar o formulário mais recente do cliente
-            const { data: forms, error } = await supabase
-                .from("formularios_clientes")
-                .select("*")
-                .eq("cliente_id", clientId)
-                .order("created_at", { ascending: false })
-                .limit(1);
-                
-            if (error) throw error;
-            
-            if (!forms || forms.length === 0) {
-                // Cliente não tem formulário
-                displayNoFormMessage();
-                return;
-            }
-            
-            const latestForm = forms[0];
-            
-            if (latestForm.status === "preenchido" && latestForm.dados_formulario) {
-                // Formulário já preenchido
-                displayFormData(latestForm);
-            } else {
-                // Formulário pendente (link gerado mas não preenchido)
-                displayFormLink(latestForm);
-            }
-            
-        } catch (error) {
-            console.error("DEBUG: Error loading client form:", error); 
-            formInfoContentEl.innerHTML = `<p style="color: red;">Erro ao carregar formulário: ${error.message}</p>`;
-        }
-    }
-    
-    // Função para carregar dados cadastrais do cliente
-    async function loadDadosCadastrais(clientId) {
-        try {
-            // Verificar se a tabela dados_cadastrais existe
-            const { data: tableExists, error: tableError } = await supabase
-                .from('dados_cadastrais')
-                .select('id')
-                .limit(1);
-                
-            if (tableError && tableError.code === '42P01') {
-                // Tabela não existe, criar a tabela
-                console.log("Tabela dados_cadastrais não existe, será criada automaticamente pelo backend");
-                // Não podemos criar tabelas diretamente via API, isso deve ser feito no Supabase
-            }
-            
-            // Buscar dados cadastrais do cliente
-            const { data, error } = await supabase
-                .from('dados_cadastrais')
-                .select('*')
-                .eq('cliente_id', clientId)
-                .single();
-                
-            if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
-                throw error;
-            }
-            
-            if (data) {
-                // Preencher o formulário com os dados existentes
-                dadosCadastraisId = data.id;
-                nomeCompletoInput.value = data.nome_completo || '';
-                cpfInput.value = data.cpf || '';
-                emailInput.value = data.email || '';
-                whatsappInput.value = data.whatsapp || '';
-                
-                if (data.conjuge && typeof data.conjuge === 'object') {
-                    conjugeNomeInput.value = data.conjuge.nome || '';
-                    conjugeWhatsappInput.value = data.conjuge.whatsapp || '';
+    // Função para preencher o formulário de dados cadastrais
+    function populateDadosCadastraisForm(dadosCadastrais, clientData) {
+        if (dadosCadastraisForm) {
+            if (dadosCadastrais) {
+                if (nomeCompletoInput) nomeCompletoInput.value = dadosCadastrais.nome_completo || '';
+                if (cpfInput) cpfInput.value = dadosCadastrais.cpf || '';
+                if (emailInput) emailInput.value = dadosCadastrais.email || '';
+                if (whatsappInput) whatsappInput.value = dadosCadastrais.whatsapp || '';
+                if (dadosCadastrais.conjuge) {
+                    if (conjugeNomeInput) conjugeNomeInput.value = dadosCadastrais.conjuge.nome || '';
+                    if (conjugeWhatsappInput) conjugeWhatsappInput.value = dadosCadastrais.conjuge.whatsapp || '';
                 }
             } else {
-                // Não há dados cadastrais, inicializar com dados do cliente
-                const { data: clientData, error: clientError } = await supabase
-                    .from('clientes')
-                    .select('nome, whatsapp')
-                    .eq('id', clientId)
-                    .single();
-                    
-                if (clientError) throw clientError;
-                
-                if (clientData) {
-                    nomeCompletoInput.value = clientData.nome || '';
-                    whatsappInput.value = clientData.whatsapp || '';
-                }
-                
-                dadosCadastraisId = null;
+                 // Se não houver dados cadastrais, tenta usar os da tabela clientes
+                 if (nomeCompletoInput && clientData) nomeCompletoInput.value = clientData.nome || '';
+                 if (whatsappInput && clientData) whatsappInput.value = clientData.whatsapp || '';
+                 // Limpa os outros campos
+                 if (cpfInput) cpfInput.value = '';
+                 if (emailInput) emailInput.value = '';
+                 if (conjugeNomeInput) conjugeNomeInput.value = '';
+                 if (conjugeWhatsappInput) conjugeWhatsappInput.value = '';
             }
-        } catch (error) {
-            console.error("Erro ao carregar dados cadastrais:", error);
-            alert("Erro ao carregar dados cadastrais. Por favor, tente novamente.");
         }
     }
-    
+
     // Função para salvar dados cadastrais
     async function saveDadosCadastrais(event) {
         event.preventDefault();
-        
-        // Validar campos obrigatórios
-        const cpf = cpfInput.value.trim();
-        const whatsapp = whatsappInput.value.trim();
-        const conjugeNome = conjugeNomeInput.value.trim();
-        const conjugeWhatsapp = conjugeWhatsappInput.value.trim();
-        
+        if (!currentClientId || !currentClientData) return;
+        if (saveDadosBtn) saveDadosBtn.disabled = true;
+        if (saveDadosBtn) saveDadosBtn.textContent = "Salvando...";
+
+        // Validação básica (pode ser melhorada)
+        const cpf = cpfInput?.value.trim();
+        const whatsapp = whatsappInput?.value.trim();
+        const conjugeNome = conjugeNomeInput?.value.trim();
+        const conjugeWhatsapp = conjugeWhatsappInput?.value.trim();
+
         let isValid = true;
-        
-        // Resetar mensagens de erro
-        document.getElementById('cpf-error').style.display = 'none';
-        document.getElementById('whatsapp-error').style.display = 'none';
-        document.getElementById('conjuge-whatsapp-error').style.display = 'none';
-        
-        // Validar CPF
+        document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
+
         if (!cpf) {
             document.getElementById('cpf-error').style.display = 'block';
             isValid = false;
         }
-        
-        // Validar WhatsApp
         if (!whatsapp) {
             document.getElementById('whatsapp-error').style.display = 'block';
             isValid = false;
         }
-        
-        // Validar WhatsApp do Cônjuge apenas se o nome do cônjuge for preenchido
         if (conjugeNome && !conjugeWhatsapp) {
             document.getElementById('conjuge-whatsapp-error').style.display = 'block';
             isValid = false;
         }
-        
+
         if (!isValid) {
+            if (saveDadosBtn) saveDadosBtn.disabled = false;
+            if (saveDadosBtn) saveDadosBtn.textContent = "Salvar Dados";
+            alert("Por favor, corrija os erros no formulário.");
             return;
         }
-        
+
+        const dadosToSave = {
+            cliente_id: currentClientId,
+            nome_completo: nomeCompletoInput?.value.trim(),
+            cpf: cpf,
+            email: emailInput?.value.trim(),
+            whatsapp: whatsapp,
+            conjuge: conjugeNome ? { nome: conjugeNome, whatsapp: conjugeWhatsapp } : null
+        };
+
         try {
-            const dadosCadastrais = {
-                cliente_id: currentClientId,
-                nome_completo: nomeCompletoInput.value.trim(),
-                cpf: cpfInput.value.trim(),
-                email: emailInput.value.trim(),
-                whatsapp: whatsappInput.value.trim(),
-                conjuge: conjugeNomeInput.value.trim() ? {
-                    nome: conjugeNomeInput.value.trim(),
-                    whatsapp: conjugeWhatsappInput.value.trim()
-                } : null
-            };
-            
-            let result;
-            
+            // Verifica se já existe um registro em dados_cadastrais para este cliente
+            const dadosCadastraisId = currentClientData.dados_cadastrais && currentClientData.dados_cadastrais.length > 0 ? currentClientData.dados_cadastrais[0].id : null;
+
+            let error;
             if (dadosCadastraisId) {
-                // Atualizar dados existentes
-                result = await supabase
+                // Atualiza existente
+                ({ error } = await supabase
                     .from('dados_cadastrais')
-                    .update(dadosCadastrais)
-                    .eq('id', dadosCadastraisId)
-                    .select();
+                    .update(dadosToSave)
+                    .eq('id', dadosCadastraisId));
             } else {
-                // Inserir novos dados
-                result = await supabase
+                // Insere novo
+                ({ error } = await supabase
                     .from('dados_cadastrais')
-                    .insert([dadosCadastrais])
-                    .select();
+                    .insert(dadosToSave));
             }
+
+            if (error) throw error;
+
+            // Atualiza também nome e whatsapp na tabela clientes para consistência básica
+            const { error: clientUpdateError } = await supabase
+                .from('clientes')
+                .update({ nome: dadosToSave.nome_completo, whatsapp: dadosToSave.whatsapp })
+                .eq('id', currentClientId);
             
-            if (result.error) throw result.error;
-            
-            if (result.data && result.data.length > 0) {
-                dadosCadastraisId = result.data[0].id;
+            if (clientUpdateError) {
+                console.warn("Erro ao atualizar nome/whatsapp na tabela clientes:", clientUpdateError.message);
+                // Não trava a operação, mas avisa no console
             }
-            
+
             alert("Dados cadastrais salvos com sucesso!");
+            // Recarrega os dados para refletir mudanças (opcional, mas bom)
+            await loadClientDetails(); 
+
         } catch (error) {
             console.error("Erro ao salvar dados cadastrais:", error);
-            alert("Erro ao salvar dados cadastrais: " + error.message);
-        }
-    }
-    
-    // Função para configurar os botões de navegação
-    function setupNavigationButtons() {
-        // Botão Formulário
-        btnFormulario.addEventListener("click", () => {
-            showSection("form");
-        });
-        
-        // Botão Diagnóstico Financeiro
-        btnDiagnostico.addEventListener("click", () => {
-            showSection("diagnostico");
-        });
-        
-        // Botão Plano Financeiro
-        btnPlano.addEventListener("click", () => {
-            showSection("plano");
-        });
-        
-        // Botão Dados Cadastrais
-        btnDadosCadastrais.addEventListener("click", () => {
-            showSection("dados-cadastrais");
-        });
-        
-        // Botões do Plano Financeiro (sem ação por enquanto)
-        btnGestao.addEventListener("click", () => {
-            alert("Funcionalidade em desenvolvimento");
-        });
-        
-        btnImplementacoes.addEventListener("click", () => {
-            alert("Funcionalidade em desenvolvimento");
-        });
-        
-        // Formulário de dados cadastrais
-        dadosCadastraisForm.addEventListener("submit", saveDadosCadastrais);
-        
-        // Adicionar formatação automática para CPF
-        cpfInput.addEventListener("input", function(e) {
-            const cursorPosition = this.selectionStart;
-            const originalLength = this.value.length;
-            
-            this.value = formatCPF(this.value);
-            
-            // Ajustar posição do cursor após formatação
-            const newLength = this.value.length;
-            const cursorAdjustment = newLength - originalLength;
-            this.setSelectionRange(cursorPosition + cursorAdjustment, cursorPosition + cursorAdjustment);
-        });
-        
-        // Adicionar formatação automática para WhatsApp
-        whatsappInput.addEventListener("input", function() {
-            this.value = formatWhatsApp(this.value);
-        });
-        
-        // Adicionar formatação automática para WhatsApp do Cônjuge
-        conjugeWhatsappInput.addEventListener("input", function() {
-            this.value = formatWhatsApp(this.value);
-        });
-    }
-    
-    // Função para mostrar a seção selecionada
-    function showSection(section) {
-        // Ocultar todas as seções
-        formSection.style.display = "none";
-        diagnosticoSection.style.display = "none";
-        planoSection.style.display = "none";
-        dadosCadastraisSection.style.display = "none";
-        
-        // Remover classe active de todos os botões
-        btnFormulario.classList.remove("active");
-        btnDiagnostico.classList.remove("active");
-        btnPlano.classList.remove("active");
-        
-        // Mostrar a seção selecionada e ativar o botão correspondente
-        switch (section) {
-            case "form":
-                formSection.style.display = "block";
-                btnFormulario.classList.add("active");
-                break;
-            case "diagnostico":
-                diagnosticoSection.style.display = "block";
-                btnDiagnostico.classList.add("active");
-                break;
-            case "plano":
-                planoSection.style.display = "block";
-                btnPlano.classList.add("active");
-                break;
-            case "dados-cadastrais":
-                dadosCadastraisSection.style.display = "block";
-                btnPlano.classList.add("active");
-                break;
+            alert(`Erro ao salvar: ${error.message}`);
+        } finally {
+            if (saveDadosBtn) saveDadosBtn.disabled = false;
+            if (saveDadosBtn) saveDadosBtn.textContent = "Salvar Dados";
         }
     }
 
-    // Inicializar a página
+    // Função para mostrar a seção correta
+    function showSection(sectionName) {
+      // Esconde todas as seções principais
+      if (formSection) formSection.style.display = "none";
+      if (diagnosticoSection) diagnosticoSection.style.display = "none";
+      if (planoSection) planoSection.style.display = "none";
+      if (dadosCadastraisSection) dadosCadastraisSection.style.display = "none";
+      
+      // Remove a classe 'active' de todos os botões de navegação
+      document.querySelectorAll('.nav-button').forEach(btn => btn.classList.remove('active'));
+
+      // Mostra a seção solicitada e ativa o botão correspondente
+      switch (sectionName) {
+        case "form":
+          if (formSection) formSection.style.display = "block";
+          if (btnFormulario) btnFormulario.classList.add('active');
+          break;
+        case "diagnostico":
+          if (diagnosticoSection) diagnosticoSection.style.display = "block";
+          if (btnDiagnostico) btnDiagnostico.classList.add('active');
+          break;
+        case "plano":
+          if (planoSection) planoSection.style.display = "block";
+          if (btnPlano) btnPlano.classList.add('active');
+          break;
+        case "dados-cadastrais": // Sub-seção do Plano
+          if (dadosCadastraisSection) dadosCadastraisSection.style.display = "block";
+           // Como é sub-seção, mantém o botão 'Plano' ativo
+          if (btnPlano) btnPlano.classList.add('active'); 
+          break;
+        // Adicionar casos para 'gestao' e 'implementacoes' se/quando forem implementados
+      }
+    }
+
+    // --- Event Listeners --- 
+
+    // Listeners para botões de navegação
+    if (btnFormulario) btnFormulario.addEventListener('click', () => showSection('form'));
+    if (btnDiagnostico) btnDiagnostico.addEventListener('click', () => showSection('diagnostico'));
+    if (btnPlano) btnPlano.addEventListener('click', () => showSection('plano'));
+
+    // Listeners para botões do plano financeiro
+    if (btnDadosCadastrais) btnDadosCadastrais.addEventListener('click', () => showSection('dados-cadastrais'));
+    // Adicionar listeners para btnGestao e btnImplementacoes quando implementados
+    if (btnGestao) btnGestao.addEventListener('click', () => alert('Seção Gestão Financeira em desenvolvimento.'));
+    if (btnImplementacoes) btnImplementacoes.addEventListener('click', () => alert('Seção Implementações em desenvolvimento.'));
+
+    // Listener para o formulário de dados cadastrais
+    if (dadosCadastraisForm) {
+        dadosCadastraisForm.addEventListener('submit', saveDadosCadastrais);
+    }
+
+    // Listener para cliques na área de informações do formulário (delegação de eventos)
+    if (formInfoContentEl) {
+        formInfoContentEl.addEventListener('click', (event) => {
+            if (event.target.classList.contains('generate-link-btn')) {
+                generateFormLink();
+            }
+            if (event.target.classList.contains('delete-form-btn')) {
+                const formId = event.target.dataset.formId;
+                deleteFormSubmission(formId);
+            }
+        });
+    }
+
+    // --- Inicialização --- 
     document.addEventListener("DOMContentLoaded", loadClientDetails);
-  </script>
 
+  </script>
 </body>
 </html>
