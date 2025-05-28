@@ -1,0 +1,347 @@
+/* Estilos modernos para a página de gestão financeira */
+
+/* --- Sidebar Integration Styles --- */
+body {
+  display: flex;
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+#main-content-gestao-financeira {
+  flex-grow: 1;
+  padding: 2rem;
+  margin-left: 250px; /* Default margin for expanded sidebar */
+  transition: margin-left 0.3s ease;
+  background-color: var(--bg-surface);
+  color: var(--text-light);
+}
+
+#main-content-gestao-financeira.sidebar-collapsed {
+  margin-left: 60px; /* Margin for collapsed sidebar */
+}
+/* --- End Sidebar Integration Styles --- */
+
+/* Título da página */
+h1 {
+  margin-bottom: 1.5rem;
+  font-size: 1.8rem;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* Container principal */
+.gestao-container {
+  background-color: var(--bg-card);
+  border-radius: 12px;
+  padding: 2rem;
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+  margin-top: 1.5rem;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* Grid para formulário */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+}
+
+/* Grupos de formulário */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+/* Tamanhos de colunas */
+.col-2 { grid-column: span 2; }
+.col-3 { grid-column: span 3; }
+.col-4 { grid-column: span 4; }
+.col-6 { grid-column: span 6; }
+.col-12 { grid-column: span 12; }
+
+/* Labels */
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--text-light);
+  opacity: 0.9;
+}
+
+/* Links especiais */
+.subcategoria-label,
+.forma-label {
+  color: #DAA520; /* Dourado */
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Campos de formulário */
+.form-group select,
+.form-group input {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-input);
+  color: var(--text-light);
+  font-size: 0.95rem;
+  transition: border-color 0.2s, box-shadow 0.2s;
+  height: 45px;
+  box-sizing: border-box;
+}
+
+.form-group select:focus,
+.form-group input:focus {
+  outline: none;
+  border-color: #DAA520;
+  box-shadow: 0 0 0 2px rgba(218, 165, 32, 0.2);
+}
+
+/* Campos de data */
+.form-group input[type="date"] {
+  padding: 0.65rem 1rem;
+}
+
+/* Grupo de repetição */
+.repete-group {
+  display: grid;
+  grid-template-columns: 80px 1fr;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+/* Botão */
+.btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s, transform 0.1s;
+  height: 45px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  font-size: 0.9rem;
+}
+
+.btn-primary {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-color-darker);
+  transform: translateY(-1px);
+}
+
+.btn-container {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+/* Alertas */
+.alert {
+  padding: 1rem 1.5rem;
+  border-radius: 6px;
+  margin-bottom: 1.5rem;
+  display: none;
+  font-weight: 500;
+}
+
+.alert-success {
+  background-color: rgba(39, 174, 96, 0.2);
+  border: 1px solid #27ae60;
+  color: #27ae60;
+}
+
+.alert-error {
+  background-color: rgba(231, 76, 60, 0.2);
+  border: 1px solid #e74c3c;
+  color: #e74c3c;
+}
+
+/* Tabela */
+.table-container {
+  margin-top: 2.5rem;
+  overflow-x: auto;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.financeiro-table {
+  width: 100%;
+  border-collapse: collapse;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.financeiro-table th {
+  text-align: left;
+  padding: 1rem;
+  background-color: rgba(0, 0, 0, 0.2);
+  font-weight: 600;
+  color: var(--text-accent);
+  text-transform: uppercase;
+  font-size: 0.85rem;
+  letter-spacing: 0.5px;
+}
+
+.financeiro-table td {
+  padding: 1rem;
+  border-bottom: 1px solid var(--border-color);
+  vertical-align: middle;
+}
+
+.financeiro-table tr:hover {
+  background-color: var(--bg-hover);
+}
+
+.financeiro-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Botões de ação na tabela */
+.action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  margin-right: 0.5rem;
+  color: var(--text-accent);
+  font-size: 1.1rem;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.action-btn:hover {
+  color: var(--accent-color);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+/* Cores para tipos de transação */
+.entrada {
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.saida {
+  color: #e74c3c;
+  font-weight: 600;
+}
+
+/* Responsividade */
+@media (max-width: 1024px) {
+  .form-grid {
+    gap: 1rem;
+  }
+  
+  .col-3, .col-4 {
+    grid-column: span 6;
+  }
+}
+
+@media (max-width: 768px) {
+  .form-grid {
+    gap: 0.75rem;
+  }
+  
+  .col-2, .col-3, .col-4, .col-6 {
+    grid-column: span 12;
+  }
+  
+  .gestao-container {
+    padding: 1.5rem;
+  }
+}
+
+/* Modais */
+.modal {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(3px);
+}
+
+.modal-content {
+  background-color: #1e3a2b; /* Verde escuro da paleta */
+  margin: 5% auto;
+  padding: 2rem;
+  border-radius: 12px;
+  width: 90%;
+  max-width: 600px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  position: relative;
+  z-index: 1001;
+  border: 3px solid #DAA520; /* Borda dourada */
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; transform: translateY(-20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+  border-bottom: 2px solid #DAA520; /* Borda dourada */
+  padding-bottom: 1rem;
+}
+
+.modal-header h3 {
+  margin: 0;
+  font-size: 1.5rem;
+  color: #DAA520;
+}
+
+.close-modal {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-light);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.close-modal:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-body {
+  margin-bottom: 1.5rem;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(218, 165, 32, 0.3);
+}
