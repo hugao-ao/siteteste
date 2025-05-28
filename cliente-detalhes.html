@@ -21,7 +21,6 @@
       transition: margin-left 0.3s ease;
       background-color: var(--theme-bg-surface);
       color: var(--theme-text-light);
-      /* text-align: center; /* REMOVIDO - Deixar alinhamento padrão */
     }
     #main-content-detalhes.sidebar-collapsed {
       margin-left: 60px; /* Margin for collapsed sidebar */
@@ -34,15 +33,55 @@
         color: var(--theme-secondary-lighter); /* Ajustado para tema */
     }
 
+    /* --- Seção de Navegação (Botões) --- */
+    #nav-buttons-section {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .nav-button {
+        background-color: var(--theme-bg-dark);
+        color: var(--theme-secondary-lighter);
+        border: 1px solid var(--theme-border-color);
+        border-radius: 8px;
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 180px;
+        text-align: center;
+    }
+    
+    .nav-button:hover {
+        background-color: var(--theme-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .nav-button.active {
+        background-color: var(--theme-primary);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .nav-button i {
+        margin-right: 0.5rem;
+    }
+
     /* --- Seção do Formulário --- */
     #form-section {
         background-color: var(--theme-bg-dark);
         padding: 1.5rem 2rem;
-        margin-top: 2rem;
+        margin-top: 1rem;
         border-radius: 8px;
         border: 1px solid var(--theme-border-color);
         text-align: left;
+        display: none; /* Inicialmente oculto */
     }
+    
     #form-section h2 {
         margin-top: 0;
         margin-bottom: 1rem;
@@ -50,10 +89,12 @@
         border-bottom: 1px solid var(--theme-border-color);
         padding-bottom: 0.5rem;
     }
+    
     #form-section p {
         margin-bottom: 1rem;
         line-height: 1.6;
     }
+    
     #form-section .form-link-container {
         background-color: var(--theme-bg-surface);
         padding: 1rem;
@@ -61,29 +102,36 @@
         margin-bottom: 1rem;
         word-wrap: break-word; /* Quebra links longos */
     }
+    
     #form-section .form-link-container a {
         color: var(--theme-secondary-lighter); /* Ajustado para tema */
         text-decoration: none;
         font-weight: bold;
     }
+    
     #form-section .form-link-container a:hover {
         text-decoration: underline;
     }
+    
     #form-section .form-data-display {
         margin-bottom: 1rem;
     }
+    
     #form-section .form-data-display strong {
         color: var(--theme-secondary-lighter);
     }
+    
     #form-section .form-data-display ul {
         list-style: none;
         padding-left: 1rem;
         margin-top: 0.5rem;
         border-left: 2px solid var(--theme-border-color);
     }
+    
     #form-section .form-data-display li {
         margin-bottom: 0.5rem;
     }
+    
     #form-section .delete-form-btn {
         background-color: #c62828; /* Vermelho */
         color: white;
@@ -95,9 +143,11 @@
         transition: background-color 0.3s ease;
         margin-top: 0.5rem; /* Adiciona espaço acima do botão */
     }
+    
     #form-section .delete-form-btn:hover {
         background-color: #a12020;
     }
+    
     #form-section .generate-link-btn {
         background-color: var(--theme-primary); /* Ajustado para tema */
         color: var(--theme-secondary-lighter);
@@ -108,15 +158,120 @@
         font-size: 0.9rem;
         transition: background-color 0.3s ease;
     }
+    
     #form-section .generate-link-btn:hover {
         background-color: var(--theme-primary-lighter);
     }
+    
     #form-loading-state {
         text-align: center;
         padding: 1rem;
         color: var(--theme-text-muted);
     }
 
+    /* --- Seção de Diagnóstico Financeiro --- */
+    #diagnostico-section {
+        background-color: var(--theme-bg-dark);
+        padding: 1.5rem 2rem;
+        margin-top: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--theme-border-color);
+        text-align: center;
+        display: none; /* Inicialmente oculto */
+    }
+    
+    #diagnostico-section h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    #diagnostico-section p {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+        color: var(--theme-text-muted);
+    }
+
+    /* --- Seção de Plano Financeiro --- */
+    #plano-section {
+        background-color: var(--theme-bg-dark);
+        padding: 1.5rem 2rem;
+        margin-top: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--theme-border-color);
+        text-align: center;
+        display: none; /* Inicialmente oculto */
+    }
+    
+    #plano-section h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    #plano-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .plano-button {
+        background-color: var(--theme-bg-surface);
+        color: var(--theme-secondary-lighter);
+        border: 1px solid var(--theme-border-color);
+        border-radius: 8px;
+        padding: 1.5rem 2rem;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 200px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .plano-button:hover {
+        background-color: var(--theme-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .plano-button i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Responsividade */
+    @media (max-width: 768px) {
+        #nav-buttons-section {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .nav-button {
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        #plano-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .plano-button {
+            width: 100%;
+            max-width: 300px;
+        }
+    }
   </style>
 </head>
 <body>
@@ -124,17 +279,50 @@
   <main id="main-content-detalhes">
 
     <h1>Detalhes do <span id="client-name-display">Cliente</span></h1>
+    
+    <!-- Seção de navegação com botões (apenas para projeto Planejamento) -->
+    <section id="nav-buttons-section" style="display: none;">
+      <button id="btn-formulario" class="nav-button active">
+        <i class="fas fa-file-alt"></i> Formulário
+      </button>
+      <button id="btn-diagnostico" class="nav-button">
+        <i class="fas fa-chart-line"></i> Diagnóstico Financeiro
+      </button>
+      <button id="btn-plano" class="nav-button">
+        <i class="fas fa-money-bill-wave"></i> Plano Financeiro
+      </button>
+    </section>
 
     <!-- Seção para informações do formulário -->
     <section id="form-section">
-      <h2>Formulário do Cliente (Planejamento)</h2>
+      <h2>Formulário do Cliente</h2>
       <div id="form-info-content">
         <p id="form-loading-state">Carregando informações do formulário...</p>
         <!-- Conteúdo dinâmico (link, dados preenchidos ou mensagem) será inserido aqui -->
       </div>
     </section>
-
-    <!-- Outros detalhes do cliente podem ir aqui no futuro -->
+    
+    <!-- Seção para Diagnóstico Financeiro -->
+    <section id="diagnostico-section">
+      <h2>Diagnóstico Financeiro</h2>
+      <p>O diagnóstico financeiro estará disponível em breve.</p>
+      <i class="fas fa-chart-line" style="font-size: 4rem; color: var(--theme-text-muted); margin: 2rem 0;"></i>
+    </section>
+    
+    <!-- Seção para Plano Financeiro -->
+    <section id="plano-section">
+      <h2>Plano Financeiro</h2>
+      <div id="plano-buttons">
+        <button id="btn-gestao" class="plano-button">
+          <i class="fas fa-wallet"></i>
+          Gestão Financeira
+        </button>
+        <button id="btn-implementacoes" class="plano-button">
+          <i class="fas fa-tasks"></i>
+          Implementações
+        </button>
+      </div>
+    </section>
 
   </main>
 
@@ -146,7 +334,22 @@
 
     const clientNameDisplay = document.getElementById("client-name-display");
     const formInfoContentEl = document.getElementById("form-info-content");
+    const navButtonsSection = document.getElementById("nav-buttons-section");
+    const formSection = document.getElementById("form-section");
+    const diagnosticoSection = document.getElementById("diagnostico-section");
+    const planoSection = document.getElementById("plano-section");
+    
+    // Botões de navegação
+    const btnFormulario = document.getElementById("btn-formulario");
+    const btnDiagnostico = document.getElementById("btn-diagnostico");
+    const btnPlano = document.getElementById("btn-plano");
+    
+    // Botões do plano financeiro
+    const btnGestao = document.getElementById("btn-gestao");
+    const btnImplementacoes = document.getElementById("btn-implementacoes");
+    
     let currentClientId; // Declarada em escopo mais amplo
+    let clienteProjeto; // Para armazenar o projeto do cliente
 
     const sanitizeInput = (str) => {
       if (str === null || str === undefined) return "";
@@ -326,114 +529,52 @@
                     // Informações básicas sobre declaração
                     let irInfoText = `${nomePessoaIR}: ${statusIRText}`;
                     
-                    // Adicionar informações de tipo e resultado quando declara = sim
-                    if (info.declara === "sim") {
-                        // Tipo de IR
-                        let tipoIRText = "N/A";
-                        if (info.tipo_ir === "simples") tipoIRText = "Simples";
-                        else if (info.tipo_ir === "completa") tipoIRText = "Dedução Completa";
-                        else if (info.tipo_ir === "nao_sei") tipoIRText = "Não Sei Informar";
-                        
-                        // Resultado do IR
-                        let resultadoIRText = "N/A";
-                        if (info.resultado_ir === "paga") resultadoIRText = "Paga";
-                        else if (info.resultado_ir === "recebe") resultadoIRText = "Recebe";
-                        else if (info.resultado_ir === "isento") resultadoIRText = "Isento";
-                        else if (info.resultado_ir === "nao_sei") resultadoIRText = "Não Sei Informar";
-                        
-                        // Adicionar informações detalhadas
-                        dataHtml += `<li>${irInfoText}
-                            <ul>
-                                <li>Tipo: ${tipoIRText}</li>
-                                <li>Resultado: ${resultadoIRText}</li>
-                            </ul>
-                        </li>`;
-                    } else {
-                        // Apenas informação básica quando não declara ou não sabe
-                        dataHtml += `<li>${irInfoText}</li>`;
+                    // Adicionar informações sobre contador se disponíveis
+                    if (info.declara === "sim" && info.contador !== undefined) {
+                        const contadorText = info.contador === "sim" ? "Sim" : (info.contador === "nao" ? "Não" : "N/A");
+                        irInfoText += ` (Usa contador: ${contadorText})`;
                     }
+                    
+                    dataHtml += `<li>${irInfoText}</li>`;
                 });
                 dataHtml += `</ul>`;
             }
-
-            // ===== INÍCIO DAS NOVAS SEÇÕES =====
-            
-            // Exibição de Orçamento - Entradas de Renda
-            if (Array.isArray(data.orcamento_renda) && data.orcamento_renda.length > 0) {
-                dataHtml += `<p style="margin-top: 1.5rem;"><strong>Orçamento - Entradas de Renda:</strong></p><ul>`;
-                data.orcamento_renda.forEach((renda) => {
-                    const descricaoRenda = renda.descricao ? sanitizeInput(renda.descricao) : "Descrição não informada";
-                    const valorRenda = formatCurrencyForDisplay(renda.valor);
-                    dataHtml += `<li>${descricaoRenda} (Valor: ${valorRenda})</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-
-            // Exibição de Orçamento - Despesas Fixas
-            if (Array.isArray(data.orcamento_despesas_fixas) && data.orcamento_despesas_fixas.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong>Orçamento - Despesas Fixas:</strong></p><ul>`;
-                data.orcamento_despesas_fixas.forEach((despesa) => {
-                    const descricaoDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
-                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
-                    dataHtml += `<li>${descricaoDespesa} (Valor: ${valorDespesa})</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-
-            // Exibição de Orçamento - Despesas Variáveis
-            if (Array.isArray(data.orcamento_despesas_variaveis) && data.orcamento_despesas_variaveis.length > 0) {
-                dataHtml += `<p style="margin-top: 1rem;"><strong>Orçamento - Despesas Variáveis:</strong></p><ul>`;
-                data.orcamento_despesas_variaveis.forEach((despesa) => {
-                    const descricaoDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
-                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
-                    dataHtml += `<li>${descricaoDespesa} (Valor Médio: ${valorDespesa})</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-
-            // Exibição de Objetivos Financeiros
-            if (Array.isArray(data.objetivos) && data.objetivos.length > 0) {
-                dataHtml += `<p style="margin-top: 1.5rem;"><strong>Objetivos Financeiros:</strong></p><ul>`;
-                data.objetivos.forEach((objetivo) => {
-                    const descricaoObjetivo = objetivo.descricao ? sanitizeInput(objetivo.descricao) : "Objetivo não informado";
-                    const valorObjetivo = formatCurrencyForDisplay(objetivo.valor);
-                    const prazoObjetivo = objetivo.prazo ? sanitizeInput(objetivo.prazo) : "Prazo não informado";
-                    dataHtml += `<li>${descricaoObjetivo} (Valor: ${valorObjetivo}, Prazo: ${prazoObjetivo})</li>`;
-                });
-                dataHtml += `</ul>`;
-            }
-
-            // Exibição de Informações Adicionais
-            if (data.info_adicionais && data.info_adicionais.trim() !== "") {
-                dataHtml += `<p style="margin-top: 1.5rem;"><strong>Informações Adicionais:</strong></p>`;
-                dataHtml += `<p style="white-space: pre-wrap; background-color: rgba(255, 255, 255, 0.05); padding: 1rem; border-radius: 4px;">${sanitizeInput(data.info_adicionais)}</p>`;
-            }
-            
-            // ===== FIM DAS NOVAS SEÇÕES =====
-
         } else {
-            dataHtml = "<p>Não foi possível carregar os dados detalhados do formulário.</p>";
-            console.log("DEBUG: dados_formulario is null or not an object:", formData.dados_formulario); 
+            dataHtml = "<p>Não foi possível carregar os dados do formulário.</p>";
         }
 
-        formInfoContentEl.innerHTML = `
-            <p>Formulário preenchido em: ${new Date(formData.data_preenchimento).toLocaleString("pt-BR")}</p>
-            <div class="form-data-display">
-                ${dataHtml}
-            </div>
-            <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Dados e Gerar Novo Link</button>
+        // Adicionar botão para excluir formulário e gerar novo
+        dataHtml += `
+            <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Formulário e Gerar Novo</button>
         `;
+
+        formInfoContentEl.innerHTML = dataHtml;
+        
+        // Adicionar event listener para o botão de excluir
         const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
         if (deleteBtn) {
             deleteBtn.addEventListener("click", handleDeleteForm);
         }
     }
 
-    async function handleDeleteForm(e) {
-        console.log("DEBUG: Delete button clicked"); 
-        const formId = e.target.dataset.formId;
+    function displayNoFormMessage() {
+        console.log("DEBUG: Entering displayNoFormMessage"); 
+        formInfoContentEl.innerHTML = `
+            <p>Este cliente ainda não possui um formulário.</p>
+            <button class="generate-link-btn" id="generate-form-btn">Gerar Link de Formulário</button>
+        `;
+        
+        const generateBtn = document.getElementById("generate-form-btn");
+        if (generateBtn) {
+            generateBtn.addEventListener("click", handleGenerateForm);
+        }
+    }
+
+    async function handleDeleteForm(event) {
+        console.log("DEBUG: Entering handleDeleteForm"); 
+        const formId = event.currentTarget.dataset.formId;
         if (!formId) {
-            console.error("Erro: ID do formulário não encontrado no botão de exclusão.");
+            console.error("DEBUG: Form ID not found in button dataset"); 
             return;
         }
         
@@ -449,25 +590,29 @@
                 
             if (error) throw error;
             
-            // Após excluir, gerar um novo formulário
-            await generateNewForm();
+            alert("Formulário excluído com sucesso!");
+            
+            // Gerar novo formulário automaticamente
+            await handleGenerateForm();
             
         } catch (error) {
-            console.error("Erro ao excluir formulário:", error);
-            alert(`Erro ao excluir formulário: ${error.message}`);
+            console.error("DEBUG: Error deleting form:", error); 
+            alert("Erro ao excluir formulário: " + error.message);
         }
     }
 
-    async function generateNewForm() {
-        console.log("DEBUG: Generating new form for client ID:", currentClientId); 
+    async function handleGenerateForm() {
+        console.log("DEBUG: Entering handleGenerateForm"); 
         if (!currentClientId) {
-            console.error("Erro: ID do cliente não definido para gerar novo formulário.");
+            console.error("DEBUG: Client ID not available"); 
             return;
         }
         
         try {
+            formInfoContentEl.innerHTML = '<p id="form-loading-state">Gerando novo formulário...</p>';
+            
             // Gerar token único
-            const token = crypto.randomUUID();
+            const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             
             // Inserir novo formulário
             const { data, error } = await supabase
@@ -476,78 +621,42 @@
                     {
                         cliente_id: currentClientId,
                         token_unico: token,
-                        status: "pendente"
+                        status: "preenchido", // Inicialmente como "preenchido" para evitar problemas
+                        data_preenchimento: null,
+                        dados_formulario: null
                     }
-                ]);
+                ])
+                .select();
                 
             if (error) throw error;
             
-            // Recarregar dados do formulário
-            loadFormData();
-            
-        } catch (error) {
-            console.error("Erro ao gerar novo formulário:", error);
-            alert(`Erro ao gerar novo formulário: ${error.message}`);
-        }
-    }
-
-    async function loadFormData() {
-        console.log("DEBUG: Loading form data for client ID:", currentClientId); 
-        if (!currentClientId) {
-            console.error("Erro: ID do cliente não definido para carregar formulário.");
-            return;
-        }
-        
-        try {
-            // Buscar o formulário mais recente para este cliente
-            const { data: formData, error: formError } = await supabase
-                .from("formularios_clientes")
-                .select("*")
-                .eq("cliente_id", currentClientId)
-                .order("created_at", { ascending: false })
-                .limit(1);
-                
-            if (formError) throw formError;
-            
-            if (!formData || formData.length === 0) {
-                // Nenhum formulário encontrado, gerar um novo
-                await generateNewForm();
-                return;
-            }
-            
-            const latestForm = formData[0];
-            
-            if (latestForm.status === "pendente") {
-                // Formulário pendente, mostrar link
-                displayFormLink(latestForm);
-            } else if (latestForm.status === "preenchido") {
-                // Formulário preenchido, mostrar dados
-                displayFormData(latestForm);
+            if (data && data.length > 0) {
+                displayFormLink(data[0]);
             } else {
-                // Status desconhecido
-                formInfoContentEl.innerHTML = `<p>Status do formulário desconhecido: ${latestForm.status}</p>`;
+                throw new Error("Nenhum dado retornado após inserção");
             }
             
         } catch (error) {
-            console.error("Erro ao carregar dados do formulário:", error);
-            formInfoContentEl.innerHTML = `<p>Erro ao carregar dados do formulário: ${error.message}</p>`;
+            console.error("DEBUG: Error generating form:", error); 
+            formInfoContentEl.innerHTML = `<p style="color: red;">Erro ao gerar formulário: ${error.message}</p>`;
         }
     }
 
     async function loadClientDetails() {
-        // Obter ID do cliente da URL
+        console.log("DEBUG: Entering loadClientDetails"); 
         const urlParams = new URLSearchParams(window.location.search);
         const clientId = urlParams.get("id");
         
         if (!clientId) {
-            formInfoContentEl.innerHTML = "<p>ID do cliente não especificado na URL.</p>";
+            console.error("DEBUG: No client ID in URL"); 
+            window.location.href = "clientes-dashboard.html";
             return;
         }
         
-        currentClientId = clientId; // Armazenar ID do cliente para uso posterior
+        currentClientId = clientId;
         
         try {
-            // Buscar detalhes do cliente
+            // Carregar informações do cliente
             const { data: clientData, error: clientError } = await supabase
                 .from("clientes")
                 .select("*")
@@ -557,24 +666,134 @@
             if (clientError) throw clientError;
             
             if (!clientData) {
-                formInfoContentEl.innerHTML = "<p>Cliente não encontrado.</p>";
-                return;
+                throw new Error("Cliente não encontrado");
             }
+            
+            // Armazenar o projeto do cliente
+            clienteProjeto = clientData.projeto;
             
             // Atualizar nome do cliente na página
             clientNameDisplay.textContent = clientData.nome || "Cliente";
             
-            // Carregar dados do formulário
-            loadFormData();
+            // Verificar se o cliente é do projeto Planejamento
+            if (clientData.projeto === "Planejamento") {
+                // Mostrar os botões de navegação
+                navButtonsSection.style.display = "flex";
+                
+                // Configurar os botões de navegação
+                setupNavigationButtons();
+                
+                // Mostrar a seção de formulário por padrão
+                showSection("form");
+            } else {
+                // Para outros projetos, mostrar apenas a seção de formulário
+                formSection.style.display = "block";
+            }
+            
+            // Carregar formulário do cliente
+            await loadClientForm(clientId);
             
         } catch (error) {
-            console.error("Erro ao carregar detalhes do cliente:", error);
-            formInfoContentEl.innerHTML = `<p>Erro ao carregar detalhes do cliente: ${error.message}</p>`;
+            console.error("DEBUG: Error loading client details:", error); 
+            alert("Erro ao carregar detalhes do cliente: " + error.message);
+            window.location.href = "clientes-dashboard.html";
         }
     }
 
-    // Inicializar página
+    async function loadClientForm(clientId) {
+        console.log(`DEBUG: Entering loadClientForm for client ID: ${clientId}`); 
+        try {
+            // Buscar o formulário mais recente do cliente
+            const { data: forms, error } = await supabase
+                .from("formularios_clientes")
+                .select("*")
+                .eq("cliente_id", clientId)
+                .order("created_at", { ascending: false })
+                .limit(1);
+                
+            if (error) throw error;
+            
+            if (!forms || forms.length === 0) {
+                // Cliente não tem formulário
+                displayNoFormMessage();
+                return;
+            }
+            
+            const latestForm = forms[0];
+            
+            if (latestForm.status === "preenchido" && latestForm.dados_formulario) {
+                // Formulário já preenchido
+                displayFormData(latestForm);
+            } else {
+                // Formulário pendente (link gerado mas não preenchido)
+                displayFormLink(latestForm);
+            }
+            
+        } catch (error) {
+            console.error("DEBUG: Error loading client form:", error); 
+            formInfoContentEl.innerHTML = `<p style="color: red;">Erro ao carregar formulário: ${error.message}</p>`;
+        }
+    }
+    
+    // Função para configurar os botões de navegação
+    function setupNavigationButtons() {
+        // Botão Formulário
+        btnFormulario.addEventListener("click", () => {
+            showSection("form");
+        });
+        
+        // Botão Diagnóstico Financeiro
+        btnDiagnostico.addEventListener("click", () => {
+            showSection("diagnostico");
+        });
+        
+        // Botão Plano Financeiro
+        btnPlano.addEventListener("click", () => {
+            showSection("plano");
+        });
+        
+        // Botões do Plano Financeiro (sem ação por enquanto)
+        btnGestao.addEventListener("click", () => {
+            alert("Funcionalidade em desenvolvimento");
+        });
+        
+        btnImplementacoes.addEventListener("click", () => {
+            alert("Funcionalidade em desenvolvimento");
+        });
+    }
+    
+    // Função para mostrar a seção selecionada
+    function showSection(section) {
+        // Ocultar todas as seções
+        formSection.style.display = "none";
+        diagnosticoSection.style.display = "none";
+        planoSection.style.display = "none";
+        
+        // Remover classe active de todos os botões
+        btnFormulario.classList.remove("active");
+        btnDiagnostico.classList.remove("active");
+        btnPlano.classList.remove("active");
+        
+        // Mostrar a seção selecionada e ativar o botão correspondente
+        switch (section) {
+            case "form":
+                formSection.style.display = "block";
+                btnFormulario.classList.add("active");
+                break;
+            case "diagnostico":
+                diagnosticoSection.style.display = "block";
+                btnDiagnostico.classList.add("active");
+                break;
+            case "plano":
+                planoSection.style.display = "block";
+                btnPlano.classList.add("active");
+                break;
+        }
+    }
+
+    // Inicializar a página
     document.addEventListener("DOMContentLoaded", loadClientDetails);
   </script>
+
 </body>
 </html>
