@@ -565,6 +565,15 @@
         // Garante que o formato seja +[ddi][ddd][número]
         return formatted;
     }
+    
+    // Função para gerar UUID v4 válido
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0,
+                v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
 
     function displayFormLink(latestForm) {
         console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); 
@@ -808,8 +817,8 @@
         try {
             formInfoContentEl.innerHTML = '<p id="form-loading-state">Gerando novo formulário...</p>';
             
-            // Gerar token único
-            const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+            // Gerar UUID válido para o token
+            const token = generateUUID();
             
             // Inserir novo formulário
             const { data, error } = await supabase
@@ -818,7 +827,7 @@
                     {
                         cliente_id: currentClientId,
                         token_unico: token,
-                        status: "preenchido", // Inicialmente como "preenchido" para evitar problemas
+                        status: "pendente", // Alterado para pendente
                         data_preenchimento: null,
                         dados_formulario: null
                     }
