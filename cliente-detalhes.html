@@ -630,7 +630,7 @@
             dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Tem dependentes?</strong> ${temDependentesText}</p>`;
 
             if (data.tem_dependentes === "sim" && Array.isArray(data.dependentes) && data.dependentes.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dependentes:</strong></p><ul>`;
+                dataHtml += `<ul>`;
                 data.dependentes.forEach((dependente) => {
                     const nomeDep = dependente.nome ? sanitizeInput(dependente.nome) : "Nome não informado";
                     const idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
@@ -677,7 +677,7 @@
             dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
 
             if (data.tem_patrimonio === "sim" && Array.isArray(data.patrimonios) && data.patrimonios.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Patrimônios Físicos:</strong></p><ul>`;
+                dataHtml += `<ul>`;
                 data.patrimonios.forEach((patrimonio) => {
                     const descPat = patrimonio.qual ? sanitizeInput(patrimonio.qual) : "Descrição não informada";
                     const valorPat = formatCurrencyForDisplay(patrimonio.valor); 
@@ -695,7 +695,7 @@
             dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
 
             if (data.tem_patrimonio_liquido === "sim" && Array.isArray(data.patrimonios_liquidos) && data.patrimonios_liquidos.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dinheiro Guardado ou Investido:</strong></p><ul>`;
+                dataHtml += `<ul>`;
                 data.patrimonios_liquidos.forEach((patrimonio_liquido) => {
                     const ondePatLiq = patrimonio_liquido.qual ? sanitizeInput(patrimonio_liquido.qual) : "Local não informado";
                     const valorPatLiq = formatCurrencyForDisplay(patrimonio_liquido.valor);
@@ -711,7 +711,7 @@
             dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dívidas?</strong> ${possuiDividasText}</p>`;
 
             if (data.tem_dividas === "sim" && Array.isArray(data.dividas) && data.dividas.length > 0) {
-                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dívidas:</strong></p><ul>`;
+                dataHtml += `<ul>`;
                 data.dividas.forEach((divida) => {
                     const credorDivida = divida.credor ? sanitizeInput(divida.credor) : "Credor não informado";
                     const saldoDivida = formatCurrencyForDisplay(divida.saldo);
