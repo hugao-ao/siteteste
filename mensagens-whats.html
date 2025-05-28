@@ -221,17 +221,6 @@
       color: var(--text-muted);
       font-style: italic;
     }
-    
-    /* Estilo para debug info */
-    .debug-info {
-      margin-top: 1rem;
-      padding: 1rem;
-      background-color: rgba(0, 0, 0, 0.2);
-      border-radius: 4px;
-      font-family: monospace;
-      font-size: 0.8rem;
-      display: none; /* Oculto por padrão */
-    }
   </style>
 </head>
 <body>
@@ -247,9 +236,6 @@
       <div id="clientes-table-container">
         <div class="loading-message">Carregando clientes...</div>
       </div>
-      
-      <!-- Área de debug (oculta em produção) -->
-      <div id="debug-info" class="debug-info"></div>
     </div>
 
     <!-- Modal de Edição de Mensagem -->
@@ -286,7 +272,6 @@
     const closeModalBtn = document.querySelector('.close-modal');
     const cancelBtn = document.querySelector('.cancel-btn');
     const saveBtn = document.querySelector('.save-btn');
-    const debugInfo = document.getElementById('debug-info');
     
     // Variáveis globais
     let allClientes = [];
@@ -299,6 +284,10 @@
       const projeto = sessionStorage.getItem("projeto");
       const userId = sessionStorage.getItem("id");
       
+      console.log("Nível do usuário:", nivel);
+      console.log("Projeto do usuário:", projeto);
+      console.log("ID do usuário:", userId);
+      
       if (!nivel) {
         alert("Acesso não autorizado. Faça login.");
         window.location.href = "index.html";
@@ -307,8 +296,10 @@
       
       if (nivel === "admin") {
         isAdmin = true;
+        console.log("Usuário é admin");
       } else if (nivel === "usuario" && projeto === "Planejamento") {
         isAdmin = false;
+        console.log("Usuário é comum do projeto Planejamento");
       } else if (nivel === "usuario" && projeto !== "Planejamento") {
         alert("Acesso não autorizado para este módulo.");
         window.location.href = "index.html";
@@ -316,14 +307,6 @@
       }
       
       return true;
-    }
-    
-    // Função para debug (remover em produção)
-    function logDebug(message, data) {
-      console.log(message, data);
-      // Descomente a linha abaixo para mostrar informações de debug na interface
-      // debugInfo.style.display = 'block';
-      // debugInfo.innerHTML += `<p>${message}: ${JSON.stringify(data)}</p>`;
     }
     
     // Carregar clientes com base no nível do usuário
@@ -336,7 +319,7 @@
         
         // Verificar se o ID do usuário é válido
         const isValidUserId = userId && userId !== 'null' && userId !== 'undefined';
-        logDebug("ID do usuário", userId);
+        console.log("ID do usuário válido:", isValidUserId);
         
         if (isAdmin) {
           // Administrador vê todos os clientes do projeto Planejamento
@@ -350,61 +333,29 @@
             
           if (error) throw error;
           clientesData = data;
-          logDebug("Admin - Clientes carregados", clientesData.length);
+          console.log("Admin - Clientes carregados:", clientesData.length);
         } else if (isValidUserId) {
-          // SOLUÇÃO CORRIGIDA: Duas consultas separadas para garantir que todos os clientes sejam carregados
-          
-          // 1. Buscar clientes com visibilidade TODOS
-          const { data: todosList, error: todosError } = await supabase
+          // SOLUÇÃO SIMPLIFICADA: Buscar todos os clientes do projeto e filtrar no JavaScript
+          const { data, error } = await supabase
             .from('clientes')
             .select(`
               *,
               dados_cadastrais(*)
             `)
-            .eq('projeto', 'Planejamento')
-            .eq('visibility', 'TODOS');
+            .eq('projeto', 'Planejamento');
             
-          if (todosError) throw todosError;
-          logDebug("Usuário - Clientes TODOS", todosList.length);
+          if (error) throw error;
           
-          // 2. Buscar clientes atribuídos ao usuário (INDIVIDUAL)
-          const { data: individualList, error: individualError } = await supabase
-            .from('clientes')
-            .select(`
-              *,
-              dados_cadastrais(*)
-            `)
-            .eq('projeto', 'Planejamento')
-            .eq('assigned_to_user_id', userId);
-            
-          if (individualError) throw individualError;
-          logDebug("Usuário - Clientes INDIVIDUAL", individualList.length);
+          // Filtrar no JavaScript para garantir que todos os clientes corretos sejam exibidos
+          clientesData = data.filter(cliente => 
+            cliente.visibility === 'TODOS' || 
+            (cliente.assigned_to_user_id && cliente.assigned_to_user_id === userId)
+          );
           
-          // 3. Combinar os resultados, removendo duplicatas
-          const allIds = new Set();
-          clientesData = [];
-          
-          // Adicionar clientes TODOS
-          if (todosList && todosList.length > 0) {
-            todosList.forEach(cliente => {
-              if (!allIds.has(cliente.id)) {
-                allIds.add(cliente.id);
-                clientesData.push(cliente);
-              }
-            });
-          }
-          
-          // Adicionar clientes INDIVIDUAL
-          if (individualList && individualList.length > 0) {
-            individualList.forEach(cliente => {
-              if (!allIds.has(cliente.id)) {
-                allIds.add(cliente.id);
-                clientesData.push(cliente);
-              }
-            });
-          }
-          
-          logDebug("Usuário - Total de clientes combinados", clientesData.length);
+          console.log("Clientes totais do projeto:", data.length);
+          console.log("Clientes filtrados para o usuário:", clientesData.length);
+          console.log("Clientes TODOS:", data.filter(c => c.visibility === 'TODOS').length);
+          console.log("Clientes INDIVIDUAL do usuário:", data.filter(c => c.assigned_to_user_id === userId).length);
         } else {
           // Se não tiver ID válido, mostra apenas os com visibilidade TODOS
           const { data, error } = await supabase
@@ -418,7 +369,7 @@
             
           if (error) throw error;
           clientesData = data;
-          logDebug("Usuário sem ID - Clientes TODOS", clientesData.length);
+          console.log("Usuário sem ID - Clientes TODOS:", clientesData.length);
         }
         
         allClientes = clientesData;
@@ -487,7 +438,7 @@
               const dadosCadastraisArray = cliente.dados_cadastrais || [];
               
               // Encontrar o registro de dados cadastrais correto (se houver)
-              const dadosCadastrais = dadosCadastraisArray.find(dc => dc.cliente_id === cliente.id) || {};
+              const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === cliente.id) || {};
               
               const nome = dadosCadastrais.nome_completo || cliente.nome || 'Nome não disponível';
               
@@ -555,7 +506,7 @@
       const searchTermLower = searchTerm.toLowerCase();
       const filteredClientes = allClientes.filter(cliente => {
         const dadosCadastraisArray = cliente.dados_cadastrais || [];
-        const dadosCadastrais = dadosCadastraisArray.find(dc => dc.cliente_id === cliente.id) || {};
+        const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === cliente.id) || {};
         
         const nome = (dadosCadastrais.nome_completo || cliente.nome || '').toLowerCase();
         const cpf = (dadosCadastrais.cpf || '').toLowerCase();
@@ -575,7 +526,7 @@
       if (!cliente) return;
       
       const dadosCadastraisArray = cliente.dados_cadastrais || [];
-      const dadosCadastrais = dadosCadastraisArray.find(dc => dc.cliente_id === cliente.id) || {};
+      const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === cliente.id) || {};
       const nome = dadosCadastrais.nome_completo || cliente.nome || 'Cliente';
       
       modalClienteNome.textContent = `Mensagem para: ${nome}`;
