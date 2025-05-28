@@ -309,31 +309,11 @@
         clientesTableContainer.innerHTML = '<div class="loading-message">Carregando clientes...</div>';
         
         const userId = sessionStorage.getItem("id"); // Corrigido: usando "id" em vez de "user_id"
-        let query;
+        let clientesData = [];
         
         if (isAdmin) {
           // Administrador vê todos os clientes do projeto Planejamento
-          query = supabase
-            .from('clientes')
-            .select(`
-              id,
-              nome,
-              whatsapp,
-              visibility,
-              assigned_to_user_id,
-              dados_cadastrais (
-                id,
-                cliente_id,
-                nome_completo,
-                cpf,
-                whatsapp,
-                conjuge
-              )
-            `)
-            .eq('projeto', 'Planejamento');
-        } else {
-          // Usuário comum vê apenas clientes com visibilidade TODOS ou atribuídos a ele
-          query = supabase
+          const { data, error } = await supabase
             .from('clientes')
             .select(`
               id,
@@ -352,20 +332,66 @@
             `)
             .eq('projeto', 'Planejamento');
             
-          // Só adiciona o filtro de assigned_to_user_id se userId for válido
+          if (error) throw error;
+          clientesData = data;
+        } else {
+          // Usuário comum - Primeiro busca clientes com visibilidade TODOS
+          const { data: todosDados, error: todosError } = await supabase
+            .from('clientes')
+            .select(`
+              id,
+              nome,
+              whatsapp,
+              visibility,
+              assigned_to_user_id,
+              dados_cadastrais (
+                id,
+                cliente_id,
+                nome_completo,
+                cpf,
+                whatsapp,
+                conjuge
+              )
+            `)
+            .eq('projeto', 'Planejamento')
+            .eq('visibility', 'TODOS');
+            
+          if (todosError) throw todosError;
+          
+          // Depois busca clientes atribuídos individualmente ao usuário
           if (userId && userId !== 'null' && userId !== 'undefined') {
-            query = query.or(`visibility.eq.TODOS,assigned_to_user_id.eq.${userId}`);
+            const { data: individuaisDados, error: individuaisError } = await supabase
+              .from('clientes')
+              .select(`
+                id,
+                nome,
+                whatsapp,
+                visibility,
+                assigned_to_user_id,
+                dados_cadastrais (
+                  id,
+                  cliente_id,
+                  nome_completo,
+                  cpf,
+                  whatsapp,
+                  conjuge
+                )
+              `)
+              .eq('projeto', 'Planejamento')
+              .eq('assigned_to_user_id', userId);
+              
+            if (individuaisError) throw individuaisError;
+            
+            // Combina os resultados, evitando duplicatas
+            const todoIds = new Set(todosDados.map(c => c.id));
+            const uniqueIndividuais = individuaisDados.filter(c => !todoIds.has(c.id));
+            clientesData = [...todosDados, ...uniqueIndividuais];
           } else {
-            // Se não tiver ID válido, mostra apenas os com visibilidade TODOS
-            query = query.eq('visibility', 'TODOS');
+            clientesData = todosDados;
           }
         }
         
-        const { data, error } = await query;
-        
-        if (error) throw error;
-        
-        allClientes = data;
+        allClientes = clientesData;
         renderClientesTable(allClientes);
         
         // Carregar mensagens personalizadas
