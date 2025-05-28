@@ -755,7 +755,7 @@
                 Array.isArray(data.orcamento_renda)
               ) {
                 if (data.orcamento_renda.length > 0) {
-                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p><ul>`;
+                  dataHtml += `<p style="margin-top: 1.5rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p>`;
                   data.orcamento_renda.forEach((entrada) => {
                     const descEntrada = entrada.descricao ? sanitizeInput(entrada.descricao) : "Descrição não informada";
                     const valorEntrada = formatCurrencyForDisplay(entrada.valor);
