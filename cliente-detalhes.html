@@ -615,7 +615,7 @@
             dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
 
             if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas) && data.outras_pessoas.length > 0) {
-                dataHtml += `<ul>`;
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Outras pessoas com renda na casa:</strong></p><ul>`;
                 data.outras_pessoas.forEach((pessoa) => {
                     const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : "Nome não informado";
                     const autorizacaoText = pessoa.autorizacao === "sim" ? "Sim" : (pessoa.autorizacao === "nao" ? "Não" : "Não informado");
