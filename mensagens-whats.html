@@ -323,6 +323,7 @@
             
           if (error) throw error;
           clientesData = data;
+          console.log("Admin - Clientes carregados:", clientesData.length);
         } else {
           // Usuário comum - Primeiro busca clientes com visibilidade TODOS
           const { data: todosDados, error: todosError } = await supabase
@@ -335,6 +336,7 @@
             .eq('visibility', 'TODOS');
             
           if (todosError) throw todosError;
+          console.log("Usuário - Clientes TODOS:", todosDados.length);
           
           // Depois busca clientes atribuídos individualmente ao usuário
           if (userId && userId !== 'null' && userId !== 'undefined') {
@@ -348,17 +350,17 @@
               .eq('assigned_to_user_id', userId);
               
             if (individuaisError) throw individuaisError;
+            console.log("Usuário - Clientes individuais:", individuaisDados.length);
             
             // Combina os resultados, evitando duplicatas
             const todoIds = new Set(todosDados.map(c => c.id));
             const uniqueIndividuais = individuaisDados.filter(c => !todoIds.has(c.id));
             clientesData = [...todosDados, ...uniqueIndividuais];
+            console.log("Usuário - Total de clientes após combinação:", clientesData.length);
           } else {
             clientesData = todosDados;
           }
         }
-        
-        console.log("Clientes carregados:", clientesData);
         
         allClientes = clientesData;
         renderClientesTable(allClientes);
@@ -427,11 +429,6 @@
               
               // Encontrar o registro de dados cadastrais correto (se houver)
               const dadosCadastrais = dadosCadastraisArray.find(dc => dc.cliente_id === cliente.id) || {};
-              
-              console.log(`Cliente ${cliente.nome || 'sem nome'} (${cliente.id}):`, {
-                dadosCadastraisArray,
-                dadosCadastrais
-              });
               
               const nome = dadosCadastrais.nome_completo || cliente.nome || 'Nome não disponível';
               
