@@ -316,19 +316,8 @@
           const { data, error } = await supabase
             .from('clientes')
             .select(`
-              id,
-              nome,
-              whatsapp,
-              visibility,
-              assigned_to_user_id,
-              dados_cadastrais (
-                id,
-                cliente_id,
-                nome_completo,
-                cpf,
-                whatsapp,
-                conjuge
-              )
+              *,
+              dados_cadastrais(*)
             `)
             .eq('projeto', 'Planejamento');
             
@@ -339,19 +328,8 @@
           const { data: todosDados, error: todosError } = await supabase
             .from('clientes')
             .select(`
-              id,
-              nome,
-              whatsapp,
-              visibility,
-              assigned_to_user_id,
-              dados_cadastrais (
-                id,
-                cliente_id,
-                nome_completo,
-                cpf,
-                whatsapp,
-                conjuge
-              )
+              *,
+              dados_cadastrais(*)
             `)
             .eq('projeto', 'Planejamento')
             .eq('visibility', 'TODOS');
@@ -363,19 +341,8 @@
             const { data: individuaisDados, error: individuaisError } = await supabase
               .from('clientes')
               .select(`
-                id,
-                nome,
-                whatsapp,
-                visibility,
-                assigned_to_user_id,
-                dados_cadastrais (
-                  id,
-                  cliente_id,
-                  nome_completo,
-                  cpf,
-                  whatsapp,
-                  conjuge
-                )
+                *,
+                dados_cadastrais(*)
               `)
               .eq('projeto', 'Planejamento')
               .eq('assigned_to_user_id', userId);
@@ -390,6 +357,8 @@
             clientesData = todosDados;
           }
         }
+        
+        console.log("Clientes carregados:", clientesData);
         
         allClientes = clientesData;
         renderClientesTable(allClientes);
@@ -453,8 +422,17 @@
           </thead>
           <tbody>
             ${clientes.map(cliente => {
-              // Obter dados do cliente e dados cadastrais
-              const dadosCadastrais = cliente.dados_cadastrais || {};
+              // Obter dados cadastrais do cliente
+              const dadosCadastraisArray = cliente.dados_cadastrais || [];
+              
+              // Encontrar o registro de dados cadastrais correto (se houver)
+              const dadosCadastrais = dadosCadastraisArray.find(dc => dc.cliente_id === cliente.id) || {};
+              
+              console.log(`Cliente ${cliente.nome || 'sem nome'} (${cliente.id}):`, {
+                dadosCadastraisArray,
+                dadosCadastrais
+              });
+              
               const nome = dadosCadastrais.nome_completo || cliente.nome || 'Nome não disponível';
               
               // Verificar se os dados cadastrais específicos existem
@@ -520,7 +498,9 @@
       
       const searchTermLower = searchTerm.toLowerCase();
       const filteredClientes = allClientes.filter(cliente => {
-        const dadosCadastrais = cliente.dados_cadastrais || {};
+        const dadosCadastraisArray = cliente.dados_cadastrais || [];
+        const dadosCadastrais = dadosCadastraisArray.find(dc => dc.cliente_id === cliente.id) || {};
+        
         const nome = (dadosCadastrais.nome_completo || cliente.nome || '').toLowerCase();
         const cpf = (dadosCadastrais.cpf || '').toLowerCase();
         
@@ -538,7 +518,9 @@
       const cliente = allClientes.find(c => c.id === currentClienteId);
       if (!cliente) return;
       
-      const dadosCadastrais = cliente.dados_cadastrais || {};
+      const dadosCadastraisArray = cliente.dados_cadastrais || [];
+      const dadosCadastrais = dadosCadastraisArray.find(dc => dc.cliente_id === cliente.id) || {};
+      
       const nome = dadosCadastrais.nome_completo || cliente.nome || 'Cliente';
       
       modalClienteNome.textContent = `Mensagem para: ${nome}`;
