@@ -38,6 +38,19 @@
       color: var(--accent-color);
       text-decoration: underline;
     }
+    
+    /* Estilo para links de cadastro de dados */
+    .cadastrar-dados-link {
+      color: #ff9800;
+      text-decoration: none;
+      font-weight: 500;
+      transition: color 0.2s ease;
+    }
+    
+    .cadastrar-dados-link:hover {
+      color: #ffb74d;
+      text-decoration: underline;
+    }
 
     /* Estilos específicos para esta página */
     .mensagens-container {
@@ -307,7 +320,10 @@
               nome,
               whatsapp,
               visibility,
+              assigned_to_user_id,
               dados_cadastrais (
+                id,
+                cliente_id,
                 nome_completo,
                 cpf,
                 whatsapp,
@@ -324,7 +340,10 @@
               nome,
               whatsapp,
               visibility,
+              assigned_to_user_id,
               dados_cadastrais (
+                id,
+                cliente_id,
                 nome_completo,
                 cpf,
                 whatsapp,
@@ -411,21 +430,37 @@
               // Obter dados do cliente e dados cadastrais
               const dadosCadastrais = cliente.dados_cadastrais || {};
               const nome = dadosCadastrais.nome_completo || cliente.nome || 'Nome não disponível';
-              const cpf = dadosCadastrais.cpf || 'CPF não disponível';
               
-              // Formatar WhatsApp conforme regra
-              let whatsappDisplay = dadosCadastrais.whatsapp || cliente.whatsapp || 'Não disponível';
-              const conjuge = dadosCadastrais.conjuge || {};
-              const whatsappConjuge = conjuge.whatsapp;
+              // Verificar se os dados cadastrais específicos existem
+              const temCpf = dadosCadastrais && dadosCadastrais.cpf && dadosCadastrais.cpf.trim() !== '';
+              const temWhatsapp = (dadosCadastrais && dadosCadastrais.whatsapp && dadosCadastrais.whatsapp.trim() !== '') || (cliente.whatsapp && cliente.whatsapp.trim() !== '');
               
-              if (whatsappConjuge) {
-                whatsappDisplay = `${whatsappDisplay} / ${whatsappConjuge}`;
+              // Preparar CPF e WhatsApp
+              let cpfDisplay, whatsappDisplay;
+              
+              if (temCpf) {
+                cpfDisplay = `${dadosCadastrais.cpf}`;
+              } else {
+                cpfDisplay = `<a href="cliente-detalhes.html?id=${cliente.id}&edit=true" class="cadastrar-dados-link">Cadastrar Dados</a>`;
+              }
+              
+              if (temWhatsapp) {
+                // Formatar WhatsApp conforme regra
+                whatsappDisplay = dadosCadastrais.whatsapp || cliente.whatsapp;
+                const conjuge = dadosCadastrais.conjuge || {};
+                const whatsappConjuge = conjuge.whatsapp;
+                
+                if (whatsappConjuge) {
+                  whatsappDisplay = `${whatsappDisplay} / ${whatsappConjuge}`;
+                }
+              } else {
+                whatsappDisplay = `<a href="cliente-detalhes.html?id=${cliente.id}&edit=true" class="cadastrar-dados-link">Cadastrar Dados</a>`;
               }
               
               return `
                 <tr data-id="${cliente.id}">
                   <td><a href="cliente-detalhes.html?id=${cliente.id}" class="cliente-link">${nome}</a></td>
-                  <td>${cpf}</td>
+                  <td>${cpfDisplay}</td>
                   <td>${whatsappDisplay}</td>
                   <td>
                     <button class="action-btn edit-msg-btn" title="Editar mensagem">
@@ -565,11 +600,10 @@
       }
     });
     
-    // Inicialização
+    // Inicializar a página
     document.addEventListener('DOMContentLoaded', async () => {
-      const authOk = await checkAuth();
-      if (authOk) {
-        await loadClientes();
+      if (await checkAuth()) {
+        loadClientes();
       }
     });
   </script>
