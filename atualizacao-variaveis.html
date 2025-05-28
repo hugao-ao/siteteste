@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Atualização de Variáveis</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+    #main-content-variaveis {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+    }
+    #main-content-variaveis.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
+    
+    .variaveis-container {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-top: 1.5rem;
+    }
+    
+    .dashboard-buttons {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 2rem;
+      flex-wrap: wrap;
+    }
+    
+    .dashboard-btn {
+      padding: 1rem 2rem;
+      border: none;
+      border-radius: 5px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: white;
+      background-color: var(--accent-color);
+    }
+    
+    .dashboard-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    .theme-planejamento .dashboard-btn {
+      background-color: #006400; /* Verde Planejamento */
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-variaveis">
+    <h1>Atualização de Variáveis</h1>
+    
+    <div class="variaveis-container">
+      <p>Selecione o tipo de variáveis que deseja atualizar:</p>
+      
+      <div class="dashboard-buttons">
+        <a href="variaveis-gestao-financeira.html" class="dashboard-btn">
+          <i class="fas fa-chart-pie"></i> Variáveis de Gestão Financeira
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    import { supabase } from './supabase.js';
+    
+    // Injetar a sidebar
+    injectSidebar("main-content-variaveis");
+    
+    document.addEventListener("DOMContentLoaded", async () => {
+      // Verificar se é admin
+      const userLevel = sessionStorage.getItem("nivel");
+      if (userLevel !== 'admin') {
+        alert("Acesso não autorizado.");
+        window.location.href = "index.html";
+        return;
+      }
+      
+      // Aplicar tema do projeto Planejamento
+      const mainContent = document.getElementById('main-content-variaveis');
+      if (mainContent) {
+        mainContent.classList.add('theme-planejamento');
+        
+        // Se a sidebar já foi injetada, tenta aplicar o tema nela também
+        const sidebar = document.getElementById('sidebar');
+        if(sidebar) {
+          sidebar.classList.remove('theme-admin', 'theme-argos', 'theme-hvc', 'theme-planejamento', 'theme-default');
+          sidebar.classList.add('theme-planejamento');
+        }
+      }
+    });
+  </script>
+</body>
+</html>
