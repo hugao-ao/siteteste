@@ -439,7 +439,7 @@
         
         <div class="form-group">
           <label for="cpf" class="required-field">CPF</label>
-          <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" required>
+          <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" required maxlength="14">
           <div class="error-message" id="cpf-error">CPF é obrigatório</div>
         </div>
         
@@ -450,7 +450,7 @@
         
         <div class="form-group">
           <label for="whatsapp" class="required-field">WhatsApp</label>
-          <input type="text" id="whatsapp" name="whatsapp" placeholder="+55 (00) 00000-0000" required>
+          <input type="text" id="whatsapp" name="whatsapp" placeholder="+55DDNNNNNNNNN" required>
           <div class="error-message" id="whatsapp-error">WhatsApp é obrigatório</div>
         </div>
         
@@ -464,7 +464,7 @@
           
           <div class="form-group">
             <label for="conjuge-whatsapp" class="required-field">WhatsApp do Cônjuge</label>
-            <input type="text" id="conjuge-whatsapp" name="conjuge-whatsapp" placeholder="+55 (00) 00000-0000">
+            <input type="text" id="conjuge-whatsapp" name="conjuge-whatsapp" placeholder="+55DDNNNNNNNNN">
             <div class="error-message" id="conjuge-whatsapp-error">WhatsApp do cônjuge é obrigatório quando o nome é preenchido</div>
           </div>
         </div>
@@ -531,6 +531,40 @@
         if (isNaN(number)) return "Valor inválido";
         return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     };
+    
+    // Função para formatar CPF
+    function formatCPF(cpf) {
+        // Remove todos os caracteres não numéricos
+        cpf = cpf.replace(/\D/g, '');
+        
+        // Limita a 11 dígitos
+        cpf = cpf.substring(0, 11);
+        
+        // Aplica a máscara xxx.xxx.xxx-xx
+        if (cpf.length > 9) {
+            return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        } else if (cpf.length > 6) {
+            return cpf.replace(/(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
+        } else if (cpf.length > 3) {
+            return cpf.replace(/(\d{3})(\d{3})/, '$1.$2');
+        } else {
+            return cpf;
+        }
+    }
+    
+    // Função para formatar WhatsApp
+    function formatWhatsApp(whatsapp) {
+        // Remove todos os caracteres não numéricos, exceto o sinal de +
+        let formatted = whatsapp.replace(/[^\d+]/g, '');
+        
+        // Se não começar com +, adiciona +
+        if (!formatted.startsWith('+')) {
+            formatted = '+' + formatted;
+        }
+        
+        // Garante que o formato seja +[ddi][ddd][número]
+        return formatted;
+    }
 
     function displayFormLink(latestForm) {
         console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); 
@@ -1077,6 +1111,29 @@
         
         // Formulário de dados cadastrais
         dadosCadastraisForm.addEventListener("submit", saveDadosCadastrais);
+        
+        // Adicionar formatação automática para CPF
+        cpfInput.addEventListener("input", function(e) {
+            const cursorPosition = this.selectionStart;
+            const originalLength = this.value.length;
+            
+            this.value = formatCPF(this.value);
+            
+            // Ajustar posição do cursor após formatação
+            const newLength = this.value.length;
+            const cursorAdjustment = newLength - originalLength;
+            this.setSelectionRange(cursorPosition + cursorAdjustment, cursorPosition + cursorAdjustment);
+        });
+        
+        // Adicionar formatação automática para WhatsApp
+        whatsappInput.addEventListener("input", function() {
+            this.value = formatWhatsApp(this.value);
+        });
+        
+        // Adicionar formatação automática para WhatsApp do Cônjuge
+        conjugeWhatsappInput.addEventListener("input", function() {
+            this.value = formatWhatsApp(this.value);
+        });
     }
     
     // Função para mostrar a seção selecionada
