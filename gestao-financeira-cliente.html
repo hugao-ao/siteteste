@@ -6,339 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Gestão Financeira - Cliente</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="gestao-financeira-moderno.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <style>
-    /* --- Sidebar Integration Styles --- */
-    body {
-      display: flex;
-      margin: 0;
-      min-height: 100vh;
-    }
-    #main-content-gestao-financeira {
-      flex-grow: 1;
-      padding: 2rem;
-      margin-left: 250px; /* Default margin for expanded sidebar */
-      transition: margin-left 0.3s ease;
-      background-color: var(--bg-surface);
-      color: var(--text-light);
-    }
-    #main-content-gestao-financeira.sidebar-collapsed {
-      margin-left: 60px; /* Margin for collapsed sidebar */
-    }
-    /* --- End Sidebar Integration Styles --- */
-    
-    .gestao-container {
-      background-color: var(--bg-card);
-      border-radius: 8px;
-      padding: 1.5rem;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      margin-top: 1.5rem;
-    }
-    
-    .form-row {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-      align-items: flex-end;
-    }
-    
-    .form-group {
-      flex: 1;
-      min-width: 150px; /* Ajustado para caber mais campos */
-    }
-    
-    .form-group label {
-      display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-    
-    .subcategoria-label,
-    .forma-label {
-      color: #DAA520; /* Dourado */
-      text-decoration: underline;
-      cursor: pointer;
-    }
-    
-    .form-group select,
-    .form-group input {
-      width: 100%;
-      padding: 0.75rem;
-      border-radius: 4px;
-      border: 1px solid var(--border-color);
-      background-color: var(--bg-input);
-      color: var(--text-light);
-    }
-    
-    .form-group input[type="date"] {
-      /* Estilo específico para campos de data, se necessário */
-      padding: calc(0.75rem - 1px); /* Ajuste para consistência */
-    }
-    
-    .form-group.repete-group {
-      display: flex;
-      gap: 0.5rem;
-      align-items: flex-end;
-      flex-basis: 300px; /* Ajustar largura */
-    }
-    
-    .form-group.repete-group .repete-numero {
-      flex-basis: 80px;
-      min-width: 60px;
-    }
-    
-    .form-group.repete-group .repete-periodo {
-      flex: 1;
-    }
-    
-    .btn {
-      padding: 0.75rem 1.5rem;
-      border: none;
-      border-radius: 4px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: background-color 0.2s ease;
-    }
-    
-    .btn-primary {
-      background-color: var(--accent-color);
-      color: white;
-    }
-    
-    .btn-primary:hover {
-      background-color: var(--accent-color-darker);
-    }
-    
-    .btn-secondary {
-      background-color: var(--bg-button-secondary);
-      color: var(--text-light);
-      border: 1px solid var(--border-color);
-    }
-    
-    .btn-secondary:hover {
-      background-color: var(--bg-hover);
-    }
-    
-    .table-container {
-      margin-top: 2rem;
-      overflow-x: auto;
-    }
-    
-    .financeiro-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-    
-    .financeiro-table th {
-      text-align: left;
-      padding: 0.75rem;
-      border-bottom: 2px solid var(--border-color);
-      color: var(--text-accent);
-    }
-    
-    .financeiro-table td {
-      padding: 0.75rem;
-      border-bottom: 1px solid var(--border-color);
-    }
-    
-    .financeiro-table tr:hover {
-      background-color: var(--bg-hover);
-    }
-    
-    .action-btn {
-      background: none;
-      border: none;
-      cursor: pointer;
-      margin-right: 0.5rem;
-      color: var(--text-accent);
-      font-size: 1.1rem;
-    }
-    
-    .action-btn:hover {
-      color: var(--accent-color);
-    }
-    
-    .entrada {
-      color: #27ae60;
-    }
-    
-    .saida {
-      color: #e74c3c;
-    }
-    
-    .alert {
-      padding: 1rem;
-      border-radius: 4px;
-      margin-bottom: 1.5rem;
-      display: none;
-    }
-    
-    .alert-success {
-      background-color: rgba(39, 174, 96, 0.2);
-      border: 1px solid #27ae60;
-      color: #27ae60;
-    }
-    
-    .alert-error {
-      background-color: rgba(231, 76, 60, 0.2);
-      border: 1px solid #e74c3c;
-      color: #e74c3c;
-    }
-    
-    /* Modais */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-      background-color: rgba(0, 0, 0, 0.7);
-    }
-    
-    .modal-content {
-      background-color: #1e3a2b; /* Verde escuro da paleta */
-      margin: 10% auto;
-      padding: 1.5rem;
-      border-radius: 8px;
-      width: 80%;
-      max-width: 600px; /* Aumentado para caber mais campos */
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-      position: relative;
-      z-index: 1001;
-      border: 3px solid #DAA520; /* Borda dourada */
-    }
-    
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      border-bottom: 1px solid #DAA520; /* Borda dourada */
-      padding-bottom: 0.75rem;
-    }
-    
-    .close-modal {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: var(--text-light);
-    }
-    
-    .modal-body {
-      margin-bottom: 1.5rem;
-    }
-    
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 0.75rem;
-    }
-    
-    /* Estilos para a lista de itens no modal */
-    .modal-list {
-      max-height: 300px;
-      overflow-y: auto;
-      margin-bottom: 1rem;
-      border: 1px solid #DAA520; /* Borda dourada */
-      border-radius: 4px;
-      padding: 0.5rem;
-      background-color: #2a4d3a; /* Verde médio da paleta */
-    }
-    
-    .modal-list-item {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 0.5rem;
-      border-bottom: 1px solid #DAA520; /* Borda dourada */
-      background-color: #1e3a2b; /* Verde escuro da paleta */
-    }
-    
-    .modal-list-item:last-child {
-      border-bottom: none;
-    }
-    
-    .modal-list-item-actions {
-      display: flex;
-      gap: 0.5rem;
-    }
-    
-    .modal-list-item-actions button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: #DAA520; /* Dourado */
-      font-size: 1rem;
-    }
-    
-    .modal-list-item-actions button:hover {
-      color: #FFD700; /* Dourado mais claro no hover */
-    }
-    
-    .add-item-form {
-      display: flex;
-      flex-wrap: wrap; /* Permitir quebra de linha */
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-    }
-    
-    .add-item-form input,
-    .add-item-form select {
-      flex: 1;
-      padding: 0.5rem;
-      border-radius: 4px;
-      border: 1px solid #DAA520; /* Borda dourada */
-      background-color: #2a4d3a; /* Verde médio da paleta */
-      color: var(--text-light);
-      min-width: 120px; /* Largura mínima */
-    }
-    
-    .add-item-form button {
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      background-color: #DAA520; /* Dourado */
-      color: #1e3a2b; /* Verde escuro */
-      border: none;
-      cursor: pointer;
-      align-self: flex-end; /* Alinhar botão */
-    }
-    
-    .add-item-form button:hover {
-      background-color: #FFD700; /* Dourado mais claro no hover */
-    }
-    
-    .edit-mode {
-      background-color: #2a4d3a; /* Verde médio da paleta */
-    }
-    
-    .edit-input {
-      flex: 1;
-      padding: 0.5rem;
-      border-radius: 4px;
-      border: 1px solid #DAA520; /* Borda dourada */
-      background-color: #2a4d3a; /* Verde médio da paleta */
-      color: var(--text-light);
-      margin-right: 0.5rem;
-    }
-    
-    /* Esconder campos de cartão de crédito por padrão */
-    .cartao-fields {
-      display: none;
-      width: 100%; /* Ocupar linha inteira */
-      gap: 0.5rem;
-      margin-top: 0.5rem;
-    }
-    
-    .cartao-fields.visible {
-      display: flex;
-    }
-    
-  </style>
 </head>
 <body>
   <!-- Sidebar será injetada aqui pelo sidebar.js -->
@@ -355,9 +24,9 @@
       </div>
       
       <form id="item-form">
-        <!-- Primeira Linha -->
-        <div class="form-row">
-          <div class="form-group">
+        <!-- Primeira Linha do Grid -->
+        <div class="form-grid">
+          <div class="form-group col-2">
             <label for="tipo-item">Tipo:</label>
             <select id="tipo-item" required>
               <option value="" disabled selected>Selecione o tipo</option>
@@ -366,7 +35,7 @@
             </select>
           </div>
           
-          <div class="form-group">
+          <div class="form-group col-3">
             <label for="categoria-item">Categoria:</label>
             <select id="categoria-item" required>
               <option value="" disabled selected>Selecione a categoria</option>
@@ -377,12 +46,12 @@
             </select>
           </div>
           
-          <div class="form-group">
+          <div class="form-group col-4">
             <label for="descricao-item">Descrição:</label>
             <input type="text" id="descricao-item" placeholder="Descrição do item" required>
           </div>
           
-          <div class="form-group">
+          <div class="form-group col-3">
             <label for="subcategoria-item" class="subcategoria-label">Subcategoria (opcional):</label>
             <select id="subcategoria-item">
               <option value="" selected>Sem subcategoria</option>
@@ -391,9 +60,9 @@
           </div>
         </div>
         
-        <!-- Segunda Linha -->
-        <div class="form-row">
-          <div class="form-group">
+        <!-- Segunda Linha do Grid -->
+        <div class="form-grid">
+          <div class="form-group col-2">
             <label for="via-item">Via:</label>
             <select id="via-item">
               <option value="SEM_PREENCHIMENTO" selected>[sem preenchimento]</option>
@@ -402,7 +71,7 @@
             </select>
           </div>
           
-          <div class="form-group">
+          <div class="form-group col-3">
             <label for="forma-item" class="forma-label">Forma:</label>
             <select id="forma-item">
               <option value="SEM_PREENCHIMENTO" selected>[sem preenchimento]</option>
@@ -410,43 +79,45 @@
             </select>
           </div>
           
-          <div class="form-group repete-group">
-            <div class="repete-numero">
-              <label for="repete-numero">Se repete a cada:</label>
-              <select id="repete-numero" required>
-                <!-- Números de 1 a 31 -->
-              </select>
-            </div>
-            <div class="repete-periodo">
-              <label for="repete-periodo">&nbsp;</label> <!-- Label vazio para alinhamento -->
-              <select id="repete-periodo" required>
-                <option value="NAO_REPETE">Não Repete</option>
-                <option value="DIAS">Dia(s)</option>
-                <option value="DIAS_UTEIS">Dia(s) Útil(eis)</option>
-                <option value="SEMANAS">Semana(s)</option>
-                <option value="QUINZENAS">Quinzena(s)</option>
-                <option value="MESES">Mês(es)</option>
-                <option value="TRIMESTRES">Trimestre(s)</option>
-                <option value="QUADRIMESTRES">Quadrimestre(s)</option>
-                <option value="SEMESTRES">Semestre(s)</option>
-                <option value="ANOS">Anual(is)</option>
-              </select>
+          <div class="form-group col-3">
+            <div class="repete-group">
+              <div>
+                <label for="repete-numero">Se repete a cada:</label>
+                <select id="repete-numero" required>
+                  <!-- Números de 1 a 31 -->
+                </select>
+              </div>
+              <div>
+                <label for="repete-periodo">&nbsp;</label> <!-- Label vazio para alinhamento -->
+                <select id="repete-periodo" required>
+                  <option value="NAO_REPETE">Não Repete</option>
+                  <option value="DIAS">Dia(s)</option>
+                  <option value="DIAS_UTEIS">Dia(s) Útil(eis)</option>
+                  <option value="SEMANAS">Semana(s)</option>
+                  <option value="QUINZENAS">Quinzena(s)</option>
+                  <option value="MESES">Mês(es)</option>
+                  <option value="TRIMESTRES">Trimestre(s)</option>
+                  <option value="QUADRIMESTRES">Quadrimestre(s)</option>
+                  <option value="SEMESTRES">Semestre(s)</option>
+                  <option value="ANOS">Anual(is)</option>
+                </select>
+              </div>
             </div>
           </div>
           
-          <div class="form-group">
+          <div class="form-group col-2">
             <label for="data-inicial">Data Inicial:</label>
             <input type="date" id="data-inicial">
           </div>
           
-          <div class="form-group">
+          <div class="form-group col-2">
             <label for="data-final">Data Final:</label>
             <input type="date" id="data-final">
           </div>
-          
-          <div class="form-group">
-            <button type="submit" class="btn btn-primary">Adicionar Item</button>
-          </div>
+        </div>
+        
+        <div class="btn-container">
+          <button type="submit" class="btn btn-primary">Adicionar Item</button>
         </div>
       </form>
       
@@ -540,96 +211,78 @@
   </main>
 
   <script type="module">
-    import { injectSidebar } from './sidebar.js';
     import { supabase } from './supabase.js';
     
-    // Injetar a sidebar
-    injectSidebar("main-content-gestao-financeira");
+    // Variáveis globais
+    let clienteId;
+    let clienteData;
+    let categorias = [];
+    let categoriasMap = {};
+    let subcategorias = [];
+    let formasPagamento = [];
+    let categoriaAtual = '';
     
-    // --- Elementos DOM --- 
-    const clienteNome = document.getElementById('cliente-nome');
-    const itemForm = document.getElementById('item-form');
+    // Arrays para controle de alterações
+    let subcategoriasAdicionadas = [];
+    let subcategoriasModificadas = [];
+    let subcategoriasRemovidas = [];
+    let formasAdicionadas = [];
+    let formasModificadas = [];
+    let formasRemovidas = [];
+    
+    // Elementos DOM
+    const clienteNomeEl = document.getElementById('cliente-nome');
     const tipoItemSelect = document.getElementById('tipo-item');
-    const descricaoItemInput = document.getElementById('descricao-item');
     const categoriaItemSelect = document.getElementById('categoria-item');
+    const descricaoItemInput = document.getElementById('descricao-item');
     const subcategoriaItemSelect = document.getElementById('subcategoria-item');
-    const subcategoriaLabel = document.querySelector('.subcategoria-label');
-    const itensTableBody = document.getElementById('itens-table-body');
-    const alertSuccess = document.getElementById('alert-success');
-    const alertError = document.getElementById('alert-error');
-    
-    // Novos campos
     const viaItemSelect = document.getElementById('via-item');
     const formaItemSelect = document.getElementById('forma-item');
-    const formaLabel = document.querySelector('.forma-label');
     const repeteNumeroSelect = document.getElementById('repete-numero');
     const repetePeriodoSelect = document.getElementById('repete-periodo');
     const dataInicialInput = document.getElementById('data-inicial');
     const dataFinalInput = document.getElementById('data-final');
+    const itemForm = document.getElementById('item-form');
+    const itensTableBody = document.getElementById('itens-table-body');
+    const alertSuccess = document.getElementById('alert-success');
+    const alertError = document.getElementById('alert-error');
     
-    // Modal de subcategoria
+    // Elementos para subcategorias
+    const subcategoriaLabel = document.querySelector('.subcategoria-label');
     const subcategoriaModal = document.getElementById('subcategoria-modal');
     const subcategoriasListEl = document.getElementById('subcategorias-list');
     const novaSubcategoriaInput = document.getElementById('nova-subcategoria');
     const btnAddSubcategoriaModal = document.getElementById('btn-add-subcategoria-modal');
-    const btnCancelSubcategoria = document.getElementById('btn-cancel-subcategoria');
     const btnSaveSubcategoria = document.getElementById('btn-save-subcategoria');
+    const btnCancelSubcategoria = document.getElementById('btn-cancel-subcategoria');
     const closeModalSubcategoriaBtn = subcategoriaModal.querySelector('.close-modal');
     
-    // Modal de forma de pagamento
+    // Elementos para formas de pagamento
+    const formaLabel = document.querySelector('.forma-label');
     const formaModal = document.getElementById('forma-modal');
     const formasListEl = document.getElementById('formas-list');
     const novaFormaNomeInput = document.getElementById('nova-forma-nome');
     const novaFormaTipoSelect = document.getElementById('nova-forma-tipo');
-    const novaFormaCartaoFields = document.getElementById('nova-forma-cartao-fields');
     const novaFormaVencimentoInput = document.getElementById('nova-forma-vencimento');
     const novaFormaFechamentoInput = document.getElementById('nova-forma-fechamento');
+    const novaFormaCartaoFields = document.getElementById('nova-forma-cartao-fields');
     const btnAddFormaModal = document.getElementById('btn-add-forma-modal');
-    const btnCancelForma = document.getElementById('btn-cancel-forma');
     const btnSaveForma = document.getElementById('btn-save-forma');
+    const btnCancelForma = document.getElementById('btn-cancel-forma');
     const closeModalFormaBtn = formaModal.querySelector('.close-modal');
-    
-    // --- Variáveis Globais --- 
-    let clienteId = null;
-    let subcategorias = [];
-    let formasPagamento = [];
-    let categoriaAtual = null;
-    let subcategoriasModificadas = [];
-    let subcategoriasRemovidas = [];
-    let subcategoriasAdicionadas = [];
-    let formasModificadas = [];
-    let formasRemovidas = [];
-    let formasAdicionadas = [];
-    
-    // Mapeamento de categorias para IDs
-    let categoriasMap = {
-      "RECEITA": null,
-      "DESPESA_FIXA": null,
-      "DESPESA_VARIAVEL": null,
-      "INVESTIMENTO": null
-    };
-    
-    // --- Funções --- 
-    
-    // Obter parâmetros da URL
-    function getUrlParams() {
-      const urlParams = new URLSearchParams(window.location.search);
-      return {
-        id: urlParams.get('id')
-      };
-    }
     
     // Carregar dados do cliente
     async function loadClienteData() {
       try {
-        const { id } = getUrlParams();
-        if (!id) {
-          alert('ID do cliente não especificado.');
+        // Obter ID do cliente da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        clienteId = urlParams.get('id');
+        
+        if (!clienteId) {
+          alert('ID do cliente não especificado na URL');
           window.location.href = 'clientes-dashboard.html';
           return;
         }
-        
-        clienteId = id;
         
         const { data, error } = await supabase
           .from('clientes')
@@ -637,24 +290,21 @@
             *,
             dados_cadastrais(*)
           `)
-          .eq('id', id)
+          .eq('id', clienteId)
           .single();
         
         if (error) throw error;
         
-        if (data) {
-          const dadosCadastraisArray = data.dados_cadastrais || [];
-          const dadosCadastrais = dadosCadastraisArray.find(dc => dc && dc.cliente_id === data.id) || {};
-          const nome = dadosCadastrais.nome_completo || data.nome || 'Cliente';
-          clienteNome.textContent = `Gestão Financeira - ${nome}`;
-          document.title = `Gestão Financeira - ${nome}`;
-        }
+        clienteData = data;
+        clienteNomeEl.textContent = `Gestão Financeira - ${clienteData.nome}`;
+        
       } catch (error) {
         console.error('Erro ao carregar dados do cliente:', error);
+        alert('Erro ao carregar dados do cliente. Tente novamente mais tarde.');
       }
     }
     
-    // Carregar categorias financeiras
+    // Carregar categorias
     async function loadCategorias() {
       try {
         const { data, error } = await supabase
@@ -663,50 +313,15 @@
         
         if (error) throw error;
         
-        if (data && data.length > 0) {
-          data.forEach(cat => {
-            if (cat.tipo === 'RECEITA') categoriasMap.RECEITA = cat.id;
-            else if (cat.tipo === 'DESPESA_FIXA') categoriasMap.DESPESA_FIXA = cat.id;
-            else if (cat.tipo === 'DESPESA_VARIAVEL') categoriasMap.DESPESA_VARIAVEL = cat.id;
-            else if (cat.tipo === 'INVESTIMENTO') categoriasMap.INVESTIMENTO = cat.id;
-          });
-          console.log("Categorias carregadas:", categoriasMap);
-        } else {
-          await createDefaultCategorias();
-        }
+        categorias = data || [];
+        
+        // Criar mapeamento de nome para ID
+        categorias.forEach(cat => {
+          categoriasMap[cat.nome] = cat.id;
+        });
+        
       } catch (error) {
         console.error('Erro ao carregar categorias:', error);
-      }
-    }
-    
-    // Criar categorias padrão
-    async function createDefaultCategorias() {
-      try {
-        const categoriasDefault = [
-          { tipo: 'RECEITA', nome: 'Receita', descricao: 'Entradas de dinheiro e receitas' },
-          { tipo: 'DESPESA_FIXA', nome: 'Despesa Fixa', descricao: 'Despesas que ocorrem regularmente com valor fixo' },
-          { tipo: 'DESPESA_VARIAVEL', nome: 'Despesa Variável', descricao: 'Despesas que variam em valor ou frequência' },
-          { tipo: 'INVESTIMENTO', nome: 'Investimento', descricao: 'Aplicações financeiras e investimentos' }
-        ];
-        
-        const { data, error } = await supabase
-          .from('categorias_financeiras')
-          .insert(categoriasDefault)
-          .select();
-        
-        if (error) throw error;
-        
-        if (data && data.length > 0) {
-          data.forEach(cat => {
-            if (cat.tipo === 'RECEITA') categoriasMap.RECEITA = cat.id;
-            else if (cat.tipo === 'DESPESA_FIXA') categoriasMap.DESPESA_FIXA = cat.id;
-            else if (cat.tipo === 'DESPESA_VARIAVEL') categoriasMap.DESPESA_VARIAVEL = cat.id;
-            else if (cat.tipo === 'INVESTIMENTO') categoriasMap.INVESTIMENTO = cat.id;
-          });
-          console.log("Categorias padrão criadas:", categoriasMap);
-        }
-      } catch (error) {
-        console.error('Erro ao criar categorias padrão:', error);
       }
     }
     
@@ -722,37 +337,36 @@
         
         subcategorias = data || [];
         updateSubcategoriasSelect();
+        
       } catch (error) {
         console.error('Erro ao carregar subcategorias:', error);
       }
     }
     
-    // Carregar formas de pagamento
-    async function loadFormasPagamento() {
-      try {
-        const { data, error } = await supabase
-          .from('formas_pagamento')
-          .select('*')
-          .or(`cliente_id.is.null,cliente_id.eq.${clienteId}`);
-        
-        if (error) throw error;
-        
-        formasPagamento = data || [];
-        updateFormasSelect();
-      } catch (error) {
-        console.error('Erro ao carregar formas de pagamento:', error);
-      }
-    }
-    
-    // Atualizar select de subcategorias
+    // Atualizar select de subcategorias com base na categoria selecionada
     function updateSubcategoriasSelect() {
-      subcategoriaItemSelect.innerHTML = '<option value="" selected>Sem subcategoria</option>';
-      const categoriaSelecionada = categoriaItemSelect.value;
-      const categoriaId = categoriasMap[categoriaSelecionada];
+      // Limpar opções atuais, exceto a primeira
+      while (subcategoriaItemSelect.options.length > 1) {
+        subcategoriaItemSelect.remove(1);
+      }
       
+      // Obter categoria selecionada
+      let categoriaSelecionada;
+      if (tipoItemSelect.value === 'ENTRADA') {
+        categoriaSelecionada = 'RECEITA';
+      } else {
+        categoriaSelecionada = categoriaItemSelect.value;
+      }
+      
+      if (!categoriaSelecionada) return;
+      
+      // Filtrar subcategorias pela categoria
+      const categoriaId = categoriasMap[categoriaSelecionada];
       if (!categoriaId) return;
       
       const subcategoriasFiltradas = subcategorias.filter(sub => sub.categoria_id === categoriaId);
+      
+      // Adicionar opções filtradas
       subcategoriasFiltradas.forEach(sub => {
         const option = document.createElement('option');
         option.value = sub.id;
@@ -761,24 +375,46 @@
       });
     }
     
-    // Atualizar select de formas de pagamento
-    function updateFormasSelect() {
-      formaItemSelect.innerHTML = '<option value="SEM_PREENCHIMENTO" selected>[sem preenchimento]</option>';
-      formasPagamento.forEach(forma => {
-        const option = document.createElement('option');
-        option.value = forma.id;
-        option.textContent = forma.nome;
-        formaItemSelect.appendChild(option);
-      });
-      // Aplicar regras de TIPO
-      handleTipoChange();
+    // Carregar formas de pagamento
+    async function loadFormasPagamento() {
+      try {
+        const { data, error } = await supabase
+          .from('formas_pagamento')
+          .select('*')
+          .eq('cliente_id', clienteId);
+        
+        if (error) throw error;
+        
+        formasPagamento = data || [];
+        
+        // Limpar opções atuais, exceto a primeira
+        while (formaItemSelect.options.length > 1) {
+          formaItemSelect.remove(1);
+        }
+        
+        // Adicionar opções
+        formasPagamento.forEach(forma => {
+          const option = document.createElement('option');
+          option.value = forma.id;
+          
+          if (forma.tipo === 'CARTAO_CREDITO') {
+            option.textContent = `${forma.nome} (Cartão - Venc: ${forma.data_vencimento || 'N/A'})`;
+          } else {
+            option.textContent = `${forma.nome} (Conta)`;
+          }
+          
+          formaItemSelect.appendChild(option);
+        });
+        
+      } catch (error) {
+        console.error('Erro ao carregar formas de pagamento:', error);
+      }
     }
     
     // Renderizar lista de subcategorias no modal
     function renderSubcategoriasList() {
-      subcategoriasListEl.innerHTML = '';
+      // Filtrar subcategorias pela categoria atual
       const categoriaId = categoriasMap[categoriaAtual];
-      
       if (!categoriaId) {
         subcategoriasListEl.innerHTML = '<div class="modal-list-item"><span>Erro: Categoria não encontrada.</span></div>';
         return;
@@ -791,10 +427,11 @@
         return;
       }
       
+      subcategoriasListEl.innerHTML = '';
+      
       subcategoriasFiltradas.forEach(sub => {
         const item = document.createElement('div');
         item.className = 'modal-list-item';
-        item.dataset.id = sub.id;
         
         const span = document.createElement('span');
         span.textContent = sub.nome;
@@ -805,39 +442,54 @@
         const editBtn = document.createElement('button');
         editBtn.innerHTML = '<i class="fas fa-edit"></i>';
         editBtn.title = 'Editar';
-        editBtn.addEventListener('click', () => editSubcategoriaItem(item, sub, span, actions, editBtn, deleteBtn));
+        editBtn.addEventListener('click', () => editSubcategoriaItem(item, span, sub));
         
         const deleteBtn = document.createElement('button');
         deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
         deleteBtn.title = 'Excluir';
-        deleteBtn.addEventListener('click', () => deleteSubcategoriaItem(item, sub));
+        deleteBtn.addEventListener('click', () => {
+          if (confirm(`Deseja realmente excluir a subcategoria "${sub.nome}"?`)) {
+            deleteSubcategoriaItem(item, sub);
+          }
+        });
         
-        actions.appendChild(editBtn);
-        actions.appendChild(deleteBtn);
+        // Adicionar botões apenas se for uma subcategoria do cliente
+        if (sub.cliente_id === clienteId) {
+          actions.appendChild(editBtn);
+          actions.appendChild(deleteBtn);
+        } else {
+          const infoSpan = document.createElement('span');
+          infoSpan.textContent = ' (global)';
+          infoSpan.style.fontSize = '0.8em';
+          infoSpan.style.opacity = '0.7';
+          span.appendChild(infoSpan);
+        }
         
         item.appendChild(span);
         item.appendChild(actions);
-        
         subcategoriasListEl.appendChild(item);
       });
     }
     
     // Renderizar lista de formas de pagamento no modal
     function renderFormasList() {
-      formasListEl.innerHTML = '';
-      
       if (formasPagamento.length === 0) {
         formasListEl.innerHTML = '<div class="modal-list-item"><span>Nenhuma forma de pagamento encontrada.</span></div>';
         return;
       }
       
+      formasListEl.innerHTML = '';
+      
       formasPagamento.forEach(forma => {
         const item = document.createElement('div');
         item.className = 'modal-list-item';
-        item.dataset.id = forma.id;
         
         const span = document.createElement('span');
-        span.textContent = `${forma.nome} (${forma.tipo === 'CARTAO_CREDITO' ? 'Cartão' : 'Conta'})${forma.tipo === 'CARTAO_CREDITO' ? ` - Venc: ${forma.data_vencimento || 'N/A'}` : ''}`;
+        if (forma.tipo === 'CARTAO_CREDITO') {
+          span.textContent = `${forma.nome} (Cartão - Venc: ${forma.data_vencimento || 'N/A'})`;
+        } else {
+          span.textContent = `${forma.nome} (Conta)`;
+        }
         
         const actions = document.createElement('div');
         actions.className = 'modal-list-item-actions';
@@ -845,52 +497,72 @@
         const editBtn = document.createElement('button');
         editBtn.innerHTML = '<i class="fas fa-edit"></i>';
         editBtn.title = 'Editar';
-        editBtn.addEventListener('click', () => editFormaItem(item, forma, span, actions, editBtn, deleteBtn));
+        editBtn.addEventListener('click', () => editFormaItem(item, span, forma));
         
         const deleteBtn = document.createElement('button');
         deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
         deleteBtn.title = 'Excluir';
-        deleteBtn.addEventListener('click', () => deleteFormaItem(item, forma));
+        deleteBtn.addEventListener('click', () => {
+          if (confirm(`Deseja realmente excluir a forma de pagamento "${forma.nome}"?`)) {
+            deleteFormaItem(item, forma);
+          }
+        });
         
         actions.appendChild(editBtn);
         actions.appendChild(deleteBtn);
         
         item.appendChild(span);
         item.appendChild(actions);
-        
         formasListEl.appendChild(item);
       });
     }
     
-    // --- Funções de Edição/Exclusão (Modal Subcategorias) ---
-    function editSubcategoriaItem(item, sub, span, actions, editBtn, deleteBtn) {
+    // Editar subcategoria no modal
+    function editSubcategoriaItem(item, span, subcategoria) {
       item.classList.add('edit-mode');
-      const input = document.createElement('input');
-      input.type = 'text';
-      input.className = 'edit-input';
-      input.value = sub.nome;
+      
+      const nomeInput = document.createElement('input');
+      nomeInput.type = 'text';
+      nomeInput.className = 'edit-input';
+      nomeInput.value = subcategoria.nome;
+      
+      const actions = item.querySelector('.modal-list-item-actions');
+      actions.innerHTML = '';
       
       const confirmBtn = document.createElement('button');
       confirmBtn.innerHTML = '<i class="fas fa-check"></i>';
       confirmBtn.title = 'Confirmar';
       confirmBtn.addEventListener('click', () => {
-        const novoNome = input.value.trim();
-        if (novoNome) {
-          const subIndex = subcategorias.findIndex(s => s.id === sub.id);
-          if (subIndex !== -1) subcategorias[subIndex].nome = novoNome;
-          
-          if (!subcategoriasAdicionadas.some(s => s.id === sub.id)) {
-            const modIndex = subcategoriasModificadas.findIndex(s => s.id === sub.id);
-            if (modIndex !== -1) subcategoriasModificadas[modIndex].nome = novoNome;
-            else subcategoriasModificadas.push({...subcategorias[subIndex]});
-          } else {
-            const addIndex = subcategoriasAdicionadas.findIndex(s => s.id === sub.id);
-            if (addIndex !== -1) subcategoriasAdicionadas[addIndex].nome = novoNome;
-          }
-          span.textContent = novoNome;
+        const novoNome = nomeInput.value.trim();
+        if (!novoNome) return;
+        
+        // Verificar se já existe outra subcategoria com este nome
+        const existingSub = subcategorias.find(sub => 
+          sub.id !== subcategoria.id && 
+          sub.categoria_id === subcategoria.categoria_id && 
+          sub.nome.toLowerCase() === novoNome.toLowerCase()
+        );
+        
+        if (existingSub) {
+          alert('Já existe uma subcategoria com este nome.');
+          return;
         }
+        
+        subcategoria.nome = novoNome;
+        
+        // Adicionar à lista de modificadas se não for nova
+        if (!subcategoriasAdicionadas.some(s => s.id === subcategoria.id)) {
+          const existingModIndex = subcategoriasModificadas.findIndex(s => s.id === subcategoria.id);
+          if (existingModIndex === -1) {
+            subcategoriasModificadas.push(subcategoria);
+          } else {
+            subcategoriasModificadas[existingModIndex] = subcategoria;
+          }
+        }
+        
+        span.textContent = novoNome;
         item.classList.remove('edit-mode');
-        item.replaceChild(span, input);
+        item.replaceChild(span, nomeInput);
         actions.innerHTML = '';
         actions.appendChild(editBtn);
         actions.appendChild(deleteBtn);
@@ -901,38 +573,50 @@
       cancelBtn.title = 'Cancelar';
       cancelBtn.addEventListener('click', () => {
         item.classList.remove('edit-mode');
-        item.replaceChild(span, input);
+        item.replaceChild(span, nomeInput);
         actions.innerHTML = '';
         actions.appendChild(editBtn);
         actions.appendChild(deleteBtn);
       });
       
-      item.replaceChild(input, span);
-      actions.innerHTML = '';
+      const editBtn = document.createElement('button');
+      editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+      editBtn.title = 'Editar';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+      deleteBtn.title = 'Excluir';
+      
       actions.appendChild(confirmBtn);
       actions.appendChild(cancelBtn);
-      input.focus();
+      item.replaceChild(nomeInput, span);
+      nomeInput.focus();
     }
     
-    function deleteSubcategoriaItem(item, sub) {
-      subcategorias = subcategorias.filter(s => s.id !== sub.id);
-      const addedIndex = subcategoriasAdicionadas.findIndex(s => s.id === sub.id);
+    // Excluir subcategoria
+    function deleteSubcategoriaItem(item, subcategoria) {
+      subcategorias = subcategorias.filter(s => s.id !== subcategoria.id);
+      
+      const addedIndex = subcategoriasAdicionadas.findIndex(s => s.id === subcategoria.id);
       if (addedIndex !== -1) {
         subcategoriasAdicionadas.splice(addedIndex, 1);
       } else {
-        subcategoriasRemovidas.push(sub.id);
-        const modifiedIndex = subcategoriasModificadas.findIndex(s => s.id === sub.id);
+        subcategoriasRemovidas.push(subcategoria.id);
+        const modifiedIndex = subcategoriasModificadas.findIndex(s => s.id === subcategoria.id);
         if (modifiedIndex !== -1) subcategoriasModificadas.splice(modifiedIndex, 1);
       }
+      
       item.remove();
+      
       if (subcategoriasListEl.children.length === 0) {
         subcategoriasListEl.innerHTML = '<div class="modal-list-item"><span>Nenhuma subcategoria encontrada.</span></div>';
       }
     }
     
-    // --- Funções de Edição/Exclusão (Modal Formas) ---
-    function editFormaItem(item, forma, span, actions, editBtn, deleteBtn) {
+    // Editar forma de pagamento no modal
+    function editFormaItem(item, span, forma) {
       item.classList.add('edit-mode');
+      
       const nomeInput = document.createElement('input');
       nomeInput.type = 'text';
       nomeInput.className = 'edit-input';
@@ -940,34 +624,46 @@
       
       const tipoSelect = document.createElement('select');
       tipoSelect.className = 'edit-input';
-      tipoSelect.innerHTML = `
-        <option value="CONTA" ${forma.tipo === 'CONTA' ? 'selected' : ''}>Conta</option>
-        <option value="CARTAO_CREDITO" ${forma.tipo === 'CARTAO_CREDITO' ? 'selected' : ''}>Cartão de Crédito</option>
-      `;
+      
+      const optConta = document.createElement('option');
+      optConta.value = 'CONTA';
+      optConta.textContent = 'Conta';
+      
+      const optCartao = document.createElement('option');
+      optCartao.value = 'CARTAO_CREDITO';
+      optCartao.textContent = 'Cartão de Crédito';
+      
+      tipoSelect.appendChild(optConta);
+      tipoSelect.appendChild(optCartao);
+      tipoSelect.value = forma.tipo;
+      
+      const cartaoFieldsDiv = document.createElement('div');
+      cartaoFieldsDiv.className = 'cartao-fields';
+      cartaoFieldsDiv.style.display = forma.tipo === 'CARTAO_CREDITO' ? 'flex' : 'none';
       
       const vencimentoInput = document.createElement('input');
       vencimentoInput.type = 'number';
-      vencimentoInput.className = 'edit-input';
+      vencimentoInput.min = '1';
+      vencimentoInput.max = '31';
       vencimentoInput.placeholder = 'Dia Venc.';
-      vencimentoInput.min = 1; vencimentoInput.max = 31;
       vencimentoInput.value = forma.data_vencimento || '';
       
       const fechamentoInput = document.createElement('input');
       fechamentoInput.type = 'number';
-      fechamentoInput.className = 'edit-input';
+      fechamentoInput.min = '1';
+      fechamentoInput.max = '31';
       fechamentoInput.placeholder = 'Dia Fech.';
-      fechamentoInput.min = 1; fechamentoInput.max = 31;
       fechamentoInput.value = forma.data_fechamento || '';
       
-      const cartaoFieldsDiv = document.createElement('div');
-      cartaoFieldsDiv.className = 'cartao-fields';
       cartaoFieldsDiv.appendChild(vencimentoInput);
       cartaoFieldsDiv.appendChild(fechamentoInput);
       
       tipoSelect.addEventListener('change', () => {
-        cartaoFieldsDiv.classList.toggle('visible', tipoSelect.value === 'CARTAO_CREDITO');
+        cartaoFieldsDiv.style.display = tipoSelect.value === 'CARTAO_CREDITO' ? 'flex' : 'none';
       });
-      cartaoFieldsDiv.classList.toggle('visible', forma.tipo === 'CARTAO_CREDITO');
+      
+      const actions = item.querySelector('.modal-list-item-actions');
+      actions.innerHTML = '';
       
       const confirmBtn = document.createElement('button');
       confirmBtn.innerHTML = '<i class="fas fa-check"></i>';
@@ -975,32 +671,43 @@
       confirmBtn.addEventListener('click', () => {
         const novoNome = nomeInput.value.trim();
         const novoTipo = tipoSelect.value;
-        const novoVencimento = parseInt(vencimentoInput.value) || null;
-        let novoFechamento = parseInt(fechamentoInput.value) || null;
+        const novoVencimento = novoTipo === 'CARTAO_CREDITO' ? parseInt(vencimentoInput.value) || null : null;
+        const novoFechamento = novoTipo === 'CARTAO_CREDITO' ? parseInt(fechamentoInput.value) || null : null;
         
-        if (novoTipo === 'CARTAO_CREDITO' && novoVencimento && !novoFechamento) {
-          novoFechamento = (novoVencimento - 7 + 31) % 31 + 1; // Estima fechamento 7 dias antes
+        if (!novoNome) return;
+        
+        // Verificar se já existe outra forma com este nome
+        const existingForma = formasPagamento.find(f => 
+          f.id !== forma.id && 
+          f.nome.toLowerCase() === novoNome.toLowerCase()
+        );
+        
+        if (existingForma) {
+          alert('Já existe uma forma de pagamento com este nome.');
+          return;
         }
         
-        if (novoNome) {
-          const formaIndex = formasPagamento.findIndex(f => f.id === forma.id);
-          if (formaIndex !== -1) {
-            formasPagamento[formaIndex].nome = novoNome;
-            formasPagamento[formaIndex].tipo = novoTipo;
-            formasPagamento[formaIndex].data_vencimento = novoTipo === 'CARTAO_CREDITO' ? novoVencimento : null;
-            formasPagamento[formaIndex].data_fechamento = novoTipo === 'CARTAO_CREDITO' ? novoFechamento : null;
-          }
-          
-          if (!formasAdicionadas.some(f => f.id === forma.id)) {
-            const modIndex = formasModificadas.findIndex(f => f.id === forma.id);
-            if (modIndex !== -1) Object.assign(formasModificadas[modIndex], formasPagamento[formaIndex]);
-            else formasModificadas.push({...formasPagamento[formaIndex]});
+        if (novoTipo === 'CARTAO_CREDITO' && !novoVencimento) {
+          alert('Informe o dia de vencimento para cartão de crédito.');
+          return;
+        }
+        
+        forma.nome = novoNome;
+        forma.tipo = novoTipo;
+        forma.data_vencimento = novoVencimento;
+        forma.data_fechamento = novoFechamento;
+        
+        // Adicionar à lista de modificadas se não for nova
+        if (!formasAdicionadas.some(f => f.id === forma.id)) {
+          const existingModIndex = formasModificadas.findIndex(f => f.id === forma.id);
+          if (existingModIndex === -1) {
+            formasModificadas.push(forma);
           } else {
-            const addIndex = formasAdicionadas.findIndex(f => f.id === forma.id);
-            if (addIndex !== -1) Object.assign(formasAdicionadas[addIndex], formasPagamento[formaIndex]);
+            formasModificadas[existingModIndex] = forma;
           }
-          span.textContent = `${novoNome} (${novoTipo === 'CARTAO_CREDITO' ? 'Cartão' : 'Conta'})${novoTipo === 'CARTAO_CREDITO' ? ` - Venc: ${novoVencimento || 'N/A'}` : ''}`;
         }
+        
+        span.textContent = `${novoNome} (${novoTipo === 'CARTAO_CREDITO' ? 'Cartão' : 'Conta'})${novoTipo === 'CARTAO_CREDITO' ? ` - Venc: ${novoVencimento || 'N/A'}` : ''}`;
         item.classList.remove('edit-mode');
         item.replaceChild(span, nomeInput);
         item.removeChild(tipoSelect);
@@ -1023,17 +730,26 @@
         actions.appendChild(deleteBtn);
       });
       
+      const editBtn = document.createElement('button');
+      editBtn.innerHTML = '<i class="fas fa-edit"></i>';
+      editBtn.title = 'Editar';
+      
+      const deleteBtn = document.createElement('button');
+      deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+      deleteBtn.title = 'Excluir';
+      
+      actions.appendChild(confirmBtn);
+      actions.appendChild(cancelBtn);
       item.replaceChild(nomeInput, span);
       item.appendChild(tipoSelect);
       item.appendChild(cartaoFieldsDiv);
-      actions.innerHTML = '';
-      actions.appendChild(confirmBtn);
-      actions.appendChild(cancelBtn);
       nomeInput.focus();
     }
     
+    // Excluir forma de pagamento
     function deleteFormaItem(item, forma) {
       formasPagamento = formasPagamento.filter(f => f.id !== forma.id);
+      
       const addedIndex = formasAdicionadas.findIndex(f => f.id === forma.id);
       if (addedIndex !== -1) {
         formasAdicionadas.splice(addedIndex, 1);
@@ -1042,7 +758,9 @@
         const modifiedIndex = formasModificadas.findIndex(f => f.id === forma.id);
         if (modifiedIndex !== -1) formasModificadas.splice(modifiedIndex, 1);
       }
+      
       item.remove();
+      
       if (formasListEl.children.length === 0) {
         formasListEl.innerHTML = '<div class="modal-list-item"><span>Nenhuma forma de pagamento encontrada.</span></div>';
       }
@@ -1052,15 +770,23 @@
     function addSubcategoriaTemp() {
       const nome = novaSubcategoriaInput.value.trim();
       if (!nome) { alert('Informe o nome da subcategoria.'); return; }
+      
       const categoriaId = categoriasMap[categoriaAtual];
       if (!categoriaId) { alert('Erro: Categoria não encontrada.'); return; }
-      const existingSub = subcategorias.find(sub => sub.categoria_id === categoriaId && sub.nome.toLowerCase() === nome.toLowerCase());
+      
+      const existingSub = subcategorias.find(sub => 
+        sub.categoria_id === categoriaId && 
+        sub.nome.toLowerCase() === nome.toLowerCase()
+      );
+      
       if (existingSub) { alert('Já existe uma subcategoria com este nome.'); return; }
       
       const tempId = 'temp_sub_' + Date.now();
       const novaSub = { id: tempId, categoria_id: categoriaId, nome: nome, cliente_id: clienteId };
+      
       subcategorias.push(novaSub);
       subcategoriasAdicionadas.push(novaSub);
+      
       novaSubcategoriaInput.value = '';
       renderSubcategoriasList();
       novaSubcategoriaInput.focus();
@@ -1074,7 +800,11 @@
       let fechamento = parseInt(novaFormaFechamentoInput.value) || null;
       
       if (!nome) { alert('Informe o nome da forma de pagamento.'); return; }
-      if (tipo === 'CARTAO_CREDITO' && !vencimento) { alert('Informe o dia de vencimento para cartão de crédito.'); return; }
+      
+      if (tipo === 'CARTAO_CREDITO' && !vencimento) { 
+        alert('Informe o dia de vencimento para cartão de crédito.'); 
+        return; 
+      }
       
       if (tipo === 'CARTAO_CREDITO' && vencimento && !fechamento) {
         fechamento = (vencimento - 7 + 31) % 31 + 1; // Estima fechamento 7 dias antes
@@ -1111,22 +841,45 @@
     async function saveSubcategoriasChanges() {
       try {
         if (subcategoriasAdicionadas.length > 0) {
-          const subsToAdd = subcategoriasAdicionadas.map(sub => ({ categoria_id: sub.categoria_id, nome: sub.nome, cliente_id: clienteId }));
-          const { error: addError } = await supabase.from('subcategorias_financeiras').insert(subsToAdd);
+          const subsToAdd = subcategoriasAdicionadas.map(sub => ({ 
+            categoria_id: sub.categoria_id, 
+            nome: sub.nome, 
+            cliente_id: clienteId 
+          }));
+          
+          const { error: addError } = await supabase
+            .from('subcategorias_financeiras')
+            .insert(subsToAdd);
+          
           if (addError) throw addError;
         }
+        
         for (const sub of subcategoriasModificadas) {
-          const { error: updateError } = await supabase.from('subcategorias_financeiras').update({ nome: sub.nome }).eq('id', sub.id);
+          const { error: updateError } = await supabase
+            .from('subcategorias_financeiras')
+            .update({ nome: sub.nome })
+            .eq('id', sub.id);
+          
           if (updateError) throw updateError;
         }
+        
         if (subcategoriasRemovidas.length > 0) {
-          const { error: deleteError } = await supabase.from('subcategorias_financeiras').delete().in('id', subcategoriasRemovidas);
+          const { error: deleteError } = await supabase
+            .from('subcategorias_financeiras')
+            .delete()
+            .in('id', subcategoriasRemovidas);
+          
           if (deleteError) throw deleteError;
         }
+        
         await loadSubcategorias();
-        subcategoriasAdicionadas = []; subcategoriasModificadas = []; subcategoriasRemovidas = [];
+        subcategoriasAdicionadas = [];
+        subcategoriasModificadas = [];
+        subcategoriasRemovidas = [];
+        
         subcategoriaModal.style.display = 'none';
         showSuccessAlert('Subcategorias atualizadas com sucesso!');
+        
       } catch (error) {
         showErrorAlert(`Erro ao salvar subcategorias: ${error.message}`);
       }
@@ -1136,22 +889,52 @@
     async function saveFormasChanges() {
       try {
         if (formasAdicionadas.length > 0) {
-          const formasToAdd = formasAdicionadas.map(f => ({ nome: f.nome, tipo: f.tipo, data_vencimento: f.data_vencimento, data_fechamento: f.data_fechamento, cliente_id: clienteId }));
-          const { error: addError } = await supabase.from('formas_pagamento').insert(formasToAdd);
+          const formasToAdd = formasAdicionadas.map(f => ({ 
+            nome: f.nome, 
+            tipo: f.tipo, 
+            data_vencimento: f.data_vencimento, 
+            data_fechamento: f.data_fechamento, 
+            cliente_id: clienteId 
+          }));
+          
+          const { error: addError } = await supabase
+            .from('formas_pagamento')
+            .insert(formasToAdd);
+          
           if (addError) throw addError;
         }
+        
         for (const forma of formasModificadas) {
-          const { error: updateError } = await supabase.from('formas_pagamento').update({ nome: forma.nome, tipo: forma.tipo, data_vencimento: forma.data_vencimento, data_fechamento: forma.data_fechamento }).eq('id', forma.id);
+          const { error: updateError } = await supabase
+            .from('formas_pagamento')
+            .update({ 
+              nome: forma.nome, 
+              tipo: forma.tipo, 
+              data_vencimento: forma.data_vencimento, 
+              data_fechamento: forma.data_fechamento 
+            })
+            .eq('id', forma.id);
+          
           if (updateError) throw updateError;
         }
+        
         if (formasRemovidas.length > 0) {
-          const { error: deleteError } = await supabase.from('formas_pagamento').delete().in('id', formasRemovidas);
+          const { error: deleteError } = await supabase
+            .from('formas_pagamento')
+            .delete()
+            .in('id', formasRemovidas);
+          
           if (deleteError) throw deleteError;
         }
+        
         await loadFormasPagamento();
-        formasAdicionadas = []; formasModificadas = []; formasRemovidas = [];
+        formasAdicionadas = [];
+        formasModificadas = [];
+        formasRemovidas = [];
+        
         formaModal.style.display = 'none';
         showSuccessAlert('Formas de pagamento atualizadas com sucesso!');
+        
       } catch (error) {
         showErrorAlert(`Erro ao salvar formas de pagamento: ${error.message}`);
       }
@@ -1163,6 +946,7 @@
       alertSuccess.style.display = 'block';
       setTimeout(() => { alertSuccess.style.display = 'none'; }, 3000);
     }
+    
     function showErrorAlert(message) {
       alertError.textContent = message;
       alertError.style.display = 'block';
@@ -1181,6 +965,7 @@
       } else {
         if (categoriaItemSelect.value === 'RECEITA') categoriaItemSelect.value = '';
       }
+      
       Array.from(categoriaItemSelect.options).forEach(opt => {
         opt.style.display = (opt.value === 'RECEITA' && !isEntrada) ? 'none' : '';
       });
@@ -1192,6 +977,7 @@
       } else {
         if (viaItemSelect.value === 'SEM_PREENCHIMENTO') viaItemSelect.value = ''; // Forçar seleção
       }
+      
       Array.from(viaItemSelect.options).forEach(opt => {
         opt.style.display = (opt.value === 'SEM_PREENCHIMENTO' && !isEntrada) ? 'none' : '';
       });
@@ -1203,6 +989,7 @@
       } else {
         if (formaItemSelect.value === 'SEM_PREENCHIMENTO') formaItemSelect.value = ''; // Forçar seleção
       }
+      
       Array.from(formaItemSelect.options).forEach(opt => {
         opt.style.display = (opt.value === 'SEM_PREENCHIMENTO' && !isEntrada) ? 'none' : '';
       });
@@ -1234,43 +1021,64 @@
         let catSel;
         if (tipoItemSelect.value === 'ENTRADA') catSel = 'RECEITA';
         else catSel = categoriaItemSelect.value;
+        
         if (!catSel) { alert('Selecione uma categoria.'); return; }
         if (!categoriasMap[catSel]) { alert('Erro: ID da categoria não encontrado.'); return; }
+        
         categoriaAtual = catSel;
-        subcategoriasAdicionadas = []; subcategoriasModificadas = []; subcategoriasRemovidas = [];
+        subcategoriasAdicionadas = [];
+        subcategoriasModificadas = [];
+        subcategoriasRemovidas = [];
+        
         renderSubcategoriasList();
         subcategoriaModal.style.display = 'block';
       });
       
       // Abrir modal de formas de pagamento
       formaLabel.addEventListener('click', () => {
-        formasAdicionadas = []; formasModificadas = []; formasRemovidas = [];
+        formasAdicionadas = [];
+        formasModificadas = [];
+        formasRemovidas = [];
+        
         renderFormasList();
         formaModal.style.display = 'block';
       });
       
       // Event listeners para modal de subcategoria
       btnAddSubcategoriaModal.addEventListener('click', addSubcategoriaTemp);
-      novaSubcategoriaInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') { e.preventDefault(); addSubcategoriaTemp(); } });
+      novaSubcategoriaInput.addEventListener('keypress', (e) => { 
+        if (e.key === 'Enter') { 
+          e.preventDefault(); 
+          addSubcategoriaTemp(); 
+        } 
+      });
+      
       btnSaveSubcategoria.addEventListener('click', saveSubcategoriasChanges);
       btnCancelSubcategoria.addEventListener('click', () => {
-        subcategoriasAdicionadas = []; subcategoriasModificadas = []; subcategoriasRemovidas = [];
+        subcategoriasAdicionadas = [];
+        subcategoriasModificadas = [];
+        subcategoriasRemovidas = [];
         loadSubcategorias(); // Recarrega original
         subcategoriaModal.style.display = 'none';
       });
+      
       closeModalSubcategoriaBtn.addEventListener('click', () => btnCancelSubcategoria.click()); // Reutiliza lógica de cancelamento
       
       // Event listeners para modal de forma de pagamento
       novaFormaTipoSelect.addEventListener('change', () => {
         novaFormaCartaoFields.classList.toggle('visible', novaFormaTipoSelect.value === 'CARTAO_CREDITO');
       });
+      
       btnAddFormaModal.addEventListener('click', addFormaTemp);
       btnSaveForma.addEventListener('click', saveFormasChanges);
       btnCancelForma.addEventListener('click', () => {
-        formasAdicionadas = []; formasModificadas = []; formasRemovidas = [];
+        formasAdicionadas = [];
+        formasModificadas = [];
+        formasRemovidas = [];
         loadFormasPagamento(); // Recarrega original
         formaModal.style.display = 'none';
       });
+      
       closeModalFormaBtn.addEventListener('click', () => btnCancelForma.click()); // Reutiliza lógica de cancelamento
       
       // Fechar modais ao clicar fora
@@ -1295,6 +1103,7 @@
           if (via === 'SEM_PREENCHIMENTO') { showErrorAlert('Selecione a VIA para SAÍDA.'); return; }
           if (forma === 'SEM_PREENCHIMENTO') { showErrorAlert('Selecione a FORMA para SAÍDA.'); return; }
         }
+        
         if (repetePer !== 'NAO_REPETE' && !repeteNum) { showErrorAlert('Selecione o número para a repetição.'); return; }
         
         // Obter dados do formulário
