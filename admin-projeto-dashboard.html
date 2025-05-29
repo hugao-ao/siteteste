@@ -80,13 +80,6 @@
       <a href="#" id="btn-listar-clientes" class="dashboard-btn">
         <i class="fas fa-briefcase"></i> Lista de Clientes
       </a>
-      <!-- Novos botões para o projeto Planejamento -->
-      <a href="#" id="btn-mensagens-whats" class="dashboard-btn" style="display: none;">
-        <i class="fab fa-whatsapp"></i> Mensagens Whats
-      </a>
-      <a href="#" id="btn-atualizacao-variaveis" class="dashboard-btn" style="display: none;">
-        <i class="fas fa-sliders-h"></i> Atualização de Variáveis
-      </a>
     </div>
 
   </main>
@@ -145,8 +138,6 @@
       const btnGerenciarUsuarios = document.getElementById("btn-gerenciar-usuarios"); // NOVO
       const btnListarUsuarios = document.getElementById("btn-listar-usuarios");
       const btnListarClientes = document.getElementById("btn-listar-clientes");
-      const btnMensagensWhats = document.getElementById("btn-mensagens-whats");
-      const btnAtualizacaoVariaveis = document.getElementById("btn-atualizacao-variaveis");
 
       // Define os links dos botões, passando o projeto como parâmetro
       if (btnGerenciarUsuarios) {
@@ -161,19 +152,8 @@
           // Aponta para clientes-dashboard, passando o projeto
           btnListarClientes.href = `clientes-dashboard.html?projeto=${projeto}`;
       }
-
-      // Mostrar e configurar botões específicos para o projeto Planejamento
-      if (projeto === 'Planejamento') {
-          if (btnMensagensWhats) {
-              btnMensagensWhats.style.display = 'inline-flex';
-              btnMensagensWhats.href = 'mensagens-whats.html';
-          }
-          if (btnAtualizacaoVariaveis) {
-              btnAtualizacaoVariaveis.style.display = 'inline-flex';
-              btnAtualizacaoVariaveis.href = 'atualizacao-variaveis.html';
-          }
-      }
     });
   </script>
 </body>
 </html>
+
