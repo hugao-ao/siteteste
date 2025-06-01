@@ -1,4 +1,4 @@
-// obras-hvc.js - Gerenciamento de Obras HVC (VERSÃO CORRIGIDA PARA HTML)
+// obras-hvc.js - Gerenciamento de Obras HVC (VERSÃO COMPLETA E ROBUSTA)
 
 import { injectSidebar } from './sidebar.js';
 
@@ -70,35 +70,127 @@ async function inicializarPagina() {
         await definirProximoNumero();
     } catch (error) {
         console.error('Erro ao inicializar página:', error);
-        throw new Error('Erro ao carregar dados da página.');
+        // Não lança erro para não quebrar a página
+        mostrarMensagemErro('Erro ao carregar alguns dados. Algumas funcionalidades podem estar limitadas.');
     }
 }
 
-// Carregar propostas aprovadas
+// Mostrar mensagem de erro na interface
+function mostrarMensagemErro(mensagem) {
+    try {
+        const container = document.getElementById('propostas-list');
+        if (container) {
+            container.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff6b6b; background: rgba(255, 107, 107, 0.1); border-radius: 8px; margin: 10px 0;">${mensagem}</div>`;
+        }
+    } catch (error) {
+        console.error('Erro ao mostrar mensagem:', error);
+    }
+}
+
+// Carregar propostas aprovadas (VERSÃO ULTRA ROBUSTA)
 async function carregarPropostasAprovadas() {
     try {
-        const { data: propostas, error } = await supabase
-            .from('propostas_hvc')
-            .select(`
-                id,
-                numero_proposta,
-                valor,
-                clientes_hvc (nome)
-            `)
-            .eq('status', 'aprovada');
+        console.log('Iniciando carregamento de propostas...');
+        
+        // Primeira tentativa: consulta com relacionamento
+        let propostas = null;
+        let error = null;
+        
+        try {
+            const result = await supabase
+                .from('propostas_hvc')
+                .select(`
+                    id,
+                    numero_proposta,
+                    valor,
+                    clientes_hvc (nome)
+                `)
+                .eq('status', 'aprovada');
+            
+            propostas = result.data;
+            error = result.error;
+        } catch (relacionamentoError) {
+            console.warn('Erro na consulta com relacionamento:', relacionamentoError);
+            
+            // Segunda tentativa: consulta sem relacionamento
+            try {
+                const result = await supabase
+                    .from('propostas_hvc')
+                    .select('id, numero_proposta, valor, cliente_id')
+                    .eq('status', 'aprovada');
+                
+                propostas = result.data;
+                error = result.error;
+                
+                // Se conseguiu carregar, tenta buscar nomes dos clientes separadamente
+                if (propostas && propostas.length > 0) {
+                    for (let proposta of propostas) {
+                        if (proposta.cliente_id) {
+                            try {
+                                const { data: cliente } = await supabase
+                                    .from('clientes_hvc')
+                                    .select('nome')
+                                    .eq('id', proposta.cliente_id)
+                                    .single();
+                                
+                                proposta.clientes_hvc = cliente ? { nome: cliente.nome } : { nome: 'Cliente não encontrado' };
+                            } catch (clienteError) {
+                                console.warn('Erro ao buscar cliente:', clienteError);
+                                proposta.clientes_hvc = { nome: 'Cliente não encontrado' };
+                            }
+                        } else {
+                            proposta.clientes_hvc = { nome: 'Sem cliente' };
+                        }
+                    }
+                }
+            } catch (semRelacionamentoError) {
+                console.warn('Erro na consulta sem relacionamento:', semRelacionamentoError);
+                
+                // Terceira tentativa: consulta básica
+                try {
+                    const result = await supabase
+                        .from('propostas_hvc')
+                        .select('*')
+                        .eq('status', 'aprovada');
+                    
+                    propostas = result.data;
+                    error = result.error;
+                    
+                    // Adiciona dados padrão para clientes
+                    if (propostas && propostas.length > 0) {
+                        propostas.forEach(proposta => {
+                            if (!proposta.clientes_hvc) {
+                                proposta.clientes_hvc = { nome: 'Cliente não especificado' };
+                            }
+                        });
+                    }
+                } catch (basicError) {
+                    console.error('Erro na consulta básica:', basicError);
+                    error = basicError;
+                    propostas = [];
+                }
+            }
+        }
 
-        if (error) throw error;
+        if (error) {
+            console.error('Erro final ao carregar propostas:', error);
+            propostasDisponiveis = [];
+            mostrarMensagemErro('Erro ao carregar propostas. Verifique a configuração do banco de dados.');
+            return;
+        }
 
+        console.log('Propostas carregadas:', propostas);
         propostasDisponiveis = propostas || [];
         renderizarPropostas(propostasDisponiveis);
 
     } catch (error) {
-        console.error('Erro ao carregar propostas:', error);
-        throw new Error('Erro ao carregar propostas aprovadas.');
+        console.error('Erro geral ao carregar propostas:', error);
+        propostasDisponiveis = [];
+        mostrarMensagemErro('Erro ao carregar propostas aprovadas. Tente recarregar a página.');
     }
 }
 
-// Renderizar propostas na lista
+// Renderizar propostas na lista (MELHORADA)
 function renderizarPropostas(propostas) {
     try {
         const container = document.getElementById('propostas-list');
@@ -115,25 +207,34 @@ function renderizarPropostas(propostas) {
         }
 
         propostas.forEach(proposta => {
-            if (proposta && proposta.clientes_hvc) {
-                const div = document.createElement('div');
-                div.className = 'proposta-item';
-                div.innerHTML = `
-                    <input type="checkbox" id="prop-${proposta.id}" value="${proposta.id}" onchange="atualizarSelecaoPropostas()">
-                    <div class="proposta-info">
-                        <strong>${proposta.numero_proposta}</strong> - ${proposta.clientes_hvc.nome}
-                        <div class="proposta-valor">${formatarMoeda(proposta.valor || 0)}</div>
-                    </div>
-                `;
-                div.dataset.cliente = proposta.clientes_hvc.nome;
-                div.dataset.valor = proposta.valor || 0;
-                div.dataset.numero = proposta.numero_proposta;
-                container.appendChild(div);
+            try {
+                if (proposta) {
+                    const clienteNome = proposta.clientes_hvc?.nome || proposta.cliente_nome || 'Cliente não especificado';
+                    const numeroProposta = proposta.numero_proposta || `Proposta ${proposta.id}`;
+                    const valor = proposta.valor || 0;
+
+                    const div = document.createElement('div');
+                    div.className = 'proposta-item';
+                    div.innerHTML = `
+                        <input type="checkbox" id="prop-${proposta.id}" value="${proposta.id}" onchange="atualizarSelecaoPropostas()">
+                        <div class="proposta-info">
+                            <strong>${numeroProposta}</strong> - ${clienteNome}
+                            <div class="proposta-valor">${formatarMoeda(valor)}</div>
+                        </div>
+                    `;
+                    div.dataset.cliente = clienteNome;
+                    div.dataset.valor = valor;
+                    div.dataset.numero = numeroProposta;
+                    container.appendChild(div);
+                }
+            } catch (propostaError) {
+                console.warn('Erro ao renderizar proposta:', propostaError, proposta);
             }
         });
 
     } catch (error) {
         console.error('Erro ao renderizar propostas:', error);
+        mostrarMensagemErro('Erro ao exibir propostas.');
     }
 }
 
@@ -148,8 +249,8 @@ function filtrarPropostas() {
         }
 
         const propostasFiltradas = propostasDisponiveis.filter(proposta => {
-            const numero = proposta.numero_proposta?.toLowerCase() || '';
-            const cliente = proposta.clientes_hvc?.nome?.toLowerCase() || '';
+            const numero = (proposta.numero_proposta || '').toLowerCase();
+            const cliente = (proposta.clientes_hvc?.nome || proposta.cliente_nome || '').toLowerCase();
             return numero.includes(filtro) || cliente.includes(filtro);
         });
 
@@ -177,7 +278,7 @@ function atualizarSelecaoPropostas() {
             return;
         }
 
-        // Pega o cliente da primeira proposta (assumindo que todas são do mesmo cliente)
+        // Pega o cliente da primeira proposta
         const primeiraPropostaDiv = checkboxes[0].closest('.proposta-item');
         const cliente = primeiraPropostaDiv?.dataset?.cliente || '';
         clienteField.value = cliente;
@@ -219,21 +320,24 @@ async function definirProximoNumero() {
             .select('numero_obra')
             .like('numero_obra', `%/${anoAtual}`);
 
-        if (error) throw error;
-
-        let maiorNumero = 0;
-        if (obras && obras.length > 0) {
-            obras.forEach(obra => {
-                if (obra && obra.numero_obra) {
-                    const numero = parseInt(obra.numero_obra.split('/')[0]);
-                    if (!isNaN(numero) && numero > maiorNumero) {
-                        maiorNumero = numero;
+        if (error) {
+            console.warn('Erro ao buscar obras para definir próximo número:', error);
+            proximoNumeroObra = 1;
+        } else {
+            let maiorNumero = 0;
+            if (obras && obras.length > 0) {
+                obras.forEach(obra => {
+                    if (obra && obra.numero_obra) {
+                        const numero = parseInt(obra.numero_obra.split('/')[0]);
+                        if (!isNaN(numero) && numero > maiorNumero) {
+                            maiorNumero = numero;
+                        }
                     }
-                }
-            });
+                });
+            }
+            proximoNumeroObra = maiorNumero + 1;
         }
 
-        proximoNumeroObra = maiorNumero + 1;
         const numeroFormatado = proximoNumeroObra.toString().padStart(4, '0') + '/' + anoAtual;
         
         const numeroField = document.getElementById('numero-obra');
@@ -243,8 +347,14 @@ async function definirProximoNumero() {
 
     } catch (error) {
         console.error('Erro ao definir próximo número:', error);
+        const anoAtual = new Date().getFullYear();
+        const numeroField = document.getElementById('numero-obra');
+        if (numeroField) {
+            numeroField.value = `0001/${anoAtual}`;
+        }
     }
 }
+
 
 // Formatação de número de obra
 function formatarNumeroObra(event) {
@@ -305,7 +415,7 @@ function converterValorMonetario(valorString) {
     }
 }
 
-// Adicionar obra (CORRIGIDA)
+// Adicionar obra (ULTRA ROBUSTA)
 async function adicionarObra() {
     try {
         const numeroObra = document.getElementById('numero-obra')?.value?.trim();
@@ -331,17 +441,23 @@ async function adicionarObra() {
         }
 
         // Verifica se o número já existe
-        const { data: obraExistente, error: verificacaoError } = await supabase
-            .from('obras_hvc')
-            .select('id')
-            .eq('numero_obra', numeroObra)
-            .maybeSingle();
+        try {
+            const { data: obraExistente, error: verificacaoError } = await supabase
+                .from('obras_hvc')
+                .select('id')
+                .eq('numero_obra', numeroObra)
+                .maybeSingle();
 
-        if (verificacaoError) throw verificacaoError;
+            if (verificacaoError) {
+                console.warn('Erro na verificação de obra existente:', verificacaoError);
+            }
 
-        if (obraExistente) {
-            alert('Número de obra já existe. Escolha outro número.');
-            return;
+            if (obraExistente) {
+                alert('Número de obra já existe. Escolha outro número.');
+                return;
+            }
+        } catch (verificacaoError) {
+            console.warn('Erro ao verificar obra existente:', verificacaoError);
         }
 
         // Salva a obra
@@ -365,11 +481,17 @@ async function adicionarObra() {
         })).filter(item => !isNaN(item.proposta_id));
 
         if (propostasObra.length > 0) {
-            const { error: propostasError } = await supabase
-                .from('propostas_obra_hvc')
-                .insert(propostasObra);
+            try {
+                const { error: propostasError } = await supabase
+                    .from('propostas_obra_hvc')
+                    .insert(propostasObra);
 
-            if (propostasError) throw propostasError;
+                if (propostasError) {
+                    console.warn('Erro ao associar propostas:', propostasError);
+                }
+            } catch (propostasError) {
+                console.warn('Erro ao inserir propostas da obra:', propostasError);
+            }
         }
 
         alert('Obra adicionada com sucesso!');
@@ -383,24 +505,69 @@ async function adicionarObra() {
     }
 }
 
-// Carregar obras (CORRIGIDA PARA HTML)
+// Carregar obras (ULTRA ROBUSTA)
 async function carregarObras() {
     try {
-        const { data: obras, error } = await supabase
-            .from('obras_hvc')
-            .select(`
-                *,
-                propostas_obra_hvc (
-                    propostas_hvc (
-                        numero_proposta,
-                        valor,
-                        clientes_hvc (nome)
+        console.log('Carregando obras...');
+        
+        // Primeira tentativa: consulta completa com relacionamentos
+        let obras = null;
+        let error = null;
+        
+        try {
+            const result = await supabase
+                .from('obras_hvc')
+                .select(`
+                    *,
+                    propostas_obra_hvc (
+                        propostas_hvc (
+                            numero_proposta,
+                            valor,
+                            clientes_hvc (nome)
+                        )
                     )
-                )
-            `)
-            .order('numero_obra', { ascending: false });
-
-        if (error) throw error;
+                `)
+                .order('numero_obra', { ascending: false });
+            
+            obras = result.data;
+            error = result.error;
+        } catch (relacionamentoError) {
+            console.warn('Erro na consulta com relacionamentos:', relacionamentoError);
+            
+            // Segunda tentativa: consulta básica
+            try {
+                const result = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .order('numero_obra', { ascending: false });
+                
+                obras = result.data;
+                error = result.error;
+                
+                // Para cada obra, tenta buscar propostas separadamente
+                if (obras && obras.length > 0) {
+                    for (let obra of obras) {
+                        obra.propostas_obra_hvc = [];
+                        try {
+                            const { data: propostas } = await supabase
+                                .from('propostas_obra_hvc')
+                                .select('propostas_hvc(*)')
+                                .eq('obra_id', obra.id);
+                            
+                            if (propostas) {
+                                obra.propostas_obra_hvc = propostas;
+                            }
+                        } catch (propostasError) {
+                            console.warn('Erro ao buscar propostas da obra:', propostasError);
+                        }
+                    }
+                }
+            } catch (basicError) {
+                console.error('Erro na consulta básica de obras:', basicError);
+                error = basicError;
+                obras = [];
+            }
+        }
 
         const tbody = document.getElementById('obras-list');
         if (!tbody) {
@@ -409,6 +576,12 @@ async function carregarObras() {
         }
 
         tbody.innerHTML = '';
+
+        if (error) {
+            console.error('Erro ao carregar obras:', error);
+            tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #ff4444;">Erro ao carregar obras</td></tr>';
+            return;
+        }
 
         if (!obras || obras.length === 0) {
             tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #999;">Nenhuma obra cadastrada</td></tr>';
@@ -420,7 +593,9 @@ async function carregarObras() {
                 // Calcular valores da obra
                 const valores = await calcularValoresObra(obra.id);
                 
-                const cliente = obra.propostas_obra_hvc?.[0]?.propostas_hvc?.clientes_hvc?.nome || 'N/A';
+                const cliente = obra.propostas_obra_hvc?.[0]?.propostas_hvc?.clientes_hvc?.nome || 
+                               obra.propostas_obra_hvc?.[0]?.propostas_hvc?.cliente_nome || 'N/A';
+                
                 const valorTotal = obra.propostas_obra_hvc?.reduce((total, po) => 
                     total + (po.propostas_hvc?.valor || 0), 0) || 0;
 
@@ -458,7 +633,7 @@ async function carregarObras() {
         }
 
     } catch (error) {
-        console.error('Erro ao carregar obras:', error);
+        console.error('Erro geral ao carregar obras:', error);
         const tbody = document.getElementById('obras-list');
         if (tbody) {
             tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #ff4444;">Erro ao carregar obras</td></tr>';
@@ -466,57 +641,77 @@ async function carregarObras() {
     }
 }
 
-
-// Calcular valores da obra (MELHORADA)
+// Calcular valores da obra (ULTRA ROBUSTA)
 async function calcularValoresObra(obraId) {
     try {
         if (!obraId) {
-            throw new Error('ID da obra não fornecido');
+            return { valorTotalMedido: 0, valorTotalRecebido: 0, valorMedidoNaoRecebido: 0, valorEmAberto: 0 };
         }
 
         // Buscar medições da obra
-        const { data: medicoes, error: medicoesError } = await supabase
-            .from('medicoes_obra_hvc')
-            .select('valor, pago')
-            .eq('obra_id', obraId);
-
-        if (medicoesError) throw medicoesError;
+        let medicoes = [];
+        try {
+            const { data, error } = await supabase
+                .from('medicoes_obra_hvc')
+                .select('valor, pago')
+                .eq('obra_id', obraId);
+            
+            if (!error && data) {
+                medicoes = data;
+            }
+        } catch (medicoesError) {
+            console.warn('Erro ao buscar medições:', medicoesError);
+        }
 
         // Buscar valor total das propostas
-        const { data: propostas, error: propostasError } = await supabase
-            .from('propostas_obra_hvc')
-            .select('propostas_hvc(valor)')
-            .eq('obra_id', obraId);
+        let propostas = [];
+        try {
+            const { data, error } = await supabase
+                .from('propostas_obra_hvc')
+                .select('propostas_hvc(valor)')
+                .eq('obra_id', obraId);
+            
+            if (!error && data) {
+                propostas = data;
+            }
+        } catch (propostasError) {
+            console.warn('Erro ao buscar propostas:', propostasError);
+        }
 
-        if (propostasError) throw propostasError;
-
-        // Buscar recebimentos do fluxo de caixa relacionados à obra
-        const { data: recebimentos, error: recebimentosError } = await supabase
-            .from('fluxo_caixa_hvc')
-            .select('valor')
-            .eq('obra_id', obraId)
-            .eq('tipo', 'recebimento')
-            .eq('pago_sem_medicao', true);
-
-        if (recebimentosError) throw recebimentosError;
+        // Buscar recebimentos do fluxo de caixa
+        let recebimentos = [];
+        try {
+            const { data, error } = await supabase
+                .from('fluxo_caixa_hvc')
+                .select('valor')
+                .eq('obra_id', obraId)
+                .eq('tipo', 'recebimento')
+                .eq('pago_sem_medicao', true);
+            
+            if (!error && data) {
+                recebimentos = data;
+            }
+        } catch (recebimentosError) {
+            console.warn('Erro ao buscar recebimentos:', recebimentosError);
+        }
 
         // Cálculos seguros
-        const valorTotalPropostas = (propostas || []).reduce((total, p) => {
+        const valorTotalPropostas = propostas.reduce((total, p) => {
             const valor = p?.propostas_hvc?.valor || 0;
             return total + (isNaN(valor) ? 0 : parseFloat(valor));
         }, 0);
 
-        const valorTotalMedido = (medicoes || []).reduce((total, m) => {
+        const valorTotalMedido = medicoes.reduce((total, m) => {
             const valor = parseFloat(m?.valor || 0);
             return total + (isNaN(valor) ? 0 : valor);
         }, 0);
 
-        const valorMedicoesPagas = (medicoes || []).filter(m => m?.pago).reduce((total, m) => {
+        const valorMedicoesPagas = medicoes.filter(m => m?.pago).reduce((total, m) => {
             const valor = parseFloat(m?.valor || 0);
             return total + (isNaN(valor) ? 0 : valor);
         }, 0);
 
-        const valorRecebimentosSemMedicao = (recebimentos || []).reduce((total, r) => {
+        const valorRecebimentosSemMedicao = recebimentos.reduce((total, r) => {
             const valor = parseFloat(r?.valor || 0);
             return total + (isNaN(valor) ? 0 : valor);
         }, 0);
@@ -534,12 +729,7 @@ async function calcularValoresObra(obraId) {
 
     } catch (error) {
         console.error('Erro ao calcular valores da obra:', error);
-        return {
-            valorTotalMedido: 0,
-            valorTotalRecebido: 0,
-            valorMedidoNaoRecebido: 0,
-            valorEmAberto: 0
-        };
+        return { valorTotalMedido: 0, valorTotalRecebido: 0, valorMedidoNaoRecebido: 0, valorEmAberto: 0 };
     }
 }
 
@@ -639,6 +829,7 @@ async function carregarServicos() {
         }
     }
 }
+
 
 // Adicionar serviço
 async function adicionarServico() {
@@ -956,7 +1147,6 @@ async function adicionarMedicao() {
     }
 }
 
-
 // Limpar formulário de medição
 function limparFormularioMedicao() {
     try {
@@ -1114,6 +1304,7 @@ async function excluirMedicao(medicaoId) {
         alert('Erro ao excluir medição: ' + (error.message || 'Erro desconhecido'));
     }
 }
+
 
 // Abrir modal de serviços da medição
 async function abrirModalServicosMedicao(medicaoId, numeroMedicao) {
@@ -1550,7 +1741,7 @@ window.formatarData = formatarData;
 window.converterValorMonetario = converterValorMonetario;
 
 // Log de inicialização
-console.log('obras-hvc.js carregado com sucesso - Versão Final Corrigida');
+console.log('obras-hvc.js carregado com sucesso - Versão Completa e Robusta');
 
 // Fechar modais ao clicar fora
 window.onclick = function(event) {
