@@ -1,9 +1,9 @@
 // obras-hvc.js - Gerenciamento de Obras HVC (VERSÃO COMPLETA E ROBUSTA)
 
 import { injectSidebar } from './sidebar.js';
+import { supabase } from './supabase.js';
 
 // Variáveis globais
-let supabase;
 let obraAtual = null;
 let medicaoAtual = null;
 let proximoNumeroObra = 1;
@@ -24,10 +24,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 
         // Injeta sidebar
         await injectSidebar('main-content-obras-hvc');
-
-        // Importa Supabase
-        const supabaseModule = await import('./supabase.js');
-        supabase = supabaseModule.default;
 
         // Inicializa a página
         await inicializarPagina();
