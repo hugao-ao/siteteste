@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Fluxo de Caixa HVC</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* Tema específico HVC */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #main-content-fluxo-caixa-hvc {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+    }
+
+    #main-content-fluxo-caixa-hvc.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    /* Estilo HVC - Elegante e sofisticado */
+    .hvc-container {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .hvc-title {
+      color: #ffffff;
+      text-shadow: 0 0 10px #ffffff, 0 0 20px #c0c0c0;
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .tabs-container {
+      display: flex;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .tab-button {
+      padding: 1rem 2rem;
+      background: transparent;
+      border: none;
+      color: #e0e0e0;
+      cursor: pointer;
+      font-size: 1.1rem;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      border-bottom: 3px solid transparent;
+    }
+
+    .tab-button.active {
+      color: #ffffff;
+      border-bottom-color: #ffffff;
+      text-shadow: 0 0 10px #ffffff;
+    }
+
+    .tab-button:hover {
+      color: #ffffff;
+      text-shadow: 0 0 5px #ffffff;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .hvc-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      align-items: end;
+      margin-bottom: 2rem;
+    }
+
+    .hvc-input, .hvc-select, .hvc-textarea {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(0, 0, 128, 0.2);
+      color: #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+
+    .hvc-input:focus, .hvc-select:focus, .hvc-textarea:focus {
+      outline: none;
+      border-color: #ffffff;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+      background: rgba(0, 0, 128, 0.4);
+    }
+
+    .hvc-input::placeholder, .hvc-textarea::placeholder {
+      color: rgba(224, 224, 224, 0.6);
+    }
+
+    .hvc-select option {
+      background: #191970;
+      color: #e0e0e0;
+    }
+
+    .hvc-btn {
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #000080, #191970);
+      color: #e0e0e0;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-shadow: 0 0 5px #ffffff;
+      box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
+    }
+
+    .hvc-btn:hover {
+      background: linear-gradient(145deg, #191970, #000080);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .hvc-btn-danger {
+      background: linear-gradient(145deg, #8B0000, #DC143C);
+    }
+
+    .hvc-btn-danger:hover {
+      background: linear-gradient(145deg, #DC143C, #8B0000);
+    }
+
+    .hvc-btn-success {
+      background: linear-gradient(145deg, #006400, #228B22);
+    }
+
+    .hvc-btn-success:hover {
+      background: linear-gradient(145deg, #228B22, #006400);
+    }
+
+    .hvc-btn-warning {
+      background: linear-gradient(145deg, #FF8C00, #FFA500);
+    }
+
+    .hvc-btn-warning:hover {
+      background: linear-gradient(145deg, #FFA500, #FF8C00);
+    }
+
+    .hvc-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(25, 25, 112, 0.2);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+    }
+
+    .hvc-table th {
+      background: linear-gradient(145deg, #000080, #191970);
+      color: #ffffff;
+      padding: 1rem;
+      text-align: left;
+      font-weight: bold;
+      text-shadow: 0 0 5px #ffffff;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .hvc-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      transition: background-color 0.3s ease;
+    }
+
+    .hvc-table tr:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    /* Tipos de movimento */
+    .movimento-recebimento {
+      border-left: 4px solid #228B22;
+    }
+
+    .movimento-pagamento {
+      border-left: 4px solid #DC143C;
+    }
+
+    .valor-positivo {
+      color: #90EE90;
+      font-weight: bold;
+    }
+
+    .valor-negativo {
+      color: #FFB6C1;
+      font-weight: bold;
+    }
+
+    /* Modal HVC */
+    .hvc-modal {
+      display: none;
+      position: fixed;
+      z-index: 1001;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+    }
+
+    .hvc-modal-content {
+      background: linear-gradient(135deg, #000080, #191970);
+      margin: 5% auto;
+      padding: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      width: 80%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.5);
+      color: #e0e0e0;
+    }
+
+    .hvc-modal-close {
+      color: #ffffff;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .hvc-modal-close:hover {
+      text-shadow: 0 0 15px #ffffff;
+      transform: scale(1.1);
+    }
+
+    .conditional-fields {
+      display: none;
+      grid-column: 1 / -1;
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(0, 0, 128, 0.1);
+    }
+
+    .conditional-fields.show {
+      display: block;
+    }
+
+    .valor-input {
+      position: relative;
+    }
+
+    .valor-input::before {
+      content: 'R$';
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #c0c0c0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .valor-input input {
+      padding-left: 35px;
+    }
+
+    .categoria-item {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    @media (max-width: 768px) {
+      #main-content-fluxo-caixa-hvc {
+        margin-left: 60px !important;
+      }
+      
+      .hvc-form {
+        grid-template-columns: 1fr;
+      }
+      
+      .tabs-container {
+        flex-direction: column;
+      }
+      
+      .tab-button {
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-fluxo-caixa-hvc">
+    <div class="hvc-container">
+      <h1 class="hvc-title">
+        <i class="fas fa-money-bill-wave"></i> Fluxo de Caixa HVC
+      </h1>
+
+      <!-- Tabs -->
+      <div class="tabs-container">
+        <button class="tab-button active" onclick="switchTab('recebimentos')">
+          <i class="fas fa-arrow-down"></i> Recebimentos
+        </button>
+        <button class="tab-button" onclick="switchTab('pagamentos')">
+          <i class="fas fa-arrow-up"></i> Pagamentos
+        </button>
+        <button class="tab-button" onclick="switchTab('categorias')">
+          <i class="fas fa-tags"></i> Gerenciar Categorias
+        </button>
+      </div>
+
+      <!-- Tab Recebimentos -->
+      <div id="recebimentos-tab" class="tab-content active">
+        <h2 class="hvc-title" style="font-size: 1.5rem;">
+          <i class="fas fa-plus-circle"></i> Adicionar Recebimento
+        </h2>
+        
+        <form id="add-recebimento-form" class="hvc-form">
+          <input type="date" id="recebimento-data" class="hvc-input" required />
+          <div class="valor-input">
+            <input type="text" id="recebimento-valor" class="hvc-input" placeholder="Valor Recebido" required />
+          </div>
+          <select id="recebimento-tipo" class="hvc-select" required onchange="toggleRecebimentoFields()">
+            <option value="">Tipo de Recebimento</option>
+            <option value="pago_sem_medicao">Pago sem Medição</option>
+            <option value="medicao">Medição Específica</option>
+          </select>
+          
+          <!-- Campos condicionais para pago sem medição -->
+          <div id="sem-medicao-fields" class="conditional-fields">
+            <div class="hvc-form">
+              <select id="recebimento-obra" class="hvc-select">
+                <option value="">Selecione a Obra</option>
+              </select>
+              <select id="recebimento-servico" class="hvc-select">
+                <option value="">Selecione o Serviço (opcional)</option>
+              </select>
+            </div>
+          </div>
+          
+          <!-- Campos condicionais para medição -->
+          <div id="medicao-fields" class="conditional-fields">
+            <select id="recebimento-medicao" class="hvc-select">
+              <option value="">Selecione a Medição</option>
+            </select>
+          </div>
+          
+          <textarea id="recebimento-observacoes" class="hvc-textarea" placeholder="Observações (opcional)" rows="2"></textarea>
+          <button type="submit" class="hvc-btn">
+            <i class="fas fa-plus"></i> Adicionar Recebimento
+          </button>
+        </form>
+      </div>
+
+      <!-- Tab Pagamentos -->
+      <div id="pagamentos-tab" class="tab-content">
+        <h2 class="hvc-title" style="font-size: 1.5rem;">
+          <i class="fas fa-plus-circle"></i> Adicionar Pagamento
+        </h2>
+        
+        <form id="add-pagamento-form" class="hvc-form">
+          <input type="date" id="pagamento-data" class="hvc-input" required />
+          <div class="valor-input">
+            <input type="text" id="pagamento-valor" class="hvc-input" placeholder="Valor Pago" required />
+          </div>
+          <select id="pagamento-obra" class="hvc-select">
+            <option value="">Obra Relacionada (opcional)</option>
+          </select>
+          <select id="pagamento-tipo" class="hvc-select" required onchange="loadCategorias()">
+            <option value="">Selecione o Tipo</option>
+          </select>
+          <select id="pagamento-categoria" class="hvc-select" required onchange="loadSubcategorias()">
+            <option value="">Selecione a Categoria</option>
+          </select>
+          <select id="pagamento-subcategoria" class="hvc-select" required>
+            <option value="">Selecione a Subcategoria</option>
+          </select>
+          <textarea id="pagamento-observacoes" class="hvc-textarea" placeholder="Observações (opcional)" rows="2"></textarea>
+          <button type="submit" class="hvc-btn">
+            <i class="fas fa-plus"></i> Adicionar Pagamento
+          </button>
+        </form>
+      </div>
+
+      <!-- Tab Categorias -->
+      <div id="categorias-tab" class="tab-content">
+        <h2 class="hvc-title" style="font-size: 1.5rem;">
+          <i class="fas fa-cog"></i> Gerenciar Tipos e Categorias
+        </h2>
+        
+        <!-- Gerenciar Tipos -->
+        <div style="margin-bottom: 2rem;">
+          <h3 style="color: #ffffff; margin-bottom: 1rem;">Tipos de Pagamento</h3>
+          <form id="add-tipo-form" class="hvc-form" style="grid-template-columns: 1fr auto;">
+            <input type="text" id="tipo-nome" class="hvc-input" placeholder="Nome do Tipo" required />
+            <button type="submit" class="hvc-btn">
+              <i class="fas fa-plus"></i> Adicionar
+            </button>
+          </form>
+          <div id="tipos-list">
+            <!-- Tipos serão listados aqui -->
+          </div>
+        </div>
+
+        <!-- Gerenciar Categorias -->
+        <div style="margin-bottom: 2rem;">
+          <h3 style="color: #ffffff; margin-bottom: 1rem;">Categorias por Tipo</h3>
+          <form id="add-categoria-form" class="hvc-form">
+            <select id="categoria-tipo" class="hvc-select" required>
+              <option value="">Selecione o Tipo</option>
+            </select>
+            <input type="text" id="categoria-nome" class="hvc-input" placeholder="Nome da Categoria" required />
+            <button type="submit" class="hvc-btn">
+              <i class="fas fa-plus"></i> Adicionar
+            </button>
+          </form>
+          <div id="categorias-list">
+            <!-- Categorias serão listadas aqui -->
+          </div>
+        </div>
+
+        <!-- Gerenciar Subcategorias -->
+        <div>
+          <h3 style="color: #ffffff; margin-bottom: 1rem;">Subcategorias por Categoria</h3>
+          <form id="add-subcategoria-form" class="hvc-form">
+            <select id="subcategoria-categoria" class="hvc-select" required>
+              <option value="">Selecione a Categoria</option>
+            </select>
+            <input type="text" id="subcategoria-nome" class="hvc-input" placeholder="Nome da Subcategoria" required />
+            <button type="submit" class="hvc-btn">
+              <i class="fas fa-plus"></i> Adicionar
+            </button>
+          </form>
+          <div id="subcategorias-list">
+            <!-- Subcategorias serão listadas aqui -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tabela de Movimentações -->
+    <div class="hvc-container">
+      <h2 class="hvc-title">
+        <i class="fas fa-list"></i> Histórico de Movimentações
+      </h2>
+      <table id="fluxo-table" class="hvc-table">
+        <thead>
+          <tr>
+            <th>Data</th>
+            <th>Tipo</th>
+            <th>Descrição</th>
+            <th>Obra</th>
+            <th>Valor</th>
+            <th>Ret/Add</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="7" style="text-align: center;">Carregando movimentações...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="fluxo-caixa-hvc.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    injectSidebar("main-content-fluxo-caixa-hvc");
+  </script>
+</body>
+</html>
+
