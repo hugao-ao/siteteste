@@ -1,463 +1,625 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Obras HVC</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <style>
-    /* Tema específico HVC */
-    body {
-      display: flex;
-      margin: 0;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #000080, #191970);
-      color: #e0e0e0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obras HVC</title>
+    <link rel="stylesheet" href="sidebar.css">
+    <style>
+        /* Tema HVC - Azul escuro com efeitos neon */
+        .theme-hvc {
+            background: linear-gradient(135deg, #000080 0%, #191970 100%);
+            color: #e0e0e0;
+            min-height: 100vh;
+        }
 
-    #main-content-obras-hvc {
-      flex-grow: 1;
-      padding: 2rem;
-      margin-left: 250px;
-      transition: margin-left 0.3s ease;
-      background: linear-gradient(135deg, #000080, #191970);
-      color: #e0e0e0;
-    }
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
 
-    #main-content-obras-hvc.sidebar-collapsed {
-      margin-left: 60px;
-    }
+        .main-content.sidebar-collapsed {
+            margin-left: 60px;
+        }
 
-    /* Estilo HVC - Elegante e sofisticado */
-    .hvc-container {
-      background: rgba(25, 25, 112, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
-      backdrop-filter: blur(10px);
-    }
+        .page-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(0, 0, 128, 0.3);
+            border-radius: 15px;
+            border: 2px solid #4169e1;
+            box-shadow: 0 0 20px rgba(65, 105, 225, 0.3);
+        }
 
-    .hvc-title {
-      color: #ffffff;
-      text-shadow: 0 0 10px #ffffff, 0 0 20px #c0c0c0;
-      font-size: 2rem;
-      margin-bottom: 1.5rem;
-      text-align: center;
-    }
+        .page-header h1 {
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            margin: 0;
+            font-size: 2.5em;
+        }
 
-    .hvc-form {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      align-items: end;
-      margin-bottom: 2rem;
-    }
+        .page-header .icon {
+            font-size: 3em;
+            color: #00ffff;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+            margin-bottom: 10px;
+        }
 
-    .hvc-input, .hvc-select, .hvc-textarea {
-      width: 100%;
-      padding: 0.8rem;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 8px;
-      background: rgba(0, 0, 128, 0.2);
-      color: #e0e0e0;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-      font-family: inherit;
-    }
+        .form-container {
+            background: rgba(25, 25, 112, 0.4);
+            padding: 25px;
+            border-radius: 15px;
+            border: 2px solid #4169e1;
+            margin-bottom: 30px;
+            box-shadow: 0 0 15px rgba(65, 105, 225, 0.2);
+        }
 
-    .hvc-input:focus, .hvc-select:focus, .hvc-textarea:focus {
-      outline: none;
-      border-color: #ffffff;
-      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-      background: rgba(0, 0, 128, 0.4);
-    }
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
 
-    .hvc-input::placeholder, .hvc-textarea::placeholder {
-      color: rgba(224, 224, 224, 0.6);
-    }
+        .form-group {
+            flex: 1;
+            min-width: 200px;
+        }
 
-    .hvc-select option {
-      background: #191970;
-      color: #e0e0e0;
-    }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #c0c0c0;
+            font-weight: bold;
+            text-shadow: 0 0 5px rgba(192, 192, 192, 0.5);
+        }
 
-    .hvc-btn {
-      padding: 0.8rem 1.5rem;
-      border: none;
-      border-radius: 8px;
-      background: linear-gradient(145deg, #000080, #191970);
-      color: #e0e0e0;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      text-shadow: 0 0 5px #ffffff;
-      box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
-    }
+        .form-group input, .form-group select, .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #4169e1;
+            border-radius: 8px;
+            background: rgba(0, 0, 139, 0.3);
+            color: #ffffff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
 
-    .hvc-btn:hover {
-      background: linear-gradient(145deg, #191970, #000080);
-      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
-      transform: translateY(-2px);
-    }
+        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            background: rgba(0, 0, 139, 0.5);
+        }
 
-    .hvc-btn-danger {
-      background: linear-gradient(145deg, #8B0000, #DC143C);
-    }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
 
-    .hvc-btn-danger:hover {
-      background: linear-gradient(145deg, #DC143C, #8B0000);
-    }
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
 
-    .hvc-btn-success {
-      background: linear-gradient(145deg, #006400, #228B22);
-    }
+        .btn-primary {
+            background: linear-gradient(45deg, #4169e1, #00bfff);
+            color: white;
+            box-shadow: 0 0 15px rgba(65, 105, 225, 0.4);
+        }
 
-    .hvc-btn-success:hover {
-      background: linear-gradient(145deg, #228B22, #006400);
-    }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(65, 105, 225, 0.6);
+        }
 
-    .hvc-btn-warning {
-      background: linear-gradient(145deg, #FF8C00, #FFA500);
-    }
+        .btn-success {
+            background: linear-gradient(45deg, #32cd32, #00ff7f);
+            color: white;
+            box-shadow: 0 0 15px rgba(50, 205, 50, 0.4);
+        }
 
-    .hvc-btn-warning:hover {
-      background: linear-gradient(145deg, #FFA500, #FF8C00);
-    }
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(50, 205, 50, 0.6);
+        }
 
-    .hvc-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: rgba(25, 25, 112, 0.2);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
-    }
+        .btn-danger {
+            background: linear-gradient(45deg, #dc143c, #ff6347);
+            color: white;
+            box-shadow: 0 0 15px rgba(220, 20, 60, 0.4);
+        }
 
-    .hvc-table th {
-      background: linear-gradient(145deg, #000080, #191970);
-      color: #ffffff;
-      padding: 1rem;
-      text-align: left;
-      font-weight: bold;
-      text-shadow: 0 0 5px #ffffff;
-      border-bottom: 2px solid rgba(255, 255, 255, 0.3);
-    }
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(220, 20, 60, 0.6);
+        }
 
-    .hvc-table td {
-      padding: 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      transition: background-color 0.3s ease;
-    }
+        .btn-info {
+            background: linear-gradient(45deg, #00bfff, #87ceeb);
+            color: white;
+            box-shadow: 0 0 15px rgba(0, 191, 255, 0.4);
+        }
 
-    .hvc-table tr:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
+        .btn-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 25px rgba(0, 191, 255, 0.6);
+        }
 
-    /* Status badges */
-    .status-badge {
-      padding: 0.3rem 0.8rem;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: bold;
-      text-align: center;
-      display: inline-block;
-      min-width: 100px;
-    }
+        .obras-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: rgba(25, 25, 112, 0.4);
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #4169e1;
+            box-shadow: 0 0 20px rgba(65, 105, 225, 0.3);
+        }
 
-    .status-a-iniciar {
-      background: linear-gradient(145deg, #FF8C00, #FFA500);
-      color: #000;
-    }
+        .obras-table th {
+            background: linear-gradient(45deg, #000080, #4169e1);
+            color: #ffffff;
+            padding: 15px 10px;
+            text-align: center;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            border-bottom: 2px solid #00ffff;
+            font-size: 12px;
+        }
 
-    .status-iniciado {
-      background: linear-gradient(145deg, #4169E1, #6495ED);
-      color: #fff;
-    }
+        .obras-table td {
+            padding: 12px 8px;
+            text-align: center;
+            border-bottom: 1px solid rgba(65, 105, 225, 0.3);
+            color: #e0e0e0;
+            font-size: 12px;
+        }
 
-    .status-concluido {
-      background: linear-gradient(145deg, #006400, #228B22);
-      color: #fff;
-    }
+        .obras-table tr:hover {
+            background: rgba(65, 105, 225, 0.2);
+        }
 
-    .status-concluida {
-      background: linear-gradient(145deg, #006400, #228B22);
-      color: #fff;
-    }
+        .status-badge {
+            padding: 5px 10px;
+            border-radius: 15px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
 
-    .status-pagamento-pendente {
-      background: linear-gradient(145deg, #8B0000, #DC143C);
-      color: #fff;
-    }
+        .status-a-iniciar {
+            background: linear-gradient(45deg, #ffa500, #ff8c00);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
+        }
 
-    /* Modal HVC */
-    .hvc-modal {
-      display: none;
-      position: fixed;
-      z-index: 1001;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.8);
-      backdrop-filter: blur(5px);
-    }
+        .status-em-andamento {
+            background: linear-gradient(45deg, #1e90ff, #00bfff);
+            color: white;
+            box-shadow: 0 0 10px rgba(30, 144, 255, 0.5);
+        }
 
-    .hvc-modal-content {
-      background: linear-gradient(135deg, #000080, #191970);
-      margin: 2% auto;
-      padding: 2rem;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      border-radius: 12px;
-      width: 90%;
-      max-width: 800px;
-      max-height: 90vh;
-      overflow-y: auto;
-      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.5);
-      color: #e0e0e0;
-    }
+        .status-concluida {
+            background: linear-gradient(45deg, #32cd32, #00ff7f);
+            color: white;
+            box-shadow: 0 0 10px rgba(50, 205, 50, 0.5);
+        }
 
-    .hvc-modal-close {
-      color: #ffffff;
-      float: right;
-      font-size: 28px;
-      font-weight: bold;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
+        .status-pagamento-pendente {
+            background: linear-gradient(45deg, #ff6347, #dc143c);
+            color: white;
+            box-shadow: 0 0 10px rgba(255, 99, 71, 0.5);
+        }
 
-    .hvc-modal-close:hover {
-      text-shadow: 0 0 15px #ffffff;
-      transform: scale(1.1);
-    }
+        .valor-cell {
+            font-weight: bold;
+            color: #00ff7f;
+            text-shadow: 0 0 5px rgba(0, 255, 127, 0.5);
+        }
 
-    .servico-item, .medicao-item {
-      background: rgba(25, 25, 112, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-    }
+        .valor-negativo {
+            color: #ff6347;
+            text-shadow: 0 0 5px rgba(255, 99, 71, 0.5);
+        }
 
-    .servico-controls {
-      display: flex;
-      gap: 1rem;
-      align-items: center;
-      margin-top: 0.5rem;
-    }
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.8);
+        }
 
-    .toggle-btn {
-      padding: 0.5rem 1rem;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      font-weight: bold;
-      transition: all 0.3s ease;
-    }
+        .modal-content {
+            background: linear-gradient(135deg, #000080 0%, #191970 100%);
+            margin: 5% auto;
+            padding: 20px;
+            border: 2px solid #4169e1;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 30px rgba(65, 105, 225, 0.5);
+        }
 
-    .toggle-btn.active {
-      background: linear-gradient(145deg, #006400, #228B22);
-      color: #fff;
-    }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #4169e1;
+        }
 
-    .toggle-btn.inactive {
-      background: rgba(255, 255, 255, 0.2);
-      color: #e0e0e0;
-    }
+        .modal-header h2 {
+            color: #ffffff;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+            margin: 0;
+        }
 
-    .propostas-selection {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
+        .close {
+            color: #ff6347;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
 
-    .proposta-checkbox {
-      background: rgba(25, 25, 112, 0.3);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      padding: 1rem;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
+        .close:hover {
+            color: #ff0000;
+            text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+        }
 
-    .proposta-checkbox:hover {
-      background: rgba(255, 255, 255, 0.1);
-    }
+        .servicos-list, .medicoes-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 2px solid #4169e1;
+            border-radius: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 139, 0.2);
+        }
 
-    .proposta-checkbox.selected {
-      border-color: #ffffff;
-      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
-    }
+        .servico-item, .medicao-item {
+            background: rgba(25, 25, 112, 0.6);
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 10px;
+            border: 1px solid #4169e1;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
 
-    .valor-display {
-      font-size: 1.2rem;
-      font-weight: bold;
-      color: #ffffff;
-      text-shadow: 0 0 5px #ffffff;
-    }
+        .servico-info, .medicao-info {
+            flex: 1;
+            min-width: 200px;
+        }
 
-    @media (max-width: 768px) {
-      #main-content-obras-hvc {
-        margin-left: 60px !important;
-      }
-      
-      .hvc-form {
-        grid-template-columns: 1fr;
-      }
-      
-      .hvc-modal-content {
-        width: 95%;
-        margin: 5% auto;
-      }
-      
-      .propostas-selection {
-        grid-template-columns: 1fr;
-      }
-    }
-  </style>
+        .servico-actions, .medicao-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .toggle-btn {
+            padding: 8px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+
+        .toggle-btn.active {
+            background: linear-gradient(45deg, #32cd32, #00ff7f);
+            color: white;
+            box-shadow: 0 0 10px rgba(50, 205, 50, 0.5);
+        }
+
+        .toggle-btn.inactive {
+            background: rgba(128, 128, 128, 0.5);
+            color: #c0c0c0;
+            border: 1px solid #808080;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .no-items {
+            text-align: center;
+            color: #c0c0c0;
+            font-style: italic;
+            padding: 20px;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 10px;
+            }
+
+            .main-content.sidebar-collapsed {
+                margin-left: 0;
+            }
+
+            .form-row {
+                flex-direction: column;
+            }
+
+            .form-group {
+                min-width: 100%;
+            }
+
+            .obras-table {
+                font-size: 10px;
+            }
+
+            .obras-table th, .obras-table td {
+                padding: 8px 4px;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 2% auto;
+                padding: 15px;
+            }
+
+            .servico-item, .medicao-item {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .servico-actions, .medicao-actions {
+                justify-content: center;
+            }
+        }
+
+        /* Tooltips para siglas */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 5px;
+            font-size: 12px;
+            white-space: nowrap;
+            z-index: 1001;
+            border: 1px solid #4169e1;
+        }
+
+        .tooltip:hover::before {
+            content: '';
+            position: absolute;
+            bottom: 115%;
+            left: 50%;
+            transform: translateX(-50%);
+            border: 5px solid transparent;
+            border-top-color: rgba(0, 0, 0, 0.9);
+            z-index: 1001;
+        }
+    </style>
 </head>
-<body>
-  <!-- Sidebar será injetada aqui pelo sidebar.js -->
-  <main id="main-content-obras-hvc">
-    <div class="hvc-container">
-      <h1 class="hvc-title">
-        <i class="fas fa-building"></i> Obras HVC
-      </h1>
-
-      <!-- Formulário para Adicionar Obra -->
-      <form id="add-obra-form" class="hvc-form">
-        <input type="text" id="obra-numero" class="hvc-input" placeholder="Número da Obra (ex: 0001)" required />
-        <div style="grid-column: 1 / -1;">
-          <label style="display: block; margin-bottom: 0.5rem; color: #ffffff;">Propostas Aprovadas:</label>
-          <div id="propostas-selection" class="propostas-selection">
-            <!-- Propostas serão carregadas aqui -->
-          </div>
+<body class="theme-hvc">
+    <div class="main-content" id="main-content">
+        <div class="page-header">
+            <div class="icon">🏗️</div>
+            <h1>Obras HVC</h1>
         </div>
-        <textarea id="obra-observacoes" class="hvc-textarea" placeholder="Observações da obra (opcional)" rows="3"></textarea>
-        <button type="submit" class="hvc-btn">
-          <i class="fas fa-plus"></i> Adicionar Obra
-        </button>
-      </form>
+
+        <!-- Formulário para Nova Obra -->
+        <div class="form-container">
+            <h2 style="color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); margin-bottom: 20px;">
+                <i class="fas fa-plus-circle"></i> Nova Obra
+            </h2>
+            
+            <form id="obra-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="numero-obra">Número da Obra *</label>
+                        <input type="text" id="numero-obra" placeholder="Ex: 0001/2024" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="propostas-obra">Propostas (Aprovadas) *</label>
+                        <select id="propostas-obra" multiple required style="height: 120px;">
+                            <!-- Preenchido dinamicamente -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="cliente-obra">Cliente</label>
+                        <input type="text" id="cliente-obra" readonly style="background: rgba(128, 128, 128, 0.3);">
+                    </div>
+                    <div class="form-group">
+                        <label for="valor-total-obra">Valor Total da Obra</label>
+                        <input type="text" id="valor-total-obra" readonly style="background: rgba(128, 128, 128, 0.3);">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="observacoes-obra">Observações</label>
+                        <textarea id="observacoes-obra" placeholder="Observações sobre a obra..."></textarea>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-save"></i> Salvar Obra
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="limparFormulario()">
+                        <i class="fas fa-broom"></i> Limpar
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Lista de Obras -->
+        <div class="form-container">
+            <h2 style="color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); margin-bottom: 20px;">
+                <i class="fas fa-list"></i> Lista de Obras
+            </h2>
+            
+            <div style="overflow-x: auto;">
+                <table class="obras-table">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Cliente</th>
+                            <th>Valor Total</th>
+                            <th class="tooltip" data-tooltip="Valor Total Medido">VTM</th>
+                            <th class="tooltip" data-tooltip="Valor Total Recebido">VTR</th>
+                            <th class="tooltip" data-tooltip="Valor Medido Não Recebido">VMNR</th>
+                            <th class="tooltip" data-tooltip="Valor em Aberto a Receber">VAR</th>
+                            <th>Status</th>
+                            <th>Serviços</th>
+                            <th>Medições</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="obras-tbody">
+                        <tr>
+                            <td colspan="11" class="no-items">Nenhuma obra cadastrada</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 
-    <!-- Tabela de Obras -->
-    <div class="hvc-container">
-      <h2 class="hvc-title">
-        <i class="fas fa-list"></i> Lista de Obras
-      </h2>
-      <table id="obras-table" class="hvc-table">
-        <thead>
-          <tr>
-            <th>Número</th>
-            <th>Cliente</th>
-            <th>Valor Total</th>
-            <th>Status</th>
-            <th>Serviços</th>
-            <th>Medições</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="7" style="text-align: center;">Carregando obras...</td></tr>
-        </tbody>
-      </table>
+    <!-- Modal de Serviços -->
+    <div id="modal-servicos" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-tools"></i> Gerenciar Serviços - Obra <span id="modal-servicos-obra"></span></h2>
+                <span class="close" onclick="fecharModal('modal-servicos')">&times;</span>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="novo-servico">Novo Serviço</label>
+                    <input type="text" id="novo-servico" placeholder="Descrição do serviço">
+                </div>
+                <button type="button" class="btn btn-success btn-small" onclick="adicionarServico()">
+                    <i class="fas fa-plus"></i> Adicionar
+                </button>
+            </div>
+
+            <div class="servicos-list" id="servicos-list">
+                <div class="no-items">Nenhum serviço adicionado</div>
+            </div>
+        </div>
     </div>
-  </main>
 
-  <!-- Modal para Gerenciar Serviços -->
-  <div id="servicos-modal" class="hvc-modal">
-    <div class="hvc-modal-content">
-      <span class="hvc-modal-close" id="modal-close-servicos">&times;</span>
-      <h2 class="hvc-title">
-        <i class="fas fa-tools"></i> Serviços da Obra
-      </h2>
-      <div id="obra-info-modal" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; color: #ffffff;"></div>
-      
-      <!-- Formulário para adicionar serviço -->
-      <form id="add-servico-form" class="hvc-form">
-        <input type="text" id="servico-nome" class="hvc-input" placeholder="Nome do Serviço" required />
-        <button type="submit" class="hvc-btn">
-          <i class="fas fa-plus"></i> Adicionar Serviço
-        </button>
-      </form>
+    <!-- Modal de Medições -->
+    <div id="modal-medicoes" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-ruler"></i> Gerenciar Medições - Obra <span id="modal-medicoes-obra"></span></h2>
+                <span class="close" onclick="fecharModal('modal-medicoes')">&times;</span>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="numero-medicao">Número da Medição</label>
+                    <input type="text" id="numero-medicao" placeholder="Ex: 001/0001" readonly style="background: rgba(128, 128, 128, 0.3);">
+                </div>
+                <div class="form-group">
+                    <label for="data-medicao">Data da Medição</label>
+                    <input type="date" id="data-medicao">
+                </div>
+                <div class="form-group">
+                    <label for="valor-medicao">Valor da Medição</label>
+                    <input type="text" id="valor-medicao" placeholder="R$ 0,00">
+                </div>
+            </div>
 
-      <!-- Lista de serviços -->
-      <div id="servicos-list">
-        <!-- Serviços serão listados aqui -->
-      </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="status-medicao">Status</label>
+                    <select id="status-medicao">
+                        <option value="vai_ser_enviada">Vai ser enviada</option>
+                        <option value="ja_foi_enviada">Já foi enviada</option>
+                        <option value="ja_foi_recebida">Já foi recebida</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="retencao-adicao">Retenção/Adição</label>
+                    <input type="text" id="retencao-adicao" placeholder="R$ 0,00">
+                </div>
+                <button type="button" class="btn btn-success btn-small" onclick="adicionarMedicao()">
+                    <i class="fas fa-plus"></i> Adicionar
+                </button>
+            </div>
+
+            <div class="medicoes-list" id="medicoes-list">
+                <div class="no-items">Nenhuma medição adicionada</div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Modal para Gerenciar Medições -->
-  <div id="medicoes-modal" class="hvc-modal">
-    <div class="hvc-modal-content">
-      <span class="hvc-modal-close" id="modal-close-medicoes">&times;</span>
-      <h2 class="hvc-title">
-        <i class="fas fa-ruler"></i> Medições da Obra
-      </h2>
-      <div id="obra-medicoes-info" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; color: #ffffff;"></div>
-      
-      <!-- Formulário para adicionar medição -->
-      <form id="add-medicao-form" class="hvc-form">
-        <input type="text" id="medicao-numero" class="hvc-input" placeholder="Número da Medição (ex: 001)" required />
-        <input type="date" id="medicao-data" class="hvc-input" required />
-        <select id="medicao-status" class="hvc-select" required>
-          <option value="">Status da Medição</option>
-          <option value="Vai ser enviada">Vai ser enviada</option>
-          <option value="Já foi enviada">Já foi enviada</option>
-          <option value="Já foi recebida">Já foi recebida</option>
-        </select>
-        <button type="submit" class="hvc-btn">
-          <i class="fas fa-plus"></i> Adicionar Medição
-        </button>
-      </form>
+    <!-- Modal de Serviços da Medição -->
+    <div id="modal-servicos-medicao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-list-check"></i> Serviços da Medição <span id="modal-servicos-medicao-numero"></span></h2>
+                <span class="close" onclick="fecharModal('modal-servicos-medicao')">&times;</span>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="servico-medicao">Selecionar Serviço</label>
+                    <select id="servico-medicao">
+                        <!-- Preenchido dinamicamente -->
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="observacoes-servico-medicao">Observações</label>
+                    <input type="text" id="observacoes-servico-medicao" placeholder="Observações do serviço">
+                </div>
+                <button type="button" class="btn btn-success btn-small" onclick="adicionarServicoMedicao()">
+                    <i class="fas fa-plus"></i> Adicionar
+                </button>
+            </div>
 
-      <!-- Lista de medições -->
-      <div id="medicoes-list">
-        <!-- Medições serão listadas aqui -->
-      </div>
+            <div class="servicos-list" id="servicos-medicao-list">
+                <div class="no-items">Nenhum serviço adicionado à medição</div>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Modal para Serviços da Medição -->
-  <div id="servicos-medicao-modal" class="hvc-modal">
-    <div class="hvc-modal-content">
-      <span class="hvc-modal-close" id="modal-close-servicos-medicao">&times;</span>
-      <h2 class="hvc-title">
-        <i class="fas fa-list-check"></i> Serviços da Medição
-      </h2>
-      <div id="medicao-info-modal" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; color: #ffffff;"></div>
-      
-      <!-- Formulário para adicionar serviço à medição -->
-      <form id="add-servico-medicao-form" class="hvc-form">
-        <select id="servico-medicao-select" class="hvc-select" required>
-          <option value="">Selecione o Serviço</option>
-        </select>
-        <textarea id="servico-observacoes" class="hvc-textarea" placeholder="Observações (opcional)" rows="2"></textarea>
-        <button type="submit" class="hvc-btn">
-          <i class="fas fa-plus"></i> Adicionar à Medição
-        </button>
-      </form>
-
-      <!-- Lista de serviços da medição -->
-      <div id="servicos-medicao-list">
-        <!-- Serviços da medição serão listados aqui -->
-      </div>
-    </div>
-  </div>
-
-  <!-- Scripts -->
-  <script type="module" src="supabase.js"></script>
-  <script type="module" src="obras-hvc.js"></script>
-  <script type="module">
-    import { injectSidebar } from './sidebar.js';
-    injectSidebar("main-content-obras-hvc");
-  </script>
+    <script type="module" src="obras-hvc.js"></script>
 </body>
 </html>
 
