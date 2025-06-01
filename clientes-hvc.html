@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Clientes HVC</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* Tema específico HVC */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #main-content-clientes-hvc {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+    }
+
+    #main-content-clientes-hvc.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    /* Estilo HVC - Elegante e sofisticado */
+    .hvc-container {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .hvc-title {
+      color: #ffffff;
+      text-shadow: 0 0 10px #ffffff, 0 0 20px #c0c0c0;
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .hvc-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      align-items: end;
+      margin-bottom: 2rem;
+    }
+
+    .hvc-input, .hvc-select {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(0, 0, 128, 0.2);
+      color: #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .hvc-input:focus, .hvc-select:focus {
+      outline: none;
+      border-color: #ffffff;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+      background: rgba(0, 0, 128, 0.4);
+    }
+
+    .hvc-input::placeholder {
+      color: rgba(224, 224, 224, 0.6);
+    }
+
+    .hvc-btn {
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #000080, #191970);
+      color: #e0e0e0;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-shadow: 0 0 5px #ffffff;
+      box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
+    }
+
+    .hvc-btn:hover {
+      background: linear-gradient(145deg, #191970, #000080);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .hvc-btn-danger {
+      background: linear-gradient(145deg, #8B0000, #DC143C);
+    }
+
+    .hvc-btn-danger:hover {
+      background: linear-gradient(145deg, #DC143C, #8B0000);
+    }
+
+    .hvc-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(25, 25, 112, 0.2);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+    }
+
+    .hvc-table th {
+      background: linear-gradient(145deg, #000080, #191970);
+      color: #ffffff;
+      padding: 1rem;
+      text-align: left;
+      font-weight: bold;
+      text-shadow: 0 0 5px #ffffff;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+    }
+
+    .hvc-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      transition: background-color 0.3s ease;
+    }
+
+    .hvc-table tr:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .hvc-table input {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e0e0e0;
+      padding: 0.5rem;
+      border-radius: 4px;
+      width: 100%;
+    }
+
+    .hvc-table input:focus {
+      border-color: #ffffff;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+
+    /* Modal HVC */
+    .hvc-modal {
+      display: none;
+      position: fixed;
+      z-index: 1001;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.8);
+      backdrop-filter: blur(5px);
+    }
+
+    .hvc-modal-content {
+      background: linear-gradient(135deg, #000080, #191970);
+      margin: 5% auto;
+      padding: 2rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      width: 80%;
+      max-width: 600px;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.5);
+      color: #e0e0e0;
+    }
+
+    .hvc-modal-close {
+      color: #ffffff;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .hvc-modal-close:hover {
+      text-shadow: 0 0 15px #ffffff;
+      transform: scale(1.1);
+    }
+
+    .responsavel-item {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr auto;
+      gap: 1rem;
+      align-items: center;
+    }
+
+    .documento-input {
+      position: relative;
+    }
+
+    .documento-tipo {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(0, 0, 128, 0.8);
+      color: #ffffff;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      pointer-events: none;
+    }
+
+    @media (max-width: 768px) {
+      #main-content-clientes-hvc {
+        margin-left: 60px !important;
+      }
+      
+      .hvc-form {
+        grid-template-columns: 1fr;
+      }
+      
+      .hvc-table, .hvc-table thead, .hvc-table tbody, .hvc-table th, .hvc-table td, .hvc-table tr {
+        display: block;
+      }
+      
+      .hvc-table thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+      
+      .hvc-table tr {
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        padding: 1rem;
+      }
+      
+      .hvc-table td {
+        border: none;
+        position: relative;
+        padding-left: 50%;
+      }
+      
+      .hvc-table td:before {
+        content: attr(data-label);
+        position: absolute;
+        left: 6px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        font-weight: bold;
+        color: #ffffff;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-clientes-hvc">
+    <div class="hvc-container">
+      <h1 class="hvc-title">
+        <i class="fas fa-users"></i> Clientes HVC
+      </h1>
+
+      <!-- Formulário para Adicionar Cliente -->
+      <form id="add-cliente-form" class="hvc-form">
+        <input type="text" id="cliente-nome" class="hvc-input" placeholder="Nome do Cliente" required />
+        <div class="documento-input">
+          <input type="text" id="cliente-documento" class="hvc-input" placeholder="CPF ou CNPJ" required />
+          <span id="documento-tipo" class="documento-tipo">CPF</span>
+        </div>
+        <button type="submit" class="hvc-btn">
+          <i class="fas fa-plus"></i> Adicionar Cliente
+        </button>
+      </form>
+    </div>
+
+    <!-- Tabela de Clientes -->
+    <div class="hvc-container">
+      <h2 class="hvc-title">
+        <i class="fas fa-list"></i> Lista de Clientes
+      </h2>
+      <table id="clientes-table" class="hvc-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Documento</th>
+            <th>Responsáveis</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td colspan="4" style="text-align: center;">Carregando clientes...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal para Gerenciar Responsáveis -->
+  <div id="responsaveis-modal" class="hvc-modal">
+    <div class="hvc-modal-content">
+      <span class="hvc-modal-close" id="modal-close-responsaveis">&times;</span>
+      <h2 class="hvc-title">
+        <i class="fas fa-user-tie"></i> Responsáveis do Cliente
+      </h2>
+      <div id="cliente-nome-modal" style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; color: #ffffff;"></div>
+      
+      <!-- Formulário para adicionar responsável -->
+      <form id="add-responsavel-form" class="hvc-form">
+        <input type="text" id="responsavel-nome" class="hvc-input" placeholder="Nome do Responsável" required />
+        <input type="text" id="responsavel-whatsapp" class="hvc-input" placeholder="WhatsApp" />
+        <input type="email" id="responsavel-email" class="hvc-input" placeholder="Email" />
+        <button type="submit" class="hvc-btn">
+          <i class="fas fa-plus"></i> Adicionar
+        </button>
+      </form>
+
+      <!-- Lista de responsáveis -->
+      <div id="responsaveis-list">
+        <!-- Responsáveis serão listados aqui -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="clientes-hvc.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    injectSidebar("main-content-clientes-hvc");
+  </script>
+</body>
+</html>
+
