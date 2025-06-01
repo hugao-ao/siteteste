@@ -101,7 +101,7 @@ async function carregarPropostasAprovadas() {
                     valor,
                     clientes_hvc (nome)
                 `)
-                .eq('status', 'aprovada');
+                .eq('status', 'Aprovada');
             
             propostas = result.data;
             error = result.error;
@@ -113,7 +113,7 @@ async function carregarPropostasAprovadas() {
                 const result = await supabase
                     .from('propostas_hvc')
                     .select('id, numero_proposta, valor, cliente_id')
-                    .eq('status', 'aprovada');
+                    .eq('status', 'Aprovada');
                 
                 propostas = result.data;
                 error = result.error;
@@ -147,7 +147,7 @@ async function carregarPropostasAprovadas() {
                     const result = await supabase
                         .from('propostas_hvc')
                         .select('*')
-                        .eq('status', 'aprovada');
+                        .eq('status', 'Aprovada');
                     
                     propostas = result.data;
                     error = result.error;
