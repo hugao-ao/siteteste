@@ -830,14 +830,14 @@ async function carregarServicos() {
                 </div>
                 <div class="item-actions">
                     <button class="btn ${servico.data_inicio ? 'btn-warning' : 'btn-success'} btn-small" 
-                            onclick="toggleInicioServico(${servico.id}, ${!!servico.data_inicio})">
+                            onclick="window.toggleInicioServico(${servico.id}, ${!!servico.data_inicio})">
                         ${servico.data_inicio ? 'Desmarcar Início' : 'Iniciar'}
                     </button>
                     <button class="btn ${servico.data_conclusao ? 'btn-warning' : 'btn-success'} btn-small" 
-                            onclick="toggleConclusaoServico(${servico.id}, ${!!servico.data_conclusao})">
+                            onclick="window.toggleConclusaoServico(${servico.id}, ${!!servico.data_conclusao})">
                         ${servico.data_conclusao ? 'Desmarcar Conclusão' : 'Concluir'}
                     </button>
-                    <button class="btn btn-danger btn-small" onclick="excluirServico(${servico.id})">
+                    <button class="btn btn-danger btn-small" onclick="window.excluirServico(${servico.id})">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -1098,13 +1098,13 @@ async function carregarMedicoes() {
                     <small>Pago: ${medicao.pago ? 'Sim' : 'Não'}</small>
                 </div>
                 <div class="item-actions">
-                    <button class="btn btn-primary btn-small" onclick="editarMedicao(${medicao.id})">
+                    <button class="btn btn-primary btn-small" onclick="window.editarMedicao(${medicao.id})">
                         <i class="fas fa-edit"></i> Editar
                     </button>
-                    <button class="btn btn-warning btn-small" onclick="abrirModalServicosMedicao(${medicao.id}, '${medicao.numero_medicao}')">
+                    <button class="btn btn-warning btn-small" onclick="window.abrirModalServicosMedicao(${medicao.id}, '${medicao.numero_medicao}')">
                         <i class="fas fa-list"></i> Serviços
                     </button>
-                    <button class="btn btn-danger btn-small" onclick="excluirMedicao(${medicao.id})">
+                    <button class="btn btn-danger btn-small" onclick="window.excluirMedicao(${medicao.id})">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -1442,7 +1442,7 @@ async function carregarServicosMedicao() {
                     ${sm.observacoes ? `<small>Obs: ${sm.observacoes}</small>` : ''}
                 </div>
                 <div class="item-actions">
-                    <button class="btn btn-danger btn-small" onclick="excluirServicoMedicao(${sm.id})">
+                    <button class="btn btn-danger btn-small" onclick="window.excluirServicoMedicao(${sm.id})">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
