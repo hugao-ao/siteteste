@@ -4,19 +4,18 @@ function createAdminSidebarHTML(projectContext = null) {
     const themeClass = projectContext ? `theme-${projectContext.toLowerCase()}` : 'theme-admin';
     console.log(`Criando sidebar admin com tema/contexto: ${themeClass}`);
 
-    // Define os links base dos projetos
+    // Define os links base dos projetos - HVC vai direto para dashboard-hvc.html
     const projectLinks = `
         <li><a href="admin-projeto-dashboard.html?projeto=Argos" id="nav-projeto-argos"><i class="fas fa-shield-alt"></i> <span>Projeto Argos</span></a></li>
-        <li><a href="admin-projeto-dashboard.html?projeto=Hvc" id="nav-projeto-hvc"><i class="fas fa-heartbeat"></i> <span>Projeto HVC</span></a></li>
+        <li><a href="dashboard-hvc.html" id="nav-projeto-hvc"><i class="fas fa-heartbeat"></i> <span>Projeto HVC</span></a></li>
         <li><a href="admin-projeto-dashboard.html?projeto=Planejamento" id="nav-projeto-planejamento"><i class="fas fa-clipboard-list"></i> <span>Projeto Planejamento</span></a></li>
     `;
 
     // Define o rótulo e os links de gerenciamento (SEMPRE VISÍVEIS)
     const managementLabel = projectContext ? `(${projectContext})` : '(Administrativo)';
     const userManagementLink = projectContext ? `admin-dashboard.html?projeto=${projectContext}#gerenciar-usuarios` : 'admin-dashboard.html#gerenciar-usuarios';
-    const clientManagementLink = projectContext ? `clientes-dashboard.html?projeto=${projectContext}` : 'clientes-dashboard.html';
-
-    // Links específicos do HVC (apenas quando no contexto HVC)
+    
+    // Links específicos do HVC (apenas quando no contexto HVC) - SEM Gerenciar Clientes e Mensagens Whats
     const hvcSpecificLinks = projectContext === 'Hvc' ? `
         <li class="sub-menu"><a href="dashboard-hvc.html" id="nav-dashboard-hvc"><i class="fas fa-chart-line"></i> <span>Dashboard HVC</span></a></li>
         <li class="sub-menu"><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
@@ -25,11 +24,17 @@ function createAdminSidebarHTML(projectContext = null) {
         <li class="sub-menu"><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
     ` : '';
 
-    const managementLinks = `
+    // Links de gerenciamento - para HVC, remove Gerenciar Clientes e Mensagens Whats
+    const managementLinks = projectContext === 'Hvc' ? `
         <hr class="sidebar-divider">
         <li class="sub-menu-header"><span>Gerenciamento ${managementLabel}</span></li>
         <li class="sub-menu"><a href="${userManagementLink}" id="nav-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
-        <li class="sub-menu"><a href="${clientManagementLink}" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+        ${hvcSpecificLinks}
+    ` : `
+        <hr class="sidebar-divider">
+        <li class="sub-menu-header"><span>Gerenciamento ${managementLabel}</span></li>
+        <li class="sub-menu"><a href="${userManagementLink}" id="nav-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
+        <li class="sub-menu"><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
         <li class="sub-menu"><a href="mensagens-whats.html" id="nav-mensagens-whats-admin"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
         ${hvcSpecificLinks}
     `;
@@ -53,11 +58,12 @@ function createAdminSidebarHTML(projectContext = null) {
 // Função para criar o HTML da Sidebar do Usuário (MODIFICADA para incluir HVC)
 function createUserSidebarHTML(userProject) {
     // Determina a página inicial baseada no projeto
-    const homePage = userProject === 'Planejamento' ? 'planejamento-dashboard.html' : 'user-dashboard.html';
+    const homePage = userProject === 'Planejamento' ? 'planejamento-dashboard.html' : 
+                     userProject === 'Hvc' ? 'dashboard-hvc.html' : 'user-dashboard.html';
     // Define a classe de tema baseada no projeto (fallback para 'default' se não houver projeto)
     const themeClass = `theme-${userProject ? userProject.toLowerCase() : 'default'}`;
 
-    // Links específicos do HVC para usuários do projeto HVC
+    // Links específicos do HVC para usuários do projeto HVC - SEM Gerenciar Clientes e Mensagens Whats
     const hvcUserLinks = userProject === 'Hvc' ? `
         <li><a href="dashboard-hvc.html" id="nav-dashboard-hvc"><i class="fas fa-chart-line"></i> <span>Dashboard HVC</span></a></li>
         <li><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
@@ -66,14 +72,19 @@ function createUserSidebarHTML(userProject) {
         <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
     ` : '';
 
+    // Links padrão para usuários não-HVC
+    const standardUserLinks = userProject !== 'Hvc' ? `
+        <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+        <li><a href="mensagens-whats.html" id="nav-mensagens-whats-usuario"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
+    ` : '';
+
     return `
     <nav id="sidebar" class="${themeClass}">
       <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
       <ul class="sidebar-menu">
         <li><a href="${homePage}" id="nav-painel-inicial"><i class="fas fa-home"></i> <span>Painel Inicial</span></a></li>
         ${hvcUserLinks}
-        <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-        <li><a href="mensagens-whats.html" id="nav-mensagens-whats-usuario"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
+        ${standardUserLinks}
         <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
       </ul>
     </nav>
@@ -85,7 +96,7 @@ function createAdminViewingUserSidebarHTML(viewedUserProject) {
     // Define a classe de tema baseada no projeto do usuário visualizado
     const themeClass = `theme-${viewedUserProject ? viewedUserProject.toLowerCase() : 'default'}`;
 
-    // Links específicos do HVC se o usuário visualizado for do projeto HVC
+    // Links específicos do HVC se o usuário visualizado for do projeto HVC - SEM Gerenciar Clientes e Mensagens Whats
     const hvcViewingLinks = viewedUserProject === 'Hvc' ? `
         <li><a href="dashboard-hvc.html" id="nav-dashboard-hvc"><i class="fas fa-chart-line"></i> <span>Dashboard HVC</span></a></li>
         <li><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
@@ -94,13 +105,18 @@ function createAdminViewingUserSidebarHTML(viewedUserProject) {
         <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
     ` : '';
 
+    // Links padrão para usuários não-HVC
+    const standardViewingLinks = viewedUserProject !== 'Hvc' ? `
+        <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+    ` : '';
+
     return `
     <nav id="sidebar" class="${themeClass}">
       <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
       <ul class="sidebar-menu">
         <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-arrow-left"></i> <span>Painel Admin</span></a></li> <!-- Link para voltar ao painel admin -->
         ${hvcViewingLinks}
-        <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+        ${standardViewingLinks}
         <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li> <!-- Logout ainda desloga o admin -->
       </ul>
     </nav>
