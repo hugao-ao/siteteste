@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard HVC</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* Tema específico HVC */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #main-content-dashboard-hvc {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+    }
+
+    #main-content-dashboard-hvc.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    /* Estilo HVC - Elegante e sofisticado */
+    .hvc-container {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    .hvc-title {
+      color: #ffffff;
+      text-shadow: 0 0 10px #ffffff, 0 0 20px #c0c0c0;
+      font-size: 2rem;
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .metric-card {
+      background: rgba(25, 25, 112, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+      text-align: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
+    }
+
+    .metric-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 25px rgba(0, 0, 128, 0.5);
+    }
+
+    .metric-value {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #ffffff;
+      text-shadow: 0 0 10px #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .metric-label {
+      font-size: 1rem;
+      color: #c0c0c0;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .metric-change {
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+    }
+
+    .metric-positive {
+      color: #90EE90;
+    }
+
+    .metric-negative {
+      color: #FFB6C1;
+    }
+
+    .metric-neutral {
+      color: #c0c0c0;
+    }
+
+    .chart-container {
+      background: rgba(25, 25, 112, 0.2);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      min-height: 300px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .tabs-container {
+      display: flex;
+      margin-bottom: 2rem;
+      border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+      flex-wrap: wrap;
+    }
+
+    .tab-button {
+      padding: 1rem 1.5rem;
+      background: transparent;
+      border: none;
+      color: #e0e0e0;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: bold;
+      transition: all 0.3s ease;
+      border-bottom: 3px solid transparent;
+    }
+
+    .tab-button.active {
+      color: #ffffff;
+      border-bottom-color: #ffffff;
+      text-shadow: 0 0 10px #ffffff;
+    }
+
+    .tab-button:hover {
+      color: #ffffff;
+      text-shadow: 0 0 5px #ffffff;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .hvc-form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      align-items: end;
+      margin-bottom: 2rem;
+    }
+
+    .hvc-input, .hvc-select, .hvc-textarea {
+      width: 100%;
+      padding: 0.8rem;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(0, 0, 128, 0.2);
+      color: #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      font-family: inherit;
+    }
+
+    .hvc-input:focus, .hvc-select:focus, .hvc-textarea:focus {
+      outline: none;
+      border-color: #ffffff;
+      box-shadow: 0 0 15px rgba(255, 255, 255, 0.3);
+      background: rgba(0, 0, 128, 0.4);
+    }
+
+    .hvc-input::placeholder, .hvc-textarea::placeholder {
+      color: rgba(224, 224, 224, 0.6);
+    }
+
+    .hvc-select option {
+      background: #191970;
+      color: #e0e0e0;
+    }
+
+    .hvc-btn {
+      padding: 0.8rem 1.5rem;
+      border: none;
+      border-radius: 8px;
+      background: linear-gradient(145deg, #000080, #191970);
+      color: #e0e0e0;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-shadow: 0 0 5px #ffffff;
+      box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
+    }
+
+    .hvc-btn:hover {
+      background: linear-gradient(145deg, #191970, #000080);
+      box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
+      transform: translateY(-2px);
+    }
+
+    .hvc-btn-danger {
+      background: linear-gradient(145deg, #8B0000, #DC143C);
+    }
+
+    .hvc-btn-danger:hover {
+      background: linear-gradient(145deg, #DC143C, #8B0000);
+    }
+
+    .hvc-btn-success {
+      background: linear-gradient(145deg, #006400, #228B22);
+    }
+
+    .hvc-btn-success:hover {
+      background: linear-gradient(145deg, #228B22, #006400);
+    }
+
+    .hvc-btn-warning {
+      background: linear-gradient(145deg, #FF8C00, #FFA500);
+    }
+
+    .hvc-btn-warning:hover {
+      background: linear-gradient(145deg, #FFA500, #FF8C00);
+    }
+
+    .priority-badge {
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-align: center;
+      display: inline-block;
+    }
+
+    .priority-baixa {
+      background: linear-gradient(145deg, #4169E1, #6495ED);
+      color: #fff;
+    }
+
+    .priority-media {
+      background: linear-gradient(145deg, #FF8C00, #FFA500);
+      color: #000;
+    }
+
+    .priority-alta {
+      background: linear-gradient(145deg, #DC143C, #FF1493);
+      color: #fff;
+    }
+
+    .priority-urgente {
+      background: linear-gradient(145deg, #8B0000, #DC143C);
+      color: #fff;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { box-shadow: 0 0 0 0 rgba(220, 20, 60, 0.7); }
+      70% { box-shadow: 0 0 0 10px rgba(220, 20, 60, 0); }
+      100% { box-shadow: 0 0 0 0 rgba(220, 20, 60, 0); }
+    }
+
+    .status-badge {
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: bold;
+      text-align: center;
+      display: inline-block;
+    }
+
+    .status-pendente {
+      background: linear-gradient(145deg, #FF8C00, #FFA500);
+      color: #000;
+    }
+
+    .status-em-andamento {
+      background: linear-gradient(145deg, #4169E1, #6495ED);
+      color: #fff;
+    }
+
+    .status-concluida {
+      background: linear-gradient(145deg, #006400, #228B22);
+      color: #fff;
+    }
+
+    .tarefa-item {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .tarefa-item:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .tarefa-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+
+    .tarefa-title {
+      font-weight: bold;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .tarefa-meta {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 0.5rem;
+    }
+
+    .insight-card {
+      background: rgba(25, 25, 112, 0.4);
+      border-left: 4px solid #ffffff;
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .insight-title {
+      font-weight: bold;
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+    }
+
+    .insight-content {
+      color: #c0c0c0;
+      line-height: 1.5;
+    }
+
+    .quick-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+
+    .quick-action-btn {
+      padding: 1rem;
+      background: rgba(25, 25, 112, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      color: #e0e0e0;
+      text-decoration: none;
+      text-align: center;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .quick-action-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
+    }
+
+    .quick-action-btn i {
+      font-size: 2rem;
+      color: #ffffff;
+    }
+
+    @media (max-width: 768px) {
+      #main-content-dashboard-hvc {
+        margin-left: 60px !important;
+      }
+      
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .hvc-form {
+        grid-template-columns: 1fr;
+      }
+      
+      .tabs-container {
+        flex-direction: column;
+      }
+      
+      .tab-button {
+        text-align: center;
+      }
+      
+      .quick-actions {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-dashboard-hvc">
+    <div class="hvc-container">
+      <h1 class="hvc-title">
+        <i class="fas fa-chart-line"></i> Dashboard Analítico HVC
+      </h1>
+
+      <!-- Métricas Principais -->
+      <div class="dashboard-grid">
+        <div class="metric-card">
+          <div class="metric-value" id="total-propostas">0</div>
+          <div class="metric-label">Propostas</div>
+          <div class="metric-change" id="propostas-change">
+            <span class="metric-neutral">Aguardando dados...</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-value" id="total-obras">0</div>
+          <div class="metric-label">Obras Ativas</div>
+          <div class="metric-change" id="obras-change">
+            <span class="metric-neutral">Aguardando dados...</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-value" id="valor-total">R$ 0,00</div>
+          <div class="metric-label">Valor Total em Obras</div>
+          <div class="metric-change" id="valor-change">
+            <span class="metric-neutral">Aguardando dados...</span>
+          </div>
+        </div>
+        
+        <div class="metric-card">
+          <div class="metric-value" id="saldo-fluxo">R$ 0,00</div>
+          <div class="metric-label">Saldo do Fluxo</div>
+          <div class="metric-change" id="saldo-change">
+            <span class="metric-neutral">Aguardando dados...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Ações Rápidas -->
+      <div class="quick-actions">
+        <a href="clientes-hvc.html" class="quick-action-btn">
+          <i class="fas fa-users"></i>
+          <span>Gerenciar Clientes</span>
+        </a>
+        <a href="propostas-hvc.html" class="quick-action-btn">
+          <i class="fas fa-file-contract"></i>
+          <span>Gerenciar Propostas</span>
+        </a>
+        <a href="obras-hvc.html" class="quick-action-btn">
+          <i class="fas fa-building"></i>
+          <span>Gerenciar Obras</span>
+        </a>
+        <a href="fluxo-caixa-hvc.html" class="quick-action-btn">
+          <i class="fas fa-money-bill-wave"></i>
+          <span>Fluxo de Caixa</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Tabs de Análises -->
+    <div class="hvc-container">
+      <div class="tabs-container">
+        <button class="tab-button active" onclick="switchTab('evolucao')">
+          <i class="fas fa-chart-area"></i> Evolução
+        </button>
+        <button class="tab-button" onclick="switchTab('financeiro')">
+          <i class="fas fa-dollar-sign"></i> Financeiro
+        </button>
+        <button class="tab-button" onclick="switchTab('insights')">
+          <i class="fas fa-lightbulb"></i> Insights
+        </button>
+        <button class="tab-button" onclick="switchTab('tarefas')">
+          <i class="fas fa-tasks"></i> Tarefas
+        </button>
+      </div>
+
+      <!-- Tab Evolução -->
+      <div id="evolucao-tab" class="tab-content active">
+        <h2 class="hvc-title" style="font-size: 1.5rem;">
+          <i class="fas fa-chart-line"></i> Evolução dos Projetos
+        </h2>
+        
+        <div class="dashboard-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="propostas-aprovadas">0</div>
+            <div class="metric-label">Propostas Aprovadas</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="obras-concluidas">0</div>
+            <div class="metric-label">Obras Concluídas</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="servicos-andamento">0</div>
+            <div class="metric-label">Serviços em Andamento</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="medicoes-pendentes">0</div>
+            <div class="metric-label">Medições Pendentes</div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <div style="text-align: center; color: #c0c0c0;">
+            <i class="fas fa-chart-bar" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+            <p>Gráfico de evolução será implementado aqui</p>
+            <small>Mostrará a progressão de propostas, obras e serviços ao longo do tempo</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Financeiro -->
+      <div id="financeiro-tab" class="tab-content">
+        <h2 class="hvc-title" style="font-size: 1.5rem;">
+          <i class="fas fa-calculator"></i> Análise Financeira
+        </h2>
+        
+        <div class="dashboard-grid">
+          <div class="metric-card">
+            <div class="metric-value" id="total-recebimentos">R$ 0,00</div>
+            <div class="metric-label">Total Recebimentos</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="total-pagamentos">R$ 0,00</div>
+            <div class="metric-label">Total Pagamentos</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="valor-a-receber">R$ 0,00</div>
+            <div class="metric-label">Valor a Receber</div>
+          </div>
+          <div class="metric-card">
+            <div class="metric-value" id="margem-lucro">0%</div>
+            <div class="metric-label">Margem de Lucro</div>
+          </div>
+        </div>
+
+        <div class="chart-container">
+          <div style="text-align: center; color: #c0c0c0;">
+            <i class="fas fa-chart-pie" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+            <p>Gráfico financeiro será implementado aqui</p>
+            <small>Mostrará distribuição de receitas, despesas e projeções</small>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab Insights -->
+      <div id="insights-tab" class="tab-content">
+        <h2 class="hvc-title" style="font-size: 1.5rem;">
+          <i class="fas fa-brain"></i> Insights e Projeções
+        </h2>
+        
+        <div id="insights-list">
+          <!-- Insights serão gerados dinamicamente -->
+        </div>
+      </div>
+
+      <!-- Tab Tarefas -->
+      <div id="tarefas-tab" class="tab-content">
+        <h2 class="hvc-title" style="font-size: 1.5rem;">
+          <i class="fas fa-clipboard-list"></i> Gerenciamento de Tarefas
+        </h2>
+        
+        <!-- Formulário para adicionar tarefa -->
+        <form id="add-tarefa-form" class="hvc-form">
+          <input type="text" id="tarefa-titulo" class="hvc-input" placeholder="Título da Tarefa" required />
+          <select id="tarefa-prioridade" class="hvc-select" required>
+            <option value="">Prioridade</option>
+            <option value="Baixa">Baixa</option>
+            <option value="Média">Média</option>
+            <option value="Alta">Alta</option>
+            <option value="Urgente">Urgente</option>
+          </select>
+          <input type="date" id="tarefa-vencimento" class="hvc-input" />
+          <select id="tarefa-obra" class="hvc-select">
+            <option value="">Obra Relacionada (opcional)</option>
+          </select>
+          <select id="tarefa-proposta" class="hvc-select">
+            <option value="">Proposta Relacionada (opcional)</option>
+          </select>
+          <textarea id="tarefa-descricao" class="hvc-textarea" placeholder="Descrição da tarefa" rows="2"></textarea>
+          <button type="submit" class="hvc-btn">
+            <i class="fas fa-plus"></i> Adicionar Tarefa
+          </button>
+        </form>
+
+        <!-- Filtros de tarefas -->
+        <div class="hvc-form" style="margin-bottom: 1rem;">
+          <select id="filtro-status" class="hvc-select" onchange="filterTarefas()">
+            <option value="">Todos os Status</option>
+            <option value="Pendente">Pendente</option>
+            <option value="Em Andamento">Em Andamento</option>
+            <option value="Concluída">Concluída</option>
+          </select>
+          <select id="filtro-prioridade" class="hvc-select" onchange="filterTarefas()">
+            <option value="">Todas as Prioridades</option>
+            <option value="Urgente">Urgente</option>
+            <option value="Alta">Alta</option>
+            <option value="Média">Média</option>
+            <option value="Baixa">Baixa</option>
+          </select>
+        </div>
+
+        <!-- Lista de tarefas -->
+        <div id="tarefas-list">
+          <!-- Tarefas serão listadas aqui -->
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Scripts -->
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="dashboard-hvc.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    injectSidebar("main-content-dashboard-hvc");
+  </script>
+</body>
+</html>
+
