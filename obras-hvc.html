@@ -4,235 +4,332 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Obras HVC</title>
-    <link rel="stylesheet" href="sidebar.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
-        /* Tema HVC - Azul escuro com efeitos neon */
-        .theme-hvc {
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #000080 0%, #191970 100%);
             color: #e0e0e0;
             min-height: 100vh;
         }
 
-        .main-content {
-            margin-left: 250px;
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
             padding: 20px;
-            transition: margin-left 0.3s ease;
         }
 
-        .main-content.sidebar-collapsed {
-            margin-left: 60px;
-        }
-
-        .page-header {
+        .header {
             text-align: center;
             margin-bottom: 30px;
             padding: 20px;
-            background: rgba(0, 0, 128, 0.3);
+            background: rgba(255, 255, 255, 0.1);
             border-radius: 15px;
-            border: 2px solid #4169e1;
-            box-shadow: 0 0 20px rgba(65, 105, 225, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .page-header h1 {
+        .header h1 {
+            font-size: 2.5rem;
             color: #ffffff;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            margin: 0;
-            font-size: 2.5em;
-        }
-
-        .page-header .icon {
-            font-size: 3em;
-            color: #00ffff;
-            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
             margin-bottom: 10px;
         }
 
-        .form-container {
-            background: rgba(25, 25, 112, 0.4);
-            padding: 25px;
-            border-radius: 15px;
-            border: 2px solid #4169e1;
-            margin-bottom: 30px;
-            box-shadow: 0 0 15px rgba(65, 105, 225, 0.2);
+        .header .icon {
+            font-size: 3rem;
+            color: #00ffff;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+            margin-bottom: 15px;
         }
 
-        .form-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
+        .form-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .form-section h2 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
         }
 
         .form-group {
-            flex: 1;
-            min-width: 200px;
+            display: flex;
+            flex-direction: column;
         }
 
         .form-group label {
-            display: block;
-            margin-bottom: 5px;
             color: #c0c0c0;
-            font-weight: bold;
-            text-shadow: 0 0 5px rgba(192, 192, 192, 0.5);
+            margin-bottom: 8px;
+            font-weight: 500;
         }
 
-        .form-group input, .form-group select, .form-group textarea {
-            width: 100%;
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
             padding: 12px;
-            border: 2px solid #4169e1;
+            border: 2px solid rgba(255, 255, 255, 0.3);
             border-radius: 8px;
-            background: rgba(0, 0, 139, 0.3);
+            background: rgba(255, 255, 255, 0.1);
             color: #ffffff;
             font-size: 14px;
             transition: all 0.3s ease;
         }
 
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
             outline: none;
             border-color: #00ffff;
-            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-            background: rgba(0, 0, 139, 0.5);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.3);
         }
 
         .form-group textarea {
             resize: vertical;
-            min-height: 80px;
+            min-height: 100px;
+        }
+
+        /* Select múltiplo com filtro */
+        .select-container {
+            position: relative;
+        }
+
+        .select-filter {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .select-filter::placeholder {
+            color: #a0a0a0;
+        }
+
+        .propostas-list {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 10px;
+        }
+
+        .proposta-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.2s ease;
+        }
+
+        .proposta-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .proposta-item input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .proposta-item.selected {
+            background: rgba(0, 255, 255, 0.2);
+            border: 1px solid rgba(0, 255, 255, 0.5);
         }
 
         .btn {
-            padding: 12px 25px;
+            padding: 12px 24px;
             border: none;
             border-radius: 8px;
             cursor: pointer;
             font-size: 14px;
-            font-weight: bold;
-            transition: all 0.3s ease;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(45deg, #4169e1, #00bfff);
-            color: white;
-            box-shadow: 0 0 15px rgba(65, 105, 225, 0.4);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 25px rgba(65, 105, 225, 0.6);
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .btn-success {
-            background: linear-gradient(45deg, #32cd32, #00ff7f);
+            background: linear-gradient(45deg, #28a745, #20c997);
             color: white;
-            box-shadow: 0 0 15px rgba(50, 205, 50, 0.4);
         }
 
         .btn-success:hover {
             transform: translateY(-2px);
-            box-shadow: 0 0 25px rgba(50, 205, 50, 0.6);
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
         }
 
-        .btn-danger {
-            background: linear-gradient(45deg, #dc143c, #ff6347);
+        .btn-secondary {
+            background: linear-gradient(45deg, #6c757d, #5a6268);
             color: white;
-            box-shadow: 0 0 15px rgba(220, 20, 60, 0.4);
         }
 
-        .btn-danger:hover {
+        .btn-secondary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 0 25px rgba(220, 20, 60, 0.6);
+            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
         }
 
         .btn-info {
-            background: linear-gradient(45deg, #00bfff, #87ceeb);
+            background: linear-gradient(45deg, #17a2b8, #138496);
             color: white;
-            box-shadow: 0 0 15px rgba(0, 191, 255, 0.4);
         }
 
-        .btn-info:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 0 25px rgba(0, 191, 255, 0.6);
+        .btn-primary {
+            background: linear-gradient(45deg, #007bff, #0056b3);
+            color: white;
         }
 
-        .obras-table {
+        .btn-danger {
+            background: linear-gradient(45deg, #dc3545, #c82333);
+            color: white;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        .table-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow-x: auto;
+        }
+
+        .table-container h2 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        table {
             width: 100%;
             border-collapse: collapse;
-            background: rgba(25, 25, 112, 0.4);
-            border-radius: 15px;
-            overflow: hidden;
-            border: 2px solid #4169e1;
-            box-shadow: 0 0 20px rgba(65, 105, 225, 0.3);
+            min-width: 1200px;
         }
 
-        .obras-table th {
-            background: linear-gradient(45deg, #000080, #4169e1);
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.1);
             color: #ffffff;
-            padding: 15px 10px;
-            text-align: center;
-            font-weight: bold;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-            border-bottom: 2px solid #00ffff;
-            font-size: 12px;
-        }
-
-        .obras-table td {
-            padding: 12px 8px;
-            text-align: center;
-            border-bottom: 1px solid rgba(65, 105, 225, 0.3);
-            color: #e0e0e0;
-            font-size: 12px;
-        }
-
-        .obras-table tr:hover {
-            background: rgba(65, 105, 225, 0.2);
-        }
-
-        .status-badge {
-            padding: 5px 10px;
-            border-radius: 15px;
-            font-size: 11px;
-            font-weight: bold;
+            font-weight: 600;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
+            font-size: 12px;
+            position: relative;
         }
 
-        .status-a-iniciar {
-            background: linear-gradient(45deg, #ffa500, #ff8c00);
-            color: white;
-            box-shadow: 0 0 10px rgba(255, 165, 0, 0.5);
+        /* Tooltips para as siglas */
+        .tooltip {
+            position: relative;
+            cursor: help;
+            border-bottom: 1px dotted #00ffff;
         }
 
-        .status-em-andamento {
-            background: linear-gradient(45deg, #1e90ff, #00bfff);
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 125%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.9);
             color: white;
-            box-shadow: 0 0 10px rgba(30, 144, 255, 0.5);
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1000;
         }
 
-        .status-concluida {
-            background: linear-gradient(45deg, #32cd32, #00ff7f);
-            color: white;
-            box-shadow: 0 0 10px rgba(50, 205, 50, 0.5);
-        }
-
-        .status-pagamento-pendente {
-            background: linear-gradient(45deg, #ff6347, #dc143c);
-            color: white;
-            box-shadow: 0 0 10px rgba(255, 99, 71, 0.5);
+        .tooltip:hover::after {
+            opacity: 1;
+            visibility: visible;
         }
 
         .valor-cell {
-            font-weight: bold;
-            color: #00ff7f;
-            text-shadow: 0 0 5px rgba(0, 255, 127, 0.5);
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .valor-positivo {
+            color: #28a745;
         }
 
         .valor-negativo {
-            color: #ff6347;
-            text-shadow: 0 0 5px rgba(255, 99, 71, 0.5);
+            color: #dc3545;
         }
 
-        /* Modal Styles */
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-a-iniciar {
+            background: #6c757d;
+            color: white;
+        }
+
+        .status-em-andamento {
+            background: #ffc107;
+            color: #000;
+        }
+
+        .status-concluida {
+            background: #28a745;
+            color: white;
+        }
+
+        .status-pagamento-pendente {
+            background: #dc3545;
+            color: white;
+        }
+
+        .no-items {
+            text-align: center;
+            color: #a0a0a0;
+            font-style: italic;
+            padding: 40px;
+        }
+
+        /* Modais */
         .modal {
             display: none;
             position: fixed;
@@ -242,19 +339,19 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
         }
 
         .modal-content {
             background: linear-gradient(135deg, #000080 0%, #191970 100%);
             margin: 5% auto;
-            padding: 20px;
-            border: 2px solid #4169e1;
+            padding: 30px;
             border-radius: 15px;
             width: 90%;
             max-width: 800px;
             max-height: 80vh;
             overflow-y: auto;
-            box-shadow: 0 0 30px rgba(65, 105, 225, 0.5);
+            border: 2px solid rgba(255, 255, 255, 0.3);
         }
 
         .modal-header {
@@ -262,240 +359,170 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #4169e1;
+            padding-bottom: 15px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
         }
 
-        .modal-header h2 {
+        .modal-header h3 {
             color: #ffffff;
-            text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
             margin: 0;
         }
 
         .close {
-            color: #ff6347;
+            color: #aaa;
             font-size: 28px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease;
+            transition: color 0.3s ease;
         }
 
         .close:hover {
-            color: #ff0000;
-            text-shadow: 0 0 10px rgba(255, 0, 0, 0.8);
+            color: #fff;
         }
 
-        .servicos-list, .medicoes-list {
+        .item-list {
             max-height: 300px;
             overflow-y: auto;
-            border: 2px solid #4169e1;
-            border-radius: 10px;
-            padding: 10px;
-            background: rgba(0, 0, 139, 0.2);
+            margin-bottom: 20px;
         }
 
-        .servico-item, .medicao-item {
-            background: rgba(25, 25, 112, 0.6);
+        .servico-item,
+        .medicao-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
             padding: 15px;
             margin-bottom: 10px;
-            border-radius: 10px;
-            border: 1px solid #4169e1;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
         }
 
-        .servico-info, .medicao-info {
+        .servico-info,
+        .medicao-info {
             flex: 1;
-            min-width: 200px;
         }
 
-        .servico-actions, .medicao-actions {
+        .servico-actions,
+        .medicao-actions {
             display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
+            gap: 8px;
         }
 
         .toggle-btn {
-            padding: 8px 15px;
+            padding: 6px 12px;
             border: none;
-            border-radius: 5px;
+            border-radius: 6px;
             cursor: pointer;
             font-size: 12px;
-            font-weight: bold;
+            font-weight: 600;
             transition: all 0.3s ease;
         }
 
         .toggle-btn.active {
-            background: linear-gradient(45deg, #32cd32, #00ff7f);
+            background: #28a745;
             color: white;
-            box-shadow: 0 0 10px rgba(50, 205, 50, 0.5);
         }
 
         .toggle-btn.inactive {
-            background: rgba(128, 128, 128, 0.5);
-            color: #c0c0c0;
-            border: 1px solid #808080;
+            background: #6c757d;
+            color: white;
         }
 
-        .btn-small {
-            padding: 6px 12px;
-            font-size: 12px;
+        .form-buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: flex-end;
+            margin-top: 20px;
         }
 
-        .no-items {
-            text-align: center;
-            color: #c0c0c0;
-            font-style: italic;
-            padding: 20px;
-        }
-
-        /* Responsividade */
         @media (max-width: 768px) {
-            .main-content {
-                margin-left: 0;
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .container {
                 padding: 10px;
             }
-
-            .main-content.sidebar-collapsed {
-                margin-left: 0;
+            
+            .header h1 {
+                font-size: 2rem;
             }
-
-            .form-row {
-                flex-direction: column;
+            
+            table {
+                font-size: 12px;
             }
-
-            .form-group {
-                min-width: 100%;
+            
+            th, td {
+                padding: 8px;
             }
-
-            .obras-table {
-                font-size: 10px;
-            }
-
-            .obras-table th, .obras-table td {
-                padding: 8px 4px;
-            }
-
-            .modal-content {
-                width: 95%;
-                margin: 2% auto;
-                padding: 15px;
-            }
-
-            .servico-item, .medicao-item {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .servico-actions, .medicao-actions {
-                justify-content: center;
-            }
-        }
-
-        /* Tooltips para siglas */
-        .tooltip {
-            position: relative;
-            cursor: help;
-        }
-
-        .tooltip:hover::after {
-            content: attr(data-tooltip);
-            position: absolute;
-            bottom: 125%;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.9);
-            color: white;
-            padding: 8px 12px;
-            border-radius: 5px;
-            font-size: 12px;
-            white-space: nowrap;
-            z-index: 1001;
-            border: 1px solid #4169e1;
-        }
-
-        .tooltip:hover::before {
-            content: '';
-            position: absolute;
-            bottom: 115%;
-            left: 50%;
-            transform: translateX(-50%);
-            border: 5px solid transparent;
-            border-top-color: rgba(0, 0, 0, 0.9);
-            z-index: 1001;
         }
     </style>
 </head>
-<body class="theme-hvc">
-    <div class="main-content" id="main-content">
-        <div class="page-header">
-            <div class="icon">🏗️</div>
-            <h1>Obras HVC</h1>
-        </div>
-
-        <!-- Formulário para Nova Obra -->
-        <div class="form-container">
-            <h2 style="color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); margin-bottom: 20px;">
-                <i class="fas fa-plus-circle"></i> Nova Obra
-            </h2>
-            
-            <form id="obra-form">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="numero-obra">Número da Obra *</label>
-                        <input type="text" id="numero-obra" placeholder="Ex: 0001/2024" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="propostas-obra">Propostas (Aprovadas) *</label>
-                        <select id="propostas-obra" multiple required style="height: 120px;">
-                            <!-- Preenchido dinamicamente -->
-                        </select>
-                    </div>
+<body>
+    <div id="main-content">
+        <div class="container">
+            <div class="header">
+                <div class="icon">
+                    <i class="fas fa-hard-hat"></i>
                 </div>
+                <h1>Obras HVC</h1>
+            </div>
 
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="cliente-obra">Cliente</label>
-                        <input type="text" id="cliente-obra" readonly style="background: rgba(128, 128, 128, 0.3);">
+            <div class="form-section">
+                <h2><i class="fas fa-plus"></i> Nova Obra</h2>
+                <form id="obra-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="numero-obra">Número da Obra *</label>
+                            <input type="text" id="numero-obra" placeholder="Ex: 0001/2024" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="nome-obra">Nome da Obra *</label>
+                            <input type="text" id="nome-obra" placeholder="Ex: Impermeabilização Edifício Central" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cliente-obra">Cliente</label>
+                            <input type="text" id="cliente-obra" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="valor-total-obra">Valor Total da Obra</label>
+                            <input type="text" id="valor-total-obra" readonly>
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label for="valor-total-obra">Valor Total da Obra</label>
-                        <input type="text" id="valor-total-obra" readonly style="background: rgba(128, 128, 128, 0.3);">
-                    </div>
-                </div>
 
-                <div class="form-row">
+                    <div class="form-group">
+                        <label for="propostas-filter">Propostas Aprovadas *</label>
+                        <div class="select-container">
+                            <input type="text" id="propostas-filter" class="select-filter" placeholder="Digite para filtrar propostas...">
+                            <div id="propostas-list" class="propostas-list">
+                                <!-- Propostas serão carregadas aqui -->
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="form-group">
                         <label for="observacoes-obra">Observações</label>
                         <textarea id="observacoes-obra" placeholder="Observações sobre a obra..."></textarea>
                     </div>
-                </div>
 
-                <div class="form-row">
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-save"></i> Salvar Obra
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="limparFormulario()">
-                        <i class="fas fa-broom"></i> Limpar
-                    </button>
-                </div>
-            </form>
-        </div>
+                    <div class="form-buttons">
+                        <button type="button" class="btn btn-secondary" onclick="limparFormulario()">
+                            <i class="fas fa-broom"></i> Limpar
+                        </button>
+                        <button type="submit" class="btn btn-success">
+                            <i class="fas fa-save"></i> Salvar Obra
+                        </button>
+                    </div>
+                </form>
+            </div>
 
-        <!-- Lista de Obras -->
-        <div class="form-container">
-            <h2 style="color: #ffffff; text-shadow: 0 0 10px rgba(255, 255, 255, 0.5); margin-bottom: 20px;">
-                <i class="fas fa-list"></i> Lista de Obras
-            </h2>
-            
-            <div style="overflow-x: auto;">
-                <table class="obras-table">
+            <div class="table-container">
+                <h2><i class="fas fa-list"></i> Lista de Obras</h2>
+                <table>
                     <thead>
                         <tr>
                             <th>Número</th>
+                            <th>Nome</th>
                             <th>Cliente</th>
                             <th>Valor Total</th>
                             <th class="tooltip" data-tooltip="Valor Total Medido">VTM</th>
@@ -510,7 +537,7 @@
                     </thead>
                     <tbody id="obras-tbody">
                         <tr>
-                            <td colspan="11" class="no-items">Nenhuma obra cadastrada</td>
+                            <td colspan="12" class="no-items">Nenhuma obra cadastrada</td>
                         </tr>
                     </tbody>
                 </table>
@@ -518,54 +545,56 @@
         </div>
     </div>
 
-    <!-- Modal de Serviços -->
+    <!-- Modal Serviços -->
     <div id="modal-servicos" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-tools"></i> Gerenciar Serviços - Obra <span id="modal-servicos-obra"></span></h2>
+                <h3>Serviços da Obra <span id="modal-servicos-obra"></span></h3>
                 <span class="close" onclick="fecharModal('modal-servicos')">&times;</span>
             </div>
             
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="novo-servico">Novo Serviço</label>
-                    <input type="text" id="novo-servico" placeholder="Descrição do serviço">
-                </div>
-                <button type="button" class="btn btn-success btn-small" onclick="adicionarServico()">
-                    <i class="fas fa-plus"></i> Adicionar
-                </button>
+            <div id="servicos-list" class="item-list">
+                <!-- Serviços serão carregados aqui -->
             </div>
 
-            <div class="servicos-list" id="servicos-list">
-                <div class="no-items">Nenhum serviço adicionado</div>
+            <div class="form-group">
+                <label for="novo-servico">Novo Serviço</label>
+                <input type="text" id="novo-servico" placeholder="Descrição do serviço">
+            </div>
+
+            <div class="form-buttons">
+                <button class="btn btn-success" onclick="adicionarServico()">
+                    <i class="fas fa-plus"></i> Adicionar
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Medições -->
+    <!-- Modal Medições -->
     <div id="modal-medicoes" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-ruler"></i> Gerenciar Medições - Obra <span id="modal-medicoes-obra"></span></h2>
+                <h3>Medições da Obra <span id="modal-medicoes-obra"></span></h3>
                 <span class="close" onclick="fecharModal('modal-medicoes')">&times;</span>
             </div>
             
-            <div class="form-row">
+            <div id="medicoes-list" class="item-list">
+                <!-- Medições serão carregadas aqui -->
+            </div>
+
+            <div class="form-grid">
                 <div class="form-group">
                     <label for="numero-medicao">Número da Medição</label>
-                    <input type="text" id="numero-medicao" placeholder="Ex: 001/0001" readonly style="background: rgba(128, 128, 128, 0.3);">
+                    <input type="text" id="numero-medicao" readonly>
                 </div>
                 <div class="form-group">
                     <label for="data-medicao">Data da Medição</label>
-                    <input type="date" id="data-medicao">
+                    <input type="date" id="data-medicao" required>
                 </div>
                 <div class="form-group">
                     <label for="valor-medicao">Valor da Medição</label>
                     <input type="text" id="valor-medicao" placeholder="R$ 0,00">
                 </div>
-            </div>
-
-            <div class="form-row">
                 <div class="form-group">
                     <label for="status-medicao">Status</label>
                     <select id="status-medicao">
@@ -578,43 +607,45 @@
                     <label for="retencao-adicao">Retenção/Adição</label>
                     <input type="text" id="retencao-adicao" placeholder="R$ 0,00">
                 </div>
-                <button type="button" class="btn btn-success btn-small" onclick="adicionarMedicao()">
-                    <i class="fas fa-plus"></i> Adicionar
-                </button>
             </div>
 
-            <div class="medicoes-list" id="medicoes-list">
-                <div class="no-items">Nenhuma medição adicionada</div>
+            <div class="form-buttons">
+                <button class="btn btn-success" onclick="adicionarMedicao()">
+                    <i class="fas fa-plus"></i> Adicionar
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Serviços da Medição -->
+    <!-- Modal Serviços da Medição -->
     <div id="modal-servicos-medicao" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-list-check"></i> Serviços da Medição <span id="modal-servicos-medicao-numero"></span></h2>
+                <h3>Serviços da Medição <span id="modal-servicos-medicao-numero"></span></h3>
                 <span class="close" onclick="fecharModal('modal-servicos-medicao')">&times;</span>
             </div>
             
-            <div class="form-row">
+            <div id="servicos-medicao-list" class="item-list">
+                <!-- Serviços da medição serão carregados aqui -->
+            </div>
+
+            <div class="form-grid">
                 <div class="form-group">
-                    <label for="servico-medicao">Selecionar Serviço</label>
+                    <label for="servico-medicao">Serviço</label>
                     <select id="servico-medicao">
-                        <!-- Preenchido dinamicamente -->
+                        <option value="">Selecione um serviço</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label for="observacoes-servico-medicao">Observações</label>
-                    <input type="text" id="observacoes-servico-medicao" placeholder="Observações do serviço">
+                    <textarea id="observacoes-servico-medicao" placeholder="Observações sobre o serviço..."></textarea>
                 </div>
-                <button type="button" class="btn btn-success btn-small" onclick="adicionarServicoMedicao()">
-                    <i class="fas fa-plus"></i> Adicionar
-                </button>
             </div>
 
-            <div class="servicos-list" id="servicos-medicao-list">
-                <div class="no-items">Nenhum serviço adicionado à medição</div>
+            <div class="form-buttons">
+                <button class="btn btn-success" onclick="adicionarServicoMedicao()">
+                    <i class="fas fa-plus"></i> Adicionar
+                </button>
             </div>
         </div>
     </div>
