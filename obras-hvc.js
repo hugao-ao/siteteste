@@ -1,326 +1,207 @@
-// obras-hvc.js - Gerenciamento de Obras HVC
-import { supabase } from "./supabase.js";
+// obras-hvc.js - Gerenciamento de Obras HVC (ATUALIZADO com valor de medição e cálculos)
 
-// Elementos DOM
-const addObraForm = document.getElementById("add-obra-form");
-const obraNumeroInput = document.getElementById("obra-numero");
-const obraObservacoesTextarea = document.getElementById("obra-observacoes");
-const propostasSelection = document.getElementById("propostas-selection");
-const obrasTableBody = document.querySelector("#obras-table tbody");
-
-// Modais
-const servicosModal = document.getElementById("servicos-modal");
-const medicoesModal = document.getElementById("medicoes-modal");
-const servicosMedicaoModal = document.getElementById("servicos-medicao-modal");
-
-// Elementos dos modais
-const modalCloseServicos = document.getElementById("modal-close-servicos");
-const modalCloseMedicoes = document.getElementById("modal-close-medicoes");
-const modalCloseServicosMedicao = document.getElementById("modal-close-servicos-medicao");
-
-const obraInfoModal = document.getElementById("obra-info-modal");
-const obraMedicoesInfo = document.getElementById("obra-medicoes-info");
-const medicaoInfoModal = document.getElementById("medicao-info-modal");
-
-// Formulários dos modais
-const addServicoForm = document.getElementById("add-servico-form");
-const addMedicaoForm = document.getElementById("add-medicao-form");
-const addServicoMedicaoForm = document.getElementById("add-servico-medicao-form");
-
-const servicoNomeInput = document.getElementById("servico-nome");
-const medicaoNumeroInput = document.getElementById("medicao-numero");
-const medicaoDataInput = document.getElementById("medicao-data");
-const medicaoStatusSelect = document.getElementById("medicao-status");
-const servicoMedicaoSelect = document.getElementById("servico-medicao-select");
-const servicoObservacoesTextarea = document.getElementById("servico-observacoes");
-
-// Listas dos modais
-const servicosList = document.getElementById("servicos-list");
-const medicoesList = document.getElementById("medicoes-list");
-const servicosMedicaoList = document.getElementById("servicos-medicao-list");
+import { injectSidebar } from './sidebar.js';
 
 // Variáveis globais
-let currentObraId = null;
-let currentMedicaoId = null;
-let propostas = [];
-let obras = [];
-let selectedPropostas = [];
+let supabase;
+let obraAtual = null;
+let medicaoAtual = null;
+let proximoNumeroObra = 1;
 
-// Verificação de acesso
-async function checkAccess() {
-    const userLevel = sessionStorage.getItem("nivel");
-    const userProject = sessionStorage.getItem("projeto");
+// Inicialização
+document.addEventListener('DOMContentLoaded', async function() {
+    // Verifica autenticação
+    const nivel = sessionStorage.getItem('nivel');
+    const projeto = sessionStorage.getItem('projeto');
     
-    if (userLevel !== 'admin' && userProject !== 'Hvc') {
-        alert("Acesso não autorizado. Esta funcionalidade é exclusiva do projeto HVC.");
-        window.location.href = "index.html";
-        return false;
+    if (!nivel || (nivel !== 'admin' && projeto !== 'Hvc')) {
+        alert('Acesso negado. Esta página é restrita ao projeto HVC.');
+        window.location.href = 'index.html';
+        return;
     }
-    return true;
-}
 
-// Formatação de número da obra
-function formatNumeroObra(value) {
-    const numbers = value.replace(/\D/g, '');
-    const limitedNumbers = numbers.slice(0, 4);
+    // Injeta sidebar
+    await injectSidebar('main-content');
+
+    // Importa Supabase
+    const supabaseModule = await import('./supabase.js');
+    supabase = supabaseModule.default;
+
+    // Inicializa a página
+    await inicializarPagina();
     
-    if (limitedNumbers.length === 1) {
-        return `000${limitedNumbers}`;
-    } else if (limitedNumbers.length === 2) {
-        return `00${limitedNumbers}`;
-    } else if (limitedNumbers.length === 3) {
-        return `0${limitedNumbers}`;
-    } else {
-        return limitedNumbers;
-    }
-}
-
-// Formatação de número da medição
-function formatNumeroMedicao(value) {
-    const numbers = value.replace(/\D/g, '');
-    const limitedNumbers = numbers.slice(0, 3);
-    
-    if (limitedNumbers.length === 1) {
-        return `00${limitedNumbers}`;
-    } else if (limitedNumbers.length === 2) {
-        return `0${limitedNumbers}`;
-    } else {
-        return limitedNumbers;
-    }
-}
-
-// Formatação em tempo real
-obraNumeroInput.addEventListener('input', (e) => {
-    e.target.value = formatNumeroObra(e.target.value);
+    // Event listeners
+    document.getElementById('obra-form').addEventListener('submit', salvarObra);
+    document.getElementById('propostas-obra').addEventListener('change', atualizarClienteValor);
+    document.getElementById('numero-obra').addEventListener('input', formatarNumeroObra);
+    document.getElementById('valor-medicao').addEventListener('input', formatarValorMonetario);
+    document.getElementById('retencao-adicao').addEventListener('input', formatarValorMonetario);
 });
 
-medicaoNumeroInput.addEventListener('input', (e) => {
-    e.target.value = formatNumeroMedicao(e.target.value);
-});
+// Inicializar página
+async function inicializarPagina() {
+    try {
+        await carregarPropostasAprovadas();
+        await carregarObras();
+        await definirProximoNumero();
+    } catch (error) {
+        console.error('Erro ao inicializar página:', error);
+        alert('Erro ao carregar dados da página.');
+    }
+}
 
 // Carregar propostas aprovadas
-async function loadPropostasAprovadas() {
+async function carregarPropostasAprovadas() {
     try {
-        const { data, error } = await supabase
+        const { data: propostas, error } = await supabase
             .from('propostas_hvc')
             .select(`
-                *,
-                clientes_hvc (
-                    id,
-                    nome
-                )
+                id,
+                numero_proposta,
+                valor,
+                clientes_hvc (nome)
             `)
-            .eq('status', 'Aprovada')
-            .order('numero_proposta');
+            .eq('status', 'aprovada');
 
         if (error) throw error;
 
-        propostas = data || [];
-        renderPropostasSelection();
+        const select = document.getElementById('propostas-obra');
+        select.innerHTML = '';
+
+        propostas.forEach(proposta => {
+            const option = document.createElement('option');
+            option.value = proposta.id;
+            option.textContent = `${proposta.numero_proposta} - ${proposta.clientes_hvc.nome} - ${formatarMoeda(proposta.valor)}`;
+            option.dataset.cliente = proposta.clientes_hvc.nome;
+            option.dataset.valor = proposta.valor;
+            select.appendChild(option);
+        });
+
     } catch (error) {
         console.error('Erro ao carregar propostas:', error);
         alert('Erro ao carregar propostas aprovadas.');
     }
 }
 
-// Renderizar seleção de propostas
-function renderPropostasSelection() {
-    if (propostas.length === 0) {
-        propostasSelection.innerHTML = '<p style="text-align: center; color: #c0c0c0;">Nenhuma proposta aprovada disponível</p>';
+// Atualizar cliente e valor total baseado nas propostas selecionadas
+function atualizarClienteValor() {
+    const select = document.getElementById('propostas-obra');
+    const selectedOptions = Array.from(select.selectedOptions);
+    
+    if (selectedOptions.length === 0) {
+        document.getElementById('cliente-obra').value = '';
+        document.getElementById('valor-total-obra').value = '';
         return;
     }
 
-    propostasSelection.innerHTML = propostas.map(proposta => {
-        const valorFormatado = parseFloat(proposta.valor).toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        });
+    // Pega o cliente da primeira proposta (assumindo que todas são do mesmo cliente)
+    const cliente = selectedOptions[0].dataset.cliente;
+    document.getElementById('cliente-obra').value = cliente;
 
-        return `
-            <div class="proposta-checkbox" onclick="toggleProposta('${proposta.id}')">
-                <input type="checkbox" id="prop-${proposta.id}" style="margin-right: 0.5rem;">
-                <label for="prop-${proposta.id}" style="cursor: pointer;">
-                    <strong>${proposta.numero_proposta}</strong><br>
-                    Cliente: ${proposta.clientes_hvc?.nome}<br>
-                    Valor: ${valorFormatado}
-                </label>
-            </div>
-        `;
-    }).join('');
-}
-
-// Toggle seleção de proposta
-window.toggleProposta = (propostaId) => {
-    const checkbox = document.getElementById(`prop-${propostaId}`);
-    const container = checkbox.parentElement;
-    
-    checkbox.checked = !checkbox.checked;
-    
-    if (checkbox.checked) {
-        container.classList.add('selected');
-        if (!selectedPropostas.includes(propostaId)) {
-            selectedPropostas.push(propostaId);
-        }
-    } else {
-        container.classList.remove('selected');
-        selectedPropostas = selectedPropostas.filter(id => id !== propostaId);
-    }
-    
-    updateValorTotal();
-};
-
-// Atualizar valor total
-function updateValorTotal() {
-    const total = selectedPropostas.reduce((sum, propostaId) => {
-        const proposta = propostas.find(p => p.id === propostaId);
-        return sum + (proposta ? parseFloat(proposta.valor) : 0);
+    // Soma os valores das propostas selecionadas
+    const valorTotal = selectedOptions.reduce((total, option) => {
+        return total + parseFloat(option.dataset.valor || 0);
     }, 0);
-    
-    // Você pode adicionar um elemento para mostrar o total se quiser
-    console.log('Valor total selecionado:', total);
+
+    document.getElementById('valor-total-obra').value = formatarMoeda(valorTotal);
 }
 
-// Carregar obras
-async function loadObras() {
+// Definir próximo número de obra
+async function definirProximoNumero() {
     try {
-        const { data, error } = await supabase
+        const anoAtual = new Date().getFullYear();
+        
+        const { data: obras, error } = await supabase
             .from('obras_hvc')
-            .select(`
-                *,
-                clientes_hvc (
-                    id,
-                    nome
-                ),
-                propostas_obra_hvc (
-                    proposta_id,
-                    propostas_hvc (
-                        numero_proposta,
-                        valor
-                    )
-                )
-            `)
-            .order('numero_obra');
+            .select('numero_obra')
+            .like('numero_obra', `%/${anoAtual}`);
 
         if (error) throw error;
 
-        obras = data || [];
-        renderObras();
-    } catch (error) {
-        console.error('Erro ao carregar obras:', error);
-        alert('Erro ao carregar obras.');
-    }
-}
-
-// Renderizar tabela de obras
-function renderObras() {
-    if (obras.length === 0) {
-        obrasTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhuma obra cadastrada</td></tr>';
-        return;
-    }
-
-    obrasTableBody.innerHTML = obras.map(obra => {
-        const valorFormatado = parseFloat(obra.valor_total).toLocaleString('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
+        let maiorNumero = 0;
+        obras.forEach(obra => {
+            const numero = parseInt(obra.numero_obra.split('/')[0]);
+            if (numero > maiorNumero) {
+                maiorNumero = numero;
+            }
         });
 
-        const statusClass = `status-${obra.status.toLowerCase().replace(/\s+/g, '-')}`;
+        proximoNumeroObra = maiorNumero + 1;
+        const numeroFormatado = proximoNumeroObra.toString().padStart(4, '0') + '/' + anoAtual;
+        document.getElementById('numero-obra').value = numeroFormatado;
 
-        return `
-            <tr>
-                <td data-label="Número">${obra.numero_obra}</td>
-                <td data-label="Cliente">${obra.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td data-label="Valor Total">${valorFormatado}</td>
-                <td data-label="Status">
-                    <span class="status-badge ${statusClass}">${obra.status}</span>
-                </td>
-                <td data-label="Serviços">
-                    <button class="hvc-btn" onclick="openServicosModal('${obra.id}', '${obra.numero_obra}')" style="padding: 0.5rem 1rem;">
-                        <i class="fas fa-tools"></i> Gerenciar
-                    </button>
-                </td>
-                <td data-label="Medições">
-                    <button class="hvc-btn" onclick="openMedicoesModal('${obra.id}', '${obra.numero_obra}')" style="padding: 0.5rem 1rem;">
-                        <i class="fas fa-ruler"></i> Gerenciar
-                    </button>
-                </td>
-                <td data-label="Ações">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="hvc-btn" onclick="editObservacoes('${obra.id}', '${obra.observacoes || ''}')" style="padding: 0.5rem;">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="hvc-btn hvc-btn-danger" onclick="deleteObra('${obra.id}')" style="padding: 0.5rem;">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
+    } catch (error) {
+        console.error('Erro ao definir próximo número:', error);
+    }
 }
 
-// Adicionar obra
-addObraForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const numero = obraNumeroInput.value.trim();
-    const observacoes = obraObservacoesTextarea.value.trim();
-    
-    if (!numero) {
-        alert('Por favor, insira o número da obra.');
-        return;
+// Formatação de número de obra
+function formatarNumeroObra(event) {
+    let valor = event.target.value.replace(/\D/g, '');
+    if (valor.length > 4) {
+        valor = valor.substring(0, 4);
     }
     
-    if (selectedPropostas.length === 0) {
-        alert('Por favor, selecione pelo menos uma proposta.');
-        return;
+    const anoAtual = new Date().getFullYear();
+    if (valor) {
+        valor = valor.padStart(4, '0') + '/' + anoAtual;
     }
     
-    // Calcular valor total e cliente
-    const valorTotal = selectedPropostas.reduce((sum, propostaId) => {
-        const proposta = propostas.find(p => p.id === propostaId);
-        return sum + (proposta ? parseFloat(proposta.valor) : 0);
-    }, 0);
-    
-    // Pegar cliente da primeira proposta (assumindo que todas são do mesmo cliente)
-    const primeiraProposta = propostas.find(p => p.id === selectedPropostas[0]);
-    const clienteId = primeiraProposta?.cliente_id;
-    
-    if (!clienteId) {
-        alert('Erro ao identificar o cliente das propostas selecionadas.');
-        return;
-    }
-    
-    // Formatar número completo com ano
-    const currentYear = new Date().getFullYear();
-    const numeroCompleto = `${numero}/${currentYear}`;
+    event.target.value = valor;
+}
+
+// Formatação de valores monetários
+function formatarValorMonetario(event) {
+    let valor = event.target.value.replace(/\D/g, '');
+    valor = (valor / 100).toFixed(2);
+    valor = valor.replace('.', ',');
+    valor = valor.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    event.target.value = 'R$ ' + valor;
+}
+
+// Salvar obra
+async function salvarObra(event) {
+    event.preventDefault();
     
     try {
-        // Inserir obra
-        const { data: obraData, error: obraError } = await supabase
-            .from('obras_hvc')
-            .insert([{
-                numero_obra: numeroCompleto,
-                cliente_id: clienteId,
-                valor_total: valorTotal,
-                observacoes: observacoes || null
-            }])
-            .select()
-            .single();
+        const numeroObra = document.getElementById('numero-obra').value;
+        const propostasSelecionadas = Array.from(document.getElementById('propostas-obra').selectedOptions);
+        const observacoes = document.getElementById('observacoes-obra').value;
 
-        if (obraError) {
-            if (obraError.code === '23505') {
-                alert('Já existe uma obra com este número.');
-            } else {
-                throw obraError;
-            }
+        if (!numeroObra || propostasSelecionadas.length === 0) {
+            alert('Preencha todos os campos obrigatórios.');
             return;
         }
 
-        // Associar propostas à obra
-        const propostasObra = selectedPropostas.map(propostaId => ({
-            obra_id: obraData.id,
-            proposta_id: propostaId
+        // Verifica se o número já existe
+        const { data: obraExistente } = await supabase
+            .from('obras_hvc')
+            .select('id')
+            .eq('numero_obra', numeroObra)
+            .single();
+
+        if (obraExistente) {
+            alert('Número de obra já existe. Escolha outro número.');
+            return;
+        }
+
+        // Salva a obra
+        const { data: obra, error: obraError } = await supabase
+            .from('obras_hvc')
+            .insert({
+                numero_obra: numeroObra,
+                observacoes: observacoes || null,
+                status: 'a_iniciar'
+            })
+            .select()
+            .single();
+
+        if (obraError) throw obraError;
+
+        // Associa as propostas à obra
+        const propostasObra = propostasSelecionadas.map(option => ({
+            obra_id: obra.id,
+            proposta_id: parseInt(option.value)
         }));
 
         const { error: propostasError } = await supabase
@@ -329,227 +210,293 @@ addObraForm.addEventListener('submit', async (e) => {
 
         if (propostasError) throw propostasError;
 
-        // Limpar formulário
-        addObraForm.reset();
-        selectedPropostas = [];
-        document.querySelectorAll('.proposta-checkbox').forEach(el => {
-            el.classList.remove('selected');
-            el.querySelector('input').checked = false;
-        });
-        
-        // Recarregar listas
-        await loadObras();
-        await loadPropostasAprovadas(); // Recarregar para remover propostas já usadas
-        
-        alert('Obra adicionada com sucesso!');
-    } catch (error) {
-        console.error('Erro ao adicionar obra:', error);
-        alert('Erro ao adicionar obra. Verifique o console.');
-    }
-});
+        alert('Obra salva com sucesso!');
+        limparFormulario();
+        await carregarObras();
+        await definirProximoNumero();
 
-// Editar observações
-window.editObservacoes = async (obraId, observacoesAtuais) => {
-    const novasObservacoes = prompt('Observações da obra:', observacoesAtuais);
-    
-    if (novasObservacoes === null) return; // Cancelou
-    
+    } catch (error) {
+        console.error('Erro ao salvar obra:', error);
+        alert('Erro ao salvar obra: ' + error.message);
+    }
+}
+
+// Carregar obras
+async function carregarObras() {
     try {
-        const { error } = await supabase
+        const { data: obras, error } = await supabase
             .from('obras_hvc')
-            .update({ observacoes: novasObservacoes.trim() || null })
-            .eq('id', obraId);
+            .select(`
+                *,
+                propostas_obra_hvc (
+                    propostas_hvc (
+                        numero_proposta,
+                        valor,
+                        clientes_hvc (nome)
+                    )
+                )
+            `)
+            .order('numero_obra', { ascending: false });
 
         if (error) throw error;
 
-        await loadObras();
-        alert('Observações atualizadas com sucesso!');
-    } catch (error) {
-        console.error('Erro ao atualizar observações:', error);
-        alert('Erro ao atualizar observações.');
-    }
-};
+        const tbody = document.getElementById('obras-tbody');
+        tbody.innerHTML = '';
 
-// Excluir obra
-window.deleteObra = async (obraId) => {
-    if (!confirm('Tem certeza que deseja excluir esta obra? Esta ação não pode ser desfeita e excluirá todos os serviços e medições associados.')) {
-        return;
+        if (obras.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="11" class="no-items">Nenhuma obra cadastrada</td></tr>';
+            return;
+        }
+
+        for (const obra of obras) {
+            // Calcular valores da obra
+            const valores = await calcularValoresObra(obra.id);
+            
+            const cliente = obra.propostas_obra_hvc[0]?.propostas_hvc?.clientes_hvc?.nome || 'N/A';
+            const valorTotal = obra.propostas_obra_hvc.reduce((total, po) => 
+                total + (po.propostas_hvc?.valor || 0), 0);
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${obra.numero_obra}</td>
+                <td>${cliente}</td>
+                <td class="valor-cell">${formatarMoeda(valorTotal)}</td>
+                <td class="valor-cell">${formatarMoeda(valores.valorTotalMedido)}</td>
+                <td class="valor-cell">${formatarMoeda(valores.valorTotalRecebido)}</td>
+                <td class="valor-cell ${valores.valorMedidoNaoRecebido > 0 ? 'valor-negativo' : ''}">${formatarMoeda(valores.valorMedidoNaoRecebido)}</td>
+                <td class="valor-cell ${valores.valorEmAberto > 0 ? 'valor-negativo' : ''}">${formatarMoeda(valores.valorEmAberto)}</td>
+                <td><span class="status-badge status-${obra.status.replace('_', '-')}">${formatarStatus(obra.status)}</span></td>
+                <td>
+                    <button class="btn btn-info btn-small" onclick="abrirModalServicos(${obra.id}, '${obra.numero_obra}')">
+                        <i class="fas fa-tools"></i> Gerenciar
+                    </button>
+                </td>
+                <td>
+                    <button class="btn btn-primary btn-small" onclick="abrirModalMedicoes(${obra.id}, '${obra.numero_obra}')">
+                        <i class="fas fa-ruler"></i> Gerenciar
+                    </button>
+                </td>
+                <td>
+                    <button class="btn btn-danger btn-small" onclick="excluirObra(${obra.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        }
+
+    } catch (error) {
+        console.error('Erro ao carregar obras:', error);
+        alert('Erro ao carregar obras.');
     }
-    
+}
+
+// Calcular valores da obra
+async function calcularValoresObra(obraId) {
     try {
-        const { error } = await supabase
-            .from('obras_hvc')
-            .delete()
-            .eq('id', obraId);
+        // Buscar medições da obra
+        const { data: medicoes, error: medicoesError } = await supabase
+            .from('medicoes_obra_hvc')
+            .select('valor, pago')
+            .eq('obra_id', obraId);
 
-        if (error) throw error;
+        if (medicoesError) throw medicoesError;
 
-        await loadObras();
-        await loadPropostasAprovadas(); // Recarregar propostas
-        alert('Obra excluída com sucesso!');
+        // Buscar valor total das propostas
+        const { data: propostas, error: propostasError } = await supabase
+            .from('propostas_obra_hvc')
+            .select('propostas_hvc(valor)')
+            .eq('obra_id', obraId);
+
+        if (propostasError) throw propostasError;
+
+        // Buscar recebimentos do fluxo de caixa relacionados à obra
+        const { data: recebimentos, error: recebimentosError } = await supabase
+            .from('fluxo_caixa_hvc')
+            .select('valor')
+            .eq('obra_id', obraId)
+            .eq('tipo', 'recebimento')
+            .eq('pago_sem_medicao', true);
+
+        if (recebimentosError) throw recebimentosError;
+
+        // Cálculos
+        const valorTotalPropostas = propostas.reduce((total, p) => total + (p.propostas_hvc?.valor || 0), 0);
+        const valorTotalMedido = medicoes.reduce((total, m) => total + (parseFloat(m.valor) || 0), 0);
+        const valorMedicoesPagas = medicoes.filter(m => m.pago).reduce((total, m) => total + (parseFloat(m.valor) || 0), 0);
+        const valorRecebimentosSemMedicao = recebimentos.reduce((total, r) => total + (parseFloat(r.valor) || 0), 0);
+        
+        const valorTotalRecebido = valorMedicoesPagas + valorRecebimentosSemMedicao;
+        const valorMedidoNaoRecebido = valorTotalMedido - valorMedicoesPagas;
+        const valorEmAberto = valorTotalPropostas - valorTotalRecebido;
+
+        return {
+            valorTotalMedido,
+            valorTotalRecebido,
+            valorMedidoNaoRecebido,
+            valorEmAberto
+        };
+
     } catch (error) {
-        console.error('Erro ao excluir obra:', error);
-        alert('Erro ao excluir obra.');
+        console.error('Erro ao calcular valores da obra:', error);
+        return {
+            valorTotalMedido: 0,
+            valorTotalRecebido: 0,
+            valorMedidoNaoRecebido: 0,
+            valorEmAberto: 0
+        };
     }
-};
+}
 
-// Modal de serviços
-window.openServicosModal = (obraId, numeroObra) => {
-    currentObraId = obraId;
-    obraInfoModal.textContent = `Obra: ${numeroObra}`;
-    servicosModal.style.display = 'block';
-    loadServicos();
-};
-
-modalCloseServicos.addEventListener('click', () => {
-    servicosModal.style.display = 'none';
-    currentObraId = null;
-});
+// Abrir modal de serviços
+async function abrirModalServicos(obraId, numeroObra) {
+    obraAtual = obraId;
+    document.getElementById('modal-servicos-obra').textContent = numeroObra;
+    document.getElementById('modal-servicos').style.display = 'block';
+    await carregarServicos();
+}
 
 // Carregar serviços
-async function loadServicos() {
-    if (!currentObraId) return;
-    
+async function carregarServicos() {
     try {
-        const { data, error } = await supabase
+        const { data: servicos, error } = await supabase
             .from('servicos_obra_hvc')
             .select('*')
-            .eq('obra_id', currentObraId)
-            .order('created_at');
+            .eq('obra_id', obraAtual)
+            .order('id');
 
         if (error) throw error;
 
-        renderServicos(data || []);
+        const container = document.getElementById('servicos-list');
+        container.innerHTML = '';
+
+        if (servicos.length === 0) {
+            container.innerHTML = '<div class="no-items">Nenhum serviço adicionado</div>';
+            return;
+        }
+
+        servicos.forEach(servico => {
+            const div = document.createElement('div');
+            div.className = 'servico-item';
+            div.innerHTML = `
+                <div class="servico-info">
+                    <strong>${servico.descricao}</strong><br>
+                    <small>Status: ${formatarStatusServico(servico)}</small>
+                    ${servico.data_inicio ? `<br><small>Iniciado: ${formatarData(servico.data_inicio)}</small>` : ''}
+                    ${servico.data_conclusao ? `<br><small>Concluído: ${formatarData(servico.data_conclusao)}</small>` : ''}
+                </div>
+                <div class="servico-actions">
+                    <button class="toggle-btn ${servico.data_inicio ? 'active' : 'inactive'}" 
+                            onclick="toggleInicioServico(${servico.id}, ${!!servico.data_inicio})">
+                        ${servico.data_inicio ? 'Iniciado' : 'Iniciar'}
+                    </button>
+                    <button class="toggle-btn ${servico.data_conclusao ? 'active' : 'inactive'}" 
+                            onclick="toggleConclusaoServico(${servico.id}, ${!!servico.data_conclusao})">
+                        ${servico.data_conclusao ? 'Concluído' : 'Concluir'}
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="excluirServico(${servico.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
+        // Atualiza status da obra
+        await atualizarStatusObra();
+
     } catch (error) {
         console.error('Erro ao carregar serviços:', error);
         alert('Erro ao carregar serviços.');
     }
 }
 
-// Renderizar serviços
-function renderServicos(servicos) {
-    if (servicos.length === 0) {
-        servicosList.innerHTML = '<p style="text-align: center; color: #c0c0c0;">Nenhum serviço cadastrado</p>';
-        return;
-    }
-
-    servicosList.innerHTML = servicos.map(servico => `
-        <div class="servico-item">
-            <div style="display: flex; justify-content: between; align-items: center; margin-bottom: 0.5rem;">
-                <input type="text" value="${servico.nome_servico}" 
-                       onchange="updateServico('${servico.id}', 'nome_servico', this.value)"
-                       class="hvc-input" style="flex: 1; margin-right: 1rem;">
-                <button class="hvc-btn hvc-btn-danger" onclick="deleteServico('${servico.id}')" style="padding: 0.5rem;">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-            <div class="servico-controls">
-                <button class="toggle-btn ${servico.iniciado ? 'active' : 'inactive'}" 
-                        onclick="toggleServico('${servico.id}', 'iniciado', ${!servico.iniciado})">
-                    <i class="fas fa-play"></i> ${servico.iniciado ? 'Iniciado' : 'Iniciar'}
-                </button>
-                <button class="toggle-btn ${servico.concluido ? 'active' : 'inactive'}" 
-                        onclick="toggleServico('${servico.id}', 'concluido', ${!servico.concluido})">
-                    <i class="fas fa-check"></i> ${servico.concluido ? 'Concluído' : 'Concluir'}
-                </button>
-                <span class="status-badge status-${servico.status.toLowerCase().replace(/\s+/g, '-')}">${servico.status}</span>
-                ${servico.data_inicio ? `<small>Início: ${new Date(servico.data_inicio).toLocaleDateString('pt-BR')}</small>` : ''}
-                ${servico.data_conclusao ? `<small>Conclusão: ${new Date(servico.data_conclusao).toLocaleDateString('pt-BR')}</small>` : ''}
-            </div>
-        </div>
-    `).join('');
-}
-
 // Adicionar serviço
-addServicoForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
+async function adicionarServico() {
+    const descricao = document.getElementById('novo-servico').value.trim();
     
-    if (!currentObraId) return;
-    
-    const nome = servicoNomeInput.value.trim();
-    
-    if (!nome) {
-        alert('O nome do serviço é obrigatório.');
+    if (!descricao) {
+        alert('Digite a descrição do serviço.');
         return;
     }
-    
+
     try {
         const { error } = await supabase
             .from('servicos_obra_hvc')
-            .insert([{
-                obra_id: currentObraId,
-                nome_servico: nome
-            }]);
+            .insert({
+                obra_id: obraAtual,
+                descricao: descricao
+            });
 
         if (error) throw error;
 
-        servicoNomeInput.value = '';
-        await loadServicos();
-        await updateObraStatus(); // Atualizar status da obra
+        document.getElementById('novo-servico').value = '';
+        await carregarServicos();
+
     } catch (error) {
         console.error('Erro ao adicionar serviço:', error);
         alert('Erro ao adicionar serviço.');
     }
-});
+}
 
-// Atualizar serviço
-window.updateServico = async (servicoId, field, value) => {
-    if (!value.trim()) {
-        alert('O nome do serviço não pode estar vazio.');
-        await loadServicos();
-        return;
-    }
-    
-    try {
-        const { error } = await supabase
-            .from('servicos_obra_hvc')
-            .update({ [field]: value.trim() })
-            .eq('id', servicoId);
-
-        if (error) throw error;
-    } catch (error) {
-        console.error('Erro ao atualizar serviço:', error);
-        alert('Erro ao atualizar serviço.');
-        await loadServicos();
-    }
-};
-
-// Toggle status do serviço
-window.toggleServico = async (servicoId, field, newValue) => {
-    if (!newValue && !confirm(`Tem certeza que deseja desmarcar este serviço como ${field === 'iniciado' ? 'iniciado' : 'concluído'}?`)) {
-        return;
-    }
-    
-    try {
-        const updateData = { [field]: newValue };
-        
-        if (field === 'iniciado') {
-            updateData.data_inicio = newValue ? new Date().toISOString() : null;
-        } else if (field === 'concluido') {
-            updateData.data_conclusao = newValue ? new Date().toISOString() : null;
+// Toggle início do serviço
+async function toggleInicioServico(servicoId, jaIniciado) {
+    if (jaIniciado) {
+        if (!confirm('Tem certeza que deseja desmarcar o início deste serviço?')) {
+            return;
         }
+    }
 
+    try {
         const { error } = await supabase
             .from('servicos_obra_hvc')
-            .update(updateData)
+            .update({
+                data_inicio: jaIniciado ? null : new Date().toISOString()
+            })
             .eq('id', servicoId);
 
         if (error) throw error;
 
-        await loadServicos();
-        await updateObraStatus(); // Atualizar status da obra
+        await carregarServicos();
+
     } catch (error) {
-        console.error('Erro ao atualizar status do serviço:', error);
-        alert('Erro ao atualizar status do serviço.');
+        console.error('Erro ao atualizar início do serviço:', error);
+        alert('Erro ao atualizar serviço.');
     }
-};
+}
+
+// Toggle conclusão do serviço
+async function toggleConclusaoServico(servicoId, jaConcluido) {
+    if (jaConcluido) {
+        if (!confirm('Tem certeza que deseja desmarcar a conclusão deste serviço?')) {
+            return;
+        }
+    }
+
+    try {
+        const { error } = await supabase
+            .from('servicos_obra_hvc')
+            .update({
+                data_conclusao: jaConcluido ? null : new Date().toISOString()
+            })
+            .eq('id', servicoId);
+
+        if (error) throw error;
+
+        await carregarServicos();
+
+    } catch (error) {
+        console.error('Erro ao atualizar conclusão do serviço:', error);
+        alert('Erro ao atualizar serviço.');
+    }
+}
 
 // Excluir serviço
-window.deleteServico = async (servicoId) => {
+async function excluirServico(servicoId) {
     if (!confirm('Tem certeza que deseja excluir este serviço?')) {
         return;
     }
-    
+
     try {
         const { error } = await supabase
             .from('servicos_obra_hvc')
@@ -558,181 +505,234 @@ window.deleteServico = async (servicoId) => {
 
         if (error) throw error;
 
-        await loadServicos();
-        await updateObraStatus(); // Atualizar status da obra
+        await carregarServicos();
+
     } catch (error) {
         console.error('Erro ao excluir serviço:', error);
         alert('Erro ao excluir serviço.');
     }
-};
+}
 
-// Atualizar status da obra
-async function updateObraStatus() {
-    if (!currentObraId) return;
-    
+// Abrir modal de medições
+async function abrirModalMedicoes(obraId, numeroObra) {
+    obraAtual = obraId;
+    document.getElementById('modal-medicoes-obra').textContent = numeroObra;
+    document.getElementById('modal-medicoes').style.display = 'block';
+    await carregarMedicoes();
+    await definirProximoNumeroMedicao(numeroObra);
+}
+
+// Definir próximo número de medição
+async function definirProximoNumeroMedicao(numeroObra) {
     try {
-        // Buscar todos os serviços da obra
-        const { data: servicos, error: servicosError } = await supabase
-            .from('servicos_obra_hvc')
-            .select('iniciado, concluido')
-            .eq('obra_id', currentObraId);
-
-        if (servicosError) throw servicosError;
-
-        let status = 'À iniciar';
-        
-        if (servicos && servicos.length > 0) {
-            const todosIniciados = servicos.every(s => s.iniciado);
-            const todosConcluidos = servicos.every(s => s.concluido);
-            
-            if (todosConcluidos) {
-                // Verificar valores para determinar se é "Concluída" ou "Pagamento Pendente"
-                // Por enquanto, vamos deixar como "Concluída" - isso será refinado com o fluxo de caixa
-                status = 'Concluída';
-            } else if (servicos.some(s => s.iniciado)) {
-                status = 'Iniciado';
-            }
-        }
-
-        const { error } = await supabase
-            .from('obras_hvc')
-            .update({ status })
-            .eq('id', currentObraId);
+        const { data: medicoes, error } = await supabase
+            .from('medicoes_obra_hvc')
+            .select('numero_medicao')
+            .eq('obra_id', obraAtual);
 
         if (error) throw error;
 
-        await loadObras(); // Recarregar tabela principal
+        let maiorNumero = 0;
+        medicoes.forEach(medicao => {
+            const numero = parseInt(medicao.numero_medicao.split('/')[0]);
+            if (numero > maiorNumero) {
+                maiorNumero = numero;
+            }
+        });
+
+        const proximoNumero = (maiorNumero + 1).toString().padStart(3, '0');
+        document.getElementById('numero-medicao').value = `${proximoNumero}/${numeroObra}`;
+
     } catch (error) {
-        console.error('Erro ao atualizar status da obra:', error);
+        console.error('Erro ao definir próximo número de medição:', error);
     }
 }
 
-// Modal de medições
-window.openMedicoesModal = (obraId, numeroObra) => {
-    currentObraId = obraId;
-    obraMedicoesInfo.textContent = `Obra: ${numeroObra}`;
-    medicoesModal.style.display = 'block';
-    loadMedicoes();
-};
-
-modalCloseMedicoes.addEventListener('click', () => {
-    medicoesModal.style.display = 'none';
-    currentObraId = null;
-});
-
 // Carregar medições
-async function loadMedicoes() {
-    if (!currentObraId) return;
-    
+async function carregarMedicoes() {
     try {
-        const { data, error } = await supabase
+        const { data: medicoes, error } = await supabase
             .from('medicoes_obra_hvc')
             .select('*')
-            .eq('obra_id', currentObraId)
+            .eq('obra_id', obraAtual)
             .order('numero_medicao');
 
         if (error) throw error;
 
-        renderMedicoes(data || []);
+        const container = document.getElementById('medicoes-list');
+        container.innerHTML = '';
+
+        if (medicoes.length === 0) {
+            container.innerHTML = '<div class="no-items">Nenhuma medição adicionada</div>';
+            return;
+        }
+
+        medicoes.forEach(medicao => {
+            const div = document.createElement('div');
+            div.className = 'medicao-item';
+            div.innerHTML = `
+                <div class="medicao-info">
+                    <strong>Medição ${medicao.numero_medicao}</strong><br>
+                    <small>Data: ${formatarData(medicao.data_medicao)}</small><br>
+                    <small>Valor: ${formatarMoeda(medicao.valor || 0)}</small><br>
+                    <small>Status: ${formatarStatusMedicao(medicao.status)}</small><br>
+                    ${medicao.retencao_adicao ? `<small>Ret./Ad.: ${formatarMoeda(medicao.retencao_adicao)}</small><br>` : ''}
+                    <small>Pago: ${medicao.pago ? 'Sim' : 'Não'}</small>
+                </div>
+                <div class="medicao-actions">
+                    <button class="btn btn-info btn-small" onclick="editarMedicao(${medicao.id})">
+                        <i class="fas fa-edit"></i> Editar
+                    </button>
+                    <button class="btn btn-primary btn-small" onclick="abrirModalServicosMedicao(${medicao.id}, '${medicao.numero_medicao}')">
+                        <i class="fas fa-list"></i> Serviços
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="excluirMedicao(${medicao.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
     } catch (error) {
         console.error('Erro ao carregar medições:', error);
         alert('Erro ao carregar medições.');
     }
 }
 
-// Renderizar medições
-function renderMedicoes(medicoes) {
-    if (medicoes.length === 0) {
-        medicoesList.innerHTML = '<p style="text-align: center; color: #c0c0c0;">Nenhuma medição cadastrada</p>';
-        return;
-    }
-
-    medicoesList.innerHTML = medicoes.map(medicao => `
-        <div class="medicao-item">
-            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 1rem; align-items: center; margin-bottom: 1rem;">
-                <div>
-                    <strong>${medicao.numero_medicao}</strong><br>
-                    <small>Data: ${new Date(medicao.data_medicao).toLocaleDateString('pt-BR')}</small>
-                </div>
-                <div>
-                    Status: ${medicao.status_medicao}<br>
-                    <small>Pago: ${medicao.pago ? 'Sim' : 'Não'}</small>
-                </div>
-                <div>
-                    Valor: R$ ${parseFloat(medicao.valor_medicao || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}<br>
-                    <small>Ret/Add: R$ ${parseFloat(medicao.retencao_adicao || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</small>
-                </div>
-                <div style="display: flex; gap: 0.5rem;">
-                    <button class="hvc-btn" onclick="openServicosMedicaoModal('${medicao.id}', '${medicao.numero_medicao}')" style="padding: 0.5rem;">
-                        <i class="fas fa-list"></i>
-                    </button>
-                    <button class="hvc-btn hvc-btn-danger" onclick="deleteMedicao('${medicao.id}')" style="padding: 0.5rem;">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-    `).join('');
-}
-
 // Adicionar medição
-addMedicaoForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    if (!currentObraId) return;
-    
-    const numero = medicaoNumeroInput.value.trim();
-    const data = medicaoDataInput.value;
-    const status = medicaoStatusSelect.value;
-    
-    if (!numero || !data || !status) {
-        alert('Por favor, preencha todos os campos.');
+async function adicionarMedicao() {
+    const numeroMedicao = document.getElementById('numero-medicao').value;
+    const dataMedicao = document.getElementById('data-medicao').value;
+    const valorMedicao = document.getElementById('valor-medicao').value;
+    const statusMedicao = document.getElementById('status-medicao').value;
+    const retencaoAdicao = document.getElementById('retencao-adicao').value;
+
+    if (!numeroMedicao || !dataMedicao) {
+        alert('Preencha o número e a data da medição.');
         return;
     }
-    
-    // Buscar número da obra para formar o número completo da medição
-    const obra = obras.find(o => o.id === currentObraId);
-    if (!obra) {
-        alert('Obra não encontrada.');
-        return;
-    }
-    
-    const numeroCompleto = `${numero}/${obra.numero_obra}`;
-    
+
     try {
+        // Converte valores monetários
+        const valorNumerico = valorMedicao ? parseFloat(valorMedicao.replace(/[R$\s.]/g, '').replace(',', '.')) : 0;
+        const retencaoNumerico = retencaoAdicao ? parseFloat(retencaoAdicao.replace(/[R$\s.]/g, '').replace(',', '.')) : 0;
+
         const { error } = await supabase
             .from('medicoes_obra_hvc')
-            .insert([{
-                obra_id: currentObraId,
-                numero_medicao: numeroCompleto,
-                data_medicao: data,
-                status_medicao: status
-            }]);
+            .insert({
+                obra_id: obraAtual,
+                numero_medicao: numeroMedicao,
+                data_medicao: dataMedicao,
+                valor: valorNumerico,
+                status: statusMedicao,
+                retencao_adicao: retencaoNumerico || null,
+                pago: false
+            });
 
-        if (error) {
-            if (error.code === '23505') {
-                alert('Já existe uma medição com este número.');
-            } else {
-                throw error;
-            }
-            return;
-        }
+        if (error) throw error;
 
-        addMedicaoForm.reset();
-        await loadMedicoes();
-        alert('Medição adicionada com sucesso!');
+        // Limpa formulário
+        document.getElementById('data-medicao').value = '';
+        document.getElementById('valor-medicao').value = '';
+        document.getElementById('status-medicao').value = 'vai_ser_enviada';
+        document.getElementById('retencao-adicao').value = '';
+
+        await carregarMedicoes();
+        await definirProximoNumeroMedicao(document.getElementById('modal-medicoes-obra').textContent);
+
     } catch (error) {
         console.error('Erro ao adicionar medição:', error);
         alert('Erro ao adicionar medição.');
     }
-});
+}
+
+// Editar medição
+async function editarMedicao(medicaoId) {
+    try {
+        const { data: medicao, error } = await supabase
+            .from('medicoes_obra_hvc')
+            .select('*')
+            .eq('id', medicaoId)
+            .single();
+
+        if (error) throw error;
+
+        // Preenche o formulário com os dados da medição
+        document.getElementById('numero-medicao').value = medicao.numero_medicao;
+        document.getElementById('data-medicao').value = medicao.data_medicao;
+        document.getElementById('valor-medicao').value = formatarMoeda(medicao.valor || 0);
+        document.getElementById('status-medicao').value = medicao.status;
+        document.getElementById('retencao-adicao').value = medicao.retencao_adicao ? formatarMoeda(medicao.retencao_adicao) : '';
+
+        // Muda o botão para modo edição
+        const btnAdicionar = document.querySelector('#modal-medicoes .btn-success');
+        btnAdicionar.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
+        btnAdicionar.onclick = () => salvarEdicaoMedicao(medicaoId);
+
+    } catch (error) {
+        console.error('Erro ao carregar medição para edição:', error);
+        alert('Erro ao carregar medição.');
+    }
+}
+
+// Salvar edição da medição
+async function salvarEdicaoMedicao(medicaoId) {
+    const dataMedicao = document.getElementById('data-medicao').value;
+    const valorMedicao = document.getElementById('valor-medicao').value;
+    const statusMedicao = document.getElementById('status-medicao').value;
+    const retencaoAdicao = document.getElementById('retencao-adicao').value;
+
+    if (!dataMedicao) {
+        alert('Preencha a data da medição.');
+        return;
+    }
+
+    try {
+        // Converte valores monetários
+        const valorNumerico = valorMedicao ? parseFloat(valorMedicao.replace(/[R$\s.]/g, '').replace(',', '.')) : 0;
+        const retencaoNumerico = retencaoAdicao ? parseFloat(retencaoAdicao.replace(/[R$\s.]/g, '').replace(',', '.')) : 0;
+
+        const { error } = await supabase
+            .from('medicoes_obra_hvc')
+            .update({
+                data_medicao: dataMedicao,
+                valor: valorNumerico,
+                status: statusMedicao,
+                retencao_adicao: retencaoNumerico || null
+            })
+            .eq('id', medicaoId);
+
+        if (error) throw error;
+
+        // Restaura o botão para modo adicionar
+        const btnSalvar = document.querySelector('#modal-medicoes .btn-success');
+        btnSalvar.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+        btnSalvar.onclick = adicionarMedicao;
+
+        // Limpa formulário
+        document.getElementById('data-medicao').value = '';
+        document.getElementById('valor-medicao').value = '';
+        document.getElementById('status-medicao').value = 'vai_ser_enviada';
+        document.getElementById('retencao-adicao').value = '';
+
+        await carregarMedicoes();
+        await definirProximoNumeroMedicao(document.getElementById('modal-medicoes-obra').textContent);
+
+        alert('Medição atualizada com sucesso!');
+
+    } catch (error) {
+        console.error('Erro ao salvar edição da medição:', error);
+        alert('Erro ao salvar alterações.');
+    }
+}
 
 // Excluir medição
-window.deleteMedicao = async (medicaoId) => {
+async function excluirMedicao(medicaoId) {
     if (!confirm('Tem certeza que deseja excluir esta medição?')) {
         return;
     }
-    
+
     try {
         const { error } = await supabase
             .from('medicoes_obra_hvc')
@@ -741,138 +741,128 @@ window.deleteMedicao = async (medicaoId) => {
 
         if (error) throw error;
 
-        await loadMedicoes();
-        alert('Medição excluída com sucesso!');
+        await carregarMedicoes();
+
     } catch (error) {
         console.error('Erro ao excluir medição:', error);
         alert('Erro ao excluir medição.');
     }
-};
+}
 
-// Modal de serviços da medição
-window.openServicosMedicaoModal = (medicaoId, numeroMedicao) => {
-    currentMedicaoId = medicaoId;
-    medicaoInfoModal.textContent = `Medição: ${numeroMedicao}`;
-    servicosMedicaoModal.style.display = 'block';
-    loadServicosObra();
-    loadServicosMedicao();
-};
+// Abrir modal de serviços da medição
+async function abrirModalServicosMedicao(medicaoId, numeroMedicao) {
+    medicaoAtual = medicaoId;
+    document.getElementById('modal-servicos-medicao-numero').textContent = numeroMedicao;
+    document.getElementById('modal-servicos-medicao').style.display = 'block';
+    await carregarServicosParaMedicao();
+    await carregarServicosMedicao();
+}
 
-modalCloseServicosMedicao.addEventListener('click', () => {
-    servicosMedicaoModal.style.display = 'none';
-    currentMedicaoId = null;
-});
-
-// Carregar serviços da obra para o select
-async function loadServicosObra() {
-    if (!currentObraId) return;
-    
+// Carregar serviços disponíveis para a medição
+async function carregarServicosParaMedicao() {
     try {
-        const { data, error } = await supabase
+        const { data: servicos, error } = await supabase
             .from('servicos_obra_hvc')
-            .select('id, nome_servico')
-            .eq('obra_id', currentObraId)
-            .order('nome_servico');
+            .select('*')
+            .eq('obra_id', obraAtual);
 
         if (error) throw error;
 
-        servicoMedicaoSelect.innerHTML = '<option value="">Selecione o Serviço</option>';
-        
-        (data || []).forEach(servico => {
+        const select = document.getElementById('servico-medicao');
+        select.innerHTML = '<option value="">Selecione um serviço</option>';
+
+        servicos.forEach(servico => {
             const option = document.createElement('option');
             option.value = servico.id;
-            option.textContent = servico.nome_servico;
-            servicoMedicaoSelect.appendChild(option);
+            option.textContent = servico.descricao;
+            select.appendChild(option);
         });
+
     } catch (error) {
-        console.error('Erro ao carregar serviços da obra:', error);
+        console.error('Erro ao carregar serviços:', error);
     }
 }
 
 // Carregar serviços da medição
-async function loadServicosMedicao() {
-    if (!currentMedicaoId) return;
-    
+async function carregarServicosMedicao() {
     try {
-        const { data, error } = await supabase
+        const { data: servicosMedicao, error } = await supabase
             .from('servicos_medicao_hvc')
             .select(`
                 *,
-                servicos_obra_hvc (
-                    nome_servico
-                )
+                servicos_obra_hvc (descricao)
             `)
-            .eq('medicao_id', currentMedicaoId);
+            .eq('medicao_id', medicaoAtual);
 
         if (error) throw error;
 
-        renderServicosMedicao(data || []);
+        const container = document.getElementById('servicos-medicao-list');
+        container.innerHTML = '';
+
+        if (servicosMedicao.length === 0) {
+            container.innerHTML = '<div class="no-items">Nenhum serviço adicionado à medição</div>';
+            return;
+        }
+
+        servicosMedicao.forEach(sm => {
+            const div = document.createElement('div');
+            div.className = 'servico-item';
+            div.innerHTML = `
+                <div class="servico-info">
+                    <strong>${sm.servicos_obra_hvc.descricao}</strong><br>
+                    ${sm.observacoes ? `<small>Obs: ${sm.observacoes}</small>` : ''}
+                </div>
+                <div class="servico-actions">
+                    <button class="btn btn-danger btn-small" onclick="excluirServicoMedicao(${sm.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+
     } catch (error) {
         console.error('Erro ao carregar serviços da medição:', error);
     }
 }
 
-// Renderizar serviços da medição
-function renderServicosMedicao(servicos) {
-    if (servicos.length === 0) {
-        servicosMedicaoList.innerHTML = '<p style="text-align: center; color: #c0c0c0;">Nenhum serviço adicionado à medição</p>';
-        return;
-    }
-
-    servicosMedicaoList.innerHTML = servicos.map(item => `
-        <div class="servico-item">
-            <div style="display: flex; justify-content: between; align-items: flex-start; gap: 1rem;">
-                <div style="flex: 1;">
-                    <strong>${item.servicos_obra_hvc?.nome_servico}</strong>
-                    ${item.observacoes ? `<br><small style="color: #c0c0c0;">${item.observacoes}</small>` : ''}
-                </div>
-                <button class="hvc-btn hvc-btn-danger" onclick="deleteServicoMedicao('${item.id}')" style="padding: 0.5rem;">
-                    <i class="fas fa-trash"></i>
-                </button>
-            </div>
-        </div>
-    `).join('');
-}
-
 // Adicionar serviço à medição
-addServicoMedicaoForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    if (!currentMedicaoId) return;
-    
-    const servicoId = servicoMedicaoSelect.value;
-    const observacoes = servicoObservacoesTextarea.value.trim();
-    
+async function adicionarServicoMedicao() {
+    const servicoId = document.getElementById('servico-medicao').value;
+    const observacoes = document.getElementById('observacoes-servico-medicao').value;
+
     if (!servicoId) {
-        alert('Por favor, selecione um serviço.');
+        alert('Selecione um serviço.');
         return;
     }
-    
+
     try {
         const { error } = await supabase
             .from('servicos_medicao_hvc')
-            .insert([{
-                medicao_id: currentMedicaoId,
-                servico_id: servicoId,
+            .insert({
+                medicao_id: medicaoAtual,
+                servico_id: parseInt(servicoId),
                 observacoes: observacoes || null
-            }]);
+            });
 
         if (error) throw error;
 
-        addServicoMedicaoForm.reset();
-        await loadServicosMedicao();
+        document.getElementById('servico-medicao').value = '';
+        document.getElementById('observacoes-servico-medicao').value = '';
+        await carregarServicosMedicao();
+
     } catch (error) {
         console.error('Erro ao adicionar serviço à medição:', error);
         alert('Erro ao adicionar serviço à medição.');
     }
-});
+}
 
 // Excluir serviço da medição
-window.deleteServicoMedicao = async (servicoMedicaoId) => {
+async function excluirServicoMedicao(servicoMedicaoId) {
     if (!confirm('Tem certeza que deseja remover este serviço da medição?')) {
         return;
     }
-    
+
     try {
         const { error } = await supabase
             .from('servicos_medicao_hvc')
@@ -881,34 +871,167 @@ window.deleteServicoMedicao = async (servicoMedicaoId) => {
 
         if (error) throw error;
 
-        await loadServicosMedicao();
+        await carregarServicosMedicao();
+
     } catch (error) {
-        console.error('Erro ao remover serviço da medição:', error);
-        alert('Erro ao remover serviço da medição.');
+        console.error('Erro ao excluir serviço da medição:', error);
+        alert('Erro ao excluir serviço da medição.');
     }
-};
+}
+
+// Atualizar status da obra
+async function atualizarStatusObra() {
+    try {
+        // Buscar todos os serviços da obra
+        const { data: servicos, error: servicosError } = await supabase
+            .from('servicos_obra_hvc')
+            .select('data_inicio, data_conclusao')
+            .eq('obra_id', obraAtual);
+
+        if (servicosError) throw servicosError;
+
+        let novoStatus = 'a_iniciar';
+
+        if (servicos.length > 0) {
+            const servicosIniciados = servicos.filter(s => s.data_inicio);
+            const servicosConcluidos = servicos.filter(s => s.data_conclusao);
+
+            if (servicosConcluidos.length === servicos.length) {
+                // Todos os serviços concluídos - verificar pagamento
+                const valores = await calcularValoresObra(obraAtual);
+                novoStatus = valores.valorEmAberto <= 0 ? 'concluida' : 'pagamento_pendente';
+            } else if (servicosIniciados.length > 0) {
+                novoStatus = 'em_andamento';
+            }
+        }
+
+        // Atualizar status no banco
+        const { error: updateError } = await supabase
+            .from('obras_hvc')
+            .update({ status: novoStatus })
+            .eq('id', obraAtual);
+
+        if (updateError) throw updateError;
+
+        // Recarregar lista de obras
+        await carregarObras();
+
+    } catch (error) {
+        console.error('Erro ao atualizar status da obra:', error);
+    }
+}
+
+// Excluir obra
+async function excluirObra(obraId) {
+    if (!confirm('Tem certeza que deseja excluir esta obra? Esta ação não pode ser desfeita.')) {
+        return;
+    }
+
+    try {
+        const { error } = await supabase
+            .from('obras_hvc')
+            .delete()
+            .eq('id', obraId);
+
+        if (error) throw error;
+
+        alert('Obra excluída com sucesso!');
+        await carregarObras();
+
+    } catch (error) {
+        console.error('Erro ao excluir obra:', error);
+        alert('Erro ao excluir obra.');
+    }
+}
+
+// Fechar modal
+function fecharModal(modalId) {
+    document.getElementById(modalId).style.display = 'none';
+    
+    // Se for o modal de medições, restaura o botão para modo adicionar
+    if (modalId === 'modal-medicoes') {
+        const btnSalvar = document.querySelector('#modal-medicoes .btn-success');
+        btnSalvar.innerHTML = '<i class="fas fa-plus"></i> Adicionar';
+        btnSalvar.onclick = adicionarMedicao;
+        
+        // Limpa formulário
+        document.getElementById('data-medicao').value = '';
+        document.getElementById('valor-medicao').value = '';
+        document.getElementById('status-medicao').value = 'vai_ser_enviada';
+        document.getElementById('retencao-adicao').value = '';
+    }
+}
+
+// Limpar formulário
+function limparFormulario() {
+    document.getElementById('obra-form').reset();
+    document.getElementById('cliente-obra').value = '';
+    document.getElementById('valor-total-obra').value = '';
+}
+
+// Funções de formatação
+function formatarMoeda(valor) {
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(valor || 0);
+}
+
+function formatarData(data) {
+    return new Date(data).toLocaleDateString('pt-BR');
+}
+
+function formatarStatus(status) {
+    const statusMap = {
+        'a_iniciar': 'À Iniciar',
+        'em_andamento': 'Em Andamento',
+        'concluida': 'Concluída',
+        'pagamento_pendente': 'Pagamento Pendente'
+    };
+    return statusMap[status] || status;
+}
+
+function formatarStatusServico(servico) {
+    if (servico.data_conclusao) return 'Concluído';
+    if (servico.data_inicio) return 'Iniciado';
+    return 'À Iniciar';
+}
+
+function formatarStatusMedicao(status) {
+    const statusMap = {
+        'vai_ser_enviada': 'Vai ser enviada',
+        'ja_foi_enviada': 'Já foi enviada',
+        'ja_foi_recebida': 'Já foi recebida'
+    };
+    return statusMap[status] || status;
+}
 
 // Fechar modais ao clicar fora
-window.addEventListener('click', (e) => {
-    if (e.target === servicosModal) {
-        servicosModal.style.display = 'none';
-        currentObraId = null;
-    }
-    if (e.target === medicoesModal) {
-        medicoesModal.style.display = 'none';
-        currentObraId = null;
-    }
-    if (e.target === servicosMedicaoModal) {
-        servicosMedicaoModal.style.display = 'none';
-        currentMedicaoId = null;
-    }
-});
+window.onclick = function(event) {
+    const modals = ['modal-servicos', 'modal-medicoes', 'modal-servicos-medicao'];
+    modals.forEach(modalId => {
+        const modal = document.getElementById(modalId);
+        if (event.target === modal) {
+            fecharModal(modalId);
+        }
+    });
+}
 
-// Inicialização
-document.addEventListener('DOMContentLoaded', async () => {
-    if (await checkAccess()) {
-        await loadPropostasAprovadas();
-        await loadObras();
-    }
-});
+// Exportar funções globais
+window.abrirModalServicos = abrirModalServicos;
+window.abrirModalMedicoes = abrirModalMedicoes;
+window.abrirModalServicosMedicao = abrirModalServicosMedicao;
+window.adicionarServico = adicionarServico;
+window.adicionarMedicao = adicionarMedicao;
+window.adicionarServicoMedicao = adicionarServicoMedicao;
+window.editarMedicao = editarMedicao;
+window.salvarEdicaoMedicao = salvarEdicaoMedicao;
+window.toggleInicioServico = toggleInicioServico;
+window.toggleConclusaoServico = toggleConclusaoServico;
+window.excluirServico = excluirServico;
+window.excluirMedicao = excluirMedicao;
+window.excluirServicoMedicao = excluirServicoMedicao;
+window.excluirObra = excluirObra;
+window.fecharModal = fecharModal;
+window.limparFormulario = limparFormulario;
 
