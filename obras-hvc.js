@@ -8,6 +8,7 @@ let obraAtual = null;
 let medicaoAtual = null;
 let proximoNumeroObra = 1;
 let propostasDisponiveis = [];
+let propostasSelecionadas = new Set(); // Para manter seleções persistentes
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async function() {
@@ -211,8 +212,13 @@ function renderizarPropostas(propostas) {
 
                     const div = document.createElement('div');
                     div.className = 'proposta-item';
+                    
+                    // Verifica se esta proposta estava selecionada
+                    const estaSelecionada = propostasSelecionadas.has(proposta.id);
+                    
                     div.innerHTML = `
-                        <input type="checkbox" id="prop-${proposta.id}" value="${proposta.id}" onchange="atualizarSelecaoPropostas()">
+                        <input type="checkbox" id="prop-${proposta.id}" value="${proposta.id}" 
+                               onchange="atualizarSelecaoPropostas()" ${estaSelecionada ? 'checked' : ''}>
                         <div class="proposta-info">
                             <strong>${numeroProposta}</strong> - ${clienteNome}
                             <div class="proposta-valor">${formatarMoeda(valor)}</div>
@@ -227,6 +233,9 @@ function renderizarPropostas(propostas) {
                 console.warn('Erro ao renderizar proposta:', propostaError, proposta);
             }
         });
+
+        // Atualiza campos baseados nas seleções após renderizar
+        atualizarCamposSelecao();
 
     } catch (error) {
         console.error('Erro ao renderizar propostas:', error);
@@ -259,7 +268,27 @@ function filtrarPropostas() {
 // Atualizar seleção de propostas
 function atualizarSelecaoPropostas() {
     try {
-        const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]:checked');
+        // Atualiza o Set de seleções baseado nos checkboxes
+        const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]');
+        propostasSelecionadas.clear();
+        
+        checkboxes.forEach(checkbox => {
+            if (checkbox.checked) {
+                propostasSelecionadas.add(parseInt(checkbox.value));
+            }
+        });
+
+        // Atualiza os campos visuais
+        atualizarCamposSelecao();
+
+    } catch (error) {
+        console.error('Erro ao atualizar seleção de propostas:', error);
+    }
+}
+
+// Atualizar campos baseados nas seleções (NOVA FUNÇÃO)
+function atualizarCamposSelecao() {
+    try {
         const clienteField = document.getElementById('cliente-obra');
         const valorTotalField = document.getElementById('valor-total-obra');
 
@@ -267,6 +296,8 @@ function atualizarSelecaoPropostas() {
             console.warn('Campos cliente ou valor total não encontrados');
             return;
         }
+
+        const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]:checked');
 
         if (checkboxes.length === 0) {
             clienteField.value = '';
@@ -302,7 +333,7 @@ function atualizarSelecaoPropostas() {
         });
 
     } catch (error) {
-        console.error('Erro ao atualizar seleção de propostas:', error);
+        console.error('Erro ao atualizar campos de seleção:', error);
     }
 }
 
