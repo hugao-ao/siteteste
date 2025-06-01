@@ -174,8 +174,8 @@ async function carregarPropostasAprovadas() {
             return;
         }
         
-        // Verificar quantas têm status 'aprovada'
-        const aprovadas = todasPropostas.filter(p => p.status === 'aprovada');
+        // Verificar quantas têm status 'Aprovada'
+        const aprovadas = todasPropostas.filter(p => p.status === 'Aprovada');
         log('Propostas com status aprovada:', aprovadas);
         
         if (aprovadas.length === 0) {
@@ -202,7 +202,7 @@ async function carregarPropostasAprovadas() {
                     valor,
                     clientes_hvc (nome)
                 `)
-                .eq('status', 'aprovada');
+                .eq('status', 'Aprovada');
             
             propostas = result.data;
             error = result.error;
@@ -216,7 +216,7 @@ async function carregarPropostasAprovadas() {
                 const result = await supabase
                     .from('propostas_hvc')
                     .select('id, numero_proposta, valor, cliente_id')
-                    .eq('status', 'aprovada');
+                    .eq('status', 'Aprovada');
                 
                 propostas = result.data;
                 error = result.error;
@@ -254,7 +254,7 @@ async function carregarPropostasAprovadas() {
                     const result = await supabase
                         .from('propostas_hvc')
                         .select('*')
-                        .eq('status', 'aprovada');
+                        .eq('status', 'Aprovada');
                     
                     propostas = result.data;
                     error = result.error;
