@@ -1,4 +1,4 @@
-// obras-hvc.js - VERSÃO ULTRA-ROBUSTA (Corrige problemas de relacionamento)
+// obras-hvc.js - VERSÃO CORRIGIDA (Resolve problema de IDs inválidos)
 
 import { injectSidebar } from './sidebar.js';
 import { supabase } from './supabase.js';
@@ -206,7 +206,7 @@ function mostrarAviso(mensagem, duracao = 4000) {
     }
 }
 
-// ===== FUNÇÕES DE PROPOSTAS (ULTRA-ROBUSTAS) =====
+// ===== FUNÇÕES DE PROPOSTAS (CORRIGIDAS) =====
 
 async function carregarPropostasAprovadas() {
     try {
@@ -408,7 +408,7 @@ function renderizarPropostas(propostas) {
 
         propostas.forEach(proposta => {
             try {
-                if (proposta) {
+                if (proposta && proposta.id) {
                     const clienteNome = proposta.clientes_hvc?.nome || proposta.cliente_nome || 'Cliente não especificado';
                     const numeroProposta = proposta.numero_proposta || `Proposta ${proposta.id}`;
                     const valor = proposta.valor || 0;
@@ -418,9 +418,10 @@ function renderizarPropostas(propostas) {
                     
                     const estaSelecionada = propostasSelecionadas.has(proposta.id);
                     
-                   div.innerHTML = `
+                    // CORREÇÃO CRÍTICA: Usar proposta.id diretamente (string UUID)
+                    div.innerHTML = `
                         <input type="checkbox" id="prop-${proposta.id}" value="${proposta.id}" 
-                       onchange="atualizarSelecaoPropostas()" ${estaSelecionada ? 'checked' : ''}>
+                               onchange="atualizarSelecaoPropostas()" ${estaSelecionada ? 'checked' : ''}>
                         <div class="proposta-info">
                             <div class="proposta-numero">${numeroProposta}</div>
                             <div>${clienteNome}</div>
@@ -430,6 +431,7 @@ function renderizarPropostas(propostas) {
                     div.dataset.cliente = clienteNome;
                     div.dataset.valor = valor;
                     div.dataset.numero = numeroProposta;
+                    div.dataset.propostaId = proposta.id; // ADICIONAR ID COMO DATA ATTRIBUTE
                     container.appendChild(div);
                 }
             } catch (propostaError) {
@@ -447,9 +449,14 @@ function renderizarPropostas(propostas) {
 
 function filtrarPropostas() {
     try {
+        // Salvar seleções atuais usando IDs string
         const selecoesSalvas = new Set();
         const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]:checked');
-        checkboxes.forEach(cb => selecoesSalvas.add(parseInt(cb.value)));
+        checkboxes.forEach(cb => {
+            if (cb.value && cb.value !== 'undefined' && cb.value !== 'null') {
+                selecoesSalvas.add(cb.value); // Manter como string
+            }
+        });
         
         const filtro = document.getElementById('filtro-propostas')?.value?.toLowerCase() || '';
         
@@ -464,12 +471,13 @@ function filtrarPropostas() {
             renderizarPropostas(propostasFiltradas);
         }
         
+        // Restaurar seleções
         setTimeout(() => {
             selecoesSalvas.forEach(id => {
                 const checkbox = document.getElementById(`prop-${id}`);
                 if (checkbox) {
                     checkbox.checked = true;
-                    propostasSelecionadas.add(id);
+                    propostasSelecionadas.add(id); // Manter como string
                 }
             });
             atualizarCamposSelecao();
@@ -480,15 +488,22 @@ function filtrarPropostas() {
     }
 }
 
+// FUNÇÃO CORRIGIDA: atualizarSelecaoPropostas
 function atualizarSelecaoPropostas() {
     try {
+        console.log('🔄 Atualizando seleção de propostas...');
+        
         const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]');
         
+        // Limpar seleções antigas de IDs que não estão mais visíveis
         const idsVisiveis = new Set();
         checkboxes.forEach(checkbox => {
-            idsVisiveis.add(parseInt(checkbox.value));
+            if (checkbox.value && checkbox.value !== 'undefined' && checkbox.value !== 'null') {
+                idsVisiveis.add(checkbox.value);
+            }
         });
         
+        // Remover IDs que não estão mais visíveis
         const idsParaRemover = [];
         propostasSelecionadas.forEach(id => {
             if (!idsVisiveis.has(id)) {
@@ -497,15 +512,26 @@ function atualizarSelecaoPropostas() {
         });
         idsParaRemover.forEach(id => propostasSelecionadas.delete(id));
         
+        // Atualizar seleções baseado nos checkboxes atuais
         checkboxes.forEach(checkbox => {
-            const id = parseInt(checkbox.value);
+            const id = checkbox.value;
+            
+            // VALIDAÇÃO CRÍTICA: Verificar se o ID é válido
+            if (!id || id === 'undefined' || id === 'null' || id === '') {
+                console.warn('⚠️ Checkbox com valor inválido encontrado:', checkbox);
+                return;
+            }
+            
             if (checkbox.checked) {
-                propostasSelecionadas.add(id);
+                propostasSelecionadas.add(id); // Manter como string UUID
+                console.log('✅ Proposta selecionada:', id);
             } else {
                 propostasSelecionadas.delete(id);
+                console.log('❌ Proposta desmarcada:', id);
             }
         });
 
+        console.log('📋 Propostas selecionadas finais:', Array.from(propostasSelecionadas));
         atualizarCamposSelecao();
 
     } catch (error) {
@@ -662,7 +688,7 @@ function converterValorMonetario(valorString) {
     }
 }
 
-// FUNÇÃO ADICIONAR OBRA (ULTRA-ROBUSTA)
+// FUNÇÃO ADICIONAR OBRA (CORRIGIDA)
 async function adicionarObra() {
     try {
         console.log('🔄 Iniciando processo de adicionar obra...');
@@ -715,11 +741,23 @@ async function adicionarObra() {
             return;
         }
 
-        // Obter IDs das propostas selecionadas
-        const idsPropostas = Array.from(checkboxes).map(cb => parseInt(cb.value));
-        console.log('📋 Propostas selecionadas:', idsPropostas);
+        // CORREÇÃO CRÍTICA: Obter IDs das propostas selecionadas como strings UUID
+        const idsPropostas = [];
+        checkboxes.forEach(checkbox => {
+            const id = checkbox.value;
+            if (id && id !== 'undefined' && id !== 'null' && id !== '') {
+                idsPropostas.push(id); // Manter como string UUID
+            }
+        });
+
+        console.log('📋 Propostas selecionadas (IDs válidos):', idsPropostas);
         
-        // Buscar dados das propostas selecionadas (ULTRA-ROBUSTA)
+        if (idsPropostas.length === 0) {
+            mostrarErro('Nenhuma proposta válida selecionada. Recarregue a página e tente novamente.');
+            return;
+        }
+        
+        // Buscar dados das propostas selecionadas (CORRIGIDA)
         console.log('🔍 Buscando dados das propostas...');
         const dadosPropostas = await buscarDadosPropostas(idsPropostas);
         
@@ -769,7 +807,7 @@ async function adicionarObra() {
         console.log('🔗 Associando propostas à obra...');
         const propostasObra = idsPropostas.map(propostaId => ({
             obra_id: obra.id,
-            proposta_id: propostaId
+            proposta_id: propostaId // Usar ID como string UUID
         }));
 
         const { error: propostasError } = await supabase
@@ -795,25 +833,44 @@ async function adicionarObra() {
     }
 }
 
-// Função auxiliar para buscar dados das propostas (ULTRA-ROBUSTA)
+// Função auxiliar para buscar dados das propostas (CORRIGIDA)
 async function buscarDadosPropostas(idsPropostas) {
     try {
         if (!idsPropostas || idsPropostas.length === 0) {
+            console.log('❌ Nenhum ID de proposta fornecido');
             return [];
         }
 
         console.log('🔍 Buscando dados das propostas:', idsPropostas);
+
+        // VALIDAÇÃO CRÍTICA: Filtrar IDs inválidos
+        const idsValidos = idsPropostas.filter(id => {
+            if (!id || id === 'undefined' || id === 'null' || id === '' || id === 'NaN') {
+                console.warn('⚠️ ID inválido filtrado:', id);
+                return false;
+            }
+            return true;
+        });
+
+        if (idsValidos.length === 0) {
+            console.log('❌ Nenhum ID válido encontrado após filtração');
+            return [];
+        }
+
+        console.log('✅ IDs válidos para busca:', idsValidos);
 
         // Estratégia 1: Buscar todas de uma vez
         try {
             const { data, error } = await supabase
                 .from('propostas_hvc')
                 .select('id, valor, cliente_id, numero_proposta')
-                .in('id', idsPropostas);
+                .in('id', idsValidos);
 
             if (!error && data && data.length > 0) {
                 console.log('✅ Dados das propostas obtidos com sucesso (estratégia 1)');
                 return data;
+            } else {
+                console.warn('⚠️ Estratégia 1 falhou:', error);
             }
         } catch (estrategia1Error) {
             console.warn('⚠️ Estratégia 1 falhou:', estrategia1Error);
@@ -823,7 +880,7 @@ async function buscarDadosPropostas(idsPropostas) {
         console.log('🔄 Tentando estratégia 2: buscar propostas individualmente...');
         const propostas = [];
         
-        for (const id of idsPropostas) {
+        for (const id of idsValidos) {
             try {
                 const { data, error } = await supabase
                     .from('propostas_hvc')
@@ -833,6 +890,7 @@ async function buscarDadosPropostas(idsPropostas) {
 
                 if (!error && data) {
                     propostas.push(data);
+                    console.log(`✅ Proposta ${id} encontrada`);
                 } else {
                     console.warn(`⚠️ Proposta ${id} não encontrada:`, error);
                 }
@@ -967,65 +1025,63 @@ async function carregarObras() {
                 const valorTotal = obra.propostas_obra_hvc?.reduce((total, po) => 
                     total + (po.propostas_hvc?.valor || 0), 0) || 0;
 
-               const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${obra.numero_obra || 'N/A'}</td>
-                            <td>${obra.nome_obra || 'N/A'}</td>
-                            <td>${cliente}</td>
-                            <td class="valor-positivo">${formatarMoeda(valorTotal)}</td>
-                            <td class="valor-positivo">${formatarMoeda(valores.valorTotalMedido)}</td>
-                            <td class="valor-positivo">${formatarMoeda(valores.valorTotalRecebido)}</td>
-                            <td class="${valores.valorMedidoNaoRecebido > 0 ? 'valor-negativo' : 'valor-neutro'}">${formatarMoeda(valores.valorMedidoNaoRecebido)}</td>
-                            <td class="${valores.valorEmAberto > 0 ? 'valor-negativo' : 'valor-positivo'}">${formatarMoeda(valores.valorEmAberto)}</td>
-                            <td><span class="status-badge status-${obra.status?.replace('_', '-') || 'indefinido'}">${formatarStatus(obra.status)}</span></td>
-                            <td>
-                                <button class="btn btn-primary btn-small" data-action="servicos" data-obra-id="${obra.id}" data-numero="${obra.numero_obra || ''}">
-                                    <i class="fas fa-tools"></i> Gerenciar
-                                </button>
-                            </td>
-                            <td>
-                                <button class="btn btn-warning btn-small" data-action="medicoes" data-obra-id="${obra.id}" data-numero="${obra.numero_obra || ''}">
-                                    <i class="fas fa-ruler"></i> Gerenciar
-                                </button>
-                            </td>
-                            <td>
-                                <button class="btn btn-danger btn-small" data-action="excluir" data-obra-id="${obra.id}">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        `;
-                        
-                        tbody.appendChild(row);
-                        
-                        const servicosBtn = row.querySelector('[data-action="servicos"]');
-                        const medicoesBtn = row.querySelector('[data-action="medicoes"]');
-                        const excluirBtn = row.querySelector('[data-action="excluir"]');
-                        
-                        if (servicosBtn) {
-                            servicosBtn.addEventListener('click', function() {
-                                const obraId = this.getAttribute('data-obra-id');
-                                const numeroObra = this.getAttribute('data-numero');
-                                abrirModalServicos(obraId, numeroObra);
-                            });
-                        }
-                        
-                        if (medicoesBtn) {
-                            medicoesBtn.addEventListener('click', function() {
-                                const obraId = this.getAttribute('data-obra-id');
-                                const numeroObra = this.getAttribute('data-numero');
-                                abrirModalMedicoes(obraId, numeroObra);
-                            });
-                        }
-                        
-                        if (excluirBtn) {
-                            excluirBtn.addEventListener('click', function() {
-                                const obraId = this.getAttribute('data-obra-id');
-                                excluirObra(obraId);
-                            });
-                        }
-            } 
-            
-            catch (obraError) {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${obra.numero_obra || 'N/A'}</td>
+                    <td>${obra.nome_obra || 'N/A'}</td>
+                    <td>${cliente}</td>
+                    <td class="valor-positivo">${formatarMoeda(valorTotal)}</td>
+                    <td class="valor-positivo">${formatarMoeda(valores.valorTotalMedido)}</td>
+                    <td class="valor-positivo">${formatarMoeda(valores.valorTotalRecebido)}</td>
+                    <td class="${valores.valorMedidoNaoRecebido > 0 ? 'valor-negativo' : 'valor-neutro'}">${formatarMoeda(valores.valorMedidoNaoRecebido)}</td>
+                    <td class="${valores.valorEmAberto > 0 ? 'valor-negativo' : 'valor-positivo'}">${formatarMoeda(valores.valorEmAberto)}</td>
+                    <td><span class="status-badge status-${obra.status?.replace('_', '-') || 'indefinido'}">${formatarStatus(obra.status)}</span></td>
+                    <td>
+                        <button class="btn btn-primary btn-small" data-action="servicos" data-obra-id="${obra.id}" data-numero="${obra.numero_obra || ''}">
+                            <i class="fas fa-tools"></i> Gerenciar
+                        </button>
+                    </td>
+                    <td>
+                        <button class="btn btn-warning btn-small" data-action="medicoes" data-obra-id="${obra.id}" data-numero="${obra.numero_obra || ''}">
+                            <i class="fas fa-ruler"></i> Gerenciar
+                        </button>
+                    </td>
+                    <td>
+                        <button class="btn btn-danger btn-small" data-action="excluir" data-obra-id="${obra.id}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+                
+                const servicosBtn = row.querySelector('[data-action="servicos"]');
+                const medicoesBtn = row.querySelector('[data-action="medicoes"]');
+                const excluirBtn = row.querySelector('[data-action="excluir"]');
+                
+                if (servicosBtn) {
+                    servicosBtn.addEventListener('click', function() {
+                        const obraId = this.getAttribute('data-obra-id');
+                        const numeroObra = this.getAttribute('data-numero');
+                        abrirModalServicos(obraId, numeroObra);
+                    });
+                }
+                
+                if (medicoesBtn) {
+                    medicoesBtn.addEventListener('click', function() {
+                        const obraId = this.getAttribute('data-obra-id');
+                        const numeroObra = this.getAttribute('data-numero');
+                        abrirModalMedicoes(obraId, numeroObra);
+                    });
+                }
+                
+                if (excluirBtn) {
+                    excluirBtn.addEventListener('click', function() {
+                        const obraId = this.getAttribute('data-obra-id');
+                        excluirObra(obraId);
+                    });
+                }
+            } catch (obraError) {
                 console.error(`Erro ao processar obra ${obra.id}:`, obraError);
             }
         }
