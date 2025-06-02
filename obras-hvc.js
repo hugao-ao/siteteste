@@ -340,8 +340,8 @@ function atualizarCamposSelecao() {
         }
 
         // Pega o cliente da primeira proposta
-        const primeiraPropostaDiv = checkboxes[0].closest('.proposta-item');
-        const cliente = primeiraPropostaDiv?.dataset?.cliente || '';
+        const primeiraProposta = checkboxes[0].closest('.proposta-item');
+        const cliente = primeiraProposta?.dataset?.cliente || '';
         clienteField.value = cliente;
 
         // Soma os valores das propostas selecionadas
