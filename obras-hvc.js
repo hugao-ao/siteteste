@@ -340,8 +340,8 @@ function atualizarCamposSelecao() {
         }
 
         // Pega o cliente da primeira proposta
-        const primeiraProposta = checkboxes[0].closest('.proposta-item');
-        const cliente = primeiraProposta?.dataset?.cliente || '';
+        const primeiraPropostaDiv = checkboxes[0].closest('.proposta-item');
+        const cliente = primeiraPropostaDiv?.dataset?.cliente || '';
         clienteField.value = cliente;
 
         // Soma os valores das propostas selecionadas
@@ -546,7 +546,7 @@ async function adicionarObra() {
                 throw new Error('Cliente não encontrado nas propostas selecionadas.');
             }
             
-            // Inserir a obra com o cliente_id
+             // Inserir a obra com o cliente_id
             const { data: obra, error: obraError } = await supabase
                 .from('obras_hvc')
                 .insert({
@@ -558,6 +558,8 @@ async function adicionarObra() {
                 })
                 .select()
                 .single();
+
+        if (obraError) throw obraError;  ← ADICIONADO: Verificação de erro
 
         // Associa as propostas à obra
         const propostasObra = Array.from(checkboxes).map(checkbox => ({
