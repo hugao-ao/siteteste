@@ -521,19 +521,43 @@ async function adicionarObra() {
             console.warn('Erro ao verificar obra existente:', verificacaoError);
         }
 
-        // Salva a obra
-        const { data: obra, error: obraError } = await supabase
-            .from('obras_hvc')
-            .insert({
-                numero_obra: numeroObra,
-                nome_obra: nomeObra,
-                observacoes: observacoes || null,
-                status: 'a_iniciar'
-            })
-            .select()
-            .single();
-
-        if (obraError) throw obraError;
+                  // SALVAR OBRA - VERSÃO ULTRA ROBUSTA:
+            // Obter cliente_id de todas as propostas selecionadas
+            const propostasIds = Array.from(checkboxes).map(cb => parseInt(cb.value)).filter(id => !isNaN(id));
+            
+            const { data: propostasData, error: propostasError } = await supabase
+                .from('propostas_hvc')
+                .select('id, cliente_id')
+                .in('id', propostasIds);
+            
+            if (propostasError || !propostasData?.length) {
+                throw new Error('Não foi possível obter dados das propostas selecionadas.');
+            }
+            
+            // Verificar se todas as propostas são do mesmo cliente
+            const clientesUnicos = [...new Set(propostasData.map(p => p.cliente_id))];
+            if (clientesUnicos.length > 1) {
+                alert('Erro: As propostas selecionadas são de clientes diferentes. Selecione propostas do mesmo cliente.');
+                return;
+            }
+            
+            const clienteId = clientesUnicos[0];
+            if (!clienteId) {
+                throw new Error('Cliente não encontrado nas propostas selecionadas.');
+            }
+            
+            // Inserir a obra com o cliente_id
+            const { data: obra, error: obraError } = await supabase
+                .from('obras_hvc')
+                .insert({
+                    numero_obra: numeroObra,
+                    nome_obra: nomeObra,
+                    cliente_id: clienteId,
+                    observacoes: observacoes || null,
+                    status: 'a_iniciar'
+                })
+                .select()
+                .single();
 
         // Associa as propostas à obra
         const propostasObra = Array.from(checkboxes).map(checkbox => ({
