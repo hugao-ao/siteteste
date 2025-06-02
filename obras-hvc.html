@@ -67,18 +67,13 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .form-section h2, .form-section h3 {
+        .form-section h2 {
             color: #ffffff;
             margin-bottom: 20px;
             font-size: 1.5rem;
             display: flex;
             align-items: center;
             gap: 10px;
-        }
-
-        .form-section h3 {
-            font-size: 1.2rem;
-            margin-top: 20px;
         }
 
         .form-grid {
@@ -169,11 +164,6 @@
             background: rgba(255, 255, 255, 0.15);
         }
 
-        .proposta-item.selected {
-            background: rgba(76, 175, 80, 0.2);
-            border: 1px solid rgba(76, 175, 80, 0.5);
-        }
-
         .proposta-item input[type="checkbox"] {
             margin-right: 10px;
             transform: scale(1.2);
@@ -205,7 +195,6 @@
             align-items: center;
             gap: 8px;
             text-decoration: none;
-            margin-right: 10px;
         }
 
         .btn-primary {
@@ -332,8 +321,8 @@
             text-transform: uppercase;
         }
 
-        .status-a-iniciar {
-            background: #757575;
+        .status-iniciado {
+            background: #4CAF50;
             color: white;
         }
 
@@ -343,12 +332,7 @@
         }
 
         .status-concluido {
-            background: #4CAF50;
-            color: white;
-        }
-
-        .status-pausado {
-            background: #f44336;
+            background: #2196F3;
             color: white;
         }
 
@@ -376,7 +360,7 @@
             padding: 30px;
             border-radius: 15px;
             width: 90%;
-            max-width: 800px;
+            max-width: 900px;
             max-height: 90vh;
             overflow-y: auto;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -438,7 +422,6 @@
             display: flex;
             gap: 8px;
             flex-shrink: 0;
-            flex-wrap: wrap;
         }
 
         .empty-state {
@@ -453,46 +436,97 @@
             opacity: 0.5;
         }
 
+        /* Estilos específicos para medições */
+        .medicao-servicos {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .medicao-servicos h4 {
+            color: #4CAF50;
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+
+        .servico-checkbox {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+
+        .servico-checkbox input[type="checkbox"] {
+            margin-right: 10px;
+            margin-top: 2px;
+        }
+
+        .servico-info {
+            flex-grow: 1;
+        }
+
+        .servico-nome {
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .servico-observacoes {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 12px;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .servico-observacoes:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        }
+
         /* Notificações */
         .notification {
             position: fixed;
             top: 20px;
             right: 20px;
             padding: 15px 20px;
-            border-radius: 5px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
             z-index: 10000;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            display: flex;
-            align-items: center;
-            gap: 10px;
             max-width: 400px;
-            animation: slideIn 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
         }
 
         .notification.success {
-            background: #4CAF50;
-            color: white;
+            background: linear-gradient(45deg, #4CAF50, #45a049);
         }
 
         .notification.error {
-            background: #f44336;
-            color: white;
+            background: linear-gradient(45deg, #f44336, #d32f2f);
         }
 
         .notification.warning {
-            background: #ff9800;
-            color: white;
+            background: linear-gradient(45deg, #ff9800, #f57c00);
         }
 
-        @keyframes slideIn {
-            from {
-                transform: translateX(100%);
-                opacity: 0;
-            }
-            to {
-                transform: translateX(0);
-                opacity: 1;
-            }
+        .notification.info {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
         }
 
         /* Responsive */
@@ -518,16 +552,6 @@
 
             th, td {
                 padding: 8px 5px;
-            }
-
-            .item-actions {
-                flex-direction: column;
-                gap: 5px;
-            }
-
-            .btn-small {
-                padding: 6px 12px;
-                font-size: 11px;
             }
         }
 
@@ -626,11 +650,11 @@
                                 <th>AÇÕES</th>
                             </tr>
                         </thead>
-                        <tbody id="obras-list">
+                        <tbody id="obras-tbody">
                             <tr>
-                                <td colspan="12" style="text-align: center; padding: 40px; color: #888;">
-                                    <i class="fas fa-hard-hat" style="font-size: 2rem; margin-bottom: 15px; opacity: 0.5;"></i>
-                                    <br>Nenhuma obra cadastrada
+                                <td colspan="12" class="empty-state">
+                                    <i class="fas fa-hard-hat"></i>
+                                    <p>Nenhuma obra cadastrada</p>
                                 </td>
                             </tr>
                         </tbody>
@@ -644,33 +668,39 @@
     <div id="modal-servicos" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-tools"></i> Gerenciar Serviços - Obra: <span id="modal-servicos-obra">N/A</span></h2>
-                <span class="close" onclick="window.fecharModal('modal-servicos')">&times;</span>
+                <h2><i class="fas fa-tools"></i> Gerenciar Serviços</h2>
+                <span class="close" onclick="fecharModalServicos()">&times;</span>
             </div>
             
+            <!-- Formulário Novo Serviço -->
             <div class="form-section">
-                <h3>Adicionar Novo Serviço</h3>
-                <form id="form-servico" onsubmit="event.preventDefault(); adicionarServico();">
+                <h3><i class="fas fa-plus"></i> Adicionar Serviço</h3>
+                <form id="form-servico">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="nome-servico">Nome do Serviço *</label>
-                            <input type="text" id="nome-servico" name="nome-servico" required>
+                            <input type="text" id="nome-servico" name="nome-servico" placeholder="Ex: Impermeabilização de Laje" required>
                         </div>
                         <div class="form-group">
-                            <label for="valor-servico">Valor (R$)</label>
-                            <input type="text" id="valor-servico" name="valor-servico" placeholder="R$ 0,00">
+                            <label for="valor-servico">Valor *</label>
+                            <input type="text" id="valor-servico" name="valor-servico" placeholder="R$ 0,00" required>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-success">
+                    <div class="form-group">
+                        <label for="descricao-servico">Descrição</label>
+                        <textarea id="descricao-servico" name="descricao-servico" placeholder="Descrição detalhada do serviço..."></textarea>
+                    </div>
+                    <button type="button" class="btn btn-success btn-full" onclick="adicionarServico()">
                         <i class="fas fa-plus"></i> Adicionar Serviço
                     </button>
                 </form>
             </div>
 
+            <!-- Lista de Serviços -->
             <div class="items-container" id="servicos-container">
                 <div class="empty-state">
                     <i class="fas fa-tools"></i>
-                    <p>Nenhum serviço cadastrado para esta obra</p>
+                    <p>Nenhum serviço cadastrado</p>
                 </div>
             </div>
         </div>
@@ -680,95 +710,193 @@
     <div id="modal-medicoes" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-ruler"></i> Gerenciar Medições - Obra: <span id="modal-medicoes-obra">N/A</span></h2>
-                <span class="close" onclick="window.fecharModal('modal-medicoes')">&times;</span>
+                <h2><i class="fas fa-ruler"></i> Gerenciar Medições</h2>
+                <span class="close" onclick="fecharModalMedicoes()">&times;</span>
             </div>
             
+            <!-- Formulário Nova Medição -->
             <div class="form-section">
-                <h3>Adicionar Nova Medição</h3>
-                <form id="form-medicao" onsubmit="event.preventDefault(); adicionarMedicao();">
+                <h3><i class="fas fa-plus"></i> Adicionar Medição</h3>
+                <form id="form-medicao">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="numero-medicao">Número da Medição *</label>
-                            <input type="text" id="numero-medicao" name="numero-medicao" required>
+                            <input type="text" id="numero-medicao" name="numero-medicao" placeholder="Ex: MED-001" required>
                         </div>
                         <div class="form-group">
-                            <label for="data-inicio">Data de Início *</label>
-                            <input type="date" id="data-inicio" name="data-inicio" required>
+                            <label for="data-medicao">Data da Medição *</label>
+                            <input type="date" id="data-medicao" name="data-medicao" required>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="status-medicao">Status *</label>
+                            <select id="status-medicao" name="status-medicao" required>
+                                <option value="">Selecione o status</option>
+                                <option value="vai_ser_enviada">Vai ser Enviada</option>
+                                <option value="enviada">Enviada</option>
+                                <option value="recebida">Recebida</option>
+                            </select>
                         </div>
                         <div class="form-group">
-                            <label for="data-fim">Data de Fim</label>
-                            <input type="date" id="data-fim" name="data-fim">
-                        </div>
-                        <div class="form-group">
-                            <label for="valor-medicao">Valor da Medição (R$) *</label>
-                            <input type="text" id="valor-medicao" name="valor-medicao" required>
+                            <label for="valor-medicao">Valor da Medição *</label>
+                            <input type="text" id="valor-medicao" name="valor-medicao" placeholder="R$ 0,00" required>
                         </div>
                     </div>
                     <div class="form-group">
-                        <label for="observacoes-medicao">Observações</label>
-                        <textarea id="observacoes-medicao" name="observacoes-medicao" placeholder="Observações sobre a medição..."></textarea>
+                        <label>
+                            <input type="checkbox" id="pago-medicao" name="pago-medicao">
+                            Medição Paga
+                        </label>
                     </div>
-                    <button type="submit" class="btn btn-success">
+                    
+                    <!-- Seleção de Serviços -->
+                    <div class="medicao-servicos">
+                        <h4><i class="fas fa-tools"></i> Serviços Relacionados</h4>
+                        <div id="servicos-medicao-container">
+                            <div class="empty-state">
+                                <i class="fas fa-tools"></i>
+                                <p>Nenhum serviço disponível</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="button" class="btn btn-success btn-full" onclick="adicionarMedicao()">
                         <i class="fas fa-plus"></i> Adicionar Medição
                     </button>
                 </form>
             </div>
 
+            <!-- Lista de Medições -->
             <div class="items-container" id="medicoes-container">
                 <div class="empty-state">
                     <i class="fas fa-ruler"></i>
-                    <p>Nenhuma medição cadastrada para esta obra</p>
+                    <p>Nenhuma medição cadastrada</p>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Modal Serviços da Medição -->
-    <div id="modal-servicos-medicao" class="modal">
+    <!-- Modal Editar Serviço -->
+    <div id="modal-editar-servico" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2><i class="fas fa-cogs"></i> Serviços da Medição</h2>
-                <span class="close" onclick="window.fecharModal('modal-servicos-medicao')">&times;</span>
+                <h2><i class="fas fa-edit"></i> Editar Serviço</h2>
+                <span class="close" onclick="fecharModalEditarServico()">&times;</span>
             </div>
             
-            <div class="form-section">
-                <h3>Adicionar Serviço à Medição</h3>
-                <form id="form-servico-medicao">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="servico-medicao">Serviço *</label>
-                            <select id="servico-medicao" name="servico-medicao" required>
-                                <option value="">Selecione um serviço</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="quantidade-servico">Quantidade *</label>
-                            <input type="number" id="quantidade-servico" name="quantidade-servico" step="0.01" required>
+            <form id="form-editar-servico">
+                <input type="hidden" id="edit-servico-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit-nome-servico">Nome do Serviço *</label>
+                        <input type="text" id="edit-nome-servico" name="edit-nome-servico" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-valor-servico">Valor *</label>
+                        <input type="text" id="edit-valor-servico" name="edit-valor-servico" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="edit-descricao-servico">Descrição</label>
+                    <textarea id="edit-descricao-servico" name="edit-descricao-servico"></textarea>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="edit-iniciado-servico">
+                            Serviço Iniciado
+                        </label>
+                        <small style="color: #888;">Data de início será registrada automaticamente</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="edit-concluido-servico">
+                            Serviço Concluído
+                        </label>
+                        <small style="color: #888;">Data de conclusão será registrada automaticamente</small>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <button type="button" class="btn btn-success" onclick="salvarEdicaoServico()">
+                        <i class="fas fa-save"></i> Salvar Alterações
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="fecharModalEditarServico()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Medição -->
+    <div id="modal-editar-medicao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-edit"></i> Editar Medição</h2>
+                <span class="close" onclick="fecharModalEditarMedicao()">&times;</span>
+            </div>
+            
+            <form id="form-editar-medicao">
+                <input type="hidden" id="edit-medicao-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit-numero-medicao">Número da Medição *</label>
+                        <input type="text" id="edit-numero-medicao" name="edit-numero-medicao" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-data-medicao">Data da Medição *</label>
+                        <input type="date" id="edit-data-medicao" name="edit-data-medicao" required>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit-status-medicao">Status *</label>
+                        <select id="edit-status-medicao" name="edit-status-medicao" required>
+                            <option value="vai_ser_enviada">Vai ser Enviada</option>
+                            <option value="enviada">Enviada</option>
+                            <option value="recebida">Recebida</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-valor-medicao">Valor da Medição *</label>
+                        <input type="text" id="edit-valor-medicao" name="edit-valor-medicao" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="edit-pago-medicao" name="edit-pago-medicao">
+                        Medição Paga
+                    </label>
+                </div>
+                
+                <!-- Seleção de Serviços para Edição -->
+                <div class="medicao-servicos">
+                    <h4><i class="fas fa-tools"></i> Serviços Relacionados</h4>
+                    <div id="edit-servicos-medicao-container">
+                        <div class="empty-state">
+                            <i class="fas fa-tools"></i>
+                            <p>Nenhum serviço disponível</p>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-plus"></i> Adicionar à Medição
-                    </button>
-                </form>
-            </div>
-
-            <div class="items-container" id="servicos-medicao-container">
-                <div class="empty-state">
-                    <i class="fas fa-cogs"></i>
-                    <p>Nenhum serviço adicionado a esta medição</p>
                 </div>
-            </div>
+
+                <div class="form-grid">
+                    <button type="button" class="btn btn-success" onclick="salvarEdicaoMedicao()">
+                        <i class="fas fa-save"></i> Salvar Alterações
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="fecharModalEditarMedicao()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 
     <!-- Scripts -->
-    <script type="module" src="supabase.js"></script>
-    <script type="module" src="obras-hvc.js"></script>
-    <script type="module">
-        import { injectSidebar } from './sidebar.js';
-        injectSidebar("main-content-obras-hvc");
-    </script>
+    <script src="supabase.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="obras-hvc.js"></script>
 </body>
 </html>
 
