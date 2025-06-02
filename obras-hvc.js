@@ -837,7 +837,7 @@ async function carregarServicos() {
 
         if (error) throw error;
 
-        const container = document.getElementById('servicos-list');
+        const container = document.getElementById('servicos-container');
         if (!container) {
             console.warn('Container de serviços não encontrado');
             return;
@@ -884,7 +884,7 @@ async function carregarServicos() {
 
     } catch (error) {
         console.error('Erro ao carregar serviços:', error);
-        const container = document.getElementById('servicos-list');
+        const container = document.getElementById('servicos-container');
         if (container) {
             container.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff4444;">Erro ao carregar serviços</div>';
         }
@@ -1104,7 +1104,7 @@ async function carregarMedicoes() {
 
         if (error) throw error;
 
-        const container = document.getElementById('medicoes-list');
+        const container = document.getElementById('medicoes-container');
         if (!container) {
             console.warn('Container de medições não encontrado');
             return;
@@ -1148,7 +1148,7 @@ async function carregarMedicoes() {
 
     } catch (error) {
         console.error('Erro ao carregar medições:', error);
-        const container = document.getElementById('medicoes-list');
+        const container = document.getElementById('medicoes-container');
         if (container) {
             container.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff4444;">Erro ao carregar medições</div>';
         }
