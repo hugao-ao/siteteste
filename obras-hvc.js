@@ -546,18 +546,30 @@ async function adicionarObra() {
                 throw new Error('Cliente não encontrado nas propostas selecionadas.');
             }
             
-             // Inserir a obra com o cliente_id
-            const { data: obra, error: obraError } = await supabase
-                .from('obras_hvc')
-                .insert({
-                    numero_obra: numeroObra,
-                    nome_obra: nomeObra,
-                    cliente_id: clienteId,
-                    observacoes: observacoes || null,
-                    status: 'a_iniciar'
-                })
-                .select()
-                .single();
+             // Inserir a obra com o cliente_id + Obter cliente_id das propostas selecionadas
+                const propostasIds = Array.from(checkboxes).map(cb => parseInt(cb.value));
+                const { data: propostaData, error: propostaError } = await supabase
+                    .from('propostas_hvc')
+                    .select('cliente_id')
+                    .eq('id', propostasIds[0])
+                    .single();
+                    
+                if (propostaError || !propostaData) {
+                    throw new Error('Não foi possível obter cliente_id da proposta');
+                }
+        
+                // Salva a obra
+                const { data: obra, error: obraError } = await supabase
+                    .from('obras_hvc')
+                    .insert({
+                        numero_obra: numeroObra,
+                        nome_obra: nomeObra,                    // ✅ CORRETO
+                        cliente_id: propostaData.cliente_id,    // ✅ ADICIONADO
+                        observacoes: observacoes || null,
+                        status: 'a_iniciar'
+                    })
+                    .select()
+                    .single();
 
         if (obraError) throw obraError;  ← ADICIONADO: Verificação de erro
 
