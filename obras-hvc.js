@@ -526,7 +526,7 @@ async function adicionarObra() {
             .from('obras_hvc')
             .insert({
                 numero_obra: numeroObra,
-                nome: nomeObra,
+                nome_obra: nomeObra,
                 observacoes: observacoes || null,
                 status: 'a_iniciar'
             })
@@ -663,7 +663,7 @@ async function carregarObras() {
                const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${obra.numero_obra || 'N/A'}</td>
-                            <td>${obra.nome || 'N/A'}</td>
+                            <td>${obra.nome_obra || 'N/A'}</td>
                             <td>${cliente}</td>
                             <td class="valor-positivo">${formatarMoeda(valorTotal)}</td>
                             <td class="valor-positivo">${formatarMoeda(valores.valorTotalMedido)}</td>
