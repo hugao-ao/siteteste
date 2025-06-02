@@ -59,6 +59,79 @@ function setupEventListeners() {
     }
 }
 
+// Mostrar indicador de carregamento
+function mostrarCarregamento(elemento, texto = 'Carregando...') {
+    try {
+        if (typeof elemento === 'string') {
+            elemento = document.getElementById(elemento);
+        }
+        
+        if (elemento) {
+            elemento.innerHTML = `<div style="text-align: center; padding: 20px; color: #999;"><i class="fas fa-spinner fa-spin"></i> ${texto}</div>`;
+        }
+    } catch (error) {
+        console.error('Erro ao mostrar carregamento:', error);
+    }
+}
+
+// Mostrar mensagem de sucesso
+function mostrarSucesso(mensagem, duracao = 3000) {
+    try {
+        const div = document.createElement('div');
+        div.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #4CAF50;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            z-index: 10000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        `;
+        div.innerHTML = `<i class="fas fa-check"></i> ${mensagem}`;
+        
+        document.body.appendChild(div);
+        
+        setTimeout(() => {
+            if (div.parentNode) {
+                div.parentNode.removeChild(div);
+            }
+        }, duracao);
+    } catch (error) {
+        console.error('Erro ao mostrar sucesso:', error);
+    }
+}
+
+// Mostrar mensagem de erro
+function mostrarErro(mensagem, duracao = 5000) {
+    try {
+        const div = document.createElement('div');
+        div.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #f44336;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 5px;
+            z-index: 10000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+        `;
+        div.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${mensagem}`;
+        
+        document.body.appendChild(div);
+        
+        setTimeout(() => {
+            if (div.parentNode) {
+                div.parentNode.removeChild(div);
+            }
+        }, duracao);
+    } catch (error) {
+        console.error('Erro ao mostrar erro:', error);
+    }
+}
+
 // Inicializar página
 async function inicializarPagina() {
     try {
@@ -476,98 +549,185 @@ function converterValorMonetario(valorString) {
     }
 }
 
-// Adicionar obra (VERSÃO CORRIGIDA E LIMPA)
+// Formatação de moeda
+function formatarMoeda(valor) {
+    try {
+        if (!valor && valor !== 0) return 'R$ 0,00';
+        
+        const numero = typeof valor === 'string' ? parseFloat(valor.replace(/[R$\s.]/g, '').replace(',', '.')) : parseFloat(valor);
+        
+        if (isNaN(numero)) return 'R$ 0,00';
+        
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(numero);
+    } catch (error) {
+        console.error('Erro ao formatar moeda:', error);
+        return 'R$ 0,00';
+    }
+}
+
+// Formatação de data
+function formatarData(data) {
+    try {
+        if (!data) return 'N/A';
+        
+        const dataObj = new Date(data);
+        if (isNaN(dataObj.getTime())) return 'Data inválida';
+        
+        return dataObj.toLocaleDateString('pt-BR');
+    } catch (error) {
+        console.error('Erro ao formatar data:', error);
+        return 'N/A';
+    }
+}
+
+// Formatação de status
+function formatarStatus(status) {
+    const statusMap = {
+        'a_iniciar': 'A Iniciar',
+        'em_andamento': 'Em Andamento',
+        'concluido': 'Concluído',
+        'pausado': 'Pausado'
+    };
+    return statusMap[status] || 'Indefinido';
+}
+
+// Formatação de status de serviço
+function formatarStatusServico(servico) {
+    if (servico.data_conclusao) return 'Concluído';
+    if (servico.data_inicio) return 'Em Andamento';
+    return 'Não Iniciado';
+}
+
+// Formatação de status de medição
+function formatarStatusMedicao(status) {
+    const statusMap = {
+        'vai_ser_enviada': 'Vai ser Enviada',
+        'enviada': 'Enviada',
+        'aprovada': 'Aprovada',
+        'rejeitada': 'Rejeitada'
+    };
+    return statusMap[status] || 'Indefinido';
+}
+
+// Adicionar obra (VERSÃO CORRIGIDA E ROBUSTA)
 async function adicionarObra() {
     try {
+        // Validação inicial dos campos
         const numeroObra = document.getElementById('numero-obra')?.value?.trim();
         const nomeObra = document.getElementById('nome-obra')?.value?.trim();
         const observacoes = document.getElementById('observacoes-obra')?.value?.trim();
 
-        // Validações
+        // Validações obrigatórias
         if (!numeroObra) {
             alert('Preencha o número da obra.');
+            document.getElementById('numero-obra')?.focus();
             return;
         }
 
         if (!nomeObra) {
             alert('Preencha o nome da obra.');
+            document.getElementById('nome-obra')?.focus();
             return;
         }
 
-        // Pega propostas selecionadas
+        // Validação das propostas selecionadas
         const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]:checked');
         if (checkboxes.length === 0) {
-            alert('Selecione pelo menos uma proposta.');
+            alert('Selecione pelo menos uma proposta aprovada.');
+            return;
+        }
+
+        // Validação de formato do número da obra
+        const formatoNumero = /^\d{4}\/\d{4}$/;
+        if (!formatoNumero.test(numeroObra)) {
+            alert('Formato do número da obra deve ser: 0000/0000');
+            document.getElementById('numero-obra')?.focus();
             return;
         }
 
         // Verifica se o número já existe
-        try {
-            const { data: obraExistente, error: verificacaoError } = await supabase
-                .from('obras_hvc')
-                .select('id')
-                .eq('numero_obra', numeroObra)
-                .maybeSingle();
+        const { data: obraExistente, error: verificacaoError } = await supabase
+            .from('obras_hvc')
+            .select('id')
+            .eq('numero_obra', numeroObra)
+            .maybeSingle();
 
-            if (verificacaoError) {
-                console.warn('Erro na verificação de obra existente:', verificacaoError);
-            }
-
-            if (obraExistente) {
-                alert('Número de obra já existe. Escolha outro número.');
-                return;
-            }
-        } catch (verificacaoError) {
-            console.warn('Erro ao verificar obra existente:', verificacaoError);
+        if (verificacaoError) {
+            console.warn('Erro na verificação:', verificacaoError);
         }
 
-        // Obter cliente_id das propostas selecionadas
+        if (obraExistente) {
+            alert('Número de obra já existe. Escolha outro número.');
+            document.getElementById('numero-obra')?.focus();
+            return;
+        }
+
+        // Obter dados das propostas selecionadas
         const idsPropostas = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        
+        // Buscar dados da primeira proposta para obter cliente_id
         const { data: propostaData, error: propostaError } = await supabase
             .from('propostas_hvc')
-            .select('cliente_id')
+            .select('cliente_id, valor')
             .eq('id', idsPropostas[0])
             .single();
             
         if (propostaError || !propostaData) {
-            throw new Error('Não foi possível obter cliente_id da proposta');
+            throw new Error('Não foi possível obter dados da proposta selecionada');
         }
 
-        // Salva a obra
+        // Calcular valor total das propostas
+        let valorTotal = 0;
+        for (const id of idsPropostas) {
+            const { data: proposta } = await supabase
+                .from('propostas_hvc')
+                .select('valor')
+                .eq('id', id)
+                .single();
+            
+            if (proposta && proposta.valor) {
+                valorTotal += parseFloat(proposta.valor);
+            }
+        }
+
+        // Inserir a obra
         const { data: obra, error: obraError } = await supabase
             .from('obras_hvc')
             .insert({
                 numero_obra: numeroObra,
-                nome_obra: nomeObra,                    // ✅ CORRETO
-                cliente_id: propostaData.cliente_id,    // ✅ ADICIONADO
+                nome_obra: nomeObra,
+                cliente_id: propostaData.cliente_id,
+                valor_total: valorTotal,
                 observacoes: observacoes || null,
                 status: 'a_iniciar'
             })
             .select()
             .single();
 
-        if (obraError) throw obraError;
-
-        // Associa as propostas à obra
-        const propostasObra = Array.from(checkboxes).map(checkbox => ({
-            obra_id: obra.id,
-            proposta_id: parseInt(checkbox.value)
-        })).filter(item => !isNaN(item.proposta_id));
-
-        if (propostasObra.length > 0) {
-            try {
-                const { error: propostasError } = await supabase
-                    .from('propostas_obra_hvc')
-                    .insert(propostasObra);
-
-                if (propostasError) {
-                    console.warn('Erro ao associar propostas:', propostasError);
-                }
-            } catch (propostasError) {
-                console.warn('Erro ao inserir propostas da obra:', propostasError);
-            }
+        if (obraError) {
+            console.error('Erro ao inserir obra:', obraError);
+            throw new Error('Erro ao salvar obra: ' + obraError.message);
         }
 
+        // Associar propostas à obra
+        const propostasObra = idsPropostas.map(propostaId => ({
+            obra_id: obra.id,
+            proposta_id: propostaId
+        }));
+
+        const { error: propostasError } = await supabase
+            .from('propostas_obra_hvc')
+            .insert(propostasObra);
+
+        if (propostasError) {
+            console.warn('Erro ao associar propostas:', propostasError);
+            // Não falha a operação, apenas avisa
+        }
+
+        // Sucesso
         alert('Obra adicionada com sucesso!');
         limparFormulario();
         await carregarObras();
@@ -575,7 +735,36 @@ async function adicionarObra() {
 
     } catch (error) {
         console.error('Erro ao adicionar obra:', error);
-        alert('Erro ao adicionar obra: ' + (error.message || 'Erro desconhecido'));
+        alert('Erro ao adicionar obra: ' + (error.message || 'Erro desconhecido. Verifique os dados e tente novamente.'));
+    }
+}
+
+// Limpar formulário de obra
+function limparFormulario() {
+    try {
+        // Limpar campos de texto
+        const campos = ['numero-obra', 'nome-obra', 'cliente-obra', 'valor-total', 'observacoes-obra', 'filtro-propostas'];
+        campos.forEach(campoId => {
+            const campo = document.getElementById(campoId);
+            if (campo) {
+                campo.value = '';
+            }
+        });
+
+        // Desmarcar todas as propostas
+        const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+
+        // Limpar seleções persistentes
+        propostasSelecionadas.clear();
+
+        // Recarregar propostas para limpar filtros
+        renderizarPropostas(propostasDisponiveis);
+
+    } catch (error) {
+        console.error('Erro ao limpar formulário:', error);
     }
 }
 
@@ -936,18 +1125,64 @@ async function carregarServicos() {
     }
 }
 
+// Atualizar status da obra baseado nos serviços
+async function atualizarStatusObra() {
+    try {
+        if (!obraAtual) return;
 
-// Adicionar serviço
+        // Buscar todos os serviços da obra
+        const { data: servicos, error } = await supabase
+            .from('servicos_obra_hvc')
+            .select('data_inicio, data_conclusao')
+            .eq('obra_id', obraAtual);
+
+        if (error || !servicos || servicos.length === 0) {
+            return; // Não atualiza se não há serviços
+        }
+
+        let novoStatus = 'a_iniciar';
+        
+        // Verificar se algum serviço foi iniciado
+        const algumIniciado = servicos.some(s => s.data_inicio);
+        
+        // Verificar se todos foram concluídos
+        const todosConcluidos = servicos.length > 0 && servicos.every(s => s.data_conclusao);
+        
+        if (todosConcluidos) {
+            novoStatus = 'concluido';
+        } else if (algumIniciado) {
+            novoStatus = 'em_andamento';
+        }
+
+        // Atualizar status da obra
+        await supabase
+            .from('obras_hvc')
+            .update({ status: novoStatus })
+            .eq('id', obraAtual);
+
+        // Recarregar lista de obras para refletir mudança
+        await carregarObras();
+
+    } catch (error) {
+        console.error('Erro ao atualizar status da obra:', error);
+    }
+}
+
+// Adicionar serviço (VERSÃO CORRIGIDA)
 async function adicionarServico() {
     try {
         const descricaoField = document.getElementById('nome-servico');
+        const valorField = document.getElementById('valor-servico');
+        
         if (!descricaoField) {
             alert('Campo de descrição não encontrado.');
             return;
         }
 
         const descricao = descricaoField.value.trim();
+        const valorTexto = valorField ? valorField.value.trim() : '';
         
+        // Validações
         if (!descricao) {
             alert('Digite o nome do serviço.');
             descricaoField.focus();
@@ -959,17 +1194,53 @@ async function adicionarServico() {
             return;
         }
 
+        // Verificar se serviço já existe para esta obra
+        const { data: servicoExistente } = await supabase
+            .from('servicos_obra_hvc')
+            .select('id')
+            .eq('obra_id', obraAtual)
+            .eq('descricao', descricao)
+            .maybeSingle();
+
+        if (servicoExistente) {
+            alert('Já existe um serviço com esta descrição para esta obra.');
+            descricaoField.focus();
+            return;
+        }
+
+        // Converter valor se fornecido
+        let valorNumerico = null;
+        if (valorTexto) {
+            valorNumerico = converterValorMonetario(valorTexto);
+            if (valorNumerico <= 0) {
+                alert('Valor deve ser maior que zero.');
+                valorField?.focus();
+                return;
+            }
+        }
+
+        // Inserir serviço
         const { error } = await supabase
             .from('servicos_obra_hvc')
             .insert({
                 obra_id: obraAtual,
-                descricao: descricao
+                descricao: descricao,
+                valor: valorNumerico
             });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Erro ao inserir serviço:', error);
+            throw new Error('Erro ao salvar serviço: ' + error.message);
+        }
 
+        // Limpar campos
         descricaoField.value = '';
+        if (valorField) valorField.value = '';
+
+        // Recarregar lista
         await carregarServicos();
+
+        alert('Serviço adicionado com sucesso!');
 
     } catch (error) {
         console.error('Erro ao adicionar serviço:', error);
@@ -1200,18 +1471,31 @@ async function carregarMedicoes() {
     }
 }
 
-// Adicionar medição
+// Adicionar medição (VERSÃO CORRIGIDA)
 async function adicionarMedicao() {
     try {
         const numeroMedicao = document.getElementById('numero-medicao')?.value?.trim();
-        const dataMedicao = document.getElementById('data-medicao')?.value;
+        const dataInicio = document.getElementById('data-inicio')?.value;
+        const dataFim = document.getElementById('data-fim')?.value;
         const valorMedicao = document.getElementById('valor-medicao')?.value;
-        const statusMedicao = document.getElementById('status-medicao')?.value;
-        const retencaoAdicao = document.getElementById('retencao-adicao')?.value;
+        const observacoes = document.getElementById('observacoes-medicao')?.value?.trim();
 
-        // Validações
-        if (!numeroMedicao || !dataMedicao) {
-            alert('Preencha o número e a data da medição.');
+        // Validações obrigatórias
+        if (!numeroMedicao) {
+            alert('Preencha o número da medição.');
+            document.getElementById('numero-medicao')?.focus();
+            return;
+        }
+
+        if (!dataInicio) {
+            alert('Preencha a data de início.');
+            document.getElementById('data-inicio')?.focus();
+            return;
+        }
+
+        if (!valorMedicao) {
+            alert('Preencha o valor da medição.');
+            document.getElementById('valor-medicao')?.focus();
             return;
         }
 
@@ -1220,32 +1504,65 @@ async function adicionarMedicao() {
             return;
         }
 
-        // Converte valores monetários
-        const valorNumerico = converterValorMonetario(valorMedicao);
-        const retencaoNumerico = converterValorMonetario(retencaoAdicao);
+        // Validação de datas
+        if (dataFim && dataFim < dataInicio) {
+            alert('Data de fim deve ser posterior à data de início.');
+            document.getElementById('data-fim')?.focus();
+            return;
+        }
 
+        // Verificar se número da medição já existe
+        const { data: medicaoExistente } = await supabase
+            .from('medicoes_obra_hvc')
+            .select('id')
+            .eq('obra_id', obraAtual)
+            .eq('numero_medicao', numeroMedicao)
+            .maybeSingle();
+
+        if (medicaoExistente) {
+            alert('Já existe uma medição com este número para esta obra.');
+            document.getElementById('numero-medicao')?.focus();
+            return;
+        }
+
+        // Converter valor monetário
+        const valorNumerico = converterValorMonetario(valorMedicao);
+        if (valorNumerico <= 0) {
+            alert('Valor da medição deve ser maior que zero.');
+            document.getElementById('valor-medicao')?.focus();
+            return;
+        }
+
+        // Inserir medição
         const { error } = await supabase
             .from('medicoes_obra_hvc')
             .insert({
                 obra_id: obraAtual,
                 numero_medicao: numeroMedicao,
-                data_medicao: dataMedicao,
+                data_inicio: dataInicio,
+                data_fim: dataFim || null,
                 valor: valorNumerico,
-                status: statusMedicao || 'vai_ser_enviada',
-                retencao_adicao: retencaoNumerico || null,
+                observacoes: observacoes || null,
+                status: 'vai_ser_enviada',
                 pago: false
             });
 
-        if (error) throw error;
+        if (error) {
+            console.error('Erro ao inserir medição:', error);
+            throw new Error('Erro ao salvar medição: ' + error.message);
+        }
 
-        // Limpa formulário
+        // Limpar formulário
         limparFormularioMedicao();
         await carregarMedicoes();
         
+        // Definir próximo número
         const numeroObraElement = document.getElementById('modal-medicoes-obra');
         if (numeroObraElement) {
             await definirProximoNumeroMedicao(numeroObraElement.textContent);
         }
+
+        alert('Medição adicionada com sucesso!');
 
     } catch (error) {
         console.error('Erro ao adicionar medição:', error);
@@ -1269,7 +1586,7 @@ function limparFormularioMedicao() {
     }
 }
 
-// Editar medição
+// Editar medição (VERSÃO CORRIGIDA)
 async function editarMedicao(medicaoId) {
     try {
         if (!medicaoId) {
@@ -1283,37 +1600,83 @@ async function editarMedicao(medicaoId) {
             .eq('id', medicaoId)
             .single();
 
-        if (error) throw error;
+        if (error) {
+            console.error('Erro ao buscar medição:', error);
+            throw new Error('Erro ao carregar medição: ' + error.message);
+        }
 
         if (!medicao) {
             alert('Medição não encontrada.');
             return;
         }
 
-        // Preenche o formulário com os dados da medição
+        // Preencher formulário com dados da medição
         const campos = {
             'numero-medicao': medicao.numero_medicao || '',
-            'data-medicao': medicao.data_medicao || '',
-            'valor-medicao': formatarMoeda(medicao.valor || 0),
-            'status-medicao': medicao.status || 'vai_ser_enviada',
-            'retencao-adicao': medicao.retencao_adicao ? formatarMoeda(medicao.retencao_adicao) : ''
+            'data-inicio': medicao.data_inicio || '',
+            'data-fim': medicao.data_fim || '',
+            'valor-medicao': medicao.valor ? formatarMoeda(medicao.valor) : '',
+            'observacoes-medicao': medicao.observacoes || ''
         };
 
         Object.entries(campos).forEach(([id, valor]) => {
             const elemento = document.getElementById(id);
-            if (elemento) elemento.value = valor;
+            if (elemento) {
+                elemento.value = valor;
+            }
         });
 
-        // Muda o botão para modo edição
-        const btnAdicionar = document.querySelector('#modal-medicoes .btn-success');
+        // Alterar botão para modo edição
+        const btnAdicionar = document.querySelector('#form-medicao button[type="submit"]');
         if (btnAdicionar) {
             btnAdicionar.innerHTML = '<i class="fas fa-save"></i> Salvar Alterações';
-            btnAdicionar.onclick = () => salvarEdicaoMedicao(medicaoId);
+            btnAdicionar.onclick = (e) => {
+                e.preventDefault();
+                salvarEdicaoMedicao(medicaoId);
+            };
+        }
+
+        // Adicionar botão cancelar
+        let btnCancelar = document.getElementById('btn-cancelar-edicao');
+        if (!btnCancelar) {
+            btnCancelar = document.createElement('button');
+            btnCancelar.id = 'btn-cancelar-edicao';
+            btnCancelar.type = 'button';
+            btnCancelar.className = 'btn btn-warning';
+            btnCancelar.innerHTML = '<i class="fas fa-times"></i> Cancelar';
+            btnCancelar.onclick = cancelarEdicaoMedicao;
+            btnAdicionar.parentNode.insertBefore(btnCancelar, btnAdicionar.nextSibling);
         }
 
     } catch (error) {
-        console.error('Erro ao carregar medição para edição:', error);
-        alert('Erro ao carregar medição: ' + (error.message || 'Erro desconhecido'));
+        console.error('Erro ao editar medição:', error);
+        alert('Erro ao carregar medição para edição: ' + (error.message || 'Erro desconhecido'));
+    }
+}
+
+// Cancelar edição de medição
+function cancelarEdicaoMedicao() {
+    try {
+        // Limpar formulário
+        limparFormularioMedicao();
+        
+        // Restaurar botão
+        restaurarBotaoAdicionar();
+        
+        // Remover botão cancelar
+        const btnCancelar = document.getElementById('btn-cancelar-edicao');
+        if (btnCancelar) {
+            btnCancelar.remove();
+        }
+        
+        // Definir próximo número
+        const numeroObraElement = document.getElementById('modal-medicoes-obra');
+        if (numeroObraElement) {
+            definirProximoNumeroMedicao(numeroObraElement.textContent);
+        }
+        
+    } catch (error) {
+        console.error('Erro ao cancelar edição:', error);
     }
 }
 
