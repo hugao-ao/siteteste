@@ -1,4 +1,4 @@
-// obras-hvc.js - Gerenciamento de Obras HVC (VERSÃO FINAL CORRIGIDA)
+// obras-hvc.js - VERSÃO ULTRA-ROBUSTA (Corrige problemas de relacionamento)
 
 import { injectSidebar } from './sidebar.js';
 import { supabase } from './supabase.js';
@@ -206,113 +206,188 @@ function mostrarAviso(mensagem, duracao = 4000) {
     }
 }
 
-// ===== FUNÇÕES DE PROPOSTAS =====
+// ===== FUNÇÕES DE PROPOSTAS (ULTRA-ROBUSTAS) =====
 
 async function carregarPropostasAprovadas() {
     try {
-        console.log('Iniciando carregamento de propostas...');
+        console.log('🔄 Iniciando carregamento de propostas...');
         
-        let propostas = null;
-        let error = null;
-        
-        try {
-            const result = await supabase
-                .from('propostas_hvc')
-                .select(`
-                    id,
-                    numero_proposta,
-                    valor,
-                    clientes_hvc (nome)
-                `)
-                .eq('status', 'Aprovada');
-            
-            propostas = result.data;
-            error = result.error;
-        } catch (relacionamentoError) {
-            console.warn('Erro na consulta com relacionamento:', relacionamentoError);
-            
-            try {
-                const result = await supabase
-                    .from('propostas_hvc')
-                    .select('id, numero_proposta, valor, cliente_id')
-                    .eq('status', 'Aprovada');
-                
-                propostas = result.data;
-                error = result.error;
-                
-                if (propostas && propostas.length > 0) {
-                    for (let proposta of propostas) {
-                        if (proposta.cliente_id) {
-                            try {
-                                const { data: cliente } = await supabase
-                                    .from('clientes_hvc')
-                                    .select('nome')
-                                    .eq('id', proposta.cliente_id)
-                                    .single();
-                                
-                                proposta.clientes_hvc = cliente ? { nome: cliente.nome } : { nome: 'Cliente não encontrado' };
-                            } catch (clienteError) {
-                                console.warn('Erro ao buscar cliente:', clienteError);
-                                proposta.clientes_hvc = { nome: 'Cliente não encontrado' };
-                            }
-                        } else {
-                            proposta.clientes_hvc = { nome: 'Sem cliente' };
-                        }
-                    }
-                }
-            } catch (semRelacionamentoError) {
-                console.warn('Erro na consulta sem relacionamento:', semRelacionamentoError);
-                
-                try {
-                    const result = await supabase
-                        .from('propostas_hvc')
-                        .select('*')
-                        .eq('status', 'Aprovada');
-                    
-                    propostas = result.data;
-                    error = result.error;
-                    
-                    if (propostas && propostas.length > 0) {
-                        propostas.forEach(proposta => {
-                            if (!proposta.clientes_hvc) {
-                                proposta.clientes_hvc = { nome: 'Cliente não especificado' };
-                            }
-                        });
-                    }
-                } catch (basicError) {
-                    console.error('Erro na consulta básica:', basicError);
-                    error = basicError;
-                    propostas = [];
-                }
-            }
+        const container = document.getElementById('propostas-list');
+        if (container) {
+            mostrarCarregamento(container, 'Carregando propostas...');
         }
 
-        if (error) {
-            console.error('Erro final ao carregar propostas:', error);
+        // ESTRATÉGIA 1: Tentar consulta completa com relacionamento
+        let propostas = await tentarCarregarPropostasComRelacionamento();
+        
+        // ESTRATÉGIA 2: Se falhou, tentar sem relacionamento
+        if (!propostas || propostas.length === 0) {
+            console.log('⚠️ Tentando carregar propostas sem relacionamento...');
+            propostas = await tentarCarregarPropostasSemRelacionamento();
+        }
+        
+        // ESTRATÉGIA 3: Se ainda falhou, tentar consulta básica
+        if (!propostas || propostas.length === 0) {
+            console.log('⚠️ Tentando consulta básica de propostas...');
+            propostas = await tentarCarregarPropostasBasico();
+        }
+
+        // Processar resultado final
+        if (!propostas || propostas.length === 0) {
+            console.log('❌ Nenhuma proposta encontrada');
             propostasDisponiveis = [];
-            mostrarMensagemErro('Erro ao carregar propostas. Verifique a configuração do banco de dados.');
-            return;
+            mostrarMensagemSemPropostas();
+        } else {
+            console.log(`✅ ${propostas.length} propostas carregadas com sucesso`);
+            propostasDisponiveis = propostas;
+            renderizarPropostas(propostasDisponiveis);
         }
-
-        console.log('Propostas carregadas:', propostas);
-        propostasDisponiveis = propostas || [];
-        renderizarPropostas(propostasDisponiveis);
 
     } catch (error) {
-        console.error('Erro geral ao carregar propostas:', error);
+        console.error('❌ Erro geral ao carregar propostas:', error);
         propostasDisponiveis = [];
-        mostrarMensagemErro('Erro ao carregar propostas aprovadas. Tente recarregar a página.');
+        mostrarMensagemErroPropostas('Erro inesperado ao carregar propostas. Verifique sua conexão.');
     }
 }
 
-function mostrarMensagemErro(mensagem) {
+// Estratégia 1: Com relacionamento
+async function tentarCarregarPropostasComRelacionamento() {
+    try {
+        const { data, error } = await supabase
+            .from('propostas_hvc')
+            .select(`
+                id,
+                numero_proposta,
+                valor,
+                cliente_id,
+                clientes_hvc (
+                    id,
+                    nome
+                )
+            `)
+            .eq('status', 'Aprovada');
+
+        if (error) {
+            console.warn('Erro na consulta com relacionamento:', error);
+            return null;
+        }
+
+        return data || [];
+    } catch (error) {
+        console.warn('Exceção na consulta com relacionamento:', error);
+        return null;
+    }
+}
+
+// Estratégia 2: Sem relacionamento
+async function tentarCarregarPropostasSemRelacionamento() {
+    try {
+        const { data: propostas, error } = await supabase
+            .from('propostas_hvc')
+            .select('id, numero_proposta, valor, cliente_id, status')
+            .eq('status', 'Aprovada');
+
+        if (error) {
+            console.warn('Erro na consulta sem relacionamento:', error);
+            return null;
+        }
+
+        if (!propostas || propostas.length === 0) {
+            return [];
+        }
+
+        // Buscar nomes dos clientes separadamente
+        for (let proposta of propostas) {
+            if (proposta.cliente_id) {
+                try {
+                    const { data: cliente } = await supabase
+                        .from('clientes_hvc')
+                        .select('nome')
+                        .eq('id', proposta.cliente_id)
+                        .single();
+                    
+                    proposta.clientes_hvc = cliente ? { nome: cliente.nome } : { nome: 'Cliente não encontrado' };
+                } catch (clienteError) {
+                    console.warn(`Erro ao buscar cliente ${proposta.cliente_id}:`, clienteError);
+                    proposta.clientes_hvc = { nome: 'Cliente não encontrado' };
+                }
+            } else {
+                proposta.clientes_hvc = { nome: 'Sem cliente' };
+            }
+        }
+
+        return propostas;
+    } catch (error) {
+        console.warn('Exceção na consulta sem relacionamento:', error);
+        return null;
+    }
+}
+
+// Estratégia 3: Consulta básica
+async function tentarCarregarPropostasBasico() {
+    try {
+        const { data, error } = await supabase
+            .from('propostas_hvc')
+            .select('*')
+            .eq('status', 'Aprovada');
+
+        if (error) {
+            console.warn('Erro na consulta básica:', error);
+            return null;
+        }
+
+        if (!data || data.length === 0) {
+            return [];
+        }
+
+        // Adicionar dados padrão para clientes
+        data.forEach(proposta => {
+            if (!proposta.clientes_hvc) {
+                proposta.clientes_hvc = { nome: 'Cliente não especificado' };
+            }
+        });
+
+        return data;
+    } catch (error) {
+        console.warn('Exceção na consulta básica:', error);
+        return null;
+    }
+}
+
+function mostrarMensagemSemPropostas() {
     try {
         const container = document.getElementById('propostas-list');
         if (container) {
-            container.innerHTML = `<div style="padding: 20px; text-align: center; color: #ff6b6b; background: rgba(255, 107, 107, 0.1); border-radius: 8px; margin: 10px 0;">${mensagem}</div>`;
+            container.innerHTML = `
+                <div style="padding: 30px; text-align: center; color: #666; background: rgba(255, 255, 255, 0.05); border-radius: 8px; margin: 10px 0;">
+                    <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 15px; opacity: 0.5;"></i>
+                    <h4 style="margin: 0 0 10px 0; color: #888;">Nenhuma proposta aprovada encontrada</h4>
+                    <p style="margin: 0; font-size: 0.9rem;">
+                        Para criar obras, você precisa ter propostas com status "Aprovada".<br>
+                        Verifique a seção de propostas e aprove algumas antes de continuar.
+                    </p>
+                </div>
+            `;
         }
     } catch (error) {
-        console.error('Erro ao mostrar mensagem:', error);
+        console.error('Erro ao mostrar mensagem sem propostas:', error);
+    }
+}
+
+function mostrarMensagemErroPropostas(mensagem) {
+    try {
+        const container = document.getElementById('propostas-list');
+        if (container) {
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: #ff6b6b; background: rgba(255, 107, 107, 0.1); border-radius: 8px; margin: 10px 0; border: 1px solid rgba(255, 107, 107, 0.3);">
+                    <i class="fas fa-exclamation-triangle" style="margin-right: 8px;"></i>
+                    ${mensagem}
+                    <br><small style="margin-top: 10px; display: block;">Tente recarregar a página ou verifique as permissões do banco de dados.</small>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Erro ao mostrar mensagem de erro:', error);
     }
 }
 
@@ -327,7 +402,7 @@ function renderizarPropostas(propostas) {
         container.innerHTML = '';
 
         if (!propostas || propostas.length === 0) {
-            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">Nenhuma proposta aprovada disponível</div>';
+            mostrarMensagemSemPropostas();
             return;
         }
 
@@ -366,7 +441,7 @@ function renderizarPropostas(propostas) {
 
     } catch (error) {
         console.error('Erro ao renderizar propostas:', error);
-        mostrarMensagemErro('Erro ao exibir propostas.');
+        mostrarMensagemErroPropostas('Erro ao exibir propostas.');
     }
 }
 
@@ -587,8 +662,12 @@ function converterValorMonetario(valorString) {
     }
 }
 
+// FUNÇÃO ADICIONAR OBRA (ULTRA-ROBUSTA)
 async function adicionarObra() {
     try {
+        console.log('🔄 Iniciando processo de adicionar obra...');
+
+        // Validação inicial dos campos
         const numeroObra = document.getElementById('numero-obra')?.value?.trim();
         const nomeObra = document.getElementById('nome-obra')?.value?.trim();
         const observacoes = document.getElementById('observacoes-obra')?.value?.trim();
@@ -618,6 +697,8 @@ async function adicionarObra() {
             return;
         }
 
+        // Verificar se o número já existe
+        console.log('🔍 Verificando se número da obra já existe...');
         const { data: obraExistente, error: verificacaoError } = await supabase
             .from('obras_hvc')
             .select('id')
@@ -634,37 +715,42 @@ async function adicionarObra() {
             return;
         }
 
+        // Obter IDs das propostas selecionadas
         const idsPropostas = Array.from(checkboxes).map(cb => parseInt(cb.value));
+        console.log('📋 Propostas selecionadas:', idsPropostas);
         
-        const { data: propostaData, error: propostaError } = await supabase
-            .from('propostas_hvc')
-            .select('cliente_id, valor')
-            .eq('id', idsPropostas[0])
-            .single();
-            
-        if (propostaError || !propostaData) {
-            throw new Error('Não foi possível obter dados da proposta selecionada');
+        // Buscar dados das propostas selecionadas (ULTRA-ROBUSTA)
+        console.log('🔍 Buscando dados das propostas...');
+        const dadosPropostas = await buscarDadosPropostas(idsPropostas);
+        
+        if (!dadosPropostas || dadosPropostas.length === 0) {
+            mostrarErro('Não foi possível obter dados das propostas selecionadas. Verifique se as propostas ainda existem.');
+            return;
         }
 
-        let valorTotal = 0;
-        for (const id of idsPropostas) {
-            const { data: proposta } = await supabase
-                .from('propostas_hvc')
-                .select('valor')
-                .eq('id', id)
-                .single();
-            
-            if (proposta && proposta.valor) {
-                valorTotal += parseFloat(proposta.valor);
-            }
+        // Calcular valor total e obter cliente_id
+        const valorTotal = dadosPropostas.reduce((total, proposta) => {
+            const valor = parseFloat(proposta.valor || 0);
+            return total + (isNaN(valor) ? 0 : valor);
+        }, 0);
+
+        const clienteId = dadosPropostas[0]?.cliente_id;
+        if (!clienteId) {
+            mostrarErro('Não foi possível identificar o cliente das propostas selecionadas.');
+            return;
         }
 
+        console.log(`💰 Valor total calculado: R$ ${valorTotal}`);
+        console.log(`👤 Cliente ID: ${clienteId}`);
+
+        // Inserir a obra
+        console.log('💾 Inserindo obra no banco de dados...');
         const { data: obra, error: obraError } = await supabase
             .from('obras_hvc')
             .insert({
                 numero_obra: numeroObra,
                 nome_obra: nomeObra,
-                cliente_id: propostaData.cliente_id,
+                cliente_id: clienteId,
                 valor_total: valorTotal,
                 observacoes: observacoes || null,
                 status: 'a_iniciar'
@@ -673,10 +759,14 @@ async function adicionarObra() {
             .single();
 
         if (obraError) {
-            console.error('Erro ao inserir obra:', obraError);
+            console.error('❌ Erro ao inserir obra:', obraError);
             throw new Error('Erro ao salvar obra: ' + obraError.message);
         }
 
+        console.log('✅ Obra inserida com sucesso:', obra);
+
+        // Associar propostas à obra na tabela de relacionamento
+        console.log('🔗 Associando propostas à obra...');
         const propostasObra = idsPropostas.map(propostaId => ({
             obra_id: obra.id,
             proposta_id: propostaId
@@ -687,17 +777,81 @@ async function adicionarObra() {
             .insert(propostasObra);
 
         if (propostasError) {
-            console.warn('Erro ao associar propostas:', propostasError);
+            console.warn('⚠️ Erro ao associar propostas (não crítico):', propostasError);
+            mostrarAviso('Obra criada, mas houve problema ao associar algumas propostas. Verifique os relacionamentos.');
+        } else {
+            console.log('✅ Propostas associadas com sucesso');
         }
 
+        // Sucesso
         mostrarSucesso('Obra adicionada com sucesso!');
         limparFormulario();
         await carregarObras();
         await definirProximoNumero();
 
     } catch (error) {
-        console.error('Erro ao adicionar obra:', error);
+        console.error('❌ Erro geral ao adicionar obra:', error);
         mostrarErro('Erro ao adicionar obra: ' + (error.message || 'Erro desconhecido. Verifique os dados e tente novamente.'));
+    }
+}
+
+// Função auxiliar para buscar dados das propostas (ULTRA-ROBUSTA)
+async function buscarDadosPropostas(idsPropostas) {
+    try {
+        if (!idsPropostas || idsPropostas.length === 0) {
+            return [];
+        }
+
+        console.log('🔍 Buscando dados das propostas:', idsPropostas);
+
+        // Estratégia 1: Buscar todas de uma vez
+        try {
+            const { data, error } = await supabase
+                .from('propostas_hvc')
+                .select('id, valor, cliente_id, numero_proposta')
+                .in('id', idsPropostas);
+
+            if (!error && data && data.length > 0) {
+                console.log('✅ Dados das propostas obtidos com sucesso (estratégia 1)');
+                return data;
+            }
+        } catch (estrategia1Error) {
+            console.warn('⚠️ Estratégia 1 falhou:', estrategia1Error);
+        }
+
+        // Estratégia 2: Buscar uma por uma
+        console.log('🔄 Tentando estratégia 2: buscar propostas individualmente...');
+        const propostas = [];
+        
+        for (const id of idsPropostas) {
+            try {
+                const { data, error } = await supabase
+                    .from('propostas_hvc')
+                    .select('id, valor, cliente_id, numero_proposta')
+                    .eq('id', id)
+                    .single();
+
+                if (!error && data) {
+                    propostas.push(data);
+                } else {
+                    console.warn(`⚠️ Proposta ${id} não encontrada:`, error);
+                }
+            } catch (propostaError) {
+                console.warn(`⚠️ Erro ao buscar proposta ${id}:`, propostaError);
+            }
+        }
+
+        if (propostas.length > 0) {
+            console.log(`✅ ${propostas.length} propostas obtidas com sucesso (estratégia 2)`);
+            return propostas;
+        }
+
+        console.log('❌ Nenhuma proposta encontrada');
+        return [];
+
+    } catch (error) {
+        console.error('❌ Erro geral ao buscar dados das propostas:', error);
+        return [];
     }
 }
 
