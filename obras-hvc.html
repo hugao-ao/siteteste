@@ -67,13 +67,18 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
-        .form-section h2 {
+        .form-section h2, .form-section h3 {
             color: #ffffff;
             margin-bottom: 20px;
             font-size: 1.5rem;
             display: flex;
             align-items: center;
             gap: 10px;
+        }
+
+        .form-section h3 {
+            font-size: 1.2rem;
+            margin-top: 20px;
         }
 
         .form-grid {
@@ -164,6 +169,11 @@
             background: rgba(255, 255, 255, 0.15);
         }
 
+        .proposta-item.selected {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+
         .proposta-item input[type="checkbox"] {
             margin-right: 10px;
             transform: scale(1.2);
@@ -195,6 +205,7 @@
             align-items: center;
             gap: 8px;
             text-decoration: none;
+            margin-right: 10px;
         }
 
         .btn-primary {
@@ -321,8 +332,8 @@
             text-transform: uppercase;
         }
 
-        .status-iniciado {
-            background: #4CAF50;
+        .status-a-iniciar {
+            background: #757575;
             color: white;
         }
 
@@ -332,7 +343,12 @@
         }
 
         .status-concluido {
-            background: #2196F3;
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-pausado {
+            background: #f44336;
             color: white;
         }
 
@@ -422,6 +438,7 @@
             display: flex;
             gap: 8px;
             flex-shrink: 0;
+            flex-wrap: wrap;
         }
 
         .empty-state {
@@ -434,6 +451,48 @@
             font-size: 3rem;
             margin-bottom: 15px;
             opacity: 0.5;
+        }
+
+        /* Notificações */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 5px;
+            z-index: 10000;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            max-width: 400px;
+            animation: slideIn 0.3s ease;
+        }
+
+        .notification.success {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .notification.error {
+            background: #f44336;
+            color: white;
+        }
+
+        .notification.warning {
+            background: #ff9800;
+            color: white;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         /* Responsive */
@@ -459,6 +518,16 @@
 
             th, td {
                 padding: 8px 5px;
+            }
+
+            .item-actions {
+                flex-direction: column;
+                gap: 5px;
+            }
+
+            .btn-small {
+                padding: 6px 12px;
+                font-size: 11px;
             }
         }
 
@@ -581,15 +650,15 @@
             
             <div class="form-section">
                 <h3>Adicionar Novo Serviço</h3>
-                <form id="form-servico">
+                <form id="form-servico" onsubmit="event.preventDefault(); adicionarServico();">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="nome-servico">Nome do Serviço *</label>
                             <input type="text" id="nome-servico" name="nome-servico" required>
                         </div>
                         <div class="form-group">
-                            <label for="valor-servico">Valor (R$) *</label>
-                            <input type="text" id="valor-servico" name="valor-servico" required>
+                            <label for="valor-servico">Valor (R$)</label>
+                            <input type="text" id="valor-servico" name="valor-servico" placeholder="R$ 0,00">
                         </div>
                     </div>
                     <button type="submit" class="btn btn-success">
@@ -617,7 +686,7 @@
             
             <div class="form-section">
                 <h3>Adicionar Nova Medição</h3>
-                <form id="form-medicao">
+                <form id="form-medicao" onsubmit="event.preventDefault(); adicionarMedicao();">
                     <div class="form-grid">
                         <div class="form-group">
                             <label for="numero-medicao">Número da Medição *</label>
