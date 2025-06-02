@@ -677,19 +677,9 @@
             <div class="form-section">
                 <h3><i class="fas fa-plus"></i> Adicionar Serviço</h3>
                 <form id="form-servico">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="nome-servico">Nome do Serviço *</label>
-                            <input type="text" id="nome-servico" name="nome-servico" placeholder="Ex: Impermeabilização de Laje" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="valor-servico">Valor *</label>
-                            <input type="text" id="valor-servico" name="valor-servico" placeholder="R$ 0,00" required>
-                        </div>
-                    </div>
                     <div class="form-group">
-                        <label for="descricao-servico">Descrição</label>
-                        <textarea id="descricao-servico" name="descricao-servico" placeholder="Descrição detalhada do serviço..."></textarea>
+                        <label for="nome-servico">Nome/Descrição do Serviço *</label>
+                        <input type="text" id="nome-servico" name="nome-servico" placeholder="Ex: Impermeabilização de Laje" required>
                     </div>
                     <button type="button" class="btn btn-success btn-full" onclick="adicionarServico()">
                         <i class="fas fa-plus"></i> Adicionar Serviço
@@ -787,17 +777,14 @@
                 <span class="close" onclick="fecharModalEditarServico()">&times;</span>
             </div>
             
-            <form id="form-editar-servico">
-                <input type="hidden" id="edit-servico-id">
-                <div class="form-grid">
+           <form id="form-editar-servico">
+                    <input type="hidden" id="edit-servico-id">
                     <div class="form-group">
-                        <label for="edit-nome-servico">Nome do Serviço *</label>
+                        <label for="edit-nome-servico">Nome/Descrição do Serviço *</label>
                         <input type="text" id="edit-nome-servico" name="edit-nome-servico" required>
                     </div>
-                    <div class="form-group">
-                        <label for="edit-valor-servico">Valor *</label>
-                        <input type="text" id="edit-valor-servico" name="edit-valor-servico" required>
-                    </div>
+                    <!-- Restante do formulário de edição -->
+                </form>
                 </div>
                 <div class="form-group">
                     <label for="edit-descricao-servico">Descrição</label>
