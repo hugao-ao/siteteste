@@ -571,7 +571,7 @@ async function adicionarObra() {
                     .select()
                     .single();
 
-        if (obraError) throw obraError;  ← ADICIONADO: Verificação de erro
+        if (obraError) throw obraError;  // ← ADICIONADO: Verificação de erro
 
         // Associa as propostas à obra
         const propostasObra = Array.from(checkboxes).map(checkbox => ({
