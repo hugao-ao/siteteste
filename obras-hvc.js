@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 function setupEventListeners() {
     try {
         // Event listener para filtro de propostas
-        const propostasFilter = document.getElementById('propostas-filter');
+        const propostasFilter = document.getElementById('filtro-propostas');
         if (propostasFilter) {
             propostasFilter.addEventListener('input', filtrarPropostas);
         }
@@ -246,7 +246,7 @@ function renderizarPropostas(propostas) {
 // Filtrar propostas
 function filtrarPropostas() {
     try {
-        const filtro = document.getElementById('propostas-filter')?.value?.toLowerCase() || '';
+        const filtro = document.getElementById('filtro-propostas')?.value?.toLowerCase() || '';
         
         if (!filtro) {
             renderizarPropostas(propostasDisponiveis);
@@ -1649,7 +1649,7 @@ function limparFormulario() {
         });
 
         // Limpa filtro de propostas
-        const filtro = document.getElementById('propostas-filter');
+        const filtro = document.getElementById('filtro-propostas');
         if (filtro) filtro.value = '';
 
         // Desmarca todas as propostas
