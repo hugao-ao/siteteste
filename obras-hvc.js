@@ -268,11 +268,31 @@ function filtrarPropostas() {
 // Atualizar seleção de propostas
 function atualizarSelecaoPropostas() {
     try {
-        // Atualiza o Set de seleções baseado nos checkboxes
+        // Atualiza o Set de seleções baseado nos checkboxes VISÍVEIS
         const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]');
+        
+        // Primeiro, remove da seleção as propostas que não estão mais visíveis
+        const idsVisiveis = new Set();
         checkboxes.forEach(checkbox => {
+            idsVisiveis.add(parseInt(checkbox.value));
+        });
+        
+        // Remove do Set apenas as propostas que não estão mais visíveis
+        const idsParaRemover = [];
+        propostasSelecionadas.forEach(id => {
+            if (!idsVisiveis.has(id)) {
+                idsParaRemover.push(id);
+            }
+        });
+        idsParaRemover.forEach(id => propostasSelecionadas.delete(id));
+        
+        // Atualiza o Set baseado nos checkboxes visíveis
+        checkboxes.forEach(checkbox => {
+            const id = parseInt(checkbox.value);
             if (checkbox.checked) {
-                propostasSelecionadas.add(parseInt(checkbox.value));
+                propostasSelecionadas.add(id);
+            } else {
+                propostasSelecionadas.delete(id);
             }
         });
 
@@ -283,7 +303,6 @@ function atualizarSelecaoPropostas() {
         console.error('Erro ao atualizar seleção de propostas:', error);
     }
 }
-
 // Atualizar campos baseados nas seleções (NOVA FUNÇÃO)
 function atualizarCamposSelecao() {
     try {
