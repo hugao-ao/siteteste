@@ -290,7 +290,7 @@ function atualizarSelecaoPropostas() {
 function atualizarCamposSelecao() {
     try {
         const clienteField = document.getElementById('cliente-obra');
-        const valorTotalField = document.getElementById('valor-total-obra');
+        const valorTotalField = document.getElementById('valor-total');
 
         if (!clienteField || !valorTotalField) {
             console.warn('Campos cliente ou valor total não encontrados');
