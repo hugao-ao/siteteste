@@ -698,7 +698,7 @@ async function carregarObras() {
                         
                         if (servicosBtn) {
                             servicosBtn.addEventListener('click', function() {
-                                const obraId = parseInt(this.getAttribute('data-obra-id'));
+                                const obraId = this.getAttribute('data-obra-id'); // Manter como string
                                 const numeroObra = this.getAttribute('data-numero');
                                 window.abrirModalServicos(obraId, numeroObra);
                             });
@@ -706,7 +706,7 @@ async function carregarObras() {
                         
                         if (medicoesBtn) {
                             medicoesBtn.addEventListener('click', function() {
-                                const obraId = parseInt(this.getAttribute('data-obra-id'));
+                                const obraId = this.getAttribute('data-obra-id'); // Manter como string
                                 const numeroObra = this.getAttribute('data-numero');
                                 window.abrirModalMedicoes(obraId, numeroObra);
                             });
@@ -714,7 +714,7 @@ async function carregarObras() {
                         
                         if (excluirBtn) {
                             excluirBtn.addEventListener('click', function() {
-                                const obraId = parseInt(this.getAttribute('data-obra-id'));
+                                const obraId = this.getAttribute('data-obra-id'); // Manter como string
                                 window.excluirObra(obraId);
                             });
                         }
