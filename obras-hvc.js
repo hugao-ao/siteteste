@@ -672,12 +672,12 @@ async function carregarObras() {
                     <td class="${valores.valorEmAberto > 0 ? 'valor-negativo' : 'valor-positivo'}">${formatarMoeda(valores.valorEmAberto)}</td>
                     <td><span class="status-badge status-${obra.status?.replace('_', '-') || 'indefinido'}">${formatarStatus(obra.status)}</span></td>
                     <td>
-                        <button class="btn btn-primary btn-small" onclick="window.abrirModalServicos(${obra.id}, '${obra.numero_obra}')">
+                        <button class="btn btn-primary btn-small" onclick="window.abrirModalServicos(${obra.id}, '${(obra.numero_obra || '').replace(/'/g, '\\\'')}')">
                             <i class="fas fa-tools"></i> Gerenciar
                         </button>
                     </td>
                     <td>
-                        <button class="btn btn-warning btn-small" onclick="window.abrirModalMedicoes(${obra.id}, '${obra.numero_obra}')">
+                        <button class="btn btn-warning btn-small" onclick="window.abrirModalMedicoes(${obra.id}, '${(obra.numero_obra || '').replace(/'/g, '\\\'')}')">
                             <i class="fas fa-ruler"></i> Gerenciar
                         </button>
                     </td>
