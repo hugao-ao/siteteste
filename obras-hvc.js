@@ -1242,60 +1242,71 @@ async function abrirModalServicos(obraId, numeroObra) {
     }
 }
 
+// FUNÇÃO CARREGAR SERVIÇOS (CORRIGIDA: Sem valor, usando coluna \'nome_servico\')
 async function carregarServicos() {
     try {
         if (!obraAtual) {
-            console.warn('Nenhuma obra selecionada');
+            console.warn(\'Nenhuma obra selecionada\');
             return;
         }
 
+        // Selecionar serviço (usando coluna \'nome_servico\')
         const { data: servicos, error } = await supabase
-            .from('servicos_obra_hvc')
-            .select('*')
-            .eq('obra_id', obraAtual)
-            .order('id');
+            .from(\'servicos_obra_hvc\')
+            .select(\'id, nome_servico, data_inicio, data_conclusao\') // <-- CORRIGIDO para nome_servico. Removido \'valor\'.
+            .eq(\'obra_id\', obraAtual)
+            .order(\'nome_servico\'); // Ordenar por nome_servico
 
-        if (error) throw error;
+        if (error) {
+             // Verificar se o erro é sobre a coluna \'nome_servico\'
+            if (error.message.includes(\'column "nome_servico" does not exist\')) {
+                 mostrarErro(\'Erro: A coluna para carregar o nome do serviço não foi encontrada no banco de dados. Verifique se a coluna \'nome_servico\' existe na tabela \'servicos_obra_hvc\".\');
+            } else {
+                 throw error;
+            }
+            return; // Não continua se houve erro
+        }
 
-        const container = document.getElementById('servicos-container');
+        const container = document.getElementById(\'servicos-container\');
         if (!container) {
-            console.warn('Container de serviços não encontrado');
+            console.warn(\'Container de serviços não encontrado\');
             return;
         }
 
-        container.innerHTML = '';
+        container.innerHTML = \'\';
 
         if (!servicos || servicos.length === 0) {
-            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #999;">Nenhum serviço adicionado</div>';
+            container.innerHTML = \'<div class="empty-state"><i class="fas fa-tools"></i><p>Nenhum serviço cadastrado</p></div>\';
             return;
         }
 
         servicos.forEach(servico => {
             if (!servico) return;
 
-            const div = document.createElement('div');
-            div.className = 'item';
+            const nomeServico = servico.nome_servico || \'Serviço sem nome\'; // <-- Usa a coluna \'nome_servico\'
+
+            const div = document.createElement(\'div\');
+            div.className = \'item\';
             div.innerHTML = `
                 <div class="item-info">
-                    <strong>${servico.descricao || 'Sem descrição'}</strong><br>
+                    <strong>${nomeServico}</strong><br>
                     <small>Status: ${formatarStatusServico(servico)}</small>
-                    ${servico.valor ? `<br><small>Valor: ${formatarMoeda(servico.valor)}</small>` : ''}
-                    ${servico.data_inicio ? `<br><small>Iniciado: ${formatarData(servico.data_inicio)}</small>` : ''}
-                    ${servico.data_conclusao ? `<br><small>Concluído: ${formatarData(servico.data_conclusao)}</small>` : ''}
+                    ${servico.data_inicio ? `<br><small>Iniciado: ${formatarData(servico.data_inicio)}</small>` : \'\'}
+                    ${servico.data_conclusao ? `<br><small>Concluído: ${formatarData(servico.data_conclusao)}</small>` : \'\'}
                 </div>
                 <div class="item-actions">
-                    <button class="btn ${servico.data_inicio ? 'btn-warning' : 'btn-success'} btn-small" 
-                            onclick="toggleInicioServico('${servico.id}', ${!!servico.data_inicio})">
-                        ${servico.data_inicio ? 'Desmarcar Início' : 'Iniciar'}
+                    <button class="btn ${servico.data_inicio ? \'btn-warning\' : \'btn-success\'} btn-small" 
+                            onclick="toggleInicioServico(\'${servico.id}\', ${!!servico.data_inicio})">
+                        <i class="fas ${servico.data_inicio ? \'fa-undo\' : \'fa-play\'}"></i> ${servico.data_inicio ? \'Desfazer Início\' : \'Iniciar\'}
                     </button>
-                    <button class="btn ${servico.data_conclusao ? 'btn-warning' : 'btn-success'} btn-small" 
-                            onclick="toggleConclusaoServico('${servico.id}', ${!!servico.data_conclusao})">
-                        ${servico.data_conclusao ? 'Desmarcar Conclusão' : 'Concluir'}
+                    <button class="btn ${servico.data_conclusao ? \'btn-warning\' : \'btn-success\'} btn-small" 
+                            onclick="toggleConclusaoServico(\'${servico.id}\', ${!!servico.data_conclusao})">
+                         <i class="fas ${servico.data_conclusao ? \'fa-undo\' : \'fa-check\'}"></i> ${servico.data_conclusao ? \'Desfazer Conclusão\' : \'Concluir\'}
                     </button>
-                    <button class="btn btn-primary btn-small" onclick="editarServico('${servico.id}')">
+                    <button class="btn btn-primary btn-small" onclick="abrirModalEditarServico(\'${servico.id}\')">
                         <i class="fas fa-edit"></i> Editar
                     </button>
-                    <button class="btn btn-danger btn-small" onclick="excluirServico('${servico.id}')">
+                    <button class="btn btn-danger btn-small" onclick="excluirServico(\'${servico.id}\')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -1306,84 +1317,85 @@ async function carregarServicos() {
         await atualizarStatusObra();
 
     } catch (error) {
-        console.error('Erro ao carregar serviços:', error);
-        const container = document.getElementById('servicos-container');
+        console.error(\'Erro ao carregar serviços:\', error);
+        const container = document.getElementById(\'servicos-container\');
         if (container) {
-            container.innerHTML = '<div style="padding: 20px; text-align: center; color: #ff4444;">Erro ao carregar serviços</div>';
+            container.innerHTML = \'<div class="empty-state error-state"><i class="fas fa-exclamation-triangle"></i><p>Erro ao carregar serviços</p></div>\';
         }
     }
 }
 
+
+
+// FUNÇÃO ADICIONAR SERVIÇO (CORRIGIDA: Sem valor, usando coluna 'nome_servico')
 async function adicionarServico() {
     try {
-        const descricaoField = document.getElementById('nome-servico');
-        const valorField = document.getElementById('valor-servico');
+        const nomeField = document.getElementById(\'nome-servico\');
         
-        if (!descricaoField) {
-            mostrarErro('Campo de descrição não encontrado.');
+        if (!nomeField) {
+            mostrarErro(\'Campo de nome/descrição não encontrado.\');
             return;
         }
 
-        const descricao = descricaoField.value.trim();
-        const valorTexto = valorField ? valorField.value.trim() : '';
+        const nomeServicoValor = nomeField.value.trim(); // Renomeado para clareza
         
-        if (!descricao) {
-            mostrarErro('Digite o nome do serviço.');
-            descricaoField.focus();
+        if (!nomeServicoValor) {
+            mostrarErro(\'Digite o nome/descrição do serviço.\');
+            nomeField.focus();
             return;
         }
 
         if (!obraAtual) {
-            mostrarErro('Nenhuma obra selecionada.');
+            mostrarErro(\'Nenhuma obra selecionada.\');
             return;
         }
 
+        // Verificar duplicidade (usando coluna \'nome_servico\')
         const { data: servicoExistente } = await supabase
-            .from('servicos_obra_hvc')
-            .select('id')
-            .eq('obra_id', obraAtual)
-            .eq('descricao', descricao)
+            .from(\'servicos_obra_hvc\')
+            .select(\'id\')
+            .eq(\'obra_id\', obraAtual)
+            .eq(\'nome_servico\', nomeServicoValor) // <-- CORRIGIDO para nome_servico
             .maybeSingle();
 
         if (servicoExistente) {
-            mostrarErro('Já existe um serviço com esta descrição para esta obra.');
-            descricaoField.focus();
+            mostrarErro(\'Já existe um serviço com este nome/descrição para esta obra.\');
+            nomeField.focus();
             return;
         }
 
-        let valorNumerico = null;
-        if (valorTexto) {
-            valorNumerico = converterValorMonetario(valorTexto);
-            if (valorNumerico <= 0) {
-                mostrarErro('Valor deve ser maior que zero.');
-                valorField?.focus();
-                return;
-            }
-        }
-
+        // Inserir serviço (usando coluna \'nome_servico\')
         const { error } = await supabase
-            .from('servicos_obra_hvc')
+            .from(\'servicos_obra_hvc\')
             .insert({
                 obra_id: obraAtual,
-                descricao: descricao,
-                valor: valorNumerico
+                nome_servico: nomeServicoValor // <-- CORRIGIDO para nome_servico
+                // \'valor\' removido
             });
 
         if (error) {
-            console.error('Erro ao inserir serviço:', error);
-            throw new Error('Erro ao salvar serviço: ' + error.message);
+            console.error(\'Erro ao inserir serviço:\', error);
+            // Verificar se o erro é sobre a coluna \'nome_servico\'
+            if (error.message.includes(\'column "nome_servico" does not exist\')) {
+                 mostrarErro(\'Erro: A coluna para salvar o nome do serviço não foi encontrada no banco de dados. Verifique se a coluna \'nome_servico\' existe na tabela \'servicos_obra_hvc\".\');
+            } else {
+                 throw new Error(\'Erro ao salvar serviço: \' + error.message);
+            }
+            return; // Não continua se houve erro
         }
 
         limparFormularioServico();
         await carregarServicos();
 
-        mostrarSucesso('Serviço adicionado com sucesso!');
+        mostrarSucesso(\'Serviço adicionado com sucesso!\');
 
     } catch (error) {
-        console.error('Erro ao adicionar serviço:', error);
-        mostrarErro('Erro ao adicionar serviço: ' + (error.message || 'Erro desconhecido'));
+        console.error(\'Erro ao adicionar serviço:\', error);
+        mostrarErro(\'Erro ao adicionar serviço: \' + (error.message || \'Erro desconhecido\'));
     }
 }
+
+
 
 // NOVA FUNÇÃO: Editar Serviço
 async function editarServico(servicoId) {
@@ -1455,82 +1467,79 @@ async function editarServico(servicoId) {
     }
 }
 
-// NOVA FUNÇÃO: Salvar Edição do Serviço
+// FUNÇÃO SALVAR EDIÇÃO SERVIÇO (CORRIGIDA: Sem valor, usando coluna \'nome_servico\')
 async function salvarEdicaoServico(servicoId) {
     try {
         if (!servicoId) {
-            mostrarErro('ID do serviço inválido.');
+            mostrarErro(\'ID do serviço inválido.\');
             return;
         }
 
-        const descricaoField = document.getElementById('nome-servico');
-        const valorField = document.getElementById('valor-servico');
+        const nomeField = document.getElementById(\'edit-nome-servico\'); // Usa o campo do modal de edição
         
-        if (!descricaoField) {
-            mostrarErro('Campo de descrição não encontrado.');
+        if (!nomeField) {
+            mostrarErro(\'Campo de nome/descrição não encontrado no modal de edição.\');
             return;
         }
 
-        const descricao = descricaoField.value.trim();
-        const valorTexto = valorField ? valorField.value.trim() : '';
+        const nomeServicoValor = nomeField.value.trim(); // Renomeado para clareza
         
-        if (!descricao) {
-            mostrarErro('Digite o nome do serviço.');
-            descricaoField.focus();
+        if (!nomeServicoValor) {
+            mostrarErro(\'Digite o nome/descrição do serviço.\');
+            nomeField.focus();
             return;
         }
 
-        // Verificar se já existe outro serviço com a mesma descrição (exceto o atual)
+        // Verificar duplicidade (usando coluna \'nome_servico\')
         const { data: servicoExistente } = await supabase
-            .from('servicos_obra_hvc')
-            .select('id')
-            .eq('obra_id', obraAtual)
-            .eq('descricao', descricao)
-            .neq('id', servicoId)
+            .from(\'servicos_obra_hvc\')
+            .select(\'id\')
+            .eq(\'obra_id\', obraAtual)
+            .eq(\'nome_servico\', nomeServicoValor) // <-- CORRIGIDO para nome_servico
+            .neq(\'id\', servicoId)
             .maybeSingle();
 
         if (servicoExistente) {
-            mostrarErro('Já existe outro serviço com esta descrição para esta obra.');
-            descricaoField.focus();
+            mostrarErro(\'Já existe outro serviço com este nome/descrição para esta obra.\');
+            nomeField.focus();
             return;
         }
 
-        let valorNumerico = null;
-        if (valorTexto) {
-            valorNumerico = converterValorMonetario(valorTexto);
-            if (valorNumerico <= 0) {
-                mostrarErro('Valor deve ser maior que zero.');
-                valorField?.focus();
-                return;
-            }
-        }
-
-        // Atualizar serviço
+        // Atualizar serviço (usando coluna \'nome_servico\')
         const { error } = await supabase
-            .from('servicos_obra_hvc')
+            .from(\'servicos_obra_hvc\')
             .update({
-                descricao: descricao,
-                valor: valorNumerico
+                nome_servico: nomeServicoValor // <-- CORRIGIDO para nome_servico
+                // \'valor\' removido
             })
-            .eq('id', servicoId);
+            .eq(\'id\', servicoId);
 
         if (error) {
-            console.error('Erro ao atualizar serviço:', error);
-            throw new Error('Erro ao salvar alterações: ' + error.message);
+            console.error(\'Erro ao atualizar serviço:\', error);
+             // Verificar se o erro é sobre a coluna \'nome_servico\'
+            if (error.message.includes(\'column "nome_servico" does not exist\')) {
+                 mostrarErro(\'Erro: A coluna para salvar o nome do serviço não foi encontrada no banco de dados. Verifique se a coluna \'nome_servico\' existe na tabela \'servicos_obra_hvc\".\');
+            } else {
+                 throw new Error(\'Erro ao salvar alterações: \' + error.message);
+            }
+            return; // Não continua se houve erro
         }
 
-        // Restaurar formulário
+        // Fechar modal de edição e restaurar formulário principal
+        fecharModal(\'modal-editar-servico\'); // Adicionado para fechar o modal de edição
         restaurarBotaoAdicionarServico();
         limparFormularioServico();
         await carregarServicos();
 
-        mostrarSucesso('Serviço atualizado com sucesso!');
+        mostrarSucesso(\'Serviço atualizado com sucesso!\');
 
     } catch (error) {
-        console.error('Erro ao salvar edição do serviço:', error);
-        mostrarErro('Erro ao salvar alterações: ' + (error.message || 'Erro desconhecido'));
+        console.error(\'Erro ao salvar edição do serviço:\', error);
+        mostrarErro(\'Erro ao salvar alterações: \' + (error.message || \'Erro desconhecido\'));
     }
 }
+
+
 
 // NOVA FUNÇÃO: Cancelar Edição do Serviço
 function cancelarEdicaoServico() {
