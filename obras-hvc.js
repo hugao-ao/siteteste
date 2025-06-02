@@ -660,35 +660,67 @@ async function carregarObras() {
                 const valorTotal = obra.propostas_obra_hvc?.reduce((total, po) => 
                     total + (po.propostas_hvc?.valor || 0), 0) || 0;
 
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${obra.numero_obra || 'N/A'}</td>
-                    <td>${obra.nome || 'N/A'}</td>
-                    <td>${cliente}</td>
-                    <td class="valor-positivo">${formatarMoeda(valorTotal)}</td>
-                    <td class="valor-positivo">${formatarMoeda(valores.valorTotalMedido)}</td>
-                    <td class="valor-positivo">${formatarMoeda(valores.valorTotalRecebido)}</td>
-                    <td class="${valores.valorMedidoNaoRecebido > 0 ? 'valor-negativo' : 'valor-neutro'}">${formatarMoeda(valores.valorMedidoNaoRecebido)}</td>
-                    <td class="${valores.valorEmAberto > 0 ? 'valor-negativo' : 'valor-positivo'}">${formatarMoeda(valores.valorEmAberto)}</td>
-                    <td><span class="status-badge status-${obra.status?.replace('_', '-') || 'indefinido'}">${formatarStatus(obra.status)}</span></td>
-                    <td>
-                        <button class="btn btn-primary btn-small" onclick="window.abrirModalServicos(${obra.id}, '${(obra.numero_obra || '').replace(/'/g, '\\\'')}')">
-                            <i class="fas fa-tools"></i> Gerenciar
-                        </button>
-                    </td>
-                    <td>
-                        <button class="btn btn-warning btn-small" onclick="window.abrirModalMedicoes(${obra.id}, '${(obra.numero_obra || '').replace(/'/g, '\\\'')}')">
-                            <i class="fas fa-ruler"></i> Gerenciar
-                        </button>
-                    </td>
-                    <td>
-                        <button class="btn btn-danger btn-small" onclick="window.excluirObra(${obra.id})">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </td>
-                `;
-                tbody.appendChild(row);
-            } catch (obraError) {
+               const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${obra.numero_obra || 'N/A'}</td>
+                            <td>${obra.nome || 'N/A'}</td>
+                            <td>${cliente}</td>
+                            <td class="valor-positivo">${formatarMoeda(valorTotal)}</td>
+                            <td class="valor-positivo">${formatarMoeda(valores.valorTotalMedido)}</td>
+                            <td class="valor-positivo">${formatarMoeda(valores.valorTotalRecebido)}</td>
+                            <td class="${valores.valorMedidoNaoRecebido > 0 ? 'valor-negativo' : 'valor-neutro'}">${formatarMoeda(valores.valorMedidoNaoRecebido)}</td>
+                            <td class="${valores.valorEmAberto > 0 ? 'valor-negativo' : 'valor-positivo'}">${formatarMoeda(valores.valorEmAberto)}</td>
+                            <td><span class="status-badge status-${obra.status?.replace('_', '-') || 'indefinido'}">${formatarStatus(obra.status)}</span></td>
+                            <td>
+                                <button class="btn btn-primary btn-small" data-action="servicos" data-obra-id="${obra.id}" data-numero="${obra.numero_obra || ''}">
+                                    <i class="fas fa-tools"></i> Gerenciar
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-warning btn-small" data-action="medicoes" data-obra-id="${obra.id}" data-numero="${obra.numero_obra || ''}">
+                                    <i class="fas fa-ruler"></i> Gerenciar
+                                </button>
+                            </td>
+                            <td>
+                                <button class="btn btn-danger btn-small" data-action="excluir" data-obra-id="${obra.id}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        `;
+                        
+                        // ADICIONAR ESTA PARTE LOGO APÓS tbody.appendChild(row):
+                        tbody.appendChild(row);
+                        
+                        // Event listeners para os botões desta linha
+                        const servicosBtn = row.querySelector('[data-action="servicos"]');
+                        const medicoesBtn = row.querySelector('[data-action="medicoes"]');
+                        const excluirBtn = row.querySelector('[data-action="excluir"]');
+                        
+                        if (servicosBtn) {
+                            servicosBtn.addEventListener('click', function() {
+                                const obraId = parseInt(this.getAttribute('data-obra-id'));
+                                const numeroObra = this.getAttribute('data-numero');
+                                window.abrirModalServicos(obraId, numeroObra);
+                            });
+                        }
+                        
+                        if (medicoesBtn) {
+                            medicoesBtn.addEventListener('click', function() {
+                                const obraId = parseInt(this.getAttribute('data-obra-id'));
+                                const numeroObra = this.getAttribute('data-numero');
+                                window.abrirModalMedicoes(obraId, numeroObra);
+                            });
+                        }
+                        
+                        if (excluirBtn) {
+                            excluirBtn.addEventListener('click', function() {
+                                const obraId = parseInt(this.getAttribute('data-obra-id'));
+                                window.excluirObra(obraId);
+                            });
+                        }
+            } 
+            
+            catch (obraError) {
                 console.error(`Erro ao processar obra ${obra.id}:`, obraError);
             }
         }
