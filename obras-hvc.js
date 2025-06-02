@@ -270,8 +270,6 @@ function atualizarSelecaoPropostas() {
     try {
         // Atualiza o Set de seleções baseado nos checkboxes
         const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]');
-        propostasSelecionadas.clear();
-        
         checkboxes.forEach(checkbox => {
             if (checkbox.checked) {
                 propostasSelecionadas.add(parseInt(checkbox.value));
