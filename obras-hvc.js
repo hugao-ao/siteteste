@@ -218,7 +218,7 @@ function renderizarPropostas(propostas) {
                     
                    div.innerHTML = `
                         <input type="checkbox" id="prop-${proposta.id}" value="${proposta.id}" 
-                       onchange="atualizarSelecaoPropostasSeguro(this)" ${estaSelecionada ? 'checked' : ''}>
+                       onchange="atualizarSelecaoPropostas()" ${estaSelecionada ? 'checked' : ''}>
                         <div class="proposta-info">
                             <strong>${numeroProposta}</strong> - ${clienteNome}
                             <div class="proposta-valor">${formatarMoeda(valor)}</div>
@@ -246,23 +246,36 @@ function renderizarPropostas(propostas) {
 // Filtrar propostas
 function filtrarPropostas() {
     try {
-        // PRIMEIRO: Capturar seleções atuais
-        capturarSelecoes();
+        // Salvar seleções atuais
+        const selecoesSalvas = new Set();
+        const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]:checked');
+        checkboxes.forEach(cb => selecoesSalvas.add(parseInt(cb.value)));
         
         const filtro = document.getElementById('filtro-propostas')?.value?.toLowerCase() || '';
         
         if (!filtro) {
             renderizarPropostas(propostasDisponiveis);
-            return;
+        } else {
+            const propostasFiltradas = propostasDisponiveis.filter(proposta => {
+                const numero = (proposta.numero_proposta || '').toLowerCase();
+                const cliente = (proposta.clientes_hvc?.nome || proposta.cliente_nome || '').toLowerCase();
+                return numero.includes(filtro) || cliente.includes(filtro);
+            });
+            renderizarPropostas(propostasFiltradas);
         }
-
-        const propostasFiltradas = propostasDisponiveis.filter(proposta => {
-            const numero = (proposta.numero_proposta || '').toLowerCase();
-            const cliente = (proposta.clientes_hvc?.nome || proposta.cliente_nome || '').toLowerCase();
-            return numero.includes(filtro) || cliente.includes(filtro);
-        });
-
-        renderizarPropostas(propostasFiltradas);
+        
+        // Restaurar seleções após um pequeno delay
+        setTimeout(() => {
+            selecoesSalvas.forEach(id => {
+                const checkbox = document.getElementById(`prop-${id}`);
+                if (checkbox) {
+                    checkbox.checked = true;
+                    propostasSelecionadas.add(id);
+                }
+            });
+            atualizarCamposSelecao();
+        }, 50);
+        
     } catch (error) {
         console.error('Erro ao filtrar propostas:', error);
     }
@@ -306,44 +319,6 @@ function atualizarSelecaoPropostas() {
         console.error('Erro ao atualizar seleção de propostas:', error);
     }
 }
-
-
-            // Capturar seleções atuais antes de renderizar
-            function capturarSelecoes() {
-                try {
-                    const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]:checked');
-                    propostasSelecionadas.clear();
-                    
-                    checkboxes.forEach(checkbox => {
-                        const id = parseInt(checkbox.value);
-                        if (!isNaN(id)) {
-                            propostasSelecionadas.add(id);
-                        }
-                    });
-                } catch (error) {
-                    console.error('Erro ao capturar seleções:', error);
-                }
-            }
-            
-            // Versão segura que não limpa todas as seleções
-            function atualizarSelecaoPropostasSeguro(checkbox) {
-                try {
-                    const id = parseInt(checkbox.value);
-                    if (isNaN(id)) return;
-                    
-                    if (checkbox.checked) {
-                        propostasSelecionadas.add(id);
-                    } else {
-                        propostasSelecionadas.delete(id);
-                    }
-                    
-                    // Atualiza os campos visuais
-                    atualizarCamposSelecao();
-                } catch (error) {
-                    console.error('Erro ao atualizar seleção segura:', error);
-                }
-            }
-
 
 // Atualizar campos baseados nas seleções (NOVA FUNÇÃO)
 function atualizarCamposSelecao() {
