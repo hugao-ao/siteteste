@@ -216,9 +216,9 @@ function renderizarPropostas(propostas) {
                     // Verifica se esta proposta estava selecionada
                     const estaSelecionada = propostasSelecionadas.has(proposta.id);
                     
-                    div.innerHTML = `
+                   div.innerHTML = `
                         <input type="checkbox" id="prop-${proposta.id}" value="${proposta.id}" 
-                               onchange="atualizarSelecaoPropostas()" ${estaSelecionada ? 'checked' : ''}>
+                       onchange="atualizarSelecaoPropostasSeguro(this)" ${estaSelecionada ? 'checked' : ''}>
                         <div class="proposta-info">
                             <strong>${numeroProposta}</strong> - ${clienteNome}
                             <div class="proposta-valor">${formatarMoeda(valor)}</div>
@@ -246,6 +246,9 @@ function renderizarPropostas(propostas) {
 // Filtrar propostas
 function filtrarPropostas() {
     try {
+        // PRIMEIRO: Capturar seleções atuais
+        capturarSelecoes();
+        
         const filtro = document.getElementById('filtro-propostas')?.value?.toLowerCase() || '';
         
         if (!filtro) {
@@ -303,6 +306,45 @@ function atualizarSelecaoPropostas() {
         console.error('Erro ao atualizar seleção de propostas:', error);
     }
 }
+
+
+            // Capturar seleções atuais antes de renderizar
+            function capturarSelecoes() {
+                try {
+                    const checkboxes = document.querySelectorAll('#propostas-list input[type="checkbox"]:checked');
+                    propostasSelecionadas.clear();
+                    
+                    checkboxes.forEach(checkbox => {
+                        const id = parseInt(checkbox.value);
+                        if (!isNaN(id)) {
+                            propostasSelecionadas.add(id);
+                        }
+                    });
+                } catch (error) {
+                    console.error('Erro ao capturar seleções:', error);
+                }
+            }
+            
+            // Versão segura que não limpa todas as seleções
+            function atualizarSelecaoPropostasSeguro(checkbox) {
+                try {
+                    const id = parseInt(checkbox.value);
+                    if (isNaN(id)) return;
+                    
+                    if (checkbox.checked) {
+                        propostasSelecionadas.add(id);
+                    } else {
+                        propostasSelecionadas.delete(id);
+                    }
+                    
+                    // Atualiza os campos visuais
+                    atualizarCamposSelecao();
+                } catch (error) {
+                    console.error('Erro ao atualizar seleção segura:', error);
+                }
+            }
+
+
 // Atualizar campos baseados nas seleções (NOVA FUNÇÃO)
 function atualizarCamposSelecao() {
     try {
