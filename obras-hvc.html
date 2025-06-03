@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obras HVC</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        body {
+            display: flex;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #000080, #191970);
+            color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        #main-content-obras-hvc {
+            flex-grow: 1;
+            padding: 2rem;
+            margin-left: 250px;
+            transition: margin-left 0.3s ease;
+            background: linear-gradient(135deg, #000080, #191970);
+            color: #e0e0e0;
+        }
+
+        #main-content-obras-hvc.sidebar-collapsed {
+            margin-left: 60px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .header h1 {
+            font-size: 2.5rem;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);
+            margin: 0;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            font-size: 1.1rem;
+            color: #b0b0b0;
+            margin: 0;
+        }
+
+        .form-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .form-section h2 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group label {
+            color: #ffffff;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .form-group textarea {
+            resize: vertical;
+            min-height: 100px;
+        }
+
+        /* Select múltiplo com filtro */
+        .select-container {
+            position: relative;
+        }
+
+        .select-filter {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
+
+        .select-filter:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 10px rgba(76, 175, 80, 0.3);
+        }
+
+        .propostas-container {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+        }
+
+        .proposta-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            transition: background 0.2s ease;
+        }
+
+        .proposta-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .proposta-item input[type="checkbox"] {
+            margin-right: 10px;
+            transform: scale(1.2);
+        }
+
+        .proposta-info {
+            flex-grow: 1;
+        }
+
+        .proposta-numero {
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .proposta-valor {
+            color: #FFD700;
+            font-size: 0.9rem;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(45deg, #45a049, #3d8b40);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(45deg, #45a049, #3d8b40);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(45deg, #f57c00, #ef6c00);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(255, 152, 0, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(45deg, #d32f2f, #c62828);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 12px;
+        }
+
+        .btn-full {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .table-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 25px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .table-section h2 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: transparent;
+        }
+
+        th {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 15px 10px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+        }
+
+        td {
+            padding: 12px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: #e0e0e0;
+        }
+
+        tr:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .valor-positivo {
+            color: #4CAF50;
+            font-weight: bold;
+        }
+
+        .valor-negativo {
+            color: #f44336;
+            font-weight: bold;
+        }
+
+        .valor-neutro {
+            color: #e0e0e0;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-iniciado {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-em-andamento {
+            background: #ff9800;
+            color: white;
+        }
+
+        .status-concluido {
+            background: #2196F3;
+            color: white;
+        }
+
+        .status-indefinido {
+            background: #757575;
+            color: white;
+        }
+
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            margin: 2% auto;
+            padding: 30px;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .modal-header h2 {
+            color: #ffffff;
+            margin: 0;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+        }
+
+        .close:hover {
+            color: #fff;
+        }
+
+        .items-container {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+
+        .item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10px;
+        }
+
+        .item-info {
+            flex-grow: 1;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #888;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
+        }
+
+        /* Estilos específicos para medições */
+        .medicao-servicos {
+            margin-top: 15px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .medicao-servicos h4 {
+            color: #4CAF50;
+            margin: 0 0 10px 0;
+            font-size: 14px;
+        }
+
+        .servico-checkbox {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+
+        .servico-checkbox input[type="checkbox"] {
+            margin-right: 10px;
+            margin-top: 2px;
+        }
+
+        .servico-info {
+            flex-grow: 1;
+        }
+
+        .servico-nome {
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 5px;
+        }
+
+        .servico-observacoes {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 12px;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .servico-observacoes:focus {
+            outline: none;
+            border-color: #4CAF50;
+            box-shadow: 0 0 5px rgba(76, 175, 80, 0.3);
+        }
+
+        /* Notificações */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            z-index: 10000;
+            max-width: 400px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(45deg, #4CAF50, #45a049);
+        }
+
+        .notification.error {
+            background: linear-gradient(45deg, #f44336, #d32f2f);
+        }
+
+        .notification.warning {
+            background: linear-gradient(45deg, #ff9800, #f57c00);
+        }
+
+        .notification.info {
+            background: linear-gradient(45deg, #2196F3, #1976D2);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            #main-content-obras-hvc {
+                margin-left: 0;
+                padding: 1rem;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+                padding: 20px;
+            }
+
+            .table-container {
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 8px 5px;
+            }
+        }
+
+        .proposta-item.selected {
+            background: rgba(76, 175, 80, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.5);
+        }
+
+        .servico-checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            margin-bottom: 5px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+        }
+
+        .servico-checkbox-item label {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            cursor: pointer;
+            color: #ffffff;
+        }
+
+        .servico-checkbox-item input[type="checkbox"] {
+            margin-right: 10px;
+        }
+
+        /* Scrollbar customization */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div id="main-content-obras-hvc">
+        <div class="container">
+            <div class="header">
+                <h1><i class="fas fa-hard-hat"></i> Gerenciamento de Obras HVC</h1>
+                <p>Controle completo de obras, serviços e medições</p>
+            </div>
+
+            <!-- Formulário Nova Obra -->
+            <div class="form-section">
+                <h2><i class="fas fa-plus"></i> Nova Obra</h2>
+                <form id="form-obra">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="numero-obra">Número da Obra *</label>
+                            <input type="text" id="numero-obra" name="numero-obra" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="nome-obra">Nome da Obra *</label>
+                            <input type="text" id="nome-obra" name="nome-obra" placeholder="Ex: Impermeabilização Edifício Central" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cliente-obra">Cliente</label>
+                            <input type="text" id="cliente-obra" name="cliente-obra" placeholder="Preenchido automaticamente" readonly>
+                        </div>
+                    </div>
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="valor-total">Valor Total</label>
+                            <input type="text" id="valor-total" name="valor-total" placeholder="R$ 0,00" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="data-inicio">Data de Início</label>
+                            <input type="date" id="data-inicio" name="data-inicio">
+                        </div>
+                        <div class="form-group">
+                            <label for="status-obra">Status da Obra</label>
+                            <select id="status-obra" name="status-obra">
+                                <option value="a_iniciar">A Iniciar</option>
+                                <option value="em_andamento">Em Andamento</option>
+                                <option value="concluido">Concluído</option>
+                                <option value="pausado">Pausado</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="propostas-aprovadas">Propostas Aprovadas *</label>
+                        <div class="select-container">
+                            <input type="text" id="filtro-propostas" class="select-filter" placeholder="Digite para filtrar propostas...">
+                            <div id="propostas-list" class="propostas-container">
+                                <div class="empty-state">
+                                    <i class="fas fa-search"></i>
+                                    <p>Nenhuma proposta aprovada disponível</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="observacoes-obra">Observações</label>
+                        <textarea id="observacoes-obra" name="observacoes-obra" placeholder="Observações sobre a obra..."></textarea>
+                    </div>
+                    <button type="button" class="btn btn-success btn-full" onclick="salvarObra()">
+                        <i class="fas fa-plus"></i> Adicionar Obra
+                    </button>
+                </form>
+            </div>
+
+            <!-- Lista de Obras -->
+            <div class="table-section">
+                <h2><i class="fas fa-list"></i> Lista de Obras</h2>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>NÚMERO</th>
+                                <th>NOME</th>
+                                <th>CLIENTE</th>
+                                <th>VALOR TOTAL</th>
+                                <th>VTM</th>
+                                <th>VTR</th>
+                                <th>VMNR</th>
+                                <th>VAR</th>
+                                <th>STATUS</th>
+                                <th>SERVIÇOS</th>
+                                <th>MEDIÇÕES</th>
+                                <th>AÇÕES</th>
+                            </tr>
+                        </thead>
+                        <tbody id="obras-list">
+                            <tr>
+                                <td colspan="12" class="empty-state">
+                                    <i class="fas fa-hard-hat"></i>
+                                    <p>Nenhuma obra cadastrada</p>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Serviços -->
+    <div id="modal-servicos" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-servicos-titulo"><i class="fas fa-tools"></i> Gerenciar Serviços</h2>
+                <span class="close" onclick="fecharModal('modal-servicos')">&times;</span>
+            </div>
+
+            <!-- Formulário Novo Serviço -->
+            <div class="form-section">
+                <h3><i class="fas fa-plus"></i> Adicionar Serviço</h3>
+                <form id="form-servico">
+                    <input type="hidden" id="servico-id" name="servico-id">
+                    <div class="form-group">
+                        <label for="nome-servico">Nome/Descrição do Serviço *</label>
+                        <input type="text" id="nome-servico" name="nome-servico" placeholder="Ex: Impermeabilização de Laje" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="valor-servico">Valor do Serviço</label>
+                        <input type="text" id="valor-servico" name="valor-servico" placeholder="R$ 0,00">
+                    </div>
+                    <div class="form-group">
+                        <label for="observacao-servico">Observações</label>
+                        <textarea id="observacao-servico" name="observacao-servico" placeholder="Observações sobre o serviço..."></textarea>
+                    </div>
+                    <button type="button" class="btn btn-success btn-full" id="btn-salvar-servico" onclick="salvarServico()">
+                        <i class="fas fa-plus"></i> Salvar Serviço
+                    </button>
+                </form>
+            </div>
+
+            <!-- Lista de Serviços Existentes -->
+            <div class="items-container">
+                <h3><i class="fas fa-list"></i> Serviços Existentes</h3>
+                <div id="servicos-existentes-list">
+                    <div class="empty-state">
+                        <i class="fas fa-tools"></i>
+                        <p>Nenhum serviço cadastrado</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Medições -->
+    <div id="modal-medicoes" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-medicoes-titulo"><i class="fas fa-ruler-combined"></i> Gerenciar Medições</h2>
+                <span class="close" onclick="fecharModal('modal-medicoes')">&times;</span>
+            </div>
+
+            <!-- Formulário Nova Medição -->
+            <div class="form-section">
+                <h3><i class="fas fa-plus"></i> Adicionar Medição</h3>
+                <form id="form-medicao">
+                    <input type="hidden" id="medicao-id" name="medicao-id">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="numero-medicao">Número da Medição *</label>
+                            <input type="text" id="numero-medicao" name="numero-medicao" placeholder="1" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="valor-medicao">Valor da Medição *</label>
+                            <input type="text" id="valor-medicao" name="valor-medicao" placeholder="R$ 0,00" required>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label for="status-medicao">Status *</label>
+                        <select id="status-medicao" name="status-medicao" required>
+                            <option value="vai_ser_enviada">Vai ser Enviada</option>
+                            <option value="enviada">Enviada</option>
+                            <option value="recebida">Recebida</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="observacao-medicao">Observações</label>
+                        <textarea id="observacao-medicao" name="observacao-medicao" placeholder="Observações sobre a medição..."></textarea>
+                    </div>
+                    
+                    <!-- Container para seleção de serviços -->
+                    <div class="form-group">
+                        <label>Serviços para esta Medição:</label>
+                        <div id="servicos-para-medicao-list">
+                            <div class="empty-state">
+                                <i class="fas fa-tools"></i>
+                                <p>Nenhum serviço disponível</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <button type="button" class="btn btn-success btn-full" id="btn-salvar-medicao" onclick="salvarMedicao()">
+                        <i class="fas fa-plus"></i> Salvar Medição
+                    </button>
+                </form>
+            </div>
+
+            <!-- Lista de Medições Existentes -->
+            <div class="items-container">
+                <h3><i class="fas fa-list"></i> Medições Existentes</h3>
+                <div id="medicoes-existentes-list">
+                    <div class="empty-state">
+                        <i class="fas fa-ruler-combined"></i>
+                        <p>Nenhuma medição cadastrada</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar Serviço -->
+    <div id="modal-editar-servico" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-edit"></i> Editar Serviço</h2>
+                <span class="close" onclick="fecharModalEditarServico()">&times;</span>
+            </div>
+            
+           <form id="form-editar-servico">
+                    <input type="hidden" id="edit-servico-id">
+                    <div class="form-group">
+                        <label for="edit-nome-servico">Nome/Descrição do Serviço *</label>
+                        <input type="text" id="edit-nome-servico" name="edit-nome-servico" required>
+                    </div>
+                    <!-- Restante do formulário de edição -->
+                </form>
+                </div>
+                <div class="form-group">
+                    <label for="edit-descricao-servico">Descrição</label>
+                    <textarea id="edit-descricao-servico" name="edit-descricao-servico"></textarea>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="edit-iniciado-servico">
+                            Serviço Iniciado
+                        </label>
+                        <small style="color: #888;">Data de início será registrada automaticamente</small>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="edit-concluido-servico">
+                            Serviço Concluído
+                        </label>
+                        <small style="color: #888;">Data de conclusão será registrada automaticamente</small>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <button type="button" class="btn btn-success" onclick="salvarEdicaoServico()">
+                        <i class="fas fa-save"></i> Salvar Alterações
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="fecharModalEditarServico()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Editar Medição -->
+    <div id="modal-editar-medicao" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-edit"></i> Editar Medição</h2>
+                <span class="close" onclick="fecharModalEditarMedicao()">&times;</span>
+            </div>
+            
+            <form id="form-editar-medicao">
+                <input type="hidden" id="edit-medicao-id">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit-numero-medicao">Número da Medição *</label>
+                        <input type="text" id="edit-numero-medicao" name="edit-numero-medicao" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-data-medicao">Data da Medição *</label>
+                        <input type="date" id="edit-data-medicao" name="edit-data-medicao" required>
+                    </div>
+                </div>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label for="edit-status-medicao">Status *</label>
+                        <select id="edit-status-medicao" name="edit-status-medicao" required>
+                            <option value="vai_ser_enviada">Vai ser Enviada</option>
+                            <option value="enviada">Enviada</option>
+                            <option value="recebida">Recebida</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-valor-medicao">Valor da Medição *</label>
+                        <input type="text" id="edit-valor-medicao" name="edit-valor-medicao" required>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="edit-pago-medicao" name="edit-pago-medicao">
+                        Medição Paga
+                    </label>
+                </div>
+                
+                <!-- Seleção de Serviços para Edição -->
+                <div class="medicao-servicos">
+                    <h4><i class="fas fa-tools"></i> Serviços Relacionados</h4>
+                    <div id="edit-servicos-medicao-container">
+                        <div class="empty-state">
+                            <i class="fas fa-tools"></i>
+                            <p>Nenhum serviço disponível</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-grid">
+                    <button type="button" class="btn btn-success" onclick="salvarEdicaoMedicao()">
+                        <i class="fas fa-save"></i> Salvar Alterações
+                    </button>
+                    <button type="button" class="btn btn-danger" onclick="fecharModalEditarMedicao()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+     <script type="module" src="supabase.js"></script>
+    <script type="module" src="sidebar.js"></script>
+    <script type="module" src="obras-hvc.js"></script>
+</body>
+</html>
