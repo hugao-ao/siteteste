@@ -523,12 +523,10 @@
       successContainer.innerHTML = '';
     }
     
-    function formatCurrency(value) {
-      return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-      }).format(value);
+     function formatCurrency(value) {
+      return parseFloat(value).toFixed(2);
     }
+
     
     function parseCurrency(value) {
       if (typeof value === 'string') {
