@@ -71,7 +71,7 @@
     
     .form-group input {
       padding: 0.75rem;
-      border: 1px solid var(--border-color);
+      border: 2px solid #ccc;
       border-radius: 4px;
       background-color: var(--bg-input);
       color: var(--text-light);
@@ -80,8 +80,9 @@
     
     .form-group input:focus {
       outline: none;
-      border-color: var(--accent-color);
-      box-shadow: 0 0 0 2px rgba(var(--accent-color-rgb), 0.2);
+      border-color: #006400;
+      border-width: 2px;
+      box-shadow: 0 0 0 3px rgba(0, 100, 0, 0.2);
     }
     
     .form-group input:disabled {
@@ -188,19 +189,19 @@
           <div class="form-grid">
             <div class="form-group">
               <label for="selic">SELIC (%)</label>
-              <input type="number" id="selic" name="selic" step="0.0001" min="0" max="100" required>
+              <input type="number" id="selic" name="selic" step="0.0001" min="0" required>
             </div>
             <div class="form-group">
               <label for="cdi_120_meses">CDI 120 meses (%)</label>
-              <input type="number" id="cdi_120_meses" name="cdi_120_meses" step="0.0001" min="0" max="100" required>
+              <input type="number" id="cdi_120_meses" name="cdi_120_meses" step="0.0001" min="0" required>
             </div>
             <div class="form-group">
               <label for="ipca">IPCA (%)</label>
-              <input type="number" id="ipca" name="ipca" step="0.0001" min="0" max="100" required>
+              <input type="number" id="ipca" name="ipca" step="0.0001" min="0" required>
             </div>
             <div class="form-group">
               <label for="ipca_120_meses">IPCA 120 meses (%)</label>
-              <input type="number" id="ipca_120_meses" name="ipca_120_meses" step="0.0001" min="0" max="100" required>
+              <input type="number" id="ipca_120_meses" name="ipca_120_meses" step="0.0001" min="0" required>
             </div>
           </div>
         </div>
