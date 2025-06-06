@@ -530,6 +530,7 @@
         minimumFractionDigits: 2
       }).format(value);
     }
+
     
     function parseCurrency(value) {
       if (typeof value === 'string') {
@@ -540,6 +541,8 @@
     
      // Função para calcular valores automaticamente
     function calculateValues() {
+       // Definir valor mínimo da faixa 1 sempre como R$ 0,00
+      faixaInputs[1].valorMinimo.value = formatCurrency(0);
       // Obter valores das alíquotas
       const aliquotas = [
         parseFloat(faixaInputs[1].aliquota.value) || 0,
@@ -623,12 +626,19 @@
         if (data && data.length > 0) {
           const latest = data[0];
           
+          // Preencher valores máximos
+          faixaInputs[1].valorMaximo.value = latest.faixa_1_valor_maximo;
+          faixaInputs[2].valorMaximo.value = latest.faixa_2_valor_maximo;
+          faixaInputs[3].valorMaximo.value = latest.faixa_3_valor_maximo;
+          faixaInputs[4].valorMaximo.value = latest.faixa_4_valor_maximo;
+          
           // Preencher alíquotas
           faixaInputs[1].aliquota.value = (latest.faixa_1_aliquota * 100).toFixed(4);
           faixaInputs[2].aliquota.value = (latest.faixa_2_aliquota * 100).toFixed(4);
           faixaInputs[3].aliquota.value = (latest.faixa_3_aliquota * 100).toFixed(4);
           faixaInputs[4].aliquota.value = (latest.faixa_4_aliquota * 100).toFixed(4);
           faixaInputs[5].aliquota.value = (latest.faixa_5_aliquota * 100).toFixed(4);
+
           
           // Preencher campos adicionais
           deducaoInput.value = latest.deducao_anual_dependente;
@@ -676,24 +686,24 @@
       saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
       
       try {
-        const dataToSave = {
+               const dataToSave = {
           faixa_1_valor_minimo: 0,
-          faixa_1_valor_maximo: parseCurrency(faixaInputs[1].valorMaximo.value),
+          faixa_1_valor_maximo: parseFloat(faixaInputs[1].valorMaximo.value) || 24511.92,
           faixa_1_aliquota: parseFloat(faixaInputs[1].aliquota.value) / 100,
           faixa_1_ir_pagar: parseCurrency(faixaInputs[1].irPagar.value),
           
           faixa_2_valor_minimo: parseCurrency(faixaInputs[2].valorMinimo.value),
-          faixa_2_valor_maximo: parseCurrency(faixaInputs[2].valorMaximo.value),
+          faixa_2_valor_maximo: parseFloat(faixaInputs[2].valorMaximo.value) || 33919.80,
           faixa_2_aliquota: parseFloat(faixaInputs[2].aliquota.value) / 100,
           faixa_2_ir_pagar: parseCurrency(faixaInputs[2].irPagar.value),
           
           faixa_3_valor_minimo: parseCurrency(faixaInputs[3].valorMinimo.value),
-          faixa_3_valor_maximo: parseCurrency(faixaInputs[3].valorMaximo.value),
+          faixa_3_valor_maximo: parseFloat(faixaInputs[3].valorMaximo.value) || 45012.60,
           faixa_3_aliquota: parseFloat(faixaInputs[3].aliquota.value) / 100,
           faixa_3_ir_pagar: parseCurrency(faixaInputs[3].irPagar.value),
           
           faixa_4_valor_minimo: parseCurrency(faixaInputs[4].valorMinimo.value),
-          faixa_4_valor_maximo: parseCurrency(faixaInputs[4].valorMaximo.value),
+          faixa_4_valor_maximo: parseFloat(faixaInputs[4].valorMaximo.value) || 55976.16,
           faixa_4_aliquota: parseFloat(faixaInputs[4].aliquota.value) / 100,
           faixa_4_ir_pagar: parseCurrency(faixaInputs[4].irPagar.value),
           
@@ -713,6 +723,7 @@
           
           atualizado_por_id: userId
         };
+
         
         const { data, error } = await supabase
           .from('variaveis_ir')
