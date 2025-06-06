@@ -99,7 +99,9 @@
       text-align: center;
       font-size: 0.9rem;
       padding: 0.25rem;
+      color: #000 !important;
     }
+
     
     .ir-table input:focus {
       outline: 2px solid #006400;
@@ -293,7 +295,7 @@
                 <input type="text" id="faixa_1_valor_minimo" value="R$ 0,00" readonly>
               </td>
               <td class="cell-orange">
-                <input type="text" id="faixa_1_valor_maximo" readonly>
+               <input type="number" id="faixa_1_valor_maximo" step="0.01" min="0">
               </td>
               <td class="cell-yellow">
                 <input type="number" id="faixa_1_aliquota" step="0.0001" min="0" placeholder="0.0000">
@@ -308,7 +310,7 @@
                 <input type="text" id="faixa_2_valor_minimo" readonly>
               </td>
               <td class="cell-orange">
-                <input type="text" id="faixa_2_valor_maximo" readonly>
+                <input type="number" id="faixa_2_valor_maximo" step="0.01" min="0">
               </td>
               <td class="cell-yellow">
                 <input type="number" id="faixa_2_aliquota" step="0.0001" min="0" placeholder="0.0000">
@@ -323,7 +325,7 @@
                 <input type="text" id="faixa_3_valor_minimo" readonly>
               </td>
               <td class="cell-orange">
-                <input type="text" id="faixa_3_valor_maximo" readonly>
+                <input type="number" id="faixa_3_valor_maximo" step="0.01" min="0">
               </td>
               <td class="cell-yellow">
                 <input type="number" id="faixa_3_aliquota" step="0.0001" min="0" placeholder="0.0000">
@@ -338,7 +340,7 @@
                 <input type="text" id="faixa_4_valor_minimo" readonly>
               </td>
               <td class="cell-orange">
-                <input type="text" id="faixa_4_valor_maximo" readonly>
+               <input type="number" id="faixa_4_valor_maximo" step="0.01" min="0">
               </td>
               <td class="cell-yellow">
                 <input type="number" id="faixa_4_aliquota" step="0.0001" min="0" placeholder="0.0000">
@@ -535,7 +537,7 @@
       return parseFloat(value) || 0;
     }
     
-    // Função para calcular valores automaticamente
+     // Função para calcular valores automaticamente
     function calculateValues() {
       // Obter valores das alíquotas
       const aliquotas = [
@@ -546,35 +548,32 @@
         parseFloat(faixaInputs[5].aliquota.value) || 0
       ];
       
-      // Valores base (podem ser editados posteriormente)
-      const valoresBase = [
+      // Obter valores máximos editáveis
+      const valoresMaximos = [
         0, // Faixa 1 sempre começa em 0
-        24511.92,
-        33919.80,
-        45012.60,
-        55976.16
+        parseFloat(faixaInputs[1].valorMaximo.value) || 24511.92,
+        parseFloat(faixaInputs[2].valorMaximo.value) || 33919.80,
+        parseFloat(faixaInputs[3].valorMaximo.value) || 45012.60,
+        parseFloat(faixaInputs[4].valorMaximo.value) || 55976.16
       ];
       
-      // Calcular valores máximos (laranja) - R$ 0,01 + valor máximo da linha anterior
-      faixaInputs[1].valorMaximo.value = formatCurrency(valoresBase[1]);
-      faixaInputs[2].valorMinimo.value = formatCurrency(valoresBase[1] + 0.01);
-      faixaInputs[2].valorMaximo.value = formatCurrency(valoresBase[2]);
-      faixaInputs[3].valorMinimo.value = formatCurrency(valoresBase[2] + 0.01);
-      faixaInputs[3].valorMaximo.value = formatCurrency(valoresBase[3]);
-      faixaInputs[4].valorMinimo.value = formatCurrency(valoresBase[3] + 0.01);
-      faixaInputs[4].valorMaximo.value = formatCurrency(valoresBase[4]);
-      faixaInputs[5].valorMinimo.value = formatCurrency(valoresBase[4] + 0.01);
+      // Calcular valores mínimos (laranja) - R$ 0,01 + valor máximo da linha anterior
+      faixaInputs[2].valorMinimo.value = formatCurrency(valoresMaximos[1] + 0.01);
+      faixaInputs[3].valorMinimo.value = formatCurrency(valoresMaximos[2] + 0.01);
+      faixaInputs[4].valorMinimo.value = formatCurrency(valoresMaximos[3] + 0.01);
+      faixaInputs[5].valorMinimo.value = formatCurrency(valoresMaximos[4] + 0.01);
       
       // Calcular IR a Pagar (azul) - [Valor Máximo - Valor Mínimo] × Alíquota
       for (let i = 1; i <= 4; i++) {
-        const valorMin = parseCurrency(faixaInputs[i].valorMinimo.value);
-        const valorMax = parseCurrency(faixaInputs[i].valorMaximo.value);
+        const valorMin = i === 1 ? 0 : valoresMaximos[i-1] + 0.01;
+        const valorMax = valoresMaximos[i];
         const aliquota = aliquotas[i - 1] / 100; // Converter percentual para decimal
         
         const irPagar = (valorMax - valorMin) * aliquota;
         faixaInputs[i].irPagar.value = formatCurrency(irPagar);
       }
     }
+
     
     // Função para atualizar preview dos links
     function updateLinkPreviews() {
@@ -593,10 +592,16 @@
       }
     };
     
-    // Adicionar listeners para recalcular quando alíquotas mudarem
+    // Adicionar listeners para recalcular quando alíquotas ou valores máximos mudarem
     [1, 2, 3, 4, 5].forEach(i => {
       faixaInputs[i].aliquota.addEventListener('input', calculateValues);
     });
+    
+    // Listeners para valores máximos editáveis
+    [1, 2, 3, 4].forEach(i => {
+      faixaInputs[i].valorMaximo.addEventListener('input', calculateValues);
+    });
+
     
     // Adicionar listeners para atualizar preview dos links
     [linkSimuladorInput, linkSiteInput, linkTabelaInput].forEach(input => {
