@@ -1,0 +1,1467 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Detalhes do Cliente</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" /> <!-- Font Awesome -->
+  <style>
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+    #main-content-detalhes {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--theme-bg-surface);
+      color: var(--theme-text-light);
+    }
+    #main-content-detalhes.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
+
+    h1 {
+        text-align: center;
+        margin-bottom: 2rem;
+        color: var(--theme-secondary-lighter); /* Ajustado para tema */
+    }
+
+    /* --- Seção de Navegação (Botões) --- */
+    #nav-buttons-section {
+        display: flex;
+        justify-content: center;
+        gap: 1rem;
+        margin-bottom: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .nav-button {
+        background-color: var(--theme-bg-dark);
+        color: var(--theme-secondary-lighter);
+        border: 1px solid var(--theme-border-color);
+        border-radius: 8px;
+        padding: 1rem 1.5rem;
+        font-size: 1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 180px;
+        text-align: center;
+    }
+    
+    .nav-button:hover {
+        background-color: var(--theme-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .nav-button.active {
+        background-color: var(--theme-primary);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .nav-button i {
+        margin-right: 0.5rem;
+    }
+
+    /* --- Seção do Formulário --- */
+    #form-section {
+        background-color: var(--theme-bg-dark);
+        padding: 1.5rem 2rem;
+        margin-top: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--theme-border-color);
+        text-align: left;
+        display: none; /* Inicialmente oculto */
+    }
+    
+    #form-section h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    #form-section p {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+    }
+    
+    #form-section .form-link-container {
+        background-color: var(--theme-bg-surface);
+        padding: 1rem;
+        border-radius: 4px;
+        margin-bottom: 1rem;
+        word-wrap: break-word; /* Quebra links longos */
+    }
+    
+    #form-section .form-link-container a {
+        color: var(--theme-secondary-lighter); /* Ajustado para tema */
+        text-decoration: none;
+        font-weight: bold;
+    }
+    
+    #form-section .form-link-container a:hover {
+        text-decoration: underline;
+    }
+    
+    #form-section .form-data-display {
+        margin-bottom: 1rem;
+    }
+    
+    #form-section .form-data-display strong {
+        color: var(--theme-secondary-lighter);
+    }
+    
+    #form-section .form-data-display ul {
+        list-style: none;
+        padding-left: 1rem;
+        margin-top: 0.5rem;
+        border-left: 2px solid var(--theme-border-color);
+    }
+    
+    #form-section .form-data-display li {
+        margin-bottom: 0.5rem;
+    }
+    
+    #form-section .delete-form-btn {
+        background-color: #c62828; /* Vermelho */
+        color: white;
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background-color 0.3s ease;
+        margin-top: 0.5rem; /* Adiciona espaço acima do botão */
+    }
+    
+    #form-section .delete-form-btn:hover {
+        background-color: #a12020;
+    }
+    
+    #form-section .generate-link-btn {
+        background-color: var(--theme-primary); /* Ajustado para tema */
+        color: var(--theme-secondary-lighter);
+        border: none;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+        transition: background-color 0.3s ease;
+    }
+    
+    #form-section .generate-link-btn:hover {
+        background-color: var(--theme-primary-lighter);
+    }
+    
+    #form-loading-state {
+        text-align: center;
+        padding: 1rem;
+        color: var(--theme-text-muted);
+    }
+
+    /* --- Seção de Diagnóstico Financeiro --- */
+    #diagnostico-section {
+        background-color: var(--theme-bg-dark);
+        padding: 1.5rem 2rem;
+        margin-top: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--theme-border-color);
+        text-align: center;
+        display: none; /* Inicialmente oculto */
+    }
+    
+    #diagnostico-section h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    #diagnostico-section p {
+        margin-bottom: 1rem;
+        line-height: 1.6;
+        color: var(--theme-text-muted);
+    }
+
+    /* --- Seção de Plano Financeiro --- */
+    #plano-section {
+        background-color: var(--theme-bg-dark);
+        padding: 1.5rem 2rem;
+        margin-top: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--theme-border-color);
+        text-align: center;
+        display: none; /* Inicialmente oculto */
+    }
+    
+    #plano-section h2 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    #plano-buttons {
+        display: flex;
+        justify-content: center;
+        gap: 1.5rem;
+        margin-top: 2rem;
+        flex-wrap: wrap;
+    }
+    
+    .plano-button {
+        background-color: var(--theme-bg-surface);
+        color: var(--theme-secondary-lighter);
+        border: 1px solid var(--theme-border-color);
+        border-radius: 8px;
+        padding: 1.5rem 2rem;
+        font-size: 1.1rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        min-width: 200px;
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .plano-button:hover {
+        background-color: var(--theme-primary);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    }
+    
+    .plano-button i {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+
+    /* --- Seção de Dados Cadastrais --- */
+    #dados-cadastrais-section {
+        background-color: var(--theme-bg-dark);
+        padding: 1.5rem 2rem;
+        margin-top: 1rem;
+        border-radius: 8px;
+        border: 1px solid var(--theme-border-color);
+        text-align: left;
+        display: none; /* Inicialmente oculto */
+    }
+    
+    #dados-cadastrais-section h2 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: var(--theme-secondary);
+        border-bottom: 1px solid var(--theme-border-color);
+        padding-bottom: 0.5rem;
+    }
+    
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+        display: block;
+        margin-bottom: 0.5rem;
+        font-weight: bold;
+        color: var(--theme-secondary-lighter);
+    }
+    
+    .form-group input {
+        width: 100%;
+        padding: 0.8rem;
+        border-radius: 4px;
+        border: 1px solid var(--theme-border-color);
+        background-color: var(--theme-bg-surface);
+        color: var(--theme-text-light);
+        font-size: 1rem;
+    }
+    
+    .form-group input:focus {
+        outline: none;
+        border-color: var(--theme-secondary);
+        box-shadow: 0 0 0 2px rgba(var(--theme-secondary-rgb), 0.2);
+    }
+    
+    .required-field::after {
+        content: " *";
+        color: #e53935;
+    }
+    
+    .form-group .error-message {
+        color: #e53935;
+        font-size: 0.85rem;
+        margin-top: 0.3rem;
+        display: none;
+    }
+    
+    .conjuge-section {
+        margin-top: 2rem;
+        padding-top: 1.5rem;
+        border-top: 1px dashed var(--theme-border-color);
+    }
+    
+    .conjuge-section h3 {
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        color: var(--theme-secondary-lighter);
+    }
+    
+    .form-actions {
+        margin-top: 2rem;
+        text-align: right;
+    }
+    
+    .save-btn {
+        background-color: var(--theme-primary);
+        color: var(--theme-secondary-lighter);
+        border: none;
+        padding: 0.8rem 1.5rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 1rem;
+        font-weight: bold;
+        transition: all 0.3s ease;
+    }
+    
+    .save-btn:hover {
+        background-color: var(--theme-primary-lighter);
+        transform: translateY(-2px);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .save-btn:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+        transform: none;
+        box-shadow: none;
+    }
+    
+    /* Responsividade */
+    @media (max-width: 768px) {
+        #nav-buttons-section {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .nav-button {
+            width: 100%;
+            max-width: 300px;
+        }
+        
+        #plano-buttons {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .plano-button {
+            width: 100%;
+            max-width: 300px;
+        }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-detalhes">
+
+    <h1>Detalhes do <span id="client-name-display">Cliente</span></h1>
+    
+    <!-- Seção de navegação com botões (apenas para projeto Planejamento) -->
+    <section id="nav-buttons-section" style="display: none;">
+      <button id="btn-formulario" class="nav-button active">
+        <i class="fas fa-file-alt"></i> Formulário
+      </button>
+      <button id="btn-diagnostico" class="nav-button">
+        <i class="fas fa-chart-line"></i> Diagnóstico Financeiro
+      </button>
+      <button id="btn-plano" class="nav-button">
+        <i class="fas fa-money-bill-wave"></i> Plano Financeiro
+      </button>
+    </section>
+
+    <!-- Seção para informações do formulário -->
+    <section id="form-section">
+      <h2>Formulário do Cliente</h2>
+      <div id="form-info-content">
+        <p id="form-loading-state">Carregando informações do formulário...</p>
+        <!-- Conteúdo dinâmico (link, dados preenchidos ou mensagem) será inserido aqui -->
+      </div>
+    </section>
+    
+       <!-- Seção para Diagnóstico Financeiro -->
+    <section id="diagnostico-section">
+      <h2>Diagnóstico Financeiro</h2>
+      <div id="diagnostico-info-content">
+        <p id="diagnostico-loading-state">Carregando informações do diagnóstico...</p>
+      </div>
+    </section>
+    
+    <!-- Seção para Plano Financeiro -->
+    <section id="plano-section">
+      <h2>Plano Financeiro</h2>
+      <div id="plano-buttons">
+        <button id="btn-dados-cadastrais" class="plano-button">
+          <i class="fas fa-user-edit"></i>
+          Dados Cadastrais
+        </button>
+        <button id="btn-gestao" class="plano-button">
+          <i class="fas fa-wallet"></i>
+          Gestão Financeira
+        </button>
+        <button id="btn-implementacoes" class="plano-button">
+          <i class="fas fa-tasks"></i>
+          Implementações
+        </button>
+      </div>
+    </section>
+    
+    <!-- Seção para Dados Cadastrais -->
+    <section id="dados-cadastrais-section">
+      <h2>Dados Cadastrais</h2>
+      <form id="dados-cadastrais-form">
+        <div class="form-group">
+          <label for="nome-completo">Nome Completo</label>
+          <input type="text" id="nome-completo" name="nome-completo" placeholder="Digite o nome completo">
+        </div>
+        
+        <div class="form-group">
+          <label for="cpf" class="required-field">CPF</label>
+          <input type="text" id="cpf" name="cpf" placeholder="000.000.000-00" required maxlength="14">
+          <div class="error-message" id="cpf-error">CPF é obrigatório</div>
+        </div>
+        
+        <div class="form-group">
+          <label for="email">E-mail</label>
+          <input type="email" id="email" name="email" placeholder="exemplo@email.com">
+        </div>
+        
+        <div class="form-group">
+          <label for="whatsapp" class="required-field">WhatsApp</label>
+          <input type="text" id="whatsapp" name="whatsapp" placeholder="+55DDNNNNNNNNN" required>
+          <div class="error-message" id="whatsapp-error">WhatsApp é obrigatório</div>
+        </div>
+        
+        <div class="conjuge-section">
+          <h3>Informações do Cônjuge</h3>
+          
+          <div class="form-group">
+            <label for="conjuge-nome">Nome do Cônjuge</label>
+            <input type="text" id="conjuge-nome" name="conjuge-nome" placeholder="Digite o nome do cônjuge">
+          </div>
+          
+          <div class="form-group">
+            <label for="conjuge-whatsapp" class="required-field">WhatsApp do Cônjuge</label>
+            <input type="text" id="conjuge-whatsapp" name="conjuge-whatsapp" placeholder="+55DDNNNNNNNNN">
+            <div class="error-message" id="conjuge-whatsapp-error">WhatsApp do cônjuge é obrigatório quando o nome é preenchido</div>
+          </div>
+        </div>
+        
+        <div class="form-actions">
+          <button type="submit" class="save-btn" id="save-dados-btn">Salvar Dados</button>
+        </div>
+      </form>
+    </section>
+
+  </main>
+
+  <script type="module">
+    import { injectSidebar } from "./sidebar.js";
+    import { supabase } from "./supabase.js"; // Importa supabase
+
+    injectSidebar("main-content-detalhes"); // Passa o ID do container principal
+
+    const clientNameDisplay = document.getElementById("client-name-display");
+    const formInfoContentEl = document.getElementById("form-info-content");
+    const navButtonsSection = document.getElementById("nav-buttons-section");
+    const formSection = document.getElementById("form-section");
+    const diagnosticoSection = document.getElementById("diagnostico-section");
+    const planoSection = document.getElementById("plano-section");
+    const dadosCadastraisSection = document.getElementById("dados-cadastrais-section");
+    
+    // Botões de navegação
+    const btnFormulario = document.getElementById("btn-formulario");
+    const btnDiagnostico = document.getElementById("btn-diagnostico");
+    const btnPlano = document.getElementById("btn-plano");
+    
+    // Botões do plano financeiro
+    const btnDadosCadastrais = document.getElementById("btn-dados-cadastrais");
+    const btnGestao = document.getElementById("btn-gestao");
+    const btnImplementacoes = document.getElementById("btn-implementacoes");
+    
+    // Formulário de dados cadastrais
+    const dadosCadastraisForm = document.getElementById("dados-cadastrais-form");
+    const nomeCompletoInput = document.getElementById("nome-completo");
+    const cpfInput = document.getElementById("cpf");
+    const emailInput = document.getElementById("email");
+    const whatsappInput = document.getElementById("whatsapp");
+    const conjugeNomeInput = document.getElementById("conjuge-nome");
+    const conjugeWhatsappInput = document.getElementById("conjuge-whatsapp");
+    
+    let currentClientId; // Declarada em escopo mais amplo
+    let clienteProjeto; // Para armazenar o projeto do cliente
+    let dadosCadastraisId; // Para armazenar o ID do registro de dados cadastrais
+
+    const sanitizeInput = (str) => {
+      if (str === null || str === undefined) return "";
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/\'/g, "&#x27;") 
+        .replace(/`/g, "&#x60;");
+    };
+
+    const formatCurrencyForDisplay = (value) => {
+        if (value === null || value === undefined) return "N/A";
+        const number = parseFloat(value);
+        if (isNaN(number)) return "Valor inválido";
+        return number.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    };
+    
+    // Função para formatar CPF
+    function formatCPF(cpf) {
+        // Remove todos os caracteres não numéricos
+        cpf = cpf.replace(/\D/g, '');
+        
+        // Limita a 11 dígitos
+        cpf = cpf.substring(0, 11);
+        
+        // Aplica a máscara xxx.xxx.xxx-xx
+        if (cpf.length > 9) {
+            return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        } else if (cpf.length > 6) {
+            return cpf.replace(/(\d{3})(\d{3})(\d{3})/, '$1.$2.$3');
+        } else if (cpf.length > 3) {
+            return cpf.replace(/(\d{3})(\d{3})/, '$1.$2');
+        } else {
+            return cpf;
+        }
+    }
+    
+    // Função para formatar WhatsApp
+    function formatWhatsApp(whatsapp) {
+        // Remove todos os caracteres não numéricos, exceto o sinal de +
+        let formatted = whatsapp.replace(/[^\d+]/g, '');
+        
+        // Se não começar com +, adiciona +
+        if (!formatted.startsWith('+')) {
+            formatted = '+' + formatted;
+        }
+        
+        // Garante que o formato seja +[ddi][ddd][número]
+        return formatted;
+    }
+    
+    // Função para gerar UUID v4 válido
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = Math.random() * 16 | 0,
+                v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function displayFormLink(latestForm) {
+        console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); 
+        const token = latestForm.token_unico;
+        const formId = latestForm.id;
+        const link = `${window.location.origin}/formulario-cliente.html?token=${token}`;
+        console.log("DEBUG: Setting innerHTML for pending form link..."); 
+        formInfoContentEl.innerHTML = `
+            <p>Este cliente ainda não preencheu o formulário.</p>
+            <p>Compartilhe o link abaixo com o cliente:</p>
+            <div class="form-link-container">
+                <a href="${link}" target="_blank">${link}</a>
+            </div>
+            <p><small>(Este link é único e só pode ser usado uma vez)</small></p>
+            <button class="delete-form-btn" data-form-id="${formId}">Excluir Link e Gerar Novo</button>
+        `;
+        console.log("DEBUG: innerHTML set. Querying for delete button..."); 
+        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
+        if (deleteBtn) {
+            console.log("DEBUG: Delete button found:", deleteBtn); 
+            console.log("DEBUG: Adding event listener to delete button..."); 
+            deleteBtn.addEventListener("click", handleDeleteForm);
+            console.log("DEBUG: Event listener added."); 
+        } else {
+            console.log("DEBUG: Delete button not found in DOM after setting innerHTML."); 
+        }
+    }
+
+    function displayFormData(formData) {
+        console.log("DEBUG: Entering displayFormData for completed form:", formData); 
+        let dataHtml = "";
+        if (formData.dados_formulario && typeof formData.dados_formulario === "object") {
+            const data = formData.dados_formulario;
+
+            const nomeCompleto = data.nome_completo ? sanitizeInput(data.nome_completo) : "N/A";
+            dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Nome Completo:</strong> ${nomeCompleto}</p>`;
+
+            const rendaUnicaText = data.renda_unica === "sim" ? "Sim" : (data.renda_unica === "nao" ? "Não" : "N/A");
+            dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Única pessoa com renda na casa?</strong> ${rendaUnicaText}</p>`;
+
+            if (data.renda_unica === "nao" && Array.isArray(data.outras_pessoas) && data.outras_pessoas.length > 0) {
+                dataHtml += `<ul>`;
+                data.outras_pessoas.forEach((pessoa) => {
+                    const nomePessoa = pessoa.nome ? sanitizeInput(pessoa.nome) : "Nome não informado";
+                    const autorizacaoText = pessoa.autorizacao === "sim" ? "Sim" : (pessoa.autorizacao === "nao" ? "Não" : "Não informado");
+                    dataHtml += `<li>${nomePessoa} (Precisa de autorização: ${autorizacaoText})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.renda_unica === "nao") {
+                 dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Outras pessoas com renda na casa:</strong> Nenhuma pessoa adicionada.</p>`;
+            }
+
+            const temDependentesText = data.tem_dependentes === "sim" ? "Sim" : (data.tem_dependentes === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Tem dependentes?</strong> ${temDependentesText}</p>`;
+
+            if (data.tem_dependentes === "sim" && Array.isArray(data.dependentes) && data.dependentes.length > 0) {
+                dataHtml += `<ul>`;
+                data.dependentes.forEach((dependente) => {
+                    const nomeDep = dependente.nome ? sanitizeInput(dependente.nome) : "Nome não informado";
+                    const idadeDep = dependente.idade !== undefined && dependente.idade !== null ? sanitizeInput(String(dependente.idade)) : "N/A";
+                    const relacaoDep = dependente.relacao ? sanitizeInput(dependente.relacao) : "N/A";
+                    dataHtml += `<li>${nomeDep} (Idade: ${idadeDep}, Relação: ${relacaoDep})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.tem_dependentes === "sim") {
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dependentes:</strong> Nenhum dependente adicionado.</p>`;
+            }
+
+            // Exibição de Planos de Saúde
+            if (data.planos_saude && Object.keys(data.planos_saude).length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Plano de Saúde:</strong></p><ul>`;
+                Object.entries(data.planos_saude).forEach(([nome, info]) => {
+                    const nomePessoaPlano = sanitizeInput(nome);
+                    let statusPlanoText = "N/A";
+                    if (info.possui === "sim") statusPlanoText = "Sim";
+                    else if (info.possui === "nao") statusPlanoText = "Não";
+                    else if (info.possui === "nao_sei") statusPlanoText = "Não sei informar";
+                    
+                    dataHtml += `<li>${nomePessoaPlano}: ${statusPlanoText}</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+
+            // Exibição de Seguros de Vida
+            if (data.seguros_vida && Object.keys(data.seguros_vida).length > 0) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Seguro de Vida:</strong></p><ul>`;
+                Object.entries(data.seguros_vida).forEach(([nome, info]) => {
+                    const nomePessoaSeguro = sanitizeInput(nome);
+                    let statusSeguroText = "N/A";
+                    if (info.possui === "sim") statusSeguroText = "Sim";
+                    else if (info.possui === "nao") statusSeguroText = "Não";
+                    else if (info.possui === "nao_sei") statusSeguroText = "Não sei informar";
+                    
+                    dataHtml += `<li>${nomePessoaSeguro}: ${statusSeguroText}</li>`;
+                });
+                dataHtml += `</ul>`;
+            }
+
+            // Exibição de Patrimônio Físico
+            const possuiPatrimonioText = data.tem_patrimonio === "sim" ? "Sim" : (data.tem_patrimonio === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Patrimônio Físico?</strong> ${possuiPatrimonioText}</p>`;
+
+            if (data.tem_patrimonio === "sim" && Array.isArray(data.patrimonios) && data.patrimonios.length > 0) {
+                dataHtml += `<ul>`;
+                data.patrimonios.forEach((patrimonio) => {
+                    const descPat = patrimonio.qual ? sanitizeInput(patrimonio.qual) : "Descrição não informada";
+                    const valorPat = formatCurrencyForDisplay(patrimonio.valor); 
+                    const seguroPatText = patrimonio.seguro === "sim" ? "Sim" : (patrimonio.seguro === "nao" ? "Não" : "N/A");
+                    const quitadoPatText = patrimonio.quitado === "sim" ? "Sim" : (patrimonio.quitado === "nao" ? "Não" : "N/A");
+                    dataHtml += `<li>${descPat} (Valor: ${valorPat}, Seguro: ${seguroPatText}, Quitado: ${quitadoPatText})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.tem_patrimonio === "sim") {
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Patrimônios Físicos:</strong> Nenhum patrimônio adicionado.</p>`;
+            }
+
+            // Exibição do Patrimônio Líquido
+            const possuiPatrimonioLiquidoText = data.tem_patrimonio_liquido === "sim" ? "Sim" : (data.tem_patrimonio_liquido === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dinheiro Guardado ou Investido?</strong> ${possuiPatrimonioLiquidoText}</p>`;
+
+            if (data.tem_patrimonio_liquido === "sim" && Array.isArray(data.patrimonios_liquidos) && data.patrimonios_liquidos.length > 0) {
+                dataHtml += `<ul>`;
+                data.patrimonios_liquidos.forEach((patrimonio_liquido) => {
+                    const ondePatLiq = patrimonio_liquido.qual ? sanitizeInput(patrimonio_liquido.qual) : "Local não informado";
+                    const valorPatLiq = formatCurrencyForDisplay(patrimonio_liquido.valor);
+                    dataHtml += `<li>${ondePatLiq} (Valor: ${valorPatLiq})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.tem_patrimonio_liquido === "sim") {
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dinheiro Guardado ou Investido:</strong> Nenhum item adicionado.</p>`;
+            }
+
+            // Exibição de Dívidas
+            const possuiDividasText = data.tem_dividas === "sim" ? "Sim" : (data.tem_dividas === "nao" ? "Não" : "N/A");
+            dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Possui Dívidas?</strong> ${possuiDividasText}</p>`;
+
+            if (data.tem_dividas === "sim" && Array.isArray(data.dividas) && data.dividas.length > 0) {
+                dataHtml += `<ul>`;
+                data.dividas.forEach((divida) => {
+                    const credorDivida = divida.credor ? sanitizeInput(divida.credor) : "Credor não informado";
+                    const saldoDivida = formatCurrencyForDisplay(divida.saldo);
+                    dataHtml += `<li>A quem deve: ${credorDivida} (Saldo Devedor Atual: ${saldoDivida})</li>`;
+                });
+                dataHtml += `</ul>`;
+            } else if (data.tem_dividas === "sim") {
+                dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Dívidas:</strong> Nenhuma dívida adicionada.</p>`;
+            }
+            
+            // Exibição de Imposto de Renda com informações adicionais
+                if (data.impostos_renda && Object.keys(data.impostos_renda).length > 0) {
+                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações sobre Imposto de Renda:</strong></p><ul>`;
+                  
+                  Object.entries(data.impostos_renda).forEach(([nome, info]) => {
+                    const nomePessoaIR = sanitizeInput(nome);
+                    let statusIRText = "N/A";
+                    
+                    if (info.declara === "sim") statusIRText = "Sim";
+                    else if (info.declara === "nao") statusIRText = "Não";
+                    else if (info.declara === "nao_sei") statusIRText = "Não sei informar";
+                
+                    let detalhes = `Declara: ${statusIRText}`;
+                
+                    if (info.declara === "sim") {
+                      const tipoIR = info.tipo_ir ? sanitizeInput(info.tipo_ir) : "Tipo não informado";
+                      const resultadoIR = info.resultado_ir ? sanitizeInput(info.resultado_ir) : "Resultado não informado";
+                      detalhes += ` | Tipo: ${tipoIR} | Resultado: ${resultadoIR}`;
+                    }
+                
+                    dataHtml += `<li>${nomePessoaIR}: ${detalhes}</li>`;
+                  });
+                
+                  dataHtml += `</ul>`;
+                }
+
+            
+           // Exibição de Orçamento (Entradas de Renda)
+              if (
+                data.orcamento_renda &&
+                Array.isArray(data.orcamento_renda)
+              ) {
+                if (data.orcamento_renda.length > 0) {
+                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Entradas de Renda:</strong></p><ul>`;
+                  data.orcamento_renda.forEach((entrada) => {
+                    const descEntrada = entrada.descricao ? sanitizeInput(entrada.descricao) : "Descrição não informada";
+                    const valorEntrada = formatCurrencyForDisplay(entrada.valor);
+                    dataHtml += `<li>${descEntrada}: ${valorEntrada}</li>`;
+                  });
+                  dataHtml += `</ul>`;
+                } else {
+                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">
+                  Entradas de Renda:</strong> Nenhuma entrada informada.</p>`;
+                }
+              }
+              
+              // Exibição de Orçamento (Despesas Fixas)
+              if (
+                data.orcamento_despesas_fixas &&
+                Array.isArray(data.orcamento_despesas_fixas)
+              ) {
+                if (data.orcamento_despesas_fixas.length > 0) {
+                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong></p><ul>`;
+                  data.orcamento_despesas_fixas.forEach((despesa) => {
+                    const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
+                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
+                    dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
+                  });
+                  dataHtml += `</ul>`;
+                } else {
+                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Despesas Fixas:</strong> Nenhuma despesa fixa informada.</p>`;
+                }
+              }
+              
+              // Exibição de Orçamento (Despesas Variáveis)
+              if (
+                data.orcamento_despesas_variaveis &&
+                Array.isArray(data.orcamento_despesas_variaveis)
+              ) {
+                if (data.orcamento_despesas_variaveis.length > 0) {
+                  dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong></p><ul>`;
+                  data.orcamento_despesas_variaveis.forEach((despesa) => {
+                    const descDespesa = despesa.descricao ? sanitizeInput(despesa.descricao) : "Descrição não informada";
+                    const valorDespesa = formatCurrencyForDisplay(despesa.valor);
+                    dataHtml += `<li>${descDespesa}: ${valorDespesa}</li>`;
+                  });
+                  dataHtml += `</ul>`;
+                } else {
+                  dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Despesas Variáveis:</strong> Nenhuma despesa variável informada.</p>`;
+                }
+              }
+            
+            // Exibição de Objetivos Financeiros
+                if (Array.isArray(data.objetivos)) {
+                  if (data.objetivos.length > 0) {
+                    dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong></p><ul>`;
+                    data.objetivos.forEach((objetivo) => {
+                      const descObjetivo = objetivo.descricao ? sanitizeInput(objetivo.descricao) : "Descrição não informada";
+                      const valorObjetivo = formatCurrencyForDisplay(objetivo.valor);
+                      const prazoObjetivo = objetivo.prazo ? sanitizeInput(objetivo.prazo) : "Prazo não informado";
+                      dataHtml += `<li>${descObjetivo} (Valor: ${valorObjetivo}, Prazo: ${prazoObjetivo})</li>`;
+                    });
+                    dataHtml += `</ul>`;
+                  } else {
+                    dataHtml += `<p><strong style="color: var(--theme-secondary-lighter);">Objetivos Financeiros:</strong> Nenhum objetivo adicionado.</p>`;
+                  }
+                }
+
+            
+           // Exibição de Informações Adicionais
+              if (
+                typeof data.info_adicionais === "string" &&
+                data.info_adicionais.trim() !== ""
+              ) {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
+                dataHtml += `<p>${sanitizeInput(data.info_adicionais)}</p>`;
+              } else {
+                dataHtml += `<p style="margin-top: 1rem;"><strong style="color: var(--theme-secondary-lighter);">Informações Adicionais:</strong></p>`;
+                dataHtml += `<p>Nenhuma informação adicional fornecida.</p>`;
+              }
+            
+             } else {
+              dataHtml = "<p>Não foi possível carregar os dados do formulário.</p>";
+            }
+
+        // Adicionar botão para excluir formulário e gerar novo
+        dataHtml += `
+            <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Formulário e Gerar Novo</button>
+        `;
+
+        formInfoContentEl.innerHTML = dataHtml;
+        
+        // Adicionar event listener para o botão de excluir
+        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
+        if (deleteBtn) {
+            deleteBtn.addEventListener("click", handleDeleteForm);
+        }
+    }
+
+    function displayNoFormMessage() {
+        console.log("DEBUG: Entering displayNoFormMessage"); 
+        formInfoContentEl.innerHTML = `
+            <p>Este cliente ainda não possui um formulário.</p>
+            <button class="generate-link-btn" id="generate-form-btn">Gerar Link de Formulário</button>
+        `;
+        
+        const generateBtn = document.getElementById("generate-form-btn");
+        if (generateBtn) {
+            generateBtn.addEventListener("click", handleGenerateForm);
+        }
+    }
+
+    async function handleDeleteForm(event) {
+        console.log("DEBUG: Entering handleDeleteForm"); 
+        const formId = event.currentTarget.dataset.formId;
+        if (!formId) {
+            console.error("DEBUG: Form ID not found in button dataset"); 
+            return;
+        }
+        
+        if (!confirm("Tem certeza que deseja excluir este formulário? Esta ação não pode ser desfeita.")) {
+            return;
+        }
+        
+        try {
+            const { error } = await supabase
+                .from("formularios_clientes")
+                .delete()
+                .eq("id", formId);
+                
+            if (error) throw error;
+            
+            alert("Formulário excluído com sucesso!");
+            
+            // Gerar novo formulário automaticamente
+            await handleGenerateForm();
+            
+        } catch (error) {
+            console.error("DEBUG: Error deleting form:", error); 
+            alert("Erro ao excluir formulário: " + error.message);
+        }
+    }
+
+    async function handleGenerateForm() {
+        console.log("DEBUG: Entering handleGenerateForm"); 
+        if (!currentClientId) {
+            console.error("DEBUG: Client ID not available"); 
+            return;
+        }
+        
+        try {
+            formInfoContentEl.innerHTML = '<p id="form-loading-state">Gerando novo formulário...</p>';
+            
+            // Gerar UUID válido para o token
+            const token = generateUUID();
+            
+            // Inserir novo formulário
+            const { data, error } = await supabase
+                .from("formularios_clientes")
+                .insert([
+                    {
+                        cliente_id: currentClientId,
+                        token_unico: token,
+                        status: "pendente", // Alterado para pendente
+                        data_preenchimento: null,
+                        dados_formulario: null
+                    }
+                ])
+                .select();
+                
+            if (error) throw error;
+            
+            if (data && data.length > 0) {
+                displayFormLink(data[0]);
+            } else {
+                throw new Error("Nenhum dado retornado após inserção");
+            }
+            
+        } catch (error) {
+            console.error("DEBUG: Error generating form:", error); 
+            formInfoContentEl.innerHTML = `<p style="color: red;">Erro ao gerar formulário: ${error.message}</p>`;
+        }
+    }
+
+    async function loadClientDetails() {
+        console.log("DEBUG: Entering loadClientDetails"); 
+        const urlParams = new URLSearchParams(window.location.search);
+        const clientId = urlParams.get("id");
+        
+        if (!clientId) {
+            console.error("DEBUG: No client ID in URL"); 
+            window.location.href = "clientes-dashboard.html";
+            return;
+        }
+        
+        currentClientId = clientId;
+        
+        try {
+            // Carregar informações do cliente
+            const { data: clientData, error: clientError } = await supabase
+                .from("clientes")
+                .select("*")
+                .eq("id", clientId)
+                .single();
+                
+            if (clientError) throw clientError;
+            
+            if (!clientData) {
+                throw new Error("Cliente não encontrado");
+            }
+            
+            // Armazenar o projeto do cliente
+            clienteProjeto = clientData.projeto;
+            
+            // Atualizar nome do cliente na página
+            clientNameDisplay.textContent = clientData.nome || "Cliente";
+            
+            // Verificar se o cliente é do projeto Planejamento
+            if (clientData.projeto === "Planejamento") {
+                // Mostrar os botões de navegação
+                navButtonsSection.style.display = "flex";
+                
+                // Configurar os botões de navegação
+                setupNavigationButtons();
+                
+                // Mostrar a seção de formulário por padrão
+                showSection("form");
+                
+                // Carregar dados cadastrais do cliente
+                await loadDadosCadastrais(clientId);
+            } else {
+                // Para outros projetos, mostrar apenas a seção de formulário
+                formSection.style.display = "block";
+            }
+            
+            // Carregar formulário do cliente
+            await loadClientForm(clientId);
+            
+        } catch (error) {
+            console.error("DEBUG: Error loading client details:", error); 
+            alert("Erro ao carregar detalhes do cliente: " + error.message);
+            window.location.href = "clientes-dashboard.html";
+        }
+    }
+
+    async function loadClientForm(clientId) {
+        console.log(`DEBUG: Entering loadClientForm for client ID: ${clientId}`); 
+        try {
+            // Buscar o formulário mais recente do cliente
+            const { data: forms, error } = await supabase
+                .from("formularios_clientes")
+                .select("*")
+                .eq("cliente_id", clientId)
+                .order("created_at", { ascending: false })
+                .limit(1);
+                
+            if (error) throw error;
+            
+            if (!forms || forms.length === 0) {
+                // Cliente não tem formulário
+                displayNoFormMessage();
+                return;
+            }
+            
+            const latestForm = forms[0];
+            
+            if (latestForm.status === "preenchido" && latestForm.dados_formulario) {
+                // Formulário já preenchido
+                displayFormData(latestForm);
+            } else {
+                // Formulário pendente (link gerado mas não preenchido)
+                displayFormLink(latestForm);
+            }
+            
+        } catch (error) {
+            console.error("DEBUG: Error loading client form:", error); 
+            formInfoContentEl.innerHTML = `<p style="color: red;">Erro ao carregar formulário: ${error.message}</p>`;
+        }
+    }
+
+        // Função para carregar informações do diagnóstico
+        async function loadClientDiagnostico(clientId) {
+            console.log(`DEBUG: Entering loadClientDiagnostico for client ID: ${clientId}`);
+            try {
+                // Buscar o diagnóstico do cliente
+                const { data: diagnosticos, error } = await supabase
+                    .from("diagnosticos_financeiros")
+                    .select("*")
+                    .eq("cliente_id", clientId)
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+                    
+                if (error) throw error;
+                
+                if (!diagnosticos || diagnosticos.length === 0) {
+                    // Cliente não tem diagnóstico
+                    await displayNoDiagnosticoMessage();
+                    return;
+                }
+                
+                const latestDiagnostico = diagnosticos[0];
+                
+                // Sempre mostrar o link do diagnóstico (mesmo que em andamento)
+                displayDiagnosticoLink(latestDiagnostico);
+                
+            } catch (error) {
+                console.error("DEBUG: Error loading client diagnostico:", error);
+                const diagnosticoContent = document.getElementById('diagnostico-info-content');
+                diagnosticoContent.innerHTML = `<p style="color: red;">Erro ao carregar diagnóstico: ${error.message}</p>`;
+            }
+        }
+
+            // Função para exibir mensagem quando não há diagnóstico
+        async function displayNoDiagnosticoMessage() {
+            const diagnosticoContent = document.getElementById('diagnostico-info-content');
+            
+            // Verificar se existe formulário preenchido
+            const { data: formularioPreenchido, error: formCheckError } = await supabase
+                .from('formularios_clientes')
+                .select('id')
+                .eq('cliente_id', currentClientId)
+                .eq('status', 'preenchido')
+                .limit(1);
+            
+            const temFormularioPreenchido = !formCheckError && formularioPreenchido && formularioPreenchido.length > 0;
+            
+            if (temFormularioPreenchido) {
+                diagnosticoContent.innerHTML = `
+                    <p>Este cliente ainda não possui um diagnóstico financeiro.</p>
+                    <p><strong>Clique no botão abaixo para gerar o diagnóstico:</strong></p>
+                    <button class="generate-link-btn" onclick="gerarLinkDiagnostico()">
+                        <i class="fas fa-link"></i> Gerar Diagnóstico Financeiro
+                    </button>
+                `;
+            } else {
+                diagnosticoContent.innerHTML = `
+                    <p>Este cliente ainda não possui um diagnóstico financeiro.</p>
+                    <p style="color: #f39c12;"><strong>⚠️ O cliente precisa preencher o formulário antes de gerar o diagnóstico financeiro.</strong></p>
+                    <button class="generate-link-btn" onclick="gerarLinkDiagnostico()" disabled style="opacity: 0.5; cursor: not-allowed;">
+                        <i class="fas fa-link"></i> Gerar Diagnóstico Financeiro
+                    </button>
+                    <p><small>O botão será habilitado automaticamente quando o cliente preencher o formulário.</small></p>
+                `;
+            }
+        }
+
+        // Função para exibir link do diagnóstico
+        function displayDiagnosticoLink(diagnostico) {
+            const diagnosticoContent = document.getElementById('diagnostico-info-content');
+            const diagnosticoUrl = `${window.location.origin}/diagnostico-financeiro.html?link=${diagnostico.link_unico}`;
+            
+            diagnosticoContent.innerHTML = `
+                <p>Este cliente possui um diagnóstico financeiro.</p>
+                <p><strong>Compartilhe o link abaixo com o cliente:</strong></p>
+                <div class="form-link-container">
+                    <a href="${diagnosticoUrl}" target="_blank">${diagnosticoUrl}</a>
+                </div>
+                <p><em>(Este link é único e pode ser usado várias vezes)</em></p>
+                <div class="form-data-display">
+                    <strong>Informações do Diagnóstico:</strong>
+                    <ul>
+                        <li><strong>Status:</strong> ${diagnostico.status === 'finalizado' ? 'Finalizado' : 'Em Andamento'}</li>
+                        <li><strong>Criado em:</strong> ${new Date(diagnostico.created_at).toLocaleDateString('pt-BR')}</li>
+                        <li><strong>Última atualização:</strong> ${new Date(diagnostico.updated_at).toLocaleDateString('pt-BR')}</li>
+                    </ul>
+                    <button class="delete-form-btn" onclick="excluirDiagnostico('${diagnostico.id}')">
+                        <i class="fas fa-trash"></i> Excluir Diagnóstico
+                    </button>
+                </div>
+            `;
+        }
+
+            // Função para gerar novo link de diagnóstico
+        async function gerarLinkDiagnostico() {
+            try {
+                // VALIDAÇÃO: Verificar se existe formulário preenchido
+                const { data: formularioPreenchido, error: formCheckError } = await supabase
+                    .from('formularios_clientes')
+                    .select('id, dados_formulario')
+                    .eq('cliente_id', currentClientId)
+                    .eq('status', 'preenchido')
+                    .order('created_at', { ascending: false })
+                    .limit(1);
+                
+                if (formCheckError) throw formCheckError;
+                
+                // Se não há formulário preenchido, impedir criação do diagnóstico
+                if (!formularioPreenchido || formularioPreenchido.length === 0) {
+                    alert('Não é possível criar um diagnóstico financeiro sem que o cliente tenha preenchido o formulário primeiro. Por favor, certifique-se de que o cliente preencheu o formulário antes de gerar o diagnóstico.');
+                    return;
+                }
+                
+                 // Buscar dados do cliente
+                const { data: cliente, error: clienteError } = await supabase
+                    .from('clientes')
+                    .select('nome')
+                    .eq('id', currentClientId)
+                    .single();
+                
+                if (clienteError) throw clienteError;
+                
+                // Buscar dados do formulário para outras pessoas com renda
+                const formulario = formularioPreenchido[0];
+                let outrasPersonasRenda = '';
+                if (formulario?.dados_formulario?.outras_pessoas) {
+                    const nomes = formulario.dados_formulario.outras_pessoas.map(p => p.nome);
+                    outrasPersonasRenda = nomes.join(', ');
+                }
+                
+                // Gerar link único
+                const linkUnico = 'diag_' + Math.random().toString(36).substr(2, 16);
+                
+                // Criar diagnóstico
+                const { error: createError } = await supabase
+                    .from('diagnosticos_financeiros')
+                    .insert({
+                        cliente_id: currentClientId,
+                        link_unico: linkUnico,
+                        nome_principal: cliente.nome || '',
+                       nomes_outras_pessoas_renda: outrasPersonasRenda,
+                        created_by_id: sessionStorage.getItem('user_id')
+                    });
+                
+                if (createError) throw createError;
+                
+                // Recarregar informações do diagnóstico
+                loadClientDiagnostico(currentClientId);
+                
+                alert('Link do diagnóstico gerado com sucesso!');
+                
+            } catch (error) {
+                console.error('Erro ao gerar link do diagnóstico:', error);
+                alert('Erro ao gerar link do diagnóstico: ' + error.message);
+            }
+        }
+     // Tornar a função global para ser acessível pelo onclick
+        window.gerarLinkDiagnostico = gerarLinkDiagnostico;
+
+        // Função para excluir diagnóstico
+        async function excluirDiagnostico(diagnosticoId) {
+            if (!confirm('Tem certeza que deseja excluir este diagnóstico? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('diagnosticos_financeiros')
+                    .delete()
+                    .eq('id', diagnosticoId);
+                
+                if (error) throw error;
+                
+                // Recarregar informações do diagnóstico (mostrará opção para gerar novo)
+                await loadClientDiagnostico(currentClientId);
+                
+                alert('Diagnóstico excluído com sucesso! Você pode gerar um novo diagnóstico clicando no botão correspondente.');
+                
+            } catch (error) {
+                console.error('Erro ao excluir diagnóstico:', error);
+                alert('Erro ao excluir diagnóstico: ' + error.message);
+            }
+        }
+ // Tornar a função global para ser acessível pelo onclick
+        window.excluirDiagnostico = excluirDiagnostico;
+
+
+    
+    // Função para carregar dados cadastrais do cliente
+    async function loadDadosCadastrais(clientId) {
+        try {
+            // Verificar se a tabela dados_cadastrais existe
+            const { data: tableExists, error: tableError } = await supabase
+                .from('dados_cadastrais')
+                .select('id')
+                .limit(1);
+                
+            if (tableError && tableError.code === '42P01') {
+                // Tabela não existe, criar a tabela
+                console.log("Tabela dados_cadastrais não existe, será criada automaticamente pelo backend");
+                // Não podemos criar tabelas diretamente via API, isso deve ser feito no Supabase
+            }
+            
+            // Buscar dados cadastrais do cliente
+            const { data, error } = await supabase
+                .from('dados_cadastrais')
+                .select('*')
+                .eq('cliente_id', clientId)
+                .single();
+                
+            if (error && error.code !== 'PGRST116') { // PGRST116 = No rows found
+                throw error;
+            }
+            
+            if (data) {
+                // Preencher o formulário com os dados existentes
+                dadosCadastraisId = data.id;
+                nomeCompletoInput.value = data.nome_completo || '';
+                cpfInput.value = data.cpf || '';
+                emailInput.value = data.email || '';
+                whatsappInput.value = data.whatsapp || '';
+                
+                if (data.conjuge && typeof data.conjuge === 'object') {
+                    conjugeNomeInput.value = data.conjuge.nome || '';
+                    conjugeWhatsappInput.value = data.conjuge.whatsapp || '';
+                }
+            } else {
+                // Não há dados cadastrais, inicializar com dados do cliente
+                const { data: clientData, error: clientError } = await supabase
+                    .from('clientes')
+                    .select('nome, whatsapp')
+                    .eq('id', clientId)
+                    .single();
+                    
+                if (clientError) throw clientError;
+                
+                if (clientData) {
+                    nomeCompletoInput.value = clientData.nome || '';
+                    whatsappInput.value = clientData.whatsapp || '';
+                }
+                
+                dadosCadastraisId = null;
+            }
+        } catch (error) {
+            console.error("Erro ao carregar dados cadastrais:", error);
+            alert("Erro ao carregar dados cadastrais. Por favor, tente novamente.");
+        }
+    }
+    
+    // Função para salvar dados cadastrais
+    async function saveDadosCadastrais(event) {
+        event.preventDefault();
+        
+        // Validar campos obrigatórios
+        const cpf = cpfInput.value.trim();
+        const whatsapp = whatsappInput.value.trim();
+        const conjugeNome = conjugeNomeInput.value.trim();
+        const conjugeWhatsapp = conjugeWhatsappInput.value.trim();
+        
+        let isValid = true;
+        
+        // Resetar mensagens de erro
+        document.getElementById('cpf-error').style.display = 'none';
+        document.getElementById('whatsapp-error').style.display = 'none';
+        document.getElementById('conjuge-whatsapp-error').style.display = 'none';
+        
+        // Validar CPF
+        if (!cpf) {
+            document.getElementById('cpf-error').style.display = 'block';
+            isValid = false;
+        }
+        
+        // Validar WhatsApp
+        if (!whatsapp) {
+            document.getElementById('whatsapp-error').style.display = 'block';
+            isValid = false;
+        }
+        
+        // Validar WhatsApp do Cônjuge apenas se o nome do cônjuge for preenchido
+        if (conjugeNome && !conjugeWhatsapp) {
+            document.getElementById('conjuge-whatsapp-error').style.display = 'block';
+            isValid = false;
+        }
+        
+        if (!isValid) {
+            return;
+        }
+        
+        try {
+            const dadosCadastrais = {
+                cliente_id: currentClientId,
+                nome_completo: nomeCompletoInput.value.trim(),
+                cpf: cpfInput.value.trim(),
+                email: emailInput.value.trim(),
+                whatsapp: whatsappInput.value.trim(),
+                conjuge: conjugeNomeInput.value.trim() ? {
+                    nome: conjugeNomeInput.value.trim(),
+                    whatsapp: conjugeWhatsappInput.value.trim()
+                } : null
+            };
+            
+            let result;
+            
+            if (dadosCadastraisId) {
+                // Atualizar dados existentes
+                result = await supabase
+                    .from('dados_cadastrais')
+                    .update(dadosCadastrais)
+                    .eq('id', dadosCadastraisId)
+                    .select();
+            } else {
+                // Inserir novos dados
+                result = await supabase
+                    .from('dados_cadastrais')
+                    .insert([dadosCadastrais])
+                    .select();
+            }
+            
+            if (result.error) throw result.error;
+            
+            if (result.data && result.data.length > 0) {
+                dadosCadastraisId = result.data[0].id;
+            }
+            
+            alert("Dados cadastrais salvos com sucesso!");
+        } catch (error) {
+            console.error("Erro ao salvar dados cadastrais:", error);
+            alert("Erro ao salvar dados cadastrais: " + error.message);
+        }
+    }
+    
+    // Função para configurar os botões de navegação
+    function setupNavigationButtons() {
+        // Botão Formulário
+        btnFormulario.addEventListener("click", () => {
+            showSection("form");
+        });
+        
+       // Botão Diagnóstico Financeiro
+        btnDiagnostico.addEventListener("click", () => {
+            showSection("diagnostico");
+            loadClientDiagnostico(currentClientId); // Carregar dados do diagnóstico
+        });
+
+        
+        // Botão Plano Financeiro
+        btnPlano.addEventListener("click", () => {
+            showSection("plano");
+        });
+        
+        // Botão Dados Cadastrais
+        btnDadosCadastrais.addEventListener("click", () => {
+            showSection("dados-cadastrais");
+        });
+        
+        // Botões do Plano Financeiro (sem ação por enquanto)
+        btnGestao.addEventListener("click", () => {
+            alert("Funcionalidade em desenvolvimento");
+        });
+        
+        btnImplementacoes.addEventListener("click", () => {
+            alert("Funcionalidade em desenvolvimento");
+        });
+        
+        // Formulário de dados cadastrais
+        dadosCadastraisForm.addEventListener("submit", saveDadosCadastrais);
+        
+        // Adicionar formatação automática para CPF
+        cpfInput.addEventListener("input", function(e) {
+            const cursorPosition = this.selectionStart;
+            const originalLength = this.value.length;
+            
+            this.value = formatCPF(this.value);
+            
+            // Ajustar posição do cursor após formatação
+            const newLength = this.value.length;
+            const cursorAdjustment = newLength - originalLength;
+            this.setSelectionRange(cursorPosition + cursorAdjustment, cursorPosition + cursorAdjustment);
+        });
+        
+        // Adicionar formatação automática para WhatsApp
+        whatsappInput.addEventListener("input", function() {
+            this.value = formatWhatsApp(this.value);
+        });
+        
+        // Adicionar formatação automática para WhatsApp do Cônjuge
+        conjugeWhatsappInput.addEventListener("input", function() {
+            this.value = formatWhatsApp(this.value);
+        });
+    }
+    
+    // Função para mostrar a seção selecionada
+    function showSection(section) {
+        // Ocultar todas as seções
+        formSection.style.display = "none";
+        diagnosticoSection.style.display = "none";
+        planoSection.style.display = "none";
+        dadosCadastraisSection.style.display = "none";
+        
+        // Remover classe active de todos os botões
+        btnFormulario.classList.remove("active");
+        btnDiagnostico.classList.remove("active");
+        btnPlano.classList.remove("active");
+        
+        // Mostrar a seção selecionada e ativar o botão correspondente
+        switch (section) {
+            case "form":
+                formSection.style.display = "block";
+                btnFormulario.classList.add("active");
+                break;
+            case "diagnostico":
+                diagnosticoSection.style.display = "block";
+                btnDiagnostico.classList.add("active");
+                loadClientDiagnostico(currentClientId); // Carregar dados do diagnóstico
+                break;
+
+            case "plano":
+                planoSection.style.display = "block";
+                btnPlano.classList.add("active");
+                break;
+            case "dados-cadastrais":
+                dadosCadastraisSection.style.display = "block";
+                btnPlano.classList.add("active");
+                break;
+        }
+    }
+
+    // Inicializar a página
+    document.addEventListener("DOMContentLoaded", loadClientDetails);
+  </script>
+
+</body>
+</html>
