@@ -1320,10 +1320,12 @@
             showSection("form");
         });
         
-        // Botão Diagnóstico Financeiro
+       // Botão Diagnóstico Financeiro
         btnDiagnostico.addEventListener("click", () => {
             showSection("diagnostico");
+            loadClientDiagnostico(currentClientId); // Carregar dados do diagnóstico
         });
+
         
         // Botão Plano Financeiro
         btnPlano.addEventListener("click", () => {
@@ -1393,7 +1395,9 @@
             case "diagnostico":
                 diagnosticoSection.style.display = "block";
                 btnDiagnostico.classList.add("active");
+                loadClientDiagnostico(currentClientId); // Carregar dados do diagnóstico
                 break;
+
             case "plano":
                 planoSection.style.display = "block";
                 btnPlano.classList.add("active");
