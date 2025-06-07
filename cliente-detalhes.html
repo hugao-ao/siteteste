@@ -1106,12 +1106,31 @@
             // Função para gerar novo link de diagnóstico
         async function gerarLinkDiagnostico() {
             try {
-                // Buscar dados do cliente
+                 // Buscar dados do cliente e formulário
                 const { data: cliente, error: clienteError } = await supabase
                     .from('clientes')
-                    .select('nome, outras_pessoas_renda')
+                    .select('nome')
                     .eq('id', currentClientId)
                     .single();
+                
+                if (clienteError) throw clienteError;
+                
+                // Buscar dados do formulário para outras pessoas com renda
+                const { data: formulario, error: formError } = await supabase
+                    .from('formularios_clientes')
+                    .select('dados_formulario')
+                    .eq('cliente_id', currentClientId)
+                    .eq('status', 'preenchido')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                let outrasPersonasRenda = '';
+                if (!formError && formulario?.dados_formulario?.outras_pessoas) {
+                    const nomes = formulario.dados_formulario.outras_pessoas.map(p => p.nome);
+                    outrasPersonasRenda = nomes.join(', ');
+                }
+
                 
                 if (clienteError) throw clienteError;
                 
@@ -1125,7 +1144,7 @@
                         cliente_id: currentClientId,
                         link_unico: linkUnico,
                         nome_principal: cliente.nome || '',
-                        nomes_outras_pessoas_renda: cliente.outras_pessoas_renda || '',
+                       nomes_outras_pessoas_renda: outrasPersonasRenda,
                         created_by_id: sessionStorage.getItem('user_id')
                     });
                 
