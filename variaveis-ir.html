@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Variáveis de IR</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* --- Sidebar Integration Styles --- */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+    #main-content-ir {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px; /* Default margin for expanded sidebar */
+      transition: margin-left 0.3s ease;
+      background-color: var(--bg-surface);
+      color: var(--text-light);
+    }
+    #main-content-ir.sidebar-collapsed {
+      margin-left: 60px; /* Margin for collapsed sidebar */
+    }
+    /* --- End Sidebar Integration Styles --- */
+    
+    .ir-container {
+      background-color: var(--bg-card);
+      border-radius: 8px;
+      padding: 2rem;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin-top: 1.5rem;
+      max-width: 1400px;
+    }
+    
+    .last-update {
+      background-color: #e3f2fd;
+      border: 1px solid #2196f3;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+      color: #1976d2;
+      font-weight: bold;
+    }
+    
+    .ir-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 1rem 0;
+      font-size: 0.9rem;
+    }
+    
+    .ir-table th,
+    .ir-table td {
+      border: 2px solid #333;
+      padding: 0.5rem;
+      text-align: center;
+      vertical-align: middle;
+    }
+    
+    .ir-table th {
+      background-color: #f5f5f5;
+      font-weight: bold;
+      color: #333;
+    }
+    
+    /* Cores das células conforme especificação */
+    .cell-yellow {
+      background-color: #ffeb3b !important; /* Amarelo - entrada manual */
+    }
+    
+    .cell-orange {
+      background-color: #ff9800 !important; /* Laranja - calculado automaticamente */
+      color: white;
+    }
+    
+    .cell-blue {
+      background-color: #2196f3 !important; /* Azul - IR a pagar calculado */
+      color: white;
+    }
+    
+    .cell-pink {
+      background-color: #e91e63 !important; /* Rosa - links clicáveis */
+      color: white;
+    }
+    
+    .cell-gray {
+      background-color: #f5f5f5 !important; /* Cinza - labels */
+      font-weight: bold;
+    }
+    
+    .ir-table input {
+      width: 100%;
+      border: none;
+      background: transparent;
+      text-align: center;
+      font-size: 0.9rem;
+      padding: 0.25rem;
+      color: #000 !important;
+    }
+
+    
+    .ir-table input:focus {
+      outline: 2px solid #006400;
+      background-color: rgba(255, 255, 255, 0.8);
+    }
+    
+    .ir-table input[readonly] {
+      cursor: default;
+    }
+    
+    .link-cell {
+      cursor: pointer;
+      text-decoration: underline;
+      transition: opacity 0.2s;
+    }
+    
+    .link-cell:hover {
+      opacity: 0.8;
+    }
+    
+    .save-btn {
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      padding: 1rem 2rem;
+      border-radius: 5px;
+      font-size: 1.1rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.3s ease;
+      margin-top: 1rem;
+    }
+    
+    .save-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .save-btn:disabled {
+      background-color: #6c757d;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+    }
+    
+    .theme-planejamento .save-btn {
+      background-color: #006400; /* Verde Planejamento */
+    }
+    
+    .loading {
+      text-align: center;
+      padding: 2rem;
+      color: var(--text-muted);
+    }
+    
+    .error-message {
+      background-color: #ffebee;
+      border: 1px solid #f44336;
+      color: #c62828;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+    
+    .success-message {
+      background-color: #e8f5e8;
+      border: 1px solid #4caf50;
+      color: #2e7d32;
+      padding: 1rem;
+      border-radius: 4px;
+      margin-bottom: 1rem;
+    }
+    
+    .additional-fields {
+      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    
+    .field-group {
+      display: flex;
+      flex-direction: column;
+    }
+    
+    .field-group label {
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      color: var(--text-light);
+    }
+    
+    .field-group input {
+      padding: 0.75rem;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      background-color: var(--bg-input);
+      color: var(--text-light);
+      font-size: 1rem;
+    }
+    
+    .field-group input:focus {
+      outline: none;
+      border-color: #006400;
+      box-shadow: 0 0 0 3px rgba(0, 100, 0, 0.2);
+    }
+    
+    .links-section {
+      margin-top: 2rem;
+      padding: 1rem;
+      border: 2px solid #e91e63;
+      border-radius: 8px;
+      background-color: rgba(233, 30, 99, 0.1);
+    }
+    
+    .links-section h3 {
+      color: #e91e63;
+      margin-top: 0;
+    }
+    
+    .link-config {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+    
+    .link-config label {
+      font-weight: bold;
+    }
+    
+    .link-config input {
+      padding: 0.5rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    
+    @media (max-width: 768px) {
+      .ir-table {
+        font-size: 0.8rem;
+      }
+      
+      .ir-table th,
+      .ir-table td {
+        padding: 0.25rem;
+      }
+      
+      .additional-fields {
+        grid-template-columns: 1fr;
+      }
+      
+      .link-config {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Sidebar será injetada aqui pelo sidebar.js -->
+  <main id="main-content-ir">
+    <h1>Variáveis de IR</h1>
+    
+    <div class="ir-container">
+      <div id="loading" class="loading">
+        <i class="fas fa-spinner fa-spin"></i> Carregando dados...
+      </div>
+      
+      <div id="error-container"></div>
+      <div id="success-container"></div>
+      
+      <div id="last-update-info" class="last-update" style="display: none;">
+        <i class="fas fa-clock"></i> Última atualização: <span id="last-update-date">-</span>
+      </div>
+      
+      <form id="ir-form" style="display: none;">
+        <!-- Tabela Principal de IR -->
+        <table class="ir-table">
+          <thead>
+            <tr>
+              <th>Faixa</th>
+              <th>Valor Mínimo</th>
+              <th>Valor Máximo</th>
+              <th>Alíquota</th>
+              <th>IR a Pagar</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="cell-gray">1</td>
+              <td class="cell-yellow">
+               <input type="text" id="faixa_1_valor_minimo" readonly>
+              </td>
+              <td class="cell-orange">
+               <input type="number" id="faixa_1_valor_maximo" step="0.01" min="0">
+              </td>
+              <td class="cell-yellow">
+                <input type="number" id="faixa_1_aliquota" step="0.0001" min="0" placeholder="0.0000">
+              </td>
+              <td class="cell-blue">
+                <input type="text" id="faixa_1_ir_pagar" readonly>
+              </td>
+            </tr>
+            <tr>
+              <td class="cell-gray">2</td>
+              <td class="cell-orange">
+                <input type="text" id="faixa_2_valor_minimo" readonly>
+              </td>
+              <td class="cell-orange">
+                <input type="number" id="faixa_2_valor_maximo" step="0.01" min="0">
+              </td>
+              <td class="cell-yellow">
+                <input type="number" id="faixa_2_aliquota" step="0.0001" min="0" placeholder="0.0000">
+              </td>
+              <td class="cell-blue">
+                <input type="text" id="faixa_2_ir_pagar" readonly>
+              </td>
+            </tr>
+            <tr>
+              <td class="cell-gray">3</td>
+              <td class="cell-orange">
+                <input type="text" id="faixa_3_valor_minimo" readonly>
+              </td>
+              <td class="cell-orange">
+                <input type="number" id="faixa_3_valor_maximo" step="0.01" min="0">
+              </td>
+              <td class="cell-yellow">
+                <input type="number" id="faixa_3_aliquota" step="0.0001" min="0" placeholder="0.0000">
+              </td>
+              <td class="cell-blue">
+                <input type="text" id="faixa_3_ir_pagar" readonly>
+              </td>
+            </tr>
+            <tr>
+              <td class="cell-gray">4</td>
+              <td class="cell-orange">
+                <input type="text" id="faixa_4_valor_minimo" readonly>
+              </td>
+              <td class="cell-orange">
+               <input type="number" id="faixa_4_valor_maximo" step="0.01" min="0">
+              </td>
+              <td class="cell-yellow">
+                <input type="number" id="faixa_4_aliquota" step="0.0001" min="0" placeholder="0.0000">
+              </td>
+              <td class="cell-blue">
+                <input type="text" id="faixa_4_ir_pagar" readonly>
+              </td>
+            </tr>
+            <tr>
+              <td class="cell-gray">5</td>
+              <td class="cell-orange">
+                <input type="text" id="faixa_5_valor_minimo" readonly>
+              </td>
+              <td class="cell-gray">
+                <input type="text" value="Sem Máximo" readonly>
+              </td>
+              <td class="cell-yellow">
+                <input type="number" id="faixa_5_aliquota" step="0.0001" min="0" placeholder="0.0000">
+              </td>
+              <td class="cell-gray">
+                <input type="text" value="Sem Máximo" readonly>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <!-- Campos Adicionais -->
+        <div class="additional-fields">
+          <div class="field-group">
+            <label for="deducao_anual_dependente">Dedução anual por dependente:</label>
+            <input type="number" id="deducao_anual_dependente" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field-group">
+            <label for="limite_anual_despesas_instrucao">Limite anual de despesas com instrução:</label>
+            <input type="number" id="limite_anual_despesas_instrucao" step="0.01" min="0" placeholder="0.00">
+          </div>
+          <div class="field-group">
+            <label for="limite_anual_desconto_simplificado">Limite anual de desconto simplificado:</label>
+            <input type="number" id="limite_anual_desconto_simplificado" step="0.01" min="0" placeholder="0.00">
+          </div>
+        </div>
+        
+        <!-- Seção de Links -->
+        <div class="links-section">
+          <h3><i class="fas fa-link"></i> Links Úteis</h3>
+          
+          <div class="link-config">
+            <label>Texto do link simulador:</label>
+            <input type="text" id="link_simulador_receita" placeholder="Aqui dá pra simular se imposto na Receita">
+          </div>
+          <div class="link-config">
+            <label>URL do simulador:</label>
+            <input type="url" id="url_simulador_receita" placeholder="https://...">
+          </div>
+          
+          <div class="link-config">
+            <label>Texto do site oficial:</label>
+            <input type="text" id="link_site_receita" placeholder="Site oficial da Receita Federal">
+          </div>
+          <div class="link-config">
+            <label>URL do site oficial:</label>
+            <input type="url" id="url_site_receita" placeholder="https://...">
+          </div>
+          
+          <div class="link-config">
+            <label>Texto da tabela IR:</label>
+            <input type="text" id="link_tabela_receita" placeholder="Tabela IR Receita Consulta">
+          </div>
+          <div class="link-config">
+            <label>URL da tabela IR:</label>
+            <input type="url" id="url_tabela_receita" placeholder="https://...">
+          </div>
+        </div>
+        
+        <!-- Tabela de Links (Preview) -->
+        <table class="ir-table" style="margin-top: 1rem;">
+          <tbody>
+            <tr>
+              <td class="cell-pink link-cell" id="preview_simulador" onclick="openLink('url_simulador_receita')">
+                Aqui dá pra simular se imposto na Receita
+              </td>
+            </tr>
+            <tr>
+              <td class="cell-pink link-cell" id="preview_site" onclick="openLink('url_site_receita')">
+                Site oficial da Receita Federal
+              </td>
+              <td class="cell-pink link-cell" id="preview_tabela" onclick="openLink('url_tabela_receita')">
+                Tabela IR Receita Consulta
+              </td>
+            </tr>
+          </tbody>
+        </table>
+        
+        <button type="submit" class="save-btn" id="save-btn">
+          <i class="fas fa-save"></i> Salvar Variáveis de IR
+        </button>
+      </form>
+    </div>
+  </main>
+
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    import { supabase } from './supabase.js';
+    
+    // Injetar a sidebar com contexto do projeto Planejamento
+    injectSidebar("main-content-ir", "Planejamento");
+    
+    // Elementos DOM
+    const loadingEl = document.getElementById('loading');
+    const errorContainer = document.getElementById('error-container');
+    const successContainer = document.getElementById('success-container');
+    const lastUpdateInfo = document.getElementById('last-update-info');
+    const lastUpdateDate = document.getElementById('last-update-date');
+    const irForm = document.getElementById('ir-form');
+    const saveBtn = document.getElementById('save-btn');
+    
+    // Campos das faixas
+    const faixaInputs = {
+      1: {
+        valorMinimo: document.getElementById('faixa_1_valor_minimo'),
+        valorMaximo: document.getElementById('faixa_1_valor_maximo'),
+        aliquota: document.getElementById('faixa_1_aliquota'),
+        irPagar: document.getElementById('faixa_1_ir_pagar')
+      },
+      2: {
+        valorMinimo: document.getElementById('faixa_2_valor_minimo'),
+        valorMaximo: document.getElementById('faixa_2_valor_maximo'),
+        aliquota: document.getElementById('faixa_2_aliquota'),
+        irPagar: document.getElementById('faixa_2_ir_pagar')
+      },
+      3: {
+        valorMinimo: document.getElementById('faixa_3_valor_minimo'),
+        valorMaximo: document.getElementById('faixa_3_valor_maximo'),
+        aliquota: document.getElementById('faixa_3_aliquota'),
+        irPagar: document.getElementById('faixa_3_ir_pagar')
+      },
+      4: {
+        valorMinimo: document.getElementById('faixa_4_valor_minimo'),
+        valorMaximo: document.getElementById('faixa_4_valor_maximo'),
+        aliquota: document.getElementById('faixa_4_aliquota'),
+        irPagar: document.getElementById('faixa_4_ir_pagar')
+      },
+      5: {
+        valorMinimo: document.getElementById('faixa_5_valor_minimo'),
+        aliquota: document.getElementById('faixa_5_aliquota')
+      }
+    };
+    
+    // Campos adicionais
+    const deducaoInput = document.getElementById('deducao_anual_dependente');
+    const limiteInstrucaoInput = document.getElementById('limite_anual_despesas_instrucao');
+    const limiteSimplificadoInput = document.getElementById('limite_anual_desconto_simplificado');
+    
+    // Campos de links
+    const linkSimuladorInput = document.getElementById('link_simulador_receita');
+    const urlSimuladorInput = document.getElementById('url_simulador_receita');
+    const linkSiteInput = document.getElementById('link_site_receita');
+    const urlSiteInput = document.getElementById('url_site_receita');
+    const linkTabelaInput = document.getElementById('link_tabela_receita');
+    const urlTabelaInput = document.getElementById('url_tabela_receita');
+    
+    // Preview dos links
+    const previewSimulador = document.getElementById('preview_simulador');
+    const previewSite = document.getElementById('preview_site');
+    const previewTabela = document.getElementById('preview_tabela');
+    
+    // Funções utilitárias
+    function showError(message) {
+      errorContainer.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
+      successContainer.innerHTML = '';
+    }
+    
+    function showSuccess(message) {
+      successContainer.innerHTML = `<div class="success-message"><i class="fas fa-check-circle"></i> ${message}</div>`;
+      errorContainer.innerHTML = '';
+    }
+    
+    function clearMessages() {
+      errorContainer.innerHTML = '';
+      successContainer.innerHTML = '';
+    }
+    
+    function formatCurrency(value) {
+      return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL',
+        minimumFractionDigits: 2
+      }).format(value);
+    }
+
+    
+    function parseCurrency(value) {
+      if (typeof value === 'string') {
+        return parseFloat(value.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
+      }
+      return parseFloat(value) || 0;
+    }
+    
+     // Função para calcular valores automaticamente
+    function calculateValues() {
+       // Definir valor mínimo da faixa 1 sempre como R$ 0,00
+      faixaInputs[1].valorMinimo.value = formatCurrency(0);
+      // Obter valores das alíquotas
+      const aliquotas = [
+        parseFloat(faixaInputs[1].aliquota.value) || 0,
+        parseFloat(faixaInputs[2].aliquota.value) || 0,
+        parseFloat(faixaInputs[3].aliquota.value) || 0,
+        parseFloat(faixaInputs[4].aliquota.value) || 0,
+        parseFloat(faixaInputs[5].aliquota.value) || 0
+      ];
+      
+      // Obter valores máximos editáveis
+      const valoresMaximos = [
+        0, // Faixa 1 sempre começa em 0
+        parseFloat(faixaInputs[1].valorMaximo.value) || 24511.92,
+        parseFloat(faixaInputs[2].valorMaximo.value) || 33919.80,
+        parseFloat(faixaInputs[3].valorMaximo.value) || 45012.60,
+        parseFloat(faixaInputs[4].valorMaximo.value) || 55976.16
+      ];
+      
+      // Calcular valores mínimos (laranja) - R$ 0,01 + valor máximo da linha anterior
+      faixaInputs[2].valorMinimo.value = formatCurrency(valoresMaximos[1] + 0.01);
+      faixaInputs[3].valorMinimo.value = formatCurrency(valoresMaximos[2] + 0.01);
+      faixaInputs[4].valorMinimo.value = formatCurrency(valoresMaximos[3] + 0.01);
+      faixaInputs[5].valorMinimo.value = formatCurrency(valoresMaximos[4] + 0.01);
+      
+      // Calcular IR a Pagar (azul) - [Valor Máximo - Valor Mínimo] × Alíquota
+      for (let i = 1; i <= 4; i++) {
+        const valorMin = i === 1 ? 0 : valoresMaximos[i-1] + 0.01;
+        const valorMax = valoresMaximos[i];
+        const aliquota = aliquotas[i - 1] / 100; // Converter percentual para decimal
+        
+        const irPagar = (valorMax - valorMin) * aliquota;
+        faixaInputs[i].irPagar.value = formatCurrency(irPagar);
+      }
+    }
+
+    
+    // Função para atualizar preview dos links
+    function updateLinkPreviews() {
+      previewSimulador.textContent = linkSimuladorInput.value || 'Aqui dá pra simular se imposto na Receita';
+      previewSite.textContent = linkSiteInput.value || 'Site oficial da Receita Federal';
+      previewTabela.textContent = linkTabelaInput.value || 'Tabela IR Receita Consulta';
+    }
+    
+    // Função para abrir links
+    window.openLink = function(urlInputId) {
+      const url = document.getElementById(urlInputId).value;
+      if (url) {
+        window.open(url, '_blank');
+      } else {
+        alert('URL não configurada para este link.');
+      }
+    };
+    
+    // Adicionar listeners para recalcular quando alíquotas ou valores máximos mudarem
+    [1, 2, 3, 4, 5].forEach(i => {
+      faixaInputs[i].aliquota.addEventListener('input', calculateValues);
+    });
+    
+    // Listeners para valores máximos editáveis
+    [1, 2, 3, 4].forEach(i => {
+      faixaInputs[i].valorMaximo.addEventListener('input', calculateValues);
+    });
+
+    
+    // Adicionar listeners para atualizar preview dos links
+    [linkSimuladorInput, linkSiteInput, linkTabelaInput].forEach(input => {
+      input.addEventListener('input', updateLinkPreviews);
+    });
+    
+    // Função para carregar dados existentes
+    async function loadExistingData() {
+      try {
+        const { data, error } = await supabase
+          .from('variaveis_ir')
+          .select('*')
+          .order('data_ultima_atualizacao', { ascending: false })
+          .limit(1);
+        
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          const latest = data[0];
+          
+          // Preencher valores máximos
+          faixaInputs[1].valorMaximo.value = latest.faixa_1_valor_maximo;
+          faixaInputs[2].valorMaximo.value = latest.faixa_2_valor_maximo;
+          faixaInputs[3].valorMaximo.value = latest.faixa_3_valor_maximo;
+          faixaInputs[4].valorMaximo.value = latest.faixa_4_valor_maximo;
+          
+          // Preencher alíquotas
+          faixaInputs[1].aliquota.value = (latest.faixa_1_aliquota * 100).toFixed(4);
+          faixaInputs[2].aliquota.value = (latest.faixa_2_aliquota * 100).toFixed(4);
+          faixaInputs[3].aliquota.value = (latest.faixa_3_aliquota * 100).toFixed(4);
+          faixaInputs[4].aliquota.value = (latest.faixa_4_aliquota * 100).toFixed(4);
+          faixaInputs[5].aliquota.value = (latest.faixa_5_aliquota * 100).toFixed(4);
+
+          
+          // Preencher campos adicionais
+          deducaoInput.value = latest.deducao_anual_dependente;
+          limiteInstrucaoInput.value = latest.limite_anual_despesas_instrucao;
+          limiteSimplificadoInput.value = latest.limite_anual_desconto_simplificado;
+          
+          // Preencher links
+          linkSimuladorInput.value = latest.link_simulador_receita || '';
+          urlSimuladorInput.value = latest.url_simulador_receita || '';
+          linkSiteInput.value = latest.link_site_receita || '';
+          urlSiteInput.value = latest.url_site_receita || '';
+          linkTabelaInput.value = latest.link_tabela_receita || '';
+          urlTabelaInput.value = latest.url_tabela_receita || '';
+          
+          // Recalcular valores
+          calculateValues();
+          updateLinkPreviews();
+          
+          // Mostrar data da última atualização
+          const updateDate = new Date(latest.data_ultima_atualizacao);
+          lastUpdateDate.textContent = updateDate.toLocaleString('pt-BR');
+          lastUpdateInfo.style.display = 'block';
+        } else {
+          // Dados padrão se não houver registros
+          calculateValues();
+          updateLinkPreviews();
+        }
+      } catch (error) {
+        console.error('Erro ao carregar dados:', error);
+        showError('Erro ao carregar dados existentes: ' + error.message);
+      }
+    }
+    
+    // Função para salvar dados
+    async function saveData(event) {
+      event.preventDefault();
+      
+      const userId = sessionStorage.getItem('user_id');
+      if (!userId) {
+        showError('Usuário não identificado. Faça login novamente.');
+        return;
+      }
+      
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+      
+      try {
+               const dataToSave = {
+          faixa_1_valor_minimo: 0,
+          faixa_1_valor_maximo: parseFloat(faixaInputs[1].valorMaximo.value) || 24511.92,
+          faixa_1_aliquota: parseFloat(faixaInputs[1].aliquota.value) / 100,
+          faixa_1_ir_pagar: parseCurrency(faixaInputs[1].irPagar.value),
+          
+          faixa_2_valor_minimo: parseCurrency(faixaInputs[2].valorMinimo.value),
+          faixa_2_valor_maximo: parseFloat(faixaInputs[2].valorMaximo.value) || 33919.80,
+          faixa_2_aliquota: parseFloat(faixaInputs[2].aliquota.value) / 100,
+          faixa_2_ir_pagar: parseCurrency(faixaInputs[2].irPagar.value),
+          
+          faixa_3_valor_minimo: parseCurrency(faixaInputs[3].valorMinimo.value),
+          faixa_3_valor_maximo: parseFloat(faixaInputs[3].valorMaximo.value) || 45012.60,
+          faixa_3_aliquota: parseFloat(faixaInputs[3].aliquota.value) / 100,
+          faixa_3_ir_pagar: parseCurrency(faixaInputs[3].irPagar.value),
+          
+          faixa_4_valor_minimo: parseCurrency(faixaInputs[4].valorMinimo.value),
+          faixa_4_valor_maximo: parseFloat(faixaInputs[4].valorMaximo.value) || 55976.16,
+          faixa_4_aliquota: parseFloat(faixaInputs[4].aliquota.value) / 100,
+          faixa_4_ir_pagar: parseCurrency(faixaInputs[4].irPagar.value),
+          
+          faixa_5_valor_minimo: parseCurrency(faixaInputs[5].valorMinimo.value),
+          faixa_5_aliquota: parseFloat(faixaInputs[5].aliquota.value) / 100,
+          
+          deducao_anual_dependente: parseFloat(deducaoInput.value) || 0,
+          limite_anual_despesas_instrucao: parseFloat(limiteInstrucaoInput.value) || 0,
+          limite_anual_desconto_simplificado: parseFloat(limiteSimplificadoInput.value) || 0,
+          
+          link_simulador_receita: linkSimuladorInput.value || '',
+          url_simulador_receita: urlSimuladorInput.value || '',
+          link_site_receita: linkSiteInput.value || '',
+          url_site_receita: urlSiteInput.value || '',
+          link_tabela_receita: linkTabelaInput.value || '',
+          url_tabela_receita: urlTabelaInput.value || '',
+          
+          atualizado_por_id: userId
+        };
+
+        
+        const { data, error } = await supabase
+          .from('variaveis_ir')
+          .insert([dataToSave])
+          .select();
+        
+        if (error) throw error;
+        
+        showSuccess('Variáveis de IR salvas com sucesso!');
+        
+        // Atualizar data da última atualização
+        const updateDate = new Date();
+        lastUpdateDate.textContent = updateDate.toLocaleString('pt-BR');
+        lastUpdateInfo.style.display = 'block';
+        
+      } catch (error) {
+        console.error('Erro ao salvar:', error);
+        showError('Erro ao salvar variáveis: ' + error.message);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Variáveis de IR';
+      }
+    }
+    
+    // Inicialização
+    document.addEventListener("DOMContentLoaded", async () => {
+      // Verificar se é admin
+      const userLevel = sessionStorage.getItem("nivel");
+      if (userLevel !== 'admin') {
+        showError("Acesso não autorizado.");
+        setTimeout(() => {
+          window.location.href = "index.html";
+        }, 2000);
+        return;
+      }
+      
+      // Aplicar tema do projeto Planejamento
+      const mainContent = document.getElementById('main-content-ir');
+      if (mainContent) {
+        mainContent.classList.add('theme-planejamento');
+        
+        // Se a sidebar já foi injetada, tenta aplicar o tema nela também
+        const sidebar = document.getElementById('sidebar');
+        if(sidebar) {
+          sidebar.classList.remove('theme-admin', 'theme-argos', 'theme-hvc', 'theme-planejamento', 'theme-default');
+          sidebar.classList.add('theme-planejamento');
+        }
+      }
+      
+      // Carregar dados existentes
+      await loadExistingData();
+      
+      // Mostrar formulário e esconder loading
+      loadingEl.style.display = 'none';
+      irForm.style.display = 'block';
+      
+      // Adicionar listener para o formulário
+      irForm.addEventListener('submit', saveData);
+    });
+  </script>
+</body>
+</html>
+
