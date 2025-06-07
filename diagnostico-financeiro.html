@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Diagnóstico Financeiro</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* Paleta de cores verde esmeralda escuro + dourado */
+    :root {
+      --primary-color: #1a4d3a; /* Verde esmeralda escuro */
+      --secondary-color: #d4af37; /* Dourado */
+      --accent-color: #ffd700; /* Dourado claro */
+      --success-color: #2e8b57; /* Verde mar */
+      --warning-color: #daa520; /* Dourado escuro */
+      --dark-bg: #0f2e1f; /* Verde muito escuro */
+      --surface-bg: #1a4d3a; /* Verde esmeralda escuro */
+      --white: #ffffff;
+      --text-light: #f0f8f0; /* Texto claro esverdeado */
+      --text-gold: #d4af37; /* Texto dourado */
+      --border-color: #2e8b57; /* Borda verde mar */
+      --shadow-color: rgba(0, 0, 0, 0.3);
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, var(--dark-bg) 0%, var(--primary-color) 100%);
+      color: var(--text-light);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 2rem;
+      background: var(--surface-bg);
+      padding: 2rem;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px var(--shadow-color);
+      border: 2px solid var(--border-color);
+    }
+
+    .header h1 {
+      color: var(--accent-color);
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+    }
+
+    .header .subtitle {
+      color: var(--text-light);
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+    }
+
+    .canva-container {
+      margin: 2rem 0;
+      background: var(--surface-bg);
+      padding: 1rem;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px var(--shadow-color);
+      border: 2px solid var(--border-color);
+    }
+
+    .canva-embed {
+      position: relative;
+      width: 100%;
+      height: 0;
+      padding-top: 56.2500%;
+      padding-bottom: 0;
+      box-shadow: 0 2px 8px 0 rgba(63,69,81,0.16);
+      margin-top: 1.6em;
+      margin-bottom: 0.9em;
+      overflow: hidden;
+      border-radius: 8px;
+      will-change: transform;
+    }
+
+    .canva-embed iframe {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      top: 0;
+      left: 0;
+      border: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .canva-link {
+      display: inline-block;
+      color: var(--secondary-color);
+      text-decoration: none;
+      font-weight: 600;
+      margin-top: 1rem;
+      transition: color 0.3s ease;
+    }
+
+    .canva-link:hover {
+      color: var(--accent-color);
+      text-shadow: 0 0 8px var(--accent-color);
+    }
+
+    .form-container {
+      background: var(--surface-bg);
+      padding: 2rem;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px var(--shadow-color);
+      margin-top: 2rem;
+      border: 2px solid var(--border-color);
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-group {
+      margin-bottom: 0;
+    }
+
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      color: var(--text-gold);
+      font-size: 1.1rem;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+    }
+
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 1rem;
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+      background: var(--dark-bg);
+      color: var(--text-light);
+    }
+
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--secondary-color);
+      box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .form-group select {
+      cursor: pointer;
+    }
+
+    .form-group select option {
+      background: var(--dark-bg);
+      color: var(--text-light);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-gold);
+    }
+
+    .loading i {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+      color: var(--secondary-color);
+    }
+
+    .error-message {
+      background: rgba(220, 53, 69, 0.2);
+      border: 1px solid #dc3545;
+      color: #ff6b6b;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .success-message {
+      background: rgba(46, 139, 87, 0.2);
+      border: 1px solid var(--success-color);
+      color: #90ee90;
+      padding: 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .status-badge {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-left: 1rem;
+    }
+
+    .status-em-andamento {
+      background: rgba(212, 175, 55, 0.2);
+      color: var(--accent-color);
+      border: 1px solid var(--secondary-color);
+    }
+
+    .status-finalizado {
+      background: rgba(46, 139, 87, 0.2);
+      color: #90ee90;
+      border: 1px solid var(--success-color);
+    }
+
+    .save-btn-container {
+      text-align: center;
+      margin-top: 2rem;
+      padding: 2rem 0;
+    }
+
+    .save-btn {
+      background: linear-gradient(135deg, var(--secondary-color), var(--warning-color));
+      color: var(--dark-bg);
+      border: none;
+      padding: 1.2rem 3rem;
+      border-radius: 10px;
+      font-size: 1.2rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.3);
+    }
+
+    .save-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4);
+      background: linear-gradient(135deg, var(--accent-color), var(--secondary-color));
+    }
+
+    .save-btn:disabled {
+      background: var(--border-color);
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
+      color: var(--text-light);
+    }
+
+    @media (max-width: 768px) {
+      .container {
+        padding: 1rem;
+      }
+
+      .header h1 {
+        font-size: 2rem;
+      }
+
+      .form-container {
+        padding: 1.5rem;
+      }
+
+      .form-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+
+      .form-group.full-width {
+        grid-column: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="loading" class="loading">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Carregando diagnóstico...</p>
+    </div>
+
+    <div id="error-container"></div>
+    <div id="success-container"></div>
+
+    <div id="main-content" style="display: none;">
+      <!-- Header com título dinâmico -->
+      <div class="header">
+        <h1 id="diagnostico-title">Diagnóstico Financeiro</h1>
+        <p class="subtitle">Análise completa da situação financeira</p>
+        <span id="status-badge" class="status-badge"></span>
+      </div>
+
+      <!-- Apresentação do Canva -->
+      <div class="canva-container">
+        <div class="canva-embed">
+          <iframe loading="lazy" 
+            src="https://www.canva.com/design/DAGcaLXui_M/wzHI8hgio6j0mK_uNlcz8Q/view?embed" 
+            allowfullscreen="allowfullscreen" 
+            allow="fullscreen">
+          </iframe>
+          </div>
+      </div>
+
+      <!-- Formulário do diagnóstico -->
+      <div class="form-container">
+        <form id="diagnostico-form">
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="nome_diagnostico">
+                <i class="fas fa-user"></i> Nome Completo *
+              </label>
+              <input type="text" 
+                     id="nome_diagnostico" 
+                     name="nome_diagnostico" 
+                     placeholder="Digite o nome completo"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label for="cpf">
+                <i class="fas fa-id-card"></i> CPF *
+              </label>
+              <input type="text" 
+                     id="cpf" 
+                     name="cpf" 
+                     placeholder="000.000.000-00"
+                     maxlength="14"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label for="data_nascimento">
+                <i class="fas fa-calendar"></i> Data de Nascimento *
+              </label>
+              <input type="date" 
+                     id="data_nascimento" 
+                     name="data_nascimento" 
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label for="profissao">
+                <i class="fas fa-briefcase"></i> Profissão *
+              </label>
+              <input type="text" 
+                     id="profissao" 
+                     name="profissao" 
+                     placeholder="Digite sua profissão"
+                     required>
+            </div>
+
+            <div class="form-group full-width">
+              <label for="estado_civil">
+                <i class="fas fa-heart"></i> Estado Civil *
+              </label>
+              <select id="estado_civil" 
+                      name="estado_civil" 
+                      required>
+                <option value="">Selecione o estado civil</option>
+                <option value="Solteiro(a)">Solteiro(a)</option>
+                <option value="Casado(a)">Casado(a)</option>
+                <option value="União Estável">União Estável</option>
+                <option value="Divorciado(a)">Divorciado(a)</option>
+                <option value="Viúvo(a)">Viúvo(a)</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Botão de salvar fora da caixa -->
+  <div class="save-btn-container">
+    <button type="submit" class="save-btn" id="save-btn" form="diagnostico-form">
+      <i class="fas fa-save"></i>
+      Salvar Diagnóstico
+    </button>
+  </div>
+
+  <script type="module">
+    import { supabase } from './supabase.js';
+    
+    // Elementos DOM
+    const loadingEl = document.getElementById('loading');
+    const errorContainer = document.getElementById('error-container');
+    const successContainer = document.getElementById('success-container');
+    const mainContent = document.getElementById('main-content');
+    const diagnosticoTitle = document.getElementById('diagnostico-title');
+    const statusBadge = document.getElementById('status-badge');
+    const diagnosticoForm = document.getElementById('diagnostico-form');
+    const nomeInput = document.getElementById('nome_diagnostico');
+    const cpfInput = document.getElementById('cpf');
+    const dataNascimentoInput = document.getElementById('data_nascimento');
+    const profissaoInput = document.getElementById('profissao');
+    const estadoCivilInput = document.getElementById('estado_civil');
+    const saveBtn = document.getElementById('save-btn');
+    
+    // Variáveis globais
+    let diagnosticoData = null;
+    let clienteData = null;
+    
+    // Funções utilitárias
+    function showError(message) {
+      errorContainer.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
+      successContainer.innerHTML = '';
+    }
+    
+    function showSuccess(message) {
+      successContainer.innerHTML = `<div class="success-message"><i class="fas fa-check-circle"></i> ${message}</div>`;
+      errorContainer.innerHTML = '';
+    }
+    
+    function clearMessages() {
+      errorContainer.innerHTML = '';
+      successContainer.innerHTML = '';
+    }
+
+    // Função para formatar CPF
+    function formatarCPF(cpf) {
+      cpf = cpf.replace(/\D/g, '');
+      cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+      cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
+      cpf = cpf.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+      return cpf;
+    }
+
+    // Função para validar CPF
+    function validarCPF(cpf) {
+      cpf = cpf.replace(/\D/g, '');
+      if (cpf.length !== 11) return false;
+      if (/^(\d)\1{10}$/.test(cpf)) return false;
+      
+      let soma = 0;
+      for (let i = 0; i < 9; i++) {
+        soma += parseInt(cpf.charAt(i)) * (10 - i);
+      }
+      let resto = 11 - (soma % 11);
+      if (resto === 10 || resto === 11) resto = 0;
+      if (resto !== parseInt(cpf.charAt(9))) return false;
+      
+      soma = 0;
+      for (let i = 0; i < 10; i++) {
+        soma += parseInt(cpf.charAt(i)) * (11 - i);
+      }
+      resto = 11 - (soma % 11);
+      if (resto === 10 || resto === 11) resto = 0;
+      return resto === parseInt(cpf.charAt(10));
+    }
+    
+    function formatName(name) {
+      if (!name) return '';
+      return name.split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+    }
+    
+    function getFirstAndLastName(fullName) {
+      if (!fullName) return '';
+      const names = fullName.trim().split(' ');
+      if (names.length === 1) return formatName(names[0]);
+      return formatName(names[0] + ' ' + names[names.length - 1]);
+    }
+    
+    function buildDiagnosticoTitle(cliente) {
+      let title = 'Diagnóstico Financeiro ';
+      
+      // Nome principal
+      if (cliente.nome) {
+        title += getFirstAndLastName(cliente.nome);
+      }
+      
+      // Outras pessoas com renda
+      if (cliente.outras_pessoas_renda && cliente.outras_pessoas_renda.trim()) {
+        const outrasRenda = cliente.outras_pessoas_renda.split(',')
+          .map(nome => getFirstAndLastName(nome.trim()))
+          .filter(nome => nome)
+          .join(' + ');
+        
+        if (outrasRenda) {
+          title += ' + ' + outrasRenda;
+        }
+      }
+      
+      return title;
+    }
+    
+    function updateStatusBadge(status) {
+      statusBadge.className = 'status-badge';
+      if (status === 'finalizado') {
+        statusBadge.classList.add('status-finalizado');
+        statusBadge.textContent = 'Finalizado';
+      } else {
+        statusBadge.classList.add('status-em-andamento');
+        statusBadge.textContent = 'Em Andamento';
+      }
+    }
+    
+    // Função para obter link único da URL
+    function getLinkUnico() {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get('link');
+    }
+    
+    // Função para carregar dados do diagnóstico
+    async function loadDiagnostico() {
+      try {
+        const linkUnico = getLinkUnico();
+        
+        if (!linkUnico) {
+          throw new Error('Link de diagnóstico não encontrado na URL');
+        }
+        
+      // Buscar diagnóstico pelo link único
+        const { data: diagnostico, error: diagError } = await supabase
+          .from('diagnosticos_financeiros')
+          .select(`
+            *,
+            clientes (
+              id,
+              nome
+            )
+          `)
+          .eq('link_unico', linkUnico)
+          .single();
+
+        
+        if (diagError) throw diagError;
+        
+        if (!diagnostico) {
+          throw new Error('Diagnóstico não encontrado');
+        }
+        
+        diagnosticoData = diagnostico;
+        clienteData = diagnostico.clientes;
+        
+        // Atualizar título
+        const title = buildDiagnosticoTitle(clienteData);
+        diagnosticoTitle.textContent = title;
+        
+        // Atualizar status
+        updateStatusBadge(diagnostico.status);
+        
+        // Pré-preencher campos (do formulário ou do diagnóstico)
+        nomeInput.value = diagnostico.nome_diagnostico || clienteData.nome || '';
+        cpfInput.value = diagnostico.cpf || '';
+        dataNascimentoInput.value = diagnostico.data_nascimento || '';
+        profissaoInput.value = diagnostico.profissao || '';
+        estadoCivilInput.value = diagnostico.estado_civil || '';
+        
+        return diagnostico;
+        
+      } catch (error) {
+        console.error('Erro ao carregar diagnóstico:', error);
+        throw error;
+      }
+    }
+    
+    // Função para salvar diagnóstico
+    async function saveDiagnostico(event) {
+      event.preventDefault();
+      
+      // Validações
+      clearMessages();
+      
+      // Validar CPF
+      if (!validarCPF(cpfInput.value)) {
+        showError('CPF inválido. Por favor, digite um CPF válido.');
+        cpfInput.focus();
+        return;
+      }
+      
+      // Validar data de nascimento (não pode ser futura)
+      const dataNasc = new Date(dataNascimentoInput.value);
+      const hoje = new Date();
+      if (dataNasc >= hoje) {
+        showError('Data de nascimento não pode ser futura.');
+        dataNascimentoInput.focus();
+        return;
+      }
+      
+      // Validar idade mínima (18 anos)
+      const idade = hoje.getFullYear() - dataNasc.getFullYear();
+      if (idade < 18) {
+        showError('É necessário ter pelo menos 18 anos.');
+        dataNascimentoInput.focus();
+        return;
+      }
+      
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
+      
+      try {
+        const dataToSave = {
+          nome_diagnostico: nomeInput.value.trim(),
+          cpf: cpfInput.value.replace(/\D/g, ''), // Salvar só números
+          data_nascimento: dataNascimentoInput.value,
+          profissao: profissaoInput.value.trim(),
+          estado_civil: estadoCivilInput.value
+        };
+        
+        const { data, error } = await supabase
+          .from('diagnosticos_financeiros')
+          .update(dataToSave)
+          .eq('id', diagnosticoData.id)
+          .select();
+        
+        if (error) throw error;
+        
+        showSuccess('Diagnóstico salvo com sucesso!');
+        
+        // Atualizar dados locais
+        diagnosticoData = { ...diagnosticoData, ...dataToSave };
+        
+      } catch (error) {
+        console.error('Erro ao salvar diagnóstico:', error);
+        showError('Erro ao salvar diagnóstico: ' + error.message);
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Diagnóstico';
+      }
+    }
+    
+    // Inicialização
+    document.addEventListener("DOMContentLoaded", async () => {
+      try {
+        await loadDiagnostico();
+        
+        // Mostrar conteúdo principal e esconder loading
+        loadingEl.style.display = 'none';
+        mainContent.style.display = 'block';
+        
+        // Adicionar listener para o formulário
+        diagnosticoForm.addEventListener('submit', saveDiagnostico);
+        
+        // Adicionar formatação automática do CPF
+        cpfInput.addEventListener('input', function(e) {
+          e.target.value = formatarCPF(e.target.value);
+        });
+        
+      } catch (error) {
+        loadingEl.style.display = 'none';
+        showError('Erro ao carregar diagnóstico: ' + error.message);
+      }
+    });
+  </script>
+</body>
+</html>
