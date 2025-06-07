@@ -1110,7 +1110,7 @@
                 const { data: cliente, error: clienteError } = await supabase
                     .from('clientes')
                     .select('nome, outras_pessoas_renda')
-                    .eq('id', clientId)
+                    .eq('id', currentClientId)
                     .single();
                 
                 if (clienteError) throw clienteError;
@@ -1122,7 +1122,7 @@
                 const { error: createError } = await supabase
                     .from('diagnosticos_financeiros')
                     .insert({
-                        cliente_id: clientId,
+                        cliente_id: currentClientId,
                         link_unico: linkUnico,
                         nome_principal: cliente.nome || '',
                         nomes_outras_pessoas_renda: cliente.outras_pessoas_renda || '',
@@ -1132,7 +1132,7 @@
                 if (createError) throw createError;
                 
                 // Recarregar informações do diagnóstico
-                loadClientDiagnostico(clientId);
+                loadClientDiagnostico(currentClientId);
                 
                 alert('Link do diagnóstico gerado com sucesso!');
                 
