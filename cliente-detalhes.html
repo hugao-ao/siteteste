@@ -576,34 +576,69 @@
         });
     }
 
-    function displayFormLink(latestForm) {
-        console.log("DEBUG: Entering displayFormLink for pending form:", latestForm); 
-        const token = latestForm.token_unico;
-        const formId = latestForm.id;
+    async function displayFormLink(formData) {
+        console.log("DEBUG: Entering displayFormLink for pending form:", formData); 
+        const formId = formData.id;
+        const token = formData.token_unico;
         const link = `${window.location.origin}/formulario-cliente.html?token=${token}`;
-        console.log("DEBUG: Setting innerHTML for pending form link..."); 
+        
+        // Verificar se existe diagnóstico ativo
+        let temDiagnosticoAtivo = false;
+        try {
+            const { data: diagnosticoAtivo, error: diagError } = await supabase
+                .from('diagnosticos_financeiros')
+                .select('id')
+                .eq('cliente_id', currentClientId)
+                .limit(1);
+            
+            if (!diagError && diagnosticoAtivo && diagnosticoAtivo.length > 0) {
+                temDiagnosticoAtivo = true;
+            }
+        } catch (error) {
+            console.error('Erro ao verificar diagnóstico ativo:', error);
+        }
+        
+        let buttonHtml = '';
+        if (temDiagnosticoAtivo) {
+            buttonHtml = `
+                <button class="delete-form-btn" disabled style="opacity: 0.5; cursor: not-allowed;" title="Não é possível excluir o formulário pois existe um diagnóstico financeiro ativo">
+                    Excluir Link e Gerar Novo
+                </button>
+                <p style="color: #f39c12; font-size: 0.9rem; margin-top: 0.5rem;">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <strong>Formulário protegido:</strong> Existe um diagnóstico financeiro ativo. Exclua o diagnóstico primeiro para poder gerar um novo formulário.
+                </p>
+            `;
+        } else {
+            buttonHtml = `<button class="delete-form-btn" data-form-id="${formId}">Excluir Link e Gerar Novo</button>`;
+        }
+        
         formInfoContentEl.innerHTML = `
-            <p>Este cliente ainda não preencheu o formulário.</p>
+            <p>Formulário gerado e aguardando preenchimento.</p>
             <p>Compartilhe o link abaixo com o cliente:</p>
             <div class="form-link-container">
                 <a href="${link}" target="_blank">${link}</a>
             </div>
             <p><small>(Este link é único e só pode ser usado uma vez)</small></p>
-            <button class="delete-form-btn" data-form-id="${formId}">Excluir Link e Gerar Novo</button>
+            ${buttonHtml}
         `;
         console.log("DEBUG: innerHTML set. Querying for delete button..."); 
-        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
-        if (deleteBtn) {
-            console.log("DEBUG: Delete button found:", deleteBtn); 
-            console.log("DEBUG: Adding event listener to delete button..."); 
-            deleteBtn.addEventListener("click", handleDeleteForm);
-            console.log("DEBUG: Event listener added."); 
-        } else {
-            console.log("DEBUG: Delete button not found in DOM after setting innerHTML."); 
+        
+        // Só adicionar event listener se o botão não estiver desabilitado
+        if (!temDiagnosticoAtivo) {
+            const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
+            if (deleteBtn) {
+                console.log("DEBUG: Delete button found:", deleteBtn); 
+                console.log("DEBUG: Adding event listener to delete button..."); 
+                deleteBtn.addEventListener("click", handleDeleteForm);
+                console.log("DEBUG: Event listener added."); 
+            } else {
+                console.log("DEBUG: Delete button not found in DOM after setting innerHTML."); 
+            }
         }
     }
 
-    function displayFormData(formData) {
+    async function displayFormData(formData) {
         console.log("DEBUG: Entering displayFormData for completed form:", formData); 
         let dataHtml = "";
         if (formData.dados_formulario && typeof formData.dados_formulario === "object") {
@@ -838,17 +873,47 @@
               dataHtml = "<p>Não foi possível carregar os dados do formulário.</p>";
             }
 
+        // Verificar se existe diagnóstico ativo
+        let temDiagnosticoAtivo = false;
+        try {
+            const { data: diagnosticoAtivo, error: diagError } = await supabase
+                .from('diagnosticos_financeiros')
+                .select('id')
+                .eq('cliente_id', currentClientId)
+                .limit(1);
+            
+            if (!diagError && diagnosticoAtivo && diagnosticoAtivo.length > 0) {
+                temDiagnosticoAtivo = true;
+            }
+        } catch (error) {
+            console.error('Erro ao verificar diagnóstico ativo:', error);
+        }
+
         // Adicionar botão para excluir formulário e gerar novo
-        dataHtml += `
-            <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Formulário e Gerar Novo</button>
-        `;
+        if (temDiagnosticoAtivo) {
+            dataHtml += `
+                <button class="delete-form-btn" disabled style="opacity: 0.5; cursor: not-allowed;" title="Não é possível excluir o formulário pois existe um diagnóstico financeiro ativo">
+                    Excluir Formulário e Gerar Novo
+                </button>
+                <p style="color: #f39c12; font-size: 0.9rem; margin-top: 0.5rem;">
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <strong>Formulário protegido:</strong> Existe um diagnóstico financeiro ativo. Exclua o diagnóstico primeiro para poder gerar um novo formulário.
+                </p>
+            `;
+        } else {
+            dataHtml += `
+                <button class="delete-form-btn" data-form-id="${formData.id}">Excluir Formulário e Gerar Novo</button>
+            `;
+        }
 
         formInfoContentEl.innerHTML = dataHtml;
         
-        // Adicionar event listener para o botão de excluir
-        const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
-        if (deleteBtn) {
-            deleteBtn.addEventListener("click", handleDeleteForm);
+        // Adicionar event listener para o botão de excluir apenas se não estiver desabilitado
+        if (!temDiagnosticoAtivo) {
+            const deleteBtn = formInfoContentEl.querySelector(".delete-form-btn");
+            if (deleteBtn) {
+                deleteBtn.addEventListener("click", handleDeleteForm);
+            }
         }
     }
 
@@ -870,6 +935,28 @@
         const formId = event.currentTarget.dataset.formId;
         if (!formId) {
             console.error("DEBUG: Form ID not found in button dataset"); 
+            return;
+        }
+        
+        // VALIDAÇÃO: Verificar se existe diagnóstico ativo
+        try {
+            const { data: diagnosticoAtivo, error: diagError } = await supabase
+                .from('diagnosticos_financeiros')
+                .select('id, status')
+                .eq('cliente_id', currentClientId)
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (diagError) throw diagError;
+            
+            // Se há diagnóstico ativo, impedir exclusão do formulário
+            if (diagnosticoAtivo && diagnosticoAtivo.length > 0) {
+                alert('Não é possível excluir o formulário pois existe um diagnóstico financeiro ativo para este cliente. Exclua primeiro o diagnóstico financeiro se desejar gerar um novo formulário.');
+                return;
+            }
+        } catch (error) {
+            console.error('Erro ao verificar diagnóstico ativo:', error);
+            alert('Erro ao verificar diagnóstico ativo: ' + error.message);
             return;
         }
         
@@ -1021,10 +1108,10 @@
             
             if (latestForm.status === "preenchido" && latestForm.dados_formulario) {
                 // Formulário já preenchido
-                displayFormData(latestForm);
+                await displayFormData(latestForm);
             } else {
                 // Formulário pendente (link gerado mas não preenchido)
-                displayFormLink(latestForm);
+                await displayFormLink(latestForm);
             }
             
         } catch (error) {
