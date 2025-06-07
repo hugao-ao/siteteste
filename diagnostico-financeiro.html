@@ -441,6 +441,90 @@
                 <option value="Viúvo(a)">Viúvo(a)</option>
               </select>
             </div>
+
+            <!-- Regime de Bens (aparece quando casado/união estável) -->
+            <div class="form-group full-width" id="regime-bens-group" style="display: none;">
+              <label for="regime_bens">
+                <i class="fas fa-balance-scale"></i> Regime de Bens
+              </label>
+              <select id="regime_bens" name="regime_bens">
+                <option value="">Selecione o regime de bens</option>
+                <option value="Comunhão Parcial de Bens">Comunhão Parcial de Bens</option>
+                <option value="Comunhão Universal de Bens">Comunhão Universal de Bens</option>
+                <option value="Separação Total de Bens">Separação Total de Bens</option>
+                <option value="Participação Final nos Aquestos">Participação Final nos Aquestos</option>
+              </select>
+            </div>
+
+            <!-- Campos de contato -->
+            <div class="form-group">
+              <label for="telefone">
+                <i class="fas fa-phone"></i> Telefone de Contato
+              </label>
+              <input type="tel" 
+                     id="telefone" 
+                     name="telefone" 
+                     placeholder="(00) 00000-0000">
+            </div>
+
+            <div class="form-group">
+              <label for="email">
+                <i class="fas fa-envelope"></i> E-mail
+              </label>
+              <input type="email" 
+                     id="email" 
+                     name="email" 
+                     placeholder="seu@email.com">
+            </div>
+          </div>
+
+          <!-- Dados do Cônjuge (aparece quando casado/união estável) -->
+          <div id="conjuge-section" style="display: none;">
+            <h3 style="color: var(--accent-color); margin: 2rem 0 1rem 0; text-align: center;">
+              <i class="fas fa-users"></i> Dados do Cônjuge
+            </h3>
+            
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="conjuge_nome">
+                  <i class="fas fa-user"></i> Nome Completo do Cônjuge *
+                </label>
+                <input type="text" 
+                       id="conjuge_nome" 
+                       name="conjuge_nome" 
+                       placeholder="Digite o nome completo do cônjuge">
+              </div>
+
+              <div class="form-group">
+                <label for="conjuge_cpf">
+                  <i class="fas fa-id-card"></i> CPF do Cônjuge
+                </label>
+                <input type="text" 
+                       id="conjuge_cpf" 
+                       name="conjuge_cpf" 
+                       placeholder="000.000.000-00"
+                       maxlength="14">
+              </div>
+
+              <div class="form-group">
+                <label for="conjuge_data_nascimento">
+                  <i class="fas fa-calendar"></i> Data de Nascimento do Cônjuge
+                </label>
+                <input type="date" 
+                       id="conjuge_data_nascimento" 
+                       name="conjuge_data_nascimento">
+              </div>
+
+              <div class="form-group">
+                <label for="conjuge_profissao">
+                  <i class="fas fa-briefcase"></i> Profissão do Cônjuge
+                </label>
+                <input type="text" 
+                       id="conjuge_profissao" 
+                       name="conjuge_profissao" 
+                       placeholder="Digite a profissão do cônjuge">
+              </div>
+            </div>
           </div>
         </form>
       </div>
@@ -471,7 +555,18 @@
     const dataNascimentoInput = document.getElementById('data_nascimento');
     const profissaoInput = document.getElementById('profissao');
     const estadoCivilInput = document.getElementById('estado_civil');
+    const regimeBensInput = document.getElementById('regime_bens');
+    const telefoneInput = document.getElementById('telefone');
+    const emailInput = document.getElementById('email');
     const saveBtn = document.getElementById('save-btn');
+    
+    // Elementos do cônjuge
+    const regimeBensGroup = document.getElementById('regime-bens-group');
+    const conjugeSection = document.getElementById('conjuge-section');
+    const conjugeNomeInput = document.getElementById('conjuge_nome');
+    const conjugeCpfInput = document.getElementById('conjuge_cpf');
+    const conjugeDataNascimentoInput = document.getElementById('conjuge_data_nascimento');
+    const conjugeProfissaoInput = document.getElementById('conjuge_profissao');
     
     // Variáveis globais
     let diagnosticoData = null;
@@ -493,7 +588,7 @@
       successContainer.innerHTML = '';
     }
 
-    // Função para formatar CPF
+    // Funções utilitárias
     function formatarCPF(cpf) {
       cpf = cpf.replace(/\D/g, '');
       cpf = cpf.replace(/(\d{3})(\d)/, '$1.$2');
@@ -502,11 +597,21 @@
       return cpf;
     }
 
-    // Função para validar CPF
+    function formatarTelefone(telefone) {
+      telefone = telefone.replace(/\D/g, '');
+      if (telefone.length <= 10) {
+        telefone = telefone.replace(/(\d{2})(\d)/, '($1) $2');
+        telefone = telefone.replace(/(\d{4})(\d)/, '$1-$2');
+      } else {
+        telefone = telefone.replace(/(\d{2})(\d)/, '($1) $2');
+        telefone = telefone.replace(/(\d{5})(\d)/, '$1-$2');
+      }
+      return telefone;
+    }
+
     function validarCPF(cpf) {
       cpf = cpf.replace(/\D/g, '');
-      if (cpf.length !== 11) return false;
-      if (/^(\d)\1{10}$/.test(cpf)) return false;
+      if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
       
       let soma = 0;
       for (let i = 0; i < 9; i++) {
@@ -523,6 +628,34 @@
       resto = 11 - (soma % 11);
       if (resto === 10 || resto === 11) resto = 0;
       return resto === parseInt(cpf.charAt(10));
+    }
+
+    function validarEmail(email) {
+      const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      return regex.test(email);
+    }
+
+    // Função para mostrar/ocultar campos do cônjuge
+    function toggleConjugeFields() {
+      const estadoCivil = estadoCivilInput.value;
+      const showConjuge = estadoCivil === 'Casado(a)' || estadoCivil === 'União Estável';
+      
+      if (showConjuge) {
+        regimeBensGroup.style.display = 'block';
+        conjugeSection.style.display = 'block';
+        conjugeNomeInput.required = true;
+      } else {
+        regimeBensGroup.style.display = 'none';
+        conjugeSection.style.display = 'none';
+        conjugeNomeInput.required = false;
+        
+        // Limpar campos do cônjuge quando ocultar
+        regimeBensInput.value = '';
+        conjugeNomeInput.value = '';
+        conjugeCpfInput.value = '';
+        conjugeDataNascimentoInput.value = '';
+        conjugeProfissaoInput.value = '';
+      }
     }
     
     function formatName(name) {
@@ -624,6 +757,18 @@
         dataNascimentoInput.value = diagnostico.data_nascimento || '';
         profissaoInput.value = diagnostico.profissao || '';
         estadoCivilInput.value = diagnostico.estado_civil || '';
+        regimeBensInput.value = diagnostico.regime_bens || '';
+        telefoneInput.value = diagnostico.telefone || '';
+        emailInput.value = diagnostico.email || '';
+        
+        // Campos do cônjuge
+        conjugeNomeInput.value = diagnostico.conjuge_nome || '';
+        conjugeCpfInput.value = diagnostico.conjuge_cpf || '';
+        conjugeDataNascimentoInput.value = diagnostico.conjuge_data_nascimento || '';
+        conjugeProfissaoInput.value = diagnostico.conjuge_profissao || '';
+        
+        // Mostrar campos do cônjuge se necessário
+        toggleConjugeFields();
         
         return diagnostico;
         
@@ -664,6 +809,29 @@
         return;
       }
       
+      // Validar e-mail se preenchido
+      if (emailInput.value && !validarEmail(emailInput.value)) {
+        showError('E-mail inválido. Por favor, digite um e-mail válido.');
+        emailInput.focus();
+        return;
+      }
+      
+      // Validar CPF do cônjuge se preenchido
+      if (conjugeCpfInput.value && !validarCPF(conjugeCpfInput.value)) {
+        showError('CPF do cônjuge inválido. Por favor, digite um CPF válido.');
+        conjugeCpfInput.focus();
+        return;
+      }
+      
+      // Validar nome do cônjuge se campos do cônjuge estão visíveis
+      const estadoCivil = estadoCivilInput.value;
+      const showConjuge = estadoCivil === 'Casado(a)' || estadoCivil === 'União Estável';
+      if (showConjuge && !conjugeNomeInput.value.trim()) {
+        showError('Nome do cônjuge é obrigatório para pessoas casadas ou em união estável.');
+        conjugeNomeInput.focus();
+        return;
+      }
+      
       saveBtn.disabled = true;
       saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
       
@@ -673,7 +841,14 @@
           cpf: cpfInput.value.replace(/\D/g, ''), // Salvar só números
           data_nascimento: dataNascimentoInput.value,
           profissao: profissaoInput.value.trim(),
-          estado_civil: estadoCivilInput.value
+          estado_civil: estadoCivilInput.value,
+          regime_bens: regimeBensInput.value,
+          telefone: telefoneInput.value.replace(/\D/g, ''), // Salvar só números
+          email: emailInput.value.trim(),
+          conjuge_nome: conjugeNomeInput.value.trim(),
+          conjuge_cpf: conjugeCpfInput.value.replace(/\D/g, ''), // Salvar só números
+          conjuge_data_nascimento: conjugeDataNascimentoInput.value || null,
+          conjuge_profissao: conjugeProfissaoInput.value.trim()
         };
         
         const { data, error } = await supabase
@@ -715,6 +890,19 @@
           e.target.value = formatarCPF(e.target.value);
         });
         
+        // Adicionar formatação automática do CPF do cônjuge
+        conjugeCpfInput.addEventListener('input', function(e) {
+          e.target.value = formatarCPF(e.target.value);
+        });
+        
+        // Adicionar formatação automática do telefone
+        telefoneInput.addEventListener('input', function(e) {
+          e.target.value = formatarTelefone(e.target.value);
+        });
+        
+        // Adicionar listener para mudança de estado civil
+        estadoCivilInput.addEventListener('change', toggleConjugeFields);
+        
       } catch (error) {
         loadingEl.style.display = 'none';
         showError('Erro ao carregar diagnóstico: ' + error.message);
@@ -723,3 +911,4 @@
   </script>
 </body>
 </html>
+
