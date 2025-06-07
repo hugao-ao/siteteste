@@ -401,19 +401,19 @@
           throw new Error('Link de diagnóstico não encontrado na URL');
         }
         
-        // Buscar diagnóstico pelo link único
+      // Buscar diagnóstico pelo link único
         const { data: diagnostico, error: diagError } = await supabase
           .from('diagnosticos_financeiros')
           .select(`
             *,
             clientes (
               id,
-              nome,
-              outras_pessoas_renda
+              nome
             )
           `)
           .eq('link_unico', linkUnico)
           .single();
+
         
         if (diagError) throw diagError;
         
