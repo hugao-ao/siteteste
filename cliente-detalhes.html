@@ -1141,6 +1141,8 @@
                 alert('Erro ao gerar link do diagnóstico: ' + error.message);
             }
         }
+     // Tornar a função global para ser acessível pelo onclick
+        window.gerarLinkDiagnostico = gerarLinkDiagnostico;
 
         // Função para excluir diagnóstico
         async function excluirDiagnostico(diagnosticoId) {
@@ -1166,7 +1168,8 @@
                 alert('Erro ao excluir diagnóstico: ' + error.message);
             }
         }
-
+ // Tornar a função global para ser acessível pelo onclick
+        window.excluirDiagnostico = excluirDiagnostico;
 
 
     
