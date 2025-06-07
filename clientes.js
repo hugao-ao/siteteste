@@ -376,12 +376,16 @@ function renderClients(clients) {
             </button>
         `;
 
-        const actionsHtml = `
+                const actionsHtml = `
             <button class="view-details-btn" data-client-id="${client.id}" title="Ver Detalhes">
                 <i class="fa-solid fa-eye"></i>
             </button>
+            <button class="view-details-btn" onclick="acessarDiagnostico('${client.id}')" title="Diagnóstico Financeiro" style="color: #9b59b6;">
+                <i class="fas fa-chart-line"></i>
+            </button>
             ${canEditDelete ? `<button class="delete-btn" data-id="${client.id}" title="Excluir Cliente"><i class="fa-solid fa-trash-can"></i></button>` : ''}
         `;
+
 
         tr.innerHTML = `
             <td data-label="Nome">${nomeHtml}</td>
@@ -825,6 +829,66 @@ function handleDeleteFormClick(event) {
         deleteForm(formId, clientId);
     }
 }
+
+// Função para acessar diagnóstico do cliente
+async function acessarDiagnostico(clienteId) {
+    try {
+        // Verificar se já existe diagnóstico para este cliente
+        const { data: diagnosticoExistente, error: searchError } = await supabase
+            .from('diagnosticos_financeiros')
+            .select('link_unico')
+            .eq('cliente_id', clienteId)
+            .single();
+        
+        if (searchError && searchError.code !== 'PGRST116') {
+            throw searchError;
+        }
+        
+        let linkUnico;
+        
+        if (diagnosticoExistente) {
+            // Usar diagnóstico existente
+            linkUnico = diagnosticoExistente.link_unico;
+        } else {
+            // Criar novo diagnóstico
+            const { data: cliente, error: clienteError } = await supabase
+                .from('clientes')
+                .select('nome, outras_pessoas_renda')
+                .eq('id', clienteId)
+                .single();
+            
+            if (clienteError) throw clienteError;
+            
+            // Gerar link único
+            linkUnico = 'diag_' + Math.random().toString(36).substr(2, 16);
+            
+            // Criar diagnóstico
+            const { error: createError } = await supabase
+                .from('diagnosticos_financeiros')
+                .insert({
+                    cliente_id: clienteId,
+                    link_unico: linkUnico,
+                    nome_principal: cliente.nome || '',
+                    nomes_outras_pessoas_renda: cliente.outras_pessoas_renda || '',
+                    created_by_id: currentUserId
+                });
+            
+            if (createError) throw createError;
+        }
+        
+        // Abrir diagnóstico em nova aba
+        const url = `diagnostico-financeiro.html?link=${linkUnico}`;
+        window.open(url, '_blank');
+        
+    } catch (error) {
+        console.error('Erro ao acessar diagnóstico:', error);
+        alert('Erro ao acessar diagnóstico: ' + error.message);
+    }
+}
+
+// Tornar a função global para ser acessível pelo onclick
+window.acessarDiagnostico = acessarDiagnostico;
+
 
 // --- Inicialização --- 
 document.addEventListener("DOMContentLoaded", initializeDashboard);
