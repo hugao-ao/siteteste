@@ -402,11 +402,12 @@
       </div>
     </section>
     
-    <!-- Seção para Diagnóstico Financeiro -->
+       <!-- Seção para Diagnóstico Financeiro -->
     <section id="diagnostico-section">
       <h2>Diagnóstico Financeiro</h2>
-      <p>O diagnóstico financeiro estará disponível em breve.</p>
-      <i class="fas fa-chart-line" style="font-size: 4rem; color: var(--theme-text-muted); margin: 2rem 0;"></i>
+      <div id="diagnostico-info-content">
+        <p id="diagnostico-loading-state">Carregando informações do diagnóstico...</p>
+      </div>
     </section>
     
     <!-- Seção para Plano Financeiro -->
@@ -1031,6 +1032,143 @@
             formInfoContentEl.innerHTML = `<p style="color: red;">Erro ao carregar formulário: ${error.message}</p>`;
         }
     }
+
+        // Função para carregar informações do diagnóstico
+        async function loadClientDiagnostico(clientId) {
+            console.log(`DEBUG: Entering loadClientDiagnostico for client ID: ${clientId}`);
+            try {
+                // Buscar o diagnóstico do cliente
+                const { data: diagnosticos, error } = await supabase
+                    .from("diagnosticos_financeiros")
+                    .select("*")
+                    .eq("cliente_id", clientId)
+                    .order("created_at", { ascending: false })
+                    .limit(1);
+                    
+                if (error) throw error;
+                
+                if (!diagnosticos || diagnosticos.length === 0) {
+                    // Cliente não tem diagnóstico
+                    displayNoDiagnosticoMessage();
+                    return;
+                }
+                
+                const latestDiagnostico = diagnosticos[0];
+                
+                // Sempre mostrar o link do diagnóstico (mesmo que em andamento)
+                displayDiagnosticoLink(latestDiagnostico);
+                
+            } catch (error) {
+                console.error("DEBUG: Error loading client diagnostico:", error);
+                const diagnosticoContent = document.getElementById('diagnostico-info-content');
+                diagnosticoContent.innerHTML = `<p style="color: red;">Erro ao carregar diagnóstico: ${error.message}</p>`;
+            }
+        }
+
+            // Função para exibir mensagem quando não há diagnóstico
+        function displayNoDiagnosticoMessage() {
+            const diagnosticoContent = document.getElementById('diagnostico-info-content');
+            diagnosticoContent.innerHTML = `
+                <p>Este cliente ainda não possui um diagnóstico financeiro.</p>
+                <p><strong>Compartilhe o link abaixo com o cliente:</strong></p>
+                <button class="generate-link-btn" onclick="gerarLinkDiagnostico()">
+                    <i class="fas fa-link"></i> Excluir Link e Gerar Novo
+                </button>
+            `;
+        }
+
+        // Função para exibir link do diagnóstico
+        function displayDiagnosticoLink(diagnostico) {
+            const diagnosticoContent = document.getElementById('diagnostico-info-content');
+            const diagnosticoUrl = `${window.location.origin}/diagnostico-financeiro.html?link=${diagnostico.link_unico}`;
+            
+            diagnosticoContent.innerHTML = `
+                <p>Este cliente possui um diagnóstico financeiro.</p>
+                <p><strong>Compartilhe o link abaixo com o cliente:</strong></p>
+                <div class="form-link-container">
+                    <a href="${diagnosticoUrl}" target="_blank">${diagnosticoUrl}</a>
+                </div>
+                <p><em>(Este link é único e pode ser usado várias vezes)</em></p>
+                <div class="form-data-display">
+                    <strong>Informações do Diagnóstico:</strong>
+                    <ul>
+                        <li><strong>Status:</strong> ${diagnostico.status === 'finalizado' ? 'Finalizado' : 'Em Andamento'}</li>
+                        <li><strong>Criado em:</strong> ${new Date(diagnostico.created_at).toLocaleDateString('pt-BR')}</li>
+                        <li><strong>Última atualização:</strong> ${new Date(diagnostico.updated_at).toLocaleDateString('pt-BR')}</li>
+                    </ul>
+                    <button class="delete-form-btn" onclick="excluirDiagnostico('${diagnostico.id}')">
+                        <i class="fas fa-trash"></i> Excluir Diagnóstico e Gerar Novo
+                    </button>
+                </div>
+            `;
+        }
+
+            // Função para gerar novo link de diagnóstico
+        async function gerarLinkDiagnostico() {
+            try {
+                // Buscar dados do cliente
+                const { data: cliente, error: clienteError } = await supabase
+                    .from('clientes')
+                    .select('nome, outras_pessoas_renda')
+                    .eq('id', clientId)
+                    .single();
+                
+                if (clienteError) throw clienteError;
+                
+                // Gerar link único
+                const linkUnico = 'diag_' + Math.random().toString(36).substr(2, 16);
+                
+                // Criar diagnóstico
+                const { error: createError } = await supabase
+                    .from('diagnosticos_financeiros')
+                    .insert({
+                        cliente_id: clientId,
+                        link_unico: linkUnico,
+                        nome_principal: cliente.nome || '',
+                        nomes_outras_pessoas_renda: cliente.outras_pessoas_renda || '',
+                        created_by_id: sessionStorage.getItem('user_id')
+                    });
+                
+                if (createError) throw createError;
+                
+                // Recarregar informações do diagnóstico
+                loadClientDiagnostico(clientId);
+                
+                alert('Link do diagnóstico gerado com sucesso!');
+                
+            } catch (error) {
+                console.error('Erro ao gerar link do diagnóstico:', error);
+                alert('Erro ao gerar link do diagnóstico: ' + error.message);
+            }
+        }
+
+        // Função para excluir diagnóstico
+        async function excluirDiagnostico(diagnosticoId) {
+            if (!confirm('Tem certeza que deseja excluir este diagnóstico? Esta ação não pode ser desfeita.')) {
+                return;
+            }
+            
+            try {
+                const { error } = await supabase
+                    .from('diagnosticos_financeiros')
+                    .delete()
+                    .eq('id', diagnosticoId);
+                
+                if (error) throw error;
+                
+                // Recarregar informações do diagnóstico
+                loadClientDiagnostico(clientId);
+                
+                alert('Diagnóstico excluído com sucesso!');
+                
+            } catch (error) {
+                console.error('Erro ao excluir diagnóstico:', error);
+                alert('Erro ao excluir diagnóstico: ' + error.message);
+            }
+        }
+
+
+
     
     // Função para carregar dados cadastrais do cliente
     async function loadDadosCadastrais(clientId) {
