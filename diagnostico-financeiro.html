@@ -1539,75 +1539,118 @@
       patrimonioTotalEl.textContent = `Total: ${formatarMoeda(total * 100)}`;
     }
 
-    function getTodasPessoas() {
-      const pessoas = [];
+   function updateAllPatrimoniosProprietarios() {
+  // Atualizar lista de proprietários em todos os patrimônios existentes
+  patrimonios.forEach((patrimonio, index) => {
+    const patrimonioId = `patrimonio_${index}`;
+    const checkboxContainer = document.getElementById(`${patrimonioId}_proprietarios`);
+    
+    if (checkboxContainer) {
+      const todasPessoas = getTodasPessoas();
+      const proprietariosSelecionados = patrimonio.proprietarios || [];
       
-      // Titular - usar nome_diagnostico que é o campo obrigatório
-      const nomeInput = document.getElementById('nome');
-      if (nomeInput && nomeInput.value.trim()) {
-        pessoas.push({
-          id: 'titular',
-          nome: nomeInput.value.trim(),
-          tipo: 'Titular'
+      // Re-criar checkboxes
+      checkboxContainer.innerHTML = todasPessoas.map(pessoa => `
+        <div class="checkbox-item">
+          <input type="checkbox" 
+                 id="${patrimonioId}_prop_${pessoa.id}" 
+                 name="${patrimonioId}_proprietarios" 
+                 value="${pessoa.id}"
+                 onchange="updatePatrimonioProprietarios(${index})"
+                 ${proprietariosSelecionados.includes(pessoa.id) ? 'checked' : ''}>
+          <label for="${patrimonioId}_prop_${pessoa.id}">${pessoa.nome} (${pessoa.tipo})</label>
+        </div>
+      `).join('');
+      
+      // Re-aplicar event listeners
+      const checkboxes = checkboxContainer.querySelectorAll('input[type="checkbox"]');
+      checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+          updatePatrimonioProprietarios(index);
+          updateProprietariosDisplay(index);
         });
-      }
-      
-      // Se não encontrou pelo campo 'nome', tentar pelo nome_diagnostico
-      if (pessoas.length === 0) {
-        const nomeDiagnosticoInput = document.getElementById('nome_diagnostico');
-        if (nomeDiagnosticoInput && nomeDiagnosticoInput.value.trim()) {
-          pessoas.push({
-            id: 'titular',
-            nome: nomeDiagnosticoInput.value.trim(),
-            tipo: 'Titular'
-          });
-        }
-      }
-      
-      // Cônjuge
-      const conjugeNomeInput = document.getElementById('conjuge_nome');
-      if (conjugeNomeInput && conjugeNomeInput.value.trim()) {
-        pessoas.push({
-          id: 'conjuge',
-          nome: conjugeNomeInput.value.trim(),
-          tipo: 'Cônjuge'
-        });
-      }
-      
-      // Pessoas com renda
-      pessoasRenda.forEach((pessoa, index) => {
-        if (pessoa.nome && pessoa.nome.trim()) {
-          pessoas.push({
-            id: `pessoa_${index}`,
-            nome: pessoa.nome.trim(),
-            tipo: 'Pessoa com Renda'
-          });
-          
-          // Cônjuge da pessoa com renda
-          if (pessoa.conjuge_nome && pessoa.conjuge_nome.trim()) {
-            pessoas.push({
-              id: `pessoa_${index}_conjuge`,
-              nome: pessoa.conjuge_nome.trim(),
-              tipo: 'Cônjuge (Pessoa com Renda)'
-            });
-          }
-        }
       });
       
-      // Dependentes
-      dependentes.forEach((dependente, index) => {
-        if (dependente.nome && dependente.nome.trim()) {
-          pessoas.push({
-            id: `dependente_${index}`,
-            nome: dependente.nome.trim(),
-            tipo: 'Dependente'
-          });
-        }
-      });
-      
-      console.log('Pessoas encontradas:', pessoas); // Debug
-      return pessoas;
+      // Atualizar display dos proprietários selecionados
+      updateProprietariosDisplay(index);
     }
+  });
+}
+
+function getTodasPessoas() {
+  const pessoas = [];
+  
+  // Titular - usar nome_diagnostico que é o campo obrigatório
+  const nomeInput = document.getElementById('nome');
+  if (nomeInput && nomeInput.value.trim()) {
+    pessoas.push({
+      id: 'titular',
+      nome: nomeInput.value.trim(),
+      tipo: 'Titular'
+    });
+  }
+  
+  // Se não encontrou pelo campo 'nome', tentar pelo nome_diagnostico
+  if (pessoas.length === 0) {
+    const nomeDiagnosticoInput = document.getElementById('nome_diagnostico');
+    if (nomeDiagnosticoInput && nomeDiagnosticoInput.value.trim()) {
+      pessoas.push({
+        id: 'titular',
+        nome: nomeDiagnosticoInput.value.trim(),
+        tipo: 'Titular'
+      });
+    }
+  }
+  
+  // Cônjuge
+  const conjugeNomeInput = document.getElementById('conjuge_nome');
+  if (conjugeNomeInput && conjugeNomeInput.value.trim()) {
+    pessoas.push({
+      id: 'conjuge',
+      nome: conjugeNomeInput.value.trim(),
+      tipo: 'Cônjuge'
+    });
+  }
+  
+  // Pessoas com renda - verificar se o array existe e tem dados
+  if (Array.isArray(pessoasRenda) && pessoasRenda.length > 0) {
+    pessoasRenda.forEach((pessoa, index) => {
+      if (pessoa && pessoa.nome && pessoa.nome.trim()) {
+        pessoas.push({
+          id: `pessoa_${index}`,
+          nome: pessoa.nome.trim(),
+          tipo: 'Pessoa com Renda'
+        });
+        
+        // Cônjuge da pessoa com renda
+        if (pessoa.conjuge_nome && pessoa.conjuge_nome.trim()) {
+          pessoas.push({
+            id: `pessoa_${index}_conjuge`,
+            nome: pessoa.conjuge_nome.trim(),
+            tipo: 'Cônjuge (Pessoa com Renda)'
+          });
+        }
+      }
+    });
+  }
+  
+  // Dependentes - verificar se o array existe e tem dados
+  if (Array.isArray(dependentes) && dependentes.length > 0) {
+    dependentes.forEach((dependente, index) => {
+      if (dependente && dependente.nome && dependente.nome.trim()) {
+        pessoas.push({
+          id: `dependente_${index}`,
+          nome: dependente.nome.trim(),
+          tipo: 'Dependente'
+        });
+      }
+    });
+  }
+  
+  console.log('Arrays de dados:', { pessoasRenda, dependentes }); // Debug
+  console.log('Pessoas encontradas:', pessoas); // Debug
+  return pessoas;
+}
 
     function createPatrimonioCard(patrimonio, index) {
       const patrimonioId = `patrimonio_${index}`;
@@ -2000,6 +2043,7 @@
     window.toggleSeguroVencimento = toggleSeguroVencimento;
     window.updatePatrimonioProprietarios = updatePatrimonioProprietarios;
     window.updatePatrimonioSaldoDevedor = updatePatrimonioSaldoDevedor;
+    window.updateAllPatrimoniosProprietarios = updateAllPatrimoniosProprietarios;
     
     function formatName(name) {
       if (!name) return '';
@@ -2395,6 +2439,27 @@
         
         // Adicionar listener para botão de adicionar patrimônio
         addPatrimonioBtn.addEventListener('click', addPatrimonio);
+
+        // Event listeners para atualizar lista de proprietários automaticamente
+        document.getElementById('nome')?.addEventListener('input', updateAllPatrimoniosProprietarios);
+        document.getElementById('conjuge_nome')?.addEventListener('input', updateAllPatrimoniosProprietarios);
+
+        // Sobrescrever funções de pessoas e dependentes para incluir atualização
+        const originalRenderPessoas = renderPessoas;
+        if (typeof renderPessoas === 'function') {
+          renderPessoas = function() {
+            originalRenderPessoas();
+            setTimeout(updateAllPatrimoniosProprietarios, 100);
+          };
+        }
+
+        const originalRenderDependentes = renderDependentes;
+        if (typeof renderDependentes === 'function') {
+          renderDependentes = function() {
+            originalRenderDependentes();
+            setTimeout(updateAllPatrimoniosProprietarios, 100);
+          };
+        }
         
       } catch (error) {
         loadingEl.style.display = 'none';
