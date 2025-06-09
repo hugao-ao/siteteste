@@ -855,8 +855,9 @@
     </div>
   </div>
 
-  <script type="module">
+<script type="module">
     import { supabase } from './supabase.js';
+    import { protegerPaginaDiagnostico } from './auth-security.js';
     
     // Elementos DOM
     const loadingEl = document.getElementById('loading');
@@ -2143,38 +2144,98 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
       const urlParams = new URLSearchParams(window.location.search);
       return urlParams.get('link');
     }
+
+        // Função específica para verificar permissão com dados já carregados
+            async function verificarPermissaoEspecifica(diagnostico, userId, nivel) {
+              try {
+                // Se é administrador, tem acesso total
+                if (nivel === 'admin') {
+                  return { hasAccess: true, reason: 'Usuário é administrador' };
+                }
+                
+                const cliente = diagnostico.clientes;
+                
+                if (!cliente) {
+                  return { hasAccess: false, reason: 'Cliente não encontrado' };
+                }
+                
+                // Verificar permissões:
+                // 1. Se o usuário criou o diagnóstico
+                if (diagnostico.created_by_id === userId) {
+                  return { hasAccess: true, reason: 'Usuário criou o diagnóstico' };
+                }
+                
+                // 2. Se o usuário está atribuído ao cliente
+                if (cliente.assigned_to_user_id === userId) {
+                  return { hasAccess: true, reason: 'Usuário está atribuído ao cliente' };
+                }
+                
+                // 3. Se o usuário criou o cliente
+                if (cliente.criado_por_id === userId) {
+                  return { hasAccess: true, reason: 'Usuário criou o cliente' };
+                }
+                
+                // 4. Se o cliente não está atribuído a nenhum usuário específico
+                if (!cliente.assigned_to_user_id) {
+                  return { hasAccess: true, reason: 'Cliente não está atribuído a usuário específico' };
+                }
+                
+                // Se chegou até aqui, não tem permissão
+                return { hasAccess: false, reason: 'Usuário não tem relação com este cliente' };
+                
+              } catch (error) {
+                console.error('Erro ao verificar permissão:', error);
+                return { hasAccess: false, reason: 'Erro interno do sistema' };
+              }
+            }
     
     // Função para carregar dados do diagnóstico
-    async function loadDiagnostico() {
-      try {
-        const linkUnico = getLinkUnico();
-        
-        if (!linkUnico) {
-          throw new Error('Link de diagnóstico não encontrado na URL');
-        }
-        
-      // Buscar diagnóstico pelo link único
-        const { data: diagnostico, error: diagError } = await supabase
-          .from('diagnosticos_financeiros')
-          .select(`
-            *,
-            clientes (
-              id,
-              nome
-            )
-          `)
-          .eq('link_unico', linkUnico)
-          .single();
+         async function loadDiagnostico() {
+          try {
+            const linkUnico = getLinkUnico();
+            
+            if (!linkUnico) {
+              throw new Error('Link de diagnóstico não encontrado na URL');
+            }
+            
+            // VERIFICAÇÃO DE SEGURANÇA ADICIONAL
+            const userId = sessionStorage.getItem('user_id');
+            const nivel = sessionStorage.getItem('nivel');
+            
+            if (!userId || !nivel) {
+              throw new Error('Sessão expirada. Faça login novamente.');
+            }
+            
+          // Buscar diagnóstico pelo link único
+            const { data: diagnostico, error: diagError } = await supabase
+              .from('diagnosticos_financeiros')
+              .select(`
+                *,
+                clientes (
+                  id,
+                  nome,
+                  assigned_to_user_id,
+                  criado_por_id
+                )
+              `)
+              .eq('link_unico', linkUnico)
+              .single();
 
         
-        if (diagError) throw diagError;
-        
-        if (!diagnostico) {
-          throw new Error('Diagnóstico não encontrado');
-        }
-        
-        diagnosticoData = diagnostico;
-        clienteData = diagnostico.clientes;
+       if (diagError) throw diagError;
+          
+          if (!diagnostico) {
+            throw new Error('Diagnóstico não encontrado');
+          }
+          
+          // VERIFICAÇÃO DE PERMISSÃO ESPECÍFICA
+          const temPermissao = await verificarPermissaoEspecifica(diagnostico, userId, nivel);
+          if (!temPermissao.hasAccess) {
+            throw new Error(`Acesso negado: ${temPermissao.reason}`);
+          }
+          
+          diagnosticoData = diagnostico;
+          clienteData = diagnostico.clientes;
         
         // Atualizar título
         const title = buildDiagnosticoTitle(clienteData);
@@ -2447,13 +2508,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
     }
     
     // Inicialização
-    document.addEventListener("DOMContentLoaded", async () => {
-      try {
-        await loadDiagnostico();
-        
-        // Mostrar conteúdo principal e esconder loading
-        loadingEl.style.display = 'none';
-        mainContent.style.display = 'block';
+        document.addEventListener("DOMContentLoaded", async () => {
+          try {
+            // VERIFICAÇÃO DE SEGURANÇA - DEVE SER A PRIMEIRA COISA
+            const acessoAutorizado = await protegerPaginaDiagnostico();
+            if (!acessoAutorizado) {
+              // Se não tem acesso, a função protegerPaginaDiagnostico já mostra a tela de erro
+              return;
+            }
+            
+            await loadDiagnostico();
+            
+            // Mostrar conteúdo principal e esconder loading
+            loadingEl.style.display = 'none';
+            mainContent.style.display = 'block';
         
         // Adicionar listener para o formulário
         diagnosticoForm.addEventListener('submit', saveDiagnostico);
@@ -2507,10 +2575,93 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         }
         
       } catch (error) {
-        loadingEl.style.display = 'none';
-        showError('Erro ao carregar diagnóstico: ' + error.message);
-      }
+  loadingEl.style.display = 'none';
+  
+  // Se é erro de acesso negado, mostrar tela especial
+  if (error.message.includes('Acesso negado')) {
+    mostrarAcessoNegado(error.message);
+  } else if (error.message.includes('Sessão expirada')) {
+    alert('Sua sessão expirou. Você será redirecionado para o login.');
+    setTimeout(() => {
+      window.location.href = 'index.html';
+    }, 2000);
+  } else {
+    showError('Erro ao carregar diagnóstico: ' + error.message);
+  }
+}
     });
+
+        // Função para mostrar tela de acesso negado
+            function mostrarAcessoNegado(motivo = 'Você não tem permissão para acessar este conteúdo') {
+              document.body.innerHTML = `
+                <div style="
+                  display: flex;
+                  flex-direction: column;
+                  align-items: center;
+                  justify-content: center;
+                  min-height: 100vh;
+                  background: linear-gradient(135deg, #1a4d3a 0%, #0f2e1f 100%);
+                  color: #f0f8f0;
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  text-align: center;
+                  padding: 2rem;
+                ">
+                  <div style="
+                    background: #1a4d3a;
+                    padding: 3rem;
+                    border-radius: 15px;
+                    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+                    border: 2px solid #2e8b57;
+                    max-width: 500px;
+                    width: 100%;
+                  ">
+                    <i class="fas fa-lock" style="
+                      font-size: 4rem;
+                      color: #d4af37;
+                      margin-bottom: 1.5rem;
+                    "></i>
+                    <h1 style="
+                      color: #d4af37;
+                      margin-bottom: 1rem;
+                      font-size: 2rem;
+                    ">Acesso Negado</h1>
+                    <p style="
+                      margin-bottom: 2rem;
+                      font-size: 1.1rem;
+                      line-height: 1.6;
+                    ">${motivo}</p>
+                    <button onclick="window.location.href='index.html'" style="
+                      background: linear-gradient(135deg, #d4af37, #daa520);
+                      color: #1a4d3a;
+                      border: none;
+                      padding: 1rem 2rem;
+                      border-radius: 8px;
+                      font-size: 1.1rem;
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.3s ease;
+                      margin-right: 1rem;
+                    ">
+                      <i class="fas fa-home"></i> Voltar ao Login
+                    </button>
+                    <button onclick="history.back()" style="
+                      background: transparent;
+                      color: #d4af37;
+                      border: 2px solid #d4af37;
+                      padding: 1rem 2rem;
+                      border-radius: 8px;
+                      font-size: 1.1rem;
+                      font-weight: 600;
+                      cursor: pointer;
+                      transition: all 0.3s ease;
+                    ">
+                      <i class="fas fa-arrow-left"></i> Voltar
+                    </button>
+                  </div>
+                </div>
+              `;
+            }
+  
   </script>
 </body>
 </html>
