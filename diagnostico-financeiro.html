@@ -360,6 +360,47 @@
       color: white;
     }
 
+    .dependente-card {
+      background: var(--dark-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .dependente-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .dependente-title {
+      color: var(--accent-color);
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .dependente-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .idade-display {
+      background: var(--primary-color);
+      color: var(--dark-bg);
+      padding: 0.3rem 0.8rem;
+      border-radius: 15px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+      display: inline-block;
+    }
+
     @media (max-width: 1200px) {
       .container {
         padding: 1.5rem;
@@ -647,6 +688,23 @@
               </button>
             </div>
           </div>
+
+          <!-- Sistema de Dependentes -->
+          <div class="form-container" style="margin-top: 1.5rem;">
+            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
+              <i class="fas fa-baby"></i> Dependentes
+            </h3>
+            
+            <div id="dependentes-container">
+              <!-- Dependentes serão inseridos aqui dinamicamente -->
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+              <button type="button" id="add-dependente-btn" class="add-btn">
+                <i class="fas fa-plus"></i> Adicionar Dependente
+              </button>
+            </div>
+          </div>
         </form>
       </div>
 
@@ -695,11 +753,17 @@
     const pessoasRendaContainer = document.getElementById('pessoas-renda-container');
     const addPessoaBtn = document.getElementById('add-pessoa-btn');
     
+    // Elementos do sistema de dependentes
+    const dependentesContainer = document.getElementById('dependentes-container');
+    const addDependenteBtn = document.getElementById('add-dependente-btn');
+    
     // Variáveis globais
     let diagnosticoData = null;
     let clienteData = null;
     let pessoasRenda = [];
+    let dependentes = [];
     let pessoaCounter = 0;
+    let dependenteCounter = 0;
     
     // Funções utilitárias
     function showError(message) {
@@ -1095,6 +1159,155 @@
     window.editPessoa = editPessoa;
     window.deletePessoa = deletePessoa;
     window.toggleConjugePessoa = toggleConjugePessoa;
+
+    // Funções para gerenciar dependentes
+    function calcularIdade(dataNascimento) {
+      if (!dataNascimento) return '';
+      
+      const hoje = new Date();
+      const nascimento = new Date(dataNascimento);
+      let idade = hoje.getFullYear() - nascimento.getFullYear();
+      const mesAtual = hoje.getMonth();
+      const mesNascimento = nascimento.getMonth();
+      
+      if (mesAtual < mesNascimento || (mesAtual === mesNascimento && hoje.getDate() < nascimento.getDate())) {
+        idade--;
+      }
+      
+      if (idade < 0) return '';
+      
+      if (idade === 0) {
+        const meses = mesAtual - mesNascimento + (hoje.getDate() >= nascimento.getDate() ? 0 : -1);
+        if (meses <= 0) {
+          const dias = Math.floor((hoje - nascimento) / (1000 * 60 * 60 * 24));
+          return dias === 1 ? '1 dia' : `${dias} dias`;
+        }
+        return meses === 1 ? '1 mês' : `${meses} meses`;
+      }
+      
+      return idade === 1 ? '1 ano' : `${idade} anos`;
+    }
+
+    function createDependenteCard(dependente, index) {
+      const dependenteId = `dependente_${index}`;
+      const idade = calcularIdade(dependente.data_nascimento);
+      
+      return `
+        <div class="dependente-card" data-index="${index}">
+          <div class="dependente-header">
+            <h4 class="dependente-title">
+              <i class="fas fa-baby"></i> ${dependente.nome || `Dependente ${index + 1}`}
+              ${idade ? `<span class="idade-display">${idade}</span>` : ''}
+            </h4>
+            <div class="dependente-actions">
+              <button type="button" class="edit-btn" onclick="editDependente(${index})">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button type="button" class="delete-btn" onclick="deleteDependente(${index})">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label for="${dependenteId}_nome">
+                <i class="fas fa-user"></i> Nome Completo *
+              </label>
+              <input type="text" 
+                     id="${dependenteId}_nome" 
+                     name="${dependenteId}_nome" 
+                     value="${dependente.nome || ''}"
+                     placeholder="Digite o nome completo"
+                     onchange="updateDependenteNome(${index})"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label for="${dependenteId}_data_nascimento">
+                <i class="fas fa-calendar"></i> Data de Nascimento *
+              </label>
+              <input type="date" 
+                     id="${dependenteId}_data_nascimento" 
+                     name="${dependenteId}_data_nascimento" 
+                     value="${dependente.data_nascimento || ''}"
+                     onchange="updateDependenteIdade(${index})"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label for="${dependenteId}_parentesco">
+                <i class="fas fa-heart"></i> Grau de Parentesco
+              </label>
+              <input type="text" 
+                     id="${dependenteId}_parentesco" 
+                     name="${dependenteId}_parentesco" 
+                     value="${dependente.parentesco || ''}"
+                     placeholder="Ex: filho(a), enteado(a), pet, etc.">
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function addDependente() {
+      const novoDependente = {
+        nome: '',
+        data_nascimento: '',
+        parentesco: ''
+      };
+      
+      dependentes.push(novoDependente);
+      renderDependentes();
+    }
+
+    function deleteDependente(index) {
+      if (confirm('Tem certeza que deseja excluir este dependente?')) {
+        dependentes.splice(index, 1);
+        renderDependentes();
+      }
+    }
+
+    function editDependente(index) {
+      // Função para editar dependente (pode ser expandida futuramente)
+      const dependenteCard = document.querySelector(`[data-index="${index}"]`);
+      dependenteCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updateDependenteNome(index) {
+      const dependenteId = `dependente_${index}`;
+      const nomeInput = document.getElementById(`${dependenteId}_nome`);
+      
+      if (nomeInput && dependentes[index]) {
+        dependentes[index].nome = nomeInput.value;
+        renderDependentes();
+      }
+    }
+
+    function updateDependenteIdade(index) {
+      const dependenteId = `dependente_${index}`;
+      const dataInput = document.getElementById(`${dependenteId}_data_nascimento`);
+      
+      if (dataInput && dependentes[index]) {
+        dependentes[index].data_nascimento = dataInput.value;
+        renderDependentes();
+      }
+    }
+
+    function renderDependentes() {
+      dependentesContainer.innerHTML = '';
+      
+      dependentes.forEach((dependente, index) => {
+        const dependenteHTML = createDependenteCard(dependente, index);
+        dependentesContainer.insertAdjacentHTML('beforeend', dependenteHTML);
+      });
+    }
+
+    // Tornar funções de dependentes globais
+    window.editDependente = editDependente;
+    window.deleteDependente = deleteDependente;
+    window.updateDependenteNome = updateDependenteNome;
+    window.updateDependenteIdade = updateDependenteIdade;
     
     function formatName(name) {
       if (!name) return '';
@@ -1218,6 +1431,17 @@
           }
         }
         
+        // Carregar dependentes se existirem
+        if (diagnostico.dependentes) {
+          try {
+            dependentes = JSON.parse(diagnostico.dependentes);
+            renderDependentes();
+          } catch (e) {
+            console.log('Erro ao carregar dependentes:', e);
+            dependentes = [];
+          }
+        }
+        
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
         
@@ -1321,6 +1545,32 @@
         pessoasRendaData.push(pessoaData);
       });
       
+      // Coletar dados dos dependentes
+      const dependentesData = [];
+      dependentes.forEach((dependente, index) => {
+        const dependenteId = `dependente_${index}`;
+        const dependenteData = {
+          nome: document.getElementById(`${dependenteId}_nome`)?.value.trim() || '',
+          data_nascimento: document.getElementById(`${dependenteId}_data_nascimento`)?.value || '',
+          parentesco: document.getElementById(`${dependenteId}_parentesco`)?.value.trim() || ''
+        };
+        
+        // Validar campos obrigatórios para dependentes
+        if (!dependenteData.nome) {
+          showError(`Nome é obrigatório para o Dependente ${index + 1}.`);
+          document.getElementById(`${dependenteId}_nome`)?.focus();
+          return;
+        }
+        
+        if (!dependenteData.data_nascimento) {
+          showError(`Data de nascimento é obrigatória para o Dependente ${index + 1}.`);
+          document.getElementById(`${dependenteId}_data_nascimento`)?.focus();
+          return;
+        }
+        
+        dependentesData.push(dependenteData);
+      });
+      
       saveBtn.disabled = true;
       saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
       
@@ -1340,7 +1590,8 @@
           conjuge_profissao: conjugeProfissaoInput.value.trim(),
           conjuge_telefone: conjugeTelefoneInput.value.replace(/\D/g, ''), // Salvar só números
           conjuge_email: conjugeEmailInput.value.trim(),
-          pessoas_renda: JSON.stringify(pessoasRendaData) // Salvar como JSON
+          pessoas_renda: JSON.stringify(pessoasRendaData), // Salvar como JSON
+          dependentes: JSON.stringify(dependentesData) // Salvar como JSON
         };
         
         const { data, error } = await supabase
@@ -1397,6 +1648,9 @@
         
         // Adicionar listener para botão de adicionar pessoa
         addPessoaBtn.addEventListener('click', addPessoa);
+        
+        // Adicionar listener para botão de adicionar dependente
+        addDependenteBtn.addEventListener('click', addDependente);
         
       } catch (error) {
         loadingEl.style.display = 'none';
