@@ -401,6 +401,114 @@
       display: inline-block;
     }
 
+    .patrimonio-card {
+      background: var(--dark-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .patrimonio-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .patrimonio-title {
+      color: var(--accent-color);
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .patrimonio-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .patrimonio-total {
+      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+      color: var(--dark-bg);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 1rem;
+      font-weight: 700;
+      box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
+      min-width: 150px;
+      text-align: center;
+    }
+
+    .valor-display {
+      background: var(--success-color);
+      color: white;
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      margin-left: 0.5rem;
+      display: inline-block;
+    }
+
+    .status-badge {
+      padding: 0.2rem 0.6rem;
+      border-radius: 12px;
+      font-size: 0.7rem;
+      font-weight: 600;
+      margin-left: 0.3rem;
+    }
+
+    .status-quitado {
+      background: var(--success-color);
+      color: white;
+    }
+
+    .status-financiado {
+      background: var(--warning-color);
+      color: var(--dark-bg);
+    }
+
+    .proprietarios-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.3rem;
+      margin-top: 0.5rem;
+    }
+
+    .proprietario-tag {
+      background: var(--primary-color);
+      color: var(--dark-bg);
+      padding: 0.2rem 0.5rem;
+      border-radius: 10px;
+      font-size: 0.7rem;
+      font-weight: 600;
+    }
+
+    .checkbox-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+
+    .checkbox-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.3rem;
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .checkbox-item input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+    }
+
     @media (max-width: 1200px) {
       .container {
         padding: 1.5rem;
@@ -705,6 +813,28 @@
               </button>
             </div>
           </div>
+
+          <!-- Sistema de Patrimônio Real -->
+          <div class="form-container" style="margin-top: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+                <i class="fas fa-home"></i> Patrimônio Real
+              </h3>
+              <div id="patrimonio-total" class="patrimonio-total">
+                Total: R$ 0,00
+              </div>
+            </div>
+            
+            <div id="patrimonios-container">
+              <!-- Patrimônios serão inseridos aqui dinamicamente -->
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+              <button type="button" id="add-patrimonio-btn" class="add-btn">
+                <i class="fas fa-plus"></i> Adicionar Patrimônio
+              </button>
+            </div>
+          </div>
         </form>
       </div>
 
@@ -757,13 +887,20 @@
     const dependentesContainer = document.getElementById('dependentes-container');
     const addDependenteBtn = document.getElementById('add-dependente-btn');
     
+    // Elementos do sistema de patrimônio
+    const patrimoniosContainer = document.getElementById('patrimonios-container');
+    const addPatrimonioBtn = document.getElementById('add-patrimonio-btn');
+    const patrimonioTotalEl = document.getElementById('patrimonio-total');
+    
     // Variáveis globais
     let diagnosticoData = null;
     let clienteData = null;
     let pessoasRenda = [];
     let dependentes = [];
+    let patrimonios = [];
     let pessoaCounter = 0;
     let dependenteCounter = 0;
+    let patrimonioCounter = 0;
     
     // Funções utilitárias
     function showError(message) {
@@ -1350,6 +1487,460 @@
     window.deleteDependente = deleteDependente;
     window.updateDependenteNome = updateDependenteNome;
     window.updateDependenteIdade = updateDependenteIdade;
+
+    // Funções para gerenciar patrimônio
+    function formatarMoeda(valor) {
+      if (!valor) return '';
+      
+      // Remove tudo que não é número
+      const numero = valor.toString().replace(/\D/g, '');
+      
+      if (!numero) return '';
+      
+      // Converte para centavos
+      const centavos = parseInt(numero);
+      const reais = centavos / 100;
+      
+      // Formata como moeda brasileira
+      return reais.toLocaleString('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+      });
+    }
+
+    function parseMoeda(valorFormatado) {
+      if (!valorFormatado) return 0;
+      
+      // Remove formatação e converte para número
+      const numero = valorFormatado.replace(/[^\d,]/g, '').replace(',', '.');
+      return parseFloat(numero) || 0;
+    }
+
+    function calcularPatrimonioTotal() {
+      let total = 0;
+      
+      patrimonios.forEach((patrimonio, index) => {
+        const patrimonioId = `patrimonio_${index}`;
+        const valorInput = document.getElementById(`${patrimonioId}_valor`);
+        
+        if (valorInput && valorInput.value) {
+          const valor = parseMoeda(valorInput.value);
+          total += valor;
+        }
+      });
+      
+      patrimonioTotalEl.textContent = `Total: ${formatarMoeda(total * 100)}`;
+    }
+
+    function getTodasPessoas() {
+      const pessoas = [];
+      
+      // Titular
+      const nomeInput = document.getElementById('nome');
+      if (nomeInput && nomeInput.value.trim()) {
+        pessoas.push({
+          id: 'titular',
+          nome: nomeInput.value.trim(),
+          tipo: 'Titular'
+        });
+      }
+      
+      // Cônjuge
+      const conjugeNomeInput = document.getElementById('conjuge_nome');
+      if (conjugeNomeInput && conjugeNomeInput.value.trim()) {
+        pessoas.push({
+          id: 'conjuge',
+          nome: conjugeNomeInput.value.trim(),
+          tipo: 'Cônjuge'
+        });
+      }
+      
+      // Pessoas com renda
+      pessoasRenda.forEach((pessoa, index) => {
+        if (pessoa.nome && pessoa.nome.trim()) {
+          pessoas.push({
+            id: `pessoa_${index}`,
+            nome: pessoa.nome.trim(),
+            tipo: 'Pessoa com Renda'
+          });
+          
+          // Cônjuge da pessoa com renda
+          if (pessoa.conjuge_nome && pessoa.conjuge_nome.trim()) {
+            pessoas.push({
+              id: `pessoa_${index}_conjuge`,
+              nome: pessoa.conjuge_nome.trim(),
+              tipo: 'Cônjuge (Pessoa com Renda)'
+            });
+          }
+        }
+      });
+      
+      // Dependentes
+      dependentes.forEach((dependente, index) => {
+        if (dependente.nome && dependente.nome.trim()) {
+          pessoas.push({
+            id: `dependente_${index}`,
+            nome: dependente.nome.trim(),
+            tipo: 'Dependente'
+          });
+        }
+      });
+      
+      return pessoas;
+    }
+
+    function createPatrimonioCard(patrimonio, index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const todasPessoas = getTodasPessoas();
+      const valorFormatado = patrimonio.valor ? formatarMoeda(patrimonio.valor * 100) : '';
+      
+      // Criar lista de proprietários selecionados
+      const proprietariosSelecionados = patrimonio.proprietarios || [];
+      const proprietariosDisplay = proprietariosSelecionados.map(id => {
+        const pessoa = todasPessoas.find(p => p.id === id);
+        return pessoa ? pessoa.nome : id;
+      }).join(', ');
+      
+      return `
+        <div class="patrimonio-card" data-index="${index}">
+          <div class="patrimonio-header">
+            <h4 class="patrimonio-title">
+              <i class="fas fa-home"></i> ${patrimonio.tipo || `Patrimônio ${index + 1}`}
+              ${valorFormatado ? `<span class="valor-display">${valorFormatado}</span>` : ''}
+              ${patrimonio.quitado ? '<span class="status-badge status-quitado">Quitado</span>' : '<span class="status-badge status-financiado">Financiado</span>'}
+            </h4>
+            <div class="patrimonio-actions">
+              <button type="button" class="edit-btn" onclick="editPatrimonio(${index})">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button type="button" class="delete-btn" onclick="deletePatrimonio(${index})">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label for="${patrimonioId}_tipo">
+                <i class="fas fa-tag"></i> Tipo de Patrimônio *
+              </label>
+              <input type="text" 
+                     id="${patrimonioId}_tipo" 
+                     name="${patrimonioId}_tipo" 
+                     value="${patrimonio.tipo || ''}"
+                     placeholder="Ex: Automóvel, Imóvel, Empresa..."
+                     oninput="updatePatrimonioTipo(${index})"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label for="${patrimonioId}_detalhes">
+                <i class="fas fa-info-circle"></i> Detalhes
+              </label>
+              <input type="text" 
+                     id="${patrimonioId}_detalhes" 
+                     name="${patrimonioId}_detalhes" 
+                     value="${patrimonio.detalhes || ''}"
+                     placeholder="Descrição detalhada do patrimônio">
+            </div>
+
+            <div class="form-group">
+              <label for="${patrimonioId}_valor">
+                <i class="fas fa-dollar-sign"></i> Valor *
+              </label>
+              <input type="text" 
+                     id="${patrimonioId}_valor" 
+                     name="${patrimonioId}_valor" 
+                     value="${valorFormatado}"
+                     placeholder="R$ 0,00"
+                     oninput="updatePatrimonioValor(${index})"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label for="${patrimonioId}_quitado">
+                <i class="fas fa-check-circle"></i> Status de Quitação
+              </label>
+              <select id="${patrimonioId}_quitado" 
+                      name="${patrimonioId}_quitado"
+                      onchange="updatePatrimonioStatus(${index})">
+                <option value="true" ${patrimonio.quitado ? 'selected' : ''}>Quitado</option>
+                <option value="false" ${!patrimonio.quitado ? 'selected' : ''}>Financiado</option>
+              </select>
+            </div>
+
+            <div class="form-group">
+              <label for="${patrimonioId}_seguro">
+                <i class="fas fa-shield-alt"></i> Possui Seguro?
+              </label>
+              <select id="${patrimonioId}_seguro" 
+                      name="${patrimonioId}_seguro"
+                      onchange="toggleSeguroVencimento(${index})">
+                <option value="false" ${!patrimonio.seguro ? 'selected' : ''}>Não</option>
+                <option value="true" ${patrimonio.seguro ? 'selected' : ''}>Sim</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="${patrimonioId}_seguro_vencimento_group" style="display: ${patrimonio.seguro ? 'block' : 'none'};">
+              <label for="${patrimonioId}_seguro_vencimento">
+                <i class="fas fa-calendar"></i> Vencimento do Seguro
+              </label>
+              <input type="date" 
+                     id="${patrimonioId}_seguro_vencimento" 
+                     name="${patrimonioId}_seguro_vencimento" 
+                     value="${patrimonio.seguro_vencimento || ''}">
+            </div>
+
+            <div class="form-group" id="${patrimonioId}_saldo_devedor_group" style="display: ${!patrimonio.quitado ? 'block' : 'none'};">
+              <label for="${patrimonioId}_saldo_devedor">
+                <i class="fas fa-money-bill-wave"></i> Saldo Devedor Atualizado
+              </label>
+              <input type="text" 
+                     id="${patrimonioId}_saldo_devedor" 
+                     name="${patrimonioId}_saldo_devedor" 
+                     value="${patrimonio.saldo_devedor ? formatarMoeda(patrimonio.saldo_devedor * 100) : ''}"
+                     placeholder="R$ 0,00"
+                     oninput="updatePatrimonioSaldoDevedor(${index})">
+            </div>
+          </div>
+
+          <div class="form-group full-width" style="margin-top: 1rem;">
+            <label>
+              <i class="fas fa-users"></i> Proprietário(s) *
+            </label>
+            <div class="checkbox-group" id="${patrimonioId}_proprietarios">
+              ${todasPessoas.map(pessoa => `
+                <div class="checkbox-item">
+                  <input type="checkbox" 
+                         id="${patrimonioId}_prop_${pessoa.id}" 
+                         name="${patrimonioId}_proprietarios" 
+                         value="${pessoa.id}"
+                         onchange="updatePatrimonioProprietarios(${index})"
+                         ${proprietariosSelecionados.includes(pessoa.id) ? 'checked' : ''}>
+                  <label for="${patrimonioId}_prop_${pessoa.id}">${pessoa.nome} (${pessoa.tipo})</label>
+                </div>
+              `).join('')}
+            </div>
+            ${proprietariosDisplay ? `<div class="proprietarios-list">${proprietariosSelecionados.map(id => {
+              const pessoa = todasPessoas.find(p => p.id === id);
+              return pessoa ? `<span class="proprietario-tag">${pessoa.nome}</span>` : '';
+            }).join('')}</div>` : ''}
+          </div>
+
+          <div class="form-group full-width" style="margin-top: 1rem;">
+            <label for="${patrimonioId}_observacoes">
+              <i class="fas fa-sticky-note"></i> Observações
+            </label>
+            <textarea id="${patrimonioId}_observacoes" 
+                      name="${patrimonioId}_observacoes" 
+                      rows="3"
+                      placeholder="Observações adicionais sobre o patrimônio...">${patrimonio.observacoes || ''}</textarea>
+          </div>
+        </div>
+      `;
+    }
+
+    function addPatrimonio() {
+      const novoPatrimonio = {
+        tipo: '',
+        detalhes: '',
+        valor: 0,
+        quitado: true,
+        seguro: false,
+        seguro_vencimento: '',
+        saldo_devedor: 0,
+        proprietarios: [],
+        observacoes: ''
+      };
+      
+      patrimonios.push(novoPatrimonio);
+      renderPatrimonios();
+      calcularPatrimonioTotal();
+    }
+
+    function deletePatrimonio(index) {
+      if (confirm('Tem certeza que deseja excluir este patrimônio?')) {
+        patrimonios.splice(index, 1);
+        renderPatrimonios();
+        calcularPatrimonioTotal();
+      }
+    }
+
+    function editPatrimonio(index) {
+      const patrimonioCard = document.querySelector(`[data-index="${index}"]`);
+      patrimonioCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function updatePatrimonioTipo(index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const tipoInput = document.getElementById(`${patrimonioId}_tipo`);
+      
+      if (tipoInput && patrimonios[index]) {
+        patrimonios[index].tipo = tipoInput.value;
+        
+        // Atualizar apenas o título do card
+        const patrimonioCard = document.querySelector(`[data-index="${index}"]`);
+        if (patrimonioCard) {
+          const titleElement = patrimonioCard.querySelector('.patrimonio-title');
+          if (titleElement) {
+            const valorInput = document.getElementById(`${patrimonioId}_valor`);
+            const valorFormatado = valorInput ? valorInput.value : '';
+            const tipoDisplay = patrimonios[index].tipo || `Patrimônio ${index + 1}`;
+            const quitado = patrimonios[index].quitado;
+            
+            titleElement.innerHTML = `
+              <i class="fas fa-home"></i> ${tipoDisplay}
+              ${valorFormatado ? `<span class="valor-display">${valorFormatado}</span>` : ''}
+              ${quitado ? '<span class="status-badge status-quitado">Quitado</span>' : '<span class="status-badge status-financiado">Financiado</span>'}
+            `;
+          }
+        }
+      }
+    }
+
+    function updatePatrimonioValor(index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const valorInput = document.getElementById(`${patrimonioId}_valor`);
+      
+      if (valorInput && patrimonios[index]) {
+        // Formatar valor enquanto digita
+        const valorFormatado = formatarMoeda(valorInput.value);
+        valorInput.value = valorFormatado;
+        
+        // Salvar valor numérico
+        patrimonios[index].valor = parseMoeda(valorFormatado);
+        
+        // Atualizar título e total
+        updatePatrimonioTipo(index);
+        calcularPatrimonioTotal();
+      }
+    }
+
+    function updatePatrimonioStatus(index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const statusSelect = document.getElementById(`${patrimonioId}_quitado`);
+      const saldoDevedorGroup = document.getElementById(`${patrimonioId}_saldo_devedor_group`);
+      
+      if (statusSelect && saldoDevedorGroup && patrimonios[index]) {
+        const quitado = statusSelect.value === 'true';
+        patrimonios[index].quitado = quitado;
+        
+        // Mostrar/ocultar campo de saldo devedor
+        saldoDevedorGroup.style.display = quitado ? 'none' : 'block';
+        
+        // Se foi marcado como quitado, limpar saldo devedor
+        if (quitado) {
+          const saldoDevedorInput = document.getElementById(`${patrimonioId}_saldo_devedor`);
+          if (saldoDevedorInput) {
+            saldoDevedorInput.value = '';
+            patrimonios[index].saldo_devedor = 0;
+          }
+        }
+        
+        updatePatrimonioTipo(index);
+      }
+    }
+
+    function toggleSeguroVencimento(index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const seguroSelect = document.getElementById(`${patrimonioId}_seguro`);
+      const vencimentoGroup = document.getElementById(`${patrimonioId}_seguro_vencimento_group`);
+      
+      if (seguroSelect && vencimentoGroup && patrimonios[index]) {
+        const temSeguro = seguroSelect.value === 'true';
+        patrimonios[index].seguro = temSeguro;
+        vencimentoGroup.style.display = temSeguro ? 'block' : 'none';
+      }
+    }
+
+    function updatePatrimonioProprietarios(index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const checkboxes = document.querySelectorAll(`input[name="${patrimonioId}_proprietarios"]:checked`);
+      
+      if (patrimonios[index]) {
+        patrimonios[index].proprietarios = Array.from(checkboxes).map(cb => cb.value);
+      }
+    }
+
+    function updatePatrimonioSaldoDevedor(index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const saldoDevedorInput = document.getElementById(`${patrimonioId}_saldo_devedor`);
+      
+      if (saldoDevedorInput && patrimonios[index]) {
+        // Formatar valor enquanto digita
+        const valorFormatado = formatarMoeda(saldoDevedorInput.value);
+        saldoDevedorInput.value = valorFormatado;
+        
+        // Salvar valor numérico
+        patrimonios[index].saldo_devedor = parseMoeda(valorFormatado);
+      }
+    }
+
+    function renderPatrimonios() {
+      patrimoniosContainer.innerHTML = '';
+      
+      patrimonios.forEach((patrimonio, index) => {
+        const patrimonioHTML = createPatrimonioCard(patrimonio, index);
+        patrimoniosContainer.insertAdjacentHTML('beforeend', patrimonioHTML);
+        
+        // Adicionar event listeners para campos que não têm onchange/oninput
+        const patrimonioId = `patrimonio_${index}`;
+        
+        // Event listener para detalhes
+        const detalhesInput = document.getElementById(`${patrimonioId}_detalhes`);
+        if (detalhesInput) {
+          detalhesInput.addEventListener('input', function() {
+            if (patrimonios[index]) {
+              patrimonios[index].detalhes = this.value;
+            }
+          });
+        }
+        
+        // Event listener para observações
+        const observacoesInput = document.getElementById(`${patrimonioId}_observacoes`);
+        if (observacoesInput) {
+          observacoesInput.addEventListener('input', function() {
+            if (patrimonios[index]) {
+              patrimonios[index].observacoes = this.value;
+            }
+          });
+        }
+        
+        // Event listener para vencimento do seguro
+        const vencimentoInput = document.getElementById(`${patrimonioId}_seguro_vencimento`);
+        if (vencimentoInput) {
+          vencimentoInput.addEventListener('change', function() {
+            if (patrimonios[index]) {
+              patrimonios[index].seguro_vencimento = this.value;
+            }
+          });
+        }
+        
+        // Event listener para saldo devedor
+        const saldoDevedorInput = document.getElementById(`${patrimonioId}_saldo_devedor`);
+        if (saldoDevedorInput) {
+          saldoDevedorInput.addEventListener('input', function() {
+            if (patrimonios[index]) {
+              const valorFormatado = formatarMoeda(this.value);
+              this.value = valorFormatado;
+              patrimonios[index].saldo_devedor = parseMoeda(valorFormatado);
+            }
+          });
+        }
+      });
+      
+      calcularPatrimonioTotal();
+    }
+
+    // Tornar funções de patrimônio globais
+    window.editPatrimonio = editPatrimonio;
+    window.deletePatrimonio = deletePatrimonio;
+    window.updatePatrimonioTipo = updatePatrimonioTipo;
+    window.updatePatrimonioValor = updatePatrimonioValor;
+    window.updatePatrimonioStatus = updatePatrimonioStatus;
+    window.toggleSeguroVencimento = toggleSeguroVencimento;
+    window.updatePatrimonioProprietarios = updatePatrimonioProprietarios;
+    window.updatePatrimonioSaldoDevedor = updatePatrimonioSaldoDevedor;
     
     function formatName(name) {
       if (!name) return '';
@@ -1484,6 +2075,17 @@
           }
         }
         
+        // Carregar patrimônios se existirem
+        if (diagnostico.patrimonios) {
+          try {
+            patrimonios = JSON.parse(diagnostico.patrimonios);
+            renderPatrimonios();
+          } catch (e) {
+            console.log('Erro ao carregar patrimônios:', e);
+            patrimonios = [];
+          }
+        }
+        
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
         
@@ -1613,6 +2215,43 @@
         dependentesData.push(dependenteData);
       });
       
+      // Coletar dados dos patrimônios
+      const patrimoniosData = [];
+      patrimonios.forEach((patrimonio, index) => {
+        const patrimonioId = `patrimonio_${index}`;
+        const patrimonioData = {
+          tipo: document.getElementById(`${patrimonioId}_tipo`)?.value.trim() || '',
+          detalhes: document.getElementById(`${patrimonioId}_detalhes`)?.value.trim() || '',
+          valor: parseMoeda(document.getElementById(`${patrimonioId}_valor`)?.value || '0'),
+          quitado: document.getElementById(`${patrimonioId}_quitado`)?.value === 'true',
+          seguro: document.getElementById(`${patrimonioId}_seguro`)?.value === 'true',
+          seguro_vencimento: document.getElementById(`${patrimonioId}_seguro_vencimento`)?.value || '',
+          saldo_devedor: parseMoeda(document.getElementById(`${patrimonioId}_saldo_devedor`)?.value || '0'),
+          proprietarios: patrimonio.proprietarios || [],
+          observacoes: document.getElementById(`${patrimonioId}_observacoes`)?.value.trim() || ''
+        };
+        
+        // Validar campos obrigatórios para patrimônios
+        if (!patrimonioData.tipo) {
+          showError(`Tipo de patrimônio é obrigatório para o Patrimônio ${index + 1}.`);
+          document.getElementById(`${patrimonioId}_tipo`)?.focus();
+          return;
+        }
+        
+        if (!patrimonioData.valor || patrimonioData.valor <= 0) {
+          showError(`Valor é obrigatório e deve ser maior que zero para o Patrimônio ${index + 1}.`);
+          document.getElementById(`${patrimonioId}_valor`)?.focus();
+          return;
+        }
+        
+        if (!patrimonioData.proprietarios || patrimonioData.proprietarios.length === 0) {
+          showError(`Pelo menos um proprietário deve ser selecionado para o Patrimônio ${index + 1}.`);
+          return;
+        }
+        
+        patrimoniosData.push(patrimonioData);
+      });
+      
       saveBtn.disabled = true;
       saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
       
@@ -1633,7 +2272,8 @@
           conjuge_telefone: conjugeTelefoneInput.value.replace(/\D/g, ''), // Salvar só números
           conjuge_email: conjugeEmailInput.value.trim(),
           pessoas_renda: JSON.stringify(pessoasRendaData), // Salvar como JSON
-          dependentes: JSON.stringify(dependentesData) // Salvar como JSON
+          dependentes: JSON.stringify(dependentesData), // Salvar como JSON
+          patrimonios: JSON.stringify(patrimoniosData) // Salvar como JSON
         };
         
         const { data, error } = await supabase
@@ -1693,6 +2333,9 @@
         
         // Adicionar listener para botão de adicionar dependente
         addDependenteBtn.addEventListener('click', addDependente);
+        
+        // Adicionar listener para botão de adicionar patrimônio
+        addPatrimonioBtn.addEventListener('click', addPatrimonio);
         
       } catch (error) {
         loadingEl.style.display = 'none';
