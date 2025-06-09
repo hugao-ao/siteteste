@@ -1219,7 +1219,7 @@
                      name="${dependenteId}_nome" 
                      value="${dependente.nome || ''}"
                      placeholder="Digite o nome completo"
-                     onchange="updateDependenteNome(${index})"
+                     oninput="updateDependenteNome(${index})"
                      required>
             </div>
 
@@ -1280,7 +1280,22 @@
       
       if (nomeInput && dependentes[index]) {
         dependentes[index].nome = nomeInput.value;
-        renderDependentes();
+        
+        // Atualizar apenas o título do card, sem recriar tudo
+        const dependenteCard = document.querySelector(`[data-index="${index}"]`);
+        if (dependenteCard) {
+          const titleElement = dependenteCard.querySelector('.dependente-title');
+          if (titleElement) {
+            const dataInput = document.getElementById(`${dependenteId}_data_nascimento`);
+            const idade = calcularIdade(dataInput ? dataInput.value : dependentes[index].data_nascimento);
+            const nomeDisplay = dependentes[index].nome || `Dependente ${index + 1}`;
+            
+            titleElement.innerHTML = `
+              <i class="fas fa-baby"></i> ${nomeDisplay}
+              ${idade ? `<span class="idade-display">${idade}</span>` : ''}
+            `;
+          }
+        }
       }
     }
 
@@ -1290,7 +1305,21 @@
       
       if (dataInput && dependentes[index]) {
         dependentes[index].data_nascimento = dataInput.value;
-        renderDependentes();
+        
+        // Atualizar apenas o título do card, sem recriar tudo
+        const dependenteCard = document.querySelector(`[data-index="${index}"]`);
+        if (dependenteCard) {
+          const titleElement = dependenteCard.querySelector('.dependente-title');
+          if (titleElement) {
+            const idade = calcularIdade(dataInput.value);
+            const nomeDisplay = dependentes[index].nome || `Dependente ${index + 1}`;
+            
+            titleElement.innerHTML = `
+              <i class="fas fa-baby"></i> ${nomeDisplay}
+              ${idade ? `<span class="idade-display">${idade}</span>` : ''}
+            `;
+          }
+        }
       }
     }
 
@@ -1300,6 +1329,19 @@
       dependentes.forEach((dependente, index) => {
         const dependenteHTML = createDependenteCard(dependente, index);
         dependentesContainer.insertAdjacentHTML('beforeend', dependenteHTML);
+        
+        // Adicionar event listeners para atualizar dados sem recriar cards
+        const dependenteId = `dependente_${index}`;
+        
+        // Event listener para campo de parentesco
+        const parentescoInput = document.getElementById(`${dependenteId}_parentesco`);
+        if (parentescoInput) {
+          parentescoInput.addEventListener('input', function() {
+            if (dependentes[index]) {
+              dependentes[index].parentesco = this.value;
+            }
+          });
+        }
       });
     }
 
