@@ -2199,8 +2199,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             }
             
             // VERIFICAÇÃO DE SEGURANÇA ADICIONAL
-            const userId = localStorage.getItem('user_id');
-            const nivel = localStorage.getItem('nivel');
+              const userId = sessionStorage.getItem('user_id');
+              const nivel = sessionStorage.getItem('nivel');
             
             if (!userId || !nivel) {
               throw new Error('Sessão expirada. Faça login novamente.');
