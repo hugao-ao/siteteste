@@ -1612,27 +1612,72 @@ function getTodasPessoas() {
     });
   }
   
-  // Pessoas com renda - verificar se o array existe e tem dados
-  if (Array.isArray(pessoasRenda) && pessoasRenda.length > 0) {
-    pessoasRenda.forEach((pessoa, index) => {
-      if (pessoa && pessoa.nome && pessoa.nome.trim()) {
-        pessoas.push({
-          id: `pessoa_${index}`,
-          nome: pessoa.nome.trim(),
-          tipo: 'Pessoa com Renda'
-        });
-        
-        // Cônjuge da pessoa com renda
-        if (pessoa.conjuge_nome && pessoa.conjuge_nome.trim()) {
-          pessoas.push({
-            id: `pessoa_${index}_conjuge`,
-            nome: pessoa.conjuge_nome.trim(),
-            tipo: 'Cônjuge (Pessoa com Renda)'
-          });
-        }
+  // Pessoas com renda - DEBUG E CORREÇÃO COMPLETA
+console.log('=== DEBUG PESSOAS COM RENDA ===');
+console.log('pessoasRenda array:', pessoasRenda);
+console.log('pessoasRenda length:', pessoasRenda ? pessoasRenda.length : 'undefined');
+
+if (Array.isArray(pessoasRenda) && pessoasRenda.length > 0) {
+  pessoasRenda.forEach((pessoa, index) => {
+    console.log(`Pessoa ${index}:`, pessoa);
+    
+    // Coletar dados diretamente dos campos DOM como backup
+    const pessoaId = `pessoa_${index}`;
+    const nomeInput = document.getElementById(`${pessoaId}_nome`);
+    const conjugeNomeInput = document.getElementById(`${pessoaId}_conjuge_nome`);
+    
+    // Tentar múltiplas formas de obter o nome
+    let nomeEncontrado = null;
+    
+    // 1. Tentar do objeto pessoa
+    if (pessoa && pessoa.nome && pessoa.nome.trim()) {
+      nomeEncontrado = pessoa.nome.trim();
+    }
+    
+    // 2. Tentar do campo DOM se não encontrou no objeto
+    if (!nomeEncontrado && nomeInput && nomeInput.value.trim()) {
+      nomeEncontrado = nomeInput.value.trim();
+      console.log(`Pessoa ${index} - nome encontrado no DOM:`, nomeEncontrado);
+    }
+    
+    if (nomeEncontrado) {
+      pessoas.push({
+        id: `pessoa_${index}`,
+        nome: nomeEncontrado,
+        tipo: 'Pessoa com Renda'
+      });
+      console.log(`Pessoa ${index} - adicionada:`, nomeEncontrado);
+      
+      // Cônjuge da pessoa com renda
+      let conjugeEncontrado = null;
+      
+      // 1. Tentar do objeto pessoa
+      if (pessoa && pessoa.conjuge_nome && pessoa.conjuge_nome.trim()) {
+        conjugeEncontrado = pessoa.conjuge_nome.trim();
       }
-    });
-  }
+      
+      // 2. Tentar do campo DOM se não encontrou no objeto
+      if (!conjugeEncontrado && conjugeNomeInput && conjugeNomeInput.value.trim()) {
+        conjugeEncontrado = conjugeNomeInput.value.trim();
+        console.log(`Pessoa ${index} - cônjuge encontrado no DOM:`, conjugeEncontrado);
+      }
+      
+      if (conjugeEncontrado) {
+        pessoas.push({
+          id: `pessoa_${index}_conjuge`,
+          nome: conjugeEncontrado,
+          tipo: 'Cônjuge (Pessoa com Renda)'
+        });
+        console.log(`Pessoa ${index} - cônjuge adicionado:`, conjugeEncontrado);
+      }
+    } else {
+      console.log(`Pessoa ${index} - NENHUM NOME ENCONTRADO!`);
+    }
+  });
+} else {
+  console.log('Array pessoasRenda vazio ou não existe');
+}
+console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
   
   // Dependentes - verificar se o array existe e tem dados
   if (Array.isArray(dependentes) && dependentes.length > 0) {
