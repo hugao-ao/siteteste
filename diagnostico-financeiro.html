@@ -2145,49 +2145,98 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
       return urlParams.get('link');
     }
 
-        // Função específica para verificar permissão com dados já carregados
-            async function verificarPermissaoEspecifica(diagnostico, userId, nivel) {
-              try {
-                // Se é administrador, tem acesso total
-                if (nivel === 'admin') {
-                  return { hasAccess: true, reason: 'Usuário é administrador' };
+          // Função específica para verificar permissão com dados já carregados
+              async function verificarPermissaoEspecifica(diagnostico, userId, nivel) {
+                console.log('=== DEBUG VERIFICAÇÃO PERMISSÃO ===');
+                console.log('userId recebido:', userId);
+                console.log('nivel recebido:', nivel);
+                console.log('diagnostico completo:', diagnostico);
+                console.log('cliente:', diagnostico.clientes);
+                console.log('=====================================');
+                
+                try {
+                  // Verificar se os parâmetros básicos estão presentes
+                  if (!userId) {
+                    console.log('❌ ERRO: userId está vazio ou null');
+                    return { hasAccess: false, reason: 'ID do usuário não encontrado' };
+                  }
+                  
+                  if (!nivel) {
+                    console.log('❌ ERRO: nivel está vazio ou null');
+                    return { hasAccess: false, reason: 'Nível do usuário não encontrado' };
+                  }
+                  
+                  console.log('✅ Parâmetros básicos OK');
+                  
+                  // Se é administrador, tem acesso total
+                  console.log('Verificando se é admin...');
+                  console.log('nivel === "admin"?', nivel === 'admin');
+                  console.log('typeof nivel:', typeof nivel);
+                  console.log('nivel.trim() === "admin"?', nivel.trim() === 'admin');
+                  
+                  if (nivel === 'admin' || nivel.trim() === 'admin') {
+                    console.log('✅ ACESSO LIBERADO: Usuário é administrador');
+                    return { hasAccess: true, reason: 'Usuário é administrador' };
+                  }
+                  
+                  console.log('❌ Usuário NÃO é admin, verificando outras permissões...');
+                  
+                  const cliente = diagnostico.clientes;
+                  
+                  if (!cliente) {
+                    console.log('❌ ERRO: Cliente não encontrado no diagnóstico');
+                    return { hasAccess: false, reason: 'Cliente não encontrado' };
+                  }
+                  
+                  console.log('✅ Cliente encontrado:', cliente);
+                  console.log('Verificando permissões específicas...');
+                  console.log('diagnostico.created_by_id:', diagnostico.created_by_id);
+                  console.log('cliente.assigned_to_user_id:', cliente.assigned_to_user_id);
+                  console.log('cliente.criado_por_id:', cliente.criado_por_id);
+                  console.log('userId para comparação:', userId);
+                  
+                  // Verificar permissões:
+                  // 1. Se o usuário criou o diagnóstico
+                  if (diagnostico.created_by_id === userId) {
+                    console.log('✅ ACESSO LIBERADO: Usuário criou o diagnóstico');
+                    return { hasAccess: true, reason: 'Usuário criou o diagnóstico' };
+                  }
+                  
+                  // 2. Se o usuário está atribuído ao cliente
+                  if (cliente.assigned_to_user_id === userId) {
+                    console.log('✅ ACESSO LIBERADO: Usuário está atribuído ao cliente');
+                    return { hasAccess: true, reason: 'Usuário está atribuído ao cliente' };
+                  }
+                  
+                  // 3. Se o usuário criou o cliente
+                  if (cliente.criado_por_id === userId) {
+                    console.log('✅ ACESSO LIBERADO: Usuário criou o cliente');
+                    return { hasAccess: true, reason: 'Usuário criou o cliente' };
+                  }
+                  
+                  // 4. Se o cliente não está atribuído a nenhum usuário específico
+                  if (!cliente.assigned_to_user_id) {
+                    console.log('✅ ACESSO LIBERADO: Cliente não está atribuído a usuário específico');
+                    return { hasAccess: true, reason: 'Cliente não está atribuído a usuário específico' };
+                  }
+                  
+                  // Se chegou até aqui, não tem permissão
+                  console.log('❌ ACESSO NEGADO: Usuário não tem relação com este cliente');
+                  console.log('Resumo das verificações:');
+                  console.log('- É admin?', nivel === 'admin');
+                  console.log('- Criou o diagnóstico?', diagnostico.created_by_id === userId);
+                  console.log('- Está atribuído ao cliente?', cliente.assigned_to_user_id === userId);
+                  console.log('- Criou o cliente?', cliente.criado_por_id === userId);
+                  console.log('- Cliente sem atribuição?', !cliente.assigned_to_user_id);
+                  
+                  return { hasAccess: false, reason: 'Usuário não tem relação com este cliente' };
+                  
+                } catch (error) {
+                  console.error('❌ ERRO CRÍTICO na verificação de permissão:', error);
+                  console.error('Stack trace:', error.stack);
+                  return { hasAccess: false, reason: 'Erro interno do sistema' };
                 }
-                
-                const cliente = diagnostico.clientes;
-                
-                if (!cliente) {
-                  return { hasAccess: false, reason: 'Cliente não encontrado' };
-                }
-                
-                // Verificar permissões:
-                // 1. Se o usuário criou o diagnóstico
-                if (diagnostico.created_by_id === userId) {
-                  return { hasAccess: true, reason: 'Usuário criou o diagnóstico' };
-                }
-                
-                // 2. Se o usuário está atribuído ao cliente
-                if (cliente.assigned_to_user_id === userId) {
-                  return { hasAccess: true, reason: 'Usuário está atribuído ao cliente' };
-                }
-                
-                // 3. Se o usuário criou o cliente
-                if (cliente.criado_por_id === userId) {
-                  return { hasAccess: true, reason: 'Usuário criou o cliente' };
-                }
-                
-                // 4. Se o cliente não está atribuído a nenhum usuário específico
-                if (!cliente.assigned_to_user_id) {
-                  return { hasAccess: true, reason: 'Cliente não está atribuído a usuário específico' };
-                }
-                
-                // Se chegou até aqui, não tem permissão
-                return { hasAccess: false, reason: 'Usuário não tem relação com este cliente' };
-                
-              } catch (error) {
-                console.error('Erro ao verificar permissão:', error);
-                return { hasAccess: false, reason: 'Erro interno do sistema' };
               }
-            }
     
     // Função para carregar dados do diagnóstico
          async function loadDiagnostico() {
