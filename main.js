@@ -107,21 +107,13 @@ otpForm.addEventListener("submit", async (e) => {
       return;
     }
 
-        // --- GRAVAÇÃO NO SESSIONSTORAGE ---
-        sessionStorage.setItem("usuario", usuarioAtual);
-        sessionStorage.setItem("user_id", userData.id); // Guarda o ID do usuário
-        sessionStorage.setItem("id", userData.id); // CORREÇÃO: Adiciona o ID com a chave 'id' para compatibilidade
-        sessionStorage.setItem("nivel", userData.nivel);
-        sessionStorage.setItem("projeto", userData.projeto || ''); // Guarda o projeto (ou vazio)
-        
-        // LOGS PARA DEBUG - REMOVER DEPOIS
-        console.log('=== DADOS SALVOS NO LOGIN ===');
-        console.log('usuario:', usuarioAtual);
-        console.log('user_id:', userData.id);
-        console.log('nivel:', userData.nivel);
-        console.log('projeto:', userData.projeto);
-        console.log('==============================');
-        // ───────────────────────────────────
+    // --- GRAVAÇÃO NO SESSIONSTORAGE ---
+    sessionStorage.setItem("usuario", usuarioAtual);
+    sessionStorage.setItem("user_id", userData.id); // Guarda o ID do usuário
+    sessionStorage.setItem("id", userData.id); // CORREÇÃO: Adiciona o ID com a chave 'id' para compatibilidade
+    sessionStorage.setItem("nivel", userData.nivel);
+    sessionStorage.setItem("projeto", userData.projeto || ''); // Guarda o projeto (ou vazio)
+    // ───────────────────────────────────
 
     // --- Redirecionamento com base no Nível e Projeto ---
     if (userData.nivel === "admin") {

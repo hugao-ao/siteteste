@@ -1,7 +1,7 @@
 // admin.js
 import { supabase } from "./supabase.js";
 
-/*// ─── Proteção de UI: se não for admin, substitui todo o body ───
+// ─── Proteção de UI: se não for admin, substitui todo o body ───
 if (sessionStorage.getItem("nivel") !== "admin") {
   document.body.innerHTML = `
    <main style="padding:2rem; text-align:center;">
@@ -10,7 +10,7 @@ if (sessionStorage.getItem("nivel") !== "admin") {
    </main>`;
  throw new Error("Acesso não autorizado");
 }
-// ──────────────────────────────────────────────────────────────*/
+// ──────────────────────────────────────────────────────────────
 
 // Função de escape para prevenir XSS e erros de sintaxe
 const sanitizeInput = (str) => {
