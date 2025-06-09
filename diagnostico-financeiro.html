@@ -432,15 +432,16 @@
     }
 
     .patrimonio-total {
-      background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-      color: var(--dark-bg);
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      font-size: 1rem;
+      background: var(--dark-bg);
+      border: 2px solid var(--accent-color);
+      color: var(--accent-color);
+      padding: 0.8rem 1.2rem;
+      border-radius: 10px;
+      font-size: 1.1rem;
       font-weight: 700;
-      box-shadow: 0 2px 10px rgba(255, 193, 7, 0.3);
-      min-width: 150px;
+      min-width: 180px;
       text-align: center;
+      box-shadow: 0 2px 8px rgba(255, 193, 7, 0.2);
     }
 
     .valor-display {
@@ -1927,9 +1928,48 @@
             }
           });
         }
+        
+        // Re-aplicar event listeners para checkboxes de proprietários
+        const checkboxes = document.querySelectorAll(`input[name="${patrimonioId}_proprietarios"]`);
+        checkboxes.forEach(checkbox => {
+          checkbox.addEventListener('change', function() {
+            updatePatrimonioProprietarios(index);
+            // Atualizar display dos proprietários selecionados
+            updateProprietariosDisplay(index);
+          });
+        });
       });
       
       calcularPatrimonioTotal();
+    }
+
+    function updateProprietariosDisplay(index) {
+      const patrimonioId = `patrimonio_${index}`;
+      const patrimonioCard = document.querySelector(`[data-index="${index}"]`);
+      
+      if (patrimonioCard && patrimonios[index]) {
+        const proprietariosSelecionados = patrimonios[index].proprietarios || [];
+        const todasPessoas = getTodasPessoas();
+        
+        // Encontrar ou criar div de proprietários
+        let proprietariosList = patrimonioCard.querySelector('.proprietarios-list');
+        if (!proprietariosList) {
+          const checkboxGroup = patrimonioCard.querySelector('.checkbox-group');
+          if (checkboxGroup && checkboxGroup.parentNode) {
+            proprietariosList = document.createElement('div');
+            proprietariosList.className = 'proprietarios-list';
+            proprietariosList.style.marginTop = '0.5rem';
+            checkboxGroup.parentNode.insertBefore(proprietariosList, checkboxGroup.nextSibling);
+          }
+        }
+        
+        if (proprietariosList) {
+          proprietariosList.innerHTML = proprietariosSelecionados.map(id => {
+            const pessoa = todasPessoas.find(p => p.id === id);
+            return pessoa ? `<span class="proprietario-tag">${pessoa.nome}</span>` : '';
+          }).join('');
+        }
+      }
     }
 
     // Tornar funções de patrimônio globais
