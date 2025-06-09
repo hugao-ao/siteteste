@@ -382,7 +382,7 @@ function renderClients(clients) {
             <button class="view-forms-btn" data-client-id="${client.id}" data-client-name="${sanitizeInput(client.nome)}" title="Ver Formulários">
                 <i class="fa-solid fa-file-lines"></i> ${formCount}
             </button>
-            <button class="view-details-btn" onclick="acessarDiagnostico('${client.id}')" title="Diagnóstico Financeiro" style="color: #9b59b6;">
+            <button class="view-details-btn" onclick="abrirDiagnostico('${client.id}')" title="Diagnóstico Financeiro" style="color: #9b59b6;">
                 <i class="fas fa-chart-line"></i>
             </button>
             ${canEditDelete ? `<button class="delete-btn" data-id="${client.id}" title="Excluir Cliente"><i class="fa-solid fa-trash-can"></i></button>` : ''}
