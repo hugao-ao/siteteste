@@ -108,11 +108,11 @@ otpForm.addEventListener("submit", async (e) => {
     }
 
         // --- GRAVAÇÃO NO SESSIONSTORAGE ---
-        localStorage.setItem("usuario", usuarioAtual);
-        localStorage.setItem("user_id", userData.id); // Guarda o ID do usuário
-        localStorage.setItem("id", userData.id); // CORREÇÃO: Adiciona o ID com a chave 'id' para compatibilidade
-        localStorage.setItem("nivel", userData.nivel);
-        localStorage.setItem("projeto", userData.projeto || ''); // Guarda o projeto (ou vazio)
+        sessionStorage.setItem("usuario", usuarioAtual);
+        sessionStorage.setItem("user_id", userData.id); // Guarda o ID do usuário
+        sessionStorage.setItem("id", userData.id); // CORREÇÃO: Adiciona o ID com a chave 'id' para compatibilidade
+        sessionStorage.setItem("nivel", userData.nivel);
+        sessionStorage.setItem("projeto", userData.projeto || ''); // Guarda o projeto (ou vazio)
         
         // LOGS PARA DEBUG - REMOVER DEPOIS
         console.log('=== DADOS SALVOS NO LOGIN ===');
