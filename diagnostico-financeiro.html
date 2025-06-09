@@ -47,9 +47,9 @@
 
     .header {
       text-align: center;
-      margin-bottom: 2rem;
+      margin-bottom: 1.5rem;
       background: var(--surface-bg);
-      padding: 2rem;
+      padding: 1.5rem;
       border-radius: 15px;
       box-shadow: 0 10px 30px var(--shadow-color);
       border: 2px solid var(--border-color);
@@ -72,7 +72,7 @@
     }
 
     .canva-container {
-      margin: 2rem 0;
+      margin: 1.5rem 0;
       background: var(--surface-bg);
       padding: 1rem;
       border-radius: 15px;
@@ -123,10 +123,10 @@
 
     .form-container {
       background: var(--surface-bg);
-      padding: 2rem;
+      padding: 1.5rem;
       border-radius: 15px;
       box-shadow: 0 10px 30px var(--shadow-color);
-      margin-top: 2rem;
+      margin-top: 1.5rem;
       border: 2px solid var(--border-color);
       width: 100%;
       box-sizing: border-box;
@@ -134,9 +134,17 @@
 
     .form-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 2rem;
-      margin-bottom: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+      width: 100%;
+    }
+
+    .form-grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
       width: 100%;
     }
 
@@ -150,23 +158,23 @@
 
     .form-group label {
       display: block;
-      margin-bottom: 0.5rem;
-      font-weight: 600;
+      margin-bottom: 0.3rem;
       color: var(--text-gold);
-      font-size: 1.1rem;
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
+      font-weight: 600;
+      font-size: 0.9rem;
     }
 
     .form-group input,
     .form-group select {
       width: 100%;
-      padding: 1rem;
+      padding: 0.7rem;
       border: 2px solid var(--border-color);
-      border-radius: 10px;
-      font-size: 1rem;
-      transition: all 0.3s ease;
+      border-radius: 8px;
       background: var(--dark-bg);
       color: var(--text-light);
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      box-sizing: border-box;
     }
 
     .form-group input:focus,
@@ -276,11 +284,80 @@
 
     .save-btn-container {
       text-align: center;
-      margin-top: 3rem;
-      margin-bottom: 2rem;
-      padding: 2rem;
+      margin-top: 2rem;
+      margin-bottom: 1.5rem;
+      padding: 1.5rem;
       width: 100%;
       box-sizing: border-box;
+    }
+
+    .add-btn {
+      background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+      color: var(--dark-bg);
+      border: none;
+      padding: 0.8rem 1.5rem;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(255, 215, 0, 0.3);
+    }
+
+    .add-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 215, 0, 0.4);
+    }
+
+    .pessoa-card {
+      background: var(--dark-bg);
+      border: 2px solid var(--border-color);
+      border-radius: 10px;
+      padding: 1.2rem;
+      margin-bottom: 1rem;
+      position: relative;
+    }
+
+    .pessoa-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .pessoa-title {
+      color: var(--accent-color);
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin: 0;
+    }
+
+    .pessoa-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .edit-btn, .delete-btn {
+      background: none;
+      border: none;
+      color: var(--text-light);
+      cursor: pointer;
+      padding: 0.3rem;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+    }
+
+    .edit-btn:hover {
+      background: var(--primary-color);
+      color: var(--dark-bg);
+    }
+
+    .delete-btn:hover {
+      background: #dc3545;
+      color: white;
     }
 
     @media (max-width: 1200px) {
@@ -289,11 +366,17 @@
       }
       
       .header, .canva-container, .form-container {
-        padding: 1.5rem;
+        padding: 1.2rem;
       }
       
       .form-grid {
-        gap: 1.5rem;
+        gap: 0.8rem;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      }
+
+      .form-grid-3 {
+        gap: 0.8rem;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
       }
     }
 
@@ -310,9 +393,9 @@
         padding: 1rem;
       }
 
-      .form-grid {
+      .form-grid, .form-grid-3 {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 0.8rem;
       }
 
       .form-group.full-width {
@@ -320,9 +403,9 @@
       }
       
       .save-btn-container {
-        padding: 1.5rem 1rem;
-        margin-top: 2rem;
-        margin-bottom: 1.5rem;
+        padding: 1.2rem 1rem;
+        margin-top: 1.5rem;
+        margin-bottom: 1rem;
       }
     }
 
@@ -332,19 +415,19 @@
       }
       
       .header, .canva-container, .form-container {
-        padding: 1rem;
+        padding: 0.8rem;
         margin: 1rem 0;
       }
       
       .save-btn {
-        padding: 1rem 2rem;
-        font-size: 1rem;
+        padding: 0.8rem 1.5rem;
+        font-size: 0.9rem;
       }
       
       .save-btn-container {
         padding: 1rem;
-        margin-top: 1.5rem;
-        margin-bottom: 1rem;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
       }
     }
   </style>
@@ -381,7 +464,7 @@
       <!-- Formulário do diagnóstico -->
       <div class="form-container">
         <form id="diagnostico-form">
-          <div class="form-grid">
+          <div class="form-grid-3">
             <div class="form-group">
               <label for="nome_diagnostico">
                 <i class="fas fa-user"></i> Nome Completo *
@@ -426,37 +509,6 @@
                      required>
             </div>
 
-            <div class="form-group full-width">
-              <label for="estado_civil">
-                <i class="fas fa-heart"></i> Estado Civil *
-              </label>
-              <select id="estado_civil" 
-                      name="estado_civil" 
-                      required>
-                <option value="">Selecione o estado civil</option>
-                <option value="Solteiro(a)">Solteiro(a)</option>
-                <option value="Casado(a)">Casado(a)</option>
-                <option value="União Estável">União Estável</option>
-                <option value="Divorciado(a)">Divorciado(a)</option>
-                <option value="Viúvo(a)">Viúvo(a)</option>
-              </select>
-            </div>
-
-            <!-- Regime de Bens (aparece quando casado/união estável) -->
-            <div class="form-group full-width" id="regime-bens-group" style="display: none;">
-              <label for="regime_bens">
-                <i class="fas fa-balance-scale"></i> Regime de Bens
-              </label>
-              <select id="regime_bens" name="regime_bens">
-                <option value="">Selecione o regime de bens</option>
-                <option value="Comunhão Parcial de Bens">Comunhão Parcial de Bens</option>
-                <option value="Comunhão Universal de Bens">Comunhão Universal de Bens</option>
-                <option value="Separação Total de Bens">Separação Total de Bens</option>
-                <option value="Participação Final nos Aquestos">Participação Final nos Aquestos</option>
-              </select>
-            </div>
-
-            <!-- Campos de contato -->
             <div class="form-group">
               <label for="telefone">
                 <i class="fas fa-phone"></i> Telefone de Contato
@@ -478,13 +530,45 @@
             </div>
           </div>
 
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="estado_civil">
+                <i class="fas fa-heart"></i> Estado Civil *
+              </label>
+              <select id="estado_civil" 
+                      name="estado_civil" 
+                      required>
+                <option value="">Selecione o estado civil</option>
+                <option value="Solteiro(a)">Solteiro(a)</option>
+                <option value="Casado(a)">Casado(a)</option>
+                <option value="União Estável">União Estável</option>
+                <option value="Divorciado(a)">Divorciado(a)</option>
+                <option value="Viúvo(a)">Viúvo(a)</option>
+              </select>
+            </div>
+
+            <!-- Regime de Bens (aparece quando casado/união estável) -->
+            <div class="form-group" id="regime-bens-group" style="display: none;">
+              <label for="regime_bens">
+                <i class="fas fa-balance-scale"></i> Regime de Bens
+              </label>
+              <select id="regime_bens" name="regime_bens">
+                <option value="">Selecione o regime de bens</option>
+                <option value="Comunhão Parcial de Bens">Comunhão Parcial de Bens</option>
+                <option value="Comunhão Universal de Bens">Comunhão Universal de Bens</option>
+                <option value="Separação Total de Bens">Separação Total de Bens</option>
+                <option value="Participação Final nos Aquestos">Participação Final nos Aquestos</option>
+              </select>
+            </div>
+          </div>
+
           <!-- Dados do Cônjuge (aparece quando casado/união estável) -->
           <div id="conjuge-section" style="display: none;">
-            <h3 style="color: var(--accent-color); margin: 2rem 0 1rem 0; text-align: center;">
+            <h3 style="color: var(--accent-color); margin: 1.5rem 0 0.8rem 0; text-align: center;">
               <i class="fas fa-users"></i> Dados do Cônjuge
             </h3>
             
-            <div class="form-grid">
+            <div class="form-grid-3">
               <div class="form-group">
                 <label for="conjuge_nome">
                   <i class="fas fa-user"></i> Nome Completo do Cônjuge *
@@ -524,6 +608,43 @@
                        name="conjuge_profissao" 
                        placeholder="Digite a profissão do cônjuge">
               </div>
+
+              <div class="form-group">
+                <label for="conjuge_telefone">
+                  <i class="fas fa-phone"></i> Telefone do Cônjuge
+                </label>
+                <input type="tel" 
+                       id="conjuge_telefone" 
+                       name="conjuge_telefone" 
+                       placeholder="(00) 00000-0000">
+              </div>
+
+              <div class="form-group">
+                <label for="conjuge_email">
+                  <i class="fas fa-envelope"></i> E-mail do Cônjuge
+                </label>
+                <input type="email" 
+                       id="conjuge_email" 
+                       name="conjuge_email" 
+                       placeholder="email@conjuge.com">
+              </div>
+            </div>
+          </div>
+
+          <!-- Sistema de Múltiplas Pessoas com Renda -->
+          <div class="form-container" style="margin-top: 1.5rem;">
+            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
+              <i class="fas fa-users"></i> Outras Pessoas com Renda no Planejamento
+            </h3>
+            
+            <div id="pessoas-renda-container">
+              <!-- Pessoas adicionais serão inseridas aqui dinamicamente -->
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+              <button type="button" id="add-pessoa-btn" class="add-btn">
+                <i class="fas fa-plus"></i> Adicionar Pessoa com Renda
+              </button>
             </div>
           </div>
         </form>
@@ -567,10 +688,18 @@
     const conjugeCpfInput = document.getElementById('conjuge_cpf');
     const conjugeDataNascimentoInput = document.getElementById('conjuge_data_nascimento');
     const conjugeProfissaoInput = document.getElementById('conjuge_profissao');
+    const conjugeTelefoneInput = document.getElementById('conjuge_telefone');
+    const conjugeEmailInput = document.getElementById('conjuge_email');
+    
+    // Elementos do sistema de múltiplas pessoas
+    const pessoasRendaContainer = document.getElementById('pessoas-renda-container');
+    const addPessoaBtn = document.getElementById('add-pessoa-btn');
     
     // Variáveis globais
     let diagnosticoData = null;
     let clienteData = null;
+    let pessoasRenda = [];
+    let pessoaCounter = 0;
     
     // Funções utilitárias
     function showError(message) {
@@ -655,8 +784,317 @@
         conjugeCpfInput.value = '';
         conjugeDataNascimentoInput.value = '';
         conjugeProfissaoInput.value = '';
+        conjugeTelefoneInput.value = '';
+        conjugeEmailInput.value = '';
       }
     }
+
+    // Funções para gerenciar múltiplas pessoas com renda
+    function createPessoaCard(pessoa, index) {
+      const pessoaId = `pessoa_${index}`;
+      
+      return `
+        <div class="pessoa-card" data-index="${index}">
+          <div class="pessoa-header">
+            <h4 class="pessoa-title">
+              <i class="fas fa-user"></i> ${pessoa.nome || `Pessoa ${index + 1}`}
+            </h4>
+            <div class="pessoa-actions">
+              <button type="button" class="edit-btn" onclick="editPessoa(${index})">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button type="button" class="delete-btn" onclick="deletePessoa(${index})">
+                <i class="fas fa-trash"></i>
+              </button>
+            </div>
+          </div>
+          
+          <div class="form-grid-3">
+            <div class="form-group">
+              <label for="${pessoaId}_nome">
+                <i class="fas fa-user"></i> Nome Completo *
+              </label>
+              <input type="text" 
+                     id="${pessoaId}_nome" 
+                     name="${pessoaId}_nome" 
+                     value="${pessoa.nome || ''}"
+                     placeholder="Digite o nome completo"
+                     required>
+            </div>
+
+            <div class="form-group">
+              <label for="${pessoaId}_cpf">
+                <i class="fas fa-id-card"></i> CPF
+              </label>
+              <input type="text" 
+                     id="${pessoaId}_cpf" 
+                     name="${pessoaId}_cpf" 
+                     value="${pessoa.cpf || ''}"
+                     placeholder="000.000.000-00"
+                     maxlength="14">
+            </div>
+
+            <div class="form-group">
+              <label for="${pessoaId}_data_nascimento">
+                <i class="fas fa-calendar"></i> Data de Nascimento
+              </label>
+              <input type="date" 
+                     id="${pessoaId}_data_nascimento" 
+                     name="${pessoaId}_data_nascimento" 
+                     value="${pessoa.data_nascimento || ''}">
+            </div>
+
+            <div class="form-group">
+              <label for="${pessoaId}_profissao">
+                <i class="fas fa-briefcase"></i> Profissão
+              </label>
+              <input type="text" 
+                     id="${pessoaId}_profissao" 
+                     name="${pessoaId}_profissao" 
+                     value="${pessoa.profissao || ''}"
+                     placeholder="Digite a profissão">
+            </div>
+
+            <div class="form-group">
+              <label for="${pessoaId}_telefone">
+                <i class="fas fa-phone"></i> Telefone
+              </label>
+              <input type="tel" 
+                     id="${pessoaId}_telefone" 
+                     name="${pessoaId}_telefone" 
+                     value="${pessoa.telefone || ''}"
+                     placeholder="(00) 00000-0000">
+            </div>
+
+            <div class="form-group">
+              <label for="${pessoaId}_email">
+                <i class="fas fa-envelope"></i> E-mail
+              </label>
+              <input type="email" 
+                     id="${pessoaId}_email" 
+                     name="${pessoaId}_email" 
+                     value="${pessoa.email || ''}"
+                     placeholder="email@exemplo.com">
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label for="${pessoaId}_estado_civil">
+                <i class="fas fa-heart"></i> Estado Civil
+              </label>
+              <select id="${pessoaId}_estado_civil" 
+                      name="${pessoaId}_estado_civil"
+                      onchange="toggleConjugePessoa(${index})">
+                <option value="">Selecione o estado civil</option>
+                <option value="Solteiro(a)" ${pessoa.estado_civil === 'Solteiro(a)' ? 'selected' : ''}>Solteiro(a)</option>
+                <option value="Casado(a)" ${pessoa.estado_civil === 'Casado(a)' ? 'selected' : ''}>Casado(a)</option>
+                <option value="União Estável" ${pessoa.estado_civil === 'União Estável' ? 'selected' : ''}>União Estável</option>
+                <option value="Divorciado(a)" ${pessoa.estado_civil === 'Divorciado(a)' ? 'selected' : ''}>Divorciado(a)</option>
+                <option value="Viúvo(a)" ${pessoa.estado_civil === 'Viúvo(a)' ? 'selected' : ''}>Viúvo(a)</option>
+              </select>
+            </div>
+
+            <div class="form-group" id="${pessoaId}_regime_bens_group" style="display: ${pessoa.estado_civil === 'Casado(a)' || pessoa.estado_civil === 'União Estável' ? 'block' : 'none'};">
+              <label for="${pessoaId}_regime_bens">
+                <i class="fas fa-balance-scale"></i> Regime de Bens
+              </label>
+              <select id="${pessoaId}_regime_bens" name="${pessoaId}_regime_bens">
+                <option value="">Selecione o regime de bens</option>
+                <option value="Comunhão Parcial de Bens" ${pessoa.regime_bens === 'Comunhão Parcial de Bens' ? 'selected' : ''}>Comunhão Parcial de Bens</option>
+                <option value="Comunhão Universal de Bens" ${pessoa.regime_bens === 'Comunhão Universal de Bens' ? 'selected' : ''}>Comunhão Universal de Bens</option>
+                <option value="Separação Total de Bens" ${pessoa.regime_bens === 'Separação Total de Bens' ? 'selected' : ''}>Separação Total de Bens</option>
+                <option value="Participação Final nos Aquestos" ${pessoa.regime_bens === 'Participação Final nos Aquestos' ? 'selected' : ''}>Participação Final nos Aquestos</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dados do Cônjuge da Pessoa -->
+          <div id="${pessoaId}_conjuge_section" style="display: ${pessoa.estado_civil === 'Casado(a)' || pessoa.estado_civil === 'União Estável' ? 'block' : 'none'};">
+            <h4 style="color: var(--accent-color); margin: 1rem 0 0.5rem 0; font-size: 1rem;">
+              <i class="fas fa-users"></i> Dados do Cônjuge
+            </h4>
+            
+            <div class="form-grid-3">
+              <div class="form-group">
+                <label for="${pessoaId}_conjuge_nome">
+                  <i class="fas fa-user"></i> Nome do Cônjuge
+                </label>
+                <input type="text" 
+                       id="${pessoaId}_conjuge_nome" 
+                       name="${pessoaId}_conjuge_nome" 
+                       value="${pessoa.conjuge_nome || ''}"
+                       placeholder="Nome do cônjuge">
+              </div>
+
+              <div class="form-group">
+                <label for="${pessoaId}_conjuge_cpf">
+                  <i class="fas fa-id-card"></i> CPF do Cônjuge
+                </label>
+                <input type="text" 
+                       id="${pessoaId}_conjuge_cpf" 
+                       name="${pessoaId}_conjuge_cpf" 
+                       value="${pessoa.conjuge_cpf || ''}"
+                       placeholder="000.000.000-00"
+                       maxlength="14">
+              </div>
+
+              <div class="form-group">
+                <label for="${pessoaId}_conjuge_data_nascimento">
+                  <i class="fas fa-calendar"></i> Data Nasc. Cônjuge
+                </label>
+                <input type="date" 
+                       id="${pessoaId}_conjuge_data_nascimento" 
+                       name="${pessoaId}_conjuge_data_nascimento" 
+                       value="${pessoa.conjuge_data_nascimento || ''}">
+              </div>
+
+              <div class="form-group">
+                <label for="${pessoaId}_conjuge_profissao">
+                  <i class="fas fa-briefcase"></i> Profissão do Cônjuge
+                </label>
+                <input type="text" 
+                       id="${pessoaId}_conjuge_profissao" 
+                       name="${pessoaId}_conjuge_profissao" 
+                       value="${pessoa.conjuge_profissao || ''}"
+                       placeholder="Profissão do cônjuge">
+              </div>
+
+              <div class="form-group">
+                <label for="${pessoaId}_conjuge_telefone">
+                  <i class="fas fa-phone"></i> Telefone do Cônjuge
+                </label>
+                <input type="tel" 
+                       id="${pessoaId}_conjuge_telefone" 
+                       name="${pessoaId}_conjuge_telefone" 
+                       value="${pessoa.conjuge_telefone || ''}"
+                       placeholder="(00) 00000-0000">
+              </div>
+
+              <div class="form-group">
+                <label for="${pessoaId}_conjuge_email">
+                  <i class="fas fa-envelope"></i> E-mail do Cônjuge
+                </label>
+                <input type="email" 
+                       id="${pessoaId}_conjuge_email" 
+                       name="${pessoaId}_conjuge_email" 
+                       value="${pessoa.conjuge_email || ''}"
+                       placeholder="email@conjuge.com">
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    function addPessoa() {
+      const novaPessoa = {
+        nome: '',
+        cpf: '',
+        data_nascimento: '',
+        profissao: '',
+        telefone: '',
+        email: '',
+        estado_civil: '',
+        regime_bens: '',
+        conjuge_nome: '',
+        conjuge_cpf: '',
+        conjuge_data_nascimento: '',
+        conjuge_profissao: '',
+        conjuge_telefone: '',
+        conjuge_email: ''
+      };
+      
+      pessoasRenda.push(novaPessoa);
+      renderPessoas();
+    }
+
+    function deletePessoa(index) {
+      if (confirm('Tem certeza que deseja excluir esta pessoa?')) {
+        pessoasRenda.splice(index, 1);
+        renderPessoas();
+      }
+    }
+
+    function editPessoa(index) {
+      // Função para editar pessoa (pode ser expandida futuramente)
+      const pessoaCard = document.querySelector(`[data-index="${index}"]`);
+      pessoaCard.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function toggleConjugePessoa(index) {
+      const pessoaId = `pessoa_${index}`;
+      const estadoCivilSelect = document.getElementById(`${pessoaId}_estado_civil`);
+      const regimeBensGroup = document.getElementById(`${pessoaId}_regime_bens_group`);
+      const conjugeSection = document.getElementById(`${pessoaId}_conjuge_section`);
+      
+      const estadoCivil = estadoCivilSelect.value;
+      const showConjuge = estadoCivil === 'Casado(a)' || estadoCivil === 'União Estável';
+      
+      if (showConjuge) {
+        regimeBensGroup.style.display = 'block';
+        conjugeSection.style.display = 'block';
+      } else {
+        regimeBensGroup.style.display = 'none';
+        conjugeSection.style.display = 'none';
+        
+        // Limpar campos do cônjuge
+        document.getElementById(`${pessoaId}_regime_bens`).value = '';
+        document.getElementById(`${pessoaId}_conjuge_nome`).value = '';
+        document.getElementById(`${pessoaId}_conjuge_cpf`).value = '';
+        document.getElementById(`${pessoaId}_conjuge_data_nascimento`).value = '';
+        document.getElementById(`${pessoaId}_conjuge_profissao`).value = '';
+        document.getElementById(`${pessoaId}_conjuge_telefone`).value = '';
+        document.getElementById(`${pessoaId}_conjuge_email`).value = '';
+      }
+      
+      // Atualizar dados da pessoa
+      pessoasRenda[index].estado_civil = estadoCivil;
+    }
+
+    function renderPessoas() {
+      pessoasRendaContainer.innerHTML = '';
+      
+      pessoasRenda.forEach((pessoa, index) => {
+        const pessoaHTML = createPessoaCard(pessoa, index);
+        pessoasRendaContainer.insertAdjacentHTML('beforeend', pessoaHTML);
+        
+        // Adicionar formatação automática para CPF e telefone
+        const cpfInput = document.getElementById(`pessoa_${index}_cpf`);
+        const telefoneInput = document.getElementById(`pessoa_${index}_telefone`);
+        const conjugeCpfInput = document.getElementById(`pessoa_${index}_conjuge_cpf`);
+        const conjugeTelefoneInput = document.getElementById(`pessoa_${index}_conjuge_telefone`);
+        
+        if (cpfInput) {
+          cpfInput.addEventListener('input', function(e) {
+            e.target.value = formatarCPF(e.target.value);
+          });
+        }
+        
+        if (telefoneInput) {
+          telefoneInput.addEventListener('input', function(e) {
+            e.target.value = formatarTelefone(e.target.value);
+          });
+        }
+        
+        if (conjugeCpfInput) {
+          conjugeCpfInput.addEventListener('input', function(e) {
+            e.target.value = formatarCPF(e.target.value);
+          });
+        }
+        
+        if (conjugeTelefoneInput) {
+          conjugeTelefoneInput.addEventListener('input', function(e) {
+            e.target.value = formatarTelefone(e.target.value);
+          });
+        }
+      });
+    }
+
+    // Tornar funções globais para uso nos event handlers inline
+    window.editPessoa = editPessoa;
+    window.deletePessoa = deletePessoa;
+    window.toggleConjugePessoa = toggleConjugePessoa;
     
     function formatName(name) {
       if (!name) return '';
@@ -766,6 +1204,19 @@
         conjugeCpfInput.value = diagnostico.conjuge_cpf || '';
         conjugeDataNascimentoInput.value = diagnostico.conjuge_data_nascimento || '';
         conjugeProfissaoInput.value = diagnostico.conjuge_profissao || '';
+        conjugeTelefoneInput.value = diagnostico.conjuge_telefone || '';
+        conjugeEmailInput.value = diagnostico.conjuge_email || '';
+        
+        // Carregar pessoas com renda se existirem
+        if (diagnostico.pessoas_renda) {
+          try {
+            pessoasRenda = JSON.parse(diagnostico.pessoas_renda);
+            renderPessoas();
+          } catch (e) {
+            console.log('Erro ao carregar pessoas com renda:', e);
+            pessoasRenda = [];
+          }
+        }
         
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
@@ -823,6 +1274,13 @@
         return;
       }
       
+      // Validar e-mail do cônjuge se preenchido
+      if (conjugeEmailInput.value && !validarEmail(conjugeEmailInput.value)) {
+        showError('E-mail do cônjuge inválido. Por favor, digite um e-mail válido.');
+        conjugeEmailInput.focus();
+        return;
+      }
+      
       // Validar nome do cônjuge se campos do cônjuge estão visíveis
       const estadoCivil = estadoCivilInput.value;
       const showConjuge = estadoCivil === 'Casado(a)' || estadoCivil === 'União Estável';
@@ -831,6 +1289,37 @@
         conjugeNomeInput.focus();
         return;
       }
+      
+      // Coletar dados das pessoas com renda
+      const pessoasRendaData = [];
+      pessoasRenda.forEach((pessoa, index) => {
+        const pessoaId = `pessoa_${index}`;
+        const pessoaData = {
+          nome: document.getElementById(`${pessoaId}_nome`)?.value.trim() || '',
+          cpf: document.getElementById(`${pessoaId}_cpf`)?.value.replace(/\D/g, '') || '',
+          data_nascimento: document.getElementById(`${pessoaId}_data_nascimento`)?.value || '',
+          profissao: document.getElementById(`${pessoaId}_profissao`)?.value.trim() || '',
+          telefone: document.getElementById(`${pessoaId}_telefone`)?.value.replace(/\D/g, '') || '',
+          email: document.getElementById(`${pessoaId}_email`)?.value.trim() || '',
+          estado_civil: document.getElementById(`${pessoaId}_estado_civil`)?.value || '',
+          regime_bens: document.getElementById(`${pessoaId}_regime_bens`)?.value || '',
+          conjuge_nome: document.getElementById(`${pessoaId}_conjuge_nome`)?.value.trim() || '',
+          conjuge_cpf: document.getElementById(`${pessoaId}_conjuge_cpf`)?.value.replace(/\D/g, '') || '',
+          conjuge_data_nascimento: document.getElementById(`${pessoaId}_conjuge_data_nascimento`)?.value || '',
+          conjuge_profissao: document.getElementById(`${pessoaId}_conjuge_profissao`)?.value.trim() || '',
+          conjuge_telefone: document.getElementById(`${pessoaId}_conjuge_telefone`)?.value.replace(/\D/g, '') || '',
+          conjuge_email: document.getElementById(`${pessoaId}_conjuge_email`)?.value.trim() || ''
+        };
+        
+        // Validar nome obrigatório para pessoas com renda
+        if (!pessoaData.nome) {
+          showError(`Nome é obrigatório para a Pessoa ${index + 1}.`);
+          document.getElementById(`${pessoaId}_nome`)?.focus();
+          return;
+        }
+        
+        pessoasRendaData.push(pessoaData);
+      });
       
       saveBtn.disabled = true;
       saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
@@ -848,7 +1337,10 @@
           conjuge_nome: conjugeNomeInput.value.trim(),
           conjuge_cpf: conjugeCpfInput.value.replace(/\D/g, ''), // Salvar só números
           conjuge_data_nascimento: conjugeDataNascimentoInput.value || null,
-          conjuge_profissao: conjugeProfissaoInput.value.trim()
+          conjuge_profissao: conjugeProfissaoInput.value.trim(),
+          conjuge_telefone: conjugeTelefoneInput.value.replace(/\D/g, ''), // Salvar só números
+          conjuge_email: conjugeEmailInput.value.trim(),
+          pessoas_renda: JSON.stringify(pessoasRendaData) // Salvar como JSON
         };
         
         const { data, error } = await supabase
@@ -895,13 +1387,16 @@
           e.target.value = formatarCPF(e.target.value);
         });
         
-        // Adicionar formatação automática do telefone
-        telefoneInput.addEventListener('input', function(e) {
+        // Adicionar formatação automática do telefone do cônjuge
+        conjugeTelefoneInput.addEventListener('input', function(e) {
           e.target.value = formatarTelefone(e.target.value);
         });
         
         // Adicionar listener para mudança de estado civil
         estadoCivilInput.addEventListener('change', toggleConjugeFields);
+        
+        // Adicionar listener para botão de adicionar pessoa
+        addPessoaBtn.addEventListener('click', addPessoa);
         
       } catch (error) {
         loadingEl.style.display = 'none';
