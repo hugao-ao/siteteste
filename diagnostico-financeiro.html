@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <!-- SISTEMA DE SEGURANÇA - Importar middleware de autenticação -->
- 
+  <script src="auth-middleware.js"></script>
   <style>
     /* Paleta de cores verde esmeralda escuro + dourado */
     :root {
@@ -589,9 +589,6 @@
       }
     }
   </style>
-
-   <script src="auth-middleware.js"></script>
-  
 </head>
 <body>
   <div class="container">
@@ -2158,14 +2155,23 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           throw new Error('Link de diagnóstico não encontrado na URL');
         }
         
-      /*  // *** PROTEÇÃO DE SEGURANÇA ***
-        // Verificar se o usuário tem permissão para acessar este diagnóstico
-        const temPermissao = await window.AuthMiddleware.protegerDiagnostico(linkUnico);
-        if (!temPermissao) {
-          // A função protegerDiagnostico já redireciona se não tiver permissão
-          return;
+        // *** PROTEÇÃO INTELIGENTE DE SEGURANÇA ***
+        // Verificar se o usuário está logado no sistema
+        const usuarioLogado = window.AuthMiddleware && window.AuthMiddleware.verificarAutenticacao();
+        
+        if (usuarioLogado) {
+          // Usuário está logado no sistema - acesso liberado
+          console.log('✅ Usuário logado detectado - acesso direto ao diagnóstico');
+        } else {
+          // Usuário não está logado - verificar se deve ter acesso
+          console.log('⚠️ Usuário não logado - verificando permissões...');
+          const temPermissao = await window.AuthMiddleware.protegerDiagnostico(linkUnico);
+          if (!temPermissao) {
+            // A função protegerDiagnostico já redireciona se não tiver permissão
+            return;
+          }
         }
-        // *** FIM DA PROTEÇÃO ***/
+        // *** FIM DA PROTEÇÃO INTELIGENTE ***
         
       // Buscar diagnóstico pelo link único
         const { data: diagnostico, error: diagError } = await supabase
