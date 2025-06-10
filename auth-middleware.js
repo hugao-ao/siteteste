@@ -5,7 +5,7 @@
  * Verifica se o usuário está autenticado
  * @returns {boolean} true se autenticado, false caso contrário
  */
-function verificarAutenticacao() {
+/*function verificarAutenticacao() {
     // Verificar APENAS sessionStorage - sem fallback para localStorage
     const usuario = sessionStorage.getItem('usuario');
     const nivel = sessionStorage.getItem('nivel');
@@ -34,9 +34,8 @@ function verificarAutenticacao() {
 }
 
 
-/**
- * Sincroniza dados de login entre localStorage e sessionStorage
- */
+// Sincroniza dados de login entre localStorage e sessionStorage
+ 
 function sincronizarDadosLogin() {
     const dadosLogin = ['usuario', 'nivel', 'projeto', 'user_id', 'id'];
     
@@ -48,10 +47,9 @@ function sincronizarDadosLogin() {
     });
 }
 
-/**
- * Salva dados de login em ambos os storages
- * @param {Object} dados - Dados do usuário logado
- */
+// Salva dados de login em ambos os storages
+// @param {Object} dados - Dados do usuário logado
+ 
 function salvarDadosLogin(dados) {
     const { usuario, nivel, projeto, user_id, id } = dados;
     
@@ -70,9 +68,8 @@ function salvarDadosLogin(dados) {
     localStorage.setItem('id', id || user_id);
 }
 
-/**
- * Limpa dados de login de ambos os storages
- */
+// Limpa dados de login de ambos os storages
+ 
 function limparDadosLogin() {
     const dadosLogin = ['usuario', 'nivel', 'projeto', 'user_id', 'id'];
     
@@ -82,11 +79,10 @@ function limparDadosLogin() {
     });
 }
 
-/**
- * Verifica se o usuário tem permissão para acessar um projeto específico
- * @param {string} projetoRequerido - Nome do projeto requerido
- * @returns {boolean} true se tem permissão, false caso contrário
- */
+//Verifica se o usuário tem permissão para acessar um projeto específico
+// @param {string} projetoRequerido - Nome do projeto requerido
+// @returns {boolean} true se tem permissão, false caso contrário
+ 
 function verificarPermissaoProjeto(projetoRequerido) {
     const nivel = sessionStorage.getItem('nivel') || localStorage.getItem('nivel');
     const projeto = sessionStorage.getItem('projeto') || localStorage.getItem('projeto');
@@ -104,11 +100,10 @@ function verificarPermissaoProjeto(projetoRequerido) {
     return false;
 }
 
-/**
- * Verifica se o usuário tem acesso a um cliente específico
- * @param {string} clienteId - ID do cliente
- * @returns {Promise<boolean>} true se tem acesso, false caso contrário
- */
+// Verifica se o usuário tem acesso a um cliente específico
+// @param {string} clienteId - ID do cliente
+// @returns {Promise<boolean>} true se tem acesso, false caso contrário
+
 async function verificarAcessoCliente(clienteId) {
     try {
         const userId = sessionStorage.getItem('user_id') || localStorage.getItem('user_id');
@@ -148,10 +143,9 @@ async function verificarAcessoCliente(clienteId) {
     }
 }
 
-/**
- * Redireciona para login com informações do link atual
- * @param {string} mensagem - Mensagem a ser exibida
- */
+// Redireciona para login com informações do link atual
+// @param {string} mensagem - Mensagem a ser exibida
+ 
 function redirecionarParaLogin(mensagem = 'Acesso negado. Faça login para continuar.') {
     // Salvar URL atual para redirecionamento após login
     const urlAtual = window.location.href;
@@ -161,9 +155,8 @@ function redirecionarParaLogin(mensagem = 'Acesso negado. Faça login para conti
     window.location.href = 'index.html';
 }
 
-/**
- * Verifica se há redirecionamento pendente após login
- */
+// Verifica se há redirecionamento pendente após login
+
 function verificarRedirecionamentoPendente() {
     const redirectUrl = localStorage.getItem('redirect_after_login');
     if (redirectUrl && verificarAutenticacao()) {
@@ -174,10 +167,9 @@ function verificarRedirecionamentoPendente() {
     return false;
 }
 
-/**
- * Protege uma página inteira - deve ser chamada no início do carregamento
- * @param {string} projetoRequerido - Projeto necessário para acessar a página (opcional)
- */
+// Protege uma página inteira - deve ser chamada no início do carregamento
+// @param {string} projetoRequerido - Projeto necessário para acessar a página (opcional)
+
 function protegerPagina(projetoRequerido = null) {
     // Verificar autenticação básica
     if (!verificarAutenticacao()) {
@@ -194,11 +186,10 @@ function protegerPagina(projetoRequerido = null) {
     return true;
 }
 
-/**
- * Protege acesso a diagnóstico via link único
- * @param {string} linkUnico - Link único do diagnóstico
- * @returns {Promise<boolean>} true se pode acessar, false caso contrário
- */
+// Protege acesso a diagnóstico via link único
+// @param {string} linkUnico - Link único do diagnóstico
+// @returns {Promise<boolean>} true se pode acessar, false caso contrário
+ 
 async function protegerDiagnostico(linkUnico) {
     try {
         // Verificar autenticação básica
@@ -269,11 +260,10 @@ async function protegerDiagnostico(linkUnico) {
     }
 }
 
-/**
- * Protege acesso a formulário via token único - VERSÃO FLEXÍVEL
- * @param {string} tokenUnico - Token único do formulário
- * @returns {Promise<boolean>} true se pode acessar, false caso contrário
- */
+// Protege acesso a formulário via token único - VERSÃO FLEXÍVEL
+// @param {string} tokenUnico - Token único do formulário
+// @returns {Promise<boolean>} true se pode acessar, false caso contrário
+ 
 async function protegerFormulario(tokenUnico) {
     try {
         // MUDANÇA: Permitir acesso a formulários mesmo sem login
@@ -330,11 +320,10 @@ async function protegerFormulario(tokenUnico) {
     }
 }
 
-/**
- * Registra acesso a diagnóstico para auditoria
- * @param {string} diagnosticoId - ID do diagnóstico
- * @param {string} linkUnico - Link único usado
- */
+// Registra acesso a diagnóstico para auditoria
+// @param {string} diagnosticoId - ID do diagnóstico
+// @param {string} linkUnico - Link único usado
+ 
 async function registrarAcessoDiagnostico(diagnosticoId, linkUnico) {
     try {
         const { supabase } = await import('./supabase.js');
@@ -359,11 +348,10 @@ async function registrarAcessoDiagnostico(diagnosticoId, linkUnico) {
     }
 }
 
-/**
- * Registra acesso a formulário para auditoria
- * @param {string} formularioId - ID do formulário
- * @param {string} tokenUnico - Token único usado
- */
+// Registra acesso a formulário para auditoria
+// @param {string} formularioId - ID do formulário
+// @param {string} tokenUnico - Token único usado
+ 
 async function registrarAcessoFormulario(formularioId, tokenUnico) {
     try {
         const { supabase } = await import('./supabase.js');
@@ -388,10 +376,9 @@ async function registrarAcessoFormulario(formularioId, tokenUnico) {
     }
 }
 
-/**
- * Obtém o IP do usuário (melhor esforço)
- * @returns {Promise<string>} IP do usuário ou 'unknown'
- */
+// Obtém o IP do usuário (melhor esforço)
+// @returns {Promise<string>} IP do usuário ou 'unknown'
+
 async function obterIP() {
     try {
         const response = await fetch('https://api.ipify.org?format=json');
@@ -402,10 +389,9 @@ async function obterIP() {
     }
 }
 
-/**
- * Gera token seguro para links
- * @returns {string} Token seguro
- */
+// Gera token seguro para links
+// @returns {string} Token seguro
+
 function gerarTokenSeguro() {
     // Usar crypto.randomUUID se disponível, senão fallback
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -426,11 +412,10 @@ function gerarTokenSeguro() {
     return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-/**
- * Calcula data de expiração para links
- * @param {number} diasValidade - Número de dias de validade (padrão: 30)
- * @returns {string} Data de expiração em formato ISO
- */
+// Calcula data de expiração para links
+// @param {number} diasValidade - Número de dias de validade (padrão: 30)
+// @returns {string} Data de expiração em formato ISO
+ 
 function calcularDataExpiracao(diasValidade = 30) {
     const agora = new Date();
     agora.setDate(agora.getDate() + diasValidade);
@@ -472,4 +457,55 @@ if (typeof module !== 'undefined' && module.exports) {
         verificarRedirecionamentoPendente
     };
 }
+*/
+
+// Sistema de Autenticação e Middleware de Segurança
+window.AuthMiddleware = {
+    // Verificar se o usuário está autenticado
+    verificarAutenticacao() {
+        // Verificar APENAS sessionStorage - sem fallback para localStorage
+        const usuario = sessionStorage.getItem('usuario');
+        const nivel = sessionStorage.getItem('nivel');
+        
+        const logado = !!(usuario && nivel);
+        
+        console.log('🔍 Verificação de autenticação (APENAS sessionStorage):', {
+            usuario: usuario,
+            nivel: nivel,
+            resultado: logado ? 'LOGADO' : 'NÃO LOGADO'
+        });
+        
+        return logado;
+    },
+
+    // Salvar dados de login
+    salvarDadosLogin(dados) {
+        Object.keys(dados).forEach(key => {
+            sessionStorage.setItem(key, dados[key]);
+        });
+        console.log('✅ Dados de login salvos no sessionStorage');
+    },
+
+    // Limpar dados de login
+    limparDadosLogin() {
+        ['usuario', 'nivel', 'projeto', 'user_id', 'id'].forEach(key => {
+            sessionStorage.removeItem(key);
+            localStorage.removeItem(key);
+        });
+        console.log('🗑️ Dados de login limpos');
+    },
+
+    // Proteger diagnóstico
+    async protegerDiagnostico(linkUnico) {
+        if (!this.verificarAutenticacao()) {
+            alert('Você precisa estar logado para acessar este diagnóstico.');
+            window.location.href = 'index.html';
+            return false;
+        }
+        return true;
+    }
+};
+
+console.log('🛡️ AuthMiddleware carregado com sucesso');
+
 
