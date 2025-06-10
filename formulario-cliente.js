@@ -1236,11 +1236,17 @@ async function initForm() {
             return;
         }
 
-        // *** PROTEÇÃO DE SEGURANÇA ***
-        // Verificar se o usuário tem permissão para acessar este formulário
+        // *** PROTEÇÃO DE SEGURANÇA CORRIGIDA ***
+        // Verificar se o formulário é válido (sem exigir login)
         const temPermissao = await window.AuthMiddleware.protegerFormulario(token);
         if (!temPermissao) {
-          // A função protegerFormulario já redireciona se não tiver permissão
+          // Se não tem permissão, mostrar erro mas não redirecionar
+          formContentEl.innerHTML = `
+                <div class="error-message">
+                    <h2>Link inválido ou expirado</h2>
+                    <p>O link que você está tentando acessar é inválido ou expirou. Entre em contato para solicitar um novo link.</p>
+                </div>
+            `;
           return;
         }
         // *** FIM DA PROTEÇÃO ***
