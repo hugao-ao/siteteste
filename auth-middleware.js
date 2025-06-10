@@ -1,4 +1,4 @@
-// auth-middleware.js - Sistema de Autenticação e Segurança (VERSÃO CORRIGIDA)
+// auth-middleware.js - Sistema de Autenticação e Segurança (VERSÃO FINAL CORRIGIDA)
 // Este arquivo contém funções para verificar autenticação e proteger páginas
 
 /**
@@ -6,15 +6,69 @@
  * @returns {boolean} true se autenticado, false caso contrário
  */
 function verificarAutenticacao() {
-    const usuario = sessionStorage.getItem('usuario');
-    const nivel = sessionStorage.getItem('nivel');
-    const userId = sessionStorage.getItem('user_id');
+    // Verificar tanto sessionStorage quanto localStorage para compatibilidade entre abas
+    const usuario = sessionStorage.getItem('usuario') || localStorage.getItem('usuario');
+    const nivel = sessionStorage.getItem('nivel') || localStorage.getItem('nivel');
+    const userId = sessionStorage.getItem('user_id') || localStorage.getItem('user_id');
     
     if (!usuario || !nivel || !userId) {
         return false;
     }
     
+    // Se encontrou no localStorage mas não no sessionStorage, sincronizar
+    if (!sessionStorage.getItem('usuario') && localStorage.getItem('usuario')) {
+        sincronizarDadosLogin();
+    }
+    
     return true;
+}
+
+/**
+ * Sincroniza dados de login entre localStorage e sessionStorage
+ */
+function sincronizarDadosLogin() {
+    const dadosLogin = ['usuario', 'nivel', 'projeto', 'user_id', 'id'];
+    
+    dadosLogin.forEach(chave => {
+        const valor = localStorage.getItem(chave);
+        if (valor) {
+            sessionStorage.setItem(chave, valor);
+        }
+    });
+}
+
+/**
+ * Salva dados de login em ambos os storages
+ * @param {Object} dados - Dados do usuário logado
+ */
+function salvarDadosLogin(dados) {
+    const { usuario, nivel, projeto, user_id, id } = dados;
+    
+    // Salvar em sessionStorage (aba atual)
+    sessionStorage.setItem('usuario', usuario);
+    sessionStorage.setItem('nivel', nivel);
+    sessionStorage.setItem('projeto', projeto || '');
+    sessionStorage.setItem('user_id', user_id);
+    sessionStorage.setItem('id', id || user_id);
+    
+    // Salvar em localStorage (compartilhado entre abas)
+    localStorage.setItem('usuario', usuario);
+    localStorage.setItem('nivel', nivel);
+    localStorage.setItem('projeto', projeto || '');
+    localStorage.setItem('user_id', user_id);
+    localStorage.setItem('id', id || user_id);
+}
+
+/**
+ * Limpa dados de login de ambos os storages
+ */
+function limparDadosLogin() {
+    const dadosLogin = ['usuario', 'nivel', 'projeto', 'user_id', 'id'];
+    
+    dadosLogin.forEach(chave => {
+        sessionStorage.removeItem(chave);
+        localStorage.removeItem(chave);
+    });
 }
 
 /**
@@ -23,8 +77,8 @@ function verificarAutenticacao() {
  * @returns {boolean} true se tem permissão, false caso contrário
  */
 function verificarPermissaoProjeto(projetoRequerido) {
-    const nivel = sessionStorage.getItem('nivel');
-    const projeto = sessionStorage.getItem('projeto');
+    const nivel = sessionStorage.getItem('nivel') || localStorage.getItem('nivel');
+    const projeto = sessionStorage.getItem('projeto') || localStorage.getItem('projeto');
     
     // Admin tem acesso a tudo
     if (nivel === 'admin') {
@@ -46,8 +100,8 @@ function verificarPermissaoProjeto(projetoRequerido) {
  */
 async function verificarAcessoCliente(clienteId) {
     try {
-        const userId = sessionStorage.getItem('user_id');
-        const nivel = sessionStorage.getItem('nivel');
+        const userId = sessionStorage.getItem('user_id') || localStorage.getItem('user_id');
+        const nivel = sessionStorage.getItem('nivel') || localStorage.getItem('nivel');
         
         if (!userId || !nivel) {
             return false;
@@ -74,7 +128,7 @@ async function verificarAcessoCliente(clienteId) {
         }
         
         // Verificar se o usuário criou o cliente ou tem o mesmo projeto
-        const projeto = sessionStorage.getItem('projeto');
+        const projeto = sessionStorage.getItem('projeto') || localStorage.getItem('projeto');
         return cliente.created_by_id === userId || cliente.projeto === projeto;
         
     } catch (error) {
@@ -84,12 +138,29 @@ async function verificarAcessoCliente(clienteId) {
 }
 
 /**
- * Redireciona para login se não autenticado
+ * Redireciona para login com informações do link atual
  * @param {string} mensagem - Mensagem a ser exibida
  */
 function redirecionarParaLogin(mensagem = 'Acesso negado. Faça login para continuar.') {
+    // Salvar URL atual para redirecionamento após login
+    const urlAtual = window.location.href;
+    localStorage.setItem('redirect_after_login', urlAtual);
+    
     alert(mensagem);
     window.location.href = 'index.html';
+}
+
+/**
+ * Verifica se há redirecionamento pendente após login
+ */
+function verificarRedirecionamentoPendente() {
+    const redirectUrl = localStorage.getItem('redirect_after_login');
+    if (redirectUrl && verificarAutenticacao()) {
+        localStorage.removeItem('redirect_after_login');
+        window.location.href = redirectUrl;
+        return true;
+    }
+    return false;
 }
 
 /**
@@ -256,8 +327,8 @@ async function protegerFormulario(tokenUnico) {
 async function registrarAcessoDiagnostico(diagnosticoId, linkUnico) {
     try {
         const { supabase } = await import('./supabase.js');
-        const userId = sessionStorage.getItem('user_id');
-        const usuario = sessionStorage.getItem('usuario');
+        const userId = sessionStorage.getItem('user_id') || localStorage.getItem('user_id');
+        const usuario = sessionStorage.getItem('usuario') || localStorage.getItem('usuario');
         
         await supabase
             .from('logs_acesso_diagnostico')
@@ -285,8 +356,8 @@ async function registrarAcessoDiagnostico(diagnosticoId, linkUnico) {
 async function registrarAcessoFormulario(formularioId, tokenUnico) {
     try {
         const { supabase } = await import('./supabase.js');
-        const userId = sessionStorage.getItem('user_id');
-        const usuario = sessionStorage.getItem('usuario');
+        const userId = sessionStorage.getItem('user_id') || localStorage.getItem('user_id');
+        const usuario = sessionStorage.getItem('usuario') || localStorage.getItem('usuario');
         
         await supabase
             .from('logs_acesso_formulario')
@@ -365,7 +436,11 @@ window.AuthMiddleware = {
     protegerDiagnostico,
     protegerFormulario,
     gerarTokenSeguro,
-    calcularDataExpiracao
+    calcularDataExpiracao,
+    salvarDadosLogin,
+    limparDadosLogin,
+    sincronizarDadosLogin,
+    verificarRedirecionamentoPendente
 };
 
 // Para compatibilidade com imports ES6
@@ -379,7 +454,11 @@ if (typeof module !== 'undefined' && module.exports) {
         protegerDiagnostico,
         protegerFormulario,
         gerarTokenSeguro,
-        calcularDataExpiracao
+        calcularDataExpiracao,
+        salvarDadosLogin,
+        limparDadosLogin,
+        sincronizarDadosLogin,
+        verificarRedirecionamentoPendente
     };
 }
 
