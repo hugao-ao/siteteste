@@ -1,4 +1,4 @@
-// auth-middleware.js - Sistema de Autenticação e Segurança
+// auth-middleware.js - Sistema de Autenticação e Segurança (VERSÃO CORRIGIDA)
 // Este arquivo contém funções para verificar autenticação e proteger páginas
 
 /**
@@ -170,8 +170,13 @@ async function protegerDiagnostico(linkUnico) {
             return false;
         }
         
-        // Registrar acesso para auditoria
-        await registrarAcessoDiagnostico(diagnostico.id, linkUnico);
+        // Registrar acesso para auditoria (se as tabelas existirem)
+        try {
+            await registrarAcessoDiagnostico(diagnostico.id, linkUnico);
+        } catch (logError) {
+            console.warn('Erro ao registrar log de acesso:', logError);
+            // Não bloquear o acesso por erro de log
+        }
         
         return true;
         
@@ -183,41 +188,33 @@ async function protegerDiagnostico(linkUnico) {
 }
 
 /**
- * Protege acesso a formulário via token único
+ * Protege acesso a formulário via token único - VERSÃO FLEXÍVEL
  * @param {string} tokenUnico - Token único do formulário
  * @returns {Promise<boolean>} true se pode acessar, false caso contrário
  */
 async function protegerFormulario(tokenUnico) {
     try {
-        // Verificar autenticação básica
-        if (!verificarAutenticacao()) {
-            redirecionarParaLogin('Você precisa estar logado para acessar este formulário.');
-            return false;
-        }
+        // MUDANÇA: Permitir acesso a formulários mesmo sem login
+        // Formulários são preenchidos pelos clientes, não pelos usuários do sistema
         
         // Importar supabase dinamicamente
         const { supabase } = await import('./supabase.js');
         
-        // Buscar formulário e cliente associado
+        // Verificar se o token existe e é válido
         const { data: formulario, error } = await supabase
             .from('formularios_clientes')
             .select(`
                 id,
                 cliente_id,
-                created_by_id,
-                expires_at,
-                clientes (
-                    id,
-                    projeto,
-                    created_by_id
-                )
+                status,
+                expires_at
             `)
             .eq('token_unico', tokenUnico)
             .single();
         
         if (error || !formulario) {
             console.error('Formulário não encontrado:', error);
-            redirecionarParaLogin('Formulário não encontrado ou token inválido.');
+            // Não redirecionar para login, apenas retornar false
             return false;
         }
         
@@ -227,27 +224,26 @@ async function protegerFormulario(tokenUnico) {
             const expiracao = new Date(formulario.expires_at);
             
             if (agora > expiracao) {
-                redirecionarParaLogin('Este link de formulário expirou. Solicite um novo link.');
+                console.error('Token de formulário expirado');
                 return false;
             }
         }
         
-        // Verificar se o usuário tem acesso ao cliente
-        const temAcesso = await verificarAcessoCliente(formulario.cliente_id);
-        
-        if (!temAcesso) {
-            redirecionarParaLogin('Você não tem permissão para acessar este formulário.');
-            return false;
+        // Registrar acesso para auditoria (se as tabelas existirem e usuário estiver logado)
+        try {
+            const usuarioLogado = verificarAutenticacao();
+            if (usuarioLogado) {
+                await registrarAcessoFormulario(formulario.id, tokenUnico);
+            }
+        } catch (logError) {
+            console.warn('Erro ao registrar log de acesso:', logError);
+            // Não bloquear o acesso por erro de log
         }
-        
-        // Registrar acesso para auditoria
-        await registrarAcessoFormulario(formulario.id, tokenUnico);
         
         return true;
         
     } catch (error) {
         console.error('Erro ao proteger formulário:', error);
-        redirecionarParaLogin('Erro ao verificar permissões. Tente novamente.');
         return false;
     }
 }
@@ -373,15 +369,17 @@ window.AuthMiddleware = {
 };
 
 // Para compatibilidade com imports ES6
-export {
-    verificarAutenticacao,
-    verificarPermissaoProjeto,
-    verificarAcessoCliente,
-    redirecionarParaLogin,
-    protegerPagina,
-    protegerDiagnostico,
-    protegerFormulario,
-    gerarTokenSeguro,
-    calcularDataExpiracao
-};
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        verificarAutenticacao,
+        verificarPermissaoProjeto,
+        verificarAcessoCliente,
+        redirecionarParaLogin,
+        protegerPagina,
+        protegerDiagnostico,
+        protegerFormulario,
+        gerarTokenSeguro,
+        calcularDataExpiracao
+    };
+}
 
