@@ -7,6 +7,8 @@
   <title>Diagnóstico Financeiro</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <!-- SISTEMA DE SEGURANÇA - Importar middleware de autenticação -->
+  <script src="auth-middleware.js"></script>
   <style>
     /* Paleta de cores verde esmeralda escuro + dourado */
     :root {
@@ -2152,6 +2154,15 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         if (!linkUnico) {
           throw new Error('Link de diagnóstico não encontrado na URL');
         }
+        
+        // *** PROTEÇÃO DE SEGURANÇA ***
+        // Verificar se o usuário tem permissão para acessar este diagnóstico
+        const temPermissao = await window.AuthMiddleware.protegerDiagnostico(linkUnico);
+        if (!temPermissao) {
+          // A função protegerDiagnostico já redireciona se não tiver permissão
+          return;
+        }
+        // *** FIM DA PROTEÇÃO ***
         
       // Buscar diagnóstico pelo link único
         const { data: diagnostico, error: diagError } = await supabase
