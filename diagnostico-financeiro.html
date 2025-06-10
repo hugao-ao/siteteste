@@ -588,9 +588,47 @@
         margin-bottom: 0.5rem;
       }
     }
+
+/* Botão Voltar - Fixo no canto superior esquerdo */
+.btn-voltar {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 9999;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.btn-voltar:hover {
+    background-color: rgba(0, 0, 0, 0.9);
+    transform: scale(1.1);
+}
+
+.btn-voltar:active {
+    transform: scale(0.95);
+}
+
+    
   </style>
 </head>
 <body>
+
+<button class="btn-voltar" onclick="voltarParaCliente()" title="Voltar para detalhes do cliente">
+    ←
+</button>
+
+
   <div class="container">
     <div id="loading" class="loading">
       <i class="fas fa-spinner fa-spin"></i>
@@ -2531,6 +2569,18 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         showError('Erro ao carregar diagnóstico: ' + error.message);
       }
     });
+
+function voltarParaCliente() {
+    // Voltar para a página anterior (detalhes do cliente)
+    if (window.history.length > 1) {
+        window.history.back();
+    } else {
+        // Fallback: tentar ir para a página de clientes
+        window.location.href = 'clientes.html';
+    }
+}
+
+    
   </script>
 </body>
 </html>
