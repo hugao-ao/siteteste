@@ -2570,15 +2570,32 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
       }
     });
 
+// Função corrigida para voltar para o cliente
 function voltarParaCliente() {
-    // Voltar para a página anterior (detalhes do cliente)
-    if (window.history.length > 1) {
-        window.history.back();
-    } else {
-        // Fallback: tentar ir para a página de clientes
-        window.location.href = 'clientes.html';
+    try {
+        // Primeiro, tentar obter o ID do cliente da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const clienteId = urlParams.get('cliente_id');
+        
+        if (clienteId) {
+            // Se temos o ID do cliente, redirecionar para a página de detalhes específica
+            window.location.href = `cliente-detalhes.html?id=${clienteId}`;
+        } else {
+            // Se não temos o ID, tentar voltar na história do navegador
+            if (window.history.length > 1) {
+                window.history.back();
+            } else {
+                // Último recurso: ir para a página de clientes
+                window.location.href = 'clientes-dashboard.html';
+            }
+        }
+    } catch (error) {
+        console.error('Erro ao voltar para cliente:', error);
+        // Em caso de erro, ir para a página de clientes
+        window.location.href = 'clientes-dashboard.html';
     }
 }
+
 
     
   </script>
