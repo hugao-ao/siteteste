@@ -2158,14 +2158,14 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           throw new Error('Link de diagnóstico não encontrado na URL');
         }
         
-        // *** PROTEÇÃO DE SEGURANÇA ***
+      /*  // *** PROTEÇÃO DE SEGURANÇA ***
         // Verificar se o usuário tem permissão para acessar este diagnóstico
         const temPermissao = await window.AuthMiddleware.protegerDiagnostico(linkUnico);
         if (!temPermissao) {
           // A função protegerDiagnostico já redireciona se não tiver permissão
           return;
         }
-        // *** FIM DA PROTEÇÃO ***
+        // *** FIM DA PROTEÇÃO ***/
         
       // Buscar diagnóstico pelo link único
         const { data: diagnostico, error: diagError } = await supabase
