@@ -6,22 +6,22 @@
  * @returns {boolean} true se autenticado, false caso contrário
  */
 function verificarAutenticacao() {
-    // Verificar tanto sessionStorage quanto localStorage para compatibilidade entre abas
-    const usuario = sessionStorage.getItem('usuario') || localStorage.getItem('usuario');
-    const nivel = sessionStorage.getItem('nivel') || localStorage.getItem('nivel');
-    const userId = sessionStorage.getItem('user_id') || localStorage.getItem('user_id');
+    // Verificar APENAS sessionStorage para autenticação ativa
+    const usuario = sessionStorage.getItem('usuario');
+    const nivel = sessionStorage.getItem('nivel');
     
-    if (!usuario || !nivel || !userId) {
-        return false;
-    }
+    // Só considera logado se tiver dados no sessionStorage
+    const logado = !!(usuario && nivel);
     
-    // Se encontrou no localStorage mas não no sessionStorage, sincronizar
-    if (!sessionStorage.getItem('usuario') && localStorage.getItem('usuario')) {
-        sincronizarDadosLogin();
-    }
+    console.log('🔍 Verificação de autenticação:', {
+        sessionStorage_usuario: usuario,
+        sessionStorage_nivel: nivel,
+        resultado: logado ? 'LOGADO' : 'NÃO LOGADO'
+    });
     
-    return true;
+    return logado;
 }
+
 
 /**
  * Sincroniza dados de login entre localStorage e sessionStorage
