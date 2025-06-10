@@ -126,13 +126,7 @@ otpForm.addEventListener("submit", async (e) => {
       sessionStorage.setItem("id", userData.id);
       sessionStorage.setItem("nivel", userData.nivel);
       sessionStorage.setItem("projeto", userData.projeto || '');
-      
-      // Também salvar no localStorage para compatibilidade entre abas
-      localStorage.setItem("usuario", usuarioAtual);
-      localStorage.setItem("user_id", userData.id);
-      localStorage.setItem("id", userData.id);
-      localStorage.setItem("nivel", userData.nivel);
-      localStorage.setItem("projeto", userData.projeto || '');
+
     }
     
     // Verificar se há redirecionamento pendente
