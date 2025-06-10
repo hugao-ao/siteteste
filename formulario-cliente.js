@@ -1236,6 +1236,15 @@ async function initForm() {
             return;
         }
 
+        // *** PROTEÇÃO DE SEGURANÇA ***
+        // Verificar se o usuário tem permissão para acessar este formulário
+        const temPermissao = await window.AuthMiddleware.protegerFormulario(token);
+        if (!temPermissao) {
+          // A função protegerFormulario já redireciona se não tiver permissão
+          return;
+        }
+        // *** FIM DA PROTEÇÃO ***
+
         // Verificar se o token existe e está pendente
         const { data: formData, error } = await supabase
             .from("formularios_clientes")
