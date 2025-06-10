@@ -107,12 +107,41 @@ otpForm.addEventListener("submit", async (e) => {
       return;
     }
 
-    // --- GRAVAÇÃO NO SESSIONSTORAGE ---
-    sessionStorage.setItem("usuario", usuarioAtual);
-    sessionStorage.setItem("user_id", userData.id); // Guarda o ID do usuário
-    sessionStorage.setItem("id", userData.id); // CORREÇÃO: Adiciona o ID com a chave 'id' para compatibilidade
-    sessionStorage.setItem("nivel", userData.nivel);
-    sessionStorage.setItem("projeto", userData.projeto || ''); // Guarda o projeto (ou vazio)
+    // --- GRAVAÇÃO NO SESSIONSTORAGE E LOCALSTORAGE (CORRIGIDO) ---
+    const dadosLogin = {
+      usuario: usuarioAtual,
+      user_id: userData.id,
+      id: userData.id,
+      nivel: userData.nivel,
+      projeto: userData.projeto || ''
+    };
+    
+    // Usar o middleware para salvar corretamente
+    if (window.AuthMiddleware) {
+      window.AuthMiddleware.salvarDadosLogin(dadosLogin);
+    } else {
+      // Fallback se o middleware não estiver carregado
+      sessionStorage.setItem("usuario", usuarioAtual);
+      sessionStorage.setItem("user_id", userData.id);
+      sessionStorage.setItem("id", userData.id);
+      sessionStorage.setItem("nivel", userData.nivel);
+      sessionStorage.setItem("projeto", userData.projeto || '');
+      
+      // Também salvar no localStorage para compatibilidade entre abas
+      localStorage.setItem("usuario", usuarioAtual);
+      localStorage.setItem("user_id", userData.id);
+      localStorage.setItem("id", userData.id);
+      localStorage.setItem("nivel", userData.nivel);
+      localStorage.setItem("projeto", userData.projeto || '');
+    }
+    
+    // Verificar se há redirecionamento pendente
+    if (window.AuthMiddleware) {
+      const redirecionou = window.AuthMiddleware.verificarRedirecionamentoPendente();
+      if (redirecionou) {
+        return; // Se redirecionou, não continuar com o fluxo normal
+      }
+    }
     // ───────────────────────────────────
 
     // --- Redirecionamento com base no Nível e Projeto ---
