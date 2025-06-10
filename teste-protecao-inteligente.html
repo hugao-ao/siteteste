@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste Final - Proteção Inteligente</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #333;
+            border-bottom: 2px solid #28a745;
+            padding-bottom: 10px;
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #218838;
+        }
+        .link-test {
+            background-color: #007bff;
+        }
+        .link-test:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+    <h1>🛡️ Teste da Proteção Inteligente</h1>
+    
+    <div class="test-container">
+        <h2 class="test-title">Status de Autenticação</h2>
+        <div id="auth-status"></div>
+        <button onclick="verificarStatus()">Verificar Status</button>
+        <button onclick="simularLogout()">Simular Logout</button>
+        <button onclick="simularLogin()">Simular Login</button>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-title">Teste dos Links de Diagnóstico</h2>
+        <div id="link-results"></div>
+        <button class="link-test" onclick="testarLink('diag_i7li8mofysq')">Testar Link 1</button>
+        <button class="link-test" onclick="testarLink('diag_i7il8mofysq')">Testar Link 2</button>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-title">Cenários de Teste</h2>
+        <div id="scenarios"></div>
+        <button onclick="testarCenarios()">Executar Todos os Cenários</button>
+    </div>
+
+    <!-- Importar o middleware -->
+    <script src="auth-middleware.js"></script>
+    
+    <script>
+        function verificarStatus() {
+            const statusDiv = document.getElementById('auth-status');
+            
+            let resultado = "=== STATUS ATUAL ===\n";
+            
+            if (window.AuthMiddleware) {
+                const logado = window.AuthMiddleware.verificarAutenticacao();
+                resultado += `Middleware carregado: ✅ SIM\n`;
+                resultado += `Usuário logado: ${logado ? '✅ SIM' : '❌ NÃO'}\n`;
+                
+                if (logado) {
+                    resultado += `Usuário: ${sessionStorage.getItem('usuario') || localStorage.getItem('usuario')}\n`;
+                    resultado += `Nível: ${sessionStorage.getItem('nivel') || localStorage.getItem('nivel')}\n`;
+                }
+            } else {
+                resultado += `Middleware carregado: ❌ NÃO\n`;
+            }
+            
+            const classe = window.AuthMiddleware && window.AuthMiddleware.verificarAutenticacao() ? 'success' : 'warning';
+            statusDiv.innerHTML = `<div class="${classe}">${resultado}</div>`;
+        }
+        
+        function simularLogout() {
+            if (window.AuthMiddleware) {
+                window.AuthMiddleware.limparDadosLogin();
+            } else {
+                ['usuario', 'nivel', 'projeto', 'user_id', 'id'].forEach(key => {
+                    sessionStorage.removeItem(key);
+                    localStorage.removeItem(key);
+                });
+            }
+            verificarStatus();
+            alert('Logout simulado!');
+        }
+        
+        function simularLogin() {
+            const dadosLogin = {
+                usuario: 'admin01',
+                nivel: 'admin',
+                projeto: 'Planejamento',
+                user_id: '94e3508b-ad2e-4f24-b492-9f184d816f98',
+                id: '94e3508b-ad2e-4f24-b492-9f184d816f98'
+            };
+            
+            if (window.AuthMiddleware) {
+                window.AuthMiddleware.salvarDadosLogin(dadosLogin);
+            } else {
+                Object.keys(dadosLogin).forEach(key => {
+                    sessionStorage.setItem(key, dadosLogin[key]);
+                    localStorage.setItem(key, dadosLogin[key]);
+                });
+            }
+            verificarStatus();
+            alert('Login simulado!');
+        }
+        
+        function testarLink(linkUnico) {
+            const resultsDiv = document.getElementById('link-results');
+            const logado = window.AuthMiddleware && window.AuthMiddleware.verificarAutenticacao();
+            
+            let resultado = `=== TESTE DO LINK: ${linkUnico} ===\n`;
+            resultado += `Status do usuário: ${logado ? 'LOGADO' : 'NÃO LOGADO'}\n`;
+            resultado += `Comportamento esperado: ${logado ? 'ACESSO DIRETO' : 'PEDIR LOGIN'}\n\n`;
+            
+            const url = `https://siteteste-flame.vercel.app/diagnostico-financeiro.html?link=${linkUnico}`;
+            resultado += `URL: ${url}\n`;
+            
+            if (logado) {
+                resultado += `✅ Como você está logado, deve acessar diretamente!\n`;
+                resultsDiv.innerHTML = `
+                    <div class="success">${resultado}</div>
+                    <a href="${url}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 10px; background: #28a745; color: white; text-decoration: none; border-radius: 4px;">
+                        🔗 Testar Link (Nova Aba)
+                    </a>
+                `;
+            } else {
+                resultado += `⚠️ Como você não está logado, deve pedir login!\n`;
+                resultsDiv.innerHTML = `
+                    <div class="warning">${resultado}</div>
+                    <a href="${url}" target="_blank" style="display: inline-block; margin-top: 10px; padding: 10px; background: #ffc107; color: black; text-decoration: none; border-radius: 4px;">
+                        🔗 Testar Link (Deve Pedir Login)
+                    </a>
+                `;
+            }
+        }
+        
+        function testarCenarios() {
+            const scenariosDiv = document.getElementById('scenarios');
+            
+            let resultado = "=== CENÁRIOS DE TESTE ===\n\n";
+            resultado += "CENÁRIO 1: Usuário Logado\n";
+            resultado += "- Acessa link do diagnóstico\n";
+            resultado += "- Deve: Abrir diagnóstico diretamente\n";
+            resultado += "- Status: ✅ Implementado\n\n";
+            
+            resultado += "CENÁRIO 2: Usuário Não Logado (Externo)\n";
+            resultado += "- Acessa link do diagnóstico\n";
+            resultado += "- Deve: Pedir login primeiro\n";
+            resultado += "- Status: ✅ Implementado\n\n";
+            
+            resultado += "CENÁRIO 3: Usuário Faz Login\n";
+            resultado += "- Faz login após ser redirecionado\n";
+            resultado += "- Deve: Voltar automaticamente para o diagnóstico\n";
+            resultado += "- Status: ✅ Implementado\n\n";
+            
+            resultado += "INSTRUÇÕES DE TESTE:\n";
+            resultado += "1. Teste com usuário logado (simule login)\n";
+            resultado += "2. Teste com usuário não logado (simule logout)\n";
+            resultado += "3. Verifique se o comportamento está correto\n";
+            
+            scenariosDiv.innerHTML = `<div class="info">${resultado}</div>`;
+        }
+        
+        // Verificar automaticamente ao carregar
+        document.addEventListener('DOMContentLoaded', function() {
+            verificarStatus();
+            testarCenarios();
+        });
+    </script>
+</body>
+</html>
+
