@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teste de Segurança - Sistema de Diagnóstico</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .test-title {
+            color: #333;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 10px;
+        }
+        .test-result {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .warning {
+            background-color: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .logout-btn {
+            background-color: #dc3545;
+        }
+        .logout-btn:hover {
+            background-color: #c82333;
+        }
+        .login-form {
+            background: #e9ecef;
+            padding: 15px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .login-form input {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔒 Teste de Segurança - Sistema de Diagnóstico</h1>
+    
+    <div class="test-container">
+        <h2 class="test-title">Status de Autenticação</h2>
+        <div id="auth-status"></div>
+        
+        <div class="login-form" id="login-form" style="display: none;">
+            <h3>Simular Login</h3>
+            <input type="text" id="test-usuario" placeholder="Usuário" value="admin">
+            <input type="text" id="test-nivel" placeholder="Nível" value="admin">
+            <input type="text" id="test-projeto" placeholder="Projeto" value="Planejamento">
+            <input type="text" id="test-user-id" placeholder="User ID" value="test-123">
+            <button onclick="simularLogin()">Fazer Login de Teste</button>
+        </div>
+        
+        <button onclick="verificarAutenticacao()">Verificar Autenticação</button>
+        <button onclick="mostrarLoginForm()" id="show-login-btn">Mostrar Login</button>
+        <button onclick="logout()" class="logout-btn">Logout</button>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-title">Teste de Acesso a Diagnóstico</h2>
+        <div id="diagnostico-results"></div>
+        
+        <input type="text" id="link-diagnostico" placeholder="Link do diagnóstico (ex: diag_abc123)" style="width: 300px; padding: 8px; margin: 10px 0;">
+        <br>
+        <button onclick="testarAcessoDiagnostico()">Testar Acesso ao Diagnóstico</button>
+        <button onclick="gerarLinkTeste()">Gerar Link de Teste</button>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-title">Teste de Acesso a Formulário</h2>
+        <div id="formulario-results"></div>
+        
+        <input type="text" id="token-formulario" placeholder="Token do formulário" style="width: 300px; padding: 8px; margin: 10px 0;">
+        <br>
+        <button onclick="testarAcessoFormulario()">Testar Acesso ao Formulário</button>
+        <button onclick="gerarTokenTeste()">Gerar Token de Teste</button>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-title">Teste de Redirecionamento</h2>
+        <div id="redirect-results"></div>
+        
+        <button onclick="testarRedirecionamentoDiagnostico()">Testar Página de Diagnóstico</button>
+        <button onclick="testarRedirecionamentoFormulario()">Testar Página de Formulário</button>
+    </div>
+
+    <div class="test-container">
+        <h2 class="test-title">Logs de Teste</h2>
+        <div id="test-logs" style="background: #f8f9fa; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 12px; max-height: 300px; overflow-y: auto;"></div>
+        <button onclick="limparLogs()">Limpar Logs</button>
+    </div>
+
+    <!-- Importar o middleware de autenticação -->
+    <script src="auth-middleware.js"></script>
+    
+    <script>
+        // Função para adicionar logs
+        function addLog(message, type = 'info') {
+            const logsDiv = document.getElementById('test-logs');
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = `[${timestamp}] ${type.toUpperCase()}: ${message}\n`;
+            logsDiv.textContent += logEntry;
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        // Verificar autenticação
+        function verificarAutenticacao() {
+            addLog('Verificando autenticação...');
+            
+            const usuario = sessionStorage.getItem('usuario');
+            const nivel = sessionStorage.getItem('nivel');
+            const projeto = sessionStorage.getItem('projeto');
+            const userId = sessionStorage.getItem('user_id');
+            
+            const statusDiv = document.getElementById('auth-status');
+            
+            if (usuario && nivel && userId) {
+                statusDiv.innerHTML = `
+                    <div class="success">
+                        ✅ Usuário autenticado<br>
+                        <strong>Usuário:</strong> ${usuario}<br>
+                        <strong>Nível:</strong> ${nivel}<br>
+                        <strong>Projeto:</strong> ${projeto || 'Não definido'}<br>
+                        <strong>User ID:</strong> ${userId}
+                    </div>
+                `;
+                addLog(`Usuário autenticado: ${usuario} (${nivel})`, 'success');
+                document.getElementById('show-login-btn').style.display = 'none';
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="error">
+                        ❌ Usuário não autenticado<br>
+                        Dados de sessão não encontrados
+                    </div>
+                `;
+                addLog('Usuário não autenticado', 'error');
+                document.getElementById('show-login-btn').style.display = 'inline-block';
+            }
+        }
+
+        // Mostrar formulário de login
+        function mostrarLoginForm() {
+            const loginForm = document.getElementById('login-form');
+            loginForm.style.display = loginForm.style.display === 'none' ? 'block' : 'none';
+        }
+
+        // Simular login
+        function simularLogin() {
+            const usuario = document.getElementById('test-usuario').value;
+            const nivel = document.getElementById('test-nivel').value;
+            const projeto = document.getElementById('test-projeto').value;
+            const userId = document.getElementById('test-user-id').value;
+            
+            sessionStorage.setItem('usuario', usuario);
+            sessionStorage.setItem('nivel', nivel);
+            sessionStorage.setItem('projeto', projeto);
+            sessionStorage.setItem('user_id', userId);
+            
+            addLog(`Login simulado: ${usuario} (${nivel})`, 'success');
+            verificarAutenticacao();
+            document.getElementById('login-form').style.display = 'none';
+        }
+
+        // Logout
+        function logout() {
+            sessionStorage.clear();
+            addLog('Logout realizado', 'info');
+            verificarAutenticacao();
+        }
+
+        // Testar acesso a diagnóstico
+        async function testarAcessoDiagnostico() {
+            const link = document.getElementById('link-diagnostico').value;
+            const resultsDiv = document.getElementById('diagnostico-results');
+            
+            if (!link) {
+                resultsDiv.innerHTML = '<div class="warning">⚠️ Digite um link de diagnóstico para testar</div>';
+                return;
+            }
+            
+            addLog(`Testando acesso ao diagnóstico: ${link}`);
+            resultsDiv.innerHTML = '<div class="info">🔄 Testando acesso...</div>';
+            
+            try {
+                // Verificar se o middleware está disponível
+                if (!window.AuthMiddleware) {
+                    throw new Error('Middleware de autenticação não carregado');
+                }
+                
+                const temPermissao = await window.AuthMiddleware.protegerDiagnostico(link);
+                
+                if (temPermissao) {
+                    resultsDiv.innerHTML = '<div class="success">✅ Acesso autorizado ao diagnóstico</div>';
+                    addLog(`Acesso autorizado ao diagnóstico: ${link}`, 'success');
+                } else {
+                    resultsDiv.innerHTML = '<div class="error">❌ Acesso negado ao diagnóstico</div>';
+                    addLog(`Acesso negado ao diagnóstico: ${link}`, 'error');
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Erro: ${error.message}</div>`;
+                addLog(`Erro ao testar diagnóstico: ${error.message}`, 'error');
+            }
+        }
+
+        // Testar acesso a formulário
+        async function testarAcessoFormulario() {
+            const token = document.getElementById('token-formulario').value;
+            const resultsDiv = document.getElementById('formulario-results');
+            
+            if (!token) {
+                resultsDiv.innerHTML = '<div class="warning">⚠️ Digite um token de formulário para testar</div>';
+                return;
+            }
+            
+            addLog(`Testando acesso ao formulário: ${token}`);
+            resultsDiv.innerHTML = '<div class="info">🔄 Testando acesso...</div>';
+            
+            try {
+                if (!window.AuthMiddleware) {
+                    throw new Error('Middleware de autenticação não carregado');
+                }
+                
+                const temPermissao = await window.AuthMiddleware.protegerFormulario(token);
+                
+                if (temPermissao) {
+                    resultsDiv.innerHTML = '<div class="success">✅ Acesso autorizado ao formulário</div>';
+                    addLog(`Acesso autorizado ao formulário: ${token}`, 'success');
+                } else {
+                    resultsDiv.innerHTML = '<div class="error">❌ Acesso negado ao formulário</div>';
+                    addLog(`Acesso negado ao formulário: ${token}`, 'error');
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">❌ Erro: ${error.message}</div>`;
+                addLog(`Erro ao testar formulário: ${error.message}`, 'error');
+            }
+        }
+
+        // Gerar link de teste
+        function gerarLinkTeste() {
+            if (!window.AuthMiddleware) {
+                addLog('Middleware não carregado', 'error');
+                return;
+            }
+            
+            const linkTeste = 'diag_' + window.AuthMiddleware.gerarTokenSeguro().substring(0, 16);
+            document.getElementById('link-diagnostico').value = linkTeste;
+            addLog(`Link de teste gerado: ${linkTeste}`, 'info');
+        }
+
+        // Gerar token de teste
+        function gerarTokenTeste() {
+            if (!window.AuthMiddleware) {
+                addLog('Middleware não carregado', 'error');
+                return;
+            }
+            
+            const tokenTeste = window.AuthMiddleware.gerarTokenSeguro();
+            document.getElementById('token-formulario').value = tokenTeste;
+            addLog(`Token de teste gerado: ${tokenTeste}`, 'info');
+        }
+
+        // Testar redirecionamento para diagnóstico
+        function testarRedirecionamentoDiagnostico() {
+            const resultsDiv = document.getElementById('redirect-results');
+            addLog('Testando redirecionamento para página de diagnóstico');
+            
+            // Simular abertura da página (sem realmente abrir)
+            const link = document.getElementById('link-diagnostico').value || 'diag_teste123';
+            const url = `diagnostico-financeiro.html?link=${link}`;
+            
+            resultsDiv.innerHTML = `
+                <div class="info">
+                    🔗 URL que seria acessada:<br>
+                    <code>${url}</code><br>
+                    <a href="${url}" target="_blank">Abrir em nova aba (teste real)</a>
+                </div>
+            `;
+            
+            addLog(`URL de teste: ${url}`, 'info');
+        }
+
+        // Testar redirecionamento para formulário
+        function testarRedirecionamentoFormulario() {
+            const resultsDiv = document.getElementById('redirect-results');
+            addLog('Testando redirecionamento para página de formulário');
+            
+            const token = document.getElementById('token-formulario').value || 'token_teste123';
+            const url = `formulario-cliente.html?token=${token}`;
+            
+            resultsDiv.innerHTML = `
+                <div class="info">
+                    🔗 URL que seria acessada:<br>
+                    <code>${url}</code><br>
+                    <a href="${url}" target="_blank">Abrir em nova aba (teste real)</a>
+                </div>
+            `;
+            
+            addLog(`URL de teste: ${url}`, 'info');
+        }
+
+        // Limpar logs
+        function limparLogs() {
+            document.getElementById('test-logs').textContent = '';
+            addLog('Logs limpos', 'info');
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            addLog('Página de teste carregada', 'info');
+            verificarAutenticacao();
+            
+            // Verificar se o middleware foi carregado
+            if (window.AuthMiddleware) {
+                addLog('Middleware de autenticação carregado com sucesso', 'success');
+            } else {
+                addLog('ERRO: Middleware de autenticação não foi carregado', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
+
