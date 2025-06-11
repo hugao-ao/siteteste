@@ -355,3 +355,5 @@ async function injectSidebar(mainContentElementId, forceProject = null) { // Tor
 }
 
 // Exporta a função principal a ser usada em outras páginas
+export { injectSidebar };
+
