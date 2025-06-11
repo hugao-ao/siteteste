@@ -304,6 +304,43 @@
         padding: 0.5rem;
       }
     }
+
+    /* Estilos para seção de valores */
+    .valores-section {
+      background: rgba(0, 0, 128, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1rem 0;
+      grid-column: 1 / -1;
+    }
+
+    .valor-categoria {
+      background: rgba(25, 25, 112, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .valor-categoria:last-child {
+      margin-bottom: 0;
+    }
+
+    .valor-categoria h5 {
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+      font-weight: bold;
+      text-shadow: 0 0 5px currentColor;
+    }
+
+    .valores-section h4 {
+      margin: 0 0 1rem 0;
+      font-size: 1.2rem;
+      text-shadow: 0 0 10px #ffffff;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      padding-bottom: 0.5rem;
+    
   </style>
 </head>
 <body>
@@ -358,17 +395,69 @@
           </select>
         </div>
 
-        <div class="form-row">
-          <div>
-            <label for="servico-valor-min">Valor Mínimo (R$)</label>
-            <input type="text" id="servico-valor-min" class="hvc-input" placeholder="0,00" readonly />
-            <small style="color: #c0c0c0;">Calculado automaticamente das propostas</small>
-          </div>
+       <div class="valores-section">
+          <h4 style="color: #ffffff; margin-bottom: 1rem; text-align: center;">
+            <i class="fas fa-calculator"></i> Valores Praticados
+          </h4>
           
-          <div>
-            <label for="servico-valor-max">Valor Máximo (R$)</label>
-            <input type="text" id="servico-valor-max" class="hvc-input" placeholder="0,00" readonly />
-            <small style="color: #c0c0c0;">Calculado automaticamente das propostas</small>
+          <!-- Mão de Obra -->
+          <div class="valor-categoria">
+            <h5 style="color: #90EE90; margin-bottom: 0.5rem;">
+              <i class="fas fa-user-hard-hat"></i> Mão de Obra
+            </h5>
+            <div class="form-row">
+              <div>
+                <label for="mao-obra-min">Menor M.O. (R$)</label>
+                <input type="text" id="mao-obra-min" class="hvc-input" placeholder="0,00" readonly />
+                <small style="color: #c0c0c0;">Calculado das propostas</small>
+              </div>
+              
+              <div>
+                <label for="mao-obra-max">Maior M.O. (R$)</label>
+                <input type="text" id="mao-obra-max" class="hvc-input" placeholder="0,00" readonly />
+                <small style="color: #c0c0c0;">Calculado das propostas</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Material -->
+          <div class="valor-categoria">
+            <h5 style="color: #FFB6C1; margin-bottom: 0.5rem;">
+              <i class="fas fa-boxes"></i> Material
+            </h5>
+            <div class="form-row">
+              <div>
+                <label for="material-min">Menor Material (R$)</label>
+                <input type="text" id="material-min" class="hvc-input" placeholder="0,00" readonly />
+                <small style="color: #c0c0c0;">Calculado das propostas</small>
+              </div>
+              
+              <div>
+                <label for="material-max">Maior Material (R$)</label>
+                <input type="text" id="material-max" class="hvc-input" placeholder="0,00" readonly />
+                <small style="color: #c0c0c0;">Calculado das propostas</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Total (M.O + Material) -->
+          <div class="valor-categoria">
+            <h5 style="color: #87CEEB; margin-bottom: 0.5rem;">
+              <i class="fas fa-calculator"></i> Total (M.O + Material)
+            </h5>
+            <div class="form-row">
+              <div>
+                <label for="total-min">Menor Total (R$)</label>
+                <input type="text" id="total-min" class="hvc-input" placeholder="0,00" readonly />
+                <small style="color: #c0c0c0;">Calculado das propostas</small>
+              </div>
+              
+              <div>
+                <label for="total-max">Maior Total (R$)</label>
+                <input type="text" id="total-max" class="hvc-input" placeholder="0,00" readonly />
+                <small style="color: #c0c0c0;">Calculado das propostas</small>
+              </div>
+            </div>
           </div>
         </div>
 
