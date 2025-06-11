@@ -22,6 +22,7 @@ function createAdminSidebarHTML(projectContext = null) {
         projectSpecificLinks = `
             <li class="sub-menu"><a href="dashboard-hvc.html" id="nav-dashboard-hvc"><i class="fas fa-chart-line"></i> <span>Dashboard HVC</span></a></li>
             <li class="sub-menu"><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
+            <li class="sub-menu"><a href="servicos-hvc.html" id="nav-servicos-hvc"><i class="fas fa-tools"></i> <span>Serviços HVC</span></a></li>
             <li class="sub-menu"><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
             <li class="sub-menu"><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
             <li class="sub-menu"><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
