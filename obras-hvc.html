@@ -573,6 +573,110 @@
         ::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.5);
         }
+
+            /* Estilos para serviços da obra */
+    .servico-obra-item {
+        background: rgba(25, 25, 112, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 1rem;
+    }
+
+    .servico-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .servico-header h4 {
+        margin: 0;
+        color: #ffffff;
+        font-size: 1.1rem;
+    }
+
+    .remove-servico-btn {
+        background: linear-gradient(145deg, #8B0000, #DC143C);
+        color: #fff;
+        border: none;
+        border-radius: 6px;
+        padding: 0.5rem;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .remove-servico-btn:hover {
+        background: linear-gradient(145deg, #DC143C, #8B0000);
+        transform: translateY(-1px);
+    }
+
+    .servico-form {
+        display: grid;
+        gap: 1rem;
+    }
+
+    .form-row {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        align-items: end;
+    }
+
+    .form-full {
+        grid-column: 1 / -1;
+    }
+
+    .servico-select {
+        width: 100%;
+        padding: 0.8rem;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 8px;
+        background: rgba(0, 0, 128, 0.2);
+        color: #e0e0e0;
+        font-size: 1rem;
+    }
+
+    .servico-select option {
+        background: #191970;
+        color: #e0e0e0;
+    }
+
+    #servicos-obra-section {
+        background: rgba(25, 25, 112, 0.3);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 12px;
+        padding: 2rem;
+        margin-top: 2rem;
+    }
+
+    #servicos-obra-section h3 {
+        color: #ffffff;
+        margin-top: 0;
+        margin-bottom: 1.5rem;
+        text-align: center;
+    }
+
+    .add-servico-btn {
+        background: linear-gradient(145deg, #006400, #228B22);
+        color: #e0e0e0;
+        border: none;
+        border-radius: 8px;
+        padding: 0.8rem 1.5rem;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        margin-top: 1rem;
+        width: 100%;
+    }
+
+    .add-servico-btn:hover {
+        background: linear-gradient(145deg, #228B22, #006400);
+        transform: translateY(-2px);
+    }
+        
     </style>
 </head>
 <body>
@@ -603,8 +707,8 @@
                     </div>
                     <div class="form-grid">
                         <div class="form-group">
-                            <label for="valor-total">Valor Total</label>
-                            <input type="text" id="valor-total" name="valor-total" placeholder="R$ 0,00" readonly>
+                             <label for="valor-total">Valor Total da Obra (R$)</label>
+                            <input type="text" id="valor-total" class="hvc-input" placeholder="Será calculado automaticamente" readonly>
                         </div>
                     </div>
                     <div class="form-group">
@@ -626,6 +730,16 @@
                     <button type="button" class="btn btn-success btn-full" onclick="adicionarObra()">
                         <i class="fas fa-plus"></i> Adicionar Obra
                     </button>
+                            <!-- Seção de Serviços da Obra -->
+                            <div id="servicos-obra-section">
+                                <h3><i class="fas fa-tools"></i> Serviços da Obra</h3>
+                                <div id="servicos-obra-list">
+                                    <!-- Serviços serão adicionados aqui dinamicamente -->
+                                </div>
+                                <button type="button" onclick="addServicoObra()" class="add-servico-btn">
+                                    <i class="fas fa-plus"></i> Adicionar Serviço
+                                </button>
+                            </div>
                 </form>
             </div>
 
