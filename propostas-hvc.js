@@ -25,6 +25,7 @@ const statusMensagemTextarea = document.getElementById("status-mensagem");
 let currentPropostaId = null;
 let clientes = [];
 let propostas = [];
+let servicosDisponiveis = [];
 
 // Verificação de acesso
 async function checkAccess() {
@@ -105,6 +106,172 @@ async function loadClientes() {
         console.error('Erro ao carregar clientes:', error);
         alert('Erro ao carregar clientes. Verifique o console.');
     }
+}
+
+// Carregar serviços disponíveis
+async function loadServicos() {
+    try {
+        const { data, error } = await supabase
+            .from('servicos_hvc')
+            .select('*')
+            .order('numero');
+
+        if (error) throw error;
+
+        servicosDisponiveis = data || [];
+        populateServicoSelect();
+
+    } catch (error) {
+        console.error('Erro ao carregar serviços:', error);
+    }
+}
+
+// Popular select de serviços
+function populateServicoSelect() {
+    const servicoSelects = document.querySelectorAll('.servico-select');
+    
+    servicoSelects.forEach(select => {
+        select.innerHTML = '<option value="">Selecione um serviço</option>';
+        
+        servicosDisponiveis.forEach(servico => {
+            const option = document.createElement('option');
+            option.value = servico.numero;
+            option.textContent = `${servico.numero} - ${servico.descricao} (${servico.unidade_medida})`;
+            option.dataset.unidade = servico.unidade_medida;
+            select.appendChild(option);
+        });
+    });
+}
+
+// Atualizar item da proposta baseado no serviço selecionado
+function updateItemFromServico(selectElement) {
+    const itemDiv = selectElement.closest('.proposta-item');
+    const servicoNumero = selectElement.value;
+    
+    if (!servicoNumero) {
+        itemDiv.querySelector('input[name*="unidade"]').value = '';
+        return;
+    }
+    
+    const servico = servicosDisponiveis.find(s => s.numero === servicoNumero);
+    if (servico) {
+        itemDiv.querySelector('input[name*="unidade"]').value = servico.unidade_medida;
+        
+        const descricaoInput = itemDiv.querySelector('input[name*="descricao"]');
+        if (!descricaoInput.value.trim()) {
+            descricaoInput.placeholder = servico.descricao;
+        }
+    }
+}
+
+// Calcular total do item
+function calculateItemTotal(inputElement) {
+    const itemDiv = inputElement.closest('.proposta-item');
+    const quantidadeInput = itemDiv.querySelector('input[name*="quantidade"]');
+    const valorUnitarioInput = itemDiv.querySelector('input[name*="valor_unitario"]');
+    const totalInput = itemDiv.querySelector('input[name*="total"]');
+    
+    const quantidade = parseFloat(quantidadeInput.value) || 0;
+    const valorUnitario = parseFormattedValue(valorUnitarioInput.value) || 0;
+    const total = quantidade * valorUnitario;
+    
+    totalInput.value = formatCurrency(total);
+    calculatePropostaTotal();
+}
+
+// Calcular total da proposta
+function calculatePropostaTotal() {
+    const totalInputs = document.querySelectorAll('input[name*="total"]');
+    let totalGeral = 0;
+    
+    totalInputs.forEach(input => {
+        totalGeral += parseFormattedValue(input.value) || 0;
+    });
+    
+    const propostaValorInput = document.getElementById('proposta-valor');
+    if (propostaValorInput) {
+        propostaValorInput.value = formatCurrency(totalGeral);
+    }
+}
+
+// Adicionar item da proposta com serviços
+function addItemProposta() {
+    const itemsContainer = document.getElementById('proposta-items');
+    const itemIndex = itemsContainer.children.length;
+    
+    const itemDiv = document.createElement('div');
+    itemDiv.className = 'proposta-item';
+    itemDiv.innerHTML = `
+        <div class="item-header">
+            <h4>Item ${itemIndex + 1}</h4>
+            <button type="button" class="remove-item-btn" onclick="removeItemProposta(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        
+        <div class="item-form">
+            <div class="form-row">
+                <div>
+                    <label>Serviço</label>
+                    <select class="servico-select" name="servico_numero_${itemIndex}" onchange="updateItemFromServico(this)">
+                        <option value="">Selecione um serviço</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label>Descrição Personalizada (opcional)</label>
+                    <input type="text" name="descricao_${itemIndex}" placeholder="Deixe vazio para usar a descrição do serviço">
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label>Quantidade</label>
+                    <input type="number" name="quantidade_${itemIndex}" step="0.01" min="0" required onchange="calculateItemTotal(this)">
+                </div>
+                
+                <div>
+                    <label>Unidade</label>
+                    <input type="text" name="unidade_${itemIndex}" readonly placeholder="Selecione um serviço">
+                </div>
+                
+                <div>
+                    <label>Valor Unitário (R$)</label>
+                    <input type="text" name="valor_unitario_${itemIndex}" required onchange="calculateItemTotal(this)">
+                </div>
+                
+                <div>
+                    <label>Total (R$)</label>
+                    <input type="text" name="total_${itemIndex}" readonly>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    itemsContainer.appendChild(itemDiv);
+    
+    // Popular o select de serviços do novo item
+    populateServicoSelect();
+    
+    // Adicionar formatação monetária ao valor unitário
+    const valorInput = itemDiv.querySelector(`input[name="valor_unitario_${itemIndex}"]`);
+    valorInput.addEventListener('input', (e) => {
+        e.target.value = formatCurrency(e.target.value);
+    });
+}
+
+// Remover item da proposta
+function removeItemProposta(button) {
+    const itemDiv = button.closest('.proposta-item');
+    itemDiv.remove();
+    calculatePropostaTotal();
+    
+    // Renumerar os itens
+    const items = document.querySelectorAll('.proposta-item');
+    items.forEach((item, index) => {
+        const header = item.querySelector('.item-header h4');
+        header.textContent = `Item ${index + 1}`;
+    });
 }
 
 // Renderizar select de clientes
@@ -449,6 +616,7 @@ statusForm.addEventListener('submit', async (e) => {
 document.addEventListener('DOMContentLoaded', async () => {
     if (await checkAccess()) {
         await loadClientes();
+        await loadServicos();
         await loadPropostas();
         
         // Definir ano atual no formato
