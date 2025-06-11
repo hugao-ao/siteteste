@@ -291,11 +291,12 @@ window.editServico = (servicoId) => {
     submitBtn.innerHTML = '<i class="fas fa-save"></i> Atualizar Serviço';
     submitBtn.className = 'hvc-btn hvc-btn-warning';
     
-    cancelEditBtn.style.display = 'inline-block';
+    if (cancelEditBtn) cancelEditBtn.style.display = 'inline-block';
     
     // Scroll para o formulário
     addServicoForm.scrollIntoView({ behavior: 'smooth' });
 };
+
 
 // Excluir serviço
 window.deleteServico = async (servicoId) => {
