@@ -1238,7 +1238,7 @@ async function initForm() {
 
         // *** PROTEÇÃO DE SEGURANÇA CORRIGIDA ***
         // Verificar se o formulário é válido (sem exigir login)
-        const temPermissao = await window.AuthMiddleware.protegerFormulario(token);
+       /* const temPermissao = await window.AuthMiddleware.protegerFormulario(token);
         if (!temPermissao) {
           // Se não tem permissão, mostrar erro mas não redirecionar
           formContentEl.innerHTML = `
@@ -1248,7 +1248,7 @@ async function initForm() {
                 </div>
             `;
           return;
-        }
+        }*/
         // *** FIM DA PROTEÇÃO ***
 
         // Verificar se o token existe e está pendente
