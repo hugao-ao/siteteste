@@ -237,15 +237,20 @@ window.editServico = (servicoId) => {
 
     servicoEditando = servico;
     
+    // Preencher campos básicos
     servicoIdInput.value = servico.id;
     servicoNumeroInput.value = servico.numero;
     servicoDescricaoTextarea.value = servico.descricao;
     servicoUnidadeSelect.value = servico.unidade_medida;
     servicoObservacoesTextarea.value = servico.observacoes || '';
     
-    // Mostrar valores calculados
-    servicoValorMinInput.value = formatCurrency(servico.valor_minimo);
-    servicoValorMaxInput.value = formatCurrency(servico.valor_maximo);
+    // Preencher valores calculados (verificar se os elementos existem)
+    if (maoObraMinInput) maoObraMinInput.value = formatCurrency(servico.mao_obra_min || 0);
+    if (maoObraMaxInput) maoObraMaxInput.value = formatCurrency(servico.mao_obra_max || 0);
+    if (materialMinInput) materialMinInput.value = formatCurrency(servico.material_min || 0);
+    if (materialMaxInput) materialMaxInput.value = formatCurrency(servico.material_max || 0);
+    if (totalMinInput) totalMinInput.value = formatCurrency(servico.total_min || 0);
+    if (totalMaxInput) totalMaxInput.value = formatCurrency(servico.total_max || 0);
 
     // Alterar botão para modo edição
     const submitBtn = addServicoForm.querySelector('button[type="submit"]');
