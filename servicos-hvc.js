@@ -326,8 +326,14 @@ function clearForm() {
     servicoEditando = null;
     addServicoForm.reset();
     servicoIdInput.value = '';
-    servicoValorMinInput.value = '';
-    servicoValorMaxInput.value = '';
+    
+    // Limpar campos de valores (verificar se os elementos existem)
+    if (maoObraMinInput) maoObraMinInput.value = '';
+    if (maoObraMaxInput) maoObraMaxInput.value = '';
+    if (materialMinInput) materialMinInput.value = '';
+    if (materialMaxInput) materialMaxInput.value = '';
+    if (totalMinInput) totalMinInput.value = '';
+    if (totalMaxInput) totalMaxInput.value = '';
     
     const submitBtn = addServicoForm.querySelector('button[type="submit"]');
     submitBtn.innerHTML = '<i class="fas fa-plus"></i> Adicionar Serviço';
