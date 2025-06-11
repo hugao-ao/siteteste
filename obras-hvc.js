@@ -9,6 +9,7 @@ let medicaoAtual = null;
 let proximoNumeroObra = 1;
 let propostasDisponiveis = [];
 let propostasSelecionadas = new Set();
+let servicosDisponiveis = [];
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async function() {
@@ -69,6 +70,7 @@ async function inicializarPagina() {
     try {
         await carregarPropostasAprovadas();
         await carregarObras();
+        await loadServicos();
         await definirProximoNumero();
     } catch (error) {
         console.error('Erro ao inicializar página:', error);
@@ -1093,6 +1095,187 @@ async function carregarObras() {
             tbody.innerHTML = '<tr><td colspan="12" style="text-align: center; padding: 20px; color: #ff4444;">Erro ao carregar obras</td></tr>';
         }
     }
+}
+
+// Carregar serviços disponíveis
+async function loadServicos() {
+    try {
+        const { data, error } = await supabase
+            .from('servicos_hvc')
+            .select('*')
+            .order('numero');
+
+        if (error) throw error;
+
+        servicosDisponiveis = data || [];
+
+    } catch (error) {
+        console.error('Erro ao carregar serviços:', error);
+    }
+}
+
+// Popular select de serviços na obra
+function populateServicoSelectObra() {
+    const servicoSelects = document.querySelectorAll('.servico-select');
+    
+    servicoSelects.forEach(select => {
+        if (select.innerHTML.includes('Selecione um serviço') || select.innerHTML === '') {
+            select.innerHTML = '<option value="">Selecione um serviço</option>';
+            
+            servicosDisponiveis.forEach(servico => {
+                const option = document.createElement('option');
+                option.value = servico.numero;
+                option.textContent = `${servico.numero} - ${servico.descricao}`;
+                option.dataset.unidade = servico.unidade_medida;
+                option.dataset.descricao = servico.descricao;
+                select.appendChild(option);
+            });
+        }
+    });
+}
+
+// Atualizar serviço da obra
+function updateServicoFromCadastro(selectElement) {
+    const servicoDiv = selectElement.closest('.servico-obra-item');
+    const servicoNumero = selectElement.value;
+    
+    if (!servicoNumero) {
+        servicoDiv.querySelector('input[name*="unidade"]').value = '';
+        servicoDiv.querySelector('textarea[name*="descricao"]').value = '';
+        return;
+    }
+    
+    const servico = servicosDisponiveis.find(s => s.numero === servicoNumero);
+    if (servico) {
+        servicoDiv.querySelector('input[name*="unidade"]').value = servico.unidade_medida;
+        
+        const descricaoTextarea = servicoDiv.querySelector('textarea[name*="descricao"]');
+        if (!descricaoTextarea.value.trim()) {
+            descricaoTextarea.value = servico.descricao;
+        }
+    }
+}
+
+// Calcular total do serviço
+function calculateServicoTotal(inputElement) {
+    const servicoDiv = inputElement.closest('.servico-obra-item');
+    const quantidadeInput = servicoDiv.querySelector('input[name*="quantidade"]');
+    const valorUnitarioInput = servicoDiv.querySelector('input[name*="valor_unitario"]');
+    const valorTotalInput = servicoDiv.querySelector('input[name*="valor_total"]');
+    
+    const quantidade = parseFloat(quantidadeInput.value) || 0;
+    const valorUnitario = parseFormattedValue(valorUnitarioInput.value) || 0;
+    const total = quantidade * valorUnitario;
+    
+    valorTotalInput.value = formatCurrency(total);
+    calculateObraTotal();
+}
+
+// Calcular total da obra
+function calculateObraTotal() {
+    const valorTotalInputs = document.querySelectorAll('input[name*="valor_total"]');
+    let totalGeral = 0;
+    
+    valorTotalInputs.forEach(input => {
+        totalGeral += parseFormattedValue(input.value) || 0;
+    });
+    
+    const obraValorInput = document.getElementById('obra-valor-total');
+    if (obraValorInput) {
+        obraValorInput.value = formatCurrency(totalGeral);
+    }
+}
+
+// Adicionar serviço à obra
+function addServicoObra() {
+    const servicosContainer = document.getElementById('servicos-obra-list');
+    const servicoIndex = servicosContainer.children.length;
+    
+    const servicoDiv = document.createElement('div');
+    servicoDiv.className = 'servico-obra-item';
+    servicoDiv.innerHTML = `
+        <div class="servico-header">
+            <h4>Serviço ${servicoIndex + 1}</h4>
+            <button type="button" class="remove-servico-btn" onclick="removeServicoObra(this)">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+        
+        <div class="servico-form">
+            <div class="form-row">
+                <div>
+                    <label>Serviço Cadastrado</label>
+                    <select class="servico-select" name="servico_numero_${servicoIndex}" onchange="updateServicoFromCadastro(this)" required>
+                        <option value="">Selecione um serviço</option>
+                    </select>
+                </div>
+                
+                <div>
+                    <label>Status</label>
+                    <select name="status_${servicoIndex}" class="hvc-select" required>
+                        <option value="Não Iniciado">Não Iniciado</option>
+                        <option value="Em Andamento">Em Andamento</option>
+                        <option value="Concluído">Concluído</option>
+                        <option value="Pausado">Pausado</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div>
+                    <label>Quantidade Contratada</label>
+                    <input type="number" name="quantidade_${servicoIndex}" class="hvc-input" step="0.01" min="0" required onchange="calculateServicoTotal(this)">
+                </div>
+                
+                <div>
+                    <label>Unidade</label>
+                    <input type="text" name="unidade_${servicoIndex}" class="hvc-input" readonly placeholder="Selecione um serviço">
+                </div>
+                
+                <div>
+                    <label>Valor Unitário (R$)</label>
+                    <input type="text" name="valor_unitario_${servicoIndex}" class="hvc-input" required onchange="calculateServicoTotal(this)">
+                </div>
+                
+                <div>
+                    <label>Valor Total (R$)</label>
+                    <input type="text" name="valor_total_${servicoIndex}" class="hvc-input" readonly>
+                </div>
+            </div>
+            
+            <div class="form-row">
+                <div class="form-full">
+                    <label>Descrição/Observações</label>
+                    <textarea name="descricao_${servicoIndex}" class="hvc-textarea" rows="2" placeholder="Descrição detalhada do serviço na obra"></textarea>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    servicosContainer.appendChild(servicoDiv);
+    
+    // Popular o select de serviços do novo item
+    populateServicoSelectObra();
+    
+    // Adicionar formatação monetária ao valor unitário
+    const valorInput = servicoDiv.querySelector(`input[name="valor_unitario_${servicoIndex}"]`);
+    valorInput.addEventListener('input', (e) => {
+        e.target.value = formatCurrency(e.target.value);
+    });
+}
+
+// Remover serviço da obra
+function removeServicoObra(button) {
+    const servicoDiv = button.closest('.servico-obra-item');
+    servicoDiv.remove();
+    calculateObraTotal();
+    
+    // Renumerar os serviços
+    const servicos = document.querySelectorAll('.servico-obra-item');
+    servicos.forEach((servico, index) => {
+        const header = servico.querySelector('.servico-header h4');
+        header.textContent = `Serviço ${index + 1}`;
+    });
 }
 
 async function calcularValoresObra(obraId) {
