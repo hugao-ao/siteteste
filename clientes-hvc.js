@@ -164,8 +164,8 @@ function renderClientes() {
             </td>
             <td data-label="Documento">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span>${cliente.documento}</span>
-                    <small style="color: #c0c0c0;">(${cliente.tipo_documento})</small>
+                    <span>${cliente.documento || 'Não informado'}</span>
+                    ${cliente.tipo_documento ? `<small style="color: #c0c0c0;">(${cliente.tipo_documento})</small>` : ''}
                 </div>
             </td>
             <td data-label="Responsáveis">
@@ -183,6 +183,7 @@ function renderClientes() {
     `).join('');
 }
 
+
 // Adicionar cliente
 addClienteForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -190,53 +191,65 @@ addClienteForm.addEventListener('submit', async (e) => {
     const nome = clienteNomeInput.value.trim();
     const documento = clienteDocumentoInput.value.trim();
     
-    if (!nome || !documento) {
-        alert('Por favor, preencha todos os campos obrigatórios.');
+    // Validação: apenas nome é obrigatório
+    if (!nome) {
+        alert('Por favor, preencha o nome do cliente.');
         return;
     }
     
-    if (!validateDocument(documento)) {
-        alert('Documento inválido. Verifique o CPF ou CNPJ.');
+    // Se documento foi preenchido, validar
+    if (documento && !validateDocument(documento)) {
+        alert('Documento inválido. Verifique o CPF ou CNPJ ou deixe em branco.');
         return;
     }
     
-    const documentoNumbers = documento.replace(/\D/g, '');
-    const tipoDocumento = documentoNumbers.length === 11 ? 'CPF' : 'CNPJ';
+    // Verificar se cliente já existe (por nome ou documento se preenchido)
+    const clienteExistente = clientes.find(c => 
+        c.nome.toLowerCase() === nome.toLowerCase() || 
+        (documento && c.documento === documento)
+    );
+    
+    if (clienteExistente) {
+        if (clienteExistente.nome.toLowerCase() === nome.toLowerCase()) {
+            alert('Já existe um cliente com este nome.');
+        } else {
+            alert('Já existe um cliente com este documento.');
+        }
+        return;
+    }
     
     try {
+        // Determinar tipo de documento se preenchido
+        let tipoDocumento = null;
+        if (documento) {
+            const numbers = documento.replace(/\D/g, '');
+            tipoDocumento = numbers.length === 11 ? 'CPF' : 'CNPJ';
+        }
+        
         const { data, error } = await supabase
             .from('clientes_hvc')
             .insert([{
                 nome,
-                documento,
+                documento: documento || null,
                 tipo_documento: tipoDocumento
             }])
             .select();
 
-        if (error) {
-            if (error.code === '23505') {
-                if (error.message.includes('nome')) {
-                    alert('Já existe um cliente com este nome.');
-                } else if (error.message.includes('documento')) {
-                    alert('Já existe um cliente com este documento.');
-                }
-            } else {
-                throw error;
-            }
-            return;
-        }
+        if (error) throw error;
 
+        alert('Cliente adicionado com sucesso!');
+        
         // Limpar formulário
-        addClienteForm.reset();
+        clienteNomeInput.value = '';
+        clienteDocumentoInput.value = '';
         documentoTipoSpan.textContent = 'CPF';
         
         // Recarregar lista
         await loadClientes();
         
-        alert('Cliente adicionado com sucesso!');
     } catch (error) {
         console.error('Erro ao adicionar cliente:', error);
-        alert('Erro ao adicionar cliente. Verifique o console.');
+        alert('Erro ao adicionar cliente: ' + error.message);
     }
 });
 
