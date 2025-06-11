@@ -340,6 +340,220 @@
       text-shadow: 0 0 10px #ffffff;
       border-bottom: 1px solid rgba(255, 255, 255, 0.3);
       padding-bottom: 0.5rem;
+
+
+      /* CSS PARA O NOVO LAYOUT OTIMIZADO - ADICIONAR NO servicos-hvc.html */
+
+/* ADICIONE ESTE CSS NA SEÇÃO <style> DO ARQUIVO, APÓS OS ESTILOS EXISTENTES: */
+
+    /* Layout otimizado do formulário */
+    .servico-form-container {
+      background: rgba(25, 25, 112, 0.3);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+      backdrop-filter: blur(10px);
+    }
+
+    /* Primeira linha: Número, Unidade, Descrição e Observações */
+    .form-row-top {
+      display: grid;
+      grid-template-columns: 200px 200px 1fr 2fr;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      align-items: start;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-group label {
+      color: #ffffff;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+
+    .form-group-description textarea,
+    .form-group-observacoes textarea {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    /* Seção de valores */
+    .valores-section {
+      border-top: 2px solid rgba(255, 255, 255, 0.2);
+      padding-top: 1.5rem;
+      margin-top: 1.5rem;
+    }
+
+    .valores-title {
+      color: #ffffff;
+      text-shadow: 0 0 10px #ffffff;
+      font-size: 1.3rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+
+    /* Container da média */
+    .media-container {
+      display: flex;
+      justify-content: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .media-item {
+      background: linear-gradient(145deg, #000080, #191970);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      padding: 1rem 2rem;
+      text-align: center;
+      box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
+    }
+
+    .media-label {
+      color: #c0c0c0;
+      font-size: 0.9rem;
+      display: block;
+      margin-bottom: 0.3rem;
+    }
+
+    .media-value {
+      color: #ffffff;
+      font-size: 1.5rem;
+      font-weight: bold;
+      text-shadow: 0 0 10px #ffffff;
+      display: block;
+    }
+
+    .media-subtitle {
+      color: #a0a0a0;
+      font-size: 0.8rem;
+      margin-top: 0.3rem;
+      display: block;
+    }
+
+    /* Grid de valores em 3 colunas */
+    .valores-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    .valor-column {
+      background: rgba(0, 0, 128, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 1.5rem;
+    }
+
+    .column-title {
+      color: #ffffff;
+      text-shadow: 0 0 5px #ffffff;
+      font-size: 1.1rem;
+      margin-bottom: 1rem;
+      text-align: center;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 0.5rem;
+    }
+
+    .valor-group {
+      margin-bottom: 1rem;
+    }
+
+    .valor-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .valor-group label {
+      color: #e0e0e0;
+      font-weight: bold;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      display: block;
+    }
+
+    .valor-input {
+      background: rgba(0, 0, 128, 0.3) !important;
+      border: 1px solid rgba(255, 255, 255, 0.3) !important;
+      color: #ffffff !important;
+      text-align: center;
+      font-weight: bold;
+    }
+
+    .valor-group small {
+      color: #a0a0a0;
+      font-size: 0.75rem;
+      margin-top: 0.3rem;
+      display: block;
+      text-align: center;
+    }
+
+    /* Botão de adicionar */
+    .form-actions {
+      margin-top: 2rem;
+      text-align: center;
+    }
+
+    .btn-add-servico {
+      padding: 1rem 2rem;
+      font-size: 1.1rem;
+      background: linear-gradient(145deg, #228B22, #32CD32);
+      border: none;
+      border-radius: 8px;
+      color: #ffffff;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      text-shadow: 0 0 5px #ffffff;
+      box-shadow: 0 4px 15px rgba(34, 139, 34, 0.3);
+    }
+
+    .btn-add-servico:hover {
+      background: linear-gradient(145deg, #32CD32, #228B22);
+      box-shadow: 0 0 20px rgba(50, 205, 50, 0.5);
+      transform: translateY(-2px);
+    }
+
+    /* Responsividade */
+    @media (max-width: 1200px) {
+      .form-row-top {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto auto;
+      }
+      
+      .form-group-description {
+        grid-column: 1 / -1;
+      }
+      
+      .form-group-observacoes {
+        grid-column: 1 / -1;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .form-row-top {
+        grid-template-columns: 1fr;
+      }
+      
+      .valores-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .media-item {
+        padding: 0.8rem 1.5rem;
+      }
+      
+      .media-value {
+        font-size: 1.2rem;
+      }
+    }
+
+
     
   </style>
 </head>
@@ -367,120 +581,110 @@
         </div>
       </div>
 
-      <!-- Formulário para adicionar/editar serviço -->
-      <form id="add-servico-form" class="hvc-form">
-        <input type="hidden" id="servico-id" />
-        
-        <div>
-          <label for="servico-numero">Número do Serviço</label>
-          <input type="text" id="servico-numero" class="hvc-input" placeholder="Ex: S001" required />
-        </div>
-        
-        <div>
-          <label for="servico-unidade">Unidade de Medida</label>
-          <select id="servico-unidade" class="hvc-select" required>
-            <option value="">Selecione a unidade</option>
-            <option value="m²">Metro Quadrado (m²)</option>
-            <option value="m³">Metro Cúbico (m³)</option>
-            <option value="m">Metro Linear (m)</option>
-            <option value="un">Unidade (un)</option>
-            <option value="kg">Quilograma (kg)</option>
-            <option value="t">Tonelada (t)</option>
-            <option value="h">Hora (h)</option>
-            <option value="dia">Dia</option>
-            <option value="mês">Mês</option>
-            <option value="vb">Verba (vb)</option>
-            <option value="cj">Conjunto (cj)</option>
-            <option value="pç">Peça (pç)</option>
-          </select>
+ <!-- Formulário para Adicionar Serviço -->
+      <div class="servico-form-container">
+        <!-- Primeira linha: Número e Unidade -->
+        <div class="form-row-top">
+          <div class="form-group">
+            <label for="servico-numero">Número do Serviço</label>
+            <input type="text" id="servico-numero" class="hvc-input" placeholder="Ex: S001" required />
+          </div>
+          <div class="form-group">
+            <label for="servico-unidade">Unidade de Medida</label>
+            <select id="servico-unidade" class="hvc-select" required>
+              <option value="">Selecione a unidade</option>
+              <option value="m²">Metro Quadrado (m²)</option>
+              <option value="m³">Metro Cúbico (m³)</option>
+              <option value="m">Metro Linear (m)</option>
+              <option value="un">Unidade (un)</option>
+              <option value="kg">Quilograma (kg)</option>
+              <option value="t">Tonelada (t)</option>
+              <option value="l">Litro (l)</option>
+              <option value="h">Hora (h)</option>
+              <option value="dia">Dia</option>
+              <option value="mês">Mês</option>
+              <option value="ano">Ano</option>
+            </select>
+          </div>
+          <div class="form-group form-group-description">
+            <label for="servico-descricao">Descrição do Serviço</label>
+            <textarea id="servico-descricao" class="hvc-input" placeholder="Descreva detalhadamente o serviço..." required></textarea>
+          </div>
+          <div class="form-group form-group-observacoes">
+            <label for="servico-observacoes">Observações</label>
+            <textarea id="servico-observacoes" class="hvc-input" placeholder="Observações adicionais (opcional)"></textarea>
+          </div>
         </div>
 
-       <div class="valores-section">
-          <h4 style="color: #ffffff; margin-bottom: 1rem; text-align: center;">
-            <i class="fas fa-calculator"></i> Valores Praticados
-          </h4>
+        <!-- Seção de Valores Praticados -->
+        <div class="valores-section">
+          <h3 class="valores-title">💰 Valores Praticados</h3>
           
-          <!-- Mão de Obra -->
-          <div class="valor-categoria">
-            <h5 style="color: #90EE90; margin-bottom: 0.5rem;">
-              <i class="fas fa-user-hard-hat"></i> Mão de Obra
-            </h5>
-            <div class="form-row">
-              <div>
-                <label for="mao-obra-min">Menor M.O. (R$)</label>
-                <input type="text" id="mao-obra-min" class="hvc-input" placeholder="0,00" readonly />
-                <small style="color: #c0c0c0;">Calculado das propostas</small>
-              </div>
-              
-              <div>
-                <label for="mao-obra-max">Maior M.O. (R$)</label>
-                <input type="text" id="mao-obra-max" class="hvc-input" placeholder="0,00" readonly />
-                <small style="color: #c0c0c0;">Calculado das propostas</small>
-              </div>
+          <!-- Média no topo -->
+          <div class="media-container">
+            <div class="media-item">
+              <span class="media-label">Média:</span>
+              <span id="valor-medio" class="media-value">R$ 0,00</span>
+              <small class="media-subtitle">Cálculo da média de preço por unidade</small>
             </div>
           </div>
 
-          <!-- Material -->
-          <div class="valor-categoria">
-            <h5 style="color: #FFB6C1; margin-bottom: 0.5rem;">
-              <i class="fas fa-boxes"></i> Material
-            </h5>
-            <div class="form-row">
-              <div>
-                <label for="material-min">Menor Material (R$)</label>
-                <input type="text" id="material-min" class="hvc-input" placeholder="0,00" readonly />
-                <small style="color: #c0c0c0;">Calculado das propostas</small>
+          <!-- Grid de valores em 3 colunas -->
+          <div class="valores-grid">
+            <!-- Coluna Mão de Obra -->
+            <div class="valor-column">
+              <h4 class="column-title">🔧 Mão de Obra</h4>
+              <div class="valor-group">
+                <label>Menor M.O. (R$)</label>
+                <input type="number" id="mao-obra-min" class="hvc-input valor-input" placeholder="0,00" step="0.01" readonly />
+                <small>Calculado das propostas</small>
               </div>
-              
-              <div>
-                <label for="material-max">Maior Material (R$)</label>
-                <input type="text" id="material-max" class="hvc-input" placeholder="0,00" readonly />
-                <small style="color: #c0c0c0;">Calculado das propostas</small>
+              <div class="valor-group">
+                <label>Maior M.O. (R$)</label>
+                <input type="number" id="mao-obra-max" class="hvc-input valor-input" placeholder="0,00" step="0.01" readonly />
+                <small>Calculado das propostas</small>
               </div>
             </div>
-          </div>
 
-          <!-- Total (M.O + Material) -->
-          <div class="valor-categoria">
-            <h5 style="color: #87CEEB; margin-bottom: 0.5rem;">
-              <i class="fas fa-calculator"></i> Total (M.O + Material)
-            </h5>
-            <div class="form-row">
-              <div>
-                <label for="total-min">Menor Total (R$)</label>
-                <input type="text" id="total-min" class="hvc-input" placeholder="0,00" readonly />
-                <small style="color: #c0c0c0;">Calculado das propostas</small>
+            <!-- Coluna Material -->
+            <div class="valor-column">
+              <h4 class="column-title">🧱 Material</h4>
+              <div class="valor-group">
+                <label>Menor Material (R$)</label>
+                <input type="number" id="material-min" class="hvc-input valor-input" placeholder="0,00" step="0.01" readonly />
+                <small>Calculado das propostas</small>
               </div>
-              
-              <div>
-                <label for="total-max">Maior Total (R$)</label>
-                <input type="text" id="total-max" class="hvc-input" placeholder="0,00" readonly />
-                <small style="color: #c0c0c0;">Calculado das propostas</small>
+              <div class="valor-group">
+                <label>Maior Material (R$)</label>
+                <input type="number" id="material-max" class="hvc-input valor-input" placeholder="0,00" step="0.01" readonly />
+                <small>Calculado das propostas</small>
+              </div>
+            </div>
+
+            <!-- Coluna Total -->
+            <div class="valor-column">
+              <h4 class="column-title">💎 Total (M.O. + Material)</h4>
+              <div class="valor-group">
+                <label>Menor Total (R$)</label>
+                <input type="number" id="total-min" class="hvc-input valor-input" placeholder="0,00" step="0.01" readonly />
+                <small>Calculado das propostas</small>
+              </div>
+              <div class="valor-group">
+                <label>Maior Total (R$)</label>
+                <input type="number" id="total-max" class="hvc-input valor-input" placeholder="0,00" step="0.01" readonly />
+                <small>Calculado das propostas</small>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="form-full">
-          <label for="servico-descricao">Descrição do Serviço</label>
-          <textarea id="servico-descricao" class="hvc-textarea" rows="3" placeholder="Descreva detalhadamente o serviço..." required></textarea>
-        </div>
-
-        <div class="form-full">
-          <label for="servico-observacoes">Observações</label>
-          <textarea id="servico-observacoes" class="hvc-textarea" rows="2" placeholder="Observações adicionais (opcional)"></textarea>
-        </div>
-
-        <div class="form-full">
-          <button type="submit" class="hvc-btn hvc-btn-success">
+        <!-- Botão de adicionar -->
+        <div class="form-actions">
+          <button type="submit" id="add-servico-btn" class="hvc-btn btn-add-servico">
             <i class="fas fa-plus"></i> Adicionar Serviço
           </button>
-          <button type="button" id="cancel-edit-btn" class="hvc-btn" style="display: none; margin-left: 1rem;">
-            <i class="fas fa-times"></i> Cancelar
-          </button>
         </div>
-      </form>
-    </div>
+      </div>
 
     <!-- Lista de serviços -->
     <div class="hvc-container">
