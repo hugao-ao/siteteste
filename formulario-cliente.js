@@ -1236,21 +1236,6 @@ async function initForm() {
             return;
         }
 
-        // *** PROTEÇÃO DE SEGURANÇA CORRIGIDA ***
-        // Verificar se o formulário é válido (sem exigir login)
-       /* const temPermissao = await window.AuthMiddleware.protegerFormulario(token);
-        if (!temPermissao) {
-          // Se não tem permissão, mostrar erro mas não redirecionar
-          formContentEl.innerHTML = `
-                <div class="error-message">
-                    <h2>Link inválido ou expirado</h2>
-                    <p>O link que você está tentando acessar é inválido ou expirou. Entre em contato para solicitar um novo link.</p>
-                </div>
-            `;
-          return;
-        }*/
-        // *** FIM DA PROTEÇÃO ***
-
         // Verificar se o token existe e está pendente
         const { data: formData, error } = await supabase
             .from("formularios_clientes")
