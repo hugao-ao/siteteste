@@ -26,6 +26,30 @@ const servicosAtivosSpan = document.getElementById("servicos-ativos");
 
 // Variáveis globais
 let servicos = [];
+
+// Elementos do formulário
+const addServicoForm = document.getElementById('add-servico-form');
+const servicoIdInput = document.getElementById('servico-id');
+const servicoNumeroInput = document.getElementById('servico-numero');
+const servicoDescricaoTextarea = document.getElementById('servico-descricao');
+const servicoUnidadeSelect = document.getElementById('servico-unidade');
+const servicoObservacoesTextarea = document.getElementById('servico-observacoes');
+
+// Elementos dos valores calculados
+const maoObraMinInput = document.getElementById('mao-obra-min');
+const maoObraMaxInput = document.getElementById('mao-obra-max');
+const materialMinInput = document.getElementById('material-min');
+const materialMaxInput = document.getElementById('material-max');
+const totalMinInput = document.getElementById('total-min');
+const totalMaxInput = document.getElementById('total-max');
+
+// Elementos da lista
+const servicosTableBody = document.getElementById('servicos-table-body');
+const noServicosDiv = document.getElementById('no-servicos');
+const searchInput = document.getElementById('search-servicos');
+const cancelEditBtn = document.getElementById('cancel-edit-btn');
+
+// Variável de controle
 let servicoEditando = null;
 
 // Verificação de acesso
@@ -410,10 +434,58 @@ servicoNumeroInput.addEventListener('input', (e) => {
     e.target.value = value;
 });
 
-// Inicialização
+// FUNÇÃO DE INICIALIZAÇÃO SIMPLIFICADA
+
 document.addEventListener('DOMContentLoaded', async () => {
-    if (await checkAccess()) {
+    try {
+        console.log('Inicializando página de serviços...');
+        
+        // Verificar se os elementos existem
+        if (!servicoNumeroInput) {
+            console.error('Elemento servico-numero não encontrado');
+            return;
+        }
+        
+        // Carregar serviços
         await loadServicos();
+        
+        // Calcular valores min/max
+        await calcularValoresMinMax();
+        
+        // Renderizar lista
+        renderServicos();
+        
+        console.log('Página de serviços inicializada com sucesso');
+        
+    } catch (error) {
+        console.error('Erro ao inicializar página:', error);
     }
 });
+
+// FUNÇÃO PARA CARREGAR SERVIÇOS SIMPLIFICADA:
+
+async function loadServicos() {
+    try {
+        console.log('Carregando serviços...');
+        
+        const { data, error } = await supabase
+            .from('servicos_hvc')
+            .select('*')
+            .order('numero');
+
+        if (error) {
+            console.error('Erro do Supabase:', error);
+            throw error;
+        }
+
+        servicos = data || [];
+        console.log('Serviços carregados:', servicos.length);
+        
+    } catch (error) {
+        console.error('Erro ao carregar serviços:', error);
+        servicos = [];
+    }
+}
+
+
 
