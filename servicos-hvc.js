@@ -3,14 +3,15 @@ import { supabase } from "./supabase.js";
 
 // Elementos DOM
 const addServicoForm = document.getElementById("add-servico-form");
-const servicoIdInput = document.getElementById("servico-id");
-const servicoNumeroInput = document.getElementById("servico-numero");
-const servicoDescricaoTextarea = document.getElementById("servico-descricao");
-const servicoUnidadeSelect = document.getElementById("servico-unidade");
 const servicoValorMinInput = document.getElementById("servico-valor-min");
 const servicoValorMaxInput = document.getElementById("servico-valor-max");
-const servicoObservacoesTextarea = document.getElementById("servico-observacoes");
 const cancelEditBtn = document.getElementById("cancel-edit-btn");
+const maoObraMinInput = document.getElementById("mao-obra-min");
+const maoObraMaxInput = document.getElementById("mao-obra-max");
+const materialMinInput = document.getElementById("material-min");
+const materialMaxInput = document.getElementById("material-max");
+const totalMinInput = document.getElementById("total-min");
+const totalMaxInput = document.getElementById("total-max");
 
 // Busca
 const searchServicosInput = document.getElementById("search-servicos");
