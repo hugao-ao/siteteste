@@ -360,7 +360,7 @@
     /* Primeira linha: Número, Unidade, Descrição e Observações */
     .form-row-top {
       display: grid;
-      grid-template-columns: 200px 200px 1fr 2fr;
+      grid-template-columns: repeat(4, 1fr); /* 4 colunas de largura igual */
       gap: 1rem;
       margin-bottom: 2rem;
       align-items: start;
@@ -463,6 +463,10 @@
 
     .valor-group {
       margin-bottom: 1rem;
+      display: flex; /* Make it a flex container */
+      align-items: center; /* Align items vertically in the center */
+      gap: 0.5rem; /* Space between label and input */
+      flex-wrap: wrap; /* Allow items to wrap if space is limited */
     }
 
     .valor-group:last-child {
@@ -470,14 +474,16 @@
     }
 
     .valor-group label {
-      color: #e0e0e0;
-      font-weight: bold;
-      font-size: 0.9rem;
-      margin-bottom: 0.5rem;
-      display: block;
+      /* Remove display: block and margin-bottom */
+      margin-bottom: 0;
+      flex-shrink: 0; /* Prevent label from shrinking */
+      width: 120px; /* Give label a fixed width to align inputs */
+      text-align: right; /* Align label text to the right */
     }
 
     .valor-input {
+      flex-grow: 1; /* Allow input to take remaining space */
+      /* Keep existing styles */
       background: rgba(0, 0, 128, 0.3) !important;
       border: 1px solid rgba(255, 255, 255, 0.3) !important;
       color: #ffffff !important;
@@ -486,11 +492,10 @@
     }
 
     .valor-group small {
-      color: #a0a0a0;
-      font-size: 0.75rem;
+      /* Ensure small tag is on a new line and spans full width */
+      flex-basis: 100%; /* Take full width */
+      text-align: center; /* Center the text */
       margin-top: 0.3rem;
-      display: block;
-      text-align: center;
     }
 
     /* Botão de adicionar */
@@ -701,40 +706,29 @@
       </div>
 
       <!-- Tabela de serviços -->
-      <div style="overflow-x: auto;">
-        <table class="hvc-table" id="servicos-table">
-         <thead>
+      <div class="hvc-table-responsive">
+        <table class="hvc-table">
+          <thead>
             <tr>
               <th>Número</th>
               <th>Descrição</th>
               <th>Unidade</th>
-              <th>Mão de Obra (Min - Max)</th>
-              <th>Material (Min - Max)</th>
-              <th>Total (Min - Max)</th>
-              <th>Observações</th>
+              <th>M.O. Min/Max</th>
+              <th>Material Min/Max</th>
+              <th>Total Min/Max</th>
               <th>Ações</th>
             </tr>
           </thead>
-          <tbody>
-            <!-- Serviços serão listados aqui -->
+          <tbody id="servicos-table-body">
+            <!-- Serviços serão carregados aqui -->
           </tbody>
         </table>
-      </div>
-
-      <div id="no-servicos" style="text-align: center; padding: 2rem; color: #c0c0c0; display: none;">
-        <i class="fas fa-tools" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-        <p>Nenhum serviço cadastrado ainda.</p>
-        <p>Adicione o primeiro serviço usando o formulário acima.</p>
       </div>
     </div>
   </main>
 
-  <!-- Scripts -->
-  <script type="module" src="supabase.js"></script>
+  <script src="sidebar.js"></script>
   <script type="module" src="servicos-hvc.js"></script>
-  <script type="module">
-    import { injectSidebar } from './sidebar.js';
-    injectSidebar("main-content-servicos-hvc");
-  </script>
 </body>
 </html>
+
