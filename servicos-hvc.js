@@ -186,45 +186,78 @@ function updateStats() {
 // Adicionar/Editar serviço
 addServicoForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    const servicoData = {
-        numero: servicoNumeroInput.value.trim(),
-        descricao: servicoDescricaoTextarea.value.trim(),
-        unidade_medida: servicoUnidadeSelect.value,
-        observacoes: servicoObservacoesTextarea.value.trim() || null
-    };
-
+    
+    const numero = servicoNumeroInput.value.trim();
+    const descricao = servicoDescricaoTextarea.value.trim();
+    const unidadeMedida = servicoUnidadeSelect.value;
+    const observacoes = servicoObservacoesTextarea.value.trim();
+    
+    if (!numero || !descricao || !unidadeMedida) {
+        alert('Por favor, preencha todos os campos obrigatórios.');
+        return;
+    }
+    
     try {
         if (servicoEditando) {
-            // Editar serviço existente
+            // Atualizar serviço existente
             const { error } = await supabase
                 .from('servicos_hvc')
-                .update(servicoData)
+                .update({
+                    numero,
+                    descricao,
+                    unidade_medida: unidadeMedida,
+                    observacoes
+                })
                 .eq('id', servicoEditando.id);
-
+            
             if (error) throw error;
+            
+            // Atualizar o serviço na lista local
+            const index = servicos.findIndex(s => s.id === servicoEditando.id);
+            if (index !== -1) {
+                servicos[index] = {
+                    ...servicos[index],
+                    numero,
+                    descricao,
+                    unidade_medida: unidadeMedida,
+                    observacoes
+                };
+            }
+            
             alert('Serviço atualizado com sucesso!');
         } else {
-            // Verificar se o número já existe
-            const numeroExiste = servicos.some(s => s.numero === servicoData.numero);
-            if (numeroExiste) {
-                alert('Já existe um serviço com este número. Use um número diferente.');
-                return;
-            }
-
-            // Adicionar novo serviço
-            const { error } = await supabase
+            // Criar novo serviço
+            const { data, error } = await supabase
                 .from('servicos_hvc')
-                .insert([servicoData]);
-
+                .insert([{
+                    numero,
+                    descricao,
+                    unidade_medida: unidadeMedida,
+                    observacoes,
+                    mao_obra_min: 0,
+                    mao_obra_max: 0,
+                    material_min: 0,
+                    material_max: 0,
+                    total_min: 0,
+                    total_max: 0
+                }])
+                .select();
+            
             if (error) throw error;
+            
+            // Adicionar o novo serviço à lista local
+            if (data && data[0]) {
+                servicos.push(data[0]);
+            }
+            
             alert('Serviço adicionado com sucesso!');
         }
-
-        // Limpar formulário e recarregar
+        
+        // Recalcular valores e atualizar a exibição
+        await calcularValoresMinMax();
+        renderServicos();
         clearForm();
-        await loadServicos();
-
+        
     } catch (error) {
         console.error('Erro ao salvar serviço:', error);
         alert('Erro ao salvar serviço: ' + error.message);
