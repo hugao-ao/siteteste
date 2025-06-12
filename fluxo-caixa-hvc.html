@@ -50,8 +50,9 @@
     <i class="fas fa-money-bill-wave construction-icon"></i>
     <div class="construction-message">Página de Fluxo de Caixa HVC em Construção</div>
   </main>
-  <script src="sidebar.js"></script>
-  <script>
+  <script type="module" src="sidebar.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
     document.addEventListener('DOMContentLoaded', () => {
       if (typeof injectSidebar === 'function') {
         injectSidebar('main-content-fluxo-caixa-hvc');
