@@ -114,8 +114,8 @@ class PropostasManager {
             }
             if (btnAddServico) {
                 btnAddServico.addEventListener('click', () => {
-                    console.log('Botão Adicionar Serviço clicado');
-                    this.addServicoToProposta();
+                    console.log('Botão Adicionar Serviço clicado - abrindo modal para CRIAR novo serviço');
+                    this.showModalServico(); // Abrir modal para criar novo serviço
                 });
             }
             
@@ -324,11 +324,15 @@ class PropostasManager {
     }
 
     showModalServico() {
+        console.log('Abrindo modal para criar novo serviço...');
         const modal = document.getElementById('modal-servico');
         if (modal) {
             modal.classList.add('show');
             const codigoInput = document.getElementById('servico-codigo');
             if (codigoInput) codigoInput.focus();
+            console.log('Modal de serviço aberto com sucesso');
+        } else {
+            console.error('Modal de serviço não encontrado no DOM');
         }
     }
 
@@ -344,12 +348,16 @@ class PropostasManager {
     async handleSubmitServico(e) {
         e.preventDefault();
         
+        console.log('Salvando novo serviço...');
+        
         const servicoData = {
             codigo: document.getElementById('servico-codigo').value,
             descricao: document.getElementById('servico-descricao').value,
             detalhe: document.getElementById('servico-detalhe').value,
             unidade: document.getElementById('servico-unidade').value
         };
+
+        console.log('Dados do serviço:', servicoData);
 
         try {
             const { data, error } = await supabaseClient
@@ -360,6 +368,7 @@ class PropostasManager {
 
             if (error) throw error;
 
+            console.log('Serviço criado:', data);
             this.servicos.push(data);
             this.hideModalServico();
             this.showNotification('Serviço adicionado com sucesso!', 'success');
