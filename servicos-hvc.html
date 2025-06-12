@@ -70,8 +70,8 @@
 
     .form-section h2 {
       color: #add8e6;
-      margin-bottom: 1.5rem;
-      font-size: 1.5rem;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
       text-align: center;
     }
 
@@ -79,25 +79,40 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 1.5rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-row-three {
+      display: grid;
+      grid-template-columns: 1fr 2fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-row-detail {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: end;
     }
 
     .form-row-full {
       display: grid;
       grid-template-columns: 1fr;
       gap: 1.5rem;
-      margin-bottom: 1.5rem;
+      margin-bottom: 1rem;
     }
 
     @media (max-width: 768px) {
-      .form-row {
+      .form-row, .form-row-three, .form-row-detail {
         grid-template-columns: 1fr;
-        gap: 1rem;
+        gap: 0.8rem;
       }
     }
 
     .form-group {
-      margin-bottom: 1.5rem;
+      margin-bottom: 0.8rem;
     }
 
     .form-group label {
@@ -368,7 +383,7 @@
         <h2 id="form-title"><i class="fas fa-plus"></i> Adicionar Novo Serviço</h2>
         
         <form id="service-form">
-          <div class="form-row">
+          <div class="form-row-three">
             <div class="form-group">
               <label for="service-code">Código do Serviço <span class="required">*</span></label>
               <input type="text" id="service-code" name="codigo" required>
@@ -379,13 +394,6 @@
               <label for="service-description">Descrição <span class="required">*</span></label>
               <input type="text" id="service-description" name="descricao" required>
               <div class="error-message" id="description-error">Descrição é obrigatória</div>
-            </div>
-          </div>
-
-          <div class="form-row">
-            <div class="form-group">
-              <label for="service-detail">Detalhe</label>
-              <textarea id="service-detail" name="Detalhe" placeholder="Informações adicionais sobre o serviço (opcional)"></textarea>
             </div>
 
             <div class="form-group">
@@ -406,13 +414,20 @@
             </div>
           </div>
 
-          <div class="form-buttons">
-            <button type="submit" class="btn btn-primary" id="submit-btn">
-              <i class="fas fa-save"></i> Salvar Serviço
-            </button>
-            <button type="button" class="btn btn-secondary" id="cancel-btn" style="display: none;">
-              <i class="fas fa-times"></i> Cancelar
-            </button>
+          <div class="form-row-detail">
+            <div class="form-group">
+              <label for="service-detail">Detalhe</label>
+              <textarea id="service-detail" name="Detalhe" placeholder="Informações adicionais sobre o serviço (opcional)"></textarea>
+            </div>
+
+            <div class="form-buttons">
+              <button type="submit" class="btn btn-primary" id="submit-btn">
+                <i class="fas fa-save"></i> Salvar Serviço
+              </button>
+              <button type="button" class="btn btn-secondary" id="cancel-btn" style="display: none;">
+                <i class="fas fa-times"></i> Cancelar
+              </button>
+            </div>
           </div>
         </form>
       </div>
