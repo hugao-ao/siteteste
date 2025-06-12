@@ -4,10 +4,11 @@
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Propostas HVC - Em Construção</title>
+  <title>Propostas HVC - Gerenciamento</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
+    /* Estilos específicos para a página de propostas */
     body {
       display: flex;
       margin: 0;
@@ -16,6 +17,7 @@
       color: #e0e0e0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
+
     #main-content-propostas-hvc {
       flex-grow: 1;
       padding: 2rem;
@@ -23,34 +25,699 @@
       transition: margin-left 0.3s ease;
       background: linear-gradient(135deg, #000080, #191970);
       color: #e0e0e0;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      text-align: center;
     }
+
     #main-content-propostas-hvc.sidebar-collapsed {
       margin-left: 60px;
     }
-    .construction-message {
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .page-title {
       font-size: 2.5rem;
       font-weight: bold;
       color: #add8e6;
       text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
     }
-    .construction-icon {
-      font-size: 5rem;
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d, #5a6268);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #28a745, #218838);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Formulário de Nova Proposta */
+    .form-section {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .form-section.hidden {
+      display: none;
+    }
+
+    .form-title {
+      font-size: 1.5rem;
+      font-weight: 600;
       color: #add8e6;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
       margin-bottom: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-label {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+    }
+
+    .form-input {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      color: #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: #add8e6;
+      box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
+    }
+
+    .form-select {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      color: #e0e0e0;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .input-group .form-input {
+      flex: 1;
+    }
+
+    .btn-add {
+      background: linear-gradient(135deg, #17a2b8, #138496);
+      color: white;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    /* Tabela de Serviços */
+    .services-section {
+      margin: 2rem 0;
+    }
+
+    .services-table {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .services-table th,
+    .services-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+    }
+
+    .services-table th {
+      background: rgba(173, 216, 230, 0.1);
+      font-weight: 600;
+      color: #add8e6;
+    }
+
+    .services-table tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .services-table input {
+      background: transparent;
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 4px;
+      padding: 8px;
+      color: #e0e0e0;
+      width: 100%;
+    }
+
+    .total-display {
+      background: rgba(76, 175, 80, 0.2);
+      border: 2px solid #4CAF50;
+      border-radius: 10px;
+      padding: 1rem;
+      margin: 1rem 0;
+      text-align: center;
+    }
+
+    .total-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+
+    /* Lista de Propostas */
+    .proposals-list {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .proposals-table {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .proposals-table th,
+    .proposals-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+    }
+
+    .proposals-table th {
+      background: rgba(173, 216, 230, 0.1);
+      font-weight: 600;
+      color: #add8e6;
+    }
+
+    .proposals-table tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    .status-pendente {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+      border: 1px solid #ffc107;
+    }
+
+    .status-aprovada {
+      background: rgba(40, 167, 69, 0.2);
+      color: #28a745;
+      border: 1px solid #28a745;
+    }
+
+    .status-recusada {
+      background: rgba(220, 53, 69, 0.2);
+      color: #dc3545;
+      border: 1px solid #dc3545;
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Modal */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #000080, #191970);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 15px;
+      padding: 2rem;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .modal-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #add8e6;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: #e0e0e0;
+      cursor: pointer;
+      transition: color 0.3s ease;
+    }
+
+    .close-modal:hover {
+      color: #add8e6;
+    }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 1rem;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(173, 216, 230, 0.3);
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      #main-content-propostas-hvc {
+        margin-left: 0;
+        padding: 1rem;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .page-header {
+        flex-direction: column;
+        gap: 1rem;
+        text-align: center;
+      }
+
+      .services-table,
+      .proposals-table {
+        font-size: 0.9rem;
+      }
+
+      .modal-content {
+        width: 95%;
+        padding: 1rem;
+      }
+    }
+
+    /* Animações */
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .loading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      margin: -10px 0 0 -10px;
+      border: 2px solid #add8e6;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
     }
   </style>
 </head>
 <body>
   <main id="main-content-propostas-hvc">
-    <i class="fas fa-file-contract construction-icon"></i>
-    <div class="construction-message">Página de Propostas HVC em Construção</div>
+    <!-- Cabeçalho da Página -->
+    <div class="page-header">
+      <h1 class="page-title">
+        <i class="fas fa-file-contract"></i>
+        Gerenciamento de Propostas HVC
+      </h1>
+      <button class="btn-primary" id="btn-nova-proposta">
+        <i class="fas fa-plus"></i>
+        Nova Proposta
+      </button>
+    </div>
+
+    <!-- Formulário de Nova/Editar Proposta -->
+    <div class="form-section hidden" id="form-proposta">
+      <div class="form-title">
+        <i class="fas fa-edit"></i>
+        <span id="form-title-text">Nova Proposta</span>
+      </div>
+
+      <form id="proposta-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="numero-proposta">
+              Número da Proposta *
+            </label>
+            <input 
+              type="text" 
+              id="numero-proposta" 
+              class="form-input" 
+              placeholder="0000/0000"
+              maxlength="9"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cliente-select">
+              Cliente *
+            </label>
+            <div class="input-group">
+              <select id="cliente-select" class="form-select" required>
+                <option value="">Selecione um cliente...</option>
+              </select>
+              <button type="button" class="btn-add" id="btn-add-cliente">
+                <i class="fas fa-plus"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="status-select">
+              Status *
+            </label>
+            <select id="status-select" class="form-select" required>
+              <option value="Pendente">Pendente</option>
+              <option value="Aprovada">Aprovada</option>
+              <option value="Recusada">Recusada</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Seção de Serviços -->
+        <div class="services-section">
+          <div class="form-title">
+            <i class="fas fa-tools"></i>
+            Serviços da Proposta
+            <button type="button" class="btn-add" id="btn-add-servico">
+              <i class="fas fa-plus"></i>
+              Adicionar Serviço
+            </button>
+          </div>
+
+          <table class="services-table" id="services-table">
+            <thead>
+              <tr>
+                <th>Serviço</th>
+                <th>Quantidade</th>
+                <th>Unidade</th>
+                <th>Mão de Obra (R$)</th>
+                <th>Material (R$)</th>
+                <th>Total (R$)</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="services-tbody">
+              <!-- Serviços serão adicionados dinamicamente -->
+            </tbody>
+          </table>
+
+          <div class="total-display">
+            <div>Total da Proposta:</div>
+            <div class="total-value" id="total-proposta">R$ 0,00</div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="observacoes">
+            Observações
+          </label>
+          <textarea 
+            id="observacoes" 
+            class="form-input" 
+            rows="3"
+            placeholder="Observações adicionais sobre a proposta..."
+          ></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="btn-cancelar">
+            <i class="fas fa-times"></i>
+            Cancelar
+          </button>
+          <button type="submit" class="btn-success" id="btn-salvar">
+            <i class="fas fa-save"></i>
+            Salvar Proposta
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de Propostas -->
+    <div class="proposals-list" id="proposals-list">
+      <div class="form-title">
+        <i class="fas fa-list"></i>
+        Lista de Propostas
+      </div>
+
+      <table class="proposals-table" id="proposals-table">
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Cliente</th>
+            <th>Status</th>
+            <th>Total</th>
+            <th>Data</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="proposals-tbody">
+          <!-- Propostas serão carregadas dinamicamente -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Modal Adicionar Serviço -->
+    <div class="modal" id="modal-servico">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Adicionar Novo Serviço</h3>
+          <button class="close-modal" id="close-modal-servico">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <form id="servico-form">
+          <div class="form-group">
+            <label class="form-label" for="servico-codigo">
+              Código do Serviço *
+            </label>
+            <input 
+              type="text" 
+              id="servico-codigo" 
+              class="form-input" 
+              placeholder="Ex: SV001"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="servico-descricao">
+              Descrição *
+            </label>
+            <input 
+              type="text" 
+              id="servico-descricao" 
+              class="form-input" 
+              placeholder="Ex: Instalação elétrica"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="servico-detalhe">
+              Detalhes
+            </label>
+            <textarea 
+              id="servico-detalhe" 
+              class="form-input" 
+              rows="3"
+              placeholder="Detalhes adicionais do serviço..."
+            ></textarea>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="servico-unidade">
+              Unidade de Medida
+            </label>
+            <input 
+              type="text" 
+              id="servico-unidade" 
+              class="form-input" 
+              placeholder="Ex: m², un, m"
+            >
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="cancel-servico">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-success">
+              <i class="fas fa-save"></i>
+              Salvar Serviço
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+
+    <!-- Modal Adicionar Cliente -->
+    <div class="modal" id="modal-cliente">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Adicionar Novo Cliente</h3>
+          <button class="close-modal" id="close-modal-cliente">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <form id="cliente-form">
+          <div class="form-group">
+            <label class="form-label" for="cliente-nome">
+              Nome do Cliente *
+            </label>
+            <input 
+              type="text" 
+              id="cliente-nome" 
+              class="form-input" 
+              placeholder="Nome completo do cliente"
+              required
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cliente-documento">
+              Documento
+            </label>
+            <input 
+              type="text" 
+              id="cliente-documento" 
+              class="form-input" 
+              placeholder="CPF ou CNPJ"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cliente-tipo-documento">
+              Tipo de Documento
+            </label>
+            <select id="cliente-tipo-documento" class="form-select">
+              <option value="">Selecione...</option>
+              <option value="CPF">CPF</option>
+              <option value="CNPJ">CNPJ</option>
+            </select>
+          </div>
+
+          <div class="modal-footer">
+            <button type="button" class="btn-secondary" id="cancel-cliente">
+              Cancelar
+            </button>
+            <button type="submit" class="btn-success">
+              <i class="fas fa-save"></i>
+              Salvar Cliente
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   </main>
+
   <script type="module" src="sidebar.js"></script>
+  <script type="module" src="propostas-hvc.js"></script>
   <script type="module">
     import { injectSidebar } from './sidebar.js';
     document.addEventListener('DOMContentLoaded', () => {
