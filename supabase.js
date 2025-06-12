@@ -1,4 +1,4 @@
-// supabase.js - Configuração do Supabase (VERSÃO ROBUSTA)
+// supabase.js - Configuração do Supabase (VERSÃO ROBUSTA COM CORS FIX)
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
 
 // Configurações do projeto Supabase
@@ -13,14 +13,40 @@ try {
         throw new Error('Configurações do Supabase não encontradas');
     }
     
-    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    // Configurações adicionais para resolver problemas de CORS
+    const options = {
         auth: {
             persistSession: true,
             autoRefreshToken: true
+        },
+        global: {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type, Authorization'
+            }
         }
-    });
+    };
+    
+    supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, options);
     
     console.log('Supabase inicializado com sucesso');
+    
+    // Adicionar interceptor para todas as requisições
+    const originalFetch = window.fetch;
+    window.fetch = function(url, options = {}) {
+        // Adicionar cabeçalhos CORS para todas as requisições
+        if (!options.headers) {
+            options.headers = {};
+        }
+        
+        options.headers['Access-Control-Allow-Origin'] = '*';
+        options.headers['Access-Control-Allow-Methods'] = 'GET, POST, PUT, DELETE, OPTIONS';
+        options.headers['Access-Control-Allow-Headers'] = 'Content-Type, Authorization';
+        
+        return originalFetch(url, options);
+    };
+    
 } catch (error) {
     console.error('Erro ao inicializar Supabase:', error);
     
