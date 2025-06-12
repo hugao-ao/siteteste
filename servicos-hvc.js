@@ -51,16 +51,16 @@ class ServicesManager {
     e.preventDefault();
     if (!this.validateForm()) return;
 
-    const code = document.getElementById('service-code').value.trim();
-    const description = document.getElementById('service-description').value.trim();
-    const detail = document.getElementById('service-detail').value.trim();
-    const unit = document.getElementById('service-unit').value;
+    const codigo = document.getElementById('service-code').value.trim();
+    const descricao = document.getElementById('service-description').value.trim();
+    const detalhe = document.getElementById('service-detail').value.trim();
+    const unidade = document.getElementById('service-unit').value;
 
     const service = {
-      code,
-      description,
-      detail,
-      unit,
+      codigo,
+      descricao,
+      detalhe,
+      unidade,
       updated_at: new Date().toISOString()
     };
 
@@ -98,10 +98,10 @@ class ServicesManager {
     const service = this.services.find(s => s.id === id);
     if (!service) return;
     this.editingId = id;
-    document.getElementById('service-code').value = service.code;
-    document.getElementById('service-description').value = service.description;
-    document.getElementById('service-detail').value = service.detail || '';
-    document.getElementById('service-unit').value = service.unit || '';
+    document.getElementById('service-code').value = service.codigo;
+    document.getElementById('service-description').value = service.descricao;
+    document.getElementById('service-detail').value = service.detalhe || '';
+    document.getElementById('service-unit').value = service.unidade || '';
     const formTitle = document.getElementById('form-title');
     const submitBtn = document.getElementById('submit-btn');
     if (formTitle) formTitle.innerHTML = '<i class="fas fa-edit"></i> Editar Serviço';
@@ -113,7 +113,7 @@ class ServicesManager {
     const service = this.services.find(s => s.id === id);
     if (!service) return;
     const deleteName = document.getElementById('delete-service-name');
-    if (deleteName) deleteName.textContent = service.description;
+    if (deleteName) deleteName.textContent = service.descricao;
     const modal = document.getElementById('delete-modal');
     if (modal) modal.style.display = 'block';
     this.deletingId = id;
@@ -174,9 +174,9 @@ class ServicesManager {
   handleSearch(e) {
     const searchTerm = e.target.value.toLowerCase();
     const filtered = this.services.filter(service =>
-      service.code.toLowerCase().includes(searchTerm) ||
-      service.description.toLowerCase().includes(searchTerm) ||
-      (service.detail && service.detail.toLowerCase().includes(searchTerm))
+      service.codigo.toLowerCase().includes(searchTerm) ||
+      service.descricao.toLowerCase().includes(searchTerm) ||
+      (service.detalhe && service.detalhe.toLowerCase().includes(searchTerm))
     );
     this.renderServices(filtered);
   }
@@ -188,10 +188,10 @@ class ServicesManager {
 
     tbody.innerHTML = services.map(service => `
       <tr>
-        <td><strong>${this.escape(service.code)}</strong></td>
-        <td>${this.escape(service.description)}</td>
-        <td>${service.detail ? this.escape(service.detail) : '<em>-</em>'}</td>
-        <td>${service.unit ? `<span class="unit-badge">${this.escape(service.unit)}</span>` : '<em>-</em>'}</td>
+        <td><strong>${this.escape(service.codigo)}</strong></td>
+        <td>${this.escape(service.descricao)}</td>
+        <td>${service.detalhe ? this.escape(service.detalhe) : '<em>-</em>'}</td>
+        <td>${service.unidade ? `<span class="unit-badge">${this.escape(service.unidade)}</span>` : '<em>-</em>'}</td>
         <td>
           <div class="action-buttons">
             <button class="btn btn-edit btn-small" onclick="servicesManager.editService('${service.id}')"><i class="fas fa-edit"></i></button>
