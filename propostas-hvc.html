@@ -47,11 +47,81 @@
       text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
     }
 
+    .filters-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 15px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .filters-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .filters-header h3 {
+      color: #add8e6;
+      margin: 0;
+      font-size: 1.2rem;
+    }
+
+    .filters-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .filter-group label {
+      color: #add8e6;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .filter-group input,
+    .filter-group select {
+      padding: 0.5rem;
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 5px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
+      font-size: 0.9rem;
+    }
+
+    .filter-group input:focus,
+    .filter-group select:focus {
+      outline: none;
+      border-color: #add8e6;
+      box-shadow: 0 0 5px rgba(173, 216, 230, 0.3);
+    }
+
+    .btn-toggle-price {
+      background: rgba(173, 216, 230, 0.2);
+      border: 1px solid #add8e6;
+      color: #add8e6;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .btn-toggle-price:hover {
+      background: rgba(173, 216, 230, 0.3);
+      transform: translateY(-1px);
+    }
+
     .btn-primary {
-      background: linear-gradient(135deg, #4CAF50, #45a049);
-      color: white;
-      border: none;
-      padding: 12px 24px;
       border-radius: 8px;
       cursor: pointer;
       font-size: 1rem;
@@ -438,15 +508,61 @@
 <body>
   <main id="main-content-propostas-hvc">
     <!-- Cabeçalho da Página -->
-    <div class="page-header">
-      <h1 class="page-title">
+     <div class="page-header">
+      <div class="page-title">
         <i class="fas fa-file-contract"></i>
-        Gerenciamento de Propostas HVC
-      </h1>
+        Propostas HVC
+      </div>
       <button class="btn-primary" id="btn-nova-proposta">
         <i class="fas fa-plus"></i>
         Nova Proposta
       </button>
+    </div>
+
+    <!-- Filtros da Lista -->
+    <div class="filters-section" id="filters-section">
+      <div class="filters-header">
+        <h3><i class="fas fa-filter"></i> Filtros</h3>
+        <button class="btn-secondary" onclick="window.propostasManager.clearFilters()">
+          <i class="fas fa-times"></i>
+          Limpar Filtros
+        </button>
+      </div>
+      
+      <div class="filters-row">
+        <div class="filter-group">
+          <label for="filter-status">Status:</label>
+          <select id="filter-status" onchange="window.propostasManager.applyFilters()">
+            <option value="">Todos</option>
+            <option value="Pendente">Pendente</option>
+            <option value="Aprovada">Aprovada</option>
+            <option value="Recusada">Recusada</option>
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="filter-cliente">Cliente:</label>
+          <select id="filter-cliente" onchange="window.propostasManager.applyFilters()">
+            <option value="">Todos os clientes</option>
+            <!-- Será populado dinamicamente -->
+          </select>
+        </div>
+        
+        <div class="filter-group">
+          <label for="filter-numero">Número:</label>
+          <input type="text" id="filter-numero" placeholder="Ex: 0001/2024" onkeyup="window.propostasManager.applyFilters()">
+        </div>
+        
+        <div class="filter-group">
+          <label for="filter-data-inicio">Data Início:</label>
+          <input type="date" id="filter-data-inicio" onchange="window.propostasManager.applyFilters()">
+        </div>
+        
+        <div class="filter-group">
+          <label for="filter-data-fim">Data Fim:</label>
+          <input type="date" id="filter-data-fim" onchange="window.propostasManager.applyFilters()">
+        </div>
+      </div>
     </div>
 
     <!-- Formulário de Nova/Editar Proposta -->
@@ -552,6 +668,7 @@
                 <th>Serviço</th>
                 <th>Quantidade</th>
                 <th>Unidade</th>
+                <th>Modo Preço</th>
                 <th>Mão de Obra (R$)</th>
                 <th>Material (R$)</th>
                 <th>Total (R$)</th>
