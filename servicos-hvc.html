@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Gerenciamento de Serviços HVC</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+    
+    #main-content-servicos-hvc {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+    }
+    
+    #main-content-servicos-hvc.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    .page-header {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .page-header h1 {
+      color: #add8e6;
+      font-size: 2.5rem;
+      margin-bottom: 0.5rem;
+      text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
+    }
+
+    .page-header p {
+      color: #e0e0e0;
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    .services-container {
+      display: grid;
+      gap: 2rem;
+      grid-template-columns: 1fr 2fr;
+      align-items: start;
+    }
+
+    @media (max-width: 1200px) {
+      .services-container {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-section {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2rem;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .form-section h2 {
+      color: #add8e6;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #e0e0e0;
+      font-weight: 600;
+    }
+
+    .required {
+      color: #ff6b6b;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.8rem;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: #add8e6;
+      box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
+    }
+
+    .form-group textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    .form-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      margin-top: 2rem;
+    }
+
+    .btn {
+      padding: 0.8rem 2rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary {
+      background: linear-gradient(45deg, #4CAF50, #45a049);
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(45deg, #45a049, #3d8b40);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(45deg, #6c757d, #5a6268);
+      color: white;
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(45deg, #5a6268, #495057);
+      transform: translateY(-2px);
+    }
+
+    .btn-danger {
+      background: linear-gradient(45deg, #dc3545, #c82333);
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background: linear-gradient(45deg, #c82333, #bd2130);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
+    }
+
+    .btn-edit {
+      background: linear-gradient(45deg, #ffc107, #e0a800);
+      color: #212529;
+    }
+
+    .btn-edit:hover {
+      background: linear-gradient(45deg, #e0a800, #d39e00);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+    }
+
+    .table-section {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 2rem;
+      border-radius: 15px;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .table-section h2 {
+      color: #add8e6;
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+
+    .table-container {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .services-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .services-table th,
+    .services-table td {
+      padding: 1rem;
+      text-align: left;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .services-table th {
+      background: rgba(255, 255, 255, 0.1);
+      color: #add8e6;
+      font-weight: 600;
+      position: sticky;
+      top: 0;
+    }
+
+    .services-table tr:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-small {
+      padding: 0.4rem 0.8rem;
+      font-size: 0.9rem;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: #a0a0a0;
+    }
+
+    .empty-state i {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #000080, #191970);
+      margin: 15% auto;
+      padding: 2rem;
+      border-radius: 15px;
+      width: 90%;
+      max-width: 500px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      text-align: center;
+    }
+
+    .modal h3 {
+      color: #add8e6;
+      margin-bottom: 1rem;
+    }
+
+    .modal p {
+      margin-bottom: 2rem;
+      color: #e0e0e0;
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+    }
+
+    .search-container {
+      margin-bottom: 1.5rem;
+      position: relative;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 0.8rem 1rem 0.8rem 3rem;
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 25px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
+      font-size: 1rem;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 1rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #add8e6;
+    }
+
+    .error-message {
+      color: #ff6b6b;
+      font-size: 0.9rem;
+      margin-top: 0.5rem;
+      display: none;
+    }
+
+    .success-message {
+      background: rgba(76, 175, 80, 0.2);
+      color: #4CAF50;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      border: 1px solid rgba(76, 175, 80, 0.3);
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <main id="main-content-servicos-hvc">
+    <!-- Cabeçalho da Página -->
+    <div class="page-header">
+      <h1><i class="fas fa-tools"></i> Gerenciamento de Serviços HVC</h1>
+      <p>Adicione, edite e gerencie os serviços do projeto HVC</p>
+    </div>
+
+    <!-- Mensagem de Sucesso -->
+    <div id="success-message" class="success-message">
+      <i class="fas fa-check-circle"></i> <span id="success-text"></span>
+    </div>
+
+    <!-- Container Principal -->
+    <div class="services-container">
+      <!-- Seção do Formulário -->
+      <div class="form-section">
+        <h2 id="form-title"><i class="fas fa-plus"></i> Adicionar Novo Serviço</h2>
+        
+        <form id="service-form">
+          <div class="form-group">
+            <label for="service-code">Código do Serviço <span class="required">*</span></label>
+            <input type="text" id="service-code" name="code" required>
+            <div class="error-message" id="code-error">Código é obrigatório</div>
+          </div>
+
+          <div class="form-group">
+            <label for="service-description">Descrição <span class="required">*</span></label>
+            <input type="text" id="service-description" name="description" required>
+            <div class="error-message" id="description-error">Descrição é obrigatória</div>
+          </div>
+
+          <div class="form-group">
+            <label for="service-detail">Detalhe</label>
+            <textarea id="service-detail" name="detail" placeholder="Informações adicionais sobre o serviço (opcional)"></textarea>
+          </div>
+
+          <div class="form-group">
+            <label for="service-unit">Unidade de Medida</label>
+            <select id="service-unit" name="unit">
+              <option value="">Selecione uma unidade (opcional)</option>
+              <option value="m">Metro (m)</option>
+              <option value="m²">Metro Quadrado (m²)</option>
+              <option value="m³">Metro Cúbico (m³)</option>
+              <option value="kg">Quilograma (kg)</option>
+              <option value="t">Tonelada (t)</option>
+              <option value="un">Unidade (un)</option>
+              <option value="h">Hora (h)</option>
+              <option value="dia">Dia (dia)</option>
+              <option value="mês">Mês (mês)</option>
+              <option value="vb">Verba (vb)</option>
+            </select>
+          </div>
+
+          <div class="form-buttons">
+            <button type="submit" class="btn btn-primary" id="submit-btn">
+              <i class="fas fa-save"></i> Salvar Serviço
+            </button>
+            <button type="button" class="btn btn-secondary" id="cancel-btn" style="display: none;">
+              <i class="fas fa-times"></i> Cancelar
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Seção da Tabela -->
+      <div class="table-section">
+        <h2><i class="fas fa-list"></i> Lista de Serviços</h2>
+        
+        <!-- Busca -->
+        <div class="search-container">
+          <i class="fas fa-search search-icon"></i>
+          <input type="text" id="search-input" class="search-input" placeholder="Buscar serviços por código ou descrição...">
+        </div>
+
+        <!-- Tabela -->
+        <div class="table-container">
+          <table class="services-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Descrição</th>
+                <th>Detalhe</th>
+                <th>Unidade</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="services-table-body">
+              <!-- Dados serão inseridos aqui via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Estado Vazio -->
+        <div id="empty-state" class="empty-state">
+          <i class="fas fa-tools"></i>
+          <h3>Nenhum serviço cadastrado</h3>
+          <p>Adicione o primeiro serviço usando o formulário ao lado</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Confirmação de Exclusão -->
+    <div id="delete-modal" class="modal">
+      <div class="modal-content">
+        <h3><i class="fas fa-exclamation-triangle"></i> Confirmar Exclusão</h3>
+        <p>Tem certeza que deseja excluir o serviço "<span id="delete-service-name"></span>"?</p>
+        <p><strong>Esta ação não pode ser desfeita.</strong></p>
+        <div class="modal-buttons">
+          <button class="btn btn-danger" id="confirm-delete">
+            <i class="fas fa-trash"></i> Excluir
+          </button>
+          <button class="btn btn-secondary" id="cancel-delete">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="sidebar.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof injectSidebar === 'function') {
+        injectSidebar('main-content-servicos-hvc');
+      } else {
+        console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
+      }
+    });
+  </script>
+</body>
+</html>
+
+
+<script type="module" src="servicos-hvc.js"></script> 
