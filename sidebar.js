@@ -253,7 +253,7 @@ function initializeSidebar(sidebarElement, mainContentElement) {
 }
 
 // Função para injetar e inicializar a Sidebar (MODIFICADA para detectar projeto ativo automaticamente)
-function injectSidebar(mainContentElementId, forceProject = null) { // Tornou-se async e aceita projeto forçado
+async function injectSidebar(mainContentElementId, forceProject = null) { // Tornou-se async e aceita projeto forçado
     const loggedInUserLevel = sessionStorage.getItem("nivel");
     const loggedInUserProject = sessionStorage.getItem("projeto");
     const viewingUserId = sessionStorage.getItem("viewing_user_id");
@@ -289,30 +289,71 @@ function injectSidebar(mainContentElementId, forceProject = null) { // Tornou-se
         return;
     }
 
-    let sidebarHTML = '';
-    if (loggedInUserLevel === 'admin') {
-        if (viewingUserId) {
-            // Admin visualizando como usuário
-            sidebarHTML = createAdminViewingUserSidebarHTML(loggedInUserProject);
-        } else {
-            // Admin no painel geral ou gerenciando projeto específico
-            sidebarHTML = createAdminSidebarHTML(projectFromUrl);
+    // Injeta o CSS comum da Sidebar
+    injectSidebarCSS();
+
+    let sidebarHTML;
+    let isViewingAsUser = loggedInUserLevel === "admin" && viewingUserId;
+
+    if (isViewingAsUser) {
+        // CASO 1: Admin está visualizando como usuário
+        let viewedUserProject = null;
+        try {
+            // Busca o projeto do usuário que está sendo visualizado
+            const { data: viewedUserData, error: viewedUserError } = await supabase
+                .from('credenciais')
+                .select('projeto')
+                .eq('id', viewingUserId)
+                .single();
+            if (viewedUserError) throw viewedUserError;
+            viewedUserProject = viewedUserData?.projeto;
+        } catch (error) {
+            console.error("Erro ao buscar projeto do usuário visualizado para a sidebar:", error);
+            // Continua com projeto nulo/default em caso de erro
         }
-    } else if (loggedInUserLevel === 'user') {
+        sidebarHTML = createAdminViewingUserSidebarHTML(viewedUserProject);
+
+    } else if (loggedInUserLevel === "admin") {
+        // CASO 2: Admin acessando suas próprias páginas
+        sidebarHTML = createAdminSidebarHTML(projectFromUrl);
+    } else if (loggedInUserLevel === "usuario") {
+        // CASO 3: Usuário normal acessando suas páginas
         sidebarHTML = createUserSidebarHTML(loggedInUserProject);
+    } else {
+        return; // Não injeta para outros níveis
     }
 
-    if (sidebarHTML) {
-        const sidebarContainer = document.createElement('div');
-        sidebarContainer.innerHTML = sidebarHTML;
-        document.body.insertBefore(sidebarContainer, document.body.firstChild);
-        injectSidebarCSS();
-        initializeSidebar(document.getElementById('sidebar'), mainContentElement);
+    // Insere a sidebar no início do body
+    document.body.insertAdjacentHTML('afterbegin', sidebarHTML);
+    const sidebarElement = document.getElementById('sidebar');
+
+    if (sidebarElement) {
+        initializeSidebar(sidebarElement, mainContentElement);
+        // *** MODIFICADO: Aplica classe de tema ao BODY e ao main content ***
+        const themeClass = sidebarElement.className; // Pega a classe de tema da sidebar
+        
+        // Aplica ao Body
+        document.body.classList.remove("theme-admin", "theme-argos", "theme-hvc", "theme-planejamento", "theme-default");
+        if (themeClass.startsWith("theme-")) {
+            document.body.classList.add(themeClass);
+            console.log(`Aplicando tema ${themeClass} ao body.`);
+        }
+
+        // Aplica ao Main Content (se existir)
+        if (mainContentElement && themeClass.startsWith("theme-")) {
+            mainContentElement.classList.remove("theme-admin", "theme-argos", "theme-hvc", "theme-planejamento", "theme-default");
+            mainContentElement.classList.add(themeClass);
+            console.log(`Aplicando tema ${themeClass} ao main content.`);
+        }
+        // *** NOVO: Dispara evento para indicar que a sidebar está pronta ***
+        console.log("Dispatching sidebarReady event");
+        document.dispatchEvent(new CustomEvent('sidebarReady'));
+
+    } else {
+         console.error("Sidebar element not found after injection.");
     }
 }
 
-// Chamada da função injectSidebar ao carregar a página
-document.addEventListener('DOMContentLoaded', () => {
-    injectSidebar('main-content-dashboard-hvc'); // Substitua pelo ID do seu main content
-});
+// Exporta a função principal a ser usada em outras páginas
+export { injectSidebar };
 
