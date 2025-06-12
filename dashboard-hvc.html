@@ -50,8 +50,9 @@
     <i class="fas fa-wrench construction-icon"></i>
     <div class="construction-message">Página Dashboard HVC em Construção</div>
   </main>
-  <script src="sidebar.js"></script>
-  <script>
+  <script type="module" src="sidebar.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
     document.addEventListener('DOMContentLoaded', () => {
       if (typeof injectSidebar === 'function') {
         injectSidebar('main-content-dashboard-hvc');
