@@ -469,6 +469,8 @@ class PropostasManager {
 
     showServicoSelectionModal() {
         console.log('Mostrando modal de seleção de serviços...');
+        console.log('Serviços disponíveis:', this.servicos.length);
+        console.log('Lista de serviços:', this.servicos);
         
         // Remover modal existente se houver
         const existingModal = document.querySelector('.modal-selection');
@@ -476,13 +478,24 @@ class PropostasManager {
             existingModal.remove();
         }
         
-        // Criar opções dos serviços
+        // Verificar se há serviços carregados
+        if (!this.servicos || this.servicos.length === 0) {
+            this.showNotification('Nenhum serviço encontrado. Verifique se há serviços cadastrados no banco de dados.', 'error');
+            return;
+        }
+        
+        // Criar opções dos serviços com verificação de dados
         let servicosOptions = '<option value="">Selecione um serviço...</option>';
+        
         this.servicos.forEach(servico => {
-            servicosOptions += `<option value="${servico.id}">${servico.codigo} - ${servico.descricao}</option>`;
+            if (servico && servico.id && servico.codigo && servico.descricao) {
+                servicosOptions += `<option value="${servico.id}">${servico.codigo} - ${servico.descricao}</option>`;
+            } else {
+                console.warn('Serviço com dados incompletos:', servico);
+            }
         });
         
-        console.log('Opções de serviços criadas:', servicosOptions);
+        console.log('HTML das opções gerado:', servicosOptions);
         
         // Criar modal dinâmico para seleção de serviço
         const modal = document.createElement('div');
@@ -514,6 +527,17 @@ class PropostasManager {
         
         document.body.appendChild(modal);
         console.log('Modal de seleção criado e adicionado ao DOM');
+        
+        // Verificar se o select foi criado corretamente
+        setTimeout(() => {
+            const selectElement = document.getElementById('servico-selection');
+            if (selectElement) {
+                console.log('Select criado com', selectElement.options.length, 'opções');
+                console.log('Opções do select:', Array.from(selectElement.options).map(opt => opt.text));
+            } else {
+                console.error('Select não foi criado corretamente');
+            }
+        }, 100);
     }
 
     addSelectedServico() {
