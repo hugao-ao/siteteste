@@ -16,7 +16,7 @@
       color: #e0e0e0;
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
-    #main-content-fluxo-caixa-hvc {
+    #main-content-dashboard-hvc {
       flex-grow: 1;
       padding: 2rem;
       margin-left: 250px;
@@ -29,7 +29,7 @@
       align-items: center;
       text-align: center;
     }
-    #main-content-fluxo-caixa-hvc.sidebar-collapsed {
+    #main-content-dashboard-hvc.sidebar-collapsed {
       margin-left: 60px;
     }
     .construction-message {
@@ -46,15 +46,15 @@
   </style>
 </head>
 <body>
-  <main id="main-content-fluxo-caixa-hvc">
-    <i class="fas fa-money-bill-wave construction-icon"></i>
-    <div class="construction-message">Página de Dashboard HVC em Construção</div>
+  <main id="main-content-dashboard-hvc">
+    <i class="fas fa-wrench construction-icon"></i>
+    <div class="construction-message">Página Dashboard HVC em Construção</div>
   </main>
   <script src="sidebar.js"></script>
   <script>
     document.addEventListener('DOMContentLoaded', () => {
       if (typeof injectSidebar === 'function') {
-        injectSidebar('main-content-fluxo-caixa-hvc');
+        injectSidebar('main-content-dashboard-hvc');
       } else {
         console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
       }
