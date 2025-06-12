@@ -114,8 +114,8 @@ class PropostasManager {
             }
             if (btnAddServico) {
                 btnAddServico.addEventListener('click', () => {
-                    console.log('Botão Adicionar Serviço clicado - abrindo modal para CRIAR novo serviço');
-                    this.showModalServico(); // Abrir modal para criar novo serviço
+                    console.log('Botão Adicionar Serviço clicado - abrindo modal de SELEÇÃO');
+                    this.addServicoToProposta(); // Abrir modal de seleção primeiro
                 });
             }
             
@@ -371,7 +371,12 @@ class PropostasManager {
             console.log('Serviço criado:', data);
             this.servicos.push(data);
             this.hideModalServico();
-            this.showNotification('Serviço adicionado com sucesso!', 'success');
+            this.showNotification('Serviço criado com sucesso! Agora você pode selecioná-lo.', 'success');
+            
+            // Reabrir modal de seleção após criar o serviço
+            setTimeout(() => {
+                this.addServicoToProposta();
+            }, 1000);
         } catch (error) {
             console.error('Erro ao adicionar serviço:', error);
             this.showNotification('Erro ao adicionar serviço: ' + error.message, 'error');
@@ -527,8 +532,12 @@ class PropostasManager {
                     <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">
                         Cancelar
                     </button>
+                    <button type="button" class="btn-info" onclick="window.propostasManager.showModalServicoFromSelection()" style="margin-right: 10px;">
+                        <i class="fas fa-plus"></i>
+                        Criar Novo Serviço
+                    </button>
                     <button type="button" class="btn-success" onclick="window.propostasManager.addSelectedServico()">
-                        Adicionar
+                        Adicionar à Proposta
                     </button>
                 </div>
             </div>
@@ -594,6 +603,19 @@ class PropostasManager {
         if (modal) modal.remove();
         
         this.showNotification('Serviço adicionado à proposta!', 'success');
+    }
+
+    showModalServicoFromSelection() {
+        console.log('Abrindo modal de criação de serviço a partir da seleção...');
+        
+        // Fechar modal de seleção
+        const selectionModal = document.querySelector('.modal-selection');
+        if (selectionModal) {
+            selectionModal.remove();
+        }
+        
+        // Abrir modal de criação de serviço
+        this.showModalServico();
     }
 
     updateServicesTable() {
