@@ -496,6 +496,43 @@
               <option value="Recusada">Recusada</option>
             </select>
           </div>
+
+          <!-- Novos campos: Prazo e Forma de Pagamento -->
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="prazo-execucao">
+                Prazo de Execução *
+              </label>
+              <div style="display: flex; gap: 10px;">
+                <input 
+                  type="number" 
+                  id="prazo-execucao" 
+                  class="form-input" 
+                  placeholder="Ex: 30"
+                  min="1"
+                  required
+                  style="flex: 1;"
+                >
+                <select id="tipo-prazo" class="form-select" required style="flex: 1;">
+                  <option value="corridos">Dias Corridos</option>
+                  <option value="uteis">Dias Úteis</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="forma-pagamento">
+              Forma de Pagamento *
+            </label>
+            <input 
+              type="text" 
+              id="forma-pagamento" 
+              class="form-input" 
+              placeholder="Ex: À vista, 30/60/90 dias, PIX, etc."
+              required
+            >
+          </div>
         </div>
 
         <!-- Seção de Serviços -->
@@ -569,8 +606,10 @@
           <tr>
             <th>Número</th>
             <th>Cliente</th>
-            <th>Status</th>
             <th>Total</th>
+            <th>Prazo</th>
+            <th>Pagamento</th>
+            <th>Status</th>
             <th>Data</th>
             <th>Ações</th>
           </tr>
@@ -634,12 +673,22 @@
             <label class="form-label" for="servico-unidade">
               Unidade de Medida
             </label>
-            <input 
-              type="text" 
+            <select 
               id="servico-unidade" 
-              class="form-input" 
-              placeholder="Ex: m², un, m"
+              class="form-input"
             >
+              <option value="">Selecione uma unidade (opcional)</option>
+              <option value="m">Metro (m)</option>
+              <option value="m²">Metro Quadrado (m²)</option>
+              <option value="m³">Metro Cúbico (m³)</option>
+              <option value="kg">Quilograma (kg)</option>
+              <option value="t">Tonelada (t)</option>
+              <option value="un">Unidade (un)</option>
+              <option value="h">Hora (h)</option>
+              <option value="dia">Dia (dia)</option>
+              <option value="mês">Mês (mês)</option>
+              <option value="vb">Verba (vb)</option>
+            </select>
           </div>
 
           <div class="modal-footer">
