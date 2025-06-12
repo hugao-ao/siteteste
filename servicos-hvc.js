@@ -1,4 +1,4 @@
-import { supabase } from './supabase.js'; // Importa o cliente já configurado
+import { supabase } from './supabase.js';
 
 class ServicesManager {
   constructor() {
@@ -18,12 +18,24 @@ class ServicesManager {
   bindEvents() {
     document.getElementById('service-form').addEventListener('submit', (e) => this.handleSubmit(e));
     document.getElementById('cancel-btn').addEventListener('click', () => this.cancelEdit());
-    document.getElementById('search-input').addEventListener('input', (e) => this.handleSearch(e));
-    document.getElementById('confirm-delete').addEventListener('click', () => this.confirmDelete());
-    document.getElementById('cancel-delete').addEventListener('click', () => this.closeDeleteModal());
-    document.getElementById('delete-modal').addEventListener('click', (e) => {
-      if (e.target.id === 'delete-modal') this.closeDeleteModal();
-    });
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => this.handleSearch(e));
+    }
+    const confirmDelete = document.getElementById('confirm-delete');
+    if (confirmDelete) {
+      confirmDelete.addEventListener('click', () => this.confirmDelete());
+    }
+    const cancelDelete = document.getElementById('cancel-delete');
+    if (cancelDelete) {
+      cancelDelete.addEventListener('click', () => this.closeDeleteModal());
+    }
+    const deleteModal = document.getElementById('delete-modal');
+    if (deleteModal) {
+      deleteModal.addEventListener('click', (e) => {
+        if (e.target.id === 'delete-modal') this.closeDeleteModal();
+      });
+    }
   }
 
   async loadServices() {
@@ -90,21 +102,26 @@ class ServicesManager {
     document.getElementById('service-description').value = service.description;
     document.getElementById('service-detail').value = service.detail || '';
     document.getElementById('service-unit').value = service.unit || '';
-    document.getElementById('form-title').innerHTML = '<i class="fas fa-edit"></i> Editar Serviço';
-    document.getElementById('submit-btn').innerHTML = '<i class="fas fa-save"></i> Atualizar Serviço';
+    const formTitle = document.getElementById('form-title');
+    const submitBtn = document.getElementById('submit-btn');
+    if (formTitle) formTitle.innerHTML = '<i class="fas fa-edit"></i> Editar Serviço';
+    if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save"></i> Atualizar Serviço';
     document.getElementById('cancel-btn').style.display = 'inline-flex';
   }
 
   deleteService(id) {
     const service = this.services.find(s => s.id === id);
     if (!service) return;
-    document.getElementById('delete-service-name').textContent = service.description;
-    document.getElementById('delete-modal').style.display = 'block';
+    const deleteName = document.getElementById('delete-service-name');
+    if (deleteName) deleteName.textContent = service.description;
+    const modal = document.getElementById('delete-modal');
+    if (modal) modal.style.display = 'block';
     this.deletingId = id;
   }
 
   closeDeleteModal() {
-    document.getElementById('delete-modal').style.display = 'none';
+    const modal = document.getElementById('delete-modal');
+    if (modal) modal.style.display = 'none';
     this.deletingId = null;
   }
 
@@ -115,8 +132,10 @@ class ServicesManager {
   resetForm() {
     this.editingId = null;
     document.getElementById('service-form').reset();
-    document.getElementById('form-title').innerHTML = '<i class="fas fa-plus"></i> Adicionar Novo Serviço';
-    document.getElementById('submit-btn').innerHTML = '<i class="fas fa-save"></i> Salvar Serviço';
+    const formTitle = document.getElementById('form-title');
+    const submitBtn = document.getElementById('submit-btn');
+    if (formTitle) formTitle.innerHTML = '<i class="fas fa-plus"></i> Adicionar Novo Serviço';
+    if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-save"></i> Salvar Serviço';
     document.getElementById('cancel-btn').style.display = 'none';
     document.querySelectorAll('.error-message').forEach(el => el.style.display = 'none');
   }
@@ -130,18 +149,22 @@ class ServicesManager {
     const descError = document.getElementById('description-error');
 
     if (!code) {
-      codeError.style.display = 'block';
-      codeError.textContent = 'Código é obrigatório';
+      if (codeError) {
+        codeError.style.display = 'block';
+        codeError.textContent = 'Código é obrigatório';
+      }
       valid = false;
-    } else {
+    } else if (codeError) {
       codeError.style.display = 'none';
     }
 
     if (!description) {
-      descError.style.display = 'block';
-      descError.textContent = 'Descrição é obrigatória';
+      if (descError) {
+        descError.style.display = 'block';
+        descError.textContent = 'Descrição é obrigatória';
+      }
       valid = false;
-    } else {
+    } else if (descError) {
       descError.style.display = 'none';
     }
 
@@ -161,6 +184,8 @@ class ServicesManager {
   renderServices(servicesToRender = null) {
     const services = servicesToRender || this.services;
     const tbody = document.getElementById('services-table-body');
+    if (!tbody) return;
+
     tbody.innerHTML = services.map(service => `
       <tr>
         <td><strong>${this.escape(service.code)}</strong></td>
@@ -180,6 +205,7 @@ class ServicesManager {
   updateEmptyState() {
     const emptyState = document.getElementById('empty-state');
     const tableContainer = document.querySelector('.table-container');
+    if (!emptyState || !tableContainer) return;
     if (this.services.length === 0) {
       emptyState.style.display = 'block';
       tableContainer.style.display = 'none';
@@ -191,7 +217,9 @@ class ServicesManager {
 
   showSuccess(message) {
     const msg = document.getElementById('success-message');
-    document.getElementById('success-text').textContent = message;
+    const text = document.getElementById('success-text');
+    if (!msg || !text) return;
+    text.textContent = message;
     msg.style.display = 'block';
     setTimeout(() => msg.style.display = 'none', 3000);
   }
@@ -204,5 +232,3 @@ class ServicesManager {
 }
 
 window.servicesManager = new ServicesManager();
-
-
