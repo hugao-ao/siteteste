@@ -430,11 +430,17 @@ class PropostasManager {
         const numeroInput = document.getElementById('numero-proposta');
         const clienteSelect = document.getElementById('cliente-select');
         const statusSelect = document.getElementById('status-select');
+        const prazoInput = document.getElementById('prazo-execucao');
+        const tipoPrazoSelect = document.getElementById('tipo-prazo');
+        const formaPagamentoInput = document.getElementById('forma-pagamento');
         const observacoesTextarea = document.getElementById('observacoes');
         
         if (numeroInput) numeroInput.value = proposta.numero_proposta;
         if (clienteSelect) clienteSelect.value = proposta.cliente_id;
         if (statusSelect) statusSelect.value = proposta.status;
+        if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
+        if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
+        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
         if (observacoesTextarea) observacoesTextarea.value = proposta.observacoes || '';
         
         // Carregar itens da proposta
@@ -515,18 +521,18 @@ class PropostasManager {
         const modal = document.createElement('div');
         modal.className = 'modal modal-selection show';
         modal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 600px;">
                 <div class="modal-header">
-                    <h3 class="modal-title">Selecionar Serviço</h3>
+                    <h3 class="modal-title">Selecionar Serviços</h3>
                     <button class="close-modal" onclick="this.closest('.modal').remove()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Serviço</label>
-                    <select id="servico-selection" class="form-select">
-                        ${servicosOptions}
-                    </select>
+                    <label class="form-label">Serviços Disponíveis</label>
+                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 10px;">
+                        ${this.createServicesCheckboxList()}
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">
@@ -536,8 +542,9 @@ class PropostasManager {
                         <i class="fas fa-plus"></i>
                         Criar Novo Serviço
                     </button>
-                    <button type="button" class="btn-success" onclick="window.propostasManager.addSelectedServico()">
-                        Adicionar à Proposta
+                    <button type="button" class="btn-success" onclick="window.propostasManager.addSelectedServicos()">
+                        <i class="fas fa-check"></i>
+                        Adicionar Selecionados
                     </button>
                 </div>
             </div>
@@ -616,6 +623,76 @@ class PropostasManager {
         
         // Abrir modal de criação de serviço
         this.showModalServico();
+    }
+
+    createServicesCheckboxList() {
+        let checkboxList = '';
+        
+        this.servicos.forEach(servico => {
+            if (servico && servico.id && servico.codigo && servico.descricao) {
+                // Verificar se já foi adicionado
+                const jaAdicionado = this.servicosAdicionados.find(s => s.servico_id === servico.id);
+                const disabled = jaAdicionado ? 'disabled' : '';
+                const checked = jaAdicionado ? 'checked' : '';
+                
+                checkboxList += `
+                    <div style="display: flex; align-items: center; padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                        <input type="checkbox" 
+                               id="servico-${servico.id}" 
+                               value="${servico.id}" 
+                               ${checked} 
+                               ${disabled}
+                               style="margin-right: 10px;">
+                        <label for="servico-${servico.id}" style="flex: 1; cursor: pointer;">
+                            <strong>${servico.codigo}</strong> - ${servico.descricao}
+                            ${servico.unidade ? `<small style="color: #add8e6;"> (${servico.unidade})</small>` : ''}
+                            ${jaAdicionado ? '<small style="color: #ffc107;"> - Já adicionado</small>' : ''}
+                        </label>
+                    </div>
+                `;
+            }
+        });
+        
+        if (checkboxList === '') {
+            checkboxList = '<p style="text-align: center; color: #888;">Nenhum serviço disponível</p>';
+        }
+        
+        return checkboxList;
+    }
+
+    addSelectedServicos() {
+        console.log('Adicionando serviços selecionados...');
+        
+        const checkboxes = document.querySelectorAll('.modal-selection input[type="checkbox"]:checked:not(:disabled)');
+        let servicosAdicionadosCount = 0;
+        
+        checkboxes.forEach(checkbox => {
+            const servicoId = checkbox.value;
+            const servico = this.servicos.find(s => s.id === servicoId);
+            
+            if (servico && !this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
+                this.servicosAdicionados.push({
+                    servico_id: servicoId,
+                    servico: servico,
+                    quantidade: 1,
+                    preco_mao_obra: 0,
+                    preco_material: 0,
+                    preco_total: 0
+                });
+                servicosAdicionadosCount++;
+            }
+        });
+        
+        if (servicosAdicionadosCount > 0) {
+            this.updateServicesTable();
+            this.showNotification(`${servicosAdicionadosCount} serviço(s) adicionado(s) à proposta!`, 'success');
+        } else {
+            this.showNotification('Nenhum serviço foi selecionado', 'warning');
+        }
+        
+        // Fechar modal
+        const modal = document.querySelector('.modal-selection');
+        if (modal) modal.remove();
     }
 
     updateServicesTable() {
@@ -742,6 +819,9 @@ class PropostasManager {
             numero_proposta: document.getElementById('numero-proposta').value,
             cliente_id: document.getElementById('cliente-select').value,
             status: document.getElementById('status-select').value,
+            prazo_execucao: parseInt(document.getElementById('prazo-execucao').value),
+            tipo_prazo: document.getElementById('tipo-prazo').value,
+            forma_pagamento: document.getElementById('forma-pagamento').value,
             observacoes: document.getElementById('observacoes').value,
             total_proposta: this.servicosAdicionados.reduce((sum, item) => sum + item.preco_total, 0)
         };
@@ -814,6 +894,8 @@ class PropostasManager {
     validateForm() {
         const numeroProposta = document.getElementById('numero-proposta').value;
         const clienteId = document.getElementById('cliente-select').value;
+        const prazoExecucao = document.getElementById('prazo-execucao').value;
+        const formaPagamento = document.getElementById('forma-pagamento').value;
         
         if (!numeroProposta || !numeroProposta.match(/^\d{4}\/\d{4}$/)) {
             this.showNotification('Número da proposta deve estar no formato XXXX/YYYY', 'error');
@@ -822,6 +904,16 @@ class PropostasManager {
 
         if (!clienteId) {
             this.showNotification('Selecione um cliente', 'error');
+            return false;
+        }
+
+        if (!prazoExecucao || prazoExecucao <= 0) {
+            this.showNotification('Informe o prazo de execução', 'error');
+            return false;
+        }
+
+        if (!formaPagamento || formaPagamento.trim() === '') {
+            this.showNotification('Informe a forma de pagamento', 'error');
             return false;
         }
 
@@ -879,10 +971,10 @@ class PropostasManager {
         
         tbody.innerHTML = '';
 
-        if (propostas.length === 0) {
+            if (propostas.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
                     </td>
@@ -893,18 +985,24 @@ class PropostasManager {
 
         propostas.forEach(proposta => {
             const row = document.createElement('tr');
+            const prazoTexto = proposta.prazo_execucao ? 
+                `${proposta.prazo_execucao} ${proposta.tipo_prazo === 'uteis' ? 'dias úteis' : 'dias corridos'}` : 
+                'Não informado';
+            
             row.innerHTML = `
-                <td><strong>${proposta.numero_proposta}</strong></td>
+                <td>${proposta.numero_proposta}</td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
+                <td>R$ ${proposta.total_proposta?.toFixed(2) || '0,00'}</td>
+                <td>${prazoTexto}</td>
+                <td>${proposta.forma_pagamento || 'Não informado'}</td>
                 <td>
-                    <span class="status-badge status-${proposta.status.toLowerCase()}">
+                    <span class="status-badge status-${proposta.status?.toLowerCase()}">
                         ${proposta.status}
                     </span>
                 </td>
-                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
                 <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
-                <td class="actions-cell">
-                    <button class="btn-secondary" 
+                <td class="actions">
+                    <button class="btn-primary" 
                             onclick="window.propostasManager.editProposta('${proposta.id}')"
                             title="Editar proposta">
                         <i class="fas fa-edit"></i>
