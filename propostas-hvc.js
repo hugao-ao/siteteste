@@ -1172,7 +1172,7 @@ class PropostasManager {
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td><strong>${this.formatMoney(proposta.total_proposta / 100)}</strong></td>
+                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
                 <td>${prazoTexto}</td>
                 <td>${proposta.forma_pagamento || '-'}</td>
                 <td>
