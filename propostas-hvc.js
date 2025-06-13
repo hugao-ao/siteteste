@@ -1,4 +1,4 @@
-// propostas-hvc.js - Versão Corrigida
+// propostas-hvc.js - Versão com Seleção Múltipla de Serviços
 // Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
@@ -114,8 +114,8 @@ class PropostasManager {
             }
             if (btnAddServico) {
                 btnAddServico.addEventListener('click', () => {
-                    console.log('Botão Adicionar Serviço clicado - abrindo modal de SELEÇÃO');
-                    this.addServicoToProposta(); // Abrir modal de seleção primeiro
+                    console.log('Botão Adicionar Serviço clicado - abrindo modal de SELEÇÃO MÚLTIPLA');
+                    this.addServicoToProposta(); // Abrir modal de seleção múltipla
                 });
             }
             
@@ -481,10 +481,10 @@ class PropostasManager {
         this.showServicoSelectionModal();
     }
 
+    // === NOVA FUNCIONALIDADE: SELEÇÃO MÚLTIPLA ===
     showServicoSelectionModal() {
-        console.log('Mostrando modal de seleção de serviços...');
+        console.log('Mostrando modal de seleção MÚLTIPLA de serviços...');
         console.log('Serviços disponíveis:', this.servicos.length);
-        console.log('Lista de serviços:', this.servicos);
         
         // Remover modal existente se houver
         const existingModal = document.querySelector('.modal-selection');
@@ -498,111 +498,244 @@ class PropostasManager {
             return;
         }
         
-        // Criar opções dos serviços com verificação de dados
-        let servicosOptions = '<option value="">Selecione um serviço...</option>';
+        // Filtrar serviços que já foram adicionados
+        const servicosDisponiveis = this.servicos.filter(servico => 
+            !this.servicosAdicionados.find(s => s.servico_id === servico.id)
+        );
         
-        this.servicos.forEach(servico => {
+        if (servicosDisponiveis.length === 0) {
+            this.showNotification('Todos os serviços disponíveis já foram adicionados à proposta.', 'info');
+            return;
+        }
+        
+        // Criar lista de serviços com checkboxes
+        let servicosCheckboxes = '';
+        servicosDisponiveis.forEach(servico => {
             if (servico && servico.id && servico.codigo && servico.descricao) {
-                servicosOptions += `<option value="${servico.id}">${servico.codigo} - ${servico.descricao}</option>`;
-            } else {
-                console.warn('Serviço com dados incompletos:', servico);
+                servicosCheckboxes += `
+                    <div style="display: flex; align-items: center; padding: 8px; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 6px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.05);">
+                        <input type="checkbox" 
+                               id="servico-${servico.id}" 
+                               value="${servico.id}" 
+                               style="margin-right: 12px; transform: scale(1.2);">
+                        <label for="servico-${servico.id}" style="flex: 1; cursor: pointer; color: #e0e0e0;">
+                            <strong>${servico.codigo}</strong> - ${servico.descricao}
+                            ${servico.unidade ? `<br><small style="color: #add8e6;">Unidade: ${servico.unidade}</small>` : ''}
+                        </label>
+                    </div>
+                `;
             }
         });
         
-        console.log('HTML das opções gerado:', servicosOptions);
-        
-        // Criar modal dinâmico para seleção de serviço
+        // Criar modal dinâmico para seleção múltipla
         const modal = document.createElement('div');
         modal.className = 'modal modal-selection show';
         modal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
                 <div class="modal-header">
-                    <h3 class="modal-title">Selecionar Serviço</h3>
+                    <h3 class="modal-title">
+                        <i class="fas fa-tasks"></i>
+                        Selecionar Serviços (Múltipla Seleção)
+                    </h3>
                     <button class="close-modal" onclick="this.closest('.modal').remove()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Serviço</label>
-                    <select id="servico-selection" class="form-select">
-                        ${servicosOptions}
-                    </select>
+                
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                        <input type="text" 
+                               id="filtro-servicos" 
+                               placeholder="Buscar serviços..." 
+                               class="form-input" 
+                               style="flex: 1;"
+                               onkeyup="window.propostasManager.filtrarServicos(this.value)">
+                        <button type="button" 
+                                class="btn-info" 
+                                onclick="window.propostasManager.selecionarTodosServicos()">
+                            <i class="fas fa-check-double"></i>
+                            Todos
+                        </button>
+                        <button type="button" 
+                                class="btn-secondary" 
+                                onclick="window.propostasManager.limparSelecaoServicos()">
+                            <i class="fas fa-times"></i>
+                            Limpar
+                        </button>
+                    </div>
+                    
+                    <div id="contador-selecionados" style="color: #add8e6; font-weight: 600; margin-bottom: 1rem;">
+                        0 serviços selecionados
+                    </div>
                 </div>
+                
+                <div id="lista-servicos" style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; padding: 1rem; background: rgba(0, 0, 0, 0.2);">
+                    ${servicosCheckboxes}
+                </div>
+                
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
                         Cancelar
                     </button>
-                    <button type="button" class="btn-info" onclick="window.propostasManager.showModalServicoFromSelection()" style="margin-right: 10px;">
+                    <button type="button" 
+                            class="btn-info" 
+                            onclick="window.propostasManager.showModalServicoFromSelection()" 
+                            style="margin-right: 10px;">
                         <i class="fas fa-plus"></i>
                         Criar Novo Serviço
                     </button>
-                    <button type="button" class="btn-success" onclick="window.propostasManager.addSelectedServico()">
-                        Adicionar à Proposta
+                    <button type="button" 
+                            class="btn-success" 
+                            onclick="window.propostasManager.addSelectedServicos()"
+                            id="btn-adicionar-selecionados">
+                        <i class="fas fa-plus-circle"></i>
+                        Adicionar Selecionados
                     </button>
                 </div>
             </div>
         `;
         
         document.body.appendChild(modal);
-        console.log('Modal de seleção criado e adicionado ao DOM');
         
-        // Verificar se o select foi criado corretamente
+        // Configurar eventos para os checkboxes
         setTimeout(() => {
-            const selectElement = document.getElementById('servico-selection');
-            if (selectElement) {
-                console.log('Select criado com', selectElement.options.length, 'opções');
-                console.log('Opções do select:', Array.from(selectElement.options).map(opt => opt.text));
-            } else {
-                console.error('Select não foi criado corretamente');
-            }
+            this.configurarEventosCheckboxes();
         }, 100);
+        
+        console.log('Modal de seleção múltipla criado!');
     }
 
-    addSelectedServico() {
-        console.log('Função addSelectedServico chamada');
+    // NOVA FUNÇÃO: Configurar eventos dos checkboxes
+    configurarEventosCheckboxes() {
+        const checkboxes = document.querySelectorAll('#lista-servicos input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.atualizarContadorSelecionados();
+            });
+        });
+        this.atualizarContadorSelecionados();
+    }
+
+    // NOVA FUNÇÃO: Atualizar contador de selecionados
+    atualizarContadorSelecionados() {
+        const checkboxes = document.querySelectorAll('#lista-servicos input[type="checkbox"]:checked');
+        const contador = document.getElementById('contador-selecionados');
+        const btnAdicionar = document.getElementById('btn-adicionar-selecionados');
         
-        const servicoSelect = document.getElementById('servico-selection');
-        if (!servicoSelect) {
-            console.error('Select de serviço não encontrado');
-            return;
+        if (contador) {
+            const quantidade = checkboxes.length;
+            contador.textContent = `${quantidade} serviço${quantidade !== 1 ? 's' : ''} selecionado${quantidade !== 1 ? 's' : ''}`;
         }
         
-        const servicoId = servicoSelect.value;
-        console.log('Serviço selecionado ID:', servicoId);
+        if (btnAdicionar) {
+            btnAdicionar.disabled = checkboxes.length === 0;
+            btnAdicionar.style.opacity = checkboxes.length === 0 ? '0.5' : '1';
+        }
+    }
+
+    // NOVA FUNÇÃO: Filtrar serviços
+    filtrarServicos(termo) {
+        const servicosItems = document.querySelectorAll('#lista-servicos > div');
+        const termoLower = termo.toLowerCase();
         
-        if (!servicoId) {
-            this.showNotification('Selecione um serviço', 'warning');
+        servicosItems.forEach(item => {
+            const texto = item.textContent.toLowerCase();
+            if (texto.includes(termoLower)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // NOVA FUNÇÃO: Selecionar todos os serviços visíveis
+    selecionarTodosServicos() {
+        const checkboxes = document.querySelectorAll('#lista-servicos input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            const item = checkbox.closest('div');
+            if (item.style.display !== 'none') {
+                checkbox.checked = true;
+            }
+        });
+        this.atualizarContadorSelecionados();
+    }
+
+    // NOVA FUNÇÃO: Limpar seleção
+    limparSelecaoServicos() {
+        const checkboxes = document.querySelectorAll('#lista-servicos input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        this.atualizarContadorSelecionados();
+    }
+
+    // NOVA FUNÇÃO: Adicionar múltiplos serviços selecionados
+    addSelectedServicos() {
+        console.log('Adicionando múltiplos serviços selecionados...');
+        
+        const checkboxesSelecionados = document.querySelectorAll('#lista-servicos input[type="checkbox"]:checked');
+        
+        if (checkboxesSelecionados.length === 0) {
+            this.showNotification('Selecione pelo menos um serviço', 'warning');
             return;
         }
 
-        const servico = this.servicos.find(s => s.id === servicoId);
-        if (!servico) {
-            console.error('Serviço não encontrado:', servicoId);
-            return;
-        }
+        let servicosAdicionadosCount = 0;
+        let servicosJaExistentes = 0;
 
-        // Verificar se já foi adicionado
-        if (this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
-            this.showNotification('Serviço já foi adicionado!', 'warning');
-            return;
-        }
+        checkboxesSelecionados.forEach(checkbox => {
+            const servicoId = checkbox.value;
+            const servico = this.servicos.find(s => s.id === servicoId);
+            
+            if (!servico) {
+                console.error('Serviço não encontrado:', servicoId);
+                return;
+            }
 
-        this.servicosAdicionados.push({
-            servico_id: servicoId,
-            servico: servico,
-            quantidade: 1,
-            preco_mao_obra: 0,
-            preco_material: 0,
-            preco_total: 0
+            // Verificar se já foi adicionado (dupla verificação)
+            if (this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
+                servicosJaExistentes++;
+                return;
+            }
+
+            // Adicionar serviço à lista
+            this.servicosAdicionados.push({
+                servico_id: servicoId,
+                servico: servico,
+                quantidade: 1,
+                preco_mao_obra: 0,
+                preco_material: 0,
+                preco_total: 0
+            });
+
+            servicosAdicionadosCount++;
+            console.log('Serviço adicionado:', servico.codigo);
         });
 
-        console.log('Serviço adicionado:', servico.codigo);
+        // Atualizar tabela
         this.updateServicesTable();
         
+        // Fechar modal
         const modal = document.querySelector('.modal-selection');
         if (modal) modal.remove();
         
-        this.showNotification('Serviço adicionado à proposta!', 'success');
+        // Mostrar notificação de sucesso
+        let mensagem = '';
+        if (servicosAdicionadosCount > 0) {
+            mensagem = `${servicosAdicionadosCount} serviço${servicosAdicionadosCount > 1 ? 's' : ''} adicionado${servicosAdicionadosCount > 1 ? 's' : ''} à proposta!`;
+        }
+        if (servicosJaExistentes > 0) {
+            mensagem += ` ${servicosJaExistentes} serviço${servicosJaExistentes > 1 ? 's já estavam' : ' já estava'} na proposta.`;
+        }
+        
+        this.showNotification(mensagem, 'success');
+    }
+
+    // FUNÇÃO MODIFICADA: Manter compatibilidade
+    addSelectedServico() {
+        // Esta função agora chama a nova função de múltiplos serviços
+        this.addSelectedServicos();
     }
 
     showModalServicoFromSelection() {
@@ -1025,3 +1158,4 @@ class PropostasManager {
 
 // Expor globalmente para uso nos event handlers inline
 window.propostasManager = null;
+
