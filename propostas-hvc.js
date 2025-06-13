@@ -1,4 +1,4 @@
-// propostas-hvc.js - Versão FINAL COM TOTAL DEFINITIVAMENTE CORRETO
+// propostas-hvc.js - Versão CORRIGIDA - Sem logs desnecessários
 // Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
@@ -7,20 +7,15 @@ let propostasManager = null;
 
 // Inicializar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado, iniciando aplicação...');
     // Aguardar um pouco para o Supabase carregar
     setTimeout(initializeApp, 1000);
 });
 
 function initializeApp() {
-    console.log('Inicializando aplicação...');
-    
     // Verificar se o Supabase está disponível
     if (typeof supabase !== 'undefined') {
         supabaseClient = supabase;
-        console.log('Supabase conectado com sucesso!');
     } else {
-        console.log('Supabase não encontrado, carregando via CDN...');
         loadSupabaseFromCDN();
         return;
     }
@@ -43,7 +38,6 @@ function loadSupabaseFromCDN() {
     script.onload = function() {
         if (window.supabase && window.supabase.createClient) {
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('Supabase carregado via CDN!');
             propostasManager = new PropostasManager();
             window.propostasManager = propostasManager;
         } else {
@@ -68,8 +62,6 @@ class PropostasManager {
     }
 
     async init() {
-        console.log('Inicializando PropostasManager...');
-        
         try {
             await this.loadClientes();
             await this.loadServicos();
@@ -78,7 +70,6 @@ class PropostasManager {
             this.setupMasks();
             this.addFilterControls(); // Adicionar controles de filtro
             this.updateTableHeaders(); // Atualizar cabeçalhos da tabela
-            console.log('PropostasManager inicializado com sucesso!');
         } catch (error) {
             console.error('Erro ao inicializar PropostasManager:', error);
         }
@@ -216,68 +207,50 @@ class PropostasManager {
         const cliente = document.getElementById('filtro-cliente')?.value || '';
         const periodo = document.getElementById('filtro-periodo')?.value || '';
 
-        let propostasFiltradas = [...this.propostas];
-
-        // Filtro de busca (número ou cliente)
-        if (busca) {
-            propostasFiltradas = propostasFiltradas.filter(proposta => 
-                proposta.numero_proposta.toLowerCase().includes(busca) ||
-                (proposta.clientes_hvc?.nome || '').toLowerCase().includes(busca)
-            );
-        }
-
-        // Filtro de status
-        if (status) {
-            propostasFiltradas = propostasFiltradas.filter(proposta => 
-                proposta.status === status
-            );
-        }
-
-        // Filtro de cliente
-        if (cliente) {
-            propostasFiltradas = propostasFiltradas.filter(proposta => 
-                proposta.clientes_hvc?.nome === cliente
-            );
-        }
-
-        // Filtro de período
-        if (periodo) {
-            const agora = new Date();
-            const dataFiltro = new Date();
-
-            switch (periodo) {
-                case 'hoje':
-                    dataFiltro.setHours(0, 0, 0, 0);
-                    break;
-                case 'semana':
-                    dataFiltro.setDate(agora.getDate() - 7);
-                    break;
-                case 'mes':
-                    dataFiltro.setMonth(agora.getMonth() - 1);
-                    break;
-                case 'trimestre':
-                    dataFiltro.setMonth(agora.getMonth() - 3);
-                    break;
+        let propostasFiltradas = this.propostas.filter(proposta => {
+            // Filtro de busca
+            if (busca) {
+                const textoBusca = `${proposta.numero_proposta} ${proposta.clientes_hvc?.nome || ''}`.toLowerCase();
+                if (!textoBusca.includes(busca)) return false;
             }
 
-            propostasFiltradas = propostasFiltradas.filter(proposta => 
-                new Date(proposta.created_at) >= dataFiltro
-            );
-        }
+            // Filtro de status
+            if (status && proposta.status !== status) return false;
+
+            // Filtro de cliente
+            if (cliente && proposta.clientes_hvc?.nome !== cliente) return false;
+
+            // Filtro de período
+            if (periodo) {
+                const dataProposta = new Date(proposta.created_at);
+                const hoje = new Date();
+                
+                switch (periodo) {
+                    case 'hoje':
+                        if (dataProposta.toDateString() !== hoje.toDateString()) return false;
+                        break;
+                    case 'semana':
+                        const inicioSemana = new Date(hoje);
+                        inicioSemana.setDate(hoje.getDate() - 7);
+                        if (dataProposta < inicioSemana) return false;
+                        break;
+                    case 'mes':
+                        const inicioMes = new Date(hoje);
+                        inicioMes.setDate(hoje.getDate() - 30);
+                        if (dataProposta < inicioMes) return false;
+                        break;
+                    case 'trimestre':
+                        const inicioTrimestre = new Date(hoje);
+                        inicioTrimestre.setDate(hoje.getDate() - 90);
+                        if (dataProposta < inicioTrimestre) return false;
+                        break;
+                }
+            }
+
+            return true;
+        });
 
         this.renderPropostas(propostasFiltradas);
-        this.updateFilterStats(propostasFiltradas.length, this.propostas.length);
-    }
-
-    updateFilterStats(filtradas, total) {
-        // Atualizar título com estatísticas
-        const formTitle = document.querySelector('.proposals-list .form-title');
-        if (formTitle) {
-            const statsText = filtradas === total ? 
-                `Lista de Propostas (${total})` : 
-                `Lista de Propostas (${filtradas} de ${total})`;
-            formTitle.innerHTML = `<i class="fas fa-list"></i> ${statsText}`;
-        }
     }
 
     limparFiltros() {
@@ -285,128 +258,12 @@ class PropostasManager {
         document.getElementById('filtro-status').value = '';
         document.getElementById('filtro-cliente').value = '';
         document.getElementById('filtro-periodo').value = '';
-        this.filtrarPropostas();
-    }
-
-    setupEventListeners() {
-        console.log('Configurando event listeners...');
-        
-        try {
-            // Botões principais
-            const btnNovaProposta = document.getElementById('btn-nova-proposta');
-            const btnCancelar = document.getElementById('btn-cancelar');
-            
-            if (btnNovaProposta) {
-                btnNovaProposta.addEventListener('click', () => {
-                    console.log('Botão Nova Proposta clicado');
-                    this.showFormProposta();
-                });
-            }
-            if (btnCancelar) {
-                btnCancelar.addEventListener('click', () => this.hideFormProposta());
-            }
-            
-            // Formulário de proposta
-            const propostaForm = document.getElementById('proposta-form');
-            if (propostaForm) {
-                propostaForm.addEventListener('submit', (e) => this.handleSubmitProposta(e));
-            }
-            
-            // Botões de adicionar
-            const btnAddCliente = document.getElementById('btn-add-cliente');
-            const btnAddServico = document.getElementById('btn-add-servico');
-            
-            if (btnAddCliente) {
-                btnAddCliente.addEventListener('click', () => this.showModalCliente());
-            }
-            if (btnAddServico) {
-                btnAddServico.addEventListener('click', () => {
-                    console.log('Botão Adicionar Serviço clicado - abrindo modal de SELEÇÃO MÚLTIPLA');
-                    this.addServicoToProposta(); // Abrir modal de seleção múltipla
-                });
-            }
-            
-            // Modais - Serviço
-            const closeModalServico = document.getElementById('close-modal-servico');
-            const cancelServico = document.getElementById('cancel-servico');
-            const servicoForm = document.getElementById('servico-form');
-            
-            if (closeModalServico) {
-                closeModalServico.addEventListener('click', () => this.hideModalServico());
-            }
-            if (cancelServico) {
-                cancelServico.addEventListener('click', () => this.hideModalServico());
-            }
-            if (servicoForm) {
-                servicoForm.addEventListener('submit', (e) => this.handleSubmitServico(e));
-            }
-            
-            // Modais - Cliente
-            const closeModalCliente = document.getElementById('close-modal-cliente');
-            const cancelCliente = document.getElementById('cancel-cliente');
-            const clienteForm = document.getElementById('cliente-form');
-            
-            if (closeModalCliente) {
-                closeModalCliente.addEventListener('click', () => this.hideModalCliente());
-            }
-            if (cancelCliente) {
-                cancelCliente.addEventListener('click', () => this.hideModalCliente());
-            }
-            if (clienteForm) {
-                clienteForm.addEventListener('submit', (e) => this.handleSubmitCliente(e));
-            }
-            
-            // Fechar modal clicando fora
-            const modalServico = document.getElementById('modal-servico');
-            const modalCliente = document.getElementById('modal-cliente');
-            
-            if (modalServico) {
-                modalServico.addEventListener('click', (e) => {
-                    if (e.target.id === 'modal-servico') this.hideModalServico();
-                });
-            }
-            if (modalCliente) {
-                modalCliente.addEventListener('click', (e) => {
-                    if (e.target.id === 'modal-cliente') this.hideModalCliente();
-                });
-            }
-            
-            console.log('Event listeners configurados!');
-        } catch (error) {
-            console.error('Erro ao configurar event listeners:', error);
-        }
-    }
-
-    setupMasks() {
-        // Máscara para número da proposta (XXXX/YYYY)
-        const numeroInput = document.getElementById('numero-proposta');
-        if (numeroInput) {
-            numeroInput.addEventListener('input', (e) => {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length >= 4) {
-                    value = value.substring(0, 4) + '/' + value.substring(4, 8);
-                }
-                e.target.value = value;
-            });
-        }
-    }
-
-    formatMoney(value) {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value || 0);
-    }
-
-    parseMoney(value) {
-        return parseFloat(value.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+        this.renderPropostas(this.propostas);
     }
 
     // === CLIENTES ===
     async loadClientes() {
         try {
-            console.log('Carregando clientes...');
-            
             if (!supabaseClient) {
                 console.error('Supabase client não disponível');
                 return;
@@ -424,7 +281,7 @@ class PropostasManager {
 
             this.clientes = data || [];
             this.populateClienteSelect();
-            console.log('Clientes carregados:', this.clientes.length);
+            
         } catch (error) {
             console.error('Erro ao carregar clientes:', error);
             this.showNotification('Erro ao carregar clientes: ' + error.message, 'error');
@@ -434,7 +291,7 @@ class PropostasManager {
     populateClienteSelect() {
         const select = document.getElementById('cliente-select');
         if (!select) return;
-        
+
         select.innerHTML = '<option value="">Selecione um cliente...</option>';
         
         this.clientes.forEach(cliente => {
@@ -468,8 +325,9 @@ class PropostasManager {
         
         const clienteData = {
             nome: document.getElementById('cliente-nome').value,
-            documento: document.getElementById('cliente-documento').value,
-            tipo_documento: document.getElementById('cliente-tipo-documento').value
+            email: document.getElementById('cliente-email').value,
+            telefone: document.getElementById('cliente-telefone').value,
+            endereco: document.getElementById('cliente-endereco').value
         };
 
         try {
@@ -485,8 +343,10 @@ class PropostasManager {
             this.populateClienteSelect();
             
             // Selecionar o cliente recém-criado
-            const select = document.getElementById('cliente-select');
-            if (select) select.value = data.id;
+            const clienteSelect = document.getElementById('cliente-select');
+            if (clienteSelect) {
+                clienteSelect.value = data.id;
+            }
             
             this.hideModalCliente();
             this.showNotification('Cliente adicionado com sucesso!', 'success');
@@ -499,8 +359,6 @@ class PropostasManager {
     // === SERVIÇOS ===
     async loadServicos() {
         try {
-            console.log('Carregando serviços...');
-            
             if (!supabaseClient) {
                 console.error('Supabase client não disponível');
                 return;
@@ -517,12 +375,6 @@ class PropostasManager {
             }
 
             this.servicos = data || [];
-            console.log('Serviços carregados:', this.servicos.length);
-            
-            // Log dos serviços para debug
-            this.servicos.forEach(servico => {
-                console.log('Serviço:', servico.codigo, '-', servico.descricao);
-            });
             
         } catch (error) {
             console.error('Erro ao carregar serviços:', error);
@@ -531,15 +383,11 @@ class PropostasManager {
     }
 
     showModalServico() {
-        console.log('Abrindo modal para criar novo serviço...');
         const modal = document.getElementById('modal-servico');
         if (modal) {
             modal.classList.add('show');
             const codigoInput = document.getElementById('servico-codigo');
             if (codigoInput) codigoInput.focus();
-            console.log('Modal de serviço aberto com sucesso');
-        } else {
-            console.error('Modal de serviço não encontrado no DOM');
         }
     }
 
@@ -555,16 +403,12 @@ class PropostasManager {
     async handleSubmitServico(e) {
         e.preventDefault();
         
-        console.log('Salvando novo serviço...');
-        
         const servicoData = {
             codigo: document.getElementById('servico-codigo').value,
             descricao: document.getElementById('servico-descricao').value,
             detalhe: document.getElementById('servico-detalhe').value,
             unidade: document.getElementById('servico-unidade').value
         };
-
-        console.log('Dados do serviço:', servicoData);
 
         try {
             const { data, error } = await supabaseClient
@@ -575,7 +419,6 @@ class PropostasManager {
 
             if (error) throw error;
 
-            console.log('Serviço criado:', data);
             this.servicos.push(data);
             this.hideModalServico();
             this.showNotification('Serviço criado com sucesso! Agora você pode selecioná-lo.', 'success');
@@ -592,8 +435,6 @@ class PropostasManager {
 
     // === PROPOSTAS ===
     showFormProposta(proposta = null) {
-        console.log('Mostrando formulário de proposta...');
-        
         this.currentPropostaId = proposta?.id || null;
         
         const formSection = document.getElementById('form-proposta');
@@ -610,9 +451,6 @@ class PropostasManager {
             
             formSection.classList.remove('hidden');
             formSection.scrollIntoView({ behavior: 'smooth' });
-            console.log('Formulário exibido');
-        } else {
-            console.error('Elemento form-proposta não encontrado');
         }
     }
 
@@ -699,9 +537,6 @@ class PropostasManager {
     }
 
     addServicoToProposta() {
-        console.log('Adicionando serviço à proposta...');
-        console.log('Serviços disponíveis:', this.servicos.length);
-        
         if (this.servicos.length === 0) {
             this.showNotification('Nenhum serviço encontrado. Adicione serviços primeiro.', 'warning');
             return;
@@ -712,9 +547,6 @@ class PropostasManager {
 
     // === NOVA FUNCIONALIDADE: SELEÇÃO MÚLTIPLA ===
     showServicoSelectionModal() {
-        console.log('Mostrando modal de seleção MÚLTIPLA de serviços...');
-        console.log('Serviços disponíveis:', this.servicos.length);
-        
         // Remover modal existente se houver
         const existingModal = document.querySelector('.modal-selection');
         if (existingModal) {
@@ -831,8 +663,6 @@ class PropostasManager {
         setTimeout(() => {
             this.configurarEventosCheckboxes();
         }, 100);
-        
-        console.log('Modal de seleção múltipla criado!');
     }
 
     // NOVA FUNÇÃO: Configurar eventos dos checkboxes
@@ -901,8 +731,6 @@ class PropostasManager {
 
     // NOVA FUNÇÃO: Adicionar múltiplos serviços selecionados
     addSelectedServicos() {
-        console.log('Adicionando múltiplos serviços selecionados...');
-        
         const checkboxesSelecionados = document.querySelectorAll('#lista-servicos input[type="checkbox"]:checked');
         
         if (checkboxesSelecionados.length === 0) {
@@ -939,7 +767,6 @@ class PropostasManager {
             });
 
             servicosAdicionadosCount++;
-            console.log('Serviço adicionado:', servico.codigo);
         });
 
         // Atualizar tabela
@@ -968,8 +795,6 @@ class PropostasManager {
     }
 
     showModalServicoFromSelection() {
-        console.log('Abrindo modal de criação de serviço a partir da seleção...');
-        
         // Fechar modal de seleção
         const selectionModal = document.querySelector('.modal-selection');
         if (selectionModal) {
@@ -998,31 +823,37 @@ class PropostasManager {
                     </td>
                 </tr>
             `;
+            this.updateTotal();
             return;
         }
 
         this.servicosAdicionados.forEach((item, index) => {
             const row = document.createElement('tr');
+            
+            const servico = item.servico;
+            const servicoNome = servico ? `${servico.codigo} - ${servico.descricao}` : 'Serviço não encontrado';
+            const unidade = servico?.unidade || '';
+            
             row.innerHTML = `
                 <td>
-                    <strong>${item.servico.codigo}</strong><br>
-                    <small>${item.servico.descricao}</small>
+                    <strong>${servicoNome}</strong>
+                    ${servico?.detalhe ? `<br><small style="color: #add8e6;">${servico.detalhe}</small>` : ''}
                 </td>
                 <td>
                     <input type="number" 
                            value="${item.quantidade}" 
-                           min="0" 
-                           step="0.001"
-                           onchange="window.propostasManager.updateItemQuantidade(${index}, this.value)"
+                           min="0.01" 
+                           step="0.01"
+                           onchange="window.propostasManager.updateItemValue(${index}, 'quantidade', this.value)"
                            style="width: 80px;">
                 </td>
-                <td>${item.servico.unidade || '-'}</td>
+                <td>${unidade}</td>
                 <td>
                     <input type="number" 
                            value="${item.preco_mao_obra}" 
                            min="0" 
                            step="0.01"
-                           onchange="window.propostasManager.updateItemPrecoMaoObra(${index}, this.value)"
+                           onchange="window.propostasManager.updateItemValue(${index}, 'preco_mao_obra', this.value)"
                            style="width: 100px;">
                 </td>
                 <td>
@@ -1030,80 +861,40 @@ class PropostasManager {
                            value="${item.preco_material}" 
                            min="0" 
                            step="0.01"
-                           onchange="window.propostasManager.updateItemPrecoMaterial(${index}, this.value)"
+                           onchange="window.propostasManager.updateItemValue(${index}, 'preco_material', this.value)"
                            style="width: 100px;">
                 </td>
+                <td><strong>${this.formatMoney(item.preco_total)}</strong></td>
                 <td>
-                    <strong>${this.formatMoney(item.preco_total)}</strong>
-                </td>
-                <td>
-                    <button type="button" 
-                            class="btn-danger" 
+                    <button class="btn-danger" 
                             onclick="window.propostasManager.removeServico(${index})"
                             title="Remover serviço">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
             `;
+            
             tbody.appendChild(row);
         });
+
+        this.updateTotal();
     }
 
-    updateItemQuantidade(index, quantidade) {
-        if (this.servicosAdicionados[index]) {
-            // CORREÇÃO: Garantir que seja um número válido
-            this.servicosAdicionados[index].quantidade = parseFloat(quantidade) || 0;
-            this.calculateItemTotal(index);
-        }
-    }
-
-    updateItemPrecoMaoObra(index, preco) {
-        if (this.servicosAdicionados[index]) {
-            // CORREÇÃO: Garantir que seja um número válido
-            this.servicosAdicionados[index].preco_mao_obra = parseFloat(preco) || 0;
-            this.calculateItemTotal(index);
-        }
-    }
-
-    updateItemPrecoMaterial(index, preco) {
-        if (this.servicosAdicionados[index]) {
-            // CORREÇÃO: Garantir que seja um número válido
-            this.servicosAdicionados[index].preco_material = parseFloat(preco) || 0;
-            this.calculateItemTotal(index);
-        }
-    }
-
-    calculateItemTotal(index) {
-        const item = this.servicosAdicionados[index];
-        if (item) {
-            // LOGS DETALHADOS - ANTES DO CÁLCULO
-            console.log(`🔍 === CÁLCULO ITEM ${index} - ANTES ===`);
-            console.log('Item original:', item);
-            console.log('Quantidade (raw):', item.quantidade, typeof item.quantidade);
-            console.log('Mão de obra (raw):', item.preco_mao_obra, typeof item.preco_mao_obra);
-            console.log('Material (raw):', item.preco_material, typeof item.preco_material);
+    updateItemValue(index, field, value) {
+        if (index >= 0 && index < this.servicosAdicionados.length) {
+            const item = this.servicosAdicionados[index];
             
-            // CORREÇÃO CRÍTICA: Garantir que todos os valores sejam números válidos
+            // Atualizar o campo
+            item[field] = parseFloat(value) || 0;
+            
+            // Recalcular total do item
             const quantidade = parseFloat(item.quantidade) || 0;
             const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
             const precoMaterial = parseFloat(item.preco_material) || 0;
-            
-            // LOGS DETALHADOS - APÓS CONVERSÃO
-            console.log('Quantidade (convertida):', quantidade, typeof quantidade);
-            console.log('Mão de obra (convertida):', precoMaoObra, typeof precoMaoObra);
-            console.log('Material (convertida):', precoMaterial, typeof precoMaterial);
-            
-            // Cálculo: Total = Quantidade × (Mão de Obra + Material)
             const somaPrecos = precoMaoObra + precoMaterial;
             const totalCalculado = quantidade * somaPrecos;
             
-            console.log('Soma preços (MO + Material):', somaPrecos);
-            console.log('Cálculo final:', `${quantidade} × ${somaPrecos} = ${totalCalculado}`);
-            
             item.preco_total = totalCalculado;
-            
-            console.log('Total do item salvo:', item.preco_total, typeof item.preco_total);
-            console.log(`✅ === FIM CÁLCULO ITEM ${index} ===\n`);
             
             this.updateServicesTable();
             this.updateTotal();
@@ -1119,72 +910,31 @@ class PropostasManager {
     }
 
     updateTotal() {
-        console.log('\n🧮 === CÁLCULO DO TOTAL GERAL - INÍCIO ===');
-        
-        // CORREÇÃO CRÍTICA: Garantir que o total seja calculado corretamente
+        // CORREÇÃO: Cálculo simplificado e direto
         let total = 0;
         
-        console.log('Número de serviços adicionados:', this.servicosAdicionados.length);
-        
-        this.servicosAdicionados.forEach((item, index) => {
-            console.log(`\n📋 Item ${index}:`);
-            console.log('  - Objeto completo:', item);
-            console.log('  - preco_total (raw):', item.preco_total, typeof item.preco_total);
-            
+        this.servicosAdicionados.forEach((item) => {
             const itemTotal = parseFloat(item.preco_total) || 0;
-            console.log('  - preco_total (convertido):', itemTotal, typeof itemTotal);
-            
             total += itemTotal;
-            console.log('  - Total acumulado até agora:', total);
         });
-        
-        console.log('\n💰 RESULTADO FINAL:');
-        console.log('Total calculado (número):', total, typeof total);
-        console.log('Total formatado:', this.formatMoney(total));
         
         const totalElement = document.getElementById('total-proposta');
         if (totalElement) {
-            const textoFormatado = this.formatMoney(total);
-            totalElement.textContent = textoFormatado;
-            console.log('Texto inserido no elemento:', textoFormatado);
-        } else {
-            console.error('❌ Elemento total-proposta não encontrado!');
+            totalElement.textContent = this.formatMoney(total);
         }
-        
-        console.log('✅ === FIM CÁLCULO DO TOTAL GERAL ===\n');
     }
 
     // === FUNÇÃO PARA OBTER TOTAL ATUAL ===
     getCurrentTotal() {
-        console.log('\n🔄 === getCurrentTotal() - INÍCIO ===');
-        
         let total = 0;
         
-        console.log('Recalculando total a partir dos serviços...');
-        console.log('Número de serviços:', this.servicosAdicionados.length);
-        
-        this.servicosAdicionados.forEach((item, index) => {
-            console.log(`\n🔢 Recálculo Item ${index}:`);
-            console.log('  - Item completo:', item);
-            
+        this.servicosAdicionados.forEach((item) => {
             const quantidade = parseFloat(item.quantidade) || 0;
             const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
             const precoMaterial = parseFloat(item.preco_material) || 0;
-            
-            console.log('  - Quantidade:', quantidade, typeof quantidade);
-            console.log('  - Mão de obra:', precoMaoObra, typeof precoMaoObra);
-            console.log('  - Material:', precoMaterial, typeof precoMaterial);
-            
             const itemTotal = quantidade * (precoMaoObra + precoMaterial);
-            console.log('  - Cálculo:', `${quantidade} × (${precoMaoObra} + ${precoMaterial}) = ${itemTotal}`);
-            
             total += itemTotal;
-            console.log('  - Total acumulado:', total);
         });
-        
-        console.log('\n🎯 RESULTADO getCurrentTotal():');
-        console.log('Total final:', total, typeof total);
-        console.log('✅ === FIM getCurrentTotal() ===\n');
         
         return total;
     }
@@ -1192,38 +942,12 @@ class PropostasManager {
     async handleSubmitProposta(e) {
         e.preventDefault();
 
-        console.log('\n💾 === SALVAMENTO DA PROPOSTA - INÍCIO ===');
-
         if (!this.validateForm()) {
-            console.log('❌ Validação falhou, cancelando salvamento');
             return;
         }
 
-        // CORREÇÃO CRÍTICA: Usar função dedicada para obter o total atual
+        // CORREÇÃO: Usar função dedicada para obter o total atual
         const totalCalculado = this.getCurrentTotal();
-
-        // Verificar o valor exibido na tela
-        const totalElement = document.getElementById('total-proposta');
-        const totalExibido = totalElement ? totalElement.textContent : 'N/A';
-        
-        console.log('\n📊 COMPARAÇÃO DE VALORES:');
-        console.log('Total calculado (getCurrentTotal):', totalCalculado, typeof totalCalculado);
-        console.log('Total exibido na tela (verde):', totalExibido);
-        
-        // Tentar extrair valor numérico do texto exibido
-        let valorNumericoTela = 0;
-        if (totalExibido && totalExibido !== 'N/A') {
-            const numeroLimpo = totalExibido.replace(/[^\d,.-]/g, '').replace(',', '.');
-            valorNumericoTela = parseFloat(numeroLimpo) || 0;
-            console.log('Valor numérico extraído da tela:', valorNumericoTela, typeof valorNumericoTela);
-        }
-
-        // CORREÇÃO: Salvar valor normal (sem dividir por 100)
-        const totalParaSalvar = totalCalculado;
-
-        console.log('\n🎯 DECISÃO DE SALVAMENTO:');
-        console.log('Total que será salvo no banco:', totalParaSalvar, typeof totalParaSalvar);
-        console.log('Diferença entre calculado e tela:', Math.abs(totalCalculado - valorNumericoTela));
 
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
@@ -1233,78 +957,25 @@ class PropostasManager {
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
             tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: totalParaSalvar // CORREÇÃO: Usar total verificado
+            total_proposta: totalCalculado
         };
-
-        console.log('\n📋 DADOS COMPLETOS PARA SALVAR:');
-        console.log('Objeto proposta:', propostaData);
-        console.log('Campo total_proposta especificamente:', propostaData.total_proposta, typeof propostaData.total_proposta);
 
         try {
             let proposta;
             
-            // 🔍 LOG CRÍTICO: Verificar dados EXATOS enviados para Supabase
-            console.log('\n🚨 === DADOS EXATOS PARA SUPABASE ===');
-            console.log('Objeto completo que será enviado:', JSON.stringify(propostaData, null, 2));
-            console.log('Tipo do total_proposta:', typeof propostaData.total_proposta);
-            console.log('Valor do total_proposta:', propostaData.total_proposta);
-            console.log('JSON do total_proposta:', JSON.stringify(propostaData.total_proposta));
-            console.log('String do total_proposta:', String(propostaData.total_proposta));
-            console.log('Number do total_proposta:', Number(propostaData.total_proposta));
-            console.log('=====================================\n');
-            
             if (this.currentPropostaId) {
-                console.log('\n🔄 ATUALIZANDO proposta existente...');
-                console.log('ID da proposta:', this.currentPropostaId);
-                
-                // 🔍 LOG ANTES DO ENVIO
-                console.log('🚀 ENVIANDO PARA SUPABASE (UPDATE)...');
-                console.log('Dados sendo enviados:', propostaData);
-                
-                // 🚨 SOLUÇÃO: Forçar substituição completa do valor
-                console.log('🔧 FORÇANDO SUBSTITUIÇÃO DO VALOR...');
-                
-                // Atualizar proposta existente com substituição forçada
+                // Atualizar proposta existente
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
-                    .update({
-                        numero_proposta: propostaData.numero_proposta,
-                        cliente_id: propostaData.cliente_id,
-                        status: propostaData.status,
-                        observacoes: propostaData.observacoes,
-                        prazo_execucao: propostaData.prazo_execucao,
-                        tipo_prazo: propostaData.tipo_prazo,
-                        forma_pagamento: propostaData.forma_pagamento,
-                        total_proposta: propostaData.total_proposta // Substituição direta
-                    })
+                    .update(propostaData)
                     .eq('id', this.currentPropostaId)
                     .select()
                     .single();
 
-                if (error) {
-                    console.error('❌ Erro ao atualizar proposta:', error);
-                    throw error;
-                }
-                
+                if (error) throw error;
                 proposta = data;
-                console.log('✅ Proposta atualizada com sucesso:', proposta);
-                console.log('🔍 VALOR RETORNADO DO BANCO:', proposta.total_proposta, typeof proposta.total_proposta);
-                
-                // 🚨 COMPARAÇÃO CRÍTICA
-                console.log('\n🔍 === COMPARAÇÃO CRÍTICA ===');
-                console.log('Valor ENVIADO:', propostaData.total_proposta);
-                console.log('Valor RETORNADO:', proposta.total_proposta);
-                console.log('Diferença:', proposta.total_proposta - propostaData.total_proposta);
-                console.log('Multiplicação por 100?', proposta.total_proposta === (propostaData.total_proposta * 100));
-                console.log('===============================\n');
                 
             } else {
-                console.log('\n➕ CRIANDO nova proposta...');
-                
-                // 🔍 LOG ANTES DO ENVIO
-                console.log('🚀 ENVIANDO PARA SUPABASE (INSERT)...');
-                console.log('Dados sendo enviados:', propostaData);
-                
                 // Criar nova proposta
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
@@ -1312,40 +983,22 @@ class PropostasManager {
                     .select()
                     .single();
 
-                if (error) {
-                    console.error('❌ Erro ao criar proposta:', error);
-                    throw error;
-                }
-                
+                if (error) throw error;
                 proposta = data;
-                console.log('✅ Nova proposta criada com sucesso:', proposta);
-                console.log('🔍 VALOR RETORNADO DO BANCO:', proposta.total_proposta, typeof proposta.total_proposta);
-                
-                // 🚨 COMPARAÇÃO CRÍTICA
-                console.log('\n🔍 === COMPARAÇÃO CRÍTICA ===');
-                console.log('Valor ENVIADO:', propostaData.total_proposta);
-                console.log('Valor RETORNADO:', proposta.total_proposta);
-                console.log('Diferença:', proposta.total_proposta - propostaData.total_proposta);
-                console.log('Multiplicação por 100?', proposta.total_proposta === (propostaData.total_proposta * 100));
-                console.log('===============================\n');
             }
 
-            console.log('\n📦 Salvando itens da proposta...');
             // Salvar itens da proposta
             await this.saveItensProposta(proposta.id);
 
-            console.log('\n🎉 SALVAMENTO CONCLUÍDO COM SUCESSO!');
-            console.log('✅ === FIM SALVAMENTO DA PROPOSTA ===\n');
-
             this.hideFormProposta();
-            this.loadPropostas();
+            
+            // CORREÇÃO: Forçar recarregamento completo da lista
+            await this.loadPropostas();
+            
             this.showNotification('Proposta salva com sucesso!', 'success');
 
         } catch (error) {
-            console.error('\n❌ === ERRO NO SALVAMENTO ===');
-            console.error('Erro completo:', error);
-            console.error('Mensagem:', error.message);
-            console.error('================================\n');
+            console.error('Erro no salvamento:', error);
             this.showNotification('Erro ao salvar proposta: ' + error.message, 'error');
         }
     }
@@ -1357,7 +1010,7 @@ class PropostasManager {
             .delete()
             .eq('proposta_id', propostaId);
 
-        // Inserir novos itens com valores normais (sem dividir por 100)
+        // Inserir novos itens
         const itens = this.servicosAdicionados.map(item => {
             const quantidade = parseFloat(item.quantidade) || 0;
             const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
@@ -1374,17 +1027,12 @@ class PropostasManager {
             };
         });
 
-        console.log('=== ITENS PARA SALVAR ===');
-        console.log('Itens:', itens);
-        console.log('========================');
-
         if (itens.length > 0) {
             const { error } = await supabaseClient
                 .from('itens_proposta_hvc')
                 .insert(itens);
 
             if (error) throw error;
-            console.log('Itens salvos com sucesso');
         }
     }
 
@@ -1425,8 +1073,6 @@ class PropostasManager {
     // === LISTA DE PROPOSTAS CORRIGIDA ===
     async loadPropostas() {
         try {
-            console.log('\n🔄 === CARREGANDO PROPOSTAS ===');
-            
             if (!supabaseClient) {
                 console.error('Supabase client não disponível');
                 return;
@@ -1442,26 +1088,9 @@ class PropostasManager {
 
             if (error) throw error;
 
-            console.log('📊 Propostas carregadas do banco:', data?.length || 0);
-            
-            // Log detalhado dos valores para debug
-            if (data && data.length > 0) {
-                console.log('\n🔍 === VALORES DAS PROPOSTAS ===');
-                data.forEach((proposta, index) => {
-                    console.log(`Proposta ${index + 1}:`, {
-                        numero: proposta.numero_proposta,
-                        total_banco: proposta.total_proposta,
-                        tipo_total: typeof proposta.total_proposta,
-                        total_formatado: this.formatMoney(proposta.total_proposta)
-                    });
-                });
-                console.log('=====================================\n');
-            }
-
             this.propostas = data || []; // Armazenar para filtros
             this.renderPropostas(this.propostas);
             this.populateClienteFilter(); // Atualizar filtro de clientes
-            console.log('Propostas carregadas:', this.propostas.length);
         } catch (error) {
             console.error('Erro ao carregar propostas:', error);
             this.showNotification('Erro ao carregar propostas: ' + error.message, 'error');
@@ -1549,7 +1178,7 @@ class PropostasManager {
 
             if (error) throw error;
 
-            // Carregar proposta para edição (sem proteção)
+            // Carregar proposta para edição
             this.showFormProposta(data);
         } catch (error) {
             console.error('Erro ao carregar proposta:', error);
@@ -1578,10 +1207,114 @@ class PropostasManager {
         }
     }
 
+    // === EVENT LISTENERS ===
+    setupEventListeners() {
+        try {
+            // Botões principais
+            const btnNovaProposta = document.getElementById('btn-nova-proposta');
+            const btnCancelar = document.getElementById('btn-cancelar');
+            
+            if (btnNovaProposta) {
+                btnNovaProposta.addEventListener('click', () => {
+                    this.showFormProposta();
+                });
+            }
+            if (btnCancelar) {
+                btnCancelar.addEventListener('click', () => this.hideFormProposta());
+            }
+            
+            // Formulário de proposta
+            const propostaForm = document.getElementById('proposta-form');
+            if (propostaForm) {
+                propostaForm.addEventListener('submit', (e) => this.handleSubmitProposta(e));
+            }
+            
+            // Botões de adicionar
+            const btnAddCliente = document.getElementById('btn-add-cliente');
+            const btnAddServico = document.getElementById('btn-add-servico');
+            
+            if (btnAddCliente) {
+                btnAddCliente.addEventListener('click', () => this.showModalCliente());
+            }
+            if (btnAddServico) {
+                btnAddServico.addEventListener('click', () => {
+                    this.addServicoToProposta(); // Abrir modal de seleção múltipla
+                });
+            }
+            
+            // Modais - Serviço
+            const closeModalServico = document.getElementById('close-modal-servico');
+            const cancelServico = document.getElementById('cancel-servico');
+            const servicoForm = document.getElementById('servico-form');
+            
+            if (closeModalServico) {
+                closeModalServico.addEventListener('click', () => this.hideModalServico());
+            }
+            if (cancelServico) {
+                cancelServico.addEventListener('click', () => this.hideModalServico());
+            }
+            if (servicoForm) {
+                servicoForm.addEventListener('submit', (e) => this.handleSubmitServico(e));
+            }
+            
+            // Modais - Cliente
+            const closeModalCliente = document.getElementById('close-modal-cliente');
+            const cancelCliente = document.getElementById('cancel-cliente');
+            const clienteForm = document.getElementById('cliente-form');
+            
+            if (closeModalCliente) {
+                closeModalCliente.addEventListener('click', () => this.hideModalCliente());
+            }
+            if (cancelCliente) {
+                cancelCliente.addEventListener('click', () => this.hideModalCliente());
+            }
+            if (clienteForm) {
+                clienteForm.addEventListener('submit', (e) => this.handleSubmitCliente(e));
+            }
+            
+            // Fechar modal clicando fora
+            const modalServico = document.getElementById('modal-servico');
+            const modalCliente = document.getElementById('modal-cliente');
+            
+            if (modalServico) {
+                modalServico.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-servico') this.hideModalServico();
+                });
+            }
+            if (modalCliente) {
+                modalCliente.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-cliente') this.hideModalCliente();
+                });
+            }
+            
+        } catch (error) {
+            console.error('Erro ao configurar event listeners:', error);
+        }
+    }
+
+    setupMasks() {
+        // Máscara para número da proposta (XXXX/YYYY)
+        const numeroInput = document.getElementById('numero-proposta');
+        if (numeroInput) {
+            numeroInput.addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length >= 4) {
+                    value = value.substring(0, 4) + '/' + value.substring(4, 8);
+                }
+                e.target.value = value;
+            });
+        }
+    }
+
+    formatMoney(value) {
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(value || 0);
+    }
+
     // === NOTIFICAÇÕES ===
     showNotification(message, type = 'info') {
-        console.log(`Notificação [${type}]: ${message}`);
-        
         // Criar elemento de notificação
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
@@ -1645,3 +1378,4 @@ class PropostasManager {
 
 // Expor globalmente para uso nos event handlers inline
 window.propostasManager = null;
+
