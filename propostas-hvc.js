@@ -1,4 +1,4 @@
-// propostas-hvc.js - Versão CORRIGIDA - Sem logs desnecessários
+// propostas-hvc.js - Versão CORRIGIDA - Numeric Field Overflow Fix
 // Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
@@ -48,6 +48,33 @@ function loadSupabaseFromCDN() {
         console.error('Erro ao carregar script do Supabase');
     };
     document.head.appendChild(script);
+}
+
+// NOVA FUNÇÃO: Garantir formato numérico correto
+function ensureNumericValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return 0;
+    }
+    
+    // Converter para string primeiro
+    let stringValue = String(value);
+    
+    // Remover caracteres não numéricos exceto ponto e vírgula
+    stringValue = stringValue.replace(/[^\d.,-]/g, '');
+    
+    // Substituir vírgula por ponto (formato brasileiro para americano)
+    stringValue = stringValue.replace(',', '.');
+    
+    // Converter para número
+    const numericValue = parseFloat(stringValue);
+    
+    // Verificar se é um número válido
+    if (isNaN(numericValue)) {
+        return 0;
+    }
+    
+    // Limitar a 2 casas decimais para evitar overflow
+    return Math.round(numericValue * 100) / 100;
 }
 
 class PropostasManager {
@@ -523,10 +550,10 @@ class PropostasManager {
             this.servicosAdicionados = data.map(item => ({
                 servico_id: item.servico_id,
                 servico: item.servicos_hvc,
-                quantidade: item.quantidade,
-                preco_mao_obra: item.preco_mao_obra,
-                preco_material: item.preco_material,
-                preco_total: item.preco_total
+                quantidade: ensureNumericValue(item.quantidade),
+                preco_mao_obra: ensureNumericValue(item.preco_mao_obra),
+                preco_material: ensureNumericValue(item.preco_material),
+                preco_total: ensureNumericValue(item.preco_total)
             }));
 
             this.updateServicesTable();
@@ -884,17 +911,17 @@ class PropostasManager {
         if (index >= 0 && index < this.servicosAdicionados.length) {
             const item = this.servicosAdicionados[index];
             
-            // Atualizar o campo
-            item[field] = parseFloat(value) || 0;
+            // CORREÇÃO: Usar função para garantir formato numérico correto
+            item[field] = ensureNumericValue(value);
             
             // Recalcular total do item
-            const quantidade = parseFloat(item.quantidade) || 0;
-            const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
-            const precoMaterial = parseFloat(item.preco_material) || 0;
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
             const somaPrecos = precoMaoObra + precoMaterial;
             const totalCalculado = quantidade * somaPrecos;
             
-            item.preco_total = totalCalculado;
+            item.preco_total = ensureNumericValue(totalCalculado);
             
             this.updateServicesTable();
             this.updateTotal();
@@ -910,13 +937,16 @@ class PropostasManager {
     }
 
     updateTotal() {
-        // CORREÇÃO: Cálculo simplificado e direto
+        // CORREÇÃO: Cálculo simplificado e direto com garantia numérica
         let total = 0;
         
         this.servicosAdicionados.forEach((item) => {
-            const itemTotal = parseFloat(item.preco_total) || 0;
+            const itemTotal = ensureNumericValue(item.preco_total);
             total += itemTotal;
         });
+        
+        // Garantir que o total seja um número válido
+        total = ensureNumericValue(total);
         
         const totalElement = document.getElementById('total-proposta');
         if (totalElement) {
@@ -929,14 +959,15 @@ class PropostasManager {
         let total = 0;
         
         this.servicosAdicionados.forEach((item) => {
-            const quantidade = parseFloat(item.quantidade) || 0;
-            const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
-            const precoMaterial = parseFloat(item.preco_material) || 0;
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
             const itemTotal = quantidade * (precoMaoObra + precoMaterial);
             total += itemTotal;
         });
         
-        return total;
+        // CORREÇÃO: Garantir que o total seja um número válido
+        return ensureNumericValue(total);
     }
 
     async handleSubmitProposta(e) {
@@ -946,7 +977,7 @@ class PropostasManager {
             return;
         }
 
-        // CORREÇÃO: Usar função dedicada para obter o total atual
+        // CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
         const totalCalculado = this.getCurrentTotal();
 
         const propostaData = {
@@ -957,7 +988,7 @@ class PropostasManager {
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
             tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: totalCalculado
+            total_proposta: totalCalculado // CORREÇÃO: Valor já garantido como numérico
         };
 
         try {
@@ -1010,12 +1041,12 @@ class PropostasManager {
             .delete()
             .eq('proposta_id', propostaId);
 
-        // Inserir novos itens
+        // Inserir novos itens com valores garantidos como numéricos
         const itens = this.servicosAdicionados.map(item => {
-            const quantidade = parseFloat(item.quantidade) || 0;
-            const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
-            const precoMaterial = parseFloat(item.preco_material) || 0;
-            const precoTotal = quantidade * (precoMaoObra + precoMaterial);
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
+            const precoTotal = ensureNumericValue(quantidade * (precoMaoObra + precoMaterial));
             
             return {
                 proposta_id: propostaId,
@@ -1140,7 +1171,7 @@ class PropostasManager {
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
+                <td><strong>${this.formatMoney(ensureNumericValue(proposta.total_proposta))}</strong></td>
                 <td>${prazoTexto}</td>
                 <td>${proposta.forma_pagamento || '-'}</td>
                 <td>
@@ -1307,10 +1338,12 @@ class PropostasManager {
     }
 
     formatMoney(value) {
+        // CORREÇÃO: Garantir que o valor seja numérico antes de formatar
+        const numericValue = ensureNumericValue(value);
         return new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL'
-        }).format(value || 0);
+        }).format(numericValue);
     }
 
     // === NOTIFICAÇÕES ===
