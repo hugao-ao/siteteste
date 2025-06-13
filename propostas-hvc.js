@@ -1,4 +1,4 @@
-// propostas-hvc.js - Versão FINAL CORRIGIDA
+// propostas-hvc.js - Versão FINAL COM DECIMAIS CORRIGIDOS
 // Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
@@ -1035,6 +1035,7 @@ class PropostasManager {
 
     updateItemQuantidade(index, quantidade) {
         if (this.servicosAdicionados[index]) {
+            // CORREÇÃO: Garantir que seja um número válido
             this.servicosAdicionados[index].quantidade = parseFloat(quantidade) || 0;
             this.calculateItemTotal(index);
         }
@@ -1042,6 +1043,7 @@ class PropostasManager {
 
     updateItemPrecoMaoObra(index, preco) {
         if (this.servicosAdicionados[index]) {
+            // CORREÇÃO: Garantir que seja um número válido
             this.servicosAdicionados[index].preco_mao_obra = parseFloat(preco) || 0;
             this.calculateItemTotal(index);
         }
@@ -1049,6 +1051,7 @@ class PropostasManager {
 
     updateItemPrecoMaterial(index, preco) {
         if (this.servicosAdicionados[index]) {
+            // CORREÇÃO: Garantir que seja um número válido
             this.servicosAdicionados[index].preco_material = parseFloat(preco) || 0;
             this.calculateItemTotal(index);
         }
@@ -1057,8 +1060,21 @@ class PropostasManager {
     calculateItemTotal(index) {
         const item = this.servicosAdicionados[index];
         if (item) {
-            // CORREÇÃO DO CÁLCULO: Total = Quantidade × (Mão de Obra + Material)
-            item.preco_total = item.quantidade * (item.preco_mao_obra + item.preco_material);
+            // CORREÇÃO CRÍTICA: Garantir que todos os valores sejam números válidos
+            const quantidade = parseFloat(item.quantidade) || 0;
+            const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
+            const precoMaterial = parseFloat(item.preco_material) || 0;
+            
+            // Cálculo: Total = Quantidade × (Mão de Obra + Material)
+            item.preco_total = quantidade * (precoMaoObra + precoMaterial);
+            
+            console.log(`Item ${index}:`, {
+                quantidade,
+                precoMaoObra,
+                precoMaterial,
+                total: item.preco_total
+            });
+            
             this.updateServicesTable();
             this.updateTotal();
         }
@@ -1073,13 +1089,24 @@ class PropostasManager {
     }
 
     updateTotal() {
-        // CORREÇÃO DO CÁLCULO: Somar todos os preco_total dos itens
-        const total = this.servicosAdicionados.reduce((sum, item) => sum + (item.preco_total || 0), 0);
+        // CORREÇÃO CRÍTICA: Garantir que o total seja calculado corretamente
+        let total = 0;
+        
+        this.servicosAdicionados.forEach((item, index) => {
+            const itemTotal = parseFloat(item.preco_total) || 0;
+            total += itemTotal;
+            console.log(`Item ${index} total: ${itemTotal}`);
+        });
+        
         const totalElement = document.getElementById('total-proposta');
         if (totalElement) {
             totalElement.textContent = this.formatMoney(total);
         }
-        console.log('Total calculado:', total, 'Formatado:', this.formatMoney(total));
+        
+        console.log('=== CÁLCULO DO TOTAL ===');
+        console.log('Total final calculado:', total);
+        console.log('Total formatado:', this.formatMoney(total));
+        console.log('========================');
     }
 
     async handleSubmitProposta(e) {
@@ -1087,22 +1114,39 @@ class PropostasManager {
 
         if (!this.validateForm()) return;
 
-        // CORREÇÃO: Calcular total corretamente antes de salvar
-        const totalCalculado = this.servicosAdicionados.reduce((sum, item) => sum + (item.preco_total || 0), 0);
+        // CORREÇÃO CRÍTICA: Calcular total corretamente antes de salvar
+        let totalCalculado = 0;
+        
+        this.servicosAdicionados.forEach((item, index) => {
+            const quantidade = parseFloat(item.quantidade) || 0;
+            const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
+            const precoMaterial = parseFloat(item.preco_material) || 0;
+            const itemTotal = quantidade * (precoMaoObra + precoMaterial);
+            
+            totalCalculado += itemTotal;
+            
+            console.log(`=== ITEM ${index} PARA SALVAR ===`);
+            console.log('Quantidade:', quantidade);
+            console.log('Preço Mão de Obra:', precoMaoObra);
+            console.log('Preço Material:', precoMaterial);
+            console.log('Total do Item:', itemTotal);
+        });
 
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
             cliente_id: document.getElementById('cliente-select').value,
             status: document.getElementById('status-select').value,
-            observacoes: document.getElementById('observacoes').value || null, // CORREÇÃO: Garantir que observações sejam salvas
-            prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null, // CORREÇÃO: Converter para número
-            tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos', // CORREÇÃO: Garantir valor padrão
-            forma_pagamento: document.getElementById('forma-pagamento')?.value || null, // CORREÇÃO: Garantir que seja salvo
-            total_proposta: totalCalculado // CORREÇÃO: Usar total calculado corretamente
+            observacoes: document.getElementById('observacoes').value || null,
+            prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
+            tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
+            forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
+            total_proposta: totalCalculado // CORREÇÃO: Usar total recalculado
         };
 
-        console.log('Dados da proposta a serem salvos:', propostaData);
-        console.log('Total calculado:', totalCalculado);
+        console.log('=== DADOS PARA SALVAR ===');
+        console.log('Total calculado para salvar:', totalCalculado);
+        console.log('Dados completos:', propostaData);
+        console.log('========================');
 
         try {
             let proposta;
@@ -1152,17 +1196,26 @@ class PropostasManager {
             .delete()
             .eq('proposta_id', propostaId);
 
-        // Inserir novos itens
-        const itens = this.servicosAdicionados.map(item => ({
-            proposta_id: propostaId,
-            servico_id: item.servico_id,
-            quantidade: item.quantidade,
-            preco_mao_obra: item.preco_mao_obra,
-            preco_material: item.preco_material,
-            preco_total: item.preco_total
-        }));
+        // Inserir novos itens com valores recalculados
+        const itens = this.servicosAdicionados.map(item => {
+            const quantidade = parseFloat(item.quantidade) || 0;
+            const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
+            const precoMaterial = parseFloat(item.preco_material) || 0;
+            const precoTotal = quantidade * (precoMaoObra + precoMaterial);
+            
+            return {
+                proposta_id: propostaId,
+                servico_id: item.servico_id,
+                quantidade: quantidade,
+                preco_mao_obra: precoMaoObra,
+                preco_material: precoMaterial,
+                preco_total: precoTotal // CORREÇÃO: Usar valor recalculado
+            };
+        });
 
-        console.log('Itens a serem salvos:', itens);
+        console.log('=== ITENS PARA SALVAR ===');
+        console.log('Itens:', itens);
+        console.log('========================');
 
         if (itens.length > 0) {
             const { error } = await supabaseClient
