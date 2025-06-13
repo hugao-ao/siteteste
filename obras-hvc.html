@@ -1,795 +1,852 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Obras HVC - Sistema de Gestão</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
-            min-height: 100vh;
-            color: #333;
-        }
-
-        .container {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 2rem;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 3rem;
-            color: white;
-        }
-
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-        }
-
-        .header p {
-            font-size: 1.1rem;
-            opacity: 0.9;
-        }
-
-        /* Seção de Nova Obra */
-        .form-section {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 2rem;
-            margin-bottom: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            backdrop-filter: blur(10px);
-        }
-
-        .form-section.hidden {
-            display: none;
-        }
-
-        .form-title {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            margin-bottom: 2rem;
-            color: #2a5298;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-        }
-
-        .form-group {
-            display: flex;
-            flex-direction: column;
-        }
-
-        .form-group label {
-            margin-bottom: 0.5rem;
-            font-weight: 600;
-            color: #2a5298;
-        }
-
-        .form-input, .form-select, .form-textarea {
-            padding: 0.75rem;
-            border: 2px solid #e1e5e9;
-            border-radius: 8px;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            background: white;
-        }
-
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: #2a5298;
-            box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
-        }
-
-        .form-textarea {
-            resize: vertical;
-            min-height: 100px;
-        }
-
-        /* Botões */
-        .btn {
-            padding: 0.75rem 1.5rem;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            text-decoration: none;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #2a5298, #1e3c72);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(42, 82, 152, 0.4);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4);
-        }
-
-        .btn-secondary {
-            background: linear-gradient(135deg, #6c757d, #5a6268);
-            color: white;
-        }
-
-        .btn-secondary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(108, 117, 125, 0.4);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #dc3545, #c82333);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4);
-        }
-
-        .btn-info {
-            background: linear-gradient(135deg, #17a2b8, #138496);
-            color: white;
-        }
-
-        .btn-info:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(23, 162, 184, 0.4);
-        }
-
-        .btn-warning {
-            background: linear-gradient(135deg, #ffc107, #e0a800);
-            color: #212529;
-        }
-
-        .btn-warning:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 193, 7, 0.4);
-        }
-
-        .btn.disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-
-        /* Seção de Propostas Selecionadas */
-        .propostas-section {
-            margin: 2rem 0;
-        }
-
-        .propostas-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-
-        .propostas-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .propostas-table th {
-            background: linear-gradient(135deg, #2a5298, #1e3c72);
-            color: white;
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        .propostas-table td {
-            padding: 1rem;
-            border-bottom: 1px solid #e1e5e9;
-        }
-
-        .propostas-table tr:hover {
-            background: rgba(42, 82, 152, 0.05);
-        }
-
-        /* Resumo da Obra */
-        .resumo-obra {
-            background: linear-gradient(135deg, #28a745, #20c997);
-            color: white;
-            padding: 1.5rem;
-            border-radius: 10px;
-            margin: 2rem 0;
-            text-align: center;
-        }
-
-        .resumo-obra h3 {
-            margin-bottom: 1rem;
-            font-size: 1.3rem;
-        }
-
-        .resumo-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .resumo-item {
-            background: rgba(255, 255, 255, 0.2);
-            padding: 1rem;
-            border-radius: 8px;
-        }
-
-        .resumo-item h4 {
-            font-size: 0.9rem;
-            margin-bottom: 0.5rem;
-            opacity: 0.9;
-        }
-
-        .resumo-item .valor {
-            font-size: 1.5rem;
-            font-weight: bold;
-        }
-
-        /* Botões de Ação */
-        .form-actions {
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-            margin-top: 2rem;
-            padding-top: 2rem;
-            border-top: 2px solid #e1e5e9;
-        }
-
-        /* Lista de Obras */
-        .obras-list {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 15px;
-            padding: 2rem;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-            backdrop-filter: blur(10px);
-        }
-
-        .obras-table {
-            width: 100%;
-            border-collapse: collapse;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-        }
-
-        .obras-table th {
-            background: linear-gradient(135deg, #2a5298, #1e3c72);
-            color: white;
-            padding: 1rem;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        .obras-table td {
-            padding: 1rem;
-            border-bottom: 1px solid #e1e5e9;
-        }
-
-        .obras-table tr:hover {
-            background: rgba(42, 82, 152, 0.05);
-        }
-
-        .actions-cell {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .actions-cell .btn {
-            padding: 0.5rem;
-            font-size: 0.9rem;
-        }
-
-        /* Status Badge */
-        .status-badge {
-            padding: 0.25rem 0.75rem;
-            border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-planejamento {
-            background: #ffc107;
-            color: #212529;
-        }
-
-        .status-andamento {
-            background: #17a2b8;
-            color: white;
-        }
-
-        .status-concluída {
-            background: #28a745;
-            color: white;
-        }
-
-        .status-pausada {
-            background: #dc3545;
-            color: white;
-        }
-
-        /* Modais */
-        .modal {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            z-index: 1000;
-            backdrop-filter: blur(5px);
-        }
-
-        .modal.show {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-content {
-            background: white;
-            border-radius: 15px;
-            padding: 2rem;
-            max-width: 90vw;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 2px solid #e1e5e9;
-        }
-
-        .modal-title {
-            color: #2a5298;
-            font-size: 1.5rem;
-            font-weight: 600;
-        }
-
-        .close-modal {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #6c757d;
-            padding: 0.5rem;
-            border-radius: 50%;
-            transition: all 0.3s ease;
-        }
-
-        .close-modal:hover {
-            background: #f8f9fa;
-            color: #dc3545;
-        }
-
-        .modal-footer {
-            display: flex;
-            gap: 1rem;
-            justify-content: flex-end;
-            margin-top: 2rem;
-            padding-top: 1rem;
-            border-top: 2px solid #e1e5e9;
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .container {
-                padding: 1rem;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .form-actions {
-                flex-direction: column;
-            }
-
-            .resumo-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .obras-table, .propostas-table {
-                font-size: 0.9rem;
-            }
-
-            .obras-table th, .obras-table td,
-            .propostas-table th, .propostas-table td {
-                padding: 0.5rem;
-            }
-        }
-
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .form-section, .obras-list {
-            animation: fadeIn 0.5s ease-out;
-        }
-
-        /* Filtros */
-        .filter-controls {
-            display: flex;
-            gap: 1rem;
-            margin-bottom: 1.5rem;
-            padding: 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            border: 1px solid rgba(173, 216, 230, 0.2);
-            flex-wrap: wrap;
-        }
-
-        .filter-controls label {
-            display: block;
-            margin-bottom: 0.5rem;
-            color: #2a5298;
-            font-weight: 600;
-        }
-
-        /* Progresso */
-        .progress-bar {
-            width: 100%;
-            height: 20px;
-            background: #e1e5e9;
-            border-radius: 10px;
-            overflow: hidden;
-        }
-
-        .progress-fill {
-            height: 100%;
-            background: linear-gradient(135deg, #28a745, #20c997);
-            transition: width 0.3s ease;
-        }
-
-        .progress-text {
-            text-align: center;
-            margin-top: 0.5rem;
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Obras HVC - Gerenciamento</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* Estilos específicos para a página de obras - MANTENDO PADRÃO HVC */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #main-content-obras-hvc {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+    }
+
+    #main-content-obras-hvc.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .page-title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #add8e6;
+      text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d, #5a6268);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #28a745, #218838);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, #17a2b8, #138496);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800);
+      color: #212529;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* Formulário de Nova Obra */
+    .form-section {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .form-section.hidden {
+      display: none;
+    }
+
+    .form-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #add8e6;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-label {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      color: #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: #add8e6;
+      box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    /* Seção de Propostas */
+    .propostas-section {
+      margin: 2rem 0;
+    }
+
+    .propostas-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .propostas-header h3 {
+      color: #add8e6;
+      font-size: 1.3rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .propostas-table, .obras-table {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      border-collapse: collapse;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .propostas-table th, .obras-table th {
+      background: rgba(173, 216, 230, 0.2);
+      color: #add8e6;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .propostas-table td, .obras-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      color: #e0e0e0;
+    }
+
+    .propostas-table tr:hover, .obras-table tr:hover {
+      background: rgba(173, 216, 230, 0.1);
+    }
+
+    /* Resumo da Obra */
+    .resumo-obra {
+      background: rgba(40, 167, 69, 0.2);
+      border: 1px solid rgba(40, 167, 69, 0.3);
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+      text-align: center;
+    }
+
+    .resumo-obra h3 {
+      margin-bottom: 1rem;
+      font-size: 1.3rem;
+      color: #add8e6;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .resumo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .resumo-item {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .resumo-item h4 {
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+    }
+
+    .resumo-item .valor {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #e0e0e0;
+    }
+
+    /* Botões de Ação */
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+      padding-top: 2rem;
+      border-top: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    /* Lista de Obras */
+    .obras-list {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .actions-cell .btn {
+      padding: 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    /* Status Badge */
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-planejamento {
+      background: #ffc107;
+      color: #212529;
+    }
+
+    .status-andamento {
+      background: #17a2b8;
+      color: white;
+    }
+
+    .status-concluída {
+      background: #28a745;
+      color: white;
+    }
+
+    .status-pausada {
+      background: #dc3545;
+      color: white;
+    }
+
+    /* Modais */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: rgba(25, 25, 112, 0.95);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 15px;
+      padding: 2rem;
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      color: #e0e0e0;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .modal-title {
+      color: #add8e6;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #6c757d;
+      padding: 0.5rem;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .close-modal:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #dc3545;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    /* Filtros */
+    .filter-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      flex-wrap: wrap;
+    }
+
+    .filter-controls label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+      font-weight: 600;
+    }
+
+    /* Progresso */
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #28a745, #20c997);
+      transition: width 0.3s ease;
+    }
+
+    .progress-text {
+      text-align: center;
+      margin-top: 0.5rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    /* Itens de proposta no modal */
+    .proposta-item {
+      display: flex;
+      align-items: center;
+      padding: 1rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      background: rgba(255, 255, 255, 0.05);
+      transition: all 0.3s ease;
+    }
+
+    .proposta-item:hover {
+      background: rgba(173, 216, 230, 0.1);
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      #main-content-obras-hvc {
+        margin-left: 0;
+        padding: 1rem;
+      }
+
+      #main-content-obras-hvc.sidebar-collapsed {
+        margin-left: 0;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .form-actions {
+        flex-direction: column;
+      }
+
+      .resumo-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .obras-table, .propostas-table {
+        font-size: 0.9rem;
+      }
+
+      .obras-table th, .obras-table td,
+      .propostas-table th, .propostas-table td {
+        padding: 0.5rem;
+      }
+
+      .filter-controls {
+        flex-direction: column;
+      }
+    }
+
+    /* Animações */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-section, .obras-list {
+      animation: fadeIn 0.5s ease-out;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Header -->
-        <div class="header">
-            <h1><i class="fas fa-building"></i> Gestão de Obras HVC</h1>
-            <p>Sistema completo para gerenciamento de obras e acompanhamento de projetos</p>
+  <!-- Main Content -->
+  <main id="main-content-obras-hvc">
+    <!-- Header -->
+    <div class="page-header">
+      <h1 class="page-title"><i class="fas fa-building"></i> Gestão de Obras HVC</h1>
+      <button id="btn-nova-obra" class="btn-primary">
+        <i class="fas fa-plus"></i>
+        Nova Obra
+      </button>
+    </div>
+
+    <!-- Formulário de Nova Obra -->
+    <div id="form-obra" class="form-section hidden">
+      <div class="form-title">
+        <i class="fas fa-hammer"></i>
+        <span id="form-title-text">Nova Obra</span>
+      </div>
+
+      <form id="obra-form">
+        <!-- Dados Básicos -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="numero-obra" class="form-label">
+              <i class="fas fa-hashtag"></i>
+              Número da Obra *
+            </label>
+            <input type="text" 
+                   id="numero-obra" 
+                   class="form-input" 
+                   placeholder="0001/2025"
+                   maxlength="9"
+                   required>
+          </div>
+
+          <div class="form-group">
+            <label for="status-obra" class="form-label">
+              <i class="fas fa-flag"></i>
+              Status da Obra
+            </label>
+            <select id="status-obra" class="form-select">
+              <option value="Planejamento">Planejamento</option>
+              <option value="Andamento">Em Andamento</option>
+              <option value="Pausada">Pausada</option>
+              <option value="Concluída">Concluída</option>
+            </select>
+          </div>
         </div>
 
-        <!-- Botão Nova Obra -->
-        <div style="text-align: center; margin-bottom: 2rem;">
-            <button id="btn-nova-obra" class="btn btn-primary">
-                <i class="fas fa-plus"></i>
-                Nova Obra
+        <!-- Seção de Propostas -->
+        <div class="propostas-section">
+          <div class="propostas-header">
+            <h3><i class="fas fa-file-contract"></i> Propostas da Obra</h3>
+            <button type="button" id="btn-add-propostas" class="btn-info">
+              <i class="fas fa-plus"></i>
+              Adicionar Propostas
             </button>
+          </div>
+
+          <table class="propostas-table">
+            <thead>
+              <tr>
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="propostas-tbody">
+              <tr>
+                <td colspan="5" style="text-align: center; padding: 2rem; color: #888;">
+                  <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                  Nenhuma proposta adicionada. Clique em "Adicionar Propostas" para começar.
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
 
-        <!-- Formulário de Nova Obra -->
-        <div id="form-obra" class="form-section hidden">
-            <div class="form-title">
-                <i class="fas fa-hammer"></i>
-                <span id="form-title-text">Nova Obra</span>
+        <!-- Resumo da Obra -->
+        <div class="resumo-obra">
+          <h3><i class="fas fa-chart-line"></i> Resumo da Obra</h3>
+          <div class="resumo-grid">
+            <div class="resumo-item">
+              <h4>Total de Propostas</h4>
+              <div class="valor" id="total-propostas">0</div>
             </div>
-
-            <form id="obra-form">
-                <!-- Dados Básicos -->
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="numero-obra">
-                            <i class="fas fa-hashtag"></i>
-                            Número da Obra *
-                        </label>
-                        <input type="text" 
-                               id="numero-obra" 
-                               class="form-input" 
-                               placeholder="0001/2025"
-                               maxlength="9"
-                               required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="status-obra">
-                            <i class="fas fa-flag"></i>
-                            Status da Obra
-                        </label>
-                        <select id="status-obra" class="form-select">
-                            <option value="Planejamento">Planejamento</option>
-                            <option value="Andamento">Em Andamento</option>
-                            <option value="Pausada">Pausada</option>
-                            <option value="Concluída">Concluída</option>
-                        </select>
-                    </div>
-                </div>
-
-                <!-- Seção de Propostas -->
-                <div class="propostas-section">
-                    <div class="propostas-header">
-                        <h3><i class="fas fa-file-contract"></i> Propostas da Obra</h3>
-                        <button type="button" id="btn-add-propostas" class="btn btn-info">
-                            <i class="fas fa-plus"></i>
-                            Adicionar Propostas
-                        </button>
-                    </div>
-
-                    <table class="propostas-table">
-                        <thead>
-                            <tr>
-                                <th>Número</th>
-                                <th>Cliente</th>
-                                <th>Total</th>
-                                <th>Status</th>
-                                <th>Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="propostas-tbody">
-                            <tr>
-                                <td colspan="5" style="text-align: center; padding: 2rem; color: #888;">
-                                    <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                                    Nenhuma proposta adicionada. Clique em "Adicionar Propostas" para começar.
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Resumo da Obra -->
-                <div class="resumo-obra">
-                    <h3><i class="fas fa-chart-line"></i> Resumo da Obra</h3>
-                    <div class="resumo-grid">
-                        <div class="resumo-item">
-                            <h4>Total de Propostas</h4>
-                            <div class="valor" id="total-propostas">0</div>
-                        </div>
-                        <div class="resumo-item">
-                            <h4>Clientes Envolvidos</h4>
-                            <div class="valor" id="total-clientes">0</div>
-                        </div>
-                        <div class="resumo-item">
-                            <h4>Valor Total da Obra</h4>
-                            <div class="valor" id="valor-total-obra">R$ 0,00</div>
-                        </div>
-                        <div class="resumo-item">
-                            <h4>Progresso Geral</h4>
-                            <div class="valor" id="progresso-geral">0%</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Observações -->
-                <div class="form-group">
-                    <label for="observacoes-obra">
-                        <i class="fas fa-sticky-note"></i>
-                        Observações da Obra
-                    </label>
-                    <textarea id="observacoes-obra" 
-                              class="form-textarea" 
-                              placeholder="Observações adicionais sobre a obra..."
-                              rows="4"></textarea>
-                </div>
-
-                <!-- Botões de Ação -->
-                <div class="form-actions">
-                    <button type="button" id="btn-cancelar" class="btn btn-secondary">
-                        <i class="fas fa-times"></i>
-                        Cancelar
-                    </button>
-                    <button type="button" id="btn-andamento" class="btn btn-warning">
-                        <i class="fas fa-tasks"></i>
-                        Gerenciar Andamento
-                    </button>
-                    <button type="submit" class="btn btn-success">
-                        <i class="fas fa-save"></i>
-                        Salvar Obra
-                    </button>
-                </div>
-            </form>
+            <div class="resumo-item">
+              <h4>Clientes Envolvidos</h4>
+              <div class="valor" id="total-clientes">0</div>
+            </div>
+            <div class="resumo-item">
+              <h4>Valor Total da Obra</h4>
+              <div class="valor" id="valor-total-obra">R$ 0,00</div>
+            </div>
+            <div class="resumo-item">
+              <h4>Progresso Geral</h4>
+              <div class="valor" id="progresso-geral">0%</div>
+            </div>
+          </div>
         </div>
 
-        <!-- Lista de Obras -->
-        <div class="obras-list">
-            <div class="form-title">
-                <i class="fas fa-list"></i>
-                Lista de Obras
-            </div>
-
-            <!-- Filtros -->
-            <div class="filter-controls">
-                <div style="flex: 1; min-width: 200px;">
-                    <label for="filtro-busca-obra">
-                        <i class="fas fa-search"></i> Buscar
-                    </label>
-                    <input type="text" 
-                           id="filtro-busca-obra" 
-                           placeholder="Número, cliente..." 
-                           class="form-input"
-                           style="width: 100%;">
-                </div>
-                
-                <div style="min-width: 150px;">
-                    <label for="filtro-status-obra">
-                        <i class="fas fa-filter"></i> Status
-                    </label>
-                    <select id="filtro-status-obra" class="form-select" style="width: 100%;">
-                        <option value="">Todos</option>
-                        <option value="Planejamento">Planejamento</option>
-                        <option value="Andamento">Em Andamento</option>
-                        <option value="Pausada">Pausada</option>
-                        <option value="Concluída">Concluída</option>
-                    </select>
-                </div>
-                
-                <div style="min-width: 150px;">
-                    <label for="filtro-cliente-obra">
-                        <i class="fas fa-user"></i> Cliente
-                    </label>
-                    <select id="filtro-cliente-obra" class="form-select" style="width: 100%;">
-                        <option value="">Todos</option>
-                    </select>
-                </div>
-                
-                <div style="display: flex; align-items: end;">
-                    <button type="button" class="btn btn-secondary" id="btn-limpar-filtros">
-                        <i class="fas fa-times"></i>
-                        Limpar
-                    </button>
-                </div>
-            </div>
-
-            <table class="obras-table">
-                <thead>
-                    <tr>
-                        <th>Número</th>
-                        <th>Clientes</th>
-                        <th>Propostas</th>
-                        <th>Valor Total</th>
-                        <th>Status</th>
-                        <th>Progresso</th>
-                        <th>Data</th>
-                        <th>Ações</th>
-                    </tr>
-                </thead>
-                <tbody id="obras-tbody">
-                    <tr>
-                        <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
-                            <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                            Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+        <!-- Observações -->
+        <div class="form-group">
+          <label for="observacoes-obra" class="form-label">
+            <i class="fas fa-sticky-note"></i>
+            Observações da Obra
+          </label>
+          <textarea id="observacoes-obra" 
+                    class="form-textarea" 
+                    placeholder="Observações adicionais sobre a obra..."
+                    rows="4"></textarea>
         </div>
+
+        <!-- Botões de Ação -->
+        <div class="form-actions">
+          <button type="button" id="btn-cancelar" class="btn-secondary">
+            <i class="fas fa-times"></i>
+            Cancelar
+          </button>
+          <button type="button" id="btn-andamento" class="btn-warning">
+            <i class="fas fa-tasks"></i>
+            Gerenciar Andamento
+          </button>
+          <button type="submit" class="btn-success">
+            <i class="fas fa-save"></i>
+            Salvar Obra
+          </button>
+        </div>
+      </form>
     </div>
 
-    <!-- Modal de Seleção de Propostas -->
-    <div id="modal-propostas" class="modal">
-        <div class="modal-content" style="max-width: 800px;">
-            <div class="modal-header">
-                <h3 class="modal-title">
-                    <i class="fas fa-file-contract"></i>
-                    Selecionar Propostas (Múltipla Seleção)
-                </h3>
-                <button class="close-modal" id="close-modal-propostas">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div style="margin-bottom: 1rem;">
-                <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
-                    <input type="text" 
-                           id="filtro-propostas-modal" 
-                           placeholder="Buscar propostas..." 
-                           class="form-input" 
-                           style="flex: 1;">
-                    <button type="button" class="btn btn-info" id="btn-selecionar-todas">
-                        <i class="fas fa-check-double"></i>
-                        Todas
-                    </button>
-                    <button type="button" class="btn btn-secondary" id="btn-limpar-selecao">
-                        <i class="fas fa-times"></i>
-                        Limpar
-                    </button>
-                </div>
-                
-                <div id="contador-propostas" style="color: #2a5298; font-weight: 600; margin-bottom: 1rem;">
-                    0 propostas selecionadas
-                </div>
-            </div>
-            
-            <div id="lista-propostas-modal" style="max-height: 400px; overflow-y: auto; border: 1px solid #e1e5e9; border-radius: 8px; padding: 1rem;">
-                <!-- Propostas serão carregadas aqui -->
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="cancel-propostas">
-                    <i class="fas fa-times"></i>
-                    Cancelar
-                </button>
-                <button type="button" class="btn btn-success" id="btn-adicionar-propostas">
-                    <i class="fas fa-plus-circle"></i>
-                    Adicionar Selecionadas
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Lista de Obras -->
+    <div class="obras-list">
+      <div class="form-title">
+        <i class="fas fa-list"></i>
+        Lista de Obras
+      </div>
 
-    <!-- Modal de Andamento de Serviços -->
-    <div id="modal-andamento" class="modal">
-        <div class="modal-content" style="max-width: 1000px;">
-            <div class="modal-header">
-                <h3 class="modal-title">
-                    <i class="fas fa-tasks"></i>
-                    Andamento dos Serviços
-                </h3>
-                <button class="close-modal" id="close-modal-andamento">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            
-            <div id="servicos-andamento">
-                <!-- Tabela de serviços será carregada aqui -->
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" id="cancel-andamento">
-                    <i class="fas fa-times"></i>
-                    Fechar
-                </button>
-                <button type="button" class="btn btn-success" id="btn-salvar-andamento">
-                    <i class="fas fa-save"></i>
-                    Salvar Andamento
-                </button>
-            </div>
+      <!-- Filtros -->
+      <div class="filter-controls">
+        <div style="flex: 1; min-width: 200px;">
+          <label for="filtro-busca-obra">
+            <i class="fas fa-search"></i> Buscar
+          </label>
+          <input type="text" 
+                 id="filtro-busca-obra" 
+                 placeholder="Número, cliente..." 
+                 class="form-input"
+                 style="width: 100%;">
         </div>
-    </div>
+        
+        <div style="min-width: 150px;">
+          <label for="filtro-status-obra">
+            <i class="fas fa-filter"></i> Status
+          </label>
+          <select id="filtro-status-obra" class="form-select" style="width: 100%;">
+            <option value="">Todos</option>
+            <option value="Planejamento">Planejamento</option>
+            <option value="Andamento">Em Andamento</option>
+            <option value="Pausada">Pausada</option>
+            <option value="Concluída">Concluída</option>
+          </select>
+        </div>
+        
+        <div style="min-width: 150px;">
+          <label for="filtro-cliente-obra">
+            <i class="fas fa-user"></i> Cliente
+          </label>
+          <select id="filtro-cliente-obra" class="form-select" style="width: 100%;">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; align-items: end;">
+          <button type="button" class="btn-secondary" id="btn-limpar-filtros">
+            <i class="fas fa-times"></i>
+            Limpar
+          </button>
+        </div>
+      </div>
 
-    <!-- Scripts -->
-    <script type="module" src="obras-hvc-ADAPTADO.js"></script>
+      <table class="obras-table">
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Clientes</th>
+            <th>Propostas</th>
+            <th>Valor Total</th>
+            <th>Status</th>
+            <th>Progresso</th>
+            <th>Data</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="obras-tbody">
+          <tr>
+            <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
+              <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+              Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal de Seleção de Propostas -->
+  <div id="modal-propostas" class="modal">
+    <div class="modal-content" style="max-width: 800px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-file-contract"></i>
+          Selecionar Propostas (Múltipla Seleção)
+        </h3>
+        <button class="close-modal" id="close-modal-propostas">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div style="margin-bottom: 1rem;">
+        <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+          <input type="text" 
+                 id="filtro-propostas-modal" 
+                 placeholder="Buscar propostas..." 
+                 class="form-input" 
+                 style="flex: 1;">
+          <button type="button" class="btn-info" id="btn-selecionar-todas">
+            <i class="fas fa-check-double"></i>
+            Todas
+          </button>
+          <button type="button" class="btn-secondary" id="btn-limpar-selecao">
+            <i class="fas fa-times"></i>
+            Limpar
+          </button>
+        </div>
+        
+        <div id="contador-propostas" style="color: #add8e6; font-weight: 600; margin-bottom: 1rem;">
+          0 propostas selecionadas
+        </div>
+      </div>
+      
+      <div id="lista-propostas-modal" style="max-height: 400px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; padding: 1rem;">
+        <!-- Propostas serão carregadas aqui -->
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-propostas">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+        <button type="button" class="btn-success" id="btn-adicionar-propostas">
+          <i class="fas fa-plus-circle"></i>
+          Adicionar Selecionadas
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Andamento de Serviços -->
+  <div id="modal-andamento" class="modal">
+    <div class="modal-content" style="max-width: 1000px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-tasks"></i>
+          Andamento dos Serviços
+        </h3>
+        <button class="close-modal" id="close-modal-andamento">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div id="servicos-andamento">
+        <!-- Tabela de serviços será carregada aqui -->
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-andamento">
+          <i class="fas fa-times"></i>
+          Fechar
+        </button>
+        <button type="button" class="btn-success" id="btn-salvar-andamento">
+          <i class="fas fa-save"></i>
+          Salvar Andamento
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="sidebar.js"></script>
+  <script type="module" src="obras-hvc-ADAPTADO.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    
+    // Injetar sidebar quando a página carregar
+    document.addEventListener('DOMContentLoaded', function() {
+      injectSidebar('main-content-obras-hvc', 'Hvc');
+    });
+  </script>
 </body>
 </html>
 
