@@ -430,17 +430,11 @@ class PropostasManager {
         const numeroInput = document.getElementById('numero-proposta');
         const clienteSelect = document.getElementById('cliente-select');
         const statusSelect = document.getElementById('status-select');
-        const prazoInput = document.getElementById('prazo-execucao');
-        const tipoPrazoSelect = document.getElementById('tipo-prazo');
-        const formaPagamentoInput = document.getElementById('forma-pagamento');
         const observacoesTextarea = document.getElementById('observacoes');
         
         if (numeroInput) numeroInput.value = proposta.numero_proposta;
         if (clienteSelect) clienteSelect.value = proposta.cliente_id;
         if (statusSelect) statusSelect.value = proposta.status;
-        if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
-        if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
-        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
         if (observacoesTextarea) observacoesTextarea.value = proposta.observacoes || '';
         
         // Carregar itens da proposta
@@ -521,18 +515,18 @@ class PropostasManager {
         const modal = document.createElement('div');
         modal.className = 'modal modal-selection show';
         modal.innerHTML = `
-            <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-content">
                 <div class="modal-header">
-                    <h3 class="modal-title">Selecionar Serviços</h3>
+                    <h3 class="modal-title">Selecionar Serviço</h3>
                     <button class="close-modal" onclick="this.closest('.modal').remove()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 <div class="form-group">
-                    <label class="form-label">Serviços Disponíveis</label>
-                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 10px;">
-                        ${this.createServicesCheckboxList()}
-                    </div>
+                    <label class="form-label">Serviço</label>
+                    <select id="servico-selection" class="form-select">
+                        ${servicosOptions}
+                    </select>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">
@@ -542,9 +536,8 @@ class PropostasManager {
                         <i class="fas fa-plus"></i>
                         Criar Novo Serviço
                     </button>
-                    <button type="button" class="btn-success" onclick="window.propostasManager.addSelectedServicos()">
-                        <i class="fas fa-check"></i>
-                        Adicionar Selecionados
+                    <button type="button" class="btn-success" onclick="window.propostasManager.addSelectedServico()">
+                        Adicionar à Proposta
                     </button>
                 </div>
             </div>
@@ -600,8 +593,7 @@ class PropostasManager {
             quantidade: 1,
             preco_mao_obra: 0,
             preco_material: 0,
-            preco_total: 0,
-            modo_preco: 'separado' // 'separado' ou 'total'
+            preco_total: 0
         });
 
         console.log('Serviço adicionado:', servico.codigo);
@@ -626,77 +618,6 @@ class PropostasManager {
         this.showModalServico();
     }
 
-    createServicesCheckboxList() {
-        let checkboxList = '';
-        
-        this.servicos.forEach(servico => {
-            if (servico && servico.id && servico.codigo && servico.descricao) {
-                // Verificar se já foi adicionado
-                const jaAdicionado = this.servicosAdicionados.find(s => s.servico_id === servico.id);
-                const disabled = jaAdicionado ? 'disabled' : '';
-                const checked = jaAdicionado ? 'checked' : '';
-                
-                checkboxList += `
-                    <div style="display: flex; align-items: center; padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 5px;">
-                        <input type="checkbox" 
-                               id="servico-${servico.id}" 
-                               value="${servico.id}" 
-                               ${checked} 
-                               ${disabled}
-                               style="margin-right: 10px;">
-                        <label for="servico-${servico.id}" style="flex: 1; cursor: pointer;">
-                            <strong>${servico.codigo}</strong> - ${servico.descricao}
-                            ${servico.unidade ? `<small style="color: #add8e6;"> (${servico.unidade})</small>` : ''}
-                            ${jaAdicionado ? '<small style="color: #ffc107;"> - Já adicionado</small>' : ''}
-                        </label>
-                    </div>
-                `;
-            }
-        });
-        
-        if (checkboxList === '') {
-            checkboxList = '<p style="text-align: center; color: #888;">Nenhum serviço disponível</p>';
-        }
-        
-        return checkboxList;
-    }
-
-    addSelectedServicos() {
-        console.log('Adicionando serviços selecionados...');
-        
-        const checkboxes = document.querySelectorAll('.modal-selection input[type="checkbox"]:checked:not(:disabled)');
-        let servicosAdicionadosCount = 0;
-        
-        checkboxes.forEach(checkbox => {
-            const servicoId = checkbox.value;
-            const servico = this.servicos.find(s => s.id === servicoId);
-            
-            if (servico && !this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
-                this.servicosAdicionados.push({
-                    servico_id: servicoId,
-                    servico: servico,
-                    quantidade: 1,
-                    preco_mao_obra: 0,
-                    preco_material: 0,
-                    preco_total: 0,
-                    modo_preco: 'separado' // 'separado' ou 'total'
-                });
-                servicosAdicionadosCount++;
-            }
-        });
-        
-        if (servicosAdicionadosCount > 0) {
-            this.updateServicesTable();
-            this.showNotification(`${servicosAdicionadosCount} serviço(s) adicionado(s) à proposta!`, 'success');
-        } else {
-            this.showNotification('Nenhum serviço foi selecionado', 'warning');
-        }
-        
-        // Fechar modal
-        const modal = document.querySelector('.modal-selection');
-        if (modal) modal.remove();
-    }
-
     updateServicesTable() {
         const tbody = document.getElementById('services-tbody');
         if (!tbody) {
@@ -709,7 +630,7 @@ class PropostasManager {
         if (this.servicosAdicionados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhum serviço adicionado. Clique em "Adicionar Serviço" para começar.
                     </td>
@@ -720,49 +641,6 @@ class PropostasManager {
 
         this.servicosAdicionados.forEach((item, index) => {
             const row = document.createElement('tr');
-            
-            // Determinar campos de preço baseado no modo
-            let camposPreco = '';
-            if (item.modo_preco === 'total') {
-                camposPreco = `
-                    <td style="background: rgba(255,255,255,0.05);">-</td>
-                    <td style="background: rgba(255,255,255,0.05);">-</td>
-                    <td>
-                        <input type="number" 
-                               value="${item.preco_total}" 
-                               min="0" 
-                               step="0.01"
-                               onchange="window.propostasManager.updateItemPrecoTotal(${index}, this.value)"
-                               style="width: 100px;"
-                               placeholder="Valor total">
-                    </td>
-                `;
-            } else {
-                camposPreco = `
-                    <td>
-                        <input type="number" 
-                               value="${item.preco_mao_obra}" 
-                               min="0" 
-                               step="0.01"
-                               onchange="window.propostasManager.updateItemPrecoMaoObra(${index}, this.value)"
-                               style="width: 100px;"
-                               placeholder="Mão de obra">
-                    </td>
-                    <td>
-                        <input type="number" 
-                               value="${item.preco_material}" 
-                               min="0" 
-                               step="0.01"
-                               onchange="window.propostasManager.updateItemPrecoMaterial(${index}, this.value)"
-                               style="width: 100px;"
-                               placeholder="Material">
-                    </td>
-                    <td>
-                        <strong>R$ ${(item.preco_mao_obra + item.preco_material).toFixed(2)}</strong>
-                    </td>
-                `;
-            }
-            
             row.innerHTML = `
                 <td>
                     <strong>${item.servico.codigo}</strong><br>
@@ -778,16 +656,27 @@ class PropostasManager {
                 </td>
                 <td>${item.servico.unidade || '-'}</td>
                 <td>
-                    <button class="btn-toggle-price" 
-                            onclick="window.propostasManager.toggleModoPreco(${index})"
-                            title="Alternar modo de preço">
-                        <i class="fas fa-${item.modo_preco === 'total' ? 'calculator' : 'plus'}"></i>
-                        ${item.modo_preco === 'total' ? 'Total' : 'M+M'}
-                    </button>
+                    <input type="number" 
+                           value="${item.preco_mao_obra}" 
+                           min="0" 
+                           step="0.01"
+                           onchange="window.propostasManager.updateItemPrecoMaoObra(${index}, this.value)"
+                           style="width: 100px;">
                 </td>
-                ${camposPreco}
                 <td>
-                    <button class="btn-danger" 
+                    <input type="number" 
+                           value="${item.preco_material}" 
+                           min="0" 
+                           step="0.01"
+                           onchange="window.propostasManager.updateItemPrecoMaterial(${index}, this.value)"
+                           style="width: 100px;">
+                </td>
+                <td>
+                    <strong>${this.formatMoney(item.preco_total)}</strong>
+                </td>
+                <td>
+                    <button type="button" 
+                            class="btn-danger" 
                             onclick="window.propostasManager.removeServico(${index})"
                             title="Remover serviço">
                         <i class="fas fa-trash"></i>
@@ -796,99 +685,12 @@ class PropostasManager {
             `;
             tbody.appendChild(row);
         });
-        
-        this.updateTotal();
     }
 
-    toggleModoPreco(index) {
-        const item = this.servicosAdicionados[index];
-        
-        if (item.modo_preco === 'separado') {
-            // Mudando para modo total: somar mão de obra + material
-            item.preco_total = item.preco_mao_obra + item.preco_material;
-            item.modo_preco = 'total';
-        } else {
-            // Mudando para modo separado: dividir total igualmente ou zerar
-            const metadeTotal = item.preco_total / 2;
-            item.preco_mao_obra = metadeTotal;
-            item.preco_material = metadeTotal;
-            item.modo_preco = 'separado';
-        }
-        
-        this.updateServicesTable();
-    }
-
-    updateItemPrecoTotal(index, valor) {
-        const item = this.servicosAdicionados[index];
-        item.preco_total = parseFloat(valor) || 0;
-        this.updateTotal();
-    }
-
-    updateItemQuantidade(index, valor) {
-        const item = this.servicosAdicionados[index];
-        item.quantidade = parseFloat(valor) || 0;
-        this.updateTotal();
-    }
-
-    updateItemPrecoMaoObra(index, valor) {
-        const item = this.servicosAdicionados[index];
-        item.preco_mao_obra = parseFloat(valor) || 0;
-        if (item.modo_preco === 'separado') {
-            item.preco_total = item.preco_mao_obra + item.preco_material;
-        }
-        this.updateTotal();
-    }
-
-    updateItemPrecoMaterial(index, valor) {
-        const item = this.servicosAdicionados[index];
-        item.preco_material = parseFloat(valor) || 0;
-        if (item.modo_preco === 'separado') {
-            item.preco_total = item.preco_mao_obra + item.preco_material;
-        }
-        this.updateTotal();
-    }
-
-    removeServico(index) {
-        this.servicosAdicionados.splice(index, 1);
-        this.updateServicesTable();
-    }
-
-    updateTotal() {
-        const total = this.servicosAdicionados.reduce((sum, item) => {
-            const itemTotal = item.modo_preco === 'total' ? 
-                item.preco_total : 
-                (item.preco_mao_obra + item.preco_material);
-            return sum + (item.quantidade * itemTotal);
-        }, 0);
-        
-        const totalElement = document.getElementById('total-proposta');
-        if (totalElement) {
-            totalElement.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
-        }
-    }
-
-    // === PROPOSTAS ===
-    showFormProposta(proposta = null) {
-        console.log('Mostrando formulário de proposta...');
-        
-        this.currentPropostaId = proposta?.id || null;
-        
-        // Mostrar formulário e esconder lista
-        const formSection = document.getElementById('form-section');
-        const listSection = document.getElementById('list-section');
-        
-        if (formSection) formSection.style.display = 'block';
-        if (listSection) listSection.style.display = 'none';
-        
-        // Limpar formulário
-        this.clearForm();
-        
-        // Se é edição, popular formulário
-        if (proposta) {
-            this.populateForm(proposta);
-        } else {
-            // Gerar número da proposta automaticamente
-            this.generatePropostaNumber();
+    updateItemQuantidade(index, quantidade) {
+        if (this.servicosAdicionados[index]) {
+            this.servicosAdicionados[index].quantidade = parseFloat(quantidade) || 0;
+            this.calculateItemTotal(index);
         }
     }
 
@@ -940,9 +742,6 @@ class PropostasManager {
             numero_proposta: document.getElementById('numero-proposta').value,
             cliente_id: document.getElementById('cliente-select').value,
             status: document.getElementById('status-select').value,
-            prazo_execucao: parseInt(document.getElementById('prazo-execucao').value),
-            tipo_prazo: document.getElementById('tipo-prazo').value,
-            forma_pagamento: document.getElementById('forma-pagamento').value,
             observacoes: document.getElementById('observacoes').value,
             total_proposta: this.servicosAdicionados.reduce((sum, item) => sum + item.preco_total, 0)
         };
@@ -1015,8 +814,6 @@ class PropostasManager {
     validateForm() {
         const numeroProposta = document.getElementById('numero-proposta').value;
         const clienteId = document.getElementById('cliente-select').value;
-        const prazoExecucao = document.getElementById('prazo-execucao').value;
-        const formaPagamento = document.getElementById('forma-pagamento').value;
         
         if (!numeroProposta || !numeroProposta.match(/^\d{4}\/\d{4}$/)) {
             this.showNotification('Número da proposta deve estar no formato XXXX/YYYY', 'error');
@@ -1025,16 +822,6 @@ class PropostasManager {
 
         if (!clienteId) {
             this.showNotification('Selecione um cliente', 'error');
-            return false;
-        }
-
-        if (!prazoExecucao || prazoExecucao <= 0) {
-            this.showNotification('Informe o prazo de execução', 'error');
-            return false;
-        }
-
-        if (!formaPagamento || formaPagamento.trim() === '') {
-            this.showNotification('Informe a forma de pagamento', 'error');
             return false;
         }
 
@@ -1064,9 +851,10 @@ class PropostasManager {
             console.log('Carregando propostas...');
             
             if (!supabaseClient) {
-                console.error('Su    async loadPropostas() {
-        try {
-            console.log('Carregando propostas...');
+                console.error('Supabase client não disponível');
+                return;
+            }
+            
             const { data, error } = await supabaseClient
                 .from('propostas_hvc')
                 .select(`
@@ -1077,94 +865,12 @@ class PropostasManager {
 
             if (error) throw error;
 
-            this.allPropostas = data || []; // Armazenar todas as propostas
-            this.populateClienteFilter(); // Popular filtro de clientes
-            this.applyFilters(); // Aplicar filtros (inicialmente mostra todas)
+            this.renderPropostas(data || []);
             console.log('Propostas carregadas:', data?.length || 0);
         } catch (error) {
             console.error('Erro ao carregar propostas:', error);
             this.showNotification('Erro ao carregar propostas: ' + error.message, 'error');
         }
-    }
-
-    populateClienteFilter() {
-        const filterCliente = document.getElementById('filter-cliente');
-        if (!filterCliente) return;
-
-        // Obter clientes únicos das propostas
-        const clientesUnicos = [...new Set(this.allPropostas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
-        
-        // Limpar opções existentes (exceto "Todos os clientes")
-        filterCliente.innerHTML = '<option value="">Todos os clientes</option>';
-        
-        // Adicionar opções de clientes
-        clientesUnicos.forEach(nomeCliente => {
-            const option = document.createElement('option');
-            option.value = nomeCliente;
-            option.textContent = nomeCliente;
-            filterCliente.appendChild(option);
-        });
-    }
-
-    applyFilters() {
-        const filterStatus = document.getElementById('filter-status')?.value || '';
-        const filterCliente = document.getElementById('filter-cliente')?.value || '';
-        const filterNumero = document.getElementById('filter-numero')?.value || '';
-        const filterDataInicio = document.getElementById('filter-data-inicio')?.value || '';
-        const filterDataFim = document.getElementById('filter-data-fim')?.value || '';
-
-        let propostasFiltradas = [...this.allPropostas];
-
-        // Filtrar por status
-        if (filterStatus) {
-            propostasFiltradas = propostasFiltradas.filter(p => p.status === filterStatus);
-        }
-
-        // Filtrar por cliente
-        if (filterCliente) {
-            propostasFiltradas = propostasFiltradas.filter(p => p.clientes_hvc?.nome === filterCliente);
-        }
-
-        // Filtrar por número
-        if (filterNumero) {
-            propostasFiltradas = propostasFiltradas.filter(p => 
-                p.numero_proposta?.toLowerCase().includes(filterNumero.toLowerCase())
-            );
-        }
-
-        // Filtrar por data início
-        if (filterDataInicio) {
-            propostasFiltradas = propostasFiltradas.filter(p => 
-                new Date(p.created_at) >= new Date(filterDataInicio)
-            );
-        }
-
-        // Filtrar por data fim
-        if (filterDataFim) {
-            const dataFim = new Date(filterDataFim);
-            dataFim.setHours(23, 59, 59, 999); // Incluir todo o dia
-            propostasFiltradas = propostasFiltradas.filter(p => 
-                new Date(p.created_at) <= dataFim
-            );
-        }
-
-        this.renderPropostas(propostasFiltradas);
-        
-        // Mostrar contador de resultados
-        const totalFiltradas = propostasFiltradas.length;
-        const totalGeral = this.allPropostas.length;
-        console.log(`Mostrando ${totalFiltradas} de ${totalGeral} propostas`);
-    }
-
-    clearFilters() {
-        document.getElementById('filter-status').value = '';
-        document.getElementById('filter-cliente').value = '';
-        document.getElementById('filter-numero').value = '';
-        document.getElementById('filter-data-inicio').value = '';
-        document.getElementById('filter-data-fim').value = '';
-        
-        this.applyFilters(); // Reaplica filtros (mostra todas)
-        this.showNotification('Filtros limpos', 'success');
     }
 
     renderPropostas(propostas) {
@@ -1173,10 +879,10 @@ class PropostasManager {
         
         tbody.innerHTML = '';
 
-            if (propostas.length === 0) {
+        if (propostas.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
                     </td>
@@ -1187,24 +893,18 @@ class PropostasManager {
 
         propostas.forEach(proposta => {
             const row = document.createElement('tr');
-            const prazoTexto = proposta.prazo_execucao ? 
-                `${proposta.prazo_execucao} ${proposta.tipo_prazo === 'uteis' ? 'dias úteis' : 'dias corridos'}` : 
-                'Não informado';
-            
             row.innerHTML = `
-                <td>${proposta.numero_proposta}</td>
+                <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td>R$ ${proposta.total_proposta?.toFixed(2) || '0,00'}</td>
-                <td>${prazoTexto}</td>
-                <td>${proposta.forma_pagamento || 'Não informado'}</td>
                 <td>
-                    <span class="status-badge status-${proposta.status?.toLowerCase()}">
+                    <span class="status-badge status-${proposta.status.toLowerCase()}">
                         ${proposta.status}
                     </span>
                 </td>
+                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
                 <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
-                <td class="actions">
-                    <button class="btn-primary" 
+                <td class="actions-cell">
+                    <button class="btn-secondary" 
                             onclick="window.propostasManager.editProposta('${proposta.id}')"
                             title="Editar proposta">
                         <i class="fas fa-edit"></i>
@@ -1325,4 +1025,3 @@ class PropostasManager {
 
 // Expor globalmente para uso nos event handlers inline
 window.propostasManager = null;
-
