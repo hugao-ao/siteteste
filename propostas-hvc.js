@@ -664,7 +664,7 @@ class PropostasManager {
         if (observacoesTextarea) observacoesTextarea.value = proposta.observacoes || '';
         if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
         if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
-        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';}
+        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
         
         // Carregar itens da proposta
         this.loadItensProposta(proposta.id);
