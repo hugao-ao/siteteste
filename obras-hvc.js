@@ -793,7 +793,7 @@ class ObrasManager {
                 <td><strong>${obra.numero_obra}</strong></td>
                 <td>${clientesTexto}</td>
                 <td>${obra.obras_propostas?.length || 0}</td>
-                <td><strong>${this.formatMoney(obra.valor_total || 0)}</strong></td>
+                <td><strong>${this.formatMoney((obra.valor_total || 0) / 100)}</strong></td>
                 <td>
                     <span class="status-badge status-${obra.status.toLowerCase()}">
                         ${obra.status}
