@@ -989,7 +989,7 @@ class PropostasManager {
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
             tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: totalCalculado // CORREÇÃO: Valor já garantido como numérico
+            total_proposta: (totalCalculado/100) // CORREÇÃO: Valor já garantido como numérico
         };
 
         try {
