@@ -1135,19 +1135,14 @@ class PropostasManager {
         // CORREÇÃO CRÍTICA: Usar função dedicada para obter o total atual
         const totalCalculado = this.getCurrentTotal();
 
-        // VERIFICAÇÃO ADICIONAL: Comparar com o total exibido
-        const totalElementText = document.getElementById('total-proposta')?.textContent || '';
-        const totalExibido = this.parseMoney(totalElementText);
+        // CORREÇÃO FINAL: Dividir por 100 e formatar com 4 casas decimais
+        const totalParaSalvar = parseFloat((totalCalculado / 100).toFixed(4));
 
-        console.log('=== VERIFICAÇÃO DE TOTAIS ===');
-        console.log('Total calculado para salvar:', totalCalculado);
-        console.log('Total exibido na tela:', totalElementText);
-        console.log('Total exibido parseado:', totalExibido);
-        console.log('Diferença:', Math.abs(totalCalculado - totalExibido));
-        console.log('================================');
-
-        // Se houver diferença significativa, usar o total exibido
-        const totalParaSalvar = Math.abs(totalCalculado - totalExibido) < 0.01 ? totalCalculado : totalExibido;
+        console.log('=== CORREÇÃO FINAL DE TOTAIS ===');
+        console.log('Total calculado original:', totalCalculado);
+        console.log('Total dividido por 100:', totalCalculado / 100);
+        console.log('Total formatado (4 casas):', totalParaSalvar);
+        console.log('==================================');
 
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
@@ -1213,20 +1208,25 @@ class PropostasManager {
             .delete()
             .eq('proposta_id', propostaId);
 
-        // Inserir novos itens com valores recalculados
+        // Inserir novos itens com valores recalculados e divididos por 100
         const itens = this.servicosAdicionados.map(item => {
             const quantidade = parseFloat(item.quantidade) || 0;
             const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
             const precoMaterial = parseFloat(item.preco_material) || 0;
             const precoTotal = quantidade * (precoMaoObra + precoMaterial);
             
+            // CORREÇÃO: Dividir preços por 100 e formatar com 4 casas decimais
+            const precoMaoObraFormatado = parseFloat((precoMaoObra / 100).toFixed(4));
+            const precoMaterialFormatado = parseFloat((precoMaterial / 100).toFixed(4));
+            const precoTotalFormatado = parseFloat((precoTotal / 100).toFixed(4));
+            
             return {
                 proposta_id: propostaId,
                 servico_id: item.servico_id,
                 quantidade: quantidade,
-                preco_mao_obra: precoMaoObra,
-                preco_material: precoMaterial,
-                preco_total: precoTotal // CORREÇÃO: Usar valor recalculado
+                preco_mao_obra: precoMaoObraFormatado,
+                preco_material: precoMaterialFormatado,
+                preco_total: precoTotalFormatado
             };
         });
 
