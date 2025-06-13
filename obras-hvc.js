@@ -1,4 +1,4 @@
-// obras-hvc.js - Sistema de Gestão de Obras HVC (ADAPTADO PARA SUPABASE EXISTENTE)
+// obras-hvc.js - Sistema de Gestão de Obras HVC (VERSÃO CORRIGIDA)
 // Gerenciamento completo de obras com propostas e andamento de serviços
 
 // Importar Supabase do arquivo existente
@@ -6,34 +6,70 @@ import { supabase as supabaseClient } from './supabase.js';
 
 let obrasManager = null;
 
+// Aguardar carregamento completo da página E da sidebar
+function waitForSidebar() {
+    return new Promise((resolve) => {
+        const checkSidebar = () => {
+            if (document.getElementById('sidebar')) {
+                resolve();
+            } else {
+                setTimeout(checkSidebar, 100);
+            }
+        };
+        checkSidebar();
+    });
+}
+
 // Inicializar quando a página carregar
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado, iniciando aplicação de obras...');
-    initializeApp();
+document.addEventListener('DOMContentLoaded', async function() {
+    console.log('DOM carregado, aguardando sidebar...');
+    
+    // Aguardar sidebar ser injetada
+    await waitForSidebar();
+    console.log('Sidebar carregada, iniciando aplicação de obras...');
+    
+    // Aguardar um pouco mais para garantir que tudo está pronto
+    setTimeout(initializeApp, 500);
 });
 
 function initializeApp() {
     console.log('Inicializando aplicação de obras...');
     
-    // Verificar se o Supabase está disponível
-    if (supabaseClient) {
-        console.log('Supabase conectado com sucesso!');
-        
-        // Inicializar o gerenciador de obras
-        obrasManager = new ObrasManager();
-        
-        // Expor globalmente para uso nos event handlers inline
-        window.obrasManager = obrasManager;
-    } else {
-        console.error('Erro: Supabase não disponível');
-        // Mostrar mensagem de erro para o usuário
-        document.body.innerHTML = `
-            <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f8f9fa;">
-                <div style="text-align: center; padding: 2rem; background: white; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+    try {
+        // Verificar se o Supabase está disponível
+        if (supabaseClient) {
+            console.log('Supabase conectado com sucesso!');
+            
+            // Inicializar o gerenciador de obras
+            obrasManager = new ObrasManager();
+            
+            // Expor globalmente para uso nos event handlers inline
+            window.obrasManager = obrasManager;
+            
+            console.log('ObrasManager inicializado e exposto globalmente');
+        } else {
+            console.error('Erro: Supabase não disponível');
+            showErrorMessage();
+        }
+    } catch (error) {
+        console.error('Erro na inicialização:', error);
+        showErrorMessage();
+    }
+}
+
+function showErrorMessage() {
+    const mainContent = document.getElementById('main-content-obras-hvc');
+    if (mainContent) {
+        mainContent.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; height: 50vh;">
+                <div style="text-align: center; padding: 2rem; background: rgba(255,255,255,0.1); border-radius: 10px; border: 1px solid rgba(173, 216, 230, 0.3);">
                     <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc3545; margin-bottom: 1rem;"></i>
                     <h2 style="color: #dc3545; margin-bottom: 1rem;">Erro de Conexão</h2>
-                    <p style="color: #666;">Não foi possível conectar ao banco de dados.</p>
-                    <p style="color: #666;">Verifique a configuração do Supabase.</p>
+                    <p style="color: #e0e0e0;">Não foi possível conectar ao banco de dados.</p>
+                    <p style="color: #e0e0e0;">Verifique a configuração do Supabase.</p>
+                    <button onclick="location.reload()" style="margin-top: 1rem; padding: 0.5rem 1rem; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                        Tentar Novamente
+                    </button>
                 </div>
             </div>
         `;
@@ -61,6 +97,9 @@ class ObrasManager {
             this.setupMasks();
             this.setupFilters();
             console.log('ObrasManager inicializado com sucesso!');
+            
+            // Mostrar notificação de sucesso
+            this.showNotification('Sistema de obras carregado com sucesso!', 'success');
         } catch (error) {
             console.error('Erro ao inicializar ObrasManager:', error);
             this.showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
@@ -77,13 +116,28 @@ class ObrasManager {
             const btnAndamento = document.getElementById('btn-andamento');
             
             if (btnNovaObra) {
-                btnNovaObra.addEventListener('click', () => this.showFormObra());
+                console.log('Configurando botão Nova Obra...');
+                btnNovaObra.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('Botão Nova Obra clicado!');
+                    this.showFormObra();
+                });
+            } else {
+                console.error('Botão Nova Obra não encontrado!');
             }
+            
             if (btnCancelar) {
-                btnCancelar.addEventListener('click', () => this.hideFormObra());
+                btnCancelar.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.hideFormObra();
+                });
             }
+            
             if (btnAndamento) {
-                btnAndamento.addEventListener('click', () => this.showModalAndamento());
+                btnAndamento.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.showModalAndamento();
+                });
             }
             
             // Formulário de obra
@@ -95,7 +149,10 @@ class ObrasManager {
             // Botão adicionar propostas
             const btnAddPropostas = document.getElementById('btn-add-propostas');
             if (btnAddPropostas) {
-                btnAddPropostas.addEventListener('click', () => this.showModalPropostas());
+                btnAddPropostas.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.showModalPropostas();
+                });
             }
             
             // Modal de propostas
@@ -106,19 +163,34 @@ class ObrasManager {
             const btnLimparSelecao = document.getElementById('btn-limpar-selecao');
             
             if (closeModalPropostas) {
-                closeModalPropostas.addEventListener('click', () => this.hideModalPropostas());
+                closeModalPropostas.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.hideModalPropostas();
+                });
             }
             if (cancelPropostas) {
-                cancelPropostas.addEventListener('click', () => this.hideModalPropostas());
+                cancelPropostas.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.hideModalPropostas();
+                });
             }
             if (btnAdicionarPropostas) {
-                btnAdicionarPropostas.addEventListener('click', () => this.addSelectedPropostas());
+                btnAdicionarPropostas.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.addSelectedPropostas();
+                });
             }
             if (btnSelecionarTodas) {
-                btnSelecionarTodas.addEventListener('click', () => this.selecionarTodasPropostas());
+                btnSelecionarTodas.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.selecionarTodasPropostas();
+                });
             }
             if (btnLimparSelecao) {
-                btnLimparSelecao.addEventListener('click', () => this.limparSelecaoPropostas());
+                btnLimparSelecao.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.limparSelecaoPropostas();
+                });
             }
             
             // Modal de andamento
@@ -127,13 +199,22 @@ class ObrasManager {
             const btnSalvarAndamento = document.getElementById('btn-salvar-andamento');
             
             if (closeModalAndamento) {
-                closeModalAndamento.addEventListener('click', () => this.hideModalAndamento());
+                closeModalAndamento.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.hideModalAndamento();
+                });
             }
             if (cancelAndamento) {
-                cancelAndamento.addEventListener('click', () => this.hideModalAndamento());
+                cancelAndamento.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.hideModalAndamento();
+                });
             }
             if (btnSalvarAndamento) {
-                btnSalvarAndamento.addEventListener('click', () => this.salvarAndamento());
+                btnSalvarAndamento.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    this.salvarAndamento();
+                });
             }
             
             // Fechar modal clicando fora
@@ -159,7 +240,7 @@ class ObrasManager {
                 });
             }
             
-            console.log('Event listeners configurados!');
+            console.log('Event listeners configurados com sucesso!');
         } catch (error) {
             console.error('Erro ao configurar event listeners:', error);
         }
@@ -196,7 +277,10 @@ class ObrasManager {
             filtroCliente.addEventListener('change', () => this.filtrarObras());
         }
         if (btnLimparFiltros) {
-            btnLimparFiltros.addEventListener('click', () => this.limparFiltros());
+            btnLimparFiltros.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.limparFiltros();
+            });
         }
     }
 
@@ -252,6 +336,8 @@ class ObrasManager {
             formSection.classList.remove('hidden');
             formSection.scrollIntoView({ behavior: 'smooth' });
             console.log('Formulário de obra exibido');
+        } else {
+            console.error('Elemento form-obra não encontrado!');
         }
     }
 
@@ -363,16 +449,6 @@ class ObrasManager {
         propostasDisponiveis.forEach(proposta => {
             const item = document.createElement('div');
             item.className = 'proposta-item';
-            item.style.cssText = `
-                display: flex;
-                align-items: center;
-                padding: 1rem;
-                border: 1px solid #e1e5e9;
-                border-radius: 8px;
-                margin-bottom: 0.5rem;
-                background: white;
-                transition: all 0.3s ease;
-            `;
             
             item.innerHTML = `
                 <input type="checkbox" 
@@ -380,10 +456,10 @@ class ObrasManager {
                        value="${proposta.id}" 
                        style="margin-right: 1rem; transform: scale(1.2);">
                 <div style="flex: 1;">
-                    <div style="font-weight: 600; color: #2a5298;">
+                    <div style="font-weight: 600; color: #add8e6;">
                         ${proposta.numero_proposta} - ${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}
                     </div>
-                    <div style="color: #666; font-size: 0.9rem;">
+                    <div style="color: #e0e0e0; font-size: 0.9rem;">
                         Total: ${this.formatMoney(proposta.total_proposta / 100)}
                     </div>
                 </div>
@@ -527,7 +603,7 @@ class ObrasManager {
                 </td>
                 <td>
                     <button type="button" 
-                            class="btn btn-danger" 
+                            class="btn-danger" 
                             onclick="window.obrasManager.removeProposta(${index})"
                             title="Remover proposta">
                         <i class="fas fa-trash"></i>
@@ -807,17 +883,17 @@ class ObrasManager {
                 </td>
                 <td>${new Date(obra.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions-cell">
-                    <button class="btn btn-secondary" 
+                    <button class="btn-secondary" 
                             onclick="window.obrasManager.editObra('${obra.id}')"
                             title="Editar obra">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-warning" 
+                    <button class="btn-warning" 
                             onclick="window.obrasManager.gerenciarAndamento('${obra.id}')"
                             title="Gerenciar andamento">
                         <i class="fas fa-tasks"></i>
                     </button>
-                    <button class="btn btn-danger" 
+                    <button class="btn-danger" 
                             onclick="window.obrasManager.deleteObra('${obra.id}')"
                             title="Excluir obra">
                         <i class="fas fa-trash"></i>
@@ -1129,4 +1205,15 @@ class ObrasManager {
 
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
+
+// Função de teste para verificar se está funcionando
+window.testObras = function() {
+    console.log('Teste de obras executado!');
+    if (window.obrasManager) {
+        console.log('ObrasManager está disponível:', window.obrasManager);
+        window.obrasManager.showNotification('Sistema funcionando!', 'success');
+    } else {
+        console.log('ObrasManager não está disponível');
+    }
+};
 
