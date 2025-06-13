@@ -47,103 +47,39 @@
       text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
     }
 
-    .filters-section {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 15px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-    }
-
-    .filters-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
-    }
-
-    .filters-header h3 {
-      color: #add8e6;
-      margin: 0;
-      font-size: 1.2rem;
-    }
-
-    .filters-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-    }
-
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .filter-group label {
-      color: #add8e6;
-      font-size: 0.9rem;
-      margin-bottom: 0.5rem;
-      font-weight: 500;
-    }
-
-    .filter-group input,
-    .filter-group select {
-      padding: 0.5rem;
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 5px;
-      background: rgba(255, 255, 255, 0.1);
-      color: #e0e0e0;
-      font-size: 0.9rem;
-    }
-
-    .filter-group input:focus,
-    .filter-group select:focus {
-      outline: none;
-      border-color: #add8e6;
-      box-shadow: 0 0 5px rgba(173, 216, 230, 0.3);
-    }
-
-    .btn-toggle-price {
-      background: rgba(173, 216, 230, 0.2);
-      border: 1px solid #add8e6;
-      color: #add8e6;
-      padding: 4px 8px;
-      border-radius: 4px;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .btn-toggle-price:hover {
-      background: rgba(173, 216, 230, 0.3);
-      transform: translateY(-1px);
-    }
-
     .btn-primary {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 12px 24px;
       border-radius: 8px;
       cursor: pointer;
       font-size: 1rem;
-      font-weight: 600;
+      font-weight: bold;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
     }
 
     .btn-primary:hover {
+      background: linear-gradient(135deg, #45a049, #4CAF50);
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
     }
 
     .btn-secondary {
       background: linear-gradient(135deg, #6c757d, #5a6268);
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 10px 20px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.9rem;
       transition: all 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+      background: linear-gradient(135deg, #5a6268, #6c757d);
+      transform: translateY(-1px);
     }
 
     .btn-danger {
@@ -157,139 +93,143 @@
       transition: all 0.3s ease;
     }
 
-    .btn-success {
-      background: linear-gradient(135deg, #28a745, #218838);
+    .btn-danger:hover {
+      background: linear-gradient(135deg, #c82333, #dc3545);
+      transform: translateY(-1px);
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, #17a2b8, #138496);
       color: white;
       border: none;
-      padding: 8px 16px;
+      padding: 10px 20px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.9rem;
       transition: all 0.3s ease;
     }
 
-    /* Formulário de Nova Proposta */
-    .form-section {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 15px;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    .btn-info:hover {
+      background: linear-gradient(135deg, #138496, #17a2b8);
+      transform: translateY(-1px);
     }
 
-    .form-section.hidden {
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      margin: 0 2px;
+    }
+
+    .card {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .form-section {
       display: none;
     }
 
-    .form-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: #add8e6;
-      margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-
     .form-group {
-      display: flex;
-      flex-direction: column;
+      margin-bottom: 1.5rem;
     }
 
-    .form-label {
-      font-weight: 600;
+    .form-group label {
+      display: block;
       margin-bottom: 0.5rem;
+      font-weight: bold;
       color: #add8e6;
     }
 
-    .form-input {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 8px;
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
       padding: 12px;
+      border: 2px solid rgba(173, 216, 230, 0.3);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
       color: #e0e0e0;
       font-size: 1rem;
       transition: all 0.3s ease;
     }
 
-    .form-input:focus {
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus {
       outline: none;
       border-color: #add8e6;
       box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
     }
 
-    .form-select {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 8px;
-      padding: 12px;
-      color: #e0e0e0;
-      font-size: 1rem;
-      cursor: pointer;
+    .form-group textarea {
+      resize: vertical;
+      min-height: 100px;
     }
 
-    .input-group {
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+
+    .form-actions {
       display: flex;
-      gap: 10px;
-      align-items: end;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(173, 216, 230, 0.3);
     }
 
-    .input-group .form-input {
-      flex: 1;
-    }
-
-    .btn-add {
-      background: linear-gradient(135deg, #17a2b8, #138496);
-      color: white;
-      border: none;
-      padding: 12px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-    }
-
-    /* Tabela de Serviços */
     .services-section {
       margin: 2rem 0;
     }
 
+    .services-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
+    .services-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      color: #add8e6;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
     .services-table {
       width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
       background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
+      border-radius: 8px;
       overflow: hidden;
-      border: 1px solid rgba(173, 216, 230, 0.2);
     }
 
     .services-table th,
     .services-table td {
       padding: 12px;
       text-align: left;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
     }
 
     .services-table th {
-      background: rgba(173, 216, 230, 0.1);
-      font-weight: 600;
+      background: rgba(173, 216, 230, 0.2);
+      font-weight: bold;
       color: #add8e6;
     }
 
-    .services-table tr:hover {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
     .services-table input {
-      background: transparent;
+      background: rgba(255, 255, 255, 0.1);
       border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 4px;
       padding: 8px;
@@ -297,61 +237,55 @@
       width: 100%;
     }
 
-    .total-display {
+    .total-section {
       background: rgba(76, 175, 80, 0.2);
       border: 2px solid #4CAF50;
-      border-radius: 10px;
-      padding: 1rem;
-      margin: 1rem 0;
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 2rem 0;
       text-align: center;
+    }
+
+    .total-label {
+      font-size: 1.2rem;
+      color: #add8e6;
+      margin-bottom: 0.5rem;
     }
 
     .total-value {
       font-size: 2rem;
       font-weight: bold;
       color: #4CAF50;
-    }
-
-    /* Lista de Propostas */
-    .proposals-list {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 15px;
-      padding: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
     }
 
     .proposals-table {
       width: 100%;
+      border-collapse: collapse;
       background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
+      border-radius: 8px;
       overflow: hidden;
-      border: 1px solid rgba(173, 216, 230, 0.2);
     }
 
     .proposals-table th,
     .proposals-table td {
       padding: 12px;
       text-align: left;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
     }
 
     .proposals-table th {
-      background: rgba(173, 216, 230, 0.1);
-      font-weight: 600;
+      background: rgba(173, 216, 230, 0.2);
+      font-weight: bold;
       color: #add8e6;
-    }
-
-    .proposals-table tr:hover {
-      background: rgba(255, 255, 255, 0.05);
     }
 
     .status-badge {
       padding: 4px 12px;
       border-radius: 20px;
       font-size: 0.8rem;
-      font-weight: 600;
+      font-weight: bold;
+      text-transform: uppercase;
     }
 
     .status-pendente {
@@ -372,12 +306,6 @@
       border: 1px solid #dc3545;
     }
 
-    .actions-cell {
-      display: flex;
-      gap: 8px;
-    }
-
-    /* Modal */
     .modal {
       display: none;
       position: fixed;
@@ -386,78 +314,122 @@
       top: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.7);
+      background-color: rgba(0,0,0,0.7);
       backdrop-filter: blur(5px);
-    }
-
-    .modal.show {
-      display: flex;
       align-items: center;
       justify-content: center;
     }
 
     .modal-content {
       background: linear-gradient(135deg, #000080, #191970);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 15px;
-      padding: 2rem;
+      margin: auto;
+      padding: 0;
+      border-radius: 12px;
       width: 90%;
-      max-width: 500px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      max-width: 600px;
+      max-height: 90vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      border: 1px solid rgba(173, 216, 230, 0.3);
     }
 
     .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
     }
 
-    .modal-title {
-      font-size: 1.5rem;
-      font-weight: 600;
+    .modal-header h3 {
+      margin: 0;
       color: #add8e6;
-    }
-
-    .close-modal {
-      background: none;
-      border: none;
       font-size: 1.5rem;
-      color: #e0e0e0;
-      cursor: pointer;
-      transition: color 0.3s ease;
     }
 
-    .close-modal:hover {
-      color: #add8e6;
+    .modal-body {
+      padding: 1.5rem;
+      max-height: 400px;
+      overflow-y: auto;
     }
 
     .modal-footer {
+      padding: 1.5rem;
+      border-top: 1px solid rgba(173, 216, 230, 0.3);
       display: flex;
       justify-content: flex-end;
       gap: 1rem;
-      margin-top: 2rem;
-      padding-top: 1rem;
-      border-top: 1px solid rgba(173, 216, 230, 0.3);
     }
 
-    /* Responsividade */
+    .btn-close {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      color: #add8e6;
+      cursor: pointer;
+      padding: 0;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .btn-close:hover {
+      background: rgba(173, 216, 230, 0.2);
+      transform: rotate(90deg);
+    }
+
+    .servico-option {
+      padding: 10px;
+      margin: 5px 0;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      transition: all 0.3s ease;
+    }
+
+    .servico-option:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: #add8e6;
+    }
+
+    .servico-option label {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .servico-option input[type="checkbox"] {
+      margin-top: 2px;
+      width: auto;
+    }
+
+    .servico-option input[type="checkbox"]:disabled {
+      opacity: 0.5;
+    }
+
+    .servicos-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
     @media (max-width: 768px) {
       #main-content-propostas-hvc {
         margin-left: 0;
         padding: 1rem;
       }
 
-      .form-row {
-        grid-template-columns: 1fr;
+      .page-title {
+        font-size: 2rem;
       }
 
-      .page-header {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
+      .form-row {
+        grid-template-columns: 1fr;
       }
 
       .services-table,
@@ -467,208 +439,133 @@
 
       .modal-content {
         width: 95%;
-        padding: 1rem;
+        margin: 10px;
       }
-    }
-
-    /* Animações */
-    .fade-in {
-      animation: fadeIn 0.3s ease-in;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .loading {
-      opacity: 0.6;
-      pointer-events: none;
-    }
-
-    .loading::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 20px;
-      height: 20px;
-      margin: -10px 0 0 -10px;
-      border: 2px solid #add8e6;
-      border-radius: 50%;
-      border-top-color: transparent;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
     }
   </style>
 </head>
+
 <body>
   <main id="main-content-propostas-hvc">
-    <!-- Cabeçalho da Página -->
-     <div class="page-header">
-      <div class="page-title">
-        <i class="fas fa-file-contract"></i>
-        Propostas HVC
-      </div>
-      <button class="btn-primary" id="btn-nova-proposta">
-        <i class="fas fa-plus"></i>
-        Nova Proposta
-      </button>
-    </div>
-
-    <!-- Filtros da Lista -->
-    <div class="filters-section" id="filters-section">
-      <div class="filters-header">
-        <h3><i class="fas fa-filter"></i> Filtros</h3>
-        <button class="btn-secondary" onclick="window.propostasManager.clearFilters()">
-          <i class="fas fa-times"></i>
-          Limpar Filtros
+    <!-- Lista de Propostas -->
+    <div id="list-section">
+      <div class="page-header">
+        <h1 class="page-title">
+          <i class="fas fa-file-contract"></i>
+          Propostas HVC
+        </h1>
+        <button id="btn-nova-proposta" class="btn-primary">
+          <i class="fas fa-plus"></i>
+          Nova Proposta
         </button>
       </div>
-      
-      <div class="filters-row">
-        <div class="filter-group">
-          <label for="filter-status">Status:</label>
-          <select id="filter-status" onchange="window.propostasManager.applyFilters()">
-            <option value="">Todos</option>
-            <option value="Pendente">Pendente</option>
-            <option value="Aprovada">Aprovada</option>
-            <option value="Recusada">Recusada</option>
-          </select>
-        </div>
-        
-        <div class="filter-group">
-          <label for="filter-cliente">Cliente:</label>
-          <select id="filter-cliente" onchange="window.propostasManager.applyFilters()">
-            <option value="">Todos os clientes</option>
-            <!-- Será populado dinamicamente -->
-          </select>
-        </div>
-        
-        <div class="filter-group">
-          <label for="filter-numero">Número:</label>
-          <input type="text" id="filter-numero" placeholder="Ex: 0001/2024" onkeyup="window.propostasManager.applyFilters()">
-        </div>
-        
-        <div class="filter-group">
-          <label for="filter-data-inicio">Data Início:</label>
-          <input type="date" id="filter-data-inicio" onchange="window.propostasManager.applyFilters()">
-        </div>
-        
-        <div class="filter-group">
-          <label for="filter-data-fim">Data Fim:</label>
-          <input type="date" id="filter-data-fim" onchange="window.propostasManager.applyFilters()">
-        </div>
+
+      <div class="card">
+        <h2 style="color: #add8e6; margin-bottom: 1.5rem;">
+          <i class="fas fa-list"></i>
+          Lista de Propostas
+        </h2>
+        <table class="proposals-table">
+          <thead>
+            <tr>
+              <th>Número</th>
+              <th>Cliente</th>
+              <th>Total</th>
+              <th>Prazo</th>
+              <th>Pagamento</th>
+              <th>Status</th>
+              <th>Data</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody id="proposals-tbody">
+            <!-- Propostas serão carregadas aqui -->
+          </tbody>
+        </table>
       </div>
     </div>
 
     <!-- Formulário de Nova/Editar Proposta -->
-    <div class="form-section hidden" id="form-proposta">
-      <div class="form-title">
-        <i class="fas fa-edit"></i>
-        <span id="form-title-text">Nova Proposta</span>
+    <div id="form-section" class="form-section">
+      <div class="page-header">
+        <h1 class="page-title">
+          <i class="fas fa-file-contract"></i>
+          <span id="form-title-text">Nova Proposta</span>
+        </h1>
+        <button id="btn-voltar" class="btn-secondary">
+          <i class="fas fa-arrow-left"></i>
+          Voltar
+        </button>
       </div>
 
-      <form id="proposta-form">
+      <form id="form-proposta" class="card">
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label" for="numero-proposta">
-              Número da Proposta *
-            </label>
-            <input 
-              type="text" 
-              id="numero-proposta" 
-              class="form-input" 
-              placeholder="0000/0000"
-              maxlength="9"
-              required
-            >
+            <label for="numero-proposta">Número da Proposta *</label>
+            <input type="text" id="numero-proposta" placeholder="Ex: 0001/2024" required>
           </div>
-
           <div class="form-group">
-            <label class="form-label" for="cliente-select">
-              Cliente *
-            </label>
-            <div class="input-group">
-              <select id="cliente-select" class="form-select" required>
-                <option value="">Selecione um cliente...</option>
-              </select>
-              <button type="button" class="btn-add" id="btn-add-cliente">
-                <i class="fas fa-plus"></i>
-              </button>
-            </div>
+            <label for="cliente-select">Cliente *</label>
+            <select id="cliente-select" required>
+              <option value="">Selecione um cliente...</option>
+            </select>
+            <button type="button" id="btn-add-cliente" class="btn-info" style="margin-top: 0.5rem; width: 100%;">
+              <i class="fas fa-plus"></i>
+              Adicionar Novo Cliente
+            </button>
           </div>
+        </div>
 
+        <div class="form-row">
           <div class="form-group">
-            <label class="form-label" for="status-select">
-              Status *
-            </label>
-            <select id="status-select" class="form-select" required>
+            <label for="prazo-execucao">Prazo de Execução (dias) *</label>
+            <input type="number" id="prazo-execucao" min="1" required>
+          </div>
+          <div class="form-group">
+            <label for="tipo-prazo">Tipo de Prazo *</label>
+            <select id="tipo-prazo" required>
+              <option value="corridos">Dias Corridos</option>
+              <option value="uteis">Dias Úteis</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="forma-pagamento">Forma de Pagamento *</label>
+          <input type="text" id="forma-pagamento" placeholder="Ex: À vista, Parcelado em 3x, etc." required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="status-select">Status *</label>
+            <select id="status-select" required>
+              <option value="">Selecione o status...</option>
               <option value="Pendente">Pendente</option>
               <option value="Aprovada">Aprovada</option>
               <option value="Recusada">Recusada</option>
             </select>
           </div>
-
-          <!-- Novos campos: Prazo e Forma de Pagamento -->
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="prazo-execucao">
-                Prazo de Execução *
-              </label>
-              <div style="display: flex; gap: 10px;">
-                <input 
-                  type="number" 
-                  id="prazo-execucao" 
-                  class="form-input" 
-                  placeholder="Ex: 30"
-                  min="1"
-                  required
-                  style="flex: 1;"
-                >
-                <select id="tipo-prazo" class="form-select" required style="flex: 1;">
-                  <option value="corridos">Dias Corridos</option>
-                  <option value="uteis">Dias Úteis</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="forma-pagamento">
-              Forma de Pagamento *
-            </label>
-            <input 
-              type="text" 
-              id="forma-pagamento" 
-              class="form-input" 
-              placeholder="Ex: À vista, 30/60/90 dias, PIX, etc."
-              required
-            >
-          </div>
         </div>
 
         <!-- Seção de Serviços -->
         <div class="services-section">
-          <div class="form-title">
-            <i class="fas fa-tools"></i>
-            Serviços da Proposta
-            <button type="button" class="btn-add" id="btn-add-servico">
+          <div class="services-header">
+            <h3 class="services-title">
+              <i class="fas fa-tools"></i>
+              Serviços da Proposta
+            </h3>
+            <button type="button" id="btn-add-servico" class="btn-primary">
               <i class="fas fa-plus"></i>
               Adicionar Serviço
             </button>
           </div>
 
-          <table class="services-table" id="services-table">
+          <table class="services-table">
             <thead>
               <tr>
                 <th>Serviço</th>
                 <th>Quantidade</th>
                 <th>Unidade</th>
-                <th>Modo Preço</th>
                 <th>Mão de Obra (R$)</th>
                 <th>Material (R$)</th>
                 <th>Total (R$)</th>
@@ -676,34 +573,28 @@
               </tr>
             </thead>
             <tbody id="services-tbody">
-              <!-- Serviços serão adicionados dinamicamente -->
+              <!-- Serviços serão adicionados aqui -->
             </tbody>
           </table>
+        </div>
 
-          <div class="total-display">
-            <div>Total da Proposta:</div>
-            <div class="total-value" id="total-proposta">R$ 0,00</div>
-          </div>
+        <!-- Total da Proposta -->
+        <div class="total-section">
+          <div class="total-label">Total da Proposta:</div>
+          <div class="total-value" id="total-proposta">R$ 0,00</div>
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="observacoes">
-            Observações
-          </label>
-          <textarea 
-            id="observacoes" 
-            class="form-input" 
-            rows="3"
-            placeholder="Observações adicionais sobre a proposta..."
-          ></textarea>
+          <label for="observacoes">Observações</label>
+          <textarea id="observacoes" placeholder="Observações adicionais sobre a proposta..."></textarea>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" id="btn-cancelar">
+        <div class="form-actions">
+          <button type="button" id="btn-cancelar" class="btn-secondary">
             <i class="fas fa-times"></i>
             Cancelar
           </button>
-          <button type="submit" class="btn-success" id="btn-salvar">
+          <button type="submit" class="btn-primary">
             <i class="fas fa-save"></i>
             Salvar Proposta
           </button>
@@ -711,170 +602,82 @@
       </form>
     </div>
 
-    <!-- Lista de Propostas -->
-    <div class="proposals-list" id="proposals-list">
-      <div class="form-title">
-        <i class="fas fa-list"></i>
-        Lista de Propostas
-      </div>
-
-      <table class="proposals-table" id="proposals-table">
-        <thead>
-          <tr>
-            <th>Número</th>
-            <th>Cliente</th>
-            <th>Total</th>
-            <th>Prazo</th>
-            <th>Pagamento</th>
-            <th>Status</th>
-            <th>Data</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="proposals-tbody">
-          <!-- Propostas serão carregadas dinamicamente -->
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Modal Adicionar Serviço -->
-    <div class="modal" id="modal-servico">
+    <!-- Modal para adicionar cliente -->
+    <div id="modal-cliente" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Serviço</h3>
-          <button class="close-modal" id="close-modal-servico">
-            <i class="fas fa-times"></i>
-          </button>
+          <h3>Adicionar Novo Cliente</h3>
+          <button type="button" class="btn-close" onclick="document.getElementById('modal-cliente').style.display='none'">×</button>
         </div>
-
-        <form id="servico-form">
-          <div class="form-group">
-            <label class="form-label" for="servico-codigo">
-              Código do Serviço *
-            </label>
-            <input 
-              type="text" 
-              id="servico-codigo" 
-              class="form-input" 
-              placeholder="Ex: SV001"
-              required
-            >
+        <form id="form-cliente">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="cliente-nome">Nome *</label>
+              <input type="text" id="cliente-nome" required>
+            </div>
+            <div class="form-group">
+              <label for="cliente-documento">Documento *</label>
+              <input type="text" id="cliente-documento" required>
+            </div>
+            <div class="form-group">
+              <label for="cliente-tipo">Tipo de Documento *</label>
+              <select id="cliente-tipo" required>
+                <option value="">Selecione...</option>
+                <option value="CPF">CPF</option>
+                <option value="CNPJ">CNPJ</option>
+              </select>
+            </div>
           </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-descricao">
-              Descrição *
-            </label>
-            <input 
-              type="text" 
-              id="servico-descricao" 
-              class="form-input" 
-              placeholder="Ex: Instalação elétrica"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-detalhe">
-              Detalhes
-            </label>
-            <textarea 
-              id="servico-detalhe" 
-              class="form-input" 
-              rows="3"
-              placeholder="Detalhes adicionais do serviço..."
-            ></textarea>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-unidade">
-              Unidade de Medida
-            </label>
-            <select 
-              id="servico-unidade" 
-              class="form-input"
-            >
-              <option value="">Selecione uma unidade (opcional)</option>
-              <option value="m">Metro (m)</option>
-              <option value="m²">Metro Quadrado (m²)</option>
-              <option value="m³">Metro Cúbico (m³)</option>
-              <option value="kg">Quilograma (kg)</option>
-              <option value="t">Tonelada (t)</option>
-              <option value="un">Unidade (un)</option>
-              <option value="h">Hora (h)</option>
-              <option value="dia">Dia (dia)</option>
-              <option value="mês">Mês (mês)</option>
-              <option value="vb">Verba (vb)</option>
-            </select>
-          </div>
-
           <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="cancel-servico">
-              Cancelar
-            </button>
-            <button type="submit" class="btn-success">
-              <i class="fas fa-save"></i>
-              Salvar Serviço
-            </button>
+            <button type="button" class="btn-secondary" onclick="document.getElementById('modal-cliente').style.display='none'">Cancelar</button>
+            <button type="submit" class="btn-primary">Salvar Cliente</button>
           </div>
         </form>
       </div>
     </div>
 
-    <!-- Modal Adicionar Cliente -->
-    <div class="modal" id="modal-cliente">
+    <!-- Modal para adicionar serviço -->
+    <div id="modal-servico" class="modal">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Cliente</h3>
-          <button class="close-modal" id="close-modal-cliente">
-            <i class="fas fa-times"></i>
-          </button>
+          <h3>Adicionar Novo Serviço</h3>
+          <button type="button" class="btn-close" onclick="document.getElementById('modal-servico').style.display='none'">×</button>
         </div>
-
-        <form id="cliente-form">
-          <div class="form-group">
-            <label class="form-label" for="cliente-nome">
-              Nome do Cliente *
-            </label>
-            <input 
-              type="text" 
-              id="cliente-nome" 
-              class="form-input" 
-              placeholder="Nome completo do cliente"
-              required
-            >
+        <form id="form-servico">
+          <div class="modal-body">
+            <div class="form-group">
+              <label for="servico-codigo">Código do Serviço *</label>
+              <input type="text" id="servico-codigo" placeholder="Ex: SV001" required>
+            </div>
+            <div class="form-group">
+              <label for="servico-descricao">Descrição *</label>
+              <input type="text" id="servico-descricao" placeholder="Ex: Instalação elétrica" required>
+            </div>
+            <div class="form-group">
+              <label for="servico-detalhe">Detalhes</label>
+              <textarea id="servico-detalhe" placeholder="Detalhes adicionais do serviço..."></textarea>
+            </div>
+            <div class="form-group">
+              <label for="servico-unidade">Unidade de Medida</label>
+              <select id="servico-unidade">
+                <option value="m">m</option>
+                <option value="m²">m²</option>
+                <option value="m³">m³</option>
+                <option value="kg">kg</option>
+                <option value="t">t</option>
+                <option value="un">un</option>
+                <option value="h">h</option>
+                <option value="dia">dia</option>
+                <option value="mês">mês</option>
+                <option value="vb">vb</option>
+              </select>
+            </div>
           </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cliente-documento">
-              Documento
-            </label>
-            <input 
-              type="text" 
-              id="cliente-documento" 
-              class="form-input" 
-              placeholder="CPF ou CNPJ"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cliente-tipo-documento">
-              Tipo de Documento
-            </label>
-            <select id="cliente-tipo-documento" class="form-select">
-              <option value="">Selecione...</option>
-              <option value="CPF">CPF</option>
-              <option value="CNPJ">CNPJ</option>
-            </select>
-          </div>
-
           <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="cancel-cliente">
-              Cancelar
-            </button>
-            <button type="submit" class="btn-success">
+            <button type="button" class="btn-secondary" onclick="document.getElementById('modal-servico').style.display='none'">Cancelar</button>
+            <button type="submit" class="btn-primary">
               <i class="fas fa-save"></i>
-              Salvar Cliente
+              Salvar Serviço
             </button>
           </div>
         </form>
@@ -883,7 +686,8 @@
   </main>
 
   <script type="module" src="sidebar.js"></script>
-  <script type="module" src="propostas-hvc.js"></script>
+  <script src="supabase.js"></script>
+  <script src="propostas-hvc.js"></script>
   <script type="module">
     import { injectSidebar } from './sidebar.js';
     document.addEventListener('DOMContentLoaded', () => {
@@ -891,6 +695,14 @@
         injectSidebar('main-content-propostas-hvc');
       } else {
         console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
+      }
+      
+      // Inicializar PropostasManager
+      if (typeof PropostasManager !== 'undefined') {
+        window.propostasManager = new PropostasManager();
+        window.propostasManager.init();
+      } else {
+        console.error('PropostasManager class not found');
       }
     });
   </script>
