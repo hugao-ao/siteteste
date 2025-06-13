@@ -1261,10 +1261,22 @@ class PropostasManager {
                 console.log('🚀 ENVIANDO PARA SUPABASE (UPDATE)...');
                 console.log('Dados sendo enviados:', propostaData);
                 
-                // Atualizar proposta existente
+                // 🚨 SOLUÇÃO: Forçar substituição completa do valor
+                console.log('🔧 FORÇANDO SUBSTITUIÇÃO DO VALOR...');
+                
+                // Atualizar proposta existente com substituição forçada
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
-                    .update(propostaData)
+                    .update({
+                        numero_proposta: propostaData.numero_proposta,
+                        cliente_id: propostaData.cliente_id,
+                        status: propostaData.status,
+                        observacoes: propostaData.observacoes,
+                        prazo_execucao: propostaData.prazo_execucao,
+                        tipo_prazo: propostaData.tipo_prazo,
+                        forma_pagamento: propostaData.forma_pagamento,
+                        total_proposta: propostaData.total_proposta // Substituição direta
+                    })
                     .eq('id', this.currentPropostaId)
                     .select()
                     .single();
