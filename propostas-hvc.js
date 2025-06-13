@@ -628,6 +628,22 @@ class PropostasManager {
     clearForm() {
         const form = document.getElementById('proposta-form');
         if (form) form.reset();
+        
+        // Reabilitar todos os campos (caso tenham sido desabilitados)
+        const inputs = form.querySelectorAll('input, select, textarea, button');
+        inputs.forEach(input => {
+            input.disabled = false;
+            input.style.opacity = '';
+            input.style.cursor = '';
+            input.title = '';
+        });
+        
+        // Restaurar texto do botão salvar
+        const btnSalvar = document.querySelector('button[type="submit"]');
+        if (btnSalvar) {
+            btnSalvar.textContent = 'Salvar Proposta';
+        }
+        
         this.servicosAdicionados = [];
         this.updateServicesTable();
         this.updateTotal();
@@ -649,6 +665,39 @@ class PropostasManager {
         if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
         if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
         if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
+        
+        // PROTEÇÃO: Desabilitar campos se proposta estiver aprovada
+        const isAprovada = proposta.status === 'Aprovada';
+        if (isAprovada) {
+            // Desabilitar todos os campos do formulário
+            if (numeroInput) numeroInput.disabled = true;
+            if (clienteSelect) clienteSelect.disabled = true;
+            if (statusSelect) statusSelect.disabled = true;
+            if (observacoesTextarea) observacoesTextarea.disabled = true;
+            if (prazoInput) prazoInput.disabled = true;
+            if (tipoPrazoSelect) tipoPrazoSelect.disabled = true;
+            if (formaPagamentoInput) formaPagamentoInput.disabled = true;
+            
+            // Desabilitar botões de adicionar serviços
+            const btnAddServico = document.getElementById('btn-add-servico');
+            if (btnAddServico) {
+                btnAddServico.disabled = true;
+                btnAddServico.style.opacity = '0.5';
+                btnAddServico.style.cursor = 'not-allowed';
+                btnAddServico.title = 'Proposta aprovada não pode ser editada';
+            }
+            
+            // Desabilitar botão de salvar
+            const btnSalvar = document.querySelector('button[type="submit"]');
+            if (btnSalvar) {
+                btnSalvar.disabled = true;
+                btnSalvar.style.opacity = '0.5';
+                btnSalvar.style.cursor = 'not-allowed';
+                btnSalvar.textContent = 'Proposta Aprovada - Não Editável';
+            }
+            
+            this.showNotification('Esta proposta está aprovada e não pode ser editada.', 'info');
+        }
         
         // Carregar itens da proposta
         this.loadItensProposta(proposta.id);
@@ -1342,6 +1391,13 @@ class PropostasManager {
                 observacoesTexto = observacoesTexto.substring(0, 50) + '...';
             }
             
+            // Verificar se proposta está aprovada para desabilitar edição
+            const isAprovada = proposta.status === 'Aprovada';
+            const editButtonClass = isAprovada ? 'btn-secondary disabled' : 'btn-secondary';
+            const editButtonStyle = isAprovada ? 'opacity: 0.5; cursor: not-allowed;' : '';
+            const editButtonTitle = isAprovada ? 'Proposta aprovada não pode ser editada' : 'Editar proposta';
+            const editButtonOnclick = isAprovada ? '' : `onclick="window.propostasManager.editProposta('${proposta.id}')"`;
+            
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
@@ -1356,9 +1412,10 @@ class PropostasManager {
                 <td title="${proposta.observacoes || ''}">${observacoesTexto}</td>
                 <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions-cell">
-                    <button class="btn-secondary" 
-                            onclick="window.propostasManager.editProposta('${proposta.id}')"
-                            title="Editar proposta">
+                    <button class="${editButtonClass}" 
+                            ${editButtonOnclick}
+                            style="${editButtonStyle}"
+                            title="${editButtonTitle}">
                         <i class="fas fa-edit"></i>
                     </button>
                     <button class="btn-danger" 
@@ -1381,6 +1438,12 @@ class PropostasManager {
                 .single();
 
             if (error) throw error;
+
+            // PROTEÇÃO: Verificar se proposta está aprovada
+            if (data.status === 'Aprovada') {
+                this.showNotification('Propostas aprovadas não podem ser editadas!', 'warning');
+                return;
+            }
 
             this.showFormProposta(data);
         } catch (error) {
