@@ -1,4 +1,4 @@
-// propostas-hvc.js - Versão com Seleção Múltipla de Serviços
+// propostas-hvc.js - Versão CORRIGIDA com Filtros
 // Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
@@ -62,6 +62,7 @@ class PropostasManager {
         this.servicosAdicionados = [];
         this.clientes = [];
         this.servicos = [];
+        this.propostas = []; // Armazenar propostas para filtros
         
         this.init();
     }
@@ -75,10 +76,197 @@ class PropostasManager {
             await this.loadPropostas();
             this.setupEventListeners();
             this.setupMasks();
+            this.addFilterControls(); // Adicionar controles de filtro
             console.log('PropostasManager inicializado com sucesso!');
         } catch (error) {
             console.error('Erro ao inicializar PropostasManager:', error);
         }
+    }
+
+    // === NOVA FUNCIONALIDADE: FILTROS ===
+    addFilterControls() {
+        const proposalsList = document.querySelector('.proposals-list');
+        if (!proposalsList) return;
+
+        // Criar controles de filtro
+        const filterControls = document.createElement('div');
+        filterControls.className = 'filter-controls';
+        filterControls.style.cssText = `
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(173, 216, 230, 0.2);
+            flex-wrap: wrap;
+        `;
+
+        filterControls.innerHTML = `
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-search"></i> Buscar
+                </label>
+                <input type="text" 
+                       id="filtro-busca" 
+                       placeholder="Número, cliente..." 
+                       class="form-input"
+                       style="width: 100%;"
+                       onkeyup="window.propostasManager.filtrarPropostas()">
+            </div>
+            
+            <div style="min-width: 150px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-filter"></i> Status
+                </label>
+                <select id="filtro-status" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Aprovada">Aprovada</option>
+                    <option value="Recusada">Recusada</option>
+                </select>
+            </div>
+            
+            <div style="min-width: 150px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-user"></i> Cliente
+                </label>
+                <select id="filtro-cliente" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            
+            <div style="min-width: 120px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-calendar"></i> Período
+                </label>
+                <select id="filtro-periodo" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="semana">Esta Semana</option>
+                    <option value="mes">Este Mês</option>
+                    <option value="trimestre">Últimos 3 Meses</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; align-items: end;">
+                <button type="button" 
+                        class="btn-secondary" 
+                        onclick="window.propostasManager.limparFiltros()"
+                        style="height: fit-content;">
+                    <i class="fas fa-times"></i>
+                    Limpar
+                </button>
+            </div>
+        `;
+
+        // Inserir antes da tabela
+        const tableContainer = proposalsList.querySelector('.form-title').nextElementSibling;
+        proposalsList.insertBefore(filterControls, tableContainer);
+    }
+
+    populateClienteFilter() {
+        const filtroCliente = document.getElementById('filtro-cliente');
+        if (!filtroCliente) return;
+
+        // Limpar opções existentes (exceto "Todos")
+        filtroCliente.innerHTML = '<option value="">Todos</option>';
+
+        // Adicionar clientes únicos das propostas
+        const clientesUnicos = [...new Set(this.propostas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
+        clientesUnicos.sort().forEach(nomeCliente => {
+            const option = document.createElement('option');
+            option.value = nomeCliente;
+            option.textContent = nomeCliente;
+            filtroCliente.appendChild(option);
+        });
+    }
+
+    filtrarPropostas() {
+        const busca = document.getElementById('filtro-busca')?.value.toLowerCase() || '';
+        const status = document.getElementById('filtro-status')?.value || '';
+        const cliente = document.getElementById('filtro-cliente')?.value || '';
+        const periodo = document.getElementById('filtro-periodo')?.value || '';
+
+        let propostasFiltradas = [...this.propostas];
+
+        // Filtro de busca (número ou cliente)
+        if (busca) {
+            propostasFiltradas = propostasFiltradas.filter(proposta => 
+                proposta.numero_proposta.toLowerCase().includes(busca) ||
+                (proposta.clientes_hvc?.nome || '').toLowerCase().includes(busca)
+            );
+        }
+
+        // Filtro de status
+        if (status) {
+            propostasFiltradas = propostasFiltradas.filter(proposta => 
+                proposta.status === status
+            );
+        }
+
+        // Filtro de cliente
+        if (cliente) {
+            propostasFiltradas = propostasFiltradas.filter(proposta => 
+                proposta.clientes_hvc?.nome === cliente
+            );
+        }
+
+        // Filtro de período
+        if (periodo) {
+            const agora = new Date();
+            const dataFiltro = new Date();
+
+            switch (periodo) {
+                case 'hoje':
+                    dataFiltro.setHours(0, 0, 0, 0);
+                    break;
+                case 'semana':
+                    dataFiltro.setDate(agora.getDate() - 7);
+                    break;
+                case 'mes':
+                    dataFiltro.setMonth(agora.getMonth() - 1);
+                    break;
+                case 'trimestre':
+                    dataFiltro.setMonth(agora.getMonth() - 3);
+                    break;
+            }
+
+            propostasFiltradas = propostasFiltradas.filter(proposta => 
+                new Date(proposta.created_at) >= dataFiltro
+            );
+        }
+
+        this.renderPropostas(propostasFiltradas);
+        this.updateFilterStats(propostasFiltradas.length, this.propostas.length);
+    }
+
+    updateFilterStats(filtradas, total) {
+        // Atualizar título com estatísticas
+        const formTitle = document.querySelector('.proposals-list .form-title');
+        if (formTitle) {
+            const statsText = filtradas === total ? 
+                `Lista de Propostas (${total})` : 
+                `Lista de Propostas (${filtradas} de ${total})`;
+            formTitle.innerHTML = `<i class="fas fa-list"></i> ${statsText}`;
+        }
+    }
+
+    limparFiltros() {
+        document.getElementById('filtro-busca').value = '';
+        document.getElementById('filtro-status').value = '';
+        document.getElementById('filtro-cliente').value = '';
+        document.getElementById('filtro-periodo').value = '';
+        this.filtrarPropostas();
     }
 
     setupEventListeners() {
@@ -431,11 +619,17 @@ class PropostasManager {
         const clienteSelect = document.getElementById('cliente-select');
         const statusSelect = document.getElementById('status-select');
         const observacoesTextarea = document.getElementById('observacoes');
+        const prazoInput = document.getElementById('prazo-execucao');
+        const tipoPrazoSelect = document.getElementById('tipo-prazo');
+        const formaPagamentoInput = document.getElementById('forma-pagamento');
         
         if (numeroInput) numeroInput.value = proposta.numero_proposta;
         if (clienteSelect) clienteSelect.value = proposta.cliente_id;
         if (statusSelect) statusSelect.value = proposta.status;
         if (observacoesTextarea) observacoesTextarea.value = proposta.observacoes || '';
+        if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
+        if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
+        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
         
         // Carregar itens da proposta
         this.loadItensProposta(proposta.id);
@@ -876,6 +1070,9 @@ class PropostasManager {
             cliente_id: document.getElementById('cliente-select').value,
             status: document.getElementById('status-select').value,
             observacoes: document.getElementById('observacoes').value,
+            prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
+            tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
+            forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
             total_proposta: this.servicosAdicionados.reduce((sum, item) => sum + item.preco_total, 0)
         };
 
@@ -978,7 +1175,7 @@ class PropostasManager {
         return true;
     }
 
-    // === LISTA DE PROPOSTAS ===
+    // === LISTA DE PROPOSTAS CORRIGIDA ===
     async loadPropostas() {
         try {
             console.log('Carregando propostas...');
@@ -998,8 +1195,10 @@ class PropostasManager {
 
             if (error) throw error;
 
-            this.renderPropostas(data || []);
-            console.log('Propostas carregadas:', data?.length || 0);
+            this.propostas = data || []; // Armazenar para filtros
+            this.renderPropostas(this.propostas);
+            this.populateClienteFilter(); // Atualizar filtro de clientes
+            console.log('Propostas carregadas:', this.propostas.length);
         } catch (error) {
             console.error('Erro ao carregar propostas:', error);
             this.showNotification('Erro ao carregar propostas: ' + error.message, 'error');
@@ -1015,7 +1214,7 @@ class PropostasManager {
         if (propostas.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
                     </td>
@@ -1026,15 +1225,25 @@ class PropostasManager {
 
         propostas.forEach(proposta => {
             const row = document.createElement('tr');
+            
+            // Formatar prazo
+            let prazoTexto = '-';
+            if (proposta.prazo_execucao) {
+                const tipoPrazo = proposta.tipo_prazo === 'uteis' ? 'úteis' : 'corridos';
+                prazoTexto = `${proposta.prazo_execucao} dias ${tipoPrazo}`;
+            }
+            
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
+                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
+                <td>${prazoTexto}</td>
+                <td>${proposta.forma_pagamento || '-'}</td>
                 <td>
                     <span class="status-badge status-${proposta.status.toLowerCase()}">
                         ${proposta.status}
                     </span>
                 </td>
-                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
                 <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions-cell">
                     <button class="btn-secondary" 
