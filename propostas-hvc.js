@@ -73,7 +73,8 @@ function ensureNumericValue(value) {
         return 0;
     }
     
-    // Limitar a 2 casas decimais para evitar overflow
+    // CORREÇÃO: Remover multiplicação por 100 que estava causando o problema
+    // Apenas arredondar para 2 casas decimais
     return Math.round(numericValue * 100) / 100;
 }
 
@@ -1171,7 +1172,7 @@ class PropostasManager {
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td><strong>${this.formatMoney(ensureNumericValue(proposta.total_proposta))}</strong></td>
+                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
                 <td>${prazoTexto}</td>
                 <td>${proposta.forma_pagamento || '-'}</td>
                 <td>
@@ -1338,8 +1339,8 @@ class PropostasManager {
     }
 
     formatMoney(value) {
-        // CORREÇÃO: Garantir que o valor seja numérico antes de formatar
-        const numericValue = ensureNumericValue(value);
+        // CORREÇÃO: Usar valor diretamente sem processamento adicional
+        const numericValue = parseFloat(value) || 0;
         return new Intl.NumberFormat('pt-BR', {
             style: 'currency',
             currency: 'BRL'
