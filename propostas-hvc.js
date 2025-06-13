@@ -1276,9 +1276,23 @@ class PropostasManager {
         try {
             let proposta;
             
+            // 🔍 LOG CRÍTICO: Verificar dados EXATOS enviados para Supabase
+            console.log('\n🚨 === DADOS EXATOS PARA SUPABASE ===');
+            console.log('Objeto completo que será enviado:', JSON.stringify(propostaData, null, 2));
+            console.log('Tipo do total_proposta:', typeof propostaData.total_proposta);
+            console.log('Valor do total_proposta:', propostaData.total_proposta);
+            console.log('JSON do total_proposta:', JSON.stringify(propostaData.total_proposta));
+            console.log('String do total_proposta:', String(propostaData.total_proposta));
+            console.log('Number do total_proposta:', Number(propostaData.total_proposta));
+            console.log('=====================================\n');
+            
             if (this.currentPropostaId) {
                 console.log('\n🔄 ATUALIZANDO proposta existente...');
                 console.log('ID da proposta:', this.currentPropostaId);
+                
+                // 🔍 LOG ANTES DO ENVIO
+                console.log('🚀 ENVIANDO PARA SUPABASE (UPDATE)...');
+                console.log('Dados sendo enviados:', propostaData);
                 
                 // Atualizar proposta existente
                 const { data, error } = await supabaseClient
@@ -1295,9 +1309,22 @@ class PropostasManager {
                 
                 proposta = data;
                 console.log('✅ Proposta atualizada com sucesso:', proposta);
-                console.log('Total salvo no banco:', proposta.total_proposta, typeof proposta.total_proposta);
+                console.log('🔍 VALOR RETORNADO DO BANCO:', proposta.total_proposta, typeof proposta.total_proposta);
+                
+                // 🚨 COMPARAÇÃO CRÍTICA
+                console.log('\n🔍 === COMPARAÇÃO CRÍTICA ===');
+                console.log('Valor ENVIADO:', propostaData.total_proposta);
+                console.log('Valor RETORNADO:', proposta.total_proposta);
+                console.log('Diferença:', proposta.total_proposta - propostaData.total_proposta);
+                console.log('Multiplicação por 100?', proposta.total_proposta === (propostaData.total_proposta * 100));
+                console.log('===============================\n');
+                
             } else {
                 console.log('\n➕ CRIANDO nova proposta...');
+                
+                // 🔍 LOG ANTES DO ENVIO
+                console.log('🚀 ENVIANDO PARA SUPABASE (INSERT)...');
+                console.log('Dados sendo enviados:', propostaData);
                 
                 // Criar nova proposta
                 const { data, error } = await supabaseClient
@@ -1313,7 +1340,15 @@ class PropostasManager {
                 
                 proposta = data;
                 console.log('✅ Nova proposta criada com sucesso:', proposta);
-                console.log('Total salvo no banco:', proposta.total_proposta, typeof proposta.total_proposta);
+                console.log('🔍 VALOR RETORNADO DO BANCO:', proposta.total_proposta, typeof proposta.total_proposta);
+                
+                // 🚨 COMPARAÇÃO CRÍTICA
+                console.log('\n🔍 === COMPARAÇÃO CRÍTICA ===');
+                console.log('Valor ENVIADO:', propostaData.total_proposta);
+                console.log('Valor RETORNADO:', proposta.total_proposta);
+                console.log('Diferença:', proposta.total_proposta - propostaData.total_proposta);
+                console.log('Multiplicação por 100?', proposta.total_proposta === (propostaData.total_proposta * 100));
+                console.log('===============================\n');
             }
 
             console.log('\n📦 Salvando itens da proposta...');
