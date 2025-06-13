@@ -1,4 +1,4 @@
-// propostas-hvc.js - Versão CORRIGIDA com Filtros
+// propostas-hvc.js - Versão FINAL CORRIGIDA
 // Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
@@ -77,9 +77,28 @@ class PropostasManager {
             this.setupEventListeners();
             this.setupMasks();
             this.addFilterControls(); // Adicionar controles de filtro
+            this.updateTableHeaders(); // Atualizar cabeçalhos da tabela
             console.log('PropostasManager inicializado com sucesso!');
         } catch (error) {
             console.error('Erro ao inicializar PropostasManager:', error);
+        }
+    }
+
+    // === ATUALIZAR CABEÇALHOS DA TABELA ===
+    updateTableHeaders() {
+        const tableHead = document.querySelector('#proposals-table thead tr');
+        if (tableHead) {
+            tableHead.innerHTML = `
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Prazo</th>
+                <th>Pagamento</th>
+                <th>Status</th>
+                <th>Observações</th>
+                <th>Data</th>
+                <th>Ações</th>
+            `;
         }
     }
 
@@ -1038,6 +1057,7 @@ class PropostasManager {
     calculateItemTotal(index) {
         const item = this.servicosAdicionados[index];
         if (item) {
+            // CORREÇÃO DO CÁLCULO: Total = Quantidade × (Mão de Obra + Material)
             item.preco_total = item.quantidade * (item.preco_mao_obra + item.preco_material);
             this.updateServicesTable();
             this.updateTotal();
@@ -1053,11 +1073,13 @@ class PropostasManager {
     }
 
     updateTotal() {
-        const total = this.servicosAdicionados.reduce((sum, item) => sum + item.preco_total, 0);
+        // CORREÇÃO DO CÁLCULO: Somar todos os preco_total dos itens
+        const total = this.servicosAdicionados.reduce((sum, item) => sum + (item.preco_total || 0), 0);
         const totalElement = document.getElementById('total-proposta');
         if (totalElement) {
             totalElement.textContent = this.formatMoney(total);
         }
+        console.log('Total calculado:', total, 'Formatado:', this.formatMoney(total));
     }
 
     async handleSubmitProposta(e) {
@@ -1065,16 +1087,22 @@ class PropostasManager {
 
         if (!this.validateForm()) return;
 
+        // CORREÇÃO: Calcular total corretamente antes de salvar
+        const totalCalculado = this.servicosAdicionados.reduce((sum, item) => sum + (item.preco_total || 0), 0);
+
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
             cliente_id: document.getElementById('cliente-select').value,
             status: document.getElementById('status-select').value,
-            observacoes: document.getElementById('observacoes').value,
-            prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
-            tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
-            forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: this.servicosAdicionados.reduce((sum, item) => sum + item.preco_total, 0)
+            observacoes: document.getElementById('observacoes').value || null, // CORREÇÃO: Garantir que observações sejam salvas
+            prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null, // CORREÇÃO: Converter para número
+            tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos', // CORREÇÃO: Garantir valor padrão
+            forma_pagamento: document.getElementById('forma-pagamento')?.value || null, // CORREÇÃO: Garantir que seja salvo
+            total_proposta: totalCalculado // CORREÇÃO: Usar total calculado corretamente
         };
+
+        console.log('Dados da proposta a serem salvos:', propostaData);
+        console.log('Total calculado:', totalCalculado);
 
         try {
             let proposta;
@@ -1090,6 +1118,7 @@ class PropostasManager {
 
                 if (error) throw error;
                 proposta = data;
+                console.log('Proposta atualizada:', proposta);
             } else {
                 // Criar nova proposta
                 const { data, error } = await supabaseClient
@@ -1100,6 +1129,7 @@ class PropostasManager {
 
                 if (error) throw error;
                 proposta = data;
+                console.log('Nova proposta criada:', proposta);
             }
 
             // Salvar itens da proposta
@@ -1132,12 +1162,15 @@ class PropostasManager {
             preco_total: item.preco_total
         }));
 
+        console.log('Itens a serem salvos:', itens);
+
         if (itens.length > 0) {
             const { error } = await supabaseClient
                 .from('itens_proposta_hvc')
                 .insert(itens);
 
             if (error) throw error;
+            console.log('Itens salvos com sucesso');
         }
     }
 
@@ -1214,7 +1247,7 @@ class PropostasManager {
         if (propostas.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="9" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
                     </td>
@@ -1232,6 +1265,12 @@ class PropostasManager {
                 const tipoPrazo = proposta.tipo_prazo === 'uteis' ? 'úteis' : 'corridos';
                 prazoTexto = `${proposta.prazo_execucao} dias ${tipoPrazo}`;
             }
+
+            // Formatar observações (truncar se muito longo)
+            let observacoesTexto = proposta.observacoes || '-';
+            if (observacoesTexto.length > 50) {
+                observacoesTexto = observacoesTexto.substring(0, 50) + '...';
+            }
             
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
@@ -1244,6 +1283,7 @@ class PropostasManager {
                         ${proposta.status}
                     </span>
                 </td>
+                <td title="${proposta.observacoes || ''}">${observacoesTexto}</td>
                 <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions-cell">
                     <button class="btn-secondary" 
