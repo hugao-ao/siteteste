@@ -1,60 +1,5 @@
-// propostas-hvc.js - Versão Corrigida
-// Gerenciamento de Propostas HVC
-
-// Aguardar carregamento do Supabase
-let supabaseClient = null;
-let propostasManager = null;
-
-// Inicializar quando a página carregar
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado, iniciando aplicação...');
-    // Aguardar um pouco para o Supabase carregar
-    setTimeout(initializeApp, 1000);
-});
-
-function initializeApp() {
-    console.log('Inicializando aplicação...');
-    
-    // Verificar se o Supabase está disponível
-    if (typeof supabase !== 'undefined') {
-        supabaseClient = supabase;
-        console.log('Supabase conectado com sucesso!');
-    } else {
-        console.log('Supabase não encontrado, carregando via CDN...');
-        loadSupabaseFromCDN();
-        return;
-    }
-    
-    // Inicializar o gerenciador de propostas
-    propostasManager = new PropostasManager();
-    
-    // Expor globalmente para uso nos event handlers inline
-    window.propostasManager = propostasManager;
-}
-
-function loadSupabaseFromCDN() {
-    // Criar cliente Supabase diretamente
-    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
-    
-    // Carregar Supabase via script
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    script.onload = function() {
-        if (window.supabase && window.supabase.createClient) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('Supabase carregado via CDN!');
-            propostasManager = new PropostasManager();
-            window.propostasManager = propostasManager;
-        } else {
-            console.error('Erro ao carregar Supabase via CDN');
-        }
-    };
-    script.onerror = function() {
-        console.error('Erro ao carregar script do Supabase');
-    };
-    document.head.appendChild(script);
-}
+// propostas-hvc.js - Sistema de Gerenciamento de Propostas HVC
+// Versão corrigida - Sem erros de sintaxe
 
 class PropostasManager {
     constructor() {
@@ -62,22 +7,31 @@ class PropostasManager {
         this.servicosAdicionados = [];
         this.clientes = [];
         this.servicos = [];
-        
-        this.init();
+        this.allPropostas = [];
     }
 
     async init() {
         console.log('Inicializando PropostasManager...');
         
         try {
+            // Verificar se Supabase está disponível
+            if (!window.supabaseClient) {
+                console.error('Supabase não encontrado. Verifique se o arquivo supabase.js foi carregado.');
+                return;
+            }
+
+            // Carregar dados iniciais
             await this.loadClientes();
             await this.loadServicos();
             await this.loadPropostas();
+
+            // Configurar event listeners
             this.setupEventListeners();
-            this.setupMasks();
+
             console.log('PropostasManager inicializado com sucesso!');
         } catch (error) {
             console.error('Erro ao inicializar PropostasManager:', error);
+            this.showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
         }
     }
 
@@ -85,139 +39,55 @@ class PropostasManager {
         console.log('Configurando event listeners...');
         
         try {
-            // Botões principais
+            // Botão Nova Proposta
             const btnNovaProposta = document.getElementById('btn-nova-proposta');
-            const btnCancelar = document.getElementById('btn-cancelar');
-            
             if (btnNovaProposta) {
-                btnNovaProposta.addEventListener('click', () => {
-                    console.log('Botão Nova Proposta clicado');
-                    this.showFormProposta();
-                });
+                btnNovaProposta.addEventListener('click', () => this.showFormProposta());
             }
-            if (btnCancelar) {
-                btnCancelar.addEventListener('click', () => this.hideFormProposta());
+
+            // Botão Voltar
+            const btnVoltar = document.getElementById('btn-voltar');
+            if (btnVoltar) {
+                btnVoltar.addEventListener('click', () => this.hideFormProposta());
             }
-            
+
             // Formulário de proposta
-            const propostaForm = document.getElementById('proposta-form');
-            if (propostaForm) {
-                propostaForm.addEventListener('submit', (e) => this.handleSubmitProposta(e));
+            const formProposta = document.getElementById('form-proposta');
+            if (formProposta) {
+                formProposta.addEventListener('submit', (e) => this.handleSubmitProposta(e));
             }
-            
+
             // Botões de adicionar
-            const btnAddCliente = document.getElementById('btn-add-cliente');
             const btnAddServico = document.getElementById('btn-add-servico');
-            
+            if (btnAddServico) {
+                btnAddServico.addEventListener('click', () => this.showServicoSelectionModal());
+            }
+
+            const btnAddCliente = document.getElementById('btn-add-cliente');
             if (btnAddCliente) {
                 btnAddCliente.addEventListener('click', () => this.showModalCliente());
             }
-            if (btnAddServico) {
-                btnAddServico.addEventListener('click', () => {
-                    console.log('Botão Adicionar Serviço clicado - abrindo modal de SELEÇÃO');
-                    this.addServicoToProposta(); // Abrir modal de seleção primeiro
-                });
-            }
-            
-            // Modais - Serviço
-            const closeModalServico = document.getElementById('close-modal-servico');
-            const cancelServico = document.getElementById('cancel-servico');
-            const servicoForm = document.getElementById('servico-form');
-            
-            if (closeModalServico) {
-                closeModalServico.addEventListener('click', () => this.hideModalServico());
-            }
-            if (cancelServico) {
-                cancelServico.addEventListener('click', () => this.hideModalServico());
-            }
-            if (servicoForm) {
-                servicoForm.addEventListener('submit', (e) => this.handleSubmitServico(e));
-            }
-            
-            // Modais - Cliente
-            const closeModalCliente = document.getElementById('close-modal-cliente');
-            const cancelCliente = document.getElementById('cancel-cliente');
-            const clienteForm = document.getElementById('cliente-form');
-            
-            if (closeModalCliente) {
-                closeModalCliente.addEventListener('click', () => this.hideModalCliente());
-            }
-            if (cancelCliente) {
-                cancelCliente.addEventListener('click', () => this.hideModalCliente());
-            }
-            if (clienteForm) {
-                clienteForm.addEventListener('submit', (e) => this.handleSubmitCliente(e));
-            }
-            
-            // Fechar modal clicando fora
-            const modalServico = document.getElementById('modal-servico');
-            const modalCliente = document.getElementById('modal-cliente');
-            
-            if (modalServico) {
-                modalServico.addEventListener('click', (e) => {
-                    if (e.target.id === 'modal-servico') this.hideModalServico();
-                });
-            }
-            if (modalCliente) {
-                modalCliente.addEventListener('click', (e) => {
-                    if (e.target.id === 'modal-cliente') this.hideModalCliente();
-                });
-            }
-            
+
             console.log('Event listeners configurados!');
         } catch (error) {
             console.error('Erro ao configurar event listeners:', error);
         }
     }
 
-    setupMasks() {
-        // Máscara para número da proposta (XXXX/YYYY)
-        const numeroInput = document.getElementById('numero-proposta');
-        if (numeroInput) {
-            numeroInput.addEventListener('input', (e) => {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length >= 4) {
-                    value = value.substring(0, 4) + '/' + value.substring(4, 8);
-                }
-                e.target.value = value;
-            });
-        }
-    }
-
-    formatMoney(value) {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(value || 0);
-    }
-
-    parseMoney(value) {
-        return parseFloat(value.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-    }
-
     // === CLIENTES ===
     async loadClientes() {
         try {
             console.log('Carregando clientes...');
-            
-            if (!supabaseClient) {
-                console.error('Supabase client não disponível');
-                return;
-            }
-            
             const { data, error } = await supabaseClient
                 .from('clientes_hvc')
                 .select('*')
                 .order('nome');
 
-            if (error) {
-                console.error('Erro na query de clientes:', error);
-                throw error;
-            }
+            if (error) throw error;
 
             this.clientes = data || [];
             this.populateClienteSelect();
-            console.log('Clientes carregados:', this.clientes.length);
+            console.log('Clientes carregados:', data?.length || 0);
         } catch (error) {
             console.error('Erro ao carregar clientes:', error);
             this.showNotification('Erro ao carregar clientes: ' + error.message, 'error');
@@ -227,7 +97,7 @@ class PropostasManager {
     populateClienteSelect() {
         const select = document.getElementById('cliente-select');
         if (!select) return;
-        
+
         select.innerHTML = '<option value="">Selecione um cliente...</option>';
         
         this.clientes.forEach(cliente => {
@@ -239,21 +109,49 @@ class PropostasManager {
     }
 
     showModalCliente() {
-        const modal = document.getElementById('modal-cliente');
-        if (modal) {
-            modal.classList.add('show');
-            const nomeInput = document.getElementById('cliente-nome');
-            if (nomeInput) nomeInput.focus();
-        }
-    }
-
-    hideModalCliente() {
-        const modal = document.getElementById('modal-cliente');
-        if (modal) {
-            modal.classList.remove('show');
-            const form = document.getElementById('cliente-form');
-            if (form) form.reset();
-        }
+        console.log('Abrindo modal de cliente...');
+        
+        // Criar modal dinamicamente
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'modal-cliente-temp';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Adicionar Novo Cliente</h3>
+                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove()">×</button>
+                </div>
+                <form id="form-cliente-temp">
+                    <div class="form-group">
+                        <label for="cliente-nome">Nome *</label>
+                        <input type="text" id="cliente-nome" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cliente-documento">Documento *</label>
+                        <input type="text" id="cliente-documento" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="cliente-tipo">Tipo de Documento *</label>
+                        <select id="cliente-tipo" required>
+                            <option value="">Selecione...</option>
+                            <option value="CPF">CPF</option>
+                            <option value="CNPJ">CNPJ</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                        <button type="submit" class="btn-primary">Salvar Cliente</button>
+                    </div>
+                </form>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+        
+        // Event listener para o formulário
+        const form = document.getElementById('form-cliente-temp');
+        form.addEventListener('submit', (e) => this.handleSubmitCliente(e));
     }
 
     async handleSubmitCliente(e) {
@@ -262,30 +160,32 @@ class PropostasManager {
         const clienteData = {
             nome: document.getElementById('cliente-nome').value,
             documento: document.getElementById('cliente-documento').value,
-            tipo_documento: document.getElementById('cliente-tipo-documento').value
+            tipo_documento: document.getElementById('cliente-tipo').value
         };
 
         try {
             const { data, error } = await supabaseClient
                 .from('clientes_hvc')
                 .insert([clienteData])
-                .select()
-                .single();
+                .select();
 
             if (error) throw error;
 
-            this.clientes.push(data);
-            this.populateClienteSelect();
+            // Fechar modal
+            document.getElementById('modal-cliente-temp').remove();
+            
+            // Recarregar clientes
+            await this.loadClientes();
             
             // Selecionar o cliente recém-criado
-            const select = document.getElementById('cliente-select');
-            if (select) select.value = data.id;
+            if (data && data[0]) {
+                document.getElementById('cliente-select').value = data[0].id;
+            }
             
-            this.hideModalCliente();
             this.showNotification('Cliente adicionado com sucesso!', 'success');
         } catch (error) {
-            console.error('Erro ao adicionar cliente:', error);
-            this.showNotification('Erro ao adicionar cliente: ' + error.message, 'error');
+            console.error('Erro ao salvar cliente:', error);
+            this.showNotification('Erro ao salvar cliente: ' + error.message, 'error');
         }
     }
 
@@ -293,30 +193,15 @@ class PropostasManager {
     async loadServicos() {
         try {
             console.log('Carregando serviços...');
-            
-            if (!supabaseClient) {
-                console.error('Supabase client não disponível');
-                return;
-            }
-            
             const { data, error } = await supabaseClient
                 .from('servicos_hvc')
                 .select('*')
                 .order('codigo');
 
-            if (error) {
-                console.error('Erro na query de serviços:', error);
-                throw error;
-            }
+            if (error) throw error;
 
             this.servicos = data || [];
-            console.log('Serviços carregados:', this.servicos.length);
-            
-            // Log dos serviços para debug
-            this.servicos.forEach(servico => {
-                console.log('Serviço:', servico.codigo, '-', servico.descricao);
-            });
-            
+            console.log('Serviços carregados:', data?.length || 0);
         } catch (error) {
             console.error('Erro ao carregar serviços:', error);
             this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
@@ -324,31 +209,67 @@ class PropostasManager {
     }
 
     showModalServico() {
-        console.log('Abrindo modal para criar novo serviço...');
-        const modal = document.getElementById('modal-servico');
-        if (modal) {
-            modal.classList.add('show');
-            const codigoInput = document.getElementById('servico-codigo');
-            if (codigoInput) codigoInput.focus();
-            console.log('Modal de serviço aberto com sucesso');
-        } else {
-            console.error('Modal de serviço não encontrado no DOM');
-        }
-    }
-
-    hideModalServico() {
-        const modal = document.getElementById('modal-servico');
-        if (modal) {
-            modal.classList.remove('show');
-            const form = document.getElementById('servico-form');
-            if (form) form.reset();
-        }
+        console.log('Abrindo modal de serviço...');
+        
+        // Criar modal dinamicamente
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'modal-servico-temp';
+        modal.innerHTML = `
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Adicionar Novo Serviço</h3>
+                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove()">×</button>
+                </div>
+                <form id="form-servico-temp">
+                    <div class="form-group">
+                        <label for="servico-codigo">Código do Serviço *</label>
+                        <input type="text" id="servico-codigo" placeholder="Ex: SV001" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="servico-descricao">Descrição *</label>
+                        <input type="text" id="servico-descricao" placeholder="Ex: Instalação elétrica" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="servico-detalhe">Detalhes</label>
+                        <textarea id="servico-detalhe" placeholder="Detalhes adicionais do serviço..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="servico-unidade">Unidade de Medida</label>
+                        <select id="servico-unidade">
+                            <option value="m">m</option>
+                            <option value="m²">m²</option>
+                            <option value="m³">m³</option>
+                            <option value="kg">kg</option>
+                            <option value="t">t</option>
+                            <option value="un">un</option>
+                            <option value="h">h</option>
+                            <option value="dia">dia</option>
+                            <option value="mês">mês</option>
+                            <option value="vb">vb</option>
+                        </select>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                        <button type="submit" class="btn-primary">
+                            <i class="fas fa-save"></i>
+                            Salvar Serviço
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+        modal.style.display = 'flex';
+        
+        // Event listener para o formulário
+        const form = document.getElementById('form-servico-temp');
+        form.addEventListener('submit', (e) => this.handleSubmitServico(e));
     }
 
     async handleSubmitServico(e) {
         e.preventDefault();
-        
-        console.log('Salvando novo serviço...');
         
         const servicoData = {
             codigo: document.getElementById('servico-codigo').value,
@@ -357,193 +278,98 @@ class PropostasManager {
             unidade: document.getElementById('servico-unidade').value
         };
 
-        console.log('Dados do serviço:', servicoData);
-
         try {
+            console.log('Salvando serviço:', servicoData);
+            
             const { data, error } = await supabaseClient
                 .from('servicos_hvc')
                 .insert([servicoData])
-                .select()
-                .single();
+                .select();
 
             if (error) throw error;
 
-            console.log('Serviço criado:', data);
-            this.servicos.push(data);
-            this.hideModalServico();
-            this.showNotification('Serviço criado com sucesso! Agora você pode selecioná-lo.', 'success');
+            // Fechar modal
+            document.getElementById('modal-servico-temp').remove();
             
-            // Reabrir modal de seleção após criar o serviço
+            // Recarregar serviços
+            await this.loadServicos();
+            
+            this.showNotification('Serviço criado com sucesso!', 'success');
+            
+            // Reabrir modal de seleção se estava aberto
             setTimeout(() => {
-                this.addServicoToProposta();
-            }, 1000);
-        } catch (error) {
-            console.error('Erro ao adicionar serviço:', error);
-            this.showNotification('Erro ao adicionar serviço: ' + error.message, 'error');
-        }
-    }
-
-    // === PROPOSTAS ===
-    showFormProposta(proposta = null) {
-        console.log('Mostrando formulário de proposta...');
-        
-        this.currentPropostaId = proposta?.id || null;
-        
-        const formSection = document.getElementById('form-proposta');
-        const titleText = document.getElementById('form-title-text');
-        
-        if (formSection) {
-            if (proposta) {
-                if (titleText) titleText.textContent = 'Editar Proposta';
-                this.populateForm(proposta);
-            } else {
-                if (titleText) titleText.textContent = 'Nova Proposta';
-                this.clearForm();
-            }
+                this.showServicoSelectionModal();
+            }, 500);
             
-            formSection.classList.remove('hidden');
-            formSection.scrollIntoView({ behavior: 'smooth' });
-            console.log('Formulário exibido');
-        } else {
-            console.error('Elemento form-proposta não encontrado');
-        }
-    }
-
-    hideFormProposta() {
-        const formSection = document.getElementById('form-proposta');
-        if (formSection) {
-            formSection.classList.add('hidden');
-        }
-        this.clearForm();
-        this.currentPropostaId = null;
-    }
-
-    clearForm() {
-        const form = document.getElementById('proposta-form');
-        if (form) form.reset();
-        this.servicosAdicionados = [];
-        this.updateServicesTable();
-        this.updateTotal();
-    }
-
-    populateForm(proposta) {
-        const numeroInput = document.getElementById('numero-proposta');
-        const clienteSelect = document.getElementById('cliente-select');
-        const statusSelect = document.getElementById('status-select');
-        const prazoInput = document.getElementById('prazo-execucao');
-        const tipoPrazoSelect = document.getElementById('tipo-prazo');
-        const formaPagamentoInput = document.getElementById('forma-pagamento');
-        const observacoesTextarea = document.getElementById('observacoes');
-        
-        if (numeroInput) numeroInput.value = proposta.numero_proposta;
-        if (clienteSelect) clienteSelect.value = proposta.cliente_id;
-        if (statusSelect) statusSelect.value = proposta.status;
-        if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
-        if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
-        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
-        if (observacoesTextarea) observacoesTextarea.value = proposta.observacoes || '';
-        
-        // Carregar itens da proposta
-        this.loadItensProposta(proposta.id);
-    }
-
-    async loadItensProposta(propostaId) {
-        try {
-            const { data, error } = await supabaseClient
-                .from('itens_proposta_hvc')
-                .select(`
-                    *,
-                    servicos_hvc (*)
-                `)
-                .eq('proposta_id', propostaId);
-
-            if (error) throw error;
-
-            this.servicosAdicionados = data.map(item => ({
-                servico_id: item.servico_id,
-                servico: item.servicos_hvc,
-                quantidade: item.quantidade,
-                preco_mao_obra: item.preco_mao_obra,
-                preco_material: item.preco_material,
-                preco_total: item.preco_total
-            }));
-
-            this.updateServicesTable();
-            this.updateTotal();
         } catch (error) {
-            console.error('Erro ao carregar itens da proposta:', error);
+            console.error('Erro ao salvar serviço:', error);
+            this.showNotification('Erro ao salvar serviço: ' + error.message, 'error');
         }
     }
 
-    addServicoToProposta() {
-        console.log('Adicionando serviço à proposta...');
-        console.log('Serviços disponíveis:', this.servicos.length);
-        
-        if (this.servicos.length === 0) {
-            this.showNotification('Nenhum serviço encontrado. Adicione serviços primeiro.', 'warning');
-            return;
+    showModalServicoFromSelection() {
+        // Fechar modal de seleção
+        const modalSelection = document.getElementById('modal-servico-selection');
+        if (modalSelection) {
+            modalSelection.remove();
         }
         
-        this.showServicoSelectionModal();
+        // Abrir modal de criação de serviço
+        this.showModalServico();
     }
 
     showServicoSelectionModal() {
-        console.log('Mostrando modal de seleção de serviços...');
+        console.log('Abrindo modal de seleção de serviços...');
         console.log('Serviços disponíveis:', this.servicos.length);
-        console.log('Lista de serviços:', this.servicos);
         
-        // Remover modal existente se houver
-        const existingModal = document.querySelector('.modal-selection');
-        if (existingModal) {
-            existingModal.remove();
-        }
-        
-        // Verificar se há serviços carregados
-        if (!this.servicos || this.servicos.length === 0) {
-            this.showNotification('Nenhum serviço encontrado. Verifique se há serviços cadastrados no banco de dados.', 'error');
+        if (this.servicos.length === 0) {
+            this.showNotification('Nenhum serviço encontrado. Crie um serviço primeiro.', 'warning');
+            this.showModalServico();
             return;
         }
         
-        // Criar opções dos serviços com verificação de dados
-        let servicosOptions = '<option value="">Selecione um serviço...</option>';
+        // Criar modal dinamicamente
+        const modal = document.createElement('div');
+        modal.className = 'modal';
+        modal.id = 'modal-servico-selection';
         
+        // Criar lista de serviços com checkboxes
+        let servicosHtml = '';
         this.servicos.forEach(servico => {
-            if (servico && servico.id && servico.codigo && servico.descricao) {
-                servicosOptions += `<option value="${servico.id}">${servico.codigo} - ${servico.descricao}</option>`;
-            } else {
-                console.warn('Serviço com dados incompletos:', servico);
-            }
+            const jaAdicionado = this.servicosAdicionados.find(s => s.servico_id === servico.id);
+            const disabled = jaAdicionado ? 'disabled' : '';
+            const checkedText = jaAdicionado ? '(já adicionado)' : '';
+            
+            servicosHtml += `
+                <div class="servico-option">
+                    <label>
+                        <input type="checkbox" value="${servico.id}" ${disabled}>
+                        <strong>${servico.codigo}</strong> - ${servico.descricao} ${checkedText}
+                        <br><small>Unidade: ${servico.unidade || 'Não informada'}</small>
+                    </label>
+                </div>
+            `;
         });
         
-        console.log('HTML das opções gerado:', servicosOptions);
-        
-        // Criar modal dinâmico para seleção de serviço
-        const modal = document.createElement('div');
-        modal.className = 'modal modal-selection show';
         modal.innerHTML = `
-            <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-content">
                 <div class="modal-header">
-                    <h3 class="modal-title">Selecionar Serviços</h3>
-                    <button class="close-modal" onclick="this.closest('.modal').remove()">
-                        <i class="fas fa-times"></i>
-                    </button>
+                    <h3>Selecionar Serviços</h3>
+                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove()">×</button>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">Serviços Disponíveis</label>
-                    <div style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(255,255,255,0.3); border-radius: 8px; padding: 10px;">
-                        ${this.createServicesCheckboxList()}
+                <div class="modal-body">
+                    <div class="servicos-list">
+                        ${servicosHtml}
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">
-                        Cancelar
-                    </button>
-                    <button type="button" class="btn-info" onclick="window.propostasManager.showModalServicoFromSelection()" style="margin-right: 10px;">
+                    <button type="button" class="btn-info" onclick="window.propostasManager.showModalServicoFromSelection()">
                         <i class="fas fa-plus"></i>
                         Criar Novo Serviço
                     </button>
-                    <button type="button" class="btn-success" onclick="window.propostasManager.addSelectedServicos()">
-                        <i class="fas fa-check"></i>
+                    <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
+                    <button type="button" class="btn-primary" onclick="window.propostasManager.addSelectedServicos()">
+                        <i class="fas fa-plus"></i>
                         Adicionar Selecionados
                     </button>
                 </div>
@@ -551,120 +377,13 @@ class PropostasManager {
         `;
         
         document.body.appendChild(modal);
+        modal.style.display = 'flex';
+        
         console.log('Modal de seleção criado e adicionado ao DOM');
-        
-        // Verificar se o select foi criado corretamente
-        setTimeout(() => {
-            const selectElement = document.getElementById('servico-selection');
-            if (selectElement) {
-                console.log('Select criado com', selectElement.options.length, 'opções');
-                console.log('Opções do select:', Array.from(selectElement.options).map(opt => opt.text));
-            } else {
-                console.error('Select não foi criado corretamente');
-            }
-        }, 100);
-    }
-
-    addSelectedServico() {
-        console.log('Função addSelectedServico chamada');
-        
-        const servicoSelect = document.getElementById('servico-selection');
-        if (!servicoSelect) {
-            console.error('Select de serviço não encontrado');
-            return;
-        }
-        
-        const servicoId = servicoSelect.value;
-        console.log('Serviço selecionado ID:', servicoId);
-        
-        if (!servicoId) {
-            this.showNotification('Selecione um serviço', 'warning');
-            return;
-        }
-
-        const servico = this.servicos.find(s => s.id === servicoId);
-        if (!servico) {
-            console.error('Serviço não encontrado:', servicoId);
-            return;
-        }
-
-        // Verificar se já foi adicionado
-        if (this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
-            this.showNotification('Serviço já foi adicionado!', 'warning');
-            return;
-        }
-
-        this.servicosAdicionados.push({
-            servico_id: servicoId,
-            servico: servico,
-            quantidade: 1,
-            preco_mao_obra: 0,
-            preco_material: 0,
-            preco_total: 0,
-            modo_preco: 'separado' // 'separado' ou 'total'
-        });
-
-        console.log('Serviço adicionado:', servico.codigo);
-        this.updateServicesTable();
-        
-        const modal = document.querySelector('.modal-selection');
-        if (modal) modal.remove();
-        
-        this.showNotification('Serviço adicionado à proposta!', 'success');
-    }
-
-    showModalServicoFromSelection() {
-        console.log('Abrindo modal de criação de serviço a partir da seleção...');
-        
-        // Fechar modal de seleção
-        const selectionModal = document.querySelector('.modal-selection');
-        if (selectionModal) {
-            selectionModal.remove();
-        }
-        
-        // Abrir modal de criação de serviço
-        this.showModalServico();
-    }
-
-    createServicesCheckboxList() {
-        let checkboxList = '';
-        
-        this.servicos.forEach(servico => {
-            if (servico && servico.id && servico.codigo && servico.descricao) {
-                // Verificar se já foi adicionado
-                const jaAdicionado = this.servicosAdicionados.find(s => s.servico_id === servico.id);
-                const disabled = jaAdicionado ? 'disabled' : '';
-                const checked = jaAdicionado ? 'checked' : '';
-                
-                checkboxList += `
-                    <div style="display: flex; align-items: center; padding: 8px; margin: 5px 0; background: rgba(255,255,255,0.1); border-radius: 5px;">
-                        <input type="checkbox" 
-                               id="servico-${servico.id}" 
-                               value="${servico.id}" 
-                               ${checked} 
-                               ${disabled}
-                               style="margin-right: 10px;">
-                        <label for="servico-${servico.id}" style="flex: 1; cursor: pointer;">
-                            <strong>${servico.codigo}</strong> - ${servico.descricao}
-                            ${servico.unidade ? `<small style="color: #add8e6;"> (${servico.unidade})</small>` : ''}
-                            ${jaAdicionado ? '<small style="color: #ffc107;"> - Já adicionado</small>' : ''}
-                        </label>
-                    </div>
-                `;
-            }
-        });
-        
-        if (checkboxList === '') {
-            checkboxList = '<p style="text-align: center; color: #888;">Nenhum serviço disponível</p>';
-        }
-        
-        return checkboxList;
     }
 
     addSelectedServicos() {
-        console.log('Adicionando serviços selecionados...');
-        
-        const checkboxes = document.querySelectorAll('.modal-selection input[type="checkbox"]:checked:not(:disabled)');
+        const checkboxes = document.querySelectorAll('#modal-servico-selection input[type="checkbox"]:checked');
         let servicosAdicionadosCount = 0;
         
         checkboxes.forEach(checkbox => {
@@ -689,12 +408,39 @@ class PropostasManager {
             this.updateServicesTable();
             this.showNotification(`${servicosAdicionadosCount} serviço(s) adicionado(s) à proposta!`, 'success');
         } else {
-            this.showNotification('Nenhum serviço foi selecionado', 'warning');
+            this.showNotification('Nenhum serviço foi selecionado.', 'warning');
         }
         
         // Fechar modal
-        const modal = document.querySelector('.modal-selection');
-        if (modal) modal.remove();
+        document.getElementById('modal-servico-selection').remove();
+    }
+
+    addServico(servicoId) {
+        const servico = this.servicos.find(s => s.id === servicoId);
+        if (!servico) {
+            this.showNotification('Serviço não encontrado!', 'error');
+            return;
+        }
+
+        // Verificar se já foi adicionado
+        if (this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
+            this.showNotification('Serviço já foi adicionado!', 'warning');
+            return;
+        }
+
+        this.servicosAdicionados.push({
+            servico_id: servicoId,
+            servico: servico,
+            quantidade: 1,
+            preco_mao_obra: 0,
+            preco_material: 0,
+            preco_total: 0,
+            modo_preco: 'separado' // 'separado' ou 'total'
+        });
+
+        console.log('Serviço adicionado:', servico.codigo);
+        this.updateServicesTable();
+        this.showNotification('Serviço adicionado à proposta!', 'success');
     }
 
     updateServicesTable() {
@@ -896,42 +642,45 @@ class PropostasManager {
         }
     }
 
-    updateItemPrecoMaoObra(index, preco) {
-        if (this.servicosAdicionados[index]) {
-            this.servicosAdicionados[index].preco_mao_obra = parseFloat(preco) || 0;
-            this.calculateItemTotal(index);
+    hideFormProposta() {
+        const formSection = document.getElementById('form-section');
+        const listSection = document.getElementById('list-section');
+        
+        if (formSection) formSection.style.display = 'none';
+        if (listSection) listSection.style.display = 'block';
+        
+        this.clearForm();
+    }
+
+    clearForm() {
+        // Limpar campos do formulário
+        const form = document.getElementById('form-proposta');
+        if (form) {
+            form.reset();
+        }
+        
+        // Limpar serviços adicionados
+        this.servicosAdicionados = [];
+        this.updateServicesTable();
+        
+        // Resetar ID atual
+        this.currentPropostaId = null;
+        
+        // Atualizar título
+        const titleElement = document.getElementById('form-title-text');
+        if (titleElement) {
+            titleElement.textContent = 'Nova Proposta';
         }
     }
 
-    updateItemPrecoMaterial(index, preco) {
-        if (this.servicosAdicionados[index]) {
-            this.servicosAdicionados[index].preco_material = parseFloat(preco) || 0;
-            this.calculateItemTotal(index);
-        }
-    }
-
-    calculateItemTotal(index) {
-        const item = this.servicosAdicionados[index];
-        if (item) {
-            item.preco_total = item.quantidade * (item.preco_mao_obra + item.preco_material);
-            this.updateServicesTable();
-            this.updateTotal();
-        }
-    }
-
-    removeServico(index) {
-        if (confirm('Tem certeza que deseja remover este serviço?')) {
-            this.servicosAdicionados.splice(index, 1);
-            this.updateServicesTable();
-            this.updateTotal();
-        }
-    }
-
-    updateTotal() {
-        const total = this.servicosAdicionados.reduce((sum, item) => sum + item.preco_total, 0);
-        const totalElement = document.getElementById('total-proposta');
-        if (totalElement) {
-            totalElement.textContent = this.formatMoney(total);
+    generatePropostaNumber() {
+        const year = new Date().getFullYear();
+        const randomNum = Math.floor(Math.random() * 9999) + 1;
+        const numeroFormatado = randomNum.toString().padStart(4, '0');
+        
+        const numeroElement = document.getElementById('numero-proposta');
+        if (numeroElement) {
+            numeroElement.value = `${numeroFormatado}/${year}`;
         }
     }
 
@@ -960,21 +709,19 @@ class PropostasManager {
                     .from('propostas_hvc')
                     .update(propostaData)
                     .eq('id', this.currentPropostaId)
-                    .select()
-                    .single();
-
+                    .select();
+                
                 if (error) throw error;
-                proposta = data;
+                proposta = data[0];
             } else {
                 // Criar nova proposta
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
                     .insert([propostaData])
-                    .select()
-                    .single();
-
+                    .select();
+                
                 if (error) throw error;
-                proposta = data;
+                proposta = data[0];
             }
 
             // Salvar itens da proposta
@@ -1021,41 +768,51 @@ class PropostasManager {
     validateForm() {
         const numeroProposta = document.getElementById('numero-proposta').value;
         const clienteId = document.getElementById('cliente-select').value;
+        const status = document.getElementById('status-select').value;
         const prazoExecucao = document.getElementById('prazo-execucao').value;
         const formaPagamento = document.getElementById('forma-pagamento').value;
-        
-        if (!numeroProposta || !numeroProposta.match(/^\d{4}\/\d{4}$/)) {
-            this.showNotification('Número da proposta deve estar no formato XXXX/YYYY', 'error');
+
+        if (!numeroProposta) {
+            this.showNotification('Número da proposta é obrigatório', 'error');
             return false;
         }
 
         if (!clienteId) {
-            this.showNotification('Selecione um cliente', 'error');
+            this.showNotification('Cliente é obrigatório', 'error');
+            return false;
+        }
+
+        if (!status) {
+            this.showNotification('Status é obrigatório', 'error');
             return false;
         }
 
         if (!prazoExecucao || prazoExecucao <= 0) {
-            this.showNotification('Informe o prazo de execução', 'error');
+            this.showNotification('Prazo de execução é obrigatório e deve ser maior que zero', 'error');
             return false;
         }
 
-        if (!formaPagamento || formaPagamento.trim() === '') {
-            this.showNotification('Informe a forma de pagamento', 'error');
+        if (!formaPagamento) {
+            this.showNotification('Forma de pagamento é obrigatória', 'error');
             return false;
         }
 
         if (this.servicosAdicionados.length === 0) {
-            this.showNotification('Adicione pelo menos um serviço', 'error');
+            this.showNotification('Adicione pelo menos um serviço à proposta', 'error');
             return false;
         }
 
-        // Validar se todos os serviços têm quantidade e preço
+        // Validar se todos os serviços têm preços
         for (let item of this.servicosAdicionados) {
             if (item.quantidade <= 0) {
                 this.showNotification('Todos os serviços devem ter quantidade maior que zero', 'error');
                 return false;
             }
-            if (item.preco_mao_obra <= 0 && item.preco_material <= 0) {
+            if (item.modo_preco === 'total' && item.preco_total <= 0) {
+                this.showNotification('Todos os serviços devem ter preço total maior que zero', 'error');
+                return false;
+            }
+            if (item.modo_preco === 'separado' && item.preco_mao_obra <= 0 && item.preco_material <= 0) {
                 this.showNotification('Todos os serviços devem ter pelo menos um preço (mão de obra ou material)', 'error');
                 return false;
             }
@@ -1174,7 +931,7 @@ class PropostasManager {
         
         tbody.innerHTML = '';
 
-            if (propostas.length === 0) {
+        if (propostas.length === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
@@ -1204,13 +961,13 @@ class PropostasManager {
                     </span>
                 </td>
                 <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
-                <td class="actions">
-                    <button class="btn-primary" 
+                <td>
+                    <button class="btn-primary btn-sm" 
                             onclick="window.propostasManager.editProposta('${proposta.id}')"
                             title="Editar proposta">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-danger" 
+                    <button class="btn-danger btn-sm" 
                             onclick="window.propostasManager.deleteProposta('${proposta.id}')"
                             title="Excluir proposta">
                         <i class="fas fa-trash"></i>
@@ -1225,7 +982,13 @@ class PropostasManager {
         try {
             const { data, error } = await supabaseClient
                 .from('propostas_hvc')
-                .select('*')
+                .select(`
+                    *,
+                    itens_proposta_hvc (
+                        *,
+                        servicos_hvc (*)
+                    )
+                `)
                 .eq('id', propostaId)
                 .single();
 
@@ -1239,9 +1002,7 @@ class PropostasManager {
     }
 
     async deleteProposta(propostaId) {
-        if (!confirm('Tem certeza que deseja excluir esta proposta? Esta ação não pode ser desfeita.')) {
-            return;
-        }
+        if (!confirm('Tem certeza que deseja excluir esta proposta?')) return;
 
         try {
             const { error } = await supabaseClient
@@ -1259,11 +1020,45 @@ class PropostasManager {
         }
     }
 
+    populateForm(proposta) {
+        // Popular campos básicos
+        document.getElementById('numero-proposta').value = proposta.numero_proposta || '';
+        document.getElementById('cliente-select').value = proposta.cliente_id || '';
+        document.getElementById('status-select').value = proposta.status || '';
+        document.getElementById('prazo-execucao').value = proposta.prazo_execucao || '';
+        document.getElementById('tipo-prazo').value = proposta.tipo_prazo || 'corridos';
+        document.getElementById('forma-pagamento').value = proposta.forma_pagamento || '';
+        document.getElementById('observacoes').value = proposta.observacoes || '';
+
+        // Atualizar título
+        const titleElement = document.getElementById('form-title-text');
+        if (titleElement) {
+            titleElement.textContent = 'Editar Proposta';
+        }
+
+        // Carregar itens da proposta
+        if (proposta.itens_proposta_hvc) {
+            this.servicosAdicionados = proposta.itens_proposta_hvc.map(item => ({
+                servico_id: item.servico_id,
+                servico: item.servicos_hvc,
+                quantidade: item.quantidade,
+                preco_mao_obra: item.preco_mao_obra,
+                preco_material: item.preco_material,
+                preco_total: item.preco_total,
+                modo_preco: (item.preco_mao_obra > 0 || item.preco_material > 0) ? 'separado' : 'total'
+            }));
+
+            this.updateServicesTable();
+        }
+    }
+
     // === NOTIFICAÇÕES ===
     showNotification(message, type = 'info') {
-        console.log(`Notificação [${type}]: ${message}`);
-        
-        // Criar elemento de notificação
+        // Remover notificações existentes
+        const existingNotifications = document.querySelectorAll('.notification');
+        existingNotifications.forEach(notification => notification.remove());
+
+        // Criar nova notificação
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
@@ -1271,46 +1066,47 @@ class PropostasManager {
                 <i class="fas fa-${this.getNotificationIcon(type)}"></i>
                 <span>${message}</span>
             </div>
+            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
         `;
 
-        // Adicionar estilos se não existirem
-        if (!document.getElementById('notification-styles')) {
-            const styles = document.createElement('style');
-            styles.id = 'notification-styles';
-            styles.textContent = `
-                .notification {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    z-index: 10000;
-                    padding: 1rem 1.5rem;
-                    border-radius: 8px;
-                    color: white;
-                    font-weight: 600;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                    animation: slideIn 0.3s ease-out;
-                    max-width: 400px;
-                }
-                .notification-success { background: linear-gradient(135deg, #28a745, #20c997); }
-                .notification-error { background: linear-gradient(135deg, #dc3545, #e74c3c); }
-                .notification-warning { background: linear-gradient(135deg, #ffc107, #f39c12); }
-                .notification-info { background: linear-gradient(135deg, #17a2b8, #3498db); }
-                .notification-content { display: flex; align-items: center; gap: 10px; }
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(styles);
-        }
+        // Adicionar estilos inline
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: ${this.getNotificationColor(type)};
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-width: 300px;
+            max-width: 500px;
+            animation: slideIn 0.3s ease-out;
+        `;
 
+        // Adicionar ao body
         document.body.appendChild(notification);
 
-        // Remover após 5 segundos
+        // Remover automaticamente após 5 segundos
         setTimeout(() => {
-            notification.style.animation = 'slideIn 0.3s ease-out reverse';
-            setTimeout(() => notification.remove(), 300);
+            if (notification.parentElement) {
+                notification.remove();
+            }
         }, 5000);
+    }
+
+    getNotificationColor(type) {
+        const colors = {
+            success: '#28a745',
+            error: '#dc3545',
+            warning: '#ffc107',
+            info: '#17a2b8'
+        };
+        return colors[type] || colors.info;
     }
 
     getNotificationIcon(type) {
