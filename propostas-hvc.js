@@ -657,47 +657,14 @@ class PropostasManager {
         const prazoInput = document.getElementById('prazo-execucao');
         const tipoPrazoSelect = document.getElementById('tipo-prazo');
         const formaPagamentoInput = document.getElementById('forma-pagamento');
-        
-        if (numeroInput) numeroInput.value = proposta.numero_proposta;
-        if (clienteSelect) clienteSelect.value = proposta.cliente_id;
-        if (statusSelect) statusSelect.value = proposta.status;
+              // Preencher campos do formulário
+        if (numeroInput) numeroInput.value = proposta.numero_proposta || '';
+        if (clienteSelect) clienteSelect.value = proposta.cliente_id || '';
+        if (statusSelect) statusSelect.value = proposta.status || 'Pendente';
         if (observacoesTextarea) observacoesTextarea.value = proposta.observacoes || '';
         if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
         if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
-        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
-        
-        // PROTEÇÃO: Desabilitar campos se proposta estiver aprovada
-        const isAprovada = proposta.status === 'Aprovada';
-        if (isAprovada) {
-            // Desabilitar todos os campos do formulário
-            if (numeroInput) numeroInput.disabled = true;
-            if (clienteSelect) clienteSelect.disabled = true;
-            if (statusSelect) statusSelect.disabled = true;
-            if (observacoesTextarea) observacoesTextarea.disabled = true;
-            if (prazoInput) prazoInput.disabled = true;
-            if (tipoPrazoSelect) tipoPrazoSelect.disabled = true;
-            if (formaPagamentoInput) formaPagamentoInput.disabled = true;
-            
-            // Desabilitar botões de adicionar serviços
-            const btnAddServico = document.getElementById('btn-add-servico');
-            if (btnAddServico) {
-                btnAddServico.disabled = true;
-                btnAddServico.style.opacity = '0.5';
-                btnAddServico.style.cursor = 'not-allowed';
-                btnAddServico.title = 'Proposta aprovada não pode ser editada';
-            }
-            
-            // Desabilitar botão de salvar
-            const btnSalvar = document.querySelector('button[type="submit"]');
-            if (btnSalvar) {
-                btnSalvar.disabled = true;
-                btnSalvar.style.opacity = '0.5';
-                btnSalvar.style.cursor = 'not-allowed';
-                btnSalvar.textContent = 'Proposta Aprovada - Não Editável';
-            }
-            
-            this.showNotification('Esta proposta está aprovada e não pode ser editada.', 'info');
-        }
+        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';}
         
         // Carregar itens da proposta
         this.loadItensProposta(proposta.id);
@@ -1507,12 +1474,11 @@ class PropostasManager {
                 observacoesTexto = observacoesTexto.substring(0, 50) + '...';
             }
             
-            // Verificar se proposta está aprovada para desabilitar edição
-            const isAprovada = proposta.status === 'Aprovada';
-            const editButtonClass = isAprovada ? 'btn-secondary disabled' : 'btn-secondary';
-            const editButtonStyle = isAprovada ? 'opacity: 0.5; cursor: not-allowed;' : '';
-            const editButtonTitle = isAprovada ? 'Proposta aprovada não pode ser editada' : 'Editar proposta';
-            const editButtonOnclick = isAprovada ? '' : `onclick="window.propostasManager.editProposta('${proposta.id}')"`;
+            // Botões de ação sempre habilitados
+            const editButtonClass = 'btn-secondary';
+            const editButtonStyle = '';
+            const editButtonTitle = 'Editar proposta';
+            const editButtonOnclick = `onclick="window.propostasManager.editProposta('${proposta.id}')"`;
             
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
@@ -1555,12 +1521,7 @@ class PropostasManager {
 
             if (error) throw error;
 
-            // PROTEÇÃO: Verificar se proposta está aprovada
-            if (data.status === 'Aprovada') {
-                this.showNotification('Propostas aprovadas não podem ser editadas!', 'warning');
-                return;
-            }
-
+            // Carregar proposta para edição (sem proteção)
             this.showFormProposta(data);
         } catch (error) {
             console.error('Erro ao carregar proposta:', error);
