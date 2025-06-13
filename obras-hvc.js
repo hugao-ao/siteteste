@@ -1,59 +1,43 @@
-// obras-hvc.js - Sistema de Gestão de Obras HVC
+// obras-hvc.js - Sistema de Gestão de Obras HVC (ADAPTADO PARA SUPABASE EXISTENTE)
 // Gerenciamento completo de obras com propostas e andamento de serviços
 
-// Aguardar carregamento do Supabase
-let supabaseClient = null;
+// Importar Supabase do arquivo existente
+import { supabase as supabaseClient } from './supabase.js';
+
 let obrasManager = null;
 
 // Inicializar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
     console.log('DOM carregado, iniciando aplicação de obras...');
-    // Aguardar um pouco para o Supabase carregar
-    setTimeout(initializeApp, 1000);
+    initializeApp();
 });
 
 function initializeApp() {
     console.log('Inicializando aplicação de obras...');
     
     // Verificar se o Supabase está disponível
-    if (typeof supabase !== 'undefined') {
-        supabaseClient = supabase;
+    if (supabaseClient) {
         console.log('Supabase conectado com sucesso!');
+        
+        // Inicializar o gerenciador de obras
+        obrasManager = new ObrasManager();
+        
+        // Expor globalmente para uso nos event handlers inline
+        window.obrasManager = obrasManager;
     } else {
-        console.log('Supabase não encontrado, carregando via CDN...');
-        loadSupabaseFromCDN();
-        return;
+        console.error('Erro: Supabase não disponível');
+        // Mostrar mensagem de erro para o usuário
+        document.body.innerHTML = `
+            <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f8f9fa;">
+                <div style="text-align: center; padding: 2rem; background: white; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.1);">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 3rem; color: #dc3545; margin-bottom: 1rem;"></i>
+                    <h2 style="color: #dc3545; margin-bottom: 1rem;">Erro de Conexão</h2>
+                    <p style="color: #666;">Não foi possível conectar ao banco de dados.</p>
+                    <p style="color: #666;">Verifique a configuração do Supabase.</p>
+                </div>
+            </div>
+        `;
     }
-    
-    // Inicializar o gerenciador de obras
-    obrasManager = new ObrasManager();
-    
-    // Expor globalmente para uso nos event handlers inline
-    window.obrasManager = obrasManager;
-}
-
-function loadSupabaseFromCDN() {
-    // Criar cliente Supabase diretamente
-    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
-    
-    // Carregar Supabase via script
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    script.onload = function() {
-        if (window.supabase && window.supabase.createClient) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            console.log('Supabase carregado via CDN!');
-            obrasManager = new ObrasManager();
-            window.obrasManager = obrasManager;
-        } else {
-            console.error('Erro ao carregar Supabase via CDN');
-        }
-    };
-    script.onerror = function() {
-        console.error('Erro ao carregar script do Supabase');
-    };
-    document.head.appendChild(script);
 }
 
 class ObrasManager {
@@ -79,6 +63,7 @@ class ObrasManager {
             console.log('ObrasManager inicializado com sucesso!');
         } catch (error) {
             console.error('Erro ao inicializar ObrasManager:', error);
+            this.showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
         }
     }
 
@@ -227,11 +212,6 @@ class ObrasManager {
         try {
             console.log('Carregando propostas...');
             
-            if (!supabaseClient) {
-                console.error('Supabase client não disponível');
-                return;
-            }
-            
             const { data, error } = await supabaseClient
                 .from('propostas_hvc')
                 .select(`
@@ -308,9 +288,24 @@ class ObrasManager {
 
     async loadPropostasObra(obraId) {
         try {
-            // Aqui você carregaria as propostas associadas à obra
-            // Por enquanto, vamos simular
             console.log('Carregando propostas da obra:', obraId);
+            
+            const { data, error } = await supabaseClient
+                .from('obras_propostas')
+                .select(`
+                    propostas_hvc (
+                        *,
+                        clientes_hvc (nome)
+                    )
+                `)
+                .eq('obra_id', obraId);
+
+            if (error) throw error;
+
+            this.propostasSelecionadas = data?.map(item => item.propostas_hvc) || [];
+            this.updatePropostasTable();
+            this.updateResumoObra();
+            
         } catch (error) {
             console.error('Erro ao carregar propostas da obra:', error);
         }
@@ -686,8 +681,13 @@ class ObrasManager {
         }
     }
 
-    salvarAndamento() {
+    async salvarAndamento() {
         console.log('Salvando andamento dos serviços...');
+        
+        if (!this.currentObraId) {
+            this.showNotification('Salve a obra primeiro antes de gerenciar o andamento', 'warning');
+            return;
+        }
         
         const statusSelects = document.querySelectorAll('.status-servico');
         const previsaoInputs = document.querySelectorAll('.previsao-servico');
@@ -700,19 +700,37 @@ class ObrasManager {
             
             if (servico) {
                 andamentos.push({
-                    item_id: servico.id,
+                    obra_id: this.currentObraId,
+                    item_proposta_id: servico.id,
                     status: select.value,
                     previsao_conclusao: previsaoInput.value || null
                 });
             }
         });
         
-        console.log('Andamentos coletados:', andamentos);
-        
-        // Aqui você salvaria no banco de dados
-        // Por enquanto, vamos simular
-        this.hideModalAndamento();
-        this.showNotification('Andamento dos serviços salvo com sucesso!', 'success');
+        try {
+            // Remover andamentos existentes
+            await supabaseClient
+                .from('servicos_andamento')
+                .delete()
+                .eq('obra_id', this.currentObraId);
+            
+            // Inserir novos andamentos
+            if (andamentos.length > 0) {
+                const { error } = await supabaseClient
+                    .from('servicos_andamento')
+                    .insert(andamentos);
+                
+                if (error) throw error;
+            }
+            
+            this.hideModalAndamento();
+            this.showNotification('Andamento dos serviços salvo com sucesso!', 'success');
+            
+        } catch (error) {
+            console.error('Erro ao salvar andamento:', error);
+            this.showNotification('Erro ao salvar andamento: ' + error.message, 'error');
+        }
     }
 
     // === OBRAS ===
@@ -720,9 +738,23 @@ class ObrasManager {
         try {
             console.log('Carregando obras...');
             
-            // Por enquanto, vamos simular dados
-            this.obras = [];
+            const { data, error } = await supabaseClient
+                .from('obras_hvc')
+                .select(`
+                    *,
+                    obras_propostas (
+                        propostas_hvc (
+                            clientes_hvc (nome)
+                        )
+                    )
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            this.obras = data || [];
             this.renderObras(this.obras);
+            this.populateClienteFilter();
             
             console.log('Obras carregadas:', this.obras.length);
         } catch (error) {
@@ -750,11 +782,17 @@ class ObrasManager {
         }
 
         obras.forEach(obra => {
+            // Extrair clientes únicos
+            const clientesUnicos = [...new Set(
+                obra.obras_propostas?.map(op => op.propostas_hvc?.clientes_hvc?.nome).filter(Boolean) || []
+            )];
+            const clientesTexto = clientesUnicos.length > 0 ? clientesUnicos.join(', ') : '-';
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><strong>${obra.numero_obra}</strong></td>
-                <td>${obra.clientes || '-'}</td>
-                <td>${obra.total_propostas || 0}</td>
+                <td>${clientesTexto}</td>
+                <td>${obra.obras_propostas?.length || 0}</td>
                 <td><strong>${this.formatMoney(obra.valor_total || 0)}</strong></td>
                 <td>
                     <span class="status-badge status-${obra.status.toLowerCase()}">
@@ -763,9 +801,9 @@ class ObrasManager {
                 </td>
                 <td>
                     <div class="progress-bar">
-                        <div class="progress-fill" style="width: ${obra.progresso || 0}%"></div>
+                        <div class="progress-fill" style="width: ${obra.progresso_geral || 0}%"></div>
                     </div>
-                    <div class="progress-text">${obra.progresso || 0}%</div>
+                    <div class="progress-text">${obra.progresso_geral || 0}%</div>
                 </td>
                 <td>${new Date(obra.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions-cell">
@@ -790,17 +828,61 @@ class ObrasManager {
         });
     }
 
+    populateClienteFilter() {
+        const filtroCliente = document.getElementById('filtro-cliente-obra');
+        if (!filtroCliente) return;
+        
+        // Extrair todos os clientes únicos
+        const todosClientes = new Set();
+        this.obras.forEach(obra => {
+            obra.obras_propostas?.forEach(op => {
+                const nomeCliente = op.propostas_hvc?.clientes_hvc?.nome;
+                if (nomeCliente) todosClientes.add(nomeCliente);
+            });
+        });
+        
+        // Limpar e popular select
+        filtroCliente.innerHTML = '<option value="">Todos</option>';
+        [...todosClientes].sort().forEach(cliente => {
+            const option = document.createElement('option');
+            option.value = cliente;
+            option.textContent = cliente;
+            filtroCliente.appendChild(option);
+        });
+    }
+
     // === FILTROS ===
     filtrarObras() {
-        // Implementar filtros da lista de obras
-        console.log('Filtrando obras...');
+        const termoBusca = document.getElementById('filtro-busca-obra')?.value.toLowerCase() || '';
+        const statusFiltro = document.getElementById('filtro-status-obra')?.value || '';
+        const clienteFiltro = document.getElementById('filtro-cliente-obra')?.value || '';
+        
+        const obrasFiltradas = this.obras.filter(obra => {
+            // Filtro de busca
+            const textoObra = `${obra.numero_obra} ${obra.observacoes || ''}`.toLowerCase();
+            const clientesObra = obra.obras_propostas?.map(op => op.propostas_hvc?.clientes_hvc?.nome).join(' ').toLowerCase() || '';
+            const passaBusca = !termoBusca || textoObra.includes(termoBusca) || clientesObra.includes(termoBusca);
+            
+            // Filtro de status
+            const passaStatus = !statusFiltro || obra.status === statusFiltro;
+            
+            // Filtro de cliente
+            const clientesUnicosObra = [...new Set(
+                obra.obras_propostas?.map(op => op.propostas_hvc?.clientes_hvc?.nome).filter(Boolean) || []
+            )];
+            const passaCliente = !clienteFiltro || clientesUnicosObra.includes(clienteFiltro);
+            
+            return passaBusca && passaStatus && passaCliente;
+        });
+        
+        this.renderObras(obrasFiltradas);
     }
 
     limparFiltros() {
         document.getElementById('filtro-busca-obra').value = '';
         document.getElementById('filtro-status-obra').value = '';
         document.getElementById('filtro-cliente-obra').value = '';
-        this.filtrarObras();
+        this.renderObras(this.obras);
     }
 
     // === CRUD OBRAS ===
@@ -813,14 +895,41 @@ class ObrasManager {
             numero_obra: document.getElementById('numero-obra').value,
             status: document.getElementById('status-obra').value,
             observacoes: document.getElementById('observacoes-obra').value || null,
-            // Adicionar outros campos conforme necessário
         };
 
         console.log('Dados da obra para salvar:', obraData);
 
         try {
-            // Aqui você salvaria no Supabase
-            // Por enquanto, vamos simular
+            let obra;
+            
+            if (this.currentObraId) {
+                // Atualizar obra existente
+                const { data, error } = await supabaseClient
+                    .from('obras_hvc')
+                    .update(obraData)
+                    .eq('id', this.currentObraId)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                obra = data;
+                console.log('Obra atualizada:', obra);
+            } else {
+                // Criar nova obra
+                const { data, error } = await supabaseClient
+                    .from('obras_hvc')
+                    .insert([obraData])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                obra = data;
+                console.log('Nova obra criada:', obra);
+                this.currentObraId = obra.id;
+            }
+
+            // Salvar propostas da obra
+            await this.savePropostasObra(obra.id);
             
             this.hideFormObra();
             this.loadObras();
@@ -829,6 +938,34 @@ class ObrasManager {
         } catch (error) {
             console.error('Erro ao salvar obra:', error);
             this.showNotification('Erro ao salvar obra: ' + error.message, 'error');
+        }
+    }
+
+    async savePropostasObra(obraId) {
+        try {
+            // Remover propostas existentes
+            await supabaseClient
+                .from('obras_propostas')
+                .delete()
+                .eq('obra_id', obraId);
+
+            // Inserir novas propostas
+            if (this.propostasSelecionadas.length > 0) {
+                const propostasData = this.propostasSelecionadas.map(proposta => ({
+                    obra_id: obraId,
+                    proposta_id: proposta.id
+                }));
+
+                const { error } = await supabaseClient
+                    .from('obras_propostas')
+                    .insert(propostasData);
+
+                if (error) throw error;
+                console.log('Propostas da obra salvas com sucesso');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar propostas da obra:', error);
+            throw error;
         }
     }
 
@@ -849,8 +986,22 @@ class ObrasManager {
     }
 
     async editObra(obraId) {
-        console.log('Editando obra:', obraId);
-        // Implementar edição
+        try {
+            console.log('Editando obra:', obraId);
+            
+            const { data, error } = await supabaseClient
+                .from('obras_hvc')
+                .select('*')
+                .eq('id', obraId)
+                .single();
+
+            if (error) throw error;
+
+            this.showFormObra(data);
+        } catch (error) {
+            console.error('Erro ao carregar obra:', error);
+            this.showNotification('Erro ao carregar obra: ' + error.message, 'error');
+        }
     }
 
     async deleteObra(obraId) {
@@ -858,13 +1009,57 @@ class ObrasManager {
             return;
         }
         
-        console.log('Excluindo obra:', obraId);
-        // Implementar exclusão
+        try {
+            console.log('Excluindo obra:', obraId);
+            
+            const { error } = await supabaseClient
+                .from('obras_hvc')
+                .delete()
+                .eq('id', obraId);
+
+            if (error) throw error;
+
+            this.loadObras();
+            this.showNotification('Obra excluída com sucesso!', 'success');
+            
+        } catch (error) {
+            console.error('Erro ao excluir obra:', error);
+            this.showNotification('Erro ao excluir obra: ' + error.message, 'error');
+        }
     }
 
-    gerenciarAndamento(obraId) {
-        console.log('Gerenciando andamento da obra:', obraId);
-        // Implementar gestão de andamento
+    async gerenciarAndamento(obraId) {
+        try {
+            console.log('Gerenciando andamento da obra:', obraId);
+            
+            // Carregar obra e suas propostas
+            const { data, error } = await supabaseClient
+                .from('obras_hvc')
+                .select(`
+                    *,
+                    obras_propostas (
+                        propostas_hvc (
+                            *,
+                            clientes_hvc (nome)
+                        )
+                    )
+                `)
+                .eq('id', obraId)
+                .single();
+
+            if (error) throw error;
+
+            // Definir obra atual e propostas
+            this.currentObraId = obraId;
+            this.propostasSelecionadas = data.obras_propostas?.map(op => op.propostas_hvc) || [];
+            
+            // Mostrar modal de andamento
+            this.showModalAndamento();
+            
+        } catch (error) {
+            console.error('Erro ao carregar dados da obra:', error);
+            this.showNotification('Erro ao carregar dados da obra: ' + error.message, 'error');
+        }
     }
 
     // === NOTIFICAÇÕES ===
@@ -934,5 +1129,4 @@ class ObrasManager {
 
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
-
 
