@@ -1425,7 +1425,7 @@ class PropostasManager {
     // === LISTA DE PROPOSTAS CORRIGIDA ===
     async loadPropostas() {
         try {
-            console.log('Carregando propostas...');
+            console.log('\n🔄 === CARREGANDO PROPOSTAS ===');
             
             if (!supabaseClient) {
                 console.error('Supabase client não disponível');
@@ -1441,6 +1441,22 @@ class PropostasManager {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+
+            console.log('📊 Propostas carregadas do banco:', data?.length || 0);
+            
+            // Log detalhado dos valores para debug
+            if (data && data.length > 0) {
+                console.log('\n🔍 === VALORES DAS PROPOSTAS ===');
+                data.forEach((proposta, index) => {
+                    console.log(`Proposta ${index + 1}:`, {
+                        numero: proposta.numero_proposta,
+                        total_banco: proposta.total_proposta,
+                        tipo_total: typeof proposta.total_proposta,
+                        total_formatado: this.formatMoney(proposta.total_proposta)
+                    });
+                });
+                console.log('=====================================\n');
+            }
 
             this.propostas = data || []; // Armazenar para filtros
             this.renderPropostas(this.propostas);
