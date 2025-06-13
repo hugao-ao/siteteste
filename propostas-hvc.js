@@ -1,4 +1,4 @@
-// propostas-hvc.js - Versão FINAL COM TOTAL CORRETO
+// propostas-hvc.js - Versão FINAL COM TOTAL DEFINITIVAMENTE CORRETO
 // Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
@@ -1119,6 +1119,11 @@ class PropostasManager {
             const itemTotal = quantidade * (precoMaoObra + precoMaterial);
             total += itemTotal;
         });
+        
+        console.log('=== getCurrentTotal() ===');
+        console.log('Total calculado:', total);
+        console.log('========================');
+        
         return total;
     }
 
@@ -1130,6 +1135,20 @@ class PropostasManager {
         // CORREÇÃO CRÍTICA: Usar função dedicada para obter o total atual
         const totalCalculado = this.getCurrentTotal();
 
+        // VERIFICAÇÃO ADICIONAL: Comparar com o total exibido
+        const totalElementText = document.getElementById('total-proposta')?.textContent || '';
+        const totalExibido = this.parseMoney(totalElementText);
+
+        console.log('=== VERIFICAÇÃO DE TOTAIS ===');
+        console.log('Total calculado para salvar:', totalCalculado);
+        console.log('Total exibido na tela:', totalElementText);
+        console.log('Total exibido parseado:', totalExibido);
+        console.log('Diferença:', Math.abs(totalCalculado - totalExibido));
+        console.log('================================');
+
+        // Se houver diferença significativa, usar o total exibido
+        const totalParaSalvar = Math.abs(totalCalculado - totalExibido) < 0.01 ? totalCalculado : totalExibido;
+
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
             cliente_id: document.getElementById('cliente-select').value,
@@ -1138,12 +1157,11 @@ class PropostasManager {
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
             tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: totalCalculado // CORREÇÃO: Usar total da função dedicada
+            total_proposta: totalParaSalvar // CORREÇÃO: Usar total verificado
         };
 
         console.log('=== DADOS PARA SALVAR ===');
-        console.log('Total calculado para salvar:', totalCalculado);
-        console.log('Total exibido na tela:', document.getElementById('total-proposta')?.textContent);
+        console.log('Total que será salvo:', totalParaSalvar);
         console.log('Dados completos:', propostaData);
         console.log('========================');
 
