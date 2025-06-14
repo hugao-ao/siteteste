@@ -925,9 +925,12 @@ class PropostasManager {
         this.renderServicosAdicionados();
         this.updateTotal();
         
-        const modal = document.getElementById('modal-proposta');
-        if (modal) {
-            modal.classList.add('show');
+        // Mostrar o formulário (não modal)
+        const formSection = document.getElementById('form-proposta');
+        if (formSection) {
+            formSection.classList.remove('hidden');
+            formSection.scrollIntoView({ behavior: 'smooth' });
+            
             const numeroInput = document.getElementById('numero-proposta');
             if (numeroInput) numeroInput.focus();
         }
@@ -1112,6 +1115,12 @@ class PropostasManager {
     }
 
     setupEventListeners() {
+        // Event listener para o botão Nova Proposta
+        const btnNovaProposta = document.getElementById('btn-nova-proposta');
+        if (btnNovaProposta) {
+            btnNovaProposta.addEventListener('click', () => this.showFormProposta());
+        }
+
         // Event listeners para formulários
         const clienteForm = document.getElementById('cliente-form');
         if (clienteForm) {
