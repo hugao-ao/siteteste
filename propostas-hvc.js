@@ -343,8 +343,6 @@ class PropostasManager {
         
         const clienteData = {
             nome: document.getElementById('cliente-nome').value,
-            email: document.getElementById('cliente-email').value,
-            telefone: document.getElementById('cliente-telefone').value,
             endereco: document.getElementById('cliente-endereco').value
         };
 
@@ -826,9 +824,7 @@ class PropostasManager {
                     *,
                     clientes_hvc (
                         id,
-                        nome,
-                        email,
-                        telefone
+                        nome
                     )
                 `)
                 .order('created_at', { ascending: false });
@@ -1109,21 +1105,6 @@ class PropostasManager {
                 let value = e.target.value.replace(/\D/g, '');
                 if (value.length >= 4) {
                     value = value.substring(0, 4) + '/' + value.substring(4, 8);
-                }
-                e.target.value = value;
-            });
-        }
-
-        // Máscara para telefone
-        const telefoneInput = document.getElementById('cliente-telefone');
-        if (telefoneInput) {
-            telefoneInput.addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length <= 11) {
-                    value = value.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-                    if (value.length < 14) {
-                        value = value.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2-$3');
-                    }
                 }
                 e.target.value = value;
             });
