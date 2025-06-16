@@ -1,0 +1,44 @@
+/* Estilos para a funcionalidade de preços em propostas */
+
+.section-title {
+    margin-top: 20px;
+    margin-bottom: 15px;
+    color: #f8f9fa;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+    padding-bottom: 8px;
+}
+
+#secao-precos {
+    background-color: rgba(0, 123, 255, 0.1);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border: 1px solid rgba(0, 123, 255, 0.2);
+}
+
+#btn-calcular-precos {
+    margin-top: 10px;
+}
+
+/* Campos de preço */
+#preco-total, #preco-mao-obra, #preco-material {
+    font-weight: bold;
+    text-align: right;
+}
+
+/* Campos readonly */
+input[readonly] {
+    background-color: rgba(200, 200, 200, 0.2);
+    cursor: not-allowed;
+}
+
+/* Animação quando o preço é calculado */
+@keyframes highlight-price {
+    0% { background-color: rgba(40, 167, 69, 0.3); }
+    100% { background-color: transparent; }
+}
+
+.price-calculated {
+    animation: highlight-price 1.5s ease-out;
+}
+
