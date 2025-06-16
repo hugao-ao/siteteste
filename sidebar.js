@@ -25,6 +25,7 @@ function createAdminSidebarHTML(projectContext = null) {
             <li class="sub-menu"><a href="servicos-hvc.html" id="nav-servicos-hvc"><i class="fas fa-tools"></i> <span>Serviços HVC</span></a></li>
             <li class="sub-menu"><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
             <li class="sub-menu"><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
+            <li class="sub-menu"><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
             <li class="sub-menu"><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
         `;
     } else if (projectContext === 'Argos') {
@@ -81,6 +82,7 @@ function createUserSidebarHTML(userProject) {
             <li><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
             <li><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
             <li><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
+            <li><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
             <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
         `;
     } else if (userProject === 'Argos') {
@@ -127,6 +129,7 @@ function createAdminViewingUserSidebarHTML(viewedUserProject) {
             <li><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
             <li><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
             <li><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
+            <li><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
             <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
         `;
     } else if (viewedUserProject === 'Argos') {
