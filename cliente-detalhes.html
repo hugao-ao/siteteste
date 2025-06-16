@@ -1260,7 +1260,11 @@
                         link_unico: linkUnico,
                         nome_principal: cliente.nome || '',
                        nomes_outras_pessoas_renda: outrasPersonasRenda,
-                        created_by_id: sessionStorage.getItem('user_id')
+                        const {
+                                data: { user }
+                              } = await supabase.auth.getUser();
+                              
+                              created_by_id: user.id
                     });
                 
                 if (createError) throw createError;
