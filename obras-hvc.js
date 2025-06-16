@@ -633,6 +633,7 @@ class ObrasManager {
                             <th>Quantidade</th>
                             <th>Status</th>
                             <th>Previsão</th>
+                            <th>Observações</th>
                         </tr>
                     </thead>
                     <tbody id="servicos-andamento-tbody">
@@ -663,6 +664,9 @@ class ObrasManager {
                                class="form-input previsao-servico" 
                                data-index="${index}"
                                style="width: 150px;">
+                    </td>
+                     <td>
+                        <small>${item.servicos_andamento?.observacoes}</small>
                     </td>
                 `;
                 tbody.appendChild(row);
