@@ -937,9 +937,9 @@ class PropostasManager {
     }
 
     hideFormProposta() {
-        const modal = document.getElementById('modal-proposta');
-        if (modal) {
-            modal.classList.remove('show');
+        const formSection = document.getElementById('form-proposta');
+        if (formSection) {
+            formSection.classList.add('hidden');
         }
     }
 
@@ -1001,10 +1001,11 @@ class PropostasManager {
             this.renderServicosAdicionados();
             this.updateTotal();
 
-            // Mostrar modal
-            const modal = document.getElementById('modal-proposta');
-            if (modal) {
-                modal.classList.add('show');
+            // Mostrar formulário (não modal)
+            const formSection = document.getElementById('form-proposta');
+            if (formSection) {
+                formSection.classList.remove('hidden');
+                formSection.scrollIntoView({ behavior: 'smooth' });
             }
 
         } catch (error) {
@@ -1148,6 +1149,24 @@ class PropostasManager {
         const buscaServicos = document.getElementById('busca-servicos');
         if (buscaServicos) {
             buscaServicos.addEventListener('input', () => this.filtrarServicos());
+        }
+
+        // Event listener para o botão cancelar
+        const btnCancelar = document.getElementById('btn-cancelar');
+        if (btnCancelar) {
+            btnCancelar.addEventListener('click', () => this.hideFormProposta());
+        }
+
+        // Event listener para o botão adicionar serviço
+        const btnAddServico = document.getElementById('btn-add-servico');
+        if (btnAddServico) {
+            btnAddServico.addEventListener('click', () => this.showModalServico());
+        }
+
+        // Event listener para o botão cancelar do modal de serviço
+        const btnCancelServico = document.getElementById('cancel-servico');
+        if (btnCancelServico) {
+            btnCancelServico.addEventListener('click', () => this.hideModalServico());
         }
     }
 }
