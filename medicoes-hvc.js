@@ -402,13 +402,56 @@ class MedicoesManager {
 
     async selecionarObra(obraId) {
         try {
-            const obra = this.obras.find(o => o.id === obraId);
-            if (!obra) return;
+            console.log('Selecionando obra com ID:', obraId);
             
-            this.obraSelecionada = obra;
+            const obra = this.obras.find(o => o.id === obraId);
+            if (!obra) {
+                console.error('Obra não encontrada:', obraId);
+                this.showNotification('Obra não encontrada', 'error');
+                return;
+            }
+            
+            console.log('Obra encontrada:', obra);
+            
+            // Verificar se a obra tem dados completos
+            if (!obra.obras_propostas) {
+                console.log('Obra sem propostas associadas, recarregando dados...');
+                
+                // Recarregar obra com dados completos
+                const { data: obraCompleta, error } = await supabaseClient
+                    .from('obras_hvc')
+                    .select(`
+                        *,
+                        obras_propostas (
+                            proposta_id,
+                            propostas_hvc (
+                                id,
+                                numero_proposta,
+                                clientes_hvc (nome)
+                            )
+                        )
+                    `)
+                    .eq('id', obraId)
+                    .single();
+                
+                if (error) {
+                    console.error('Erro ao recarregar obra:', error);
+                    throw error;
+                }
+                
+                this.obraSelecionada = obraCompleta;
+                console.log('Obra recarregada com dados completos:', obraCompleta);
+            } else {
+                this.obraSelecionada = obra;
+            }
             
             // Atualizar interface
-            document.getElementById('obra-selecionada').value = `${obra.numero_obra} - ${obra.status}`;
+            const clientesUnicos = [...new Set(
+                this.obraSelecionada.obras_propostas?.map(op => op.propostas_hvc?.clientes_hvc?.nome).filter(Boolean) || []
+            )];
+            const clientesTexto = clientesUnicos.length > 0 ? clientesUnicos.join(', ') : 'Sem clientes';
+            
+            document.getElementById('obra-selecionada').value = `${this.obraSelecionada.numero_obra} - ${this.obraSelecionada.status} (${clientesTexto})`;
             document.getElementById('btn-selecionar-servicos').disabled = false;
             
             // Gerar número da medição
@@ -497,7 +540,33 @@ class MedicoesManager {
 
     async loadServicosObra() {
         try {
-            console.log('Carregando serviços da obra:', this.obraSelecionada.id);
+            console.log('Carregando serviços da obra:', this.obraSelecionada);
+            
+            if (!this.obraSelecionada || !this.obraSelecionada.id) {
+                console.error('Obra selecionada inválida:', this.obraSelecionada);
+                this.servicosObra = [];
+                return;
+            }
+            
+            // Verificar se a obra tem propostas associadas
+            if (!this.obraSelecionada.obras_propostas || this.obraSelecionada.obras_propostas.length === 0) {
+                console.log('Obra não possui propostas associadas');
+                this.servicosObra = [];
+                return;
+            }
+            
+            // Extrair IDs das propostas, filtrando valores undefined/null
+            const propostaIds = this.obraSelecionada.obras_propostas
+                .map(op => op.proposta_id)
+                .filter(id => id && id !== 'undefined' && id !== null);
+            
+            console.log('IDs das propostas encontradas:', propostaIds);
+            
+            if (propostaIds.length === 0) {
+                console.log('Nenhuma proposta válida encontrada');
+                this.servicosObra = [];
+                return;
+            }
             
             // Buscar todos os serviços das propostas da obra
             const { data, error } = await supabaseClient
@@ -507,11 +576,12 @@ class MedicoesManager {
                     servicos_hvc (*),
                     propostas_hvc (numero_proposta)
                 `)
-                .in('proposta_id', 
-                    this.obraSelecionada.obras_propostas?.map(op => op.proposta_id) || []
-                );
+                .in('proposta_id', propostaIds);
             
-            if (error) throw error;
+            if (error) {
+                console.error('Erro na consulta SQL:', error);
+                throw error;
+            }
             
             this.servicosObra = data || [];
             console.log('Serviços da obra carregados:', this.servicosObra.length);
@@ -527,11 +597,22 @@ class MedicoesManager {
         const container = document.getElementById('lista-servicos-obra');
         if (!container) return;
         
+        console.log('Renderizando modal de serviços. Total de serviços:', this.servicosObra.length);
+        
         if (this.servicosObra.length === 0) {
             container.innerHTML = `
                 <div style="text-align: center; padding: 2rem; color: #888;">
                     <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                    Nenhum serviço encontrado para esta obra.
+                    <h3>Nenhum serviço encontrado para esta obra</h3>
+                    <p>Possíveis causas:</p>
+                    <ul style="text-align: left; display: inline-block; margin-top: 1rem;">
+                        <li>A obra não possui propostas associadas</li>
+                        <li>As propostas não possuem serviços cadastrados</li>
+                        <li>Erro na consulta ao banco de dados</li>
+                    </ul>
+                    <p style="margin-top: 1rem;">
+                        <small>Verifique se a obra possui propostas com serviços cadastrados.</small>
+                    </p>
                 </div>
             `;
             return;
@@ -570,6 +651,12 @@ class MedicoesManager {
             const tipoPreco = document.getElementById('tipo-preco')?.value || 'total';
             let precoUnitario = 0;
             
+            // Validar se o item tem dados completos
+            if (!item.servicos_hvc) {
+                console.warn('Serviço sem dados completos:', item);
+                return;
+            }
+            
             switch (tipoPreco) {
                 case 'mao_obra':
                     precoUnitario = item.preco_mao_obra || 0;
@@ -589,16 +676,18 @@ class MedicoesManager {
                            data-item-id="${item.id}"
                            style="transform: scale(1.2);">
                 </td>
-                <td><strong>${item.propostas_hvc?.numero_proposta}</strong></td>
+                <td><strong>${item.propostas_hvc?.numero_proposta || 'N/A'}</strong></td>
                 <td>
-                    <strong>${item.servicos_hvc?.codigo}</strong><br>
-                    <small>${item.servicos_hvc?.descricao}</small>
+                    <strong>${item.servicos_hvc?.codigo || 'N/A'}</strong><br>
+                    <small>${item.servicos_hvc?.descricao || 'Sem descrição'}</small>
                 </td>
-                <td>${item.quantidade} ${item.servicos_hvc?.unidade || ''}</td>
+                <td>${item.quantidade || 0} ${item.servicos_hvc?.unidade || ''}</td>
                 <td><strong>${this.formatMoney((precoUnitario / 100) || 0)}</strong></td>
             `;
             tbody.appendChild(row);
         });
+        
+        console.log('Modal de serviços renderizado com', this.servicosObra.length, 'serviços');
     }
 
     confirmarSelecaoServicos() {
