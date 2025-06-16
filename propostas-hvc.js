@@ -398,12 +398,32 @@ class PropostasManager {
     }
 
     showModalServico() {
+        // Primeiro carregar a lista de serviços
+        this.populateServicoSelect();
+        
         const modal = document.getElementById('modal-servico');
         if (modal) {
             modal.classList.add('show');
-            const codigoInput = document.getElementById('servico-codigo');
-            if (codigoInput) codigoInput.focus();
         }
+    }
+
+    populateServicoSelect() {
+        const select = document.getElementById('servico-select');
+        if (!select) return;
+
+        // Limpar opções existentes
+        select.innerHTML = '<option value="">Selecione um serviço...</option>';
+
+        // Adicionar serviços do banco
+        this.servicos.forEach(servico => {
+            const option = document.createElement('option');
+            option.value = servico.id;
+            option.textContent = `${servico.codigo} - ${servico.descricao}`;
+            option.dataset.codigo = servico.codigo;
+            option.dataset.descricao = servico.descricao;
+            option.dataset.unidade = servico.unidade;
+            select.appendChild(option);
+        });
     }
 
     hideModalServico() {
@@ -415,32 +435,57 @@ class PropostasManager {
         }
     }
 
+    onServicoSelectChange(select) {
+        const selectedOption = select.options[select.selectedIndex];
+        if (selectedOption.value) {
+            // Preencher campos automaticamente se houver dados
+            const codigo = selectedOption.dataset.codigo;
+            const descricao = selectedOption.dataset.descricao;
+            const unidade = selectedOption.dataset.unidade;
+            
+            // Focar no campo quantidade
+            const quantidadeInput = document.getElementById('servico-quantidade');
+            if (quantidadeInput) {
+                quantidadeInput.focus();
+            }
+        }
+    }
+
     async handleSubmitServico(e) {
         e.preventDefault();
         
-        const servicoData = {
-            codigo: document.getElementById('servico-codigo').value,
-            descricao: document.getElementById('servico-descricao').value,
-            detalhe: document.getElementById('servico-detalhe').value,
-            unidade: document.getElementById('servico-unidade').value
-        };
-
-        try {
-            const { data, error } = await supabaseClient
-                .from('servicos_hvc')
-                .insert([servicoData])
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            this.servicos.push(data);
-            this.hideModalServico();
-            this.showNotification('Serviço adicionado com sucesso!', 'success');
-        } catch (error) {
-            console.error('Erro ao adicionar serviço:', error);
-            this.showNotification('Erro ao adicionar serviço: ' + error.message, 'error');
+        const select = document.getElementById('servico-select');
+        const quantidade = document.getElementById('servico-quantidade');
+        const maoObra = document.getElementById('servico-mao-obra');
+        const material = document.getElementById('servico-material');
+        
+        if (!select.value) {
+            this.showNotification('Selecione um serviço', 'error');
+            return;
         }
+        
+        const selectedOption = select.options[select.selectedIndex];
+        const servicoData = {
+            id: select.value,
+            codigo: selectedOption.dataset.codigo,
+            descricao: selectedOption.dataset.descricao,
+            unidade: selectedOption.dataset.unidade,
+            quantidade: parseFloat(quantidade.value) || 0,
+            preco_mao_obra: parseFloat(maoObra.value) || 0,
+            preco_material: parseFloat(material.value) || 0
+        };
+        
+        // Adicionar à lista de serviços
+        this.servicosAdicionados.push(servicoData);
+        
+        // Atualizar interface
+        this.renderServicosAdicionados();
+        this.updateTotal();
+        
+        // Fechar modal e limpar formulário
+        this.hideModalServico();
+        
+        this.showNotification('Serviço adicionado com sucesso!', 'success');
     }
 
     // === MODAL DE SERVIÇOS ===
@@ -549,115 +594,75 @@ class PropostasManager {
 
     // === SERVIÇOS ADICIONADOS ===
     renderServicosAdicionados() {
-        const container = document.getElementById('servicos-container');
-        if (!container) return;
+        const tbody = document.getElementById('services-tbody');
+        if (!tbody) return;
 
-        container.innerHTML = '';
+        tbody.innerHTML = '';
 
         if (this.servicosAdicionados.length === 0) {
-            container.innerHTML = '<p style="color: #87ceeb; text-align: center; padding: 2rem;">Nenhum serviço adicionado</p>';
+            tbody.innerHTML = '<tr><td colspan="7" style="color: #87ceeb; text-align: center; padding: 2rem;">Nenhum serviço adicionado</td></tr>';
             return;
         }
 
-        const table = document.createElement('table');
-        table.className = 'services-table';
-        table.style.cssText = `
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 1rem;
-        `;
-
-        table.innerHTML = `
-            <thead>
-                <tr style="background: rgba(173, 216, 230, 0.1);">
-                    <th style="padding: 0.75rem; text-align: left; color: #add8e6; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Serviço</th>
-                    <th style="padding: 0.75rem; text-align: center; color: #add8e6; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Quantidade</th>
-                    <th style="padding: 0.75rem; text-align: center; color: #add8e6; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Unidade</th>
-                    <th style="padding: 0.75rem; text-align: center; color: #add8e6; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Mão de Obra (R$)</th>
-                    <th style="padding: 0.75rem; text-align: center; color: #add8e6; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Material (R$)</th>
-                    <th style="padding: 0.75rem; text-align: center; color: #add8e6; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Total (R$)</th>
-                    <th style="padding: 0.75rem; text-align: center; color: #add8e6; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Ações</th>
-                </tr>
-            </thead>
-            <tbody>
-            </tbody>
-        `;
-
-        const tbody = table.querySelector('tbody');
-
-        this.servicosAdicionados.forEach((item, index) => {
+        this.servicosAdicionados.forEach((servico, index) => {
             const row = document.createElement('tr');
-            row.style.borderBottom = '1px solid rgba(173, 216, 230, 0.1)';
-
-            const total = (item.quantidade * (item.preco_mao_obra + item.preco_material));
-
             row.innerHTML = `
-                <td style="padding: 0.75rem;">
-                    <strong style="color: #add8e6;">${item.codigo}</strong> - ${item.descricao}
+                <td>
+                    <div style="font-weight: 600; color: #add8e6;">${servico.codigo}</div>
+                    <div style="font-size: 0.9em; color: #87ceeb;">${servico.descricao}</div>
                 </td>
-                <td style="padding: 0.75rem; text-align: center;">
+                <td style="text-align: center;">
                     <input type="number" 
-                           value="${item.quantidade}" 
-                           min="0.01" 
-                           step="0.01"
-                           style="width: 80px; text-align: center;"
-                           class="form-input"
-                           onchange="window.propostasManager.updateQuantidade(${index}, this.value)">
-                </td>
-                <td style="padding: 0.75rem; text-align: center; color: #87ceeb;">
-                    ${item.unidade}
-                </td>
-                <td style="padding: 0.75rem; text-align: center;">
-                    <input type="number" 
-                           value="${item.preco_mao_obra}" 
+                           value="${servico.quantidade}" 
                            min="0" 
                            step="0.01"
-                           style="width: 100px; text-align: center;"
-                           class="form-input"
-                           onchange="window.propostasManager.updatePrecoMaoObra(${index}, this.value)">
+                           style="width: 80px; background: transparent; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 4px; padding: 4px; color: #e0e0e0; text-align: center;"
+                           onchange="propostasManager.updateServicoQuantidade(${index}, this.value)">
                 </td>
-                <td style="padding: 0.75rem; text-align: center;">
+                <td style="text-align: center; color: #87ceeb;">${servico.unidade || '-'}</td>
+                <td style="text-align: center;">
                     <input type="number" 
-                           value="${item.preco_material}" 
+                           value="${servico.preco_mao_obra}" 
                            min="0" 
                            step="0.01"
-                           style="width: 100px; text-align: center;"
-                           class="form-input"
-                           onchange="window.propostasManager.updatePrecoMaterial(${index}, this.value)">
+                           style="width: 100px; background: transparent; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 4px; padding: 4px; color: #e0e0e0; text-align: center;"
+                           onchange="propostasManager.updateServicoMaoObra(${index}, this.value)">
                 </td>
-                <td style="padding: 0.75rem; text-align: center;">
-                    <strong style="color: #90EE90;">${this.formatMoney(total)}</strong>
+                <td style="text-align: center;">
+                    <input type="number" 
+                           value="${servico.preco_material}" 
+                           min="0" 
+                           step="0.01"
+                           style="width: 100px; background: transparent; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 4px; padding: 4px; color: #e0e0e0; text-align: center;"
+                           onchange="propostasManager.updateServicoMaterial(${index}, this.value)">
                 </td>
-                <td style="padding: 0.75rem; text-align: center;">
-                    <button type="button" 
-                            class="btn-danger" 
-                            onclick="window.propostasManager.removeServico(${index})"
-                            style="padding: 0.25rem 0.5rem; font-size: 0.8rem;"
-                            title="Remover serviço">
+                <td style="text-align: center; font-weight: 600; color: #90EE90;">
+                    ${this.formatMoney((servico.quantidade * (servico.preco_mao_obra + servico.preco_material)))}
+                </td>
+                <td style="text-align: center;">
+                    <button onclick="propostasManager.removeServico(${index})" 
+                            style="background: #dc3545; color: white; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer;">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
             `;
-
             tbody.appendChild(row);
         });
-
-        container.appendChild(table);
     }
 
-    updateQuantidade(index, value) {
+    updateServicoQuantidade(index, value) {
         this.servicosAdicionados[index].quantidade = parseFloat(value) || 0;
         this.renderServicosAdicionados();
         this.updateTotal();
     }
 
-    updatePrecoMaoObra(index, value) {
+    updateServicoMaoObra(index, value) {
         this.servicosAdicionados[index].preco_mao_obra = parseFloat(value) || 0;
         this.renderServicosAdicionados();
         this.updateTotal();
     }
 
-    updatePrecoMaterial(index, value) {
+    updateServicoMaterial(index, value) {
         this.servicosAdicionados[index].preco_material = parseFloat(value) || 0;
         this.renderServicosAdicionados();
         this.updateTotal();
