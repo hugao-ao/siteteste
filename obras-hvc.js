@@ -795,7 +795,7 @@ class ObrasManager {
         if (obras.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="4" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="5" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
                     </td>
@@ -815,6 +815,7 @@ class ObrasManager {
             row.innerHTML = `
                 <td><strong>${obra.numero_obra}</strong></td>
                 <td>${clientesTexto}</td>
+                <td><strong>${this.formatMoney(((obra.valor_total)/100) || 0)}</strong></td>
                 <td>
                     <span class="status-badge status-${obra.status.toLowerCase()}">
                         ${obra.status}
