@@ -1,0 +1,911 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Medições HVC - Gerenciamento</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* Estilos específicos para a página de medições - MANTENDO PADRÃO HVC */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #main-content-medicoes-hvc {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+    }
+
+    #main-content-medicoes-hvc.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .page-title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #add8e6;
+      text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #28a745, #20c997);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d, #5a6268);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800);
+      color: #212529;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #28a745, #20c997);
+      color: white;
+      border: none;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+    }
+
+    /* Formulário */
+    .form-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 15px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      backdrop-filter: blur(10px);
+    }
+
+    .form-section.hidden {
+      display: none;
+    }
+
+    .form-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #add8e6;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .form-label {
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      padding: 0.75rem;
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: #add8e6;
+      box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    /* Tabelas */
+    .medicoes-table {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      border-collapse: collapse;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .medicoes-table th {
+      background: rgba(173, 216, 230, 0.2);
+      color: #add8e6;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .medicoes-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      color: #e0e0e0;
+    }
+
+    .medicoes-table tr:hover {
+      background: rgba(173, 216, 230, 0.1);
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    /* Status badges */
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-pendente {
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+      border: 1px solid rgba(255, 193, 7, 0.3);
+    }
+
+    .status-aprovada {
+      background: rgba(40, 167, 69, 0.2);
+      color: #28a745;
+      border: 1px solid rgba(40, 167, 69, 0.3);
+    }
+
+    .status-paga {
+      background: rgba(32, 201, 151, 0.2);
+      color: #20c997;
+      border: 1px solid rgba(32, 201, 151, 0.3);
+    }
+
+    .status-cancelada {
+      background: rgba(220, 53, 69, 0.2);
+      color: #dc3545;
+      border: 1px solid rgba(220, 53, 69, 0.3);
+    }
+
+    /* Filtros */
+    .filter-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      flex-wrap: wrap;
+    }
+
+    .filter-controls label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+      font-weight: 600;
+    }
+
+    /* Modais */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+    }
+
+    .modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: linear-gradient(135deg, #000080, #191970);
+      border-radius: 15px;
+      padding: 2rem;
+      max-width: 800px;
+      width: 90%;
+      max-height: 80vh;
+      overflow-y: auto;
+      border: 2px solid rgba(173, 216, 230, 0.3);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .modal-title {
+      color: #add8e6;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #6c757d;
+      padding: 0.5rem;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .close-modal:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #dc3545;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    /* Seção de serviços selecionados */
+    .servicos-selecionados {
+      margin: 2rem 0;
+      padding: 1.5rem;
+      background: rgba(40, 167, 69, 0.1);
+      border-radius: 10px;
+      border: 1px solid rgba(40, 167, 69, 0.3);
+    }
+
+    .servicos-selecionados h3 {
+      color: #add8e6;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .servico-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .servico-info {
+      flex: 1;
+    }
+
+    .servico-quantidade {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-left: 1rem;
+    }
+
+    .quantidade-input {
+      width: 100px;
+      padding: 0.5rem;
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.1);
+      color: #e0e0e0;
+      text-align: center;
+    }
+
+    /* Resumo financeiro */
+    .resumo-financeiro {
+      background: rgba(32, 201, 151, 0.1);
+      border: 1px solid rgba(32, 201, 151, 0.3);
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin: 2rem 0;
+    }
+
+    .resumo-financeiro h3 {
+      color: #add8e6;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .resumo-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+    }
+
+    .resumo-item {
+      background: rgba(255, 255, 255, 0.1);
+      padding: 1rem;
+      border-radius: 8px;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      text-align: center;
+    }
+
+    .resumo-item h4 {
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+    }
+
+    .resumo-item .valor {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: #20c997;
+    }
+
+    /* Responsividade */
+    @media (max-width: 768px) {
+      #main-content-medicoes-hvc {
+        margin-left: 0;
+        padding: 1rem;
+      }
+
+      #main-content-medicoes-hvc.sidebar-collapsed {
+        margin-left: 0;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .form-actions {
+        flex-direction: column;
+      }
+
+      .resumo-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .medicoes-table {
+        font-size: 0.9rem;
+      }
+
+      .medicoes-table th, .medicoes-table td {
+        padding: 0.5rem;
+      }
+
+      .filter-controls {
+        flex-direction: column;
+      }
+
+      .actions-cell {
+        flex-direction: column;
+      }
+    }
+
+    /* Animações */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .form-section, .medicoes-list {
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    /* Notificações */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      z-index: 1001;
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success {
+      background: linear-gradient(135deg, #28a745, #20c997);
+    }
+
+    .notification.error {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+    }
+
+    .notification.warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800);
+      color: #212529;
+    }
+  </style>
+</head>
+<body>
+  <!-- Main Content -->
+  <main id="main-content-medicoes-hvc">
+    <!-- Header -->
+    <div class="page-header">
+      <h1 class="page-title"><i class="fas fa-ruler-combined"></i> Gestão de Medições HVC</h1>
+      <button id="btn-nova-medicao" class="btn-primary">
+        <i class="fas fa-plus"></i>
+        Nova Medição
+      </button>
+    </div>
+
+    <!-- Formulário de Nova Medição -->
+    <div id="form-medicao" class="form-section hidden">
+      <div class="form-title">
+        <i class="fas fa-ruler-combined"></i>
+        <span id="form-title-text">Nova Medição</span>
+      </div>
+
+      <form id="medicao-form">
+        <!-- Dados Básicos -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="numero-medicao" class="form-label">
+              <i class="fas fa-hashtag"></i>
+              Número da Medição *
+            </label>
+            <input type="text" 
+                   id="numero-medicao" 
+                   class="form-input" 
+                   placeholder="Será gerado automaticamente"
+                   readonly>
+          </div>
+
+          <div class="form-group">
+            <label for="obra-selecionada" class="form-label">
+              <i class="fas fa-building"></i>
+              Obra Selecionada *
+            </label>
+            <div style="display: flex; gap: 0.5rem;">
+              <input type="text" 
+                     id="obra-selecionada" 
+                     class="form-input" 
+                     placeholder="Clique para selecionar uma obra"
+                     readonly
+                     style="flex: 1;">
+              <button type="button" id="btn-selecionar-obra" class="btn-secondary">
+                <i class="fas fa-search"></i>
+                Selecionar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tipo de Preço -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tipo-preco" class="form-label">
+              <i class="fas fa-calculator"></i>
+              Tipo de Preço para Cálculo
+            </label>
+            <select id="tipo-preco" class="form-select">
+              <option value="total">Preço Total (Mão de Obra + Material)</option>
+              <option value="mao_obra">Apenas Mão de Obra</option>
+              <option value="material">Apenas Material</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label for="desconto-valor" class="form-label">
+              <i class="fas fa-percentage"></i>
+              Desconto (R$)
+            </label>
+            <input type="number" 
+                   id="desconto-valor" 
+                   class="form-input" 
+                   placeholder="0,00"
+                   step="0.01"
+                   min="0">
+          </div>
+        </div>
+
+        <!-- Serviços da Obra -->
+        <div class="form-group">
+          <label class="form-label">
+            <i class="fas fa-tools"></i>
+            Serviços da Obra
+          </label>
+          <button type="button" id="btn-selecionar-servicos" class="btn-secondary" disabled>
+            <i class="fas fa-plus-circle"></i>
+            Selecionar Serviços
+          </button>
+        </div>
+
+        <!-- Serviços Selecionados -->
+        <div id="servicos-selecionados" class="servicos-selecionados" style="display: none;">
+          <h3>
+            <i class="fas fa-list-check"></i>
+            Serviços Selecionados
+          </h3>
+          <div id="lista-servicos-selecionados">
+            <!-- Serviços serão adicionados aqui dinamicamente -->
+          </div>
+        </div>
+
+        <!-- Resumo Financeiro -->
+        <div id="resumo-financeiro" class="resumo-financeiro" style="display: none;">
+          <h3>
+            <i class="fas fa-calculator"></i>
+            Resumo Financeiro
+          </h3>
+          <div class="resumo-grid">
+            <div class="resumo-item">
+              <h4>Valor Bruto</h4>
+              <div class="valor" id="valor-bruto">R$ 0,00</div>
+            </div>
+            <div class="resumo-item">
+              <h4>Desconto</h4>
+              <div class="valor" id="valor-desconto">R$ 0,00</div>
+            </div>
+            <div class="resumo-item">
+              <h4>Valor Total</h4>
+              <div class="valor" id="valor-total">R$ 0,00</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Previsão de Pagamento e Boleto -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="previsao-pagamento" class="form-label">
+              <i class="fas fa-calendar-alt"></i>
+              Previsão de Pagamento
+            </label>
+            <input type="date" 
+                   id="previsao-pagamento" 
+                   class="form-input">
+          </div>
+
+          <div class="form-group">
+            <label for="emitir-boleto" class="form-label">
+              <i class="fas fa-file-invoice"></i>
+              Emitir Boleto
+            </label>
+            <select id="emitir-boleto" class="form-select">
+              <option value="false">Não</option>
+              <option value="true">Sim</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Observações -->
+        <div class="form-group">
+          <label for="observacoes-medicao" class="form-label">
+            <i class="fas fa-sticky-note"></i>
+            Observações da Medição
+          </label>
+          <textarea id="observacoes-medicao" 
+                    class="form-textarea" 
+                    placeholder="Observações adicionais sobre a medição..."
+                    rows="4"></textarea>
+        </div>
+
+        <!-- Botões de Ação -->
+        <div class="form-actions">
+          <button type="button" id="btn-cancelar" class="btn-secondary">
+            <i class="fas fa-times"></i>
+            Cancelar
+          </button>
+          <button type="submit" class="btn-success">
+            <i class="fas fa-save"></i>
+            Salvar Medição
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <!-- Lista de Medições -->
+    <div class="medicoes-list">
+      <div class="form-title">
+        <i class="fas fa-list"></i>
+        Lista de Medições
+      </div>
+
+      <!-- Filtros -->
+      <div class="filter-controls">
+        <div style="flex: 1; min-width: 200px;">
+          <label for="filtro-busca-medicao">
+            <i class="fas fa-search"></i> Buscar
+          </label>
+          <input type="text" 
+                 id="filtro-busca-medicao" 
+                 placeholder="Número, obra..." 
+                 class="form-input"
+                 style="width: 100%;">
+        </div>
+        
+        <div style="min-width: 150px;">
+          <label for="filtro-status-medicao">
+            <i class="fas fa-filter"></i> Status
+          </label>
+          <select id="filtro-status-medicao" class="form-select" style="width: 100%;">
+            <option value="">Todos</option>
+            <option value="pendente">Pendente</option>
+            <option value="aprovada">Aprovada</option>
+            <option value="paga">Paga</option>
+            <option value="cancelada">Cancelada</option>
+          </select>
+        </div>
+        
+        <div style="min-width: 150px;">
+          <label for="filtro-obra-medicao">
+            <i class="fas fa-building"></i> Obra
+          </label>
+          <select id="filtro-obra-medicao" class="form-select" style="width: 100%;">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        
+        <div style="display: flex; align-items: end;">
+          <button type="button" class="btn-secondary" id="btn-limpar-filtros">
+            <i class="fas fa-times"></i>
+            Limpar
+          </button>
+        </div>
+      </div>
+
+      <table class="medicoes-table">
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Obra</th>
+            <th>Valor Total</th>
+            <th>Status</th>
+            <th>Previsão Pagamento</th>
+            <th>Boleto</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="medicoes-tbody">
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 2rem; color: #888;">
+              <i class="fas fa-ruler-combined" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+              Nenhuma medição encontrada. Clique em "Nova Medição" para começar.
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Modal de Seleção de Obra -->
+  <div id="modal-obras" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-building"></i>
+          Selecionar Obra
+        </h3>
+        <button class="close-modal" id="close-modal-obras">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div style="margin-bottom: 1rem;">
+        <input type="text" 
+               id="filtro-obras-modal" 
+               placeholder="Buscar obra..." 
+               class="form-input"
+               style="width: 100%;">
+      </div>
+      
+      <div id="lista-obras" style="max-height: 400px; overflow-y: auto;">
+        <!-- Lista de obras será carregada aqui -->
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-obras">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Seleção de Serviços -->
+  <div id="modal-servicos" class="modal">
+    <div class="modal-content" style="max-width: 1000px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-tools"></i>
+          Selecionar Serviços da Obra
+        </h3>
+        <button class="close-modal" id="close-modal-servicos">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div id="lista-servicos-obra">
+        <!-- Lista de serviços será carregada aqui -->
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-servicos">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+        <button type="button" class="btn-success" id="btn-confirmar-servicos">
+          <i class="fas fa-check"></i>
+          Confirmar Seleção
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal de Histórico de Previsões -->
+  <div id="modal-previsoes" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-history"></i>
+          Histórico de Previsões de Pagamento
+        </h3>
+        <button class="close-modal" id="close-modal-previsoes">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div id="lista-previsoes">
+        <!-- Histórico será carregado aqui -->
+      </div>
+      
+      <div style="margin: 1rem 0; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+        <h4 style="color: #add8e6; margin-bottom: 1rem;">Adicionar Nova Previsão</h4>
+        <div style="display: flex; gap: 1rem; align-items: end;">
+          <div style="flex: 1;">
+            <label for="nova-previsao-data" class="form-label">Nova Data</label>
+            <input type="date" id="nova-previsao-data" class="form-input">
+          </div>
+          <div style="flex: 2;">
+            <label for="motivo-alteracao" class="form-label">Motivo da Alteração</label>
+            <input type="text" id="motivo-alteracao" class="form-input" placeholder="Ex: Atraso na obra">
+          </div>
+          <button type="button" id="btn-adicionar-previsao" class="btn-success">
+            <i class="fas fa-plus"></i>
+            Adicionar
+          </button>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-previsoes">
+          <i class="fas fa-times"></i>
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script type="module" src="sidebar.js"></script>
+  <script type="module" src="medicoes-hvc.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    
+    // Injetar sidebar quando a página carregar
+    document.addEventListener('DOMContentLoaded', function() {
+      injectSidebar('main-content-medicoes-hvc', 'Hvc');
+    });
+  </script>
+</body>
+</html>
+
