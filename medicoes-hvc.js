@@ -775,14 +775,18 @@ class MedicoesManager {
                 <div class="servico-info">
                     <strong>${item.servicos_hvc?.codigo}</strong> - ${item.servicos_hvc?.descricao}<br>
                     <small>Proposta: ${item.propostas_hvc?.numero_proposta} | 
-                           Disponível: ${item.quantidade} ${item.servicos_hvc?.unidade || ''} | 
-                           Preço: ${this.formatMoney((precoUnitario / 100) || 0)}</small>
+                           Disponível: ${item.quantidade} ${item.servicos_hvc?.unidade || ''}</small>
+                    <div class="preco-info">
+                        <span class="preco-unitario">Preço: ${this.formatMoney((precoUnitario / 100) || 0)}</span>
+                        <span class="preco-tipo">(${tipoPreco === 'total' ? 'Total' : tipoPreco === 'mao_obra' ? 'Mão de Obra' : 'Material'})</span>
+                    </div>
                 </div>
                 <div class="servico-quantidade">
                     <label>Quantidade Medida:</label>
                     <input type="number" 
                            class="quantidade-input" 
                            data-index="${index}"
+                           data-servico-id="${item.id}"
                            value="${item.quantidade_medida || 0}"
                            min="0" 
                            max="${item.quantidade}"
@@ -836,7 +840,17 @@ class MedicoesManager {
                     precoUnitario = item.preco_total || 0;
             }
             
+            // Preço já está em centavos, então dividimos por 100 para converter para reais
             valorBruto += quantidade * (precoUnitario / 100);
+            
+            // Atualizar o preço exibido no item
+            const servicoDiv = document.querySelector(`[data-servico-id="${item.id}"]`);
+            if (servicoDiv) {
+                const precoElement = servicoDiv.querySelector('.preco-unitario');
+                if (precoElement) {
+                    precoElement.textContent = `Preço: R$ ${(precoUnitario / 100).toFixed(2)}`;
+                }
+            }
         });
         
         const valorDesconto = desconto;
