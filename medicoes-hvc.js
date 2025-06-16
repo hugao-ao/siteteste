@@ -348,6 +348,12 @@ class MedicoesManager {
             )];
             const clientesTexto = clientesUnicos.length > 0 ? clientesUnicos.join(', ') : 'Sem clientes';
             
+            // Verificar se a obra tem propostas com serviços
+            const temPropostas = obra.obras_propostas && obra.obras_propostas.length > 0;
+            const statusPropostas = temPropostas ? 
+                `✅ ${obra.obras_propostas.length} proposta(s)` : 
+                '⚠️ Sem propostas';
+            
             const obraItem = document.createElement('div');
             obraItem.className = 'obra-item';
             obraItem.style.cssText = `
@@ -360,17 +366,21 @@ class MedicoesManager {
                 background: rgba(255, 255, 255, 0.05);
                 cursor: pointer;
                 transition: all 0.3s ease;
+                ${!temPropostas ? 'border-left: 4px solid #ffc107;' : 'border-left: 4px solid #28a745;'}
             `;
             
             obraItem.innerHTML = `
                 <div style="flex: 1;">
                     <strong style="color: #add8e6;">${obra.numero_obra}</strong><br>
                     <small style="color: #e0e0e0;">Clientes: ${clientesTexto}</small><br>
-                    <small style="color: #20c997;">Status: ${obra.status}</small>
+                    <small style="color: #20c997;">Status: ${obra.status}</small><br>
+                    <small style="color: ${temPropostas ? '#28a745' : '#ffc107'};">${statusPropostas}</small>
                 </div>
-                <button class="btn btn-success" onclick="window.medicoesManager.selecionarObra('${obra.id}')">
-                    <i class="fas fa-check"></i>
-                    Selecionar
+                <button class="btn ${temPropostas ? 'btn-success' : 'btn-warning'}" 
+                        onclick="window.medicoesManager.selecionarObra('${obra.id}')"
+                        ${!temPropostas ? 'title="Esta obra não possui propostas com serviços"' : ''}>
+                    <i class="fas fa-${temPropostas ? 'check' : 'exclamation-triangle'}"></i>
+                    ${temPropostas ? 'Selecionar' : 'Sem Serviços'}
                 </button>
             `;
             
@@ -548,19 +558,29 @@ class MedicoesManager {
                 return;
             }
             
-            // Verificar se a obra tem propostas associadas
-            if (!this.obraSelecionada.obras_propostas || this.obraSelecionada.obras_propostas.length === 0) {
+            // NOVA ABORDAGEM: Buscar diretamente pelos serviços da obra
+            // Primeiro, buscar as propostas da obra
+            const { data: obrasPropostas, error: errorObrasPropostas } = await supabaseClient
+                .from('obras_propostas')
+                .select('proposta_id')
+                .eq('obra_id', this.obraSelecionada.id);
+            
+            if (errorObrasPropostas) {
+                console.error('Erro ao buscar propostas da obra:', errorObrasPropostas);
+                throw errorObrasPropostas;
+            }
+            
+            console.log('Propostas da obra encontradas:', obrasPropostas);
+            
+            if (!obrasPropostas || obrasPropostas.length === 0) {
                 console.log('Obra não possui propostas associadas');
                 this.servicosObra = [];
                 return;
             }
             
-            // Extrair IDs das propostas, filtrando valores undefined/null
-            const propostaIds = this.obraSelecionada.obras_propostas
-                .map(op => op.proposta_id)
-                .filter(id => id && id !== 'undefined' && id !== null);
-            
-            console.log('IDs das propostas encontradas:', propostaIds);
+            // Extrair IDs das propostas
+            const propostaIds = obrasPropostas.map(op => op.proposta_id).filter(id => id);
+            console.log('IDs das propostas:', propostaIds);
             
             if (propostaIds.length === 0) {
                 console.log('Nenhuma proposta válida encontrada');
@@ -568,22 +588,27 @@ class MedicoesManager {
                 return;
             }
             
-            // Buscar todos os serviços das propostas da obra
-            const { data, error } = await supabaseClient
+            // Buscar os itens das propostas (serviços)
+            const { data: itensPropostas, error: errorItens } = await supabaseClient
                 .from('itens_proposta_hvc')
                 .select(`
                     *,
                     servicos_hvc (*),
-                    propostas_hvc (numero_proposta)
+                    propostas_hvc (
+                        numero_proposta,
+                        clientes_hvc (nome)
+                    )
                 `)
                 .in('proposta_id', propostaIds);
             
-            if (error) {
-                console.error('Erro na consulta SQL:', error);
-                throw error;
+            if (errorItens) {
+                console.error('Erro ao buscar itens das propostas:', errorItens);
+                throw errorItens;
             }
             
-            this.servicosObra = data || [];
+            console.log('Itens das propostas encontrados:', itensPropostas);
+            
+            this.servicosObra = itensPropostas || [];
             console.log('Serviços da obra carregados:', this.servicosObra.length);
             
         } catch (error) {
