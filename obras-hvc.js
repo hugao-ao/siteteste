@@ -609,6 +609,19 @@ class ObrasManager {
             const servicosArrays = await Promise.all(servicosPromises);
             const todosServicos = servicosArrays.flat();
             
+            // Carregar andamentos existentes para esta obra
+            let andamentosExistentes = [];
+            if (this.currentObraId) {
+                const { data: andamentos, error: errorAndamentos } = await supabaseClient
+                    .from('servicos_andamento')
+                    .select('*')
+                    .eq('obra_id', this.currentObraId);
+                
+                if (!errorAndamentos) {
+                    andamentosExistentes = andamentos || [];
+                }
+            }
+            
             if (todosServicos.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 2rem; color: #888;">
@@ -640,6 +653,9 @@ class ObrasManager {
             const tbody = document.getElementById('servicos-andamento-tbody');
             
             todosServicos.forEach((item, index) => {
+                // Buscar andamento existente para este item
+                const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${item.propostas_hvc?.numero_proposta}</strong></td>
@@ -650,15 +666,16 @@ class ObrasManager {
                     <td>${item.quantidade} ${item.servicos_hvc?.unidade || ''}</td>
                     <td>
                         <select class="form-select status-servico" data-index="${index}" style="width: 150px;">
-                            <option value="PENDENTE">Pendente</option>
-                            <option value="INICIADO">Iniciado</option>
-                            <option value="CONCLUIDO">Concluído</option>
+                            <option value="PENDENTE" ${andamentoExistente?.status === 'PENDENTE' ? 'selected' : ''}>Pendente</option>
+                            <option value="INICIADO" ${andamentoExistente?.status === 'INICIADO' ? 'selected' : ''}>Iniciado</option>
+                            <option value="CONCLUIDO" ${andamentoExistente?.status === 'CONCLUIDO' ? 'selected' : ''}>Concluído</option>
                         </select>
                     </td>
                     <td>
                         <input type="date" 
                                class="form-input previsao-servico" 
                                data-index="${index}"
+                               value="${andamentoExistente?.previsao_conclusao || ''}"
                                style="width: 150px;">
                     </td>
                     <td>
@@ -666,7 +683,7 @@ class ObrasManager {
                                   data-index="${index}"
                                   placeholder="Digite suas observações..."
                                   rows="2"
-                                  style="width: 200px; min-height: 60px; resize: vertical;">${item.servicos_andamento?.observacoes || ''}</textarea>
+                                  style="width: 200px; min-height: 60px; resize: vertical;">${andamentoExistente?.observacoes || ''}</textarea>
                     </td>
                 `;
                 tbody.appendChild(row);
@@ -813,6 +830,11 @@ class ObrasManager {
                             onclick="window.obrasManager.gerenciarAndamento('${obra.id}')"
                             title="Gerenciar andamento">
                         <i class="fas fa-tasks"></i>
+                    </button>
+                    <button class="btn btn-danger" 
+                            onclick="window.obrasManager.deleteObra('${obra.id}')"
+                            title="Excluir obra">
+                        <i class="fas fa-trash"></i>
                     </button>
                 </td>
             `;
