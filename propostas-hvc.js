@@ -5,52 +5,27 @@
 import { supabase } from './supabase.js';
 
 // Aguardar carregamento do Supabase
-let supabaseClient = supabase;
+let supabase = supabase;
 let propostasManager = null;
 
 // Inicializar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
-    // Aguardar um pouco para o Supabase carregar
-    setTimeout(initializeApp, 1000);
+    console.log('DOM carregado, inicializando PropostasManager...');
+    initializeApp();
 });
 
 function initializeApp() {
-    // Verificar se o Supabase está disponível
-    if (typeof supabase !== 'undefined') {
-        supabaseClient = supabase;
-    } else {
-        loadSupabaseFromCDN();
-        return;
+    try {
+        // Inicializar o gerenciador de propostas
+        propostasManager = new PropostasManager();
+        
+        // Expor globalmente para uso nos event handlers inline
+        window.propostasManager = propostasManager;
+        
+        console.log('PropostasManager inicializado com sucesso!');
+    } catch (error) {
+        console.error('Erro ao inicializar PropostasManager:', error);
     }
-    
-    // Inicializar o gerenciador de propostas
-    propostasManager = new PropostasManager();
-    
-    // Expor globalmente para uso nos event handlers inline
-    window.propostasManager = propostasManager;
-}
-
-function loadSupabaseFromCDN() {
-    // Criar cliente Supabase diretamente
-    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
-    
-    // Carregar Supabase via script
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    script.onload = function() {
-        if (window.supabase && window.supabase.createClient) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            propostasManager = new PropostasManager();
-            window.propostasManager = propostasManager;
-        } else {
-            console.error('Erro ao carregar Supabase via CDN');
-        }
-    };
-    script.onerror = function() {
-        console.error('Erro ao carregar script do Supabase');
-    };
-    document.head.appendChild(script);
 }
 
 // NOVA FUNÇÃO: Garantir formato numérico correto
@@ -295,12 +270,12 @@ class PropostasManager {
     // === CLIENTES ===
     async loadClientes() {
         try {
-            if (!supabaseClient) {
+            if (!supabase) {
                 console.error('Supabase client não disponível');
                 return;
             }
             
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('clientes_hvc')
                 .select('*')
                 .order('nome');
@@ -362,7 +337,7 @@ class PropostasManager {
         };
 
         try {
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('clientes_hvc')
                 .insert([clienteData])
                 .select()
@@ -390,12 +365,12 @@ class PropostasManager {
     // === SERVIÇOS ===
     async loadServicos() {
         try {
-            if (!supabaseClient) {
+            if (!supabase) {
                 console.error('Supabase client não disponível');
                 return;
             }
             
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('servicos_hvc')
                 .select('*')
                 .order('codigo');
@@ -442,7 +417,7 @@ class PropostasManager {
         };
 
         try {
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('servicos_hvc')
                 .insert([servicoData])
                 .select()
@@ -541,7 +516,7 @@ class PropostasManager {
 
     async loadItensProposta(propostaId) {
         try {
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('itens_proposta_hvc')
                 .select(`
                     *,
@@ -1000,7 +975,7 @@ class PropostasManager {
             
             if (this.currentPropostaId) {
                 // Atualizar proposta existente
-                const { data, error } = await supabaseClient
+                const { data, error } = await supabase
                     .from('propostas_hvc')
                     .update(propostaData)
                     .eq('id', this.currentPropostaId)
@@ -1012,7 +987,7 @@ class PropostasManager {
                 
             } else {
                 // Criar nova proposta
-                const { data, error } = await supabaseClient
+                const { data, error } = await supabase
                     .from('propostas_hvc')
                     .insert([propostaData])
                     .select()
@@ -1040,7 +1015,7 @@ class PropostasManager {
 
     async saveItensProposta(propostaId) {
         // Remover itens existentes
-        await supabaseClient
+        await supabase
             .from('itens_proposta_hvc')
             .delete()
             .eq('proposta_id', propostaId);
@@ -1063,7 +1038,7 @@ class PropostasManager {
         });
 
         if (itens.length > 0) {
-            const { error } = await supabaseClient
+            const { error } = await supabase
                 .from('itens_proposta_hvc')
                 .insert(itens);
 
@@ -1108,12 +1083,12 @@ class PropostasManager {
     // === LISTA DE PROPOSTAS CORRIGIDA ===
     async loadPropostas() {
         try {
-            if (!supabaseClient) {
+            if (!supabase) {
                 console.error('Supabase client não disponível');
                 return;
             }
             
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('propostas_hvc')
                 .select(`
                     *,
@@ -1205,7 +1180,7 @@ class PropostasManager {
 
     async editProposta(propostaId) {
         try {
-            const { data, error } = await supabaseClient
+            const { data, error } = await supabase
                 .from('propostas_hvc')
                 .select('*')
                 .eq('id', propostaId)
@@ -1227,7 +1202,7 @@ class PropostasManager {
         }
 
         try {
-            const { error } = await supabaseClient
+            const { error } = await supabase
                 .from('propostas_hvc')
                 .delete()
                 .eq('id', propostaId);
