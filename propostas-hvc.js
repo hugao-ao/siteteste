@@ -1,32 +1,53 @@
-// propostas-hvc.js - Versão CORRIGIDA - Inicialização do PropostasManager
-// Importar Supabase
-import { supabase } from './supabase.js';
+// propostas-hvc.js - Versão CORRIGIDA - Numeric Field Overflow Fix
+// Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
-let supabaseClient = supabase;
+let supabaseClient = null;
 let propostasManager = null;
 
 // Inicializar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado, inicializando PropostasManager...');
-    initializeApp();
+    // Aguardar um pouco para o Supabase carregar
+    setTimeout(initializeApp, 1000);
 });
 
-async function initializeApp() {
-    try {
-        // Aguardar um pouco para garantir que todos os scripts carregaram
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Inicializar o gerenciador de propostas
-        propostasManager = new PropostasManager();
-        
-        // Expor globalmente para uso nos event handlers inline
-        window.propostasManager = propostasManager;
-        
-        console.log('PropostasManager inicializado com sucesso!');
-    } catch (error) {
-        console.error('Erro ao inicializar PropostasManager:', error);
+function initializeApp() {
+    // Verificar se o Supabase está disponível
+    if (typeof supabase !== 'undefined') {
+        supabaseClient = supabase;
+    } else {
+        loadSupabaseFromCDN();
+        return;
     }
+    
+    // Inicializar o gerenciador de propostas
+    propostasManager = new PropostasManager();
+    
+    // Expor globalmente para uso nos event handlers inline
+    window.propostasManager = propostasManager;
+}
+
+function loadSupabaseFromCDN() {
+    // Criar cliente Supabase diretamente
+    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
+    
+    // Carregar Supabase via script
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    script.onload = function() {
+        if (window.supabase && window.supabase.createClient) {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            propostasManager = new PropostasManager();
+            window.propostasManager = propostasManager;
+        } else {
+            console.error('Erro ao carregar Supabase via CDN');
+        }
+    };
+    script.onerror = function() {
+        console.error('Erro ao carregar script do Supabase');
+    };
+    document.head.appendChild(script);
 }
 
 // NOVA FUNÇÃO: Garantir formato numérico correto
@@ -70,9 +91,6 @@ class PropostasManager {
 
     async init() {
         try {
-            // Aguardar o Supabase estar disponível
-            await this.waitForSupabase();
-            
             await this.loadClientes();
             await this.loadServicos();
             await this.loadPropostas();
@@ -83,34 +101,6 @@ class PropostasManager {
         } catch (error) {
             console.error('Erro ao inicializar PropostasManager:', error);
         }
-    }
-
-    async waitForSupabase() {
-        let attempts = 0;
-        const maxAttempts = 20;
-        
-        while (attempts < maxAttempts) {
-            // Verificar múltiplas formas de acesso ao Supabase
-            if (window.supabaseClient || window.supabase || supabaseClient || (typeof supabase !== 'undefined')) {
-                console.log('Supabase encontrado para PropostasManager!');
-                
-                // Definir referência global
-                if (!window.supabaseClient) {
-                    window.supabaseClient = window.supabase || supabaseClient || supabase;
-                }
-                
-                // Atualizar referência local
-                supabaseClient = window.supabaseClient;
-                
-                return;
-            }
-            
-            attempts++;
-            console.log(`Tentativa ${attempts}: Aguardando Supabase para PropostasManager...`);
-            await new Promise(resolve => setTimeout(resolve, 200));
-        }
-        
-        throw new Error('Supabase não encontrado após múltiplas tentativas');
     }
 
     // === ATUALIZAR CABEÇALHOS DA TABELA ===
@@ -131,132 +121,195 @@ class PropostasManager {
         }
     }
 
-    // === CONTROLES DE FILTRO ===
+    // === NOVA FUNCIONALIDADE: FILTROS ===
     addFilterControls() {
-        // Verificar se já existem controles de filtro
-        if (document.getElementById('filter-controls')) return;
+        const proposalsList = document.querySelector('.proposals-list');
+        if (!proposalsList) return;
 
-        const listSection = document.getElementById('list-section');
-        if (!listSection) return;
-
+        // Criar controles de filtro
         const filterControls = document.createElement('div');
-        filterControls.id = 'filter-controls';
         filterControls.className = 'filter-controls';
+        filterControls.style.cssText = `
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(173, 216, 230, 0.2);
+            flex-wrap: wrap;
+        `;
+
         filterControls.innerHTML = `
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="filter-status">Status:</label>
-                    <select id="filter-status" onchange="window.propostasManager.applyFilters()">
-                        <option value="">Todos os status</option>
-                        <option value="Rascunho">Rascunho</option>
-                        <option value="Enviada">Enviada</option>
-                        <option value="Aprovada">Aprovada</option>
-                        <option value="Rejeitada">Rejeitada</option>
-                        <option value="Em Execução">Em Execução</option>
-                        <option value="Concluída">Concluída</option>
-                        <option value="Cancelada">Cancelada</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="filter-cliente">Cliente:</label>
-                    <select id="filter-cliente" onchange="window.propostasManager.applyFilters()">
-                        <option value="">Todos os clientes</option>
-                    </select>
-                </div>
-                
-                <div class="filter-group">
-                    <label for="filter-numero">Número:</label>
-                    <input type="text" id="filter-numero" placeholder="Buscar por número..." 
-                           onkeyup="window.propostasManager.applyFilters()">
-                </div>
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-search"></i> Buscar
+                </label>
+                <input type="text" 
+                       id="filtro-busca" 
+                       placeholder="Número, cliente..." 
+                       class="form-input"
+                       style="width: 100%;"
+                       onkeyup="window.propostasManager.filtrarPropostas()">
             </div>
             
-            <div class="filter-row">
-                <div class="filter-group">
-                    <label for="filter-data-inicio">Data início:</label>
-                    <input type="date" id="filter-data-inicio" onchange="window.propostasManager.applyFilters()">
-                </div>
-                
-                <div class="filter-group">
-                    <label for="filter-data-fim">Data fim:</label>
-                    <input type="date" id="filter-data-fim" onchange="window.propostasManager.applyFilters()">
-                </div>
-                
-                <div class="filter-group">
-                    <button type="button" class="btn-secondary" onclick="window.propostasManager.clearFilters()">
-                        <i class="fas fa-times"></i> Limpar Filtros
-                    </button>
-                </div>
+            <div style="min-width: 150px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-filter"></i> Status
+                </label>
+                <select id="filtro-status" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Aprovada">Aprovada</option>
+                    <option value="Recusada">Recusada</option>
+                </select>
+            </div>
+            
+            <div style="min-width: 150px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-user"></i> Cliente
+                </label>
+                <select id="filtro-cliente" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            
+            <div style="min-width: 120px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-calendar"></i> Período
+                </label>
+                <select id="filtro-periodo" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="semana">Esta Semana</option>
+                    <option value="mes">Este Mês</option>
+                    <option value="trimestre">Últimos 3 Meses</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; align-items: end;">
+                <button type="button" 
+                        class="btn-secondary" 
+                        onclick="window.propostasManager.limparFiltros()"
+                        style="height: fit-content;">
+                    <i class="fas fa-times"></i>
+                    Limpar
+                </button>
             </div>
         `;
 
         // Inserir antes da tabela
-        const tableContainer = listSection.querySelector('.table-container') || 
-                              listSection.querySelector('table')?.parentElement;
-        if (tableContainer) {
-            listSection.insertBefore(filterControls, tableContainer);
-        }
+        const tableContainer = proposalsList.querySelector('.form-title').nextElementSibling;
+        proposalsList.insertBefore(filterControls, tableContainer);
     }
 
-    setupMasks() {
-        // Implementar máscaras se necessário
-        console.log('Máscaras configuradas');
+    populateClienteFilter() {
+        const filtroCliente = document.getElementById('filtro-cliente');
+        if (!filtroCliente) return;
+
+        // Limpar opções existentes (exceto "Todos")
+        filtroCliente.innerHTML = '<option value="">Todos</option>';
+
+        // Adicionar clientes únicos das propostas
+        const clientesUnicos = [...new Set(this.propostas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
+        clientesUnicos.sort().forEach(nomeCliente => {
+            const option = document.createElement('option');
+            option.value = nomeCliente;
+            option.textContent = nomeCliente;
+            filtroCliente.appendChild(option);
+        });
     }
 
-    setupEventListeners() {
-        console.log('Configurando event listeners...');
-        
-        try {
-            // Botão Nova Proposta
-            const btnNovaProposta = document.getElementById('btn-nova-proposta');
-            if (btnNovaProposta) {
-                btnNovaProposta.addEventListener('click', () => this.showFormProposta());
+    filtrarPropostas() {
+        const busca = document.getElementById('filtro-busca')?.value.toLowerCase() || '';
+        const status = document.getElementById('filtro-status')?.value || '';
+        const cliente = document.getElementById('filtro-cliente')?.value || '';
+        const periodo = document.getElementById('filtro-periodo')?.value || '';
+
+        let propostasFiltradas = this.propostas.filter(proposta => {
+            // Filtro de busca
+            if (busca) {
+                const textoBusca = `${proposta.numero_proposta} ${proposta.clientes_hvc?.nome || ''}`.toLowerCase();
+                if (!textoBusca.includes(busca)) return false;
             }
 
-            // Botão Voltar
-            const btnVoltar = document.getElementById('btn-voltar');
-            if (btnVoltar) {
-                btnVoltar.addEventListener('click', () => this.hideFormProposta());
+            // Filtro de status
+            if (status && proposta.status !== status) return false;
+
+            // Filtro de cliente
+            if (cliente && proposta.clientes_hvc?.nome !== cliente) return false;
+
+            // Filtro de período
+            if (periodo) {
+                const dataProposta = new Date(proposta.created_at);
+                const hoje = new Date();
+                
+                switch (periodo) {
+                    case 'hoje':
+                        if (dataProposta.toDateString() !== hoje.toDateString()) return false;
+                        break;
+                    case 'semana':
+                        const inicioSemana = new Date(hoje);
+                        inicioSemana.setDate(hoje.getDate() - 7);
+                        if (dataProposta < inicioSemana) return false;
+                        break;
+                    case 'mes':
+                        const inicioMes = new Date(hoje);
+                        inicioMes.setDate(hoje.getDate() - 30);
+                        if (dataProposta < inicioMes) return false;
+                        break;
+                    case 'trimestre':
+                        const inicioTrimestre = new Date(hoje);
+                        inicioTrimestre.setDate(hoje.getDate() - 90);
+                        if (dataProposta < inicioTrimestre) return false;
+                        break;
+                }
             }
 
-            // Formulário de proposta
-            const formProposta = document.getElementById('form-proposta');
-            if (formProposta) {
-                formProposta.addEventListener('submit', (e) => this.handleSubmitProposta(e));
-            }
+            return true;
+        });
 
-            // Botões de adicionar
-            const btnAddServico = document.getElementById('btn-add-servico');
-            if (btnAddServico) {
-                btnAddServico.addEventListener('click', () => this.showServicoSelectionModal());
-            }
+        this.renderPropostas(propostasFiltradas);
+    }
 
-            const btnAddCliente = document.getElementById('btn-add-cliente');
-            if (btnAddCliente) {
-                btnAddCliente.addEventListener('click', () => this.showModalCliente());
-            }
-
-            console.log('Event listeners configurados!');
-        } catch (error) {
-            console.error('Erro ao configurar event listeners:', error);
-        }
+    limparFiltros() {
+        document.getElementById('filtro-busca').value = '';
+        document.getElementById('filtro-status').value = '';
+        document.getElementById('filtro-cliente').value = '';
+        document.getElementById('filtro-periodo').value = '';
+        this.renderPropostas(this.propostas);
     }
 
     // === CLIENTES ===
     async loadClientes() {
         try {
-            console.log('Carregando clientes...');
+            if (!supabaseClient) {
+                console.error('Supabase client não disponível');
+                return;
+            }
+            
             const { data, error } = await supabaseClient
                 .from('clientes_hvc')
                 .select('*')
                 .order('nome');
 
-            if (error) throw error;
+            if (error) {
+                console.error('Erro na query de clientes:', error);
+                throw error;
+            }
 
             this.clientes = data || [];
             this.populateClienteSelect();
-            console.log('Clientes carregados:', data?.length || 0);
+            
         } catch (error) {
             console.error('Erro ao carregar clientes:', error);
             this.showNotification('Erro ao carregar clientes: ' + error.message, 'error');
@@ -278,49 +331,21 @@ class PropostasManager {
     }
 
     showModalCliente() {
-        console.log('Abrindo modal de cliente...');
-        
-        // Criar modal dinamicamente
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.id = 'modal-cliente-temp';
-        modal.innerHTML = `
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h3>Adicionar Novo Cliente</h3>
-                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove()">×</button>
-                </div>
-                <form id="form-cliente-temp">
-                    <div class="form-group">
-                        <label for="cliente-nome">Nome *</label>
-                        <input type="text" id="cliente-nome" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="cliente-documento">Documento *</label>
-                        <input type="text" id="cliente-documento" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="cliente-tipo">Tipo de Documento *</label>
-                        <select id="cliente-tipo" required>
-                            <option value="">Selecione...</option>
-                            <option value="CPF">CPF</option>
-                            <option value="CNPJ">CNPJ</option>
-                        </select>
-                    </div>
-                    <div class="form-actions">
-                        <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
-                        <button type="submit" class="btn-primary">Salvar Cliente</button>
-                    </div>
-                </form>
-            </div>
-        `;
-        
-        document.body.appendChild(modal);
-        modal.style.display = 'flex';
-        
-        // Event listener para o formulário
-        const form = document.getElementById('form-cliente-temp');
-        form.addEventListener('submit', (e) => this.handleSubmitCliente(e));
+        const modal = document.getElementById('modal-cliente');
+        if (modal) {
+            modal.classList.add('show');
+            const nomeInput = document.getElementById('cliente-nome');
+            if (nomeInput) nomeInput.focus();
+        }
+    }
+
+    hideModalCliente() {
+        const modal = document.getElementById('modal-cliente');
+        if (modal) {
+            modal.classList.remove('show');
+            const form = document.getElementById('cliente-form');
+            if (form) form.reset();
+        }
     }
 
     async handleSubmitCliente(e) {
@@ -328,102 +353,332 @@ class PropostasManager {
         
         const clienteData = {
             nome: document.getElementById('cliente-nome').value,
-            documento: document.getElementById('cliente-documento').value,
-            tipo_documento: document.getElementById('cliente-tipo').value
+            email: document.getElementById('cliente-email').value,
+            telefone: document.getElementById('cliente-telefone').value,
+            endereco: document.getElementById('cliente-endereco').value
         };
 
         try {
             const { data, error } = await supabaseClient
                 .from('clientes_hvc')
                 .insert([clienteData])
-                .select();
+                .select()
+                .single();
 
             if (error) throw error;
 
-            // Fechar modal
-            document.getElementById('modal-cliente-temp').remove();
-            
-            // Recarregar clientes
-            await this.loadClientes();
+            this.clientes.push(data);
+            this.populateClienteSelect();
             
             // Selecionar o cliente recém-criado
-            if (data && data[0]) {
-                document.getElementById('cliente-select').value = data[0].id;
+            const clienteSelect = document.getElementById('cliente-select');
+            if (clienteSelect) {
+                clienteSelect.value = data.id;
             }
             
+            this.hideModalCliente();
             this.showNotification('Cliente adicionado com sucesso!', 'success');
         } catch (error) {
-            console.error('Erro ao salvar cliente:', error);
-            this.showNotification('Erro ao salvar cliente: ' + error.message, 'error');
+            console.error('Erro ao adicionar cliente:', error);
+            this.showNotification('Erro ao adicionar cliente: ' + error.message, 'error');
         }
     }
 
     // === SERVIÇOS ===
     async loadServicos() {
         try {
-            console.log('Carregando serviços...');
+            if (!supabaseClient) {
+                console.error('Supabase client não disponível');
+                return;
+            }
+            
             const { data, error } = await supabaseClient
                 .from('servicos_hvc')
                 .select('*')
                 .order('codigo');
 
-            if (error) throw error;
+            if (error) {
+                console.error('Erro na query de serviços:', error);
+                throw error;
+            }
 
             this.servicos = data || [];
-            console.log('Serviços carregados:', data?.length || 0);
+            
         } catch (error) {
             console.error('Erro ao carregar serviços:', error);
             this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
         }
     }
 
-    showServicoSelectionModal() {
-        console.log('Abrindo modal de seleção de serviços...');
-        console.log('Serviços disponíveis:', this.servicos.length);
+    showModalServico() {
+        const modal = document.getElementById('modal-servico');
+        if (modal) {
+            modal.classList.add('show');
+            const codigoInput = document.getElementById('servico-codigo');
+            if (codigoInput) codigoInput.focus();
+        }
+    }
+
+    hideModalServico() {
+        const modal = document.getElementById('modal-servico');
+        if (modal) {
+            modal.classList.remove('show');
+            const form = document.getElementById('servico-form');
+            if (form) form.reset();
+        }
+    }
+
+    async handleSubmitServico(e) {
+        e.preventDefault();
         
+        const servicoData = {
+            codigo: document.getElementById('servico-codigo').value,
+            descricao: document.getElementById('servico-descricao').value,
+            detalhe: document.getElementById('servico-detalhe').value,
+            unidade: document.getElementById('servico-unidade').value
+        };
+
+        try {
+            const { data, error } = await supabaseClient
+                .from('servicos_hvc')
+                .insert([servicoData])
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            this.servicos.push(data);
+            this.hideModalServico();
+            this.showNotification('Serviço criado com sucesso! Agora você pode selecioná-lo.', 'success');
+            
+            // Reabrir modal de seleção após criar o serviço
+            setTimeout(() => {
+                this.addServicoToProposta();
+            }, 1000);
+        } catch (error) {
+            console.error('Erro ao adicionar serviço:', error);
+            this.showNotification('Erro ao adicionar serviço: ' + error.message, 'error');
+        }
+    }
+
+    // === PROPOSTAS ===
+    showFormProposta(proposta = null) {
+        this.currentPropostaId = proposta?.id || null;
+        
+        const formSection = document.getElementById('form-proposta');
+        const titleText = document.getElementById('form-title-text');
+        
+        if (formSection) {
+            if (proposta) {
+                if (titleText) titleText.textContent = 'Editar Proposta';
+                this.populateForm(proposta);
+            } else {
+                if (titleText) titleText.textContent = 'Nova Proposta';
+                this.clearForm();
+            }
+            
+            formSection.classList.remove('hidden');
+            formSection.scrollIntoView({ behavior: 'smooth' });
+        }
+    }
+
+    hideFormProposta() {
+        const formSection = document.getElementById('form-proposta');
+        if (formSection) {
+            formSection.classList.add('hidden');
+        }
+        this.clearForm();
+        this.currentPropostaId = null;
+    }
+
+    clearForm() {
+        const form = document.getElementById('proposta-form');
+        if (form) form.reset();
+        
+        // Reabilitar todos os campos (caso tenham sido desabilitados)
+        const inputs = form.querySelectorAll('input, select, textarea, button');
+        inputs.forEach(input => {
+            input.disabled = false;
+            input.style.opacity = '';
+            input.style.cursor = '';
+            input.title = '';
+        });
+        
+        // Restaurar texto do botão salvar
+        const btnSalvar = document.querySelector('button[type="submit"]');
+        if (btnSalvar) {
+            btnSalvar.textContent = 'Salvar Proposta';
+        }
+        
+        this.servicosAdicionados = [];
+        this.updateServicesTable();
+        this.updateTotal();
+    }
+
+    populateForm(proposta) {
+        const numeroInput = document.getElementById('numero-proposta');
+        const clienteSelect = document.getElementById('cliente-select');
+        const statusSelect = document.getElementById('status-select');
+        const observacoesTextarea = document.getElementById('observacoes');
+        const prazoInput = document.getElementById('prazo-execucao');
+        const tipoPrazoSelect = document.getElementById('tipo-prazo');
+        const formaPagamentoInput = document.getElementById('forma-pagamento');
+              // Preencher campos do formulário
+        if (numeroInput) numeroInput.value = proposta.numero_proposta || '';
+        if (clienteSelect) clienteSelect.value = proposta.cliente_id || '';
+        if (statusSelect) statusSelect.value = proposta.status || 'Pendente';
+        if (observacoesTextarea) observacoesTextarea.value = proposta.observacoes || '';
+        if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
+        if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
+        if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
+        
+        // Carregar itens da proposta
+        this.loadItensProposta(proposta.id);
+    }
+
+    async loadItensProposta(propostaId) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select(`
+                    *,
+                    servicos_hvc (*)
+                `)
+                .eq('proposta_id', propostaId);
+
+            if (error) throw error;
+
+            this.servicosAdicionados = data.map(item => ({
+                servico_id: item.servico_id,
+                servico: item.servicos_hvc,
+                quantidade: ensureNumericValue(item.quantidade),
+                preco_mao_obra: ensureNumericValue(item.preco_mao_obra),
+                preco_material: ensureNumericValue(item.preco_material),
+                preco_total: ensureNumericValue(item.preco_total)
+            }));
+
+            this.updateServicesTable();
+            this.updateTotal();
+        } catch (error) {
+            console.error('Erro ao carregar itens da proposta:', error);
+        }
+    }
+
+    addServicoToProposta() {
         if (this.servicos.length === 0) {
-            this.showNotification('Nenhum serviço encontrado. Crie um serviço primeiro.', 'warning');
+            this.showNotification('Nenhum serviço encontrado. Adicione serviços primeiro.', 'warning');
             return;
         }
         
-        // Criar modal dinamicamente
-        const modal = document.createElement('div');
-        modal.className = 'modal';
-        modal.id = 'modal-servico-selection';
+        this.showServicoSelectionModal();
+    }
+
+    // === NOVA FUNCIONALIDADE: SELEÇÃO MÚLTIPLA ===
+    showServicoSelectionModal() {
+        // Remover modal existente se houver
+        const existingModal = document.querySelector('.modal-selection');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Verificar se há serviços carregados
+        if (!this.servicos || this.servicos.length === 0) {
+            this.showNotification('Nenhum serviço encontrado. Verifique se há serviços cadastrados no banco de dados.', 'error');
+            return;
+        }
+        
+        // Filtrar serviços que já foram adicionados
+        const servicosDisponiveis = this.servicos.filter(servico => 
+            !this.servicosAdicionados.find(s => s.servico_id === servico.id)
+        );
+        
+        if (servicosDisponiveis.length === 0) {
+            this.showNotification('Todos os serviços disponíveis já foram adicionados à proposta.', 'info');
+            return;
+        }
         
         // Criar lista de serviços com checkboxes
-        let servicosHtml = '';
-        this.servicos.forEach(servico => {
-            const jaAdicionado = this.servicosAdicionados.find(s => s.servico_id === servico.id);
-            const disabled = jaAdicionado ? 'disabled' : '';
-            const checkedText = jaAdicionado ? '(já adicionado)' : '';
-            
-            servicosHtml += `
-                <div class="servico-option">
-                    <label>
-                        <input type="checkbox" value="${servico.id}" ${disabled}>
-                        <strong>${servico.codigo}</strong> - ${servico.descricao} ${checkedText}
-                        <br><small>Unidade: ${servico.unidade || 'Não informada'}</small>
-                    </label>
-                </div>
-            `;
+        let servicosCheckboxes = '';
+        servicosDisponiveis.forEach(servico => {
+            if (servico && servico.id && servico.codigo && servico.descricao) {
+                servicosCheckboxes += `
+                    <div style="display: flex; align-items: center; padding: 8px; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 6px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.05);">
+                        <input type="checkbox" 
+                               id="servico-${servico.id}" 
+                               value="${servico.id}" 
+                               style="margin-right: 12px; transform: scale(1.2);">
+                        <label for="servico-${servico.id}" style="flex: 1; cursor: pointer; color: #e0e0e0;">
+                            <strong>${servico.codigo}</strong> - ${servico.descricao}
+                            ${servico.unidade ? `<br><small style="color: #add8e6;">Unidade: ${servico.unidade}</small>` : ''}
+                        </label>
+                    </div>
+                `;
+            }
         });
         
+        // Criar modal dinâmico para seleção múltipla
+        const modal = document.createElement('div');
+        modal.className = 'modal modal-selection show';
         modal.innerHTML = `
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
                 <div class="modal-header">
-                    <h3>Selecionar Serviços</h3>
-                    <button type="button" class="btn-close" onclick="this.closest('.modal').remove()">×</button>
+                    <h3 class="modal-title">
+                        <i class="fas fa-tasks"></i>
+                        Selecionar Serviços (Múltipla Seleção)
+                    </h3>
+                    <button class="close-modal" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                    </button>
                 </div>
-                <div class="modal-body">
-                    <div class="servicos-list">
-                        ${servicosHtml}
+                
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                        <input type="text" 
+                               id="filtro-servicos" 
+                               placeholder="Buscar serviços..." 
+                               class="form-input" 
+                               style="flex: 1;"
+                               onkeyup="window.propostasManager.filtrarServicos(this.value)">
+                        <button type="button" 
+                                class="btn-info" 
+                                onclick="window.propostasManager.selecionarTodosServicos()">
+                            <i class="fas fa-check-double"></i>
+                            Todos
+                        </button>
+                        <button type="button" 
+                                class="btn-secondary" 
+                                onclick="window.propostasManager.limparSelecaoServicos()">
+                            <i class="fas fa-times"></i>
+                            Limpar
+                        </button>
+                    </div>
+                    
+                    <div id="contador-selecionados" style="color: #add8e6; font-weight: 600; margin-bottom: 1rem;">
+                        0 serviços selecionados
                     </div>
                 </div>
+                
+                <div id="lista-servicos" style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; padding: 1rem; background: rgba(0, 0, 0, 0.2);">
+                    ${servicosCheckboxes}
+                </div>
+                
                 <div class="modal-footer">
-                    <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">Cancelar</button>
-                    <button type="button" class="btn-primary" onclick="window.propostasManager.addSelectedServicos()">
+                    <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                        Cancelar
+                    </button>
+                    <button type="button" 
+                            class="btn-info" 
+                            onclick="window.propostasManager.showModalServicoFromSelection()" 
+                            style="margin-right: 10px;">
                         <i class="fas fa-plus"></i>
+                        Criar Novo Serviço
+                    </button>
+                    <button type="button" 
+                            class="btn-success" 
+                            onclick="window.propostasManager.addSelectedServicos()"
+                            id="btn-adicionar-selecionados">
+                        <i class="fas fa-plus-circle"></i>
                         Adicionar Selecionados
                     </button>
                 </div>
@@ -431,42 +686,151 @@ class PropostasManager {
         `;
         
         document.body.appendChild(modal);
-        modal.style.display = 'flex';
         
-        console.log('Modal de seleção criado e adicionado ao DOM');
+        // Configurar eventos para os checkboxes
+        setTimeout(() => {
+            this.configurarEventosCheckboxes();
+        }, 100);
     }
 
-    addSelectedServicos() {
-        const checkboxes = document.querySelectorAll('#modal-servico-selection input[type="checkbox"]:checked');
-        let servicosAdicionadosCount = 0;
-        
+    // NOVA FUNÇÃO: Configurar eventos dos checkboxes
+    configurarEventosCheckboxes() {
+        const checkboxes = document.querySelectorAll('#lista-servicos input[type="checkbox"]');
         checkboxes.forEach(checkbox => {
+            checkbox.addEventListener('change', () => {
+                this.atualizarContadorSelecionados();
+            });
+        });
+        this.atualizarContadorSelecionados();
+    }
+
+    // NOVA FUNÇÃO: Atualizar contador de selecionados
+    atualizarContadorSelecionados() {
+        const checkboxes = document.querySelectorAll('#lista-servicos input[type="checkbox"]:checked');
+        const contador = document.getElementById('contador-selecionados');
+        const btnAdicionar = document.getElementById('btn-adicionar-selecionados');
+        
+        if (contador) {
+            const quantidade = checkboxes.length;
+            contador.textContent = `${quantidade} serviço${quantidade !== 1 ? 's' : ''} selecionado${quantidade !== 1 ? 's' : ''}`;
+        }
+        
+        if (btnAdicionar) {
+            btnAdicionar.disabled = checkboxes.length === 0;
+            btnAdicionar.style.opacity = checkboxes.length === 0 ? '0.5' : '1';
+        }
+    }
+
+    // NOVA FUNÇÃO: Filtrar serviços
+    filtrarServicos(termo) {
+        const servicosItems = document.querySelectorAll('#lista-servicos > div');
+        const termoLower = termo.toLowerCase();
+        
+        servicosItems.forEach(item => {
+            const texto = item.textContent.toLowerCase();
+            if (texto.includes(termoLower)) {
+                item.style.display = 'flex';
+            } else {
+                item.style.display = 'none';
+            }
+        });
+    }
+
+    // NOVA FUNÇÃO: Selecionar todos os serviços visíveis
+    selecionarTodosServicos() {
+        const checkboxes = document.querySelectorAll('#lista-servicos input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            const item = checkbox.closest('div');
+            if (item.style.display !== 'none') {
+                checkbox.checked = true;
+            }
+        });
+        this.atualizarContadorSelecionados();
+    }
+
+    // NOVA FUNÇÃO: Limpar seleção
+    limparSelecaoServicos() {
+        const checkboxes = document.querySelectorAll('#lista-servicos input[type="checkbox"]');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        this.atualizarContadorSelecionados();
+    }
+
+    // NOVA FUNÇÃO: Adicionar múltiplos serviços selecionados
+    addSelectedServicos() {
+        const checkboxesSelecionados = document.querySelectorAll('#lista-servicos input[type="checkbox"]:checked');
+        
+        if (checkboxesSelecionados.length === 0) {
+            this.showNotification('Selecione pelo menos um serviço', 'warning');
+            return;
+        }
+
+        let servicosAdicionadosCount = 0;
+        let servicosJaExistentes = 0;
+
+        checkboxesSelecionados.forEach(checkbox => {
             const servicoId = checkbox.value;
             const servico = this.servicos.find(s => s.id === servicoId);
             
-            if (servico && !this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
-                this.servicosAdicionados.push({
-                    servico_id: servicoId,
-                    servico: servico,
-                    quantidade: 1,
-                    preco_mao_obra: 0,
-                    preco_material: 0,
-                    preco_total: 0,
-                    modo_preco: 'separado' // 'separado' ou 'total'
-                });
-                servicosAdicionadosCount++;
+            if (!servico) {
+                console.error('Serviço não encontrado:', servicoId);
+                return;
             }
+
+            // Verificar se já foi adicionado (dupla verificação)
+            if (this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
+                servicosJaExistentes++;
+                return;
+            }
+
+            // Adicionar serviço à lista
+            this.servicosAdicionados.push({
+                servico_id: servicoId,
+                servico: servico,
+                quantidade: 1,
+                preco_mao_obra: 0,
+                preco_material: 0,
+                preco_total: 0
+            });
+
+            servicosAdicionadosCount++;
         });
-        
-        if (servicosAdicionadosCount > 0) {
-            this.updateServicesTable();
-            this.showNotification(`${servicosAdicionadosCount} serviço(s) adicionado(s) à proposta!`, 'success');
-        } else {
-            this.showNotification('Nenhum serviço foi selecionado.', 'warning');
-        }
+
+        // Atualizar tabela
+        this.updateServicesTable();
         
         // Fechar modal
-        document.getElementById('modal-servico-selection').remove();
+        const modal = document.querySelector('.modal-selection');
+        if (modal) modal.remove();
+        
+        // Mostrar notificação de sucesso
+        let mensagem = '';
+        if (servicosAdicionadosCount > 0) {
+            mensagem = `${servicosAdicionadosCount} serviço${servicosAdicionadosCount > 1 ? 's' : ''} adicionado${servicosAdicionadosCount > 1 ? 's' : ''} à proposta!`;
+        }
+        if (servicosJaExistentes > 0) {
+            mensagem += ` ${servicosJaExistentes} serviço${servicosJaExistentes > 1 ? 's já estavam' : ' já estava'} na proposta.`;
+        }
+        
+        this.showNotification(mensagem, 'success');
+    }
+
+    // FUNÇÃO MODIFICADA: Manter compatibilidade
+    addSelectedServico() {
+        // Esta função agora chama a nova função de múltiplos serviços
+        this.addSelectedServicos();
+    }
+
+    showModalServicoFromSelection() {
+        // Fechar modal de seleção
+        const selectionModal = document.querySelector('.modal-selection');
+        if (selectionModal) {
+            selectionModal.remove();
+        }
+        
+        // Abrir modal de criação de serviço
+        this.showModalServico();
     }
 
     updateServicesTable() {
@@ -481,83 +845,54 @@ class PropostasManager {
         if (this.servicosAdicionados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhum serviço adicionado. Clique em "Adicionar Serviço" para começar.
                     </td>
                 </tr>
             `;
+            this.updateTotal();
             return;
         }
 
         this.servicosAdicionados.forEach((item, index) => {
             const row = document.createElement('tr');
             
-            // Determinar campos de preço baseado no modo
-            let camposPreco = '';
-            if (item.modo_preco === 'total') {
-                camposPreco = `
-                    <td style="background: rgba(255,255,255,0.05);">-</td>
-                    <td style="background: rgba(255,255,255,0.05);">-</td>
-                    <td>
-                        <input type="number" 
-                               value="${item.preco_total}" 
-                               min="0" 
-                               step="0.01"
-                               onchange="window.propostasManager.updateItemPrecoTotal(${index}, this.value)"
-                               style="width: 100px;"
-                               placeholder="Valor total">
-                    </td>
-                `;
-            } else {
-                camposPreco = `
-                    <td>
-                        <input type="number" 
-                               value="${item.preco_mao_obra}" 
-                               min="0" 
-                               step="0.01"
-                               onchange="window.propostasManager.updateItemPrecoMaoObra(${index}, this.value)"
-                               style="width: 100px;"
-                               placeholder="Mão de obra">
-                    </td>
-                    <td>
-                        <input type="number" 
-                               value="${item.preco_material}" 
-                               min="0" 
-                               step="0.01"
-                               onchange="window.propostasManager.updateItemPrecoMaterial(${index}, this.value)"
-                               style="width: 100px;"
-                               placeholder="Material">
-                    </td>
-                    <td>
-                        <strong>R$ ${(item.preco_mao_obra + item.preco_material).toFixed(2)}</strong>
-                    </td>
-                `;
-            }
+            const servico = item.servico;
+            const servicoNome = servico ? `${servico.codigo} - ${servico.descricao}` : 'Serviço não encontrado';
+            const unidade = servico?.unidade || '';
             
             row.innerHTML = `
                 <td>
-                    <strong>${item.servico.codigo}</strong><br>
-                    <small>${item.servico.descricao}</small>
+                    <strong>${servicoNome}</strong>
+                    ${servico?.detalhe ? `<br><small style="color: #add8e6;">${servico.detalhe}</small>` : ''}
                 </td>
                 <td>
                     <input type="number" 
                            value="${item.quantidade}" 
-                           min="0" 
-                           step="0.001"
-                           onchange="window.propostasManager.updateItemQuantidade(${index}, this.value)"
+                           min="0.01" 
+                           step="0.01"
+                           onchange="window.propostasManager.updateItemValue(${index}, 'quantidade', this.value)"
                            style="width: 80px;">
                 </td>
-                <td>${item.servico.unidade || '-'}</td>
+                <td>${unidade}</td>
                 <td>
-                    <button class="btn-toggle-price" 
-                            onclick="window.propostasManager.toggleModoPreco(${index})"
-                            title="Alternar modo de preço">
-                        <i class="fas fa-${item.modo_preco === 'total' ? 'calculator' : 'plus'}"></i>
-                        ${item.modo_preco === 'total' ? 'Total' : 'M+M'}
-                    </button>
+                    <input type="number" 
+                           value="${item.preco_mao_obra}" 
+                           min="0" 
+                           step="0.01"
+                           onchange="window.propostasManager.updateItemValue(${index}, 'preco_mao_obra', this.value)"
+                           style="width: 100px;">
                 </td>
-                ${camposPreco}
+                <td>
+                    <input type="number" 
+                           value="${item.preco_material}" 
+                           min="0" 
+                           step="0.01"
+                           onchange="window.propostasManager.updateItemValue(${index}, 'preco_material', this.value)"
+                           style="width: 100px;">
+                </td>
+                <td><strong>${this.formatMoney(item.preco_total)}</strong></td>
                 <td>
                     <button class="btn-danger" 
                             onclick="window.propostasManager.removeServico(${index})"
@@ -566,164 +901,95 @@ class PropostasManager {
                     </button>
                 </td>
             `;
+            
             tbody.appendChild(row);
         });
-        
+
         this.updateTotal();
     }
 
-    toggleModoPreco(index) {
-        const item = this.servicosAdicionados[index];
-        
-        if (item.modo_preco === 'separado') {
-            // Mudando para modo total: somar mão de obra + material
-            item.preco_total = item.preco_mao_obra + item.preco_material;
-            item.modo_preco = 'total';
-        } else {
-            // Mudando para modo separado: dividir total igualmente ou zerar
-            const metadeTotal = item.preco_total / 2;
-            item.preco_mao_obra = metadeTotal;
-            item.preco_material = metadeTotal;
-            item.modo_preco = 'separado';
+    updateItemValue(index, field, value) {
+        if (index >= 0 && index < this.servicosAdicionados.length) {
+            const item = this.servicosAdicionados[index];
+            
+            // CORREÇÃO: Usar função para garantir formato numérico correto
+            item[field] = ensureNumericValue(value);
+            
+            // Recalcular total do item
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
+            const somaPrecos = precoMaoObra + precoMaterial;
+            const totalCalculado = quantidade * somaPrecos;
+            
+            item.preco_total = ensureNumericValue(totalCalculado);
+            
+            this.updateServicesTable();
+            this.updateTotal();
         }
-        
-        this.updateServicesTable();
-    }
-
-    updateItemPrecoTotal(index, valor) {
-        const item = this.servicosAdicionados[index];
-        item.preco_total = parseFloat(valor) || 0;
-        this.updateTotal();
-    }
-
-    updateItemQuantidade(index, valor) {
-        const item = this.servicosAdicionados[index];
-        item.quantidade = parseFloat(valor) || 0;
-        this.updateTotal();
-    }
-
-    updateItemPrecoMaoObra(index, valor) {
-        const item = this.servicosAdicionados[index];
-        item.preco_mao_obra = parseFloat(valor) || 0;
-        if (item.modo_preco === 'separado') {
-            item.preco_total = item.preco_mao_obra + item.preco_material;
-        }
-        this.updateTotal();
-    }
-
-    updateItemPrecoMaterial(index, valor) {
-        const item = this.servicosAdicionados[index];
-        item.preco_material = parseFloat(valor) || 0;
-        if (item.modo_preco === 'separado') {
-            item.preco_total = item.preco_mao_obra + item.preco_material;
-        }
-        this.updateTotal();
     }
 
     removeServico(index) {
-        this.servicosAdicionados.splice(index, 1);
-        this.updateServicesTable();
-    }
-
-    calculateTotalProposta() {
-        return this.servicosAdicionados.reduce((sum, item) => {
-            const itemTotal = item.modo_preco === 'total' ? 
-                item.preco_total : 
-                (item.preco_mao_obra + item.preco_material);
-            return sum + (item.quantidade * itemTotal);
-        }, 0);
+        if (confirm('Tem certeza que deseja remover este serviço?')) {
+            this.servicosAdicionados.splice(index, 1);
+            this.updateServicesTable();
+            this.updateTotal();
+        }
     }
 
     updateTotal() {
-        const total = this.calculateTotalProposta();
+        // CORREÇÃO: Cálculo simplificado e direto com garantia numérica
+        let total = 0;
+        
+        this.servicosAdicionados.forEach((item) => {
+            const itemTotal = ensureNumericValue(item.preco_total);
+            total += itemTotal;
+        });
+        
+        // Garantir que o total seja um número válido
+        total = ensureNumericValue(total);
         
         const totalElement = document.getElementById('total-proposta');
         if (totalElement) {
-            totalElement.textContent = `R$ ${total.toFixed(2).replace('.', ',')}`;
+            totalElement.textContent = this.formatMoney(total);
         }
     }
 
-    // === PROPOSTAS ===
-    showFormProposta(proposta = null) {
-        console.log('Mostrando formulário de proposta...');
+    // === FUNÇÃO PARA OBTER TOTAL ATUAL ===
+    getCurrentTotal() {
+        let total = 0;
         
-        this.currentPropostaId = proposta?.id || null;
+        this.servicosAdicionados.forEach((item) => {
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
+            const itemTotal = quantidade * (precoMaoObra + precoMaterial);
+            total += itemTotal;
+        });
         
-        // Mostrar formulário e esconder lista
-        const formSection = document.getElementById('form-section');
-        const listSection = document.getElementById('list-section');
-        
-        if (formSection) formSection.style.display = 'block';
-        if (listSection) listSection.style.display = 'none';
-        
-        // Limpar formulário
-        this.clearForm();
-        
-        // Se é edição, popular formulário
-        if (proposta) {
-            this.populateForm(proposta);
-        } else {
-            // Gerar número da proposta automaticamente
-            this.generatePropostaNumber();
-        }
-    }
-
-    hideFormProposta() {
-        const formSection = document.getElementById('form-section');
-        const listSection = document.getElementById('list-section');
-        
-        if (formSection) formSection.style.display = 'none';
-        if (listSection) listSection.style.display = 'block';
-        
-        this.clearForm();
-    }
-
-    clearForm() {
-        // Limpar campos do formulário
-        const form = document.getElementById('form-proposta');
-        if (form) {
-            form.reset();
-        }
-        
-        // Limpar serviços adicionados
-        this.servicosAdicionados = [];
-        this.updateServicesTable();
-        
-        // Resetar ID atual
-        this.currentPropostaId = null;
-        
-        // Atualizar título
-        const titleElement = document.getElementById('form-title-text');
-        if (titleElement) {
-            titleElement.textContent = 'Nova Proposta';
-        }
-    }
-
-    generatePropostaNumber() {
-        const year = new Date().getFullYear();
-        const randomNum = Math.floor(Math.random() * 9999) + 1;
-        const numeroFormatado = randomNum.toString().padStart(4, '0');
-        
-        const numeroElement = document.getElementById('numero-proposta');
-        if (numeroElement) {
-            numeroElement.value = `${numeroFormatado}/${year}`;
-        }
+        // CORREÇÃO: Garantir que o total seja um número válido
+        return ensureNumericValue(total);
     }
 
     async handleSubmitProposta(e) {
         e.preventDefault();
 
-        if (!this.validateForm()) return;
+        if (!this.validateForm()) {
+            return;
+        }
+
+        // CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
+        const totalCalculado = this.getCurrentTotal();
 
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
             cliente_id: document.getElementById('cliente-select').value,
             status: document.getElementById('status-select').value,
-            prazo_execucao: parseInt(document.getElementById('prazo-execucao').value),
-            tipo_prazo: document.getElementById('tipo-prazo').value,
-            forma_pagamento: document.getElementById('forma-pagamento').value,
-            observacoes: document.getElementById('observacoes').value,
-            total_proposta: this.calculateTotalProposta()
+            observacoes: document.getElementById('observacoes').value || null,
+            prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
+            tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
+            forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
+            total_proposta: (totalCalculado) // CORREÇÃO: Valor já garantido como numérico
         };
 
         try {
@@ -735,30 +1001,36 @@ class PropostasManager {
                     .from('propostas_hvc')
                     .update(propostaData)
                     .eq('id', this.currentPropostaId)
-                    .select();
-                
+                    .select()
+                    .single();
+
                 if (error) throw error;
-                proposta = data[0];
+                proposta = data;
+                
             } else {
                 // Criar nova proposta
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
                     .insert([propostaData])
-                    .select();
-                
+                    .select()
+                    .single();
+
                 if (error) throw error;
-                proposta = data[0];
+                proposta = data;
             }
 
             // Salvar itens da proposta
             await this.saveItensProposta(proposta.id);
 
             this.hideFormProposta();
-            this.loadPropostas();
+            
+            // CORREÇÃO: Forçar recarregamento completo da lista
+            await this.loadPropostas();
+            
             this.showNotification('Proposta salva com sucesso!', 'success');
 
         } catch (error) {
-            console.error('Erro ao salvar proposta:', error);
+            console.error('Erro no salvamento:', error);
             this.showNotification('Erro ao salvar proposta: ' + error.message, 'error');
         }
     }
@@ -770,17 +1042,22 @@ class PropostasManager {
             .delete()
             .eq('proposta_id', propostaId);
 
-        // Inserir novos itens
-        const itens = this.servicosAdicionados.map(item => ({
-            proposta_id: propostaId,
-            servico_id: item.servico_id,
-            quantidade: item.quantidade,
-            preco_mao_obra: item.preco_mao_obra || 0,
-            preco_material: item.preco_material || 0,
-            preco_total: item.modo_preco === 'total' ? 
-                item.preco_total : 
-                (item.preco_mao_obra + item.preco_material)
-        }));
+        // Inserir novos itens com valores garantidos como numéricos
+        const itens = this.servicosAdicionados.map(item => {
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
+            const precoTotal = ensureNumericValue(quantidade * (precoMaoObra + precoMaterial));
+            
+            return {
+                proposta_id: propostaId,
+                servico_id: item.servico_id,
+                quantidade: quantidade,
+                preco_mao_obra: precoMaoObra,
+                preco_material: precoMaterial,
+                preco_total: precoTotal
+            };
+        });
 
         if (itens.length > 0) {
             const { error } = await supabaseClient
@@ -794,51 +1071,29 @@ class PropostasManager {
     validateForm() {
         const numeroProposta = document.getElementById('numero-proposta').value;
         const clienteId = document.getElementById('cliente-select').value;
-        const status = document.getElementById('status-select').value;
-        const prazoExecucao = document.getElementById('prazo-execucao').value;
-        const formaPagamento = document.getElementById('forma-pagamento').value;
-
-        if (!numeroProposta) {
-            this.showNotification('Número da proposta é obrigatório', 'error');
+        
+        if (!numeroProposta || !numeroProposta.match(/^\d{4}\/\d{4}$/)) {
+            this.showNotification('Número da proposta deve estar no formato XXXX/YYYY', 'error');
             return false;
         }
 
         if (!clienteId) {
-            this.showNotification('Cliente é obrigatório', 'error');
-            return false;
-        }
-
-        if (!status) {
-            this.showNotification('Status é obrigatório', 'error');
-            return false;
-        }
-
-        if (!prazoExecucao || prazoExecucao <= 0) {
-            this.showNotification('Prazo de execução é obrigatório e deve ser maior que zero', 'error');
-            return false;
-        }
-
-        if (!formaPagamento) {
-            this.showNotification('Forma de pagamento é obrigatória', 'error');
+            this.showNotification('Selecione um cliente', 'error');
             return false;
         }
 
         if (this.servicosAdicionados.length === 0) {
-            this.showNotification('Adicione pelo menos um serviço à proposta', 'error');
+            this.showNotification('Adicione pelo menos um serviço', 'error');
             return false;
         }
 
-        // Validar se todos os serviços têm preços
+        // Validar se todos os serviços têm quantidade e preço
         for (let item of this.servicosAdicionados) {
             if (item.quantidade <= 0) {
                 this.showNotification('Todos os serviços devem ter quantidade maior que zero', 'error');
                 return false;
             }
-            if (item.modo_preco === 'total' && item.preco_total <= 0) {
-                this.showNotification('Todos os serviços devem ter preço total maior que zero', 'error');
-                return false;
-            }
-            if (item.modo_preco === 'separado' && item.preco_mao_obra <= 0 && item.preco_material <= 0) {
+            if (item.preco_mao_obra <= 0 && item.preco_material <= 0) {
                 this.showNotification('Todos os serviços devem ter pelo menos um preço (mão de obra ou material)', 'error');
                 return false;
             }
@@ -847,10 +1102,14 @@ class PropostasManager {
         return true;
     }
 
-    // === LISTA DE PROPOSTAS ===
+    // === LISTA DE PROPOSTAS CORRIGIDA ===
     async loadPropostas() {
         try {
-            console.log('Carregando propostas...');
+            if (!supabaseClient) {
+                console.error('Supabase client não disponível');
+                return;
+            }
+            
             const { data, error } = await supabaseClient
                 .from('propostas_hvc')
                 .select(`
@@ -861,94 +1120,13 @@ class PropostasManager {
 
             if (error) throw error;
 
-            this.propostas = data || []; // Armazenar todas as propostas
-            this.populateClienteFilter(); // Popular filtro de clientes
-            this.applyFilters(); // Aplicar filtros (inicialmente mostra todas)
-            console.log('Propostas carregadas:', data?.length || 0);
+            this.propostas = data || []; // Armazenar para filtros
+            this.renderPropostas(this.propostas);
+            this.populateClienteFilter(); // Atualizar filtro de clientes
         } catch (error) {
             console.error('Erro ao carregar propostas:', error);
             this.showNotification('Erro ao carregar propostas: ' + error.message, 'error');
         }
-    }
-
-    populateClienteFilter() {
-        const filterCliente = document.getElementById('filter-cliente');
-        if (!filterCliente) return;
-
-        // Obter clientes únicos das propostas
-        const clientesUnicos = [...new Set(this.propostas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
-        
-        // Limpar opções existentes (exceto "Todos os clientes")
-        filterCliente.innerHTML = '<option value="">Todos os clientes</option>';
-        
-        // Adicionar opções de clientes
-        clientesUnicos.forEach(nomeCliente => {
-            const option = document.createElement('option');
-            option.value = nomeCliente;
-            option.textContent = nomeCliente;
-            filterCliente.appendChild(option);
-        });
-    }
-
-    applyFilters() {
-        const filterStatus = document.getElementById('filter-status')?.value || '';
-        const filterCliente = document.getElementById('filter-cliente')?.value || '';
-        const filterNumero = document.getElementById('filter-numero')?.value || '';
-        const filterDataInicio = document.getElementById('filter-data-inicio')?.value || '';
-        const filterDataFim = document.getElementById('filter-data-fim')?.value || '';
-
-        let propostasFiltradas = [...this.propostas];
-
-        // Filtrar por status
-        if (filterStatus) {
-            propostasFiltradas = propostasFiltradas.filter(p => p.status === filterStatus);
-        }
-
-        // Filtrar por cliente
-        if (filterCliente) {
-            propostasFiltradas = propostasFiltradas.filter(p => p.clientes_hvc?.nome === filterCliente);
-        }
-
-        // Filtrar por número
-        if (filterNumero) {
-            propostasFiltradas = propostasFiltradas.filter(p => 
-                p.numero_proposta?.toLowerCase().includes(filterNumero.toLowerCase())
-            );
-        }
-
-        // Filtrar por data início
-        if (filterDataInicio) {
-            propostasFiltradas = propostasFiltradas.filter(p => 
-                new Date(p.created_at) >= new Date(filterDataInicio)
-            );
-        }
-
-        // Filtrar por data fim
-        if (filterDataFim) {
-            const dataFim = new Date(filterDataFim);
-            dataFim.setHours(23, 59, 59, 999); // Incluir todo o dia
-            propostasFiltradas = propostasFiltradas.filter(p => 
-                new Date(p.created_at) <= dataFim
-            );
-        }
-
-        this.renderPropostas(propostasFiltradas);
-        
-        // Mostrar contador de resultados
-        const totalFiltradas = propostasFiltradas.length;
-        const totalGeral = this.propostas.length;
-        console.log(`Mostrando ${totalFiltradas} de ${totalGeral} propostas`);
-    }
-
-    clearFilters() {
-        document.getElementById('filter-status').value = '';
-        document.getElementById('filter-cliente').value = '';
-        document.getElementById('filter-numero').value = '';
-        document.getElementById('filter-data-inicio').value = '';
-        document.getElementById('filter-data-fim').value = '';
-        
-        this.applyFilters(); // Reaplica filtros (mostra todas)
-        this.showNotification('Filtros limpos', 'success');
     }
 
     renderPropostas(propostas) {
@@ -971,30 +1149,47 @@ class PropostasManager {
 
         propostas.forEach(proposta => {
             const row = document.createElement('tr');
-            const prazoTexto = proposta.prazo_execucao ? 
-                `${proposta.prazo_execucao} ${proposta.tipo_prazo === 'uteis' ? 'dias úteis' : 'dias corridos'}` : 
-                'Não informado';
+            
+            // Formatar prazo
+            let prazoTexto = '-';
+            if (proposta.prazo_execucao) {
+                const tipoPrazo = proposta.tipo_prazo === 'uteis' ? 'úteis' : 'corridos';
+                prazoTexto = `${proposta.prazo_execucao} dias ${tipoPrazo}`;
+            }
+
+            // Formatar observações (truncar se muito longo)
+            let observacoesTexto = proposta.observacoes || '-';
+            if (observacoesTexto.length > 50) {
+                observacoesTexto = observacoesTexto.substring(0, 50) + '...';
+            }
+            
+            // Botões de ação sempre habilitados
+            const editButtonClass = 'btn-secondary';
+            const editButtonStyle = '';
+            const editButtonTitle = 'Editar proposta';
+            const editButtonOnclick = `onclick="window.propostasManager.editProposta('${proposta.id}')"`;
             
             row.innerHTML = `
-                <td>${proposta.numero_proposta}</td>
+                <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td>R$ ${(proposta.total_proposta || 0).toFixed(2).replace('.', ',')}</td>
+                <td><strong>${this.formatMoney((proposta.total_proposta)/100)}</strong></td>
                 <td>${prazoTexto}</td>
-                <td>${proposta.forma_pagamento || 'Não informado'}</td>
+                <td>${proposta.forma_pagamento || '-'}</td>
                 <td>
-                    <span class="status-badge status-${proposta.status?.toLowerCase()}">
+                    <span class="status-badge status-${proposta.status.toLowerCase()}">
                         ${proposta.status}
                     </span>
                 </td>
-                <td>${proposta.observacoes || '-'}</td>
+                <td title="${proposta.observacoes || ''}">${observacoesTexto}</td>
                 <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
-                <td>
-                    <button class="btn-primary btn-sm" 
-                            onclick="window.propostasManager.editProposta('${proposta.id}')"
-                            title="Editar proposta">
+                <td class="actions-cell">
+                    <button class="${editButtonClass}" 
+                            ${editButtonOnclick}
+                            style="${editButtonStyle}"
+                            title="${editButtonTitle}">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-danger btn-sm" 
+                    <button class="btn-danger" 
                             onclick="window.propostasManager.deleteProposta('${proposta.id}')"
                             title="Excluir proposta">
                         <i class="fas fa-trash"></i>
@@ -1009,18 +1204,13 @@ class PropostasManager {
         try {
             const { data, error } = await supabaseClient
                 .from('propostas_hvc')
-                .select(`
-                    *,
-                    itens_proposta_hvc (
-                        *,
-                        servicos_hvc (*)
-                    )
-                `)
+                .select('*')
                 .eq('id', propostaId)
                 .single();
 
             if (error) throw error;
 
+            // Carregar proposta para edição
             this.showFormProposta(data);
         } catch (error) {
             console.error('Erro ao carregar proposta:', error);
@@ -1029,7 +1219,9 @@ class PropostasManager {
     }
 
     async deleteProposta(propostaId) {
-        if (!confirm('Tem certeza que deseja excluir esta proposta?')) return;
+        if (!confirm('Tem certeza que deseja excluir esta proposta? Esta ação não pode ser desfeita.')) {
+            return;
+        }
 
         try {
             const { error } = await supabaseClient
@@ -1047,45 +1239,117 @@ class PropostasManager {
         }
     }
 
-    populateForm(proposta) {
-        // Popular campos básicos
-        document.getElementById('numero-proposta').value = proposta.numero_proposta || '';
-        document.getElementById('cliente-select').value = proposta.cliente_id || '';
-        document.getElementById('status-select').value = proposta.status || '';
-        document.getElementById('prazo-execucao').value = proposta.prazo_execucao || '';
-        document.getElementById('tipo-prazo').value = proposta.tipo_prazo || 'corridos';
-        document.getElementById('forma-pagamento').value = proposta.forma_pagamento || '';
-        document.getElementById('observacoes').value = proposta.observacoes || '';
-
-        // Atualizar título
-        const titleElement = document.getElementById('form-title-text');
-        if (titleElement) {
-            titleElement.textContent = 'Editar Proposta';
+    // === EVENT LISTENERS ===
+    setupEventListeners() {
+        try {
+            // Botões principais
+            const btnNovaProposta = document.getElementById('btn-nova-proposta');
+            const btnCancelar = document.getElementById('btn-cancelar');
+            
+            if (btnNovaProposta) {
+                btnNovaProposta.addEventListener('click', () => {
+                    this.showFormProposta();
+                });
+            }
+            if (btnCancelar) {
+                btnCancelar.addEventListener('click', () => this.hideFormProposta());
+            }
+            
+            // Formulário de proposta
+            const propostaForm = document.getElementById('proposta-form');
+            if (propostaForm) {
+                propostaForm.addEventListener('submit', (e) => this.handleSubmitProposta(e));
+            }
+            
+            // Botões de adicionar
+            const btnAddCliente = document.getElementById('btn-add-cliente');
+            const btnAddServico = document.getElementById('btn-add-servico');
+            
+            if (btnAddCliente) {
+                btnAddCliente.addEventListener('click', () => this.showModalCliente());
+            }
+            if (btnAddServico) {
+                btnAddServico.addEventListener('click', () => {
+                    this.addServicoToProposta(); // Abrir modal de seleção múltipla
+                });
+            }
+            
+            // Modais - Serviço
+            const closeModalServico = document.getElementById('close-modal-servico');
+            const cancelServico = document.getElementById('cancel-servico');
+            const servicoForm = document.getElementById('servico-form');
+            
+            if (closeModalServico) {
+                closeModalServico.addEventListener('click', () => this.hideModalServico());
+            }
+            if (cancelServico) {
+                cancelServico.addEventListener('click', () => this.hideModalServico());
+            }
+            if (servicoForm) {
+                servicoForm.addEventListener('submit', (e) => this.handleSubmitServico(e));
+            }
+            
+            // Modais - Cliente
+            const closeModalCliente = document.getElementById('close-modal-cliente');
+            const cancelCliente = document.getElementById('cancel-cliente');
+            const clienteForm = document.getElementById('cliente-form');
+            
+            if (closeModalCliente) {
+                closeModalCliente.addEventListener('click', () => this.hideModalCliente());
+            }
+            if (cancelCliente) {
+                cancelCliente.addEventListener('click', () => this.hideModalCliente());
+            }
+            if (clienteForm) {
+                clienteForm.addEventListener('submit', (e) => this.handleSubmitCliente(e));
+            }
+            
+            // Fechar modal clicando fora
+            const modalServico = document.getElementById('modal-servico');
+            const modalCliente = document.getElementById('modal-cliente');
+            
+            if (modalServico) {
+                modalServico.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-servico') this.hideModalServico();
+                });
+            }
+            if (modalCliente) {
+                modalCliente.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-cliente') this.hideModalCliente();
+                });
+            }
+            
+        } catch (error) {
+            console.error('Erro ao configurar event listeners:', error);
         }
+    }
 
-        // Carregar itens da proposta
-        if (proposta.itens_proposta_hvc) {
-            this.servicosAdicionados = proposta.itens_proposta_hvc.map(item => ({
-                servico_id: item.servico_id,
-                servico: item.servicos_hvc,
-                quantidade: item.quantidade,
-                preco_mao_obra: item.preco_mao_obra,
-                preco_material: item.preco_material,
-                preco_total: item.preco_total,
-                modo_preco: (item.preco_mao_obra > 0 || item.preco_material > 0) ? 'separado' : 'total'
-            }));
-
-            this.updateServicesTable();
+    setupMasks() {
+        // Máscara para número da proposta (XXXX/YYYY)
+        const numeroInput = document.getElementById('numero-proposta');
+        if (numeroInput) {
+            numeroInput.addEventListener('input', (e) => {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length >= 4) {
+                    value = value.substring(0, 4) + '/' + value.substring(4, 8);
+                }
+                e.target.value = value;
+            });
         }
+    }
+
+    formatMoney(value) {
+        // CORREÇÃO: Usar valor diretamente sem processamento adicional
+        const numericValue = parseFloat(value) || 0;
+        return new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(numericValue);
     }
 
     // === NOTIFICAÇÕES ===
     showNotification(message, type = 'info') {
-        // Remover notificações existentes
-        const existingNotifications = document.querySelectorAll('.notification');
-        existingNotifications.forEach(notification => notification.remove());
-
-        // Criar nova notificação
+        // Criar elemento de notificação
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
@@ -1093,47 +1357,46 @@ class PropostasManager {
                 <i class="fas fa-${this.getNotificationIcon(type)}"></i>
                 <span>${message}</span>
             </div>
-            <button class="notification-close" onclick="this.parentElement.remove()">×</button>
         `;
 
-        // Adicionar estilos inline
-        notification.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: ${this.getNotificationColor(type)};
-            color: white;
-            padding: 15px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            z-index: 10000;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            min-width: 300px;
-            max-width: 500px;
-            animation: slideIn 0.3s ease-out;
-        `;
+        // Adicionar estilos se não existirem
+        if (!document.getElementById('notification-styles')) {
+            const styles = document.createElement('style');
+            styles.id = 'notification-styles';
+            styles.textContent = `
+                .notification {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    padding: 1rem 1.5rem;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 600;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    animation: slideIn 0.3s ease-out;
+                    max-width: 400px;
+                }
+                .notification-success { background: linear-gradient(135deg, #28a745, #20c997); }
+                .notification-error { background: linear-gradient(135deg, #dc3545, #e74c3c); }
+                .notification-warning { background: linear-gradient(135deg, #ffc107, #f39c12); }
+                .notification-info { background: linear-gradient(135deg, #17a2b8, #3498db); }
+                .notification-content { display: flex; align-items: center; gap: 10px; }
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(styles);
+        }
 
-        // Adicionar ao body
         document.body.appendChild(notification);
 
-        // Remover automaticamente após 5 segundos
+        // Remover após 5 segundos
         setTimeout(() => {
-            if (notification.parentElement) {
-                notification.remove();
-            }
+            notification.style.animation = 'slideIn 0.3s ease-out reverse';
+            setTimeout(() => notification.remove(), 300);
         }, 5000);
-    }
-
-    getNotificationColor(type) {
-        const colors = {
-            success: '#28a745',
-            error: '#dc3545',
-            warning: '#ffc107',
-            info: '#17a2b8'
-        };
-        return colors[type] || colors.info;
     }
 
     getNotificationIcon(type) {
