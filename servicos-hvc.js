@@ -1,5 +1,5 @@
 // servicos-hvc.js - Sistema de Gerenciamento de Serviços HVC
-// Baseado no padrão do PropostasManager, mas adaptado para SERVIÇOS
+// Versão CORRIGIDA - Referência ao Supabase ajustada
 
 class ServicosManager {
     constructor() {
@@ -12,11 +12,8 @@ class ServicosManager {
         console.log('Inicializando ServicosManager...');
         
         try {
-            // Verificar se Supabase está disponível
-            if (!window.supabaseClient) {
-                console.error('Supabase não encontrado. Verifique se o arquivo supabase.js foi carregado.');
-                return;
-            }
+            // Aguardar o Supabase estar disponível
+            await this.waitForSupabase();
 
             // Carregar dados iniciais
             await this.loadServicos();
@@ -29,6 +26,31 @@ class ServicosManager {
             console.error('Erro ao inicializar ServicosManager:', error);
             this.showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
         }
+    }
+
+    async waitForSupabase() {
+        let attempts = 0;
+        const maxAttempts = 20;
+        
+        while (attempts < maxAttempts) {
+            // Verificar múltiplas formas de acesso ao Supabase
+            if (window.supabaseClient || window.supabase || (typeof supabase !== 'undefined')) {
+                console.log('Supabase encontrado!');
+                
+                // Definir referência global
+                if (!window.supabaseClient) {
+                    window.supabaseClient = window.supabase || supabase;
+                }
+                
+                return;
+            }
+            
+            attempts++;
+            console.log(`Tentativa ${attempts}: Aguardando Supabase...`);
+            await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        throw new Error('Supabase não encontrado após múltiplas tentativas');
     }
 
     setupEventListeners() {
@@ -414,7 +436,7 @@ class ServicosManager {
                 successMessage.style.display = 'none';
             }, 5000);
         } else {
-            // Fallback: criar notificação flutuante (padrão do PropostasManager)
+            // Fallback: criar notificação flutuante
             this.createFloatingNotification(message, type);
         }
         
