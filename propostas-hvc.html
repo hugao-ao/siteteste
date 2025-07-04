@@ -766,17 +766,18 @@
   </main>
 
   <script type="module" src="sidebar.js"></script>
-  <script type="module" src="propostas-hvc.js"></script>
-  <script type="module">
-    import { injectSidebar } from './sidebar.js';
-    document.addEventListener('DOMContentLoaded', () => {
-      if (typeof injectSidebar === 'function') {
-        injectSidebar('main-content-propostas-hvc');
-      } else {
-        console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
-      }
-    });
-  </script>
-  <script src="propostas-hvc-precos.js"></script>
+<script type="module" src="supabase.js"></script>
+<script type="module" src="propostas-hvc.js"></script>
+<script type="module">
+  import { injectSidebar } from './sidebar.js';
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof injectSidebar === 'function') {
+      injectSidebar('main-content-propostas-hvc');
+    } else {
+      console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
+    }
+  });
+</script>
+<script defer src="propostas-hvc-precos.js"></script>
 </body>
 </html>
