@@ -1,18 +1,18 @@
-// servicos-hvc.js - Sistema de Gerenciamento de Serviços HVC
-// Versão CORRIGIDA - Referência ao Supabase ajustada
+// servicos-hvc.js - Versão SIMPLIFICADA - Sem importações complexas
 
 class ServicosManager {
     constructor() {
         this.currentServicoId = null;
         this.allServicos = [];
         this.isEditing = false;
+        this.supabase = null;
     }
 
     async init() {
         console.log('Inicializando ServicosManager...');
         
         try {
-            // Aguardar o Supabase estar disponível
+            // Aguardar o Supabase de forma mais simples
             await this.waitForSupabase();
 
             // Carregar dados iniciais
@@ -29,28 +29,41 @@ class ServicosManager {
     }
 
     async waitForSupabase() {
-        let attempts = 0;
-        const maxAttempts = 20;
+        console.log('Procurando Supabase...');
         
-        while (attempts < maxAttempts) {
-            // Verificar múltiplas formas de acesso ao Supabase
-            if (window.supabaseClient || window.supabase || (typeof supabase !== 'undefined')) {
-                console.log('Supabase encontrado!');
-                
-                // Definir referência global
-                if (!window.supabaseClient) {
-                    window.supabaseClient = window.supabase || supabase;
-                }
-                
+        // Tentar diferentes formas de acessar o Supabase
+        if (window.supabaseClient) {
+            this.supabase = window.supabaseClient;
+            console.log('Supabase encontrado em window.supabaseClient');
+            return;
+        }
+        
+        if (window.supabase) {
+            this.supabase = window.supabase;
+            console.log('Supabase encontrado em window.supabase');
+            return;
+        }
+        
+        // Aguardar um pouco e tentar novamente
+        for (let i = 0; i < 5; i++) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (window.supabaseClient) {
+                this.supabase = window.supabaseClient;
+                console.log('Supabase encontrado em window.supabaseClient após aguardar');
                 return;
             }
             
-            attempts++;
-            console.log(`Tentativa ${attempts}: Aguardando Supabase...`);
-            await new Promise(resolve => setTimeout(resolve, 200));
+            if (window.supabase) {
+                this.supabase = window.supabase;
+                console.log('Supabase encontrado em window.supabase após aguardar');
+                return;
+            }
+            
+            console.log(`Tentativa ${i + 1}: Supabase ainda não encontrado...`);
         }
         
-        throw new Error('Supabase não encontrado após múltiplas tentativas');
+        throw new Error('Supabase não encontrado. Verifique se o arquivo supabase.js está carregando corretamente.');
     }
 
     setupEventListeners() {
@@ -86,7 +99,7 @@ class ServicosManager {
         try {
             console.log('Carregando serviços...');
             
-            const { data, error } = await window.supabaseClient
+            const { data, error } = await this.supabase
                 .from('servicos_hvc')
                 .select('*')
                 .order('codigo');
@@ -208,7 +221,7 @@ class ServicosManager {
             
             if (this.isEditing && this.currentServicoId) {
                 // Atualizar serviço existente
-                result = await window.supabaseClient
+                result = await this.supabase
                     .from('servicos_hvc')
                     .update(servicoData)
                     .eq('id', this.currentServicoId)
@@ -219,7 +232,7 @@ class ServicosManager {
                 this.showNotification('Serviço atualizado com sucesso!', 'success');
             } else {
                 // Criar novo serviço
-                result = await window.supabaseClient
+                result = await this.supabase
                     .from('servicos_hvc')
                     .insert([servicoData])
                     .select();
@@ -271,7 +284,7 @@ class ServicosManager {
 
     async editServico(servicoId) {
         try {
-            const { data, error } = await window.supabaseClient
+            const { data, error } = await this.supabase
                 .from('servicos_hvc')
                 .select('*')
                 .eq('id', servicoId)
@@ -397,7 +410,7 @@ class ServicosManager {
         if (!this.currentServicoId) return;
 
         try {
-            const { error } = await window.supabaseClient
+            const { error } = await this.supabase
                 .from('servicos_hvc')
                 .delete()
                 .eq('id', this.currentServicoId);
