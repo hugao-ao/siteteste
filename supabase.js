@@ -69,3 +69,8 @@ try {
 export { supabase };
 export default supabase;
 
+// Expor globalmente para compatibilidade
+window.supabaseClient = supabase;
+window.supabase = supabase;
+
+
