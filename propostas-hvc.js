@@ -1,8 +1,11 @@
 // propostas-hvc.js - Versão CORRIGIDA - Numeric Field Overflow Fix
 // Gerenciamento de Propostas HVC
 
+// Importar Supabase
+import { supabase } from './supabase.js';
+
 // Aguardar carregamento do Supabase
-let supabaseClient = null;
+let supabaseClient = supabase;
 let propostasManager = null;
 
 // Inicializar quando a página carregar
