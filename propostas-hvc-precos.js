@@ -198,8 +198,29 @@ function adicionarCamposPreco(servico) {
 document.addEventListener('DOMContentLoaded', function() {
     // Verificar se estamos na página de propostas
     if (window.location.href.includes('propostas-hvc.html')) {
-        // Aguardar um pouco para garantir que o PropostasManager já foi inicializado
-        setTimeout(adicionarFuncionalidadePrecos, 1000);
+        // Aguardar o PropostasManager ser inicializado com retry
+        waitForPropostasManager();
     }
 });
+
+function waitForPropostasManager() {
+    let attempts = 0;
+    const maxAttempts = 10;
+    
+    function checkPropostasManager() {
+        attempts++;
+        
+        if (window.propostasManager) {
+            console.log('PropostasManager encontrado, adicionando funcionalidade de preços...');
+            adicionarFuncionalidadePrecos();
+        } else if (attempts < maxAttempts) {
+            console.log(`Tentativa ${attempts}: Aguardando PropostasManager...`);
+            setTimeout(checkPropostasManager, 500);
+        } else {
+            console.error('PropostasManager não encontrado após múltiplas tentativas');
+        }
+    }
+    
+    checkPropostasManager();
+}
 
