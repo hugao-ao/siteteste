@@ -1166,7 +1166,7 @@ class PropostasManager {
 
         // 💰 CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
         const totalCalculado = this.getCurrentTotal();
-        console.log('💰 CÁLCULO-FINAL-FIX - Total para salvar no banco:', totalCalculado/10);
+        console.log('💰 CÁLCULO-FINAL-FIX - Total para salvar no banco:', totalCalculado);
 
         // 🎯 CORREÇÃO CRONOGRAMA: Usar função segura para obter tipo de prazo
         const tipoPrazoValidado = getTipoPrazoSafe();
@@ -1188,7 +1188,7 @@ class PropostasManager {
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
             tipo_prazo: tipoPrazoValidado, // 🎯 CORREÇÃO: Valor GARANTIDAMENTE válido
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: totalCalculado // 💰 CORREÇÃO: Valor já garantido como numérico correto
+            total_proposta: totalCalculado/10 // 💰 CORREÇÃO: Valor já garantido como numérico correto
         };
 
         console.log('📦 CRONOGRAMA-FIX - Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
