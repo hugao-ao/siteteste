@@ -1,5 +1,5 @@
-// propostas-hvc.js - Versão CORRIGIDA - Numeric Field Overflow Fix + Constraint Fix
-// Gerenciamento de Propostas HVC
+// propostas-hvc.js - Versão CONSTRAINT FIX
+// Correção definitiva para o erro de constraint do tipo_prazo
 
 // Aguardar carregamento do Supabase
 let supabaseClient = null;
@@ -77,10 +77,60 @@ function ensureNumericValue(value) {
     return Math.round(numericValue * 100) / 100;
 }
 
-// NOVA FUNÇÃO: Validar tipo de prazo
+// CORREÇÃO DEFINITIVA: Mapeamento rigoroso de valores tipo_prazo
 function validateTipoPrazo(tipoPrazo) {
-    const validTypes = ['corridos', 'uteis', 'cronograma'];
-    return validTypes.includes(tipoPrazo) ? tipoPrazo : 'corridos';
+    console.log('🔍 Validando tipo_prazo recebido:', tipoPrazo);
+    
+    // VALORES EXATOS aceitos pela constraint do banco
+    const VALID_VALUES = ['corridos', 'uteis', 'cronograma'];
+    
+    // Se o valor é null, undefined, ou string vazia, usar padrão
+    if (!tipoPrazo || tipoPrazo === null || tipoPrazo === undefined || tipoPrazo === '') {
+        console.log('✅ Tipo prazo vazio, usando padrão: corridos');
+        return 'corridos';
+    }
+    
+    // Converter para string e limpar
+    const cleanValue = String(tipoPrazo).trim().toLowerCase();
+    console.log('🧹 Valor limpo:', cleanValue);
+    
+    // MAPEAMENTO RIGOROSO - apenas valores exatos
+    let mappedValue;
+    
+    if (cleanValue === 'corridos' || cleanValue.includes('corridos')) {
+        mappedValue = 'corridos';
+    } else if (cleanValue === 'uteis' || cleanValue.includes('uteis') || cleanValue.includes('úteis')) {
+        mappedValue = 'uteis';
+    } else if (cleanValue === 'cronograma' || cleanValue.includes('cronograma')) {
+        mappedValue = 'cronograma';  // SEMPRE apenas 'cronograma', nunca texto adicional
+    } else {
+        // Se não reconhecer, usar padrão
+        mappedValue = 'corridos';
+    }
+    
+    console.log('✅ Valor final mapeado:', mappedValue);
+    console.log('🔒 Verificação final - valor está na lista válida:', VALID_VALUES.includes(mappedValue));
+    
+    return mappedValue;
+}
+
+// NOVA FUNÇÃO: Obter tipo de prazo de forma ultra-segura
+function getTipoPrazoSafe() {
+    console.log('🔍 Iniciando getTipoPrazoSafe()');
+    
+    const element = document.getElementById('tipo-prazo');
+    if (!element) {
+        console.warn('⚠️ Elemento tipo-prazo não encontrado, usando padrão');
+        return 'corridos';
+    }
+    
+    const rawValue = element.value;
+    console.log('📝 Valor bruto do elemento:', rawValue);
+    
+    const validatedValue = validateTipoPrazo(rawValue);
+    console.log('✅ Valor validado final:', validatedValue);
+    
+    return validatedValue;
 }
 
 class PropostasManager {
@@ -979,16 +1029,27 @@ class PropostasManager {
     async handleSubmitProposta(e) {
         e.preventDefault();
 
+        console.log('🚀 Iniciando handleSubmitProposta');
+
         if (!this.validateForm()) {
+            console.log('❌ Validação do formulário falhou');
             return;
         }
 
         // CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
         const totalCalculado = this.getCurrentTotal();
 
-        // CORREÇÃO: Validar e garantir tipo de prazo válido
-        const tipoPrazoRaw = document.getElementById('tipo-prazo')?.value;
-        const tipoPrazoValidado = validateTipoPrazo(tipoPrazoRaw);
+        // CORREÇÃO ULTRA-ROBUSTA: Usar função segura para obter tipo de prazo
+        const tipoPrazoValidado = getTipoPrazoSafe();
+        
+        console.log('📊 Dados da proposta antes do envio:');
+        console.log('- numero_proposta:', document.getElementById('numero-proposta').value);
+        console.log('- cliente_id:', document.getElementById('cliente-select').value);
+        console.log('- status:', document.getElementById('status-select').value);
+        console.log('- prazo_execucao:', document.getElementById('prazo-execucao')?.value);
+        console.log('- tipo_prazo (VALIDADO):', tipoPrazoValidado);
+        console.log('- forma_pagamento:', document.getElementById('forma-pagamento')?.value);
+        console.log('- total_proposta:', totalCalculado);
 
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
@@ -996,15 +1057,18 @@ class PropostasManager {
             status: document.getElementById('status-select').value,
             observacoes: document.getElementById('observacoes').value || null,
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
-            tipo_prazo: tipoPrazoValidado, // CORREÇÃO: Usar valor validado
+            tipo_prazo: tipoPrazoValidado, // CORREÇÃO: Valor GARANTIDAMENTE válido
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: (totalCalculado) // CORREÇÃO: Valor já garantido como numérico
+            total_proposta: totalCalculado // CORREÇÃO: Valor já garantido como numérico
         };
+
+        console.log('📦 Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
 
         try {
             let proposta;
             
             if (this.currentPropostaId) {
+                console.log('✏️ Atualizando proposta existente:', this.currentPropostaId);
                 // Atualizar proposta existente
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
@@ -1013,10 +1077,15 @@ class PropostasManager {
                     .select()
                     .single();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Erro na atualização:', error);
+                    throw error;
+                }
                 proposta = data;
+                console.log('✅ Proposta atualizada com sucesso:', proposta);
                 
             } else {
+                console.log('➕ Criando nova proposta');
                 // Criar nova proposta
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
@@ -1024,11 +1093,16 @@ class PropostasManager {
                     .select()
                     .single();
 
-                if (error) throw error;
+                if (error) {
+                    console.error('❌ Erro na criação:', error);
+                    throw error;
+                }
                 proposta = data;
+                console.log('✅ Proposta criada com sucesso:', proposta);
             }
 
             // Salvar itens da proposta
+            console.log('💾 Salvando itens da proposta...');
             await this.saveItensProposta(proposta.id);
 
             this.hideFormProposta();
@@ -1037,9 +1111,11 @@ class PropostasManager {
             await this.loadPropostas();
             
             this.showNotification('Proposta salva com sucesso!', 'success');
+            console.log('🎉 Processo concluído com sucesso!');
 
         } catch (error) {
-            console.error('Erro no salvamento:', error);
+            console.error('💥 Erro no salvamento:', error);
+            console.error('💥 Detalhes do erro:', JSON.stringify(error, null, 2));
             this.showNotification('Erro ao salvar proposta: ' + error.message, 'error');
         }
     }
@@ -1405,7 +1481,7 @@ class PropostasManager {
         setTimeout(() => {
             notification.style.animation = 'slideIn 0.3s ease-out reverse';
             setTimeout(() => notification.remove(), 300);
-        }, 300);
+        }, 5000);
     }
 
     getNotificationIcon(type) {
