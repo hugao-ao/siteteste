@@ -1,5 +1,5 @@
-// propostas-hvc.js - Versão CRONOGRAMA FIX
-// Correção definitiva para o problema do tipo_prazo "cronograma"
+// propostas-hvc.js - Versão CÁLCULO FINAL CORRIGIDO
+// Correção definitiva para os problemas de cálculo e formatação de valores
 
 // Aguardar carregamento do Supabase
 let supabaseClient = null;
@@ -76,31 +76,60 @@ function loadSupabaseFromCDN() {
     document.head.appendChild(script);
 }
 
-// NOVA FUNÇÃO: Garantir formato numérico correto
+// 💰 FUNÇÃO FINAL CORRIGIDA: Garantir formato numérico correto com tratamento melhorado
 function ensureNumericValue(value) {
+    console.log('💰 CÁLCULO-FINAL-FIX - Valor recebido:', value, 'Tipo:', typeof value);
+    
     if (value === null || value === undefined || value === '') {
+        console.log('💰 CÁLCULO-FINAL-FIX - Valor vazio, retornando 0');
         return 0;
+    }
+    
+    // Se já é um número válido, usar diretamente
+    if (typeof value === 'number' && !isNaN(value)) {
+        console.log('💰 CÁLCULO-FINAL-FIX - Já é número válido:', value);
+        return Math.round(value * 100) / 100; // Apenas arredondar para 2 casas decimais
     }
     
     // Converter para string primeiro
     let stringValue = String(value);
+    console.log('💰 CÁLCULO-FINAL-FIX - String value:', stringValue);
     
-    // Remover caracteres não numéricos exceto ponto e vírgula
-    stringValue = stringValue.replace(/[^\d.,-]/g, '');
+    // CORREÇÃO MELHORADA: Remover símbolos de moeda e espaços primeiro
+    stringValue = stringValue.replace(/[R$\s]/g, '');
+    console.log('💰 CÁLCULO-FINAL-FIX - Após remover R$ e espaços:', stringValue);
     
-    // Substituir vírgula por ponto (formato brasileiro para americano)
-    stringValue = stringValue.replace(',', '.');
+    // CORREÇÃO: Tratar formato brasileiro (115.000,00)
+    // Se tem ponto E vírgula, é formato brasileiro
+    if (stringValue.includes('.') && stringValue.includes(',')) {
+        // Remover pontos (separadores de milhares) e trocar vírgula por ponto
+        stringValue = stringValue.replace(/\./g, '').replace(',', '.');
+        console.log('💰 CÁLCULO-FINAL-FIX - Formato brasileiro convertido:', stringValue);
+    } else if (stringValue.includes(',') && !stringValue.includes('.')) {
+        // Só vírgula, trocar por ponto
+        stringValue = stringValue.replace(',', '.');
+        console.log('💰 CÁLCULO-FINAL-FIX - Vírgula convertida para ponto:', stringValue);
+    }
+    // Se só tem ponto, manter como está (formato americano)
+    
+    // Remover qualquer caractere não numérico restante (exceto ponto)
+    stringValue = stringValue.replace(/[^\d.]/g, '');
+    console.log('💰 CÁLCULO-FINAL-FIX - Após limpeza final:', stringValue);
     
     // Converter para número
     const numericValue = parseFloat(stringValue);
+    console.log('💰 CÁLCULO-FINAL-FIX - Valor numérico final:', numericValue);
     
     // Verificar se é um número válido
     if (isNaN(numericValue)) {
+        console.log('💰 CÁLCULO-FINAL-FIX - NaN detectado, retornando 0');
         return 0;
     }
     
-    // CORREÇÃO: Apenas arredondar para 2 casas decimais
-    return Math.round(numericValue * 100) / 100;
+    // CORREÇÃO: Apenas arredondar para 2 casas decimais, SEM divisões
+    const finalValue = Math.round(numericValue * 100) / 100;
+    console.log('💰 CÁLCULO-FINAL-FIX - Valor final processado:', finalValue);
+    return finalValue;
 }
 
 // 🔧 CORREÇÃO DEFINITIVA: Função de validação do tipo_prazo
@@ -1032,21 +1061,34 @@ class PropostasManager {
         this.updateTotal();
     }
 
+    // 💰 FUNÇÃO CORRIGIDA: updateItemValue com logs detalhados
     updateItemValue(index, field, value) {
+        console.log(`💰 CÁLCULO-FINAL-FIX - updateItemValue chamada:`, {index, field, value});
+        
         if (index >= 0 && index < this.servicosAdicionados.length) {
             const item = this.servicosAdicionados[index];
             
             // CORREÇÃO: Usar função para garantir formato numérico correto
-            item[field] = ensureNumericValue(value);
+            const valorProcessado = ensureNumericValue(value);
+            console.log(`💰 CÁLCULO-FINAL-FIX - Valor processado para ${field}:`, valorProcessado);
+            
+            item[field] = valorProcessado;
             
             // Recalcular total do item
             const quantidade = ensureNumericValue(item.quantidade);
             const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
             const precoMaterial = ensureNumericValue(item.preco_material);
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Valores para cálculo:`, {quantidade, precoMaoObra, precoMaterial});
+            
             const somaPrecos = precoMaoObra + precoMaterial;
             const totalCalculado = quantidade * somaPrecos;
             
+            console.log(`💰 CÁLCULO-FINAL-FIX - Cálculo: ${quantidade} × (${precoMaoObra} + ${precoMaterial}) = ${totalCalculado}`);
+            
             item.preco_total = ensureNumericValue(totalCalculado);
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Total final do item:`, item.preco_total);
             
             this.updateServicesTable();
             this.updateTotal();
@@ -1061,38 +1103,54 @@ class PropostasManager {
         }
     }
 
+    // 💰 FUNÇÃO CORRIGIDA: updateTotal com logs detalhados
     updateTotal() {
+        console.log('💰 CÁLCULO-FINAL-FIX - Iniciando updateTotal...');
+        
         // CORREÇÃO: Cálculo simplificado e direto com garantia numérica
         let total = 0;
         
-        this.servicosAdicionados.forEach((item) => {
+        this.servicosAdicionados.forEach((item, index) => {
             const itemTotal = ensureNumericValue(item.preco_total);
+            console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index}: ${itemTotal}`);
             total += itemTotal;
         });
         
         // Garantir que o total seja um número válido
         total = ensureNumericValue(total);
         
+        console.log('💰 CÁLCULO-FINAL-FIX - Total calculado final:', total);
+        
         const totalElement = document.getElementById('total-proposta');
         if (totalElement) {
-            totalElement.textContent = this.formatMoney(total);
+            const totalFormatado = this.formatMoney(total);
+            console.log('💰 CÁLCULO-FINAL-FIX - Total formatado:', totalFormatado);
+            totalElement.textContent = totalFormatado;
         }
     }
 
-    // === FUNÇÃO PARA OBTER TOTAL ATUAL ===
+    // 💰 FUNÇÃO CORRIGIDA: getCurrentTotal para obter total atual
     getCurrentTotal() {
+        console.log('💰 CÁLCULO-FINAL-FIX - Iniciando getCurrentTotal...');
+        
         let total = 0;
         
-        this.servicosAdicionados.forEach((item) => {
+        this.servicosAdicionados.forEach((item, index) => {
             const quantidade = ensureNumericValue(item.quantidade);
             const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
             const precoMaterial = ensureNumericValue(item.preco_material);
             const itemTotal = quantidade * (precoMaoObra + precoMaterial);
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index}: ${quantidade} × (${precoMaoObra} + ${precoMaterial}) = ${itemTotal}`);
+            
             total += itemTotal;
         });
         
         // CORREÇÃO: Garantir que o total seja um número válido
-        return ensureNumericValue(total);
+        const totalFinal = ensureNumericValue(total);
+        console.log('💰 CÁLCULO-FINAL-FIX - Total final getCurrentTotal:', totalFinal);
+        
+        return totalFinal;
     }
 
     // 🔧 FUNÇÃO CORRIGIDA: handleSubmitProposta com validação de cronograma
@@ -1106,8 +1164,9 @@ class PropostasManager {
             return;
         }
 
-        // CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
+        // 💰 CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
         const totalCalculado = this.getCurrentTotal();
+        console.log('💰 CÁLCULO-FINAL-FIX - Total para salvar no banco:', totalCalculado);
 
         // 🎯 CORREÇÃO CRONOGRAMA: Usar função segura para obter tipo de prazo
         const tipoPrazoValidado = getTipoPrazoSafe();
@@ -1129,7 +1188,7 @@ class PropostasManager {
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
             tipo_prazo: tipoPrazoValidado, // 🎯 CORREÇÃO: Valor GARANTIDAMENTE válido
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: totalCalculado // CORREÇÃO: Valor já garantido como numérico
+            total_proposta: totalCalculado // 💰 CORREÇÃO: Valor já garantido como numérico correto
         };
 
         console.log('📦 CRONOGRAMA-FIX - Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
@@ -1190,7 +1249,10 @@ class PropostasManager {
         }
     }
 
+    // 💰 FUNÇÃO CORRIGIDA: saveItensProposta com valores garantidos
     async saveItensProposta(propostaId) {
+        console.log('💰 CÁLCULO-FINAL-FIX - Iniciando saveItensProposta...');
+        
         // Remover itens existentes
         await supabaseClient
             .from('itens_proposta_hvc')
@@ -1198,11 +1260,15 @@ class PropostasManager {
             .eq('proposta_id', propostaId);
 
         // Inserir novos itens com valores garantidos como numéricos
-        const itens = this.servicosAdicionados.map(item => {
+        const itens = this.servicosAdicionados.map((item, index) => {
             const quantidade = ensureNumericValue(item.quantidade);
             const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
             const precoMaterial = ensureNumericValue(item.preco_material);
             const precoTotal = ensureNumericValue(quantidade * (precoMaoObra + precoMaterial));
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index} para salvar:`, {
+                quantidade, precoMaoObra, precoMaterial, precoTotal
+            });
             
             return {
                 proposta_id: propostaId,
@@ -1213,6 +1279,8 @@ class PropostasManager {
                 preco_total: precoTotal
             };
         });
+
+        console.log('💰 CÁLCULO-FINAL-FIX - Itens finais para inserir:', itens);
 
         if (itens.length > 0) {
             const { error } = await supabaseClient
@@ -1493,21 +1561,24 @@ class PropostasManager {
         }
     }
 
+    // 💰 FUNÇÃO FINAL CORRIGIDA: formatMoney SEM divisões desnecessárias
     formatMoney(value) {
-    let numericValue = parseFloat(value) || 0;
-    
-    // CORREÇÃO: Se o valor parece estar sem casas decimais (muito grande)
-    // dividir por 100 para corrigir
-    if (numericValue >= 100000 && numericValue % 100 === 0) {
-        numericValue = numericValue / 100;
+        console.log('💰 CÁLCULO-FINAL-FIX - formatMoney recebeu:', value, 'Tipo:', typeof value);
+        
+        // CORREÇÃO: Usar valor diretamente sem processamento adicional
+        const numericValue = parseFloat(value) || 0;
+        
+        console.log('💰 CÁLCULO-FINAL-FIX - Valor numérico para formatação:', numericValue);
+        
+        const formatted = new Intl.NumberFormat('pt-BR', {
+            style: 'currency',
+            currency: 'BRL'
+        }).format(numericValue);
+        
+        console.log('💰 CÁLCULO-FINAL-FIX - Valor formatado final:', formatted);
+        
+        return formatted;
     }
-    
-    return new Intl.NumberFormat('pt-BR', {
-        style: 'currency',
-        currency: 'BRL'
-    }).format(numericValue);
-}
-
 
     // === NOTIFICAÇÕES ===
     showNotification(message, type = 'info') {
