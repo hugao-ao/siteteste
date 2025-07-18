@@ -82,7 +82,7 @@ function validateTipoPrazo(tipoPrazo) {
     console.log('🔧 Validando tipo_prazo:', tipoPrazo);
     
     // LISTA EXATA de valores aceitos pela constraint
-    const VALID_VALUES = ['corridos', 'uteis', 'cronograma'];
+    const VALID_VALUES = ['corridos', 'uteis', 'De Acordo com Cronograma da Obra'];
     
     // Se é null, undefined, ou vazio, usar padrão
     if (!tipoPrazo || tipoPrazo === null || tipoPrazo === undefined || tipoPrazo === '') {
@@ -100,8 +100,8 @@ function validateTipoPrazo(tipoPrazo) {
     
     if (cleanValue === 'uteis' || cleanValue === 'úteis') {
         finalValue = 'uteis';
-    } else if (cleanValue === 'cronograma') {
-        finalValue = 'cronograma';  // ✅ ACEITAR cronograma
+    } else if (cleanValue === 'De Acordo com Cronograma da Obra') {
+        finalValue = 'De Acordo com Cronograma da Obra';  // ✅ ACEITAR cronograma
     } else if (cleanValue === 'corridos') {
         finalValue = 'corridos';
     } else {
