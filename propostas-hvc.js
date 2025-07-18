@@ -1178,7 +1178,7 @@ class PropostasManager {
         console.log('- prazo_execucao:', document.getElementById('prazo-execucao')?.value);
         console.log('- tipo_prazo (VALIDADO):', tipoPrazoValidado);
         console.log('- forma_pagamento:', document.getElementById('forma-pagamento')?.value);
-        console.log('- total_proposta:', totalCalculado/10);
+        console.log('- total_proposta:', totalCalculado);
 
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
@@ -1395,7 +1395,7 @@ class PropostasManager {
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td><strong>${this.formatMoney(proposta.total_proposta || 0)}</strong></td>
+                <td><strong>${this.formatMoney(proposta.total_proposta/10 || 0)}</strong></td>
                 <td>${prazoTexto}</td>
                 <td>${proposta.forma_pagamento || '-'}</td>
                 <td>
