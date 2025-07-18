@@ -7,24 +7,50 @@ let propostasManager = null;
 
 // Inicializar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 DOM carregado, aguardando Supabase...');
     // Aguardar um pouco para o Supabase carregar
     setTimeout(initializeApp, 1000);
 });
 
 function initializeApp() {
+    console.log('🔧 Tentando inicializar aplicação...');
+    
     // Verificar se o Supabase está disponível
     if (typeof supabase !== 'undefined') {
+        console.log('✅ Supabase encontrado via global');
         supabaseClient = supabase;
+        initializePropostasManager();
     } else {
+        console.log('⚠️ Supabase não encontrado, tentando carregar via CDN...');
         loadSupabaseFromCDN();
-        return;
     }
-    
-    // Inicializar o gerenciador de propostas
-    propostasManager = new PropostasManager();
-    
-    // Expor globalmente para uso nos event handlers inline
-    window.propostasManager = propostasManager;
+}
+
+function initializePropostasManager() {
+    try {
+        console.log('🚀 Inicializando PropostasManager...');
+        propostasManager = new PropostasManager();
+        
+        // Expor globalmente para uso nos event handlers inline
+        window.propostasManager = propostasManager;
+        console.log('✅ PropostasManager inicializado e exposto globalmente');
+        
+        // Aguardar um pouco e tentar novamente se não funcionou
+        setTimeout(() => {
+            if (!window.propostasManager) {
+                console.log('⚠️ PropostasManager não encontrado após múltiplas tentativas');
+                console.log('🔄 Tentando novamente...');
+                window.propostasManager = propostasManager;
+            }
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Erro ao inicializar PropostasManager:', error);
+        setTimeout(() => {
+            console.log('🔄 Tentando inicializar novamente após erro...');
+            initializePropostasManager();
+        }, 2000);
+    }
 }
 
 function loadSupabaseFromCDN() {
@@ -37,15 +63,15 @@ function loadSupabaseFromCDN() {
     script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
     script.onload = function() {
         if (window.supabase && window.supabase.createClient) {
+            console.log('✅ Supabase carregado via CDN');
             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            propostasManager = new PropostasManager();
-            window.propostasManager = propostasManager;
+            initializePropostasManager();
         } else {
-            console.error('Erro ao carregar Supabase via CDN');
+            console.error('❌ Erro ao carregar Supabase via CDN');
         }
     };
     script.onerror = function() {
-        console.error('Erro ao carregar script do Supabase');
+        console.error('❌ Erro ao carregar script do Supabase');
     };
     document.head.appendChild(script);
 }
@@ -177,6 +203,15 @@ class PropostasManager {
 
     async init() {
         try {
+            console.log('🔧 Inicializando PropostasManager...');
+            
+            // Verificar se o supabaseClient está disponível
+            if (!supabaseClient) {
+                console.error('❌ supabaseClient não está disponível');
+                this.showNotification('Erro: Conexão com banco de dados não disponível', 'error');
+                return;
+            }
+            
             await this.loadClientes();
             await this.loadServicos();
             await this.loadPropostas();
@@ -184,8 +219,11 @@ class PropostasManager {
             this.setupMasks();
             this.addFilterControls(); // Adicionar controles de filtro
             this.updateTableHeaders(); // Atualizar cabeçalhos da tabela
+            
+            console.log('✅ PropostasManager inicializado com sucesso');
         } catch (error) {
-            console.error('Erro ao inicializar PropostasManager:', error);
+            console.error('❌ Erro ao inicializar PropostasManager:', error);
+            this.showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
         }
     }
 
