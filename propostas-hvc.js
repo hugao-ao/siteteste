@@ -1166,7 +1166,7 @@ class PropostasManager {
 
         // 💰 CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
         const totalCalculado = this.getCurrentTotal();
-        console.log('💰 CÁLCULO-FINAL-FIX - Total para salvar no banco:', totalCalculado);
+        console.log('💰 CÁLCULO-FINAL-FIX - Total para salvar no banco:', totalCalculado/10);
 
         // 🎯 CORREÇÃO CRONOGRAMA: Usar função segura para obter tipo de prazo
         const tipoPrazoValidado = getTipoPrazoSafe();
