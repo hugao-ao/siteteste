@@ -79,40 +79,47 @@ function ensureNumericValue(value) {
 
 // CORREÇÃO DEFINITIVA: Mapeamento rigoroso de valores tipo_prazo
 function validateTipoPrazo(tipoPrazo) {
-    console.log('🔍 Validando tipo_prazo recebido:', tipoPrazo);
+    console.log('🔧 Validando tipo_prazo:', tipoPrazo);
     
-    // VALORES EXATOS aceitos pela constraint do banco
+    // LISTA EXATA de valores aceitos pela constraint
     const VALID_VALUES = ['corridos', 'uteis', 'cronograma'];
     
-    // Se o valor é null, undefined, ou string vazia, usar padrão
+    // Se é null, undefined, ou vazio, usar padrão
     if (!tipoPrazo || tipoPrazo === null || tipoPrazo === undefined || tipoPrazo === '') {
-        console.log('✅ Tipo prazo vazio, usando padrão: corridos');
+        console.log('🔧 Valor vazio, retornando: corridos');
         return 'corridos';
     }
     
     // Converter para string e limpar
-    const cleanValue = String(tipoPrazo).trim().toLowerCase();
-    console.log('🧹 Valor limpo:', cleanValue);
+    let cleanValue = String(tipoPrazo).toLowerCase().trim();
     
-    // MAPEAMENTO RIGOROSO - apenas valores exatos
-    let mappedValue;
+    console.log('🔧 Valor limpo:', cleanValue);
     
-    if (cleanValue === 'corridos' || cleanValue.includes('corridos')) {
-        mappedValue = 'corridos';
-    } else if (cleanValue === 'uteis' || cleanValue.includes('uteis') || cleanValue.includes('úteis')) {
-        mappedValue = 'uteis';
-    } else if (cleanValue === 'cronograma' || cleanValue.includes('cronograma')) {
-        mappedValue = 'cronograma';  // SEMPRE apenas 'cronograma', nunca texto adicional
+    // MAPEAMENTO CORRETO - aceitar cronograma
+    let finalValue;
+    
+    if (cleanValue === 'uteis' || cleanValue === 'úteis') {
+        finalValue = 'uteis';
+    } else if (cleanValue === 'cronograma') {
+        finalValue = 'cronograma';  // ✅ ACEITAR cronograma
+    } else if (cleanValue === 'corridos') {
+        finalValue = 'corridos';
     } else {
         // Se não reconhecer, usar padrão
-        mappedValue = 'corridos';
+        finalValue = 'corridos';
     }
     
-    console.log('✅ Valor final mapeado:', mappedValue);
-    console.log('🔒 Verificação final - valor está na lista válida:', VALID_VALUES.includes(mappedValue));
+    console.log('🔧 Valor final:', finalValue);
     
-    return mappedValue;
+    // VERIFICAÇÃO FINAL
+    if (!VALID_VALUES.includes(finalValue)) {
+        console.log('🔧 ERRO! Valor não está na lista, forçando: corridos');
+        finalValue = 'corridos';
+    }
+    
+    return finalValue;
 }
+
 
 // NOVA FUNÇÃO: Obter tipo de prazo de forma ultra-segura
 function getTipoPrazoSafe() {
