@@ -1,5 +1,5 @@
-// propostas-hvc.js - Versão CONSTRAINT FIX
-// Correção definitiva para o erro de constraint do tipo_prazo
+// propostas-hvc.js - Versão CRONOGRAMA FIX
+// Correção definitiva para o problema do tipo_prazo "cronograma"
 
 // Aguardar carregamento do Supabase
 let supabaseClient = null;
@@ -77,68 +77,92 @@ function ensureNumericValue(value) {
     return Math.round(numericValue * 100) / 100;
 }
 
-// CORREÇÃO DEFINITIVA: Mapeamento rigoroso de valores tipo_prazo
+// 🔧 CORREÇÃO DEFINITIVA: Função de validação do tipo_prazo
 function validateTipoPrazo(tipoPrazo) {
-    console.log('🔧 Validando tipo_prazo:', tipoPrazo);
+    console.log('🔧 CRONOGRAMA-FIX - Validando tipo_prazo:', tipoPrazo);
     
-    // LISTA EXATA de valores aceitos pela constraint
-    const VALID_VALUES = ['corridos', 'uteis', 'De Acordo com Cronograma da Obra'];
+    // LISTA EXATA de valores aceitos pela constraint do banco
+    const VALID_VALUES = ['corridos', 'uteis', 'cronograma'];
     
     // Se é null, undefined, ou vazio, usar padrão
     if (!tipoPrazo || tipoPrazo === null || tipoPrazo === undefined || tipoPrazo === '') {
-        console.log('🔧 Valor vazio, retornando: corridos');
+        console.log('🔧 CRONOGRAMA-FIX - Valor vazio, retornando: corridos');
         return 'corridos';
     }
     
     // Converter para string e limpar
     let cleanValue = String(tipoPrazo).toLowerCase().trim();
+    console.log('🔧 CRONOGRAMA-FIX - Valor limpo:', cleanValue);
     
-    console.log('🔧 Valor limpo:', cleanValue);
-    
-    // MAPEAMENTO CORRETO - aceitar cronograma
+    // 🎯 MAPEAMENTO CORRETO - aceitar AMBOS os formatos
     let finalValue;
     
     if (cleanValue === 'uteis' || cleanValue === 'úteis') {
         finalValue = 'uteis';
-    } else if (cleanValue === 'De Acordo com Cronograma da Obra') {
-        finalValue = 'De Acordo com Cronograma da Obra';  // ✅ ACEITAR cronograma
+    } else if (cleanValue === 'cronograma' || 
+               cleanValue === 'de acordo com cronograma da obra' ||
+               cleanValue.includes('cronograma')) {
+        finalValue = 'cronograma';  // ✅ SEMPRE cronograma no banco
     } else if (cleanValue === 'corridos') {
         finalValue = 'corridos';
     } else {
         // Se não reconhecer, usar padrão
+        console.log('🔧 CRONOGRAMA-FIX - Valor não reconhecido, usando padrão: corridos');
         finalValue = 'corridos';
     }
     
-    console.log('🔧 Valor final:', finalValue);
+    console.log('🔧 CRONOGRAMA-FIX - Valor final:', finalValue);
     
     // VERIFICAÇÃO FINAL
     if (!VALID_VALUES.includes(finalValue)) {
-        console.log('🔧 ERRO! Valor não está na lista, forçando: corridos');
+        console.log('🔧 CRONOGRAMA-FIX - ERRO! Valor não está na lista, forçando: corridos');
         finalValue = 'corridos';
     }
     
+    console.log('🔧 CRONOGRAMA-FIX - Valor DEFINITIVO para o banco:', finalValue);
     return finalValue;
 }
 
-
 // NOVA FUNÇÃO: Obter tipo de prazo de forma ultra-segura
 function getTipoPrazoSafe() {
-    console.log('🔍 Iniciando getTipoPrazoSafe()');
+    console.log('🔧 CRONOGRAMA-FIX - Obtendo tipo_prazo de forma segura...');
     
-    const element = document.getElementById('tipo-prazo');
-    if (!element) {
-        console.warn('⚠️ Elemento tipo-prazo não encontrado, usando padrão');
+    try {
+        const element = document.getElementById('tipo-prazo');
+        if (!element) {
+            console.log('🔧 CRONOGRAMA-FIX - Elemento não encontrado, retornando: corridos');
+            return 'corridos';
+        }
+        
+        const rawValue = element.value;
+        console.log('🔧 CRONOGRAMA-FIX - Valor bruto do elemento:', rawValue);
+        
+        const validatedValue = validateTipoPrazo(rawValue);
+        console.log('🔧 CRONOGRAMA-FIX - Valor validado final:', validatedValue);
+        
+        return validatedValue;
+    } catch (error) {
+        console.error('🔧 CRONOGRAMA-FIX - Erro ao obter tipo_prazo:', error);
         return 'corridos';
     }
-    
-    const rawValue = element.value;
-    console.log('📝 Valor bruto do elemento:', rawValue);
-    
-    const validatedValue = validateTipoPrazo(rawValue);
-    console.log('✅ Valor validado final:', validatedValue);
-    
-    return validatedValue;
 }
+
+// 🎯 NOVA FUNÇÃO: Formatar tipo de prazo para exibição
+function formatTipoPrazoDisplay(tipoPrazo, prazoExecucao) {
+    const prazo = prazoExecucao || '';
+    
+    switch (tipoPrazo) {
+        case 'corridos':
+            return `${prazo} dias corridos`;
+        case 'uteis':
+            return `${prazo} dias úteis`;
+        case 'cronograma':
+            return 'De acordo com cronograma da obra';
+        default:
+            return `${prazo} dias corridos`;
+    }
+}
+
 
 class PropostasManager {
     constructor() {
@@ -1033,23 +1057,24 @@ class PropostasManager {
         return ensureNumericValue(total);
     }
 
+    // 🔧 FUNÇÃO CORRIGIDA: handleSubmitProposta com validação de cronograma
     async handleSubmitProposta(e) {
         e.preventDefault();
 
-        console.log('🚀 Iniciando handleSubmitProposta');
+        console.log('🚀 CRONOGRAMA-FIX - Iniciando handleSubmitProposta');
 
         if (!this.validateForm()) {
-            console.log('❌ Validação do formulário falhou');
+            console.log('❌ CRONOGRAMA-FIX - Validação do formulário falhou');
             return;
         }
 
         // CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
         const totalCalculado = this.getCurrentTotal();
 
-        // CORREÇÃO ULTRA-ROBUSTA: Usar função segura para obter tipo de prazo
+        // 🎯 CORREÇÃO CRONOGRAMA: Usar função segura para obter tipo de prazo
         const tipoPrazoValidado = getTipoPrazoSafe();
         
-        console.log('📊 Dados da proposta antes do envio:');
+        console.log('📊 CRONOGRAMA-FIX - Dados da proposta antes do envio:');
         console.log('- numero_proposta:', document.getElementById('numero-proposta').value);
         console.log('- cliente_id:', document.getElementById('cliente-select').value);
         console.log('- status:', document.getElementById('status-select').value);
@@ -1064,18 +1089,18 @@ class PropostasManager {
             status: document.getElementById('status-select').value,
             observacoes: document.getElementById('observacoes').value || null,
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
-            tipo_prazo: tipoPrazoValidado, // CORREÇÃO: Valor GARANTIDAMENTE válido
+            tipo_prazo: tipoPrazoValidado, // 🎯 CORREÇÃO: Valor GARANTIDAMENTE válido
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
             total_proposta: totalCalculado // CORREÇÃO: Valor já garantido como numérico
         };
 
-        console.log('📦 Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
+        console.log('📦 CRONOGRAMA-FIX - Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
 
         try {
             let proposta;
             
             if (this.currentPropostaId) {
-                console.log('✏️ Atualizando proposta existente:', this.currentPropostaId);
+                console.log('✏️ CRONOGRAMA-FIX - Atualizando proposta existente:', this.currentPropostaId);
                 // Atualizar proposta existente
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
@@ -1085,14 +1110,14 @@ class PropostasManager {
                     .single();
 
                 if (error) {
-                    console.error('❌ Erro na atualização:', error);
+                    console.error('❌ CRONOGRAMA-FIX - Erro na atualização:', error);
                     throw error;
                 }
                 proposta = data;
-                console.log('✅ Proposta atualizada com sucesso:', proposta);
+                console.log('✅ CRONOGRAMA-FIX - Proposta atualizada com sucesso:', proposta);
                 
             } else {
-                console.log('➕ Criando nova proposta');
+                console.log('➕ CRONOGRAMA-FIX - Criando nova proposta');
                 // Criar nova proposta
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
@@ -1101,15 +1126,15 @@ class PropostasManager {
                     .single();
 
                 if (error) {
-                    console.error('❌ Erro na criação:', error);
+                    console.error('❌ CRONOGRAMA-FIX - Erro na criação:', error);
                     throw error;
                 }
                 proposta = data;
-                console.log('✅ Proposta criada com sucesso:', proposta);
+                console.log('✅ CRONOGRAMA-FIX - Proposta criada com sucesso:', proposta);
             }
 
             // Salvar itens da proposta
-            console.log('💾 Salvando itens da proposta...');
+            console.log('💾 CRONOGRAMA-FIX - Salvando itens da proposta...');
             await this.saveItensProposta(proposta.id);
 
             this.hideFormProposta();
@@ -1118,11 +1143,11 @@ class PropostasManager {
             await this.loadPropostas();
             
             this.showNotification('Proposta salva com sucesso!', 'success');
-            console.log('🎉 Processo concluído com sucesso!');
+            console.log('🎉 CRONOGRAMA-FIX - Processo concluído com sucesso!');
 
         } catch (error) {
-            console.error('💥 Erro no salvamento:', error);
-            console.error('💥 Detalhes do erro:', JSON.stringify(error, null, 2));
+            console.error('💥 CRONOGRAMA-FIX - Erro no salvamento:', error);
+            console.error('💥 CRONOGRAMA-FIX - Detalhes do erro:', JSON.stringify(error, null, 2));
             this.showNotification('Erro ao salvar proposta: ' + error.message, 'error');
         }
     }
@@ -1221,6 +1246,7 @@ class PropostasManager {
         }
     }
 
+    // 🎯 FUNÇÃO CORRIGIDA: renderPropostas com formatação correta do prazo
     renderPropostas(propostas) {
         const tbody = document.getElementById('proposals-tbody');
         if (!tbody) return;
@@ -1242,11 +1268,10 @@ class PropostasManager {
         propostas.forEach(proposta => {
             const row = document.createElement('tr');
             
-            // Formatar prazo
+            // 🎯 CORREÇÃO: Formatar prazo usando a nova função
             let prazoTexto = '-';
             if (proposta.prazo_execucao) {
-                const tipoPrazo = proposta.tipo_prazo === 'uteis' ? 'úteis' : 'corridos';
-                prazoTexto = `${proposta.prazo_execucao} dias ${tipoPrazo}`;
+                prazoTexto = formatTipoPrazoDisplay(proposta.tipo_prazo, proposta.prazo_execucao);
             }
 
             // Formatar observações (truncar se muito longo)
@@ -1264,7 +1289,7 @@ class PropostasManager {
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td><strong>${this.formatMoney((proposta.total_proposta)/10)}</strong></td>
+                <td><strong>${this.formatMoney(proposta.total_proposta || 0)}</strong></td>
                 <td>${prazoTexto}</td>
                 <td>${proposta.forma_pagamento || '-'}</td>
                 <td>
@@ -1501,7 +1526,4 @@ class PropostasManager {
         return icons[type] || 'info-circle';
     }
 }
-
-// Expor globalmente para uso nos event handlers inline
-window.propostasManager = null;
 
