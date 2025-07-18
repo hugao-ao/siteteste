@@ -1178,7 +1178,7 @@ class PropostasManager {
         console.log('- prazo_execucao:', document.getElementById('prazo-execucao')?.value);
         console.log('- tipo_prazo (VALIDADO):', tipoPrazoValidado);
         console.log('- forma_pagamento:', document.getElementById('forma-pagamento')?.value);
-        console.log('- total_proposta:', totalCalculado);
+        console.log('- total_proposta:', totalCalculado/10);
 
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
@@ -1188,7 +1188,7 @@ class PropostasManager {
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
             tipo_prazo: tipoPrazoValidado, // 🎯 CORREÇÃO: Valor GARANTIDAMENTE válido
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
-            total_proposta: totalCalculado/10 // 💰 CORREÇÃO: Valor já garantido como numérico correto
+            total_proposta: totalCalculado // 💰 CORREÇÃO: Valor já garantido como numérico correto
         };
 
         console.log('📦 CRONOGRAMA-FIX - Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
