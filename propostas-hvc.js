@@ -1494,13 +1494,20 @@ class PropostasManager {
     }
 
     formatMoney(value) {
-        // CORREÇÃO: Usar valor diretamente sem processamento adicional
-        const numericValue = parseFloat(value) || 0;
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(numericValue);
+    let numericValue = parseFloat(value) || 0;
+    
+    // CORREÇÃO: Se o valor parece estar sem casas decimais (muito grande)
+    // dividir por 100 para corrigir
+    if (numericValue >= 100000 && numericValue % 100 === 0) {
+        numericValue = numericValue / 100;
     }
+    
+    return new Intl.NumberFormat('pt-BR', {
+        style: 'currency',
+        currency: 'BRL'
+    }).format(numericValue);
+}
+
 
     // === NOTIFICAÇÕES ===
     showNotification(message, type = 'info') {
