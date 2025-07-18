@@ -1,104 +1,143 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Propostas HVC - Gerenciamento</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   <style>
-    /* Estilos específicos para a página de propostas */
-    body {
-      display: flex;
+    * {
       margin: 0;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #000080, #191970);
-      color: #e0e0e0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    }
-
-    #main-content-propostas-hvc {
-      flex-grow: 1;
-      padding: 2rem;
-      margin-left: 250px;
-      transition: margin-left 0.3s ease;
-      background: linear-gradient(135deg, #000080, #191970);
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+      min-height: 100vh;
       color: #e0e0e0;
+      padding: 2rem;
     }
 
-    #main-content-propostas-hvc.sidebar-collapsed {
-      margin-left: 60px;
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
     }
 
     .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+      text-align: center;
+      margin-bottom: 3rem;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+      padding: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
 
-    .page-title {
+    .page-header h1 {
       font-size: 2.5rem;
-      font-weight: bold;
-      color: #add8e6;
-      text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
+      margin-bottom: 0.5rem;
+      background: linear-gradient(45deg, #add8e6, #87ceeb);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .page-header p {
+      font-size: 1.1rem;
+      opacity: 0.9;
+    }
+
+    /* Botões */
+    .btn {
+      padding: 12px 24px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+      font-size: 1rem;
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #4CAF50, #45a049);
+      background: linear-gradient(135deg, #007bff, #0056b3);
       color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
     }
 
     .btn-primary:hover {
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+      box-shadow: 0 4px 15px rgba(0, 123, 255, 0.4);
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #28a745, #20c997);
+      color: white;
+    }
+
+    .btn-success:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
     }
 
     .btn-secondary {
       background: linear-gradient(135deg, #6c757d, #5a6268);
       color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: all 0.3s ease;
+    }
+
+    .btn-secondary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(108, 117, 125, 0.4);
     }
 
     .btn-danger {
       background: linear-gradient(135deg, #dc3545, #c82333);
       color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
+      padding: 8px 12px;
       font-size: 0.9rem;
-      transition: all 0.3s ease;
     }
 
-    .btn-success {
-      background: linear-gradient(135deg, #28a745, #218838);
+    .btn-danger:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, #17a2b8, #138496);
+      color: white;
+    }
+
+    .btn-info:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 15px rgba(23, 162, 184, 0.4);
+    }
+
+    .btn-add {
+      background: linear-gradient(135deg, #28a745, #20c997);
       color: white;
       border: none;
       padding: 8px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.9rem;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
       transition: all 0.3s ease;
     }
 
-    /* Formulário de Nova Proposta */
+    .btn-add:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 3px 10px rgba(40, 167, 69, 0.4);
+    }
+
+    /* Formulário */
     .form-section {
       background: rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(10px);
@@ -114,10 +153,17 @@
     }
 
     .form-title {
-      font-size: 1.5rem;
-      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .form-title h2 {
+      font-size: 1.8rem;
       color: #add8e6;
-      margin-bottom: 1.5rem;
       display: flex;
       align-items: center;
       gap: 10px;
@@ -125,109 +171,47 @@
 
     .form-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+      margin-bottom: 1.5rem;
     }
 
     .form-group {
-      display: flex;
-      flex-direction: column;
+      margin-bottom: 1.5rem;
     }
 
     .form-label {
-      font-weight: 600;
+      display: block;
       margin-bottom: 0.5rem;
+      font-weight: 600;
       color: #add8e6;
     }
 
-    .form-input {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 12px 16px;
+      border: 2px solid rgba(173, 216, 230, 0.3);
       border-radius: 8px;
-      padding: 12px;
+      background: rgba(255, 255, 255, 0.1);
       color: #e0e0e0;
       font-size: 1rem;
       transition: all 0.3s ease;
     }
 
-    .form-input:focus {
+    .form-input:focus,
+    .form-select:focus {
       outline: none;
       border-color: #add8e6;
-      box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
+      box-shadow: 0 0 0 3px rgba(173, 216, 230, 0.2);
+      background: rgba(255, 255, 255, 0.15);
     }
 
-    .form-select {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 8px;
-      padding: 12px;
-      color: #e0e0e0;
-      font-size: 1rem;
-      cursor: pointer;
+    .form-input::placeholder {
+      color: rgba(224, 224, 224, 0.6);
     }
 
-    .input-group {
-      display: flex;
-      gap: 10px;
-      align-items: end;
-    }
-
-    .input-group .form-input {
-      flex: 1;
-    }
-
-    .btn-add {
-      background: linear-gradient(135deg, #17a2b8, #138496);
-      color: white;
-      border: none;
-      padding: 12px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-    }
-
-    /* CORREÇÃO: Estilos específicos para campos de prazo - evitar sobreposição */
-    .prazo-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .prazo-fields {
-      display: flex;
-      gap: 10px;
-      align-items: end;
-    }
-
-    .prazo-fields .form-input,
-    .prazo-fields .form-select {
-      flex: 1;
-      min-width: 0; /* Permite que os elementos encolham */
-    }
-
-    /* CORREÇÃO: Responsividade para campos de prazo */
-    @media (max-width: 768px) {
-      .prazo-fields {
-        flex-direction: column;
-        gap: 1rem;
-      }
-      
-      .prazo-fields .form-input,
-      .prazo-fields .form-select {
-        width: 100%;
-      }
-    }
-
-    /* CORREÇÃO: Garantir que forma de pagamento tenha espaço adequado */
-    .forma-pagamento-container {
-      margin-top: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    /* Tabela de Serviços */
+    /* Seção de Serviços */
     .services-section {
       margin: 2rem 0;
     }
@@ -344,6 +328,7 @@
     .actions-cell {
       display: flex;
       gap: 8px;
+      align-items: center;
     }
 
     /* Modal */
@@ -355,7 +340,7 @@
       top: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.7);
+      background-color: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(5px);
     }
 
@@ -366,13 +351,16 @@
     }
 
     .modal-content {
-      background: linear-gradient(135deg, #000080, #191970);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 15px;
+      background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
       padding: 2rem;
+      border-radius: 15px;
       width: 90%;
       max-width: 500px;
+      border: 2px solid rgba(173, 216, 230, 0.3);
       box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      position: relative;
+      max-height: 90vh;
+      overflow-y: auto;
     }
 
     .modal-header {
@@ -381,52 +369,60 @@
       align-items: center;
       margin-bottom: 1.5rem;
       padding-bottom: 1rem;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
+      border-bottom: 2px solid rgba(173, 216, 230, 0.2);
     }
 
     .modal-title {
-      font-size: 1.5rem;
-      font-weight: 600;
       color: #add8e6;
+      font-size: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
     }
 
     .close-modal {
       background: none;
       border: none;
+      color: #add8e6;
       font-size: 1.5rem;
-      color: #e0e0e0;
       cursor: pointer;
-      transition: color 0.3s ease;
+      padding: 5px;
+      border-radius: 50%;
+      transition: all 0.3s ease;
     }
 
     .close-modal:hover {
-      color: #add8e6;
+      background: rgba(255, 255, 255, 0.1);
+      transform: rotate(90deg);
     }
 
     .modal-footer {
       display: flex;
-      justify-content: flex-end;
       gap: 1rem;
+      justify-content: flex-end;
       margin-top: 2rem;
       padding-top: 1rem;
-      border-top: 1px solid rgba(173, 216, 230, 0.3);
+      border-top: 1px solid rgba(173, 216, 230, 0.2);
     }
 
     /* Responsividade */
     @media (max-width: 768px) {
-      #main-content-propostas-hvc {
-        margin-left: 0;
+      body {
         padding: 1rem;
       }
 
       .form-row {
         grid-template-columns: 1fr;
+        gap: 1rem;
       }
 
-      .page-header {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
+      .page-header h1 {
+        font-size: 2rem;
+      }
+
+      .modal-content {
+        width: 95%;
+        padding: 1.5rem;
       }
 
       .services-table,
@@ -434,69 +430,78 @@
         font-size: 0.9rem;
       }
 
-      .modal-content {
-        width: 95%;
-        padding: 1rem;
+      .services-table th,
+      .services-table td,
+      .proposals-table th,
+      .proposals-table td {
+        padding: 8px;
+      }
+
+      .actions-cell {
+        flex-direction: column;
+        gap: 4px;
       }
     }
 
-    /* Animações */
-    .fade-in {
-      animation: fadeIn 0.3s ease-in;
+    /* Melhorias de layout para campos de prazo e forma de pagamento */
+    .prazo-container {
+      margin-bottom: 1.5rem;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
+    .prazo-fields {
+      display: flex;
+      gap: 10px;
+      align-items: end;
     }
 
-    .loading {
-      opacity: 0.6;
-      pointer-events: none;
+    .prazo-fields > div {
+      flex: 1;
     }
 
-    .loading::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 20px;
-      height: 20px;
-      margin: -10px 0 0 -10px;
-      border: 2px solid #add8e6;
-      border-radius: 50%;
-      border-top-color: transparent;
-      animation: spin 1s linear infinite;
+    .forma-pagamento-container {
+      margin-bottom: 1.5rem;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+    /* Responsividade para campos de prazo */
+    @media (max-width: 768px) {
+      .prazo-fields {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .prazo-fields > div {
+        flex: none;
+      }
     }
   </style>
-  <link rel="stylesheet" href="propostas-hvc-precos.css">
 </head>
 <body>
-  <main id="main-content-propostas-hvc">
+  <div class="container">
     <!-- Cabeçalho da Página -->
     <div class="page-header">
-      <h1 class="page-title">
-        <i class="fas fa-file-contract"></i>
-        Gerenciamento de Propostas HVC
-      </h1>
-      <button class="btn-primary" id="btn-nova-proposta">
+      <h1><i class="fas fa-file-contract"></i> Gerenciamento de Propostas HVC</h1>
+      <p>Crie, edite e gerencie propostas para o projeto HVC</p>
+    </div>
+
+    <!-- Botão Nova Proposta -->
+    <div style="text-align: center; margin-bottom: 2rem;">
+      <button class="btn btn-primary" id="btn-nova-proposta">
         <i class="fas fa-plus"></i>
         Nova Proposta
       </button>
     </div>
 
-    <!-- Formulário de Nova/Editar Proposta -->
+    <!-- Formulário de Proposta -->
     <div class="form-section hidden" id="form-proposta">
-      <div class="form-title">
-        <i class="fas fa-edit"></i>
-        <span id="form-title-text">Nova Proposta</span>
-      </div>
-
       <form id="proposta-form">
+        <div class="form-title">
+          <h2 id="form-title-text">
+            <i class="fas fa-file-contract"></i>
+            Nova Proposta
+          </h2>
+        </div>
+
+        <!-- Informações Básicas -->
         <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="numero-proposta">
@@ -506,8 +511,7 @@
               type="text" 
               id="numero-proposta" 
               class="form-input" 
-              placeholder="0000/0000"
-              maxlength="9"
+              placeholder="Ex: 2024/0001"
               required
             >
           </div>
@@ -516,16 +520,19 @@
             <label class="form-label" for="cliente-select">
               Cliente *
             </label>
-            <div class="input-group">
-              <select id="cliente-select" class="form-select" required>
+            <div style="display: flex; gap: 10px;">
+              <select id="cliente-select" class="form-select" required style="flex: 1;">
                 <option value="">Selecione um cliente...</option>
               </select>
               <button type="button" class="btn-add" id="btn-add-cliente">
                 <i class="fas fa-plus"></i>
+                Novo
               </button>
             </div>
           </div>
+        </div>
 
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="status-select">
               Status *
@@ -538,13 +545,13 @@
           </div>
         </div>
 
-        <!-- CORREÇÃO: Campos de Prazo reorganizados para evitar sobreposição -->
+        <!-- Campos de Prazo e Forma de Pagamento com layout melhorado -->
         <div class="prazo-container">
-          <div class="form-group">
-            <label class="form-label" for="prazo-execucao">
-              Prazo de Execução *
-            </label>
-            <div class="prazo-fields">
+          <label class="form-label">
+            Prazo de Execução *
+          </label>
+          <div class="prazo-fields">
+            <div>
               <input 
                 type="number" 
                 id="prazo-execucao" 
@@ -553,29 +560,28 @@
                 min="1"
                 required
               >
+            </div>
+            <div>
               <select id="tipo-prazo" class="form-select" required>
                 <option value="corridos">Dias Corridos</option>
                 <option value="uteis">Dias Úteis</option>
-                <option value="cronograma">Com cronograma da obra (texto livre no campo observações)</option>
+                <option value="cronograma">Com cronograma da obra</option>
               </select>
             </div>
           </div>
         </div>
 
-        <!-- CORREÇÃO: Campo de Forma de Pagamento em container separado -->
         <div class="forma-pagamento-container">
-          <div class="form-group">
-            <label class="form-label" for="forma-pagamento">
-              Forma de Pagamento *
-            </label>
-            <input 
-              type="text" 
-              id="forma-pagamento" 
-              class="form-input" 
-              placeholder="Ex: À vista, 30/60/90 dias, PIX, etc."
-              required
-            >
-          </div>
+          <label class="form-label" for="forma-pagamento">
+            Forma de Pagamento *
+          </label>
+          <input 
+            type="text" 
+            id="forma-pagamento" 
+            class="form-input" 
+            placeholder="Ex: À vista, 30/60/90 dias, PIX, etc."
+            required
+          >
         </div>
 
         <!-- Seção de Serviços -->
@@ -640,8 +646,7 @@
     <!-- Lista de Propostas -->
     <div class="proposals-list" id="proposals-list">
       <div class="form-title">
-        <i class="fas fa-list"></i>
-        Lista de Propostas
+        <h2><i class="fas fa-list"></i> Lista de Propostas</h2>
       </div>
 
       <table class="proposals-table" id="proposals-table">
@@ -653,6 +658,7 @@
             <th>Prazo</th>
             <th>Pagamento</th>
             <th>Status</th>
+            <th>Observações</th>
             <th>Data</th>
             <th>Ações</th>
           </tr>
@@ -663,11 +669,14 @@
       </table>
     </div>
 
-    <!-- Modal Adicionar Serviço -->
+    <!-- Modal Adicionar Serviço - CORRIGIDO COM SELECT DE UNIDADE -->
     <div class="modal" id="modal-servico">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Serviço</h3>
+          <h3 class="modal-title">
+            <i class="fas fa-tools"></i>
+            Adicionar Novo Serviço
+          </h3>
           <button class="close-modal" id="close-modal-servico">
             <i class="fas fa-times"></i>
           </button>
@@ -704,33 +713,41 @@
             <label class="form-label" for="servico-detalhe">
               Detalhe
             </label>
-            <input 
-              type="text" 
+            <textarea 
               id="servico-detalhe" 
               class="form-input" 
+              rows="2"
               placeholder="Detalhes adicionais do serviço"
-            >
+            ></textarea>
           </div>
 
+          <!-- CORREÇÃO: Campo Unidade agora é um SELECT igual à página de serviços -->
           <div class="form-group">
             <label class="form-label" for="servico-unidade">
-              Unidade *
+              Unidade de Medida
             </label>
-            <input 
-              type="text" 
-              id="servico-unidade" 
-              class="form-input" 
-              placeholder="Ex: m², un, kg"
-              required
-            >
+            <select id="servico-unidade" class="form-select">
+              <option value="">Selecione uma unidade (opcional)</option>
+              <option value="m">Metro (m)</option>
+              <option value="m²">Metro Quadrado (m²)</option>
+              <option value="m³">Metro Cúbico (m³)</option>
+              <option value="kg">Quilograma (kg)</option>
+              <option value="t">Tonelada (t)</option>
+              <option value="un">Unidade (un)</option>
+              <option value="h">Hora (h)</option>
+              <option value="dia">Dia (dia)</option>
+              <option value="mês">Mês (mês)</option>
+              <option value="vb">Verba (vb)</option>
+            </select>
           </div>
 
           <div class="modal-footer">
             <button type="button" class="btn-secondary" id="cancel-servico">
+              <i class="fas fa-times"></i>
               Cancelar
             </button>
             <button type="submit" class="btn-success">
-              <i class="fas fa-save"></i>
+              <i class="fas fa-plus"></i>
               Criar Serviço
             </button>
           </div>
@@ -742,7 +759,10 @@
     <div class="modal" id="modal-cliente">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Cliente</h3>
+          <h3 class="modal-title">
+            <i class="fas fa-user-plus"></i>
+            Adicionar Novo Cliente
+          </h3>
           <button class="close-modal" id="close-modal-cliente">
             <i class="fas fa-times"></i>
           </button>
@@ -793,39 +813,29 @@
             <textarea 
               id="cliente-endereco" 
               class="form-input" 
-              rows="3"
+              rows="2"
               placeholder="Endereço completo do cliente"
             ></textarea>
           </div>
 
           <div class="modal-footer">
             <button type="button" class="btn-secondary" id="cancel-cliente">
+              <i class="fas fa-times"></i>
               Cancelar
             </button>
             <button type="submit" class="btn-success">
-              <i class="fas fa-save"></i>
-              Salvar Cliente
+              <i class="fas fa-user-plus"></i>
+              Adicionar Cliente
             </button>
           </div>
         </form>
       </div>
     </div>
-  </main>
+  </div>
 
-  <script type="module" src="sidebar.js"></script>
-<script type="module" src="supabase.js"></script>
-<script type="module" src="propostas-hvc.js"></script>
-<script type="module">
-  import { injectSidebar } from './sidebar.js';
-  document.addEventListener('DOMContentLoaded', () => {
-    if (typeof injectSidebar === 'function') {
-      injectSidebar('main-content-propostas-hvc');
-    } else {
-      console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
-    }
-  });
-</script>
-<script defer src="propostas-hvc-precos.js"></script>
+  <!-- Scripts -->
+  <script src="supabase.js"></script>
+  <script src="propostas-hvc.js"></script>
 </body>
 </html>
 
