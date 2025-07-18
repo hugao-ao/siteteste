@@ -188,6 +188,45 @@
       transition: all 0.3s ease;
     }
 
+    /* CORREÇÃO: Estilos específicos para campos de prazo - evitar sobreposição */
+    .prazo-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .prazo-fields {
+      display: flex;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .prazo-fields .form-input,
+    .prazo-fields .form-select {
+      flex: 1;
+      min-width: 0; /* Permite que os elementos encolham */
+    }
+
+    /* CORREÇÃO: Responsividade para campos de prazo */
+    @media (max-width: 768px) {
+      .prazo-fields {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .prazo-fields .form-input,
+      .prazo-fields .form-select {
+        width: 100%;
+      }
+    }
+
+    /* CORREÇÃO: Garantir que forma de pagamento tenha espaço adequado */
+    .forma-pagamento-container {
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
     /* Tabela de Serviços */
     .services-section {
       margin: 2rem 0;
@@ -497,32 +536,34 @@
               <option value="Recusada">Recusada</option>
             </select>
           </div>
+        </div>
 
-          <!-- Novos campos: Prazo e Forma de Pagamento -->
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label" for="prazo-execucao">
-                Prazo de Execução *
-              </label>
-              <div style="display: flex; gap: 10px;">
-                <input 
-                  type="number" 
-                  id="prazo-execucao" 
-                  class="form-input" 
-                  placeholder="Ex: 30"
-                  min="1"
-                  required
-                  style="flex: 1;"
-                >
-                <select id="tipo-prazo" class="form-select" required style="flex: 1;">
-                  <option value="corridos">Dias Corridos</option>
-                  <option value="uteis">Dias Úteis</option>
-                  <option value="cronograma">Com cronograma da obra</option>
-                </select>
-              </div>
+        <!-- CORREÇÃO: Campos de Prazo reorganizados para evitar sobreposição -->
+        <div class="prazo-container">
+          <div class="form-group">
+            <label class="form-label" for="prazo-execucao">
+              Prazo de Execução *
+            </label>
+            <div class="prazo-fields">
+              <input 
+                type="number" 
+                id="prazo-execucao" 
+                class="form-input" 
+                placeholder="Ex: 30"
+                min="1"
+                required
+              >
+              <select id="tipo-prazo" class="form-select" required>
+                <option value="corridos">Dias Corridos</option>
+                <option value="uteis">Dias Úteis</option>
+                <option value="cronograma">Com cronograma da obra (texto livre no campo observações)</option>
+              </select>
             </div>
           </div>
+        </div>
 
+        <!-- CORREÇÃO: Campo de Forma de Pagamento em container separado -->
+        <div class="forma-pagamento-container">
           <div class="form-group">
             <label class="form-label" for="forma-pagamento">
               Forma de Pagamento *
@@ -634,60 +675,52 @@
 
         <form id="servico-form">
           <div class="form-group">
-            <label class="form-label" for="servico-select">
-              Selecionar Serviço Cadastrado *
-            </label>
-            <select 
-              id="servico-select" 
-              class="form-input"
-              onchange="propostasManager.onServicoSelectChange(this)"
-              required
-            >
-              <option value="">Selecione um serviço...</option>
-            </select>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-quantidade">
-              Quantidade *
+            <label class="form-label" for="servico-codigo">
+              Código do Serviço *
             </label>
             <input 
-              type="number" 
-              id="servico-quantidade" 
+              type="text" 
+              id="servico-codigo" 
               class="form-input" 
-              placeholder="Ex: 10"
-              min="0.01"
-              step="0.01"
+              placeholder="Ex: 001"
               required
             >
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="servico-mao-obra">
-              Preço Mão de Obra (R$) *
+            <label class="form-label" for="servico-descricao">
+              Descrição *
             </label>
             <input 
-              type="number" 
-              id="servico-mao-obra" 
+              type="text" 
+              id="servico-descricao" 
               class="form-input" 
-              placeholder="Ex: 50.00"
-              min="0"
-              step="0.01"
+              placeholder="Ex: Pintura de parede"
               required
             >
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="servico-material">
-              Preço Material (R$) *
+            <label class="form-label" for="servico-detalhe">
+              Detalhe
             </label>
             <input 
-              type="number" 
-              id="servico-material" 
+              type="text" 
+              id="servico-detalhe" 
               class="form-input" 
-              placeholder="Ex: 25.00"
-              min="0"
-              step="0.01"
+              placeholder="Detalhes adicionais do serviço"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="servico-unidade">
+              Unidade *
+            </label>
+            <input 
+              type="text" 
+              id="servico-unidade" 
+              class="form-input" 
+              placeholder="Ex: m², un, kg"
               required
             >
           </div>
@@ -697,8 +730,8 @@
               Cancelar
             </button>
             <button type="submit" class="btn-success">
-              <i class="fas fa-plus"></i>
-              Adicionar à Proposta
+              <i class="fas fa-save"></i>
+              Criar Serviço
             </button>
           </div>
         </form>
@@ -730,26 +763,39 @@
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="cliente-documento">
-              Documento
+            <label class="form-label" for="cliente-email">
+              Email
             </label>
             <input 
-              type="text" 
-              id="cliente-documento" 
+              type="email" 
+              id="cliente-email" 
               class="form-input" 
-              placeholder="CPF ou CNPJ"
+              placeholder="email@exemplo.com"
             >
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="cliente-tipo-documento">
-              Tipo de Documento
+            <label class="form-label" for="cliente-telefone">
+              Telefone
             </label>
-            <select id="cliente-tipo-documento" class="form-select">
-              <option value="">Selecione...</option>
-              <option value="CPF">CPF</option>
-              <option value="CNPJ">CNPJ</option>
-            </select>
+            <input 
+              type="tel" 
+              id="cliente-telefone" 
+              class="form-input" 
+              placeholder="(11) 99999-9999"
+            >
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="cliente-endereco">
+              Endereço
+            </label>
+            <textarea 
+              id="cliente-endereco" 
+              class="form-input" 
+              rows="3"
+              placeholder="Endereço completo do cliente"
+            ></textarea>
           </div>
 
           <div class="modal-footer">
@@ -782,3 +828,4 @@
 <script defer src="propostas-hvc-precos.js"></script>
 </body>
 </html>
+
