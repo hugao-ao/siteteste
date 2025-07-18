@@ -1,153 +1,67 @@
-// propostas-hvc.js - Versão CRONOGRAMA FIX
-// Correção definitiva para o problema do tipo_prazo "cronograma"
+// 🔧 ULTRA-SAFE CRONOGRAMA FIX - Versão que FORÇA valores válidos
 
-// Aguardar carregamento do Supabase
-let supabaseClient = null;
-let propostasManager = null;
+// === FUNÇÕES UTILITÁRIAS CORRIGIDAS ===
 
-// Inicializar quando a página carregar
-document.addEventListener('DOMContentLoaded', function() {
-    // Aguardar um pouco para o Supabase carregar
-    setTimeout(initializeApp, 1000);
-});
-
-function initializeApp() {
-    // Verificar se o Supabase está disponível
-    if (typeof supabase !== 'undefined') {
-        supabaseClient = supabase;
-    } else {
-        loadSupabaseFromCDN();
-        return;
-    }
-    
-    // Inicializar o gerenciador de propostas
-    propostasManager = new PropostasManager();
-    
-    // Expor globalmente para uso nos event handlers inline
-    window.propostasManager = propostasManager;
-}
-
-function loadSupabaseFromCDN() {
-    // Criar cliente Supabase diretamente
-    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
-    
-    // Carregar Supabase via script
-    const script = document.createElement('script');
-    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-    script.onload = function() {
-        if (window.supabase && window.supabase.createClient) {
-            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-            propostasManager = new PropostasManager();
-            window.propostasManager = propostasManager;
-        } else {
-            console.error('Erro ao carregar Supabase via CDN');
-        }
-    };
-    script.onerror = function() {
-        console.error('Erro ao carregar script do Supabase');
-    };
-    document.head.appendChild(script);
-}
-
-// NOVA FUNÇÃO: Garantir formato numérico correto
+// 🎯 FUNÇÃO ULTRA-SEGURA: Garantir valor numérico
 function ensureNumericValue(value) {
     if (value === null || value === undefined || value === '') {
         return 0;
     }
     
-    // Converter para string primeiro
-    let stringValue = String(value);
-    
-    // Remover caracteres não numéricos exceto ponto e vírgula
-    stringValue = stringValue.replace(/[^\d.,-]/g, '');
-    
-    // Substituir vírgula por ponto (formato brasileiro para americano)
-    stringValue = stringValue.replace(',', '.');
-    
-    // Converter para número
-    const numericValue = parseFloat(stringValue);
-    
-    // Verificar se é um número válido
-    if (isNaN(numericValue)) {
-        return 0;
-    }
-    
-    // CORREÇÃO: Apenas arredondar para 2 casas decimais
-    return Math.round(numericValue * 100) / 100;
+    const numericValue = parseFloat(value);
+    return isNaN(numericValue) ? 0 : numericValue;
 }
 
-// 🔧 CORREÇÃO DEFINITIVA: Função de validação do tipo_prazo
-function validateTipoPrazo(tipoPrazo) {
-    console.log('🔧 CRONOGRAMA-FIX - Validando tipo_prazo:', tipoPrazo);
-    
-    // LISTA EXATA de valores aceitos pela constraint do banco
-    const VALID_VALUES = ['corridos', 'uteis', 'cronograma'];
-    
-    // Se é null, undefined, ou vazio, usar padrão
-    if (!tipoPrazo || tipoPrazo === null || tipoPrazo === undefined || tipoPrazo === '') {
-        console.log('🔧 CRONOGRAMA-FIX - Valor vazio, retornando: corridos');
-        return 'corridos';
-    }
-    
-    // Converter para string e limpar
-    let cleanValue = String(tipoPrazo).toLowerCase().trim();
-    console.log('🔧 CRONOGRAMA-FIX - Valor limpo:', cleanValue);
-    
-    // 🎯 MAPEAMENTO CORRETO - aceitar AMBOS os formatos
-    let finalValue;
-    
-    if (cleanValue === 'uteis' || cleanValue === 'úteis') {
-        finalValue = 'uteis';
-    } else if (cleanValue === 'cronograma' || 
-               cleanValue === 'de acordo com cronograma da obra' ||
-               cleanValue.includes('cronograma')) {
-        finalValue = 'cronograma';  // ✅ SEMPRE cronograma no banco
-    } else if (cleanValue === 'corridos') {
-        finalValue = 'corridos';
-    } else {
-        // Se não reconhecer, usar padrão
-        console.log('🔧 CRONOGRAMA-FIX - Valor não reconhecido, usando padrão: corridos');
-        finalValue = 'corridos';
-    }
-    
-    console.log('🔧 CRONOGRAMA-FIX - Valor final:', finalValue);
-    
-    // VERIFICAÇÃO FINAL
-    if (!VALID_VALUES.includes(finalValue)) {
-        console.log('🔧 CRONOGRAMA-FIX - ERRO! Valor não está na lista, forçando: corridos');
-        finalValue = 'corridos';
-    }
-    
-    console.log('🔧 CRONOGRAMA-FIX - Valor DEFINITIVO para o banco:', finalValue);
-    return finalValue;
-}
-
-// NOVA FUNÇÃO: Obter tipo de prazo de forma ultra-segura
-function getTipoPrazoSafe() {
-    console.log('🔧 CRONOGRAMA-FIX - Obtendo tipo_prazo de forma segura...');
+// 🎯 FUNÇÃO ULTRA-SEGURA: Obter tipo de prazo
+function getTipoPrazoUltraSafe() {
+    console.log('🔥 ULTRA-SAFE - Obtendo tipo de prazo...');
     
     try {
         const element = document.getElementById('tipo-prazo');
         if (!element) {
-            console.log('🔧 CRONOGRAMA-FIX - Elemento não encontrado, retornando: corridos');
+            console.log('🔥 ULTRA-SAFE - Elemento não encontrado, retornando: corridos');
             return 'corridos';
         }
         
         const rawValue = element.value;
-        console.log('🔧 CRONOGRAMA-FIX - Valor bruto do elemento:', rawValue);
+        console.log('🔥 ULTRA-SAFE - Valor bruto do elemento:', rawValue);
         
-        const validatedValue = validateTipoPrazo(rawValue);
-        console.log('🔧 CRONOGRAMA-FIX - Valor validado final:', validatedValue);
+        // LIMPEZA ULTRA-AGRESSIVA
+        let cleanValue = String(rawValue || '')
+            .toLowerCase()
+            .trim()
+            .replace(/[^a-z]/g, ''); // REMOVE TUDO que não for letra
         
-        return validatedValue;
+        console.log('🔥 ULTRA-SAFE - Valor após limpeza agressiva:', cleanValue);
+        
+        // MAPEAMENTO ULTRA-RIGOROSO
+        let finalValue = 'corridos'; // PADRÃO SEMPRE
+        
+        if (cleanValue.includes('uteis')) {
+            finalValue = 'uteis';
+        } else if (cleanValue.includes('cronograma')) {
+            finalValue = 'cronograma';
+        }
+        
+        console.log('🔥 ULTRA-SAFE - Valor final mapeado:', finalValue);
+        
+        // VERIFICAÇÃO FINAL ULTRA-RIGOROSA
+        const VALID_VALUES = ['corridos', 'uteis', 'cronograma'];
+        if (!VALID_VALUES.includes(finalValue)) {
+            console.log('🔥 ULTRA-SAFE - ERRO! Forçando para corridos');
+            finalValue = 'corridos';
+        }
+        
+        console.log('🔥 ULTRA-SAFE - Valor FINAL garantido:', finalValue);
+        return finalValue;
+        
     } catch (error) {
-        console.error('🔧 CRONOGRAMA-FIX - Erro ao obter tipo_prazo:', error);
+        console.error('🔥 ULTRA-SAFE - Erro capturado:', error);
         return 'corridos';
     }
 }
 
-// 🎯 NOVA FUNÇÃO: Formatar tipo de prazo para exibição
+// 🎯 FUNÇÃO NOVA: Formatar tipo de prazo para exibição
 function formatTipoPrazoDisplay(tipoPrazo, prazoExecucao) {
     const prazo = prazoExecucao || '';
     
@@ -163,7 +77,7 @@ function formatTipoPrazoDisplay(tipoPrazo, prazoExecucao) {
     }
 }
 
-
+// === CLASSE PRINCIPAL ===
 class PropostasManager {
     constructor() {
         this.currentPropostaId = null;
@@ -1057,29 +971,29 @@ class PropostasManager {
         return ensureNumericValue(total);
     }
 
-    // 🔧 FUNÇÃO CORRIGIDA: handleSubmitProposta com validação de cronograma
+    // 🔥 FUNÇÃO ULTRA-SAFE: handleSubmitProposta com proteção máxima
     async handleSubmitProposta(e) {
         e.preventDefault();
 
-        console.log('🚀 CRONOGRAMA-FIX - Iniciando handleSubmitProposta');
+        console.log('🔥 ULTRA-SAFE - Iniciando handleSubmitProposta');
 
         if (!this.validateForm()) {
-            console.log('❌ CRONOGRAMA-FIX - Validação do formulário falhou');
+            console.log('❌ ULTRA-SAFE - Validação do formulário falhou');
             return;
         }
 
         // CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
         const totalCalculado = this.getCurrentTotal();
 
-        // 🎯 CORREÇÃO CRONOGRAMA: Usar função segura para obter tipo de prazo
-        const tipoPrazoValidado = getTipoPrazoSafe();
+        // 🎯 ULTRA-SAFE: Usar função ultra-segura para obter tipo de prazo
+        const tipoPrazoValidado = getTipoPrazoUltraSafe();
         
-        console.log('📊 CRONOGRAMA-FIX - Dados da proposta antes do envio:');
+        console.log('📊 ULTRA-SAFE - Dados da proposta antes do envio:');
         console.log('- numero_proposta:', document.getElementById('numero-proposta').value);
         console.log('- cliente_id:', document.getElementById('cliente-select').value);
         console.log('- status:', document.getElementById('status-select').value);
         console.log('- prazo_execucao:', document.getElementById('prazo-execucao')?.value);
-        console.log('- tipo_prazo (VALIDADO):', tipoPrazoValidado);
+        console.log('- tipo_prazo (ULTRA-SAFE):', tipoPrazoValidado);
         console.log('- forma_pagamento:', document.getElementById('forma-pagamento')?.value);
         console.log('- total_proposta:', totalCalculado);
 
@@ -1089,35 +1003,38 @@ class PropostasManager {
             status: document.getElementById('status-select').value,
             observacoes: document.getElementById('observacoes').value || null,
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
-            tipo_prazo: tipoPrazoValidado, // 🎯 CORREÇÃO: Valor GARANTIDAMENTE válido
+            tipo_prazo: tipoPrazoValidado, // 🎯 ULTRA-SAFE: Valor GARANTIDAMENTE válido
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
             total_proposta: totalCalculado // CORREÇÃO: Valor já garantido como numérico
         };
 
-        console.log('📦 CRONOGRAMA-FIX - Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
+        console.log('📦 ULTRA-SAFE - Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
 
         try {
             let proposta;
             
             if (this.currentPropostaId) {
-                console.log('✏️ CRONOGRAMA-FIX - Atualizando proposta existente:', this.currentPropostaId);
+                console.log('✏️ ULTRA-SAFE - Atualizando proposta existente:', this.currentPropostaId);
                 // Atualizar proposta existente
                 const { data, error } = await supabaseClient
-                    .from('propostas_hvc')
+                    .from('propostas_h
+
+
+vc')
                     .update(propostaData)
                     .eq('id', this.currentPropostaId)
                     .select()
                     .single();
 
                 if (error) {
-                    console.error('❌ CRONOGRAMA-FIX - Erro na atualização:', error);
+                    console.error('❌ ULTRA-SAFE - Erro na atualização:', error);
                     throw error;
                 }
                 proposta = data;
-                console.log('✅ CRONOGRAMA-FIX - Proposta atualizada com sucesso:', proposta);
+                console.log('✅ ULTRA-SAFE - Proposta atualizada com sucesso:', proposta);
                 
             } else {
-                console.log('➕ CRONOGRAMA-FIX - Criando nova proposta');
+                console.log('➕ ULTRA-SAFE - Criando nova proposta');
                 // Criar nova proposta
                 const { data, error } = await supabaseClient
                     .from('propostas_hvc')
@@ -1126,15 +1043,15 @@ class PropostasManager {
                     .single();
 
                 if (error) {
-                    console.error('❌ CRONOGRAMA-FIX - Erro na criação:', error);
+                    console.error('❌ ULTRA-SAFE - Erro na criação:', error);
                     throw error;
                 }
                 proposta = data;
-                console.log('✅ CRONOGRAMA-FIX - Proposta criada com sucesso:', proposta);
+                console.log('✅ ULTRA-SAFE - Proposta criada com sucesso:', proposta);
             }
 
             // Salvar itens da proposta
-            console.log('💾 CRONOGRAMA-FIX - Salvando itens da proposta...');
+            console.log('💾 ULTRA-SAFE - Salvando itens da proposta...');
             await this.saveItensProposta(proposta.id);
 
             this.hideFormProposta();
@@ -1143,11 +1060,11 @@ class PropostasManager {
             await this.loadPropostas();
             
             this.showNotification('Proposta salva com sucesso!', 'success');
-            console.log('🎉 CRONOGRAMA-FIX - Processo concluído com sucesso!');
+            console.log('🎉 ULTRA-SAFE - Processo concluído com sucesso!');
 
         } catch (error) {
-            console.error('💥 CRONOGRAMA-FIX - Erro no salvamento:', error);
-            console.error('💥 CRONOGRAMA-FIX - Detalhes do erro:', JSON.stringify(error, null, 2));
+            console.error('💥 ULTRA-SAFE - Erro no salvamento:', error);
+            console.error('💥 ULTRA-SAFE - Detalhes do erro:', JSON.stringify(error, null, 2));
             this.showNotification('Erro ao salvar proposta: ' + error.message, 'error');
         }
     }
@@ -1526,4 +1443,10 @@ class PropostasManager {
         return icons[type] || 'info-circle';
     }
 }
+
+// === INICIALIZAÇÃO ===
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔥 ULTRA-SAFE - Inicializando PropostasManager...');
+    window.propostasManager = new PropostasManager();
+});
 
