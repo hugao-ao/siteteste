@@ -1,4 +1,4 @@
-// propostas-hvc.js - Versão CORRIGIDA - Numeric Field Overflow Fix
+// propostas-hvc.js - Versão CORRIGIDA - Numeric Field Overflow Fix + Constraint Fix
 // Gerenciamento de Propostas HVC
 
 // Aguardar carregamento do Supabase
@@ -73,9 +73,14 @@ function ensureNumericValue(value) {
         return 0;
     }
     
-    // CORREÇÃO: Remover multiplicação por 100 que estava causando o problema
-    // Apenas arredondar para 2 casas decimais
+    // CORREÇÃO: Apenas arredondar para 2 casas decimais
     return Math.round(numericValue * 100) / 100;
+}
+
+// NOVA FUNÇÃO: Validar tipo de prazo
+function validateTipoPrazo(tipoPrazo) {
+    const validTypes = ['corridos', 'uteis', 'cronograma'];
+    return validTypes.includes(tipoPrazo) ? tipoPrazo : 'corridos';
 }
 
 class PropostasManager {
@@ -981,13 +986,17 @@ class PropostasManager {
         // CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
         const totalCalculado = this.getCurrentTotal();
 
+        // CORREÇÃO: Validar e garantir tipo de prazo válido
+        const tipoPrazoRaw = document.getElementById('tipo-prazo')?.value;
+        const tipoPrazoValidado = validateTipoPrazo(tipoPrazoRaw);
+
         const propostaData = {
             numero_proposta: document.getElementById('numero-proposta').value,
             cliente_id: document.getElementById('cliente-select').value,
             status: document.getElementById('status-select').value,
             observacoes: document.getElementById('observacoes').value || null,
             prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
-            tipo_prazo: document.getElementById('tipo-prazo')?.value || 'corridos',
+            tipo_prazo: tipoPrazoValidado, // CORREÇÃO: Usar valor validado
             forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
             total_proposta: (totalCalculado) // CORREÇÃO: Valor já garantido como numérico
         };
@@ -1396,7 +1405,7 @@ class PropostasManager {
         setTimeout(() => {
             notification.style.animation = 'slideIn 0.3s ease-out reverse';
             setTimeout(() => notification.remove(), 300);
-        }, 5000);
+        }, 300);
     }
 
     getNotificationIcon(type) {
