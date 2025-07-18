@@ -716,13 +716,23 @@
             <label class="form-label" for="servico-unidade">
               Unidade *
             </label>
-            <input 
-              type="text" 
+            <select 
               id="servico-unidade" 
-              class="form-input" 
-              placeholder="Ex: m², un, kg"
+              class="form-select" 
               required
             >
+              <option value="">Selecione uma unidade</option>
+              <option value="m">Metro (m)</option>
+              <option value="m²">Metro Quadrado (m²)</option>
+              <option value="m³">Metro Cúbico (m³)</option>
+              <option value="kg">Quilograma (kg)</option>
+              <option value="t">Tonelada (t)</option>
+              <option value="un">Unidade (un)</option>
+              <option value="h">Hora (h)</option>
+              <option value="dia">Dia (dia)</option>
+              <option value="mês">Mês (mês)</option>
+              <option value="vb">Verba (vb)</option>
+            </select>
           </div>
 
           <div class="modal-footer">
@@ -828,3 +838,4 @@
 <script defer src="propostas-hvc-precos.js"></script>
 </body>
 </html>
+
