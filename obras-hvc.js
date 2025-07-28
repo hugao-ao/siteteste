@@ -1,6 +1,6 @@
-// obras-hvc.js - Sistema de Gestão de Obras HVC (VERSÃO CORRIGIDA - PERCENTUAL FUNCIONANDO)
-// Gerenciamento completo de obras com propostas e andamento de serviços
-// CORREÇÃO: Percentual de conclusão agora atualiza automaticamente
+// obras-hvc.js - Sistema de Gestão de Obras HVC (VERSÃO VALOR-BASEADO)
+// Gerenciamento completo de obras com cálculo de percentual baseado em VALORES dos serviços
+// 🎯 NOVO SISTEMA: PENDENTE=0%, INICIADO=50%, CONCLUÍDO=100% do valor do serviço
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -545,7 +545,7 @@ class ObrasManager {
 
     // 🎯 FUNÇÃO ULTRA CORRIGIDA: updateResumoObra com cálculo de percentual
     async updateResumoObra() {
-        console.log('🎯 PERCENTUAL-FIX - Atualizando resumo da obra...');
+        console.log('🎯 VALOR-BASEADO - Atualizando resumo da obra...');
         
         // Calcular totais
         const totalPropostas = this.propostasSelecionadas.length;
@@ -553,11 +553,11 @@ class ObrasManager {
         const totalClientes = clientesUnicos.length;
         const valorTotal = this.propostasSelecionadas.reduce((sum, p) => sum + ((p.total_proposta)/100), 0);
         
-        // 🎯 CORREÇÃO PRINCIPAL: Calcular percentual real de conclusão
+        // 🎯 CORREÇÃO PRINCIPAL: Calcular percentual real de conclusão baseado em VALORES
         let percentualConclusao = 0;
         if (this.currentObraId) {
-            percentualConclusao = await this.calcularPercentualConclusao(this.currentObraId);
-            console.log('🎯 PERCENTUAL-FIX - Percentual calculado:', percentualConclusao);
+            percentualConclusao = await this.calcularPercentualConclusaoBaseadoEmValor(this.currentObraId);
+            console.log('🎯 VALOR-BASEADO - Percentual calculado:', percentualConclusao);
         }
         
         // Atualizar elementos
@@ -571,42 +571,75 @@ class ObrasManager {
         if (valorTotalEl) valorTotalEl.textContent = this.formatMoney(valorTotal);
         if (progressoEl) {
             progressoEl.textContent = `${percentualConclusao}%`;
-            console.log('🎯 PERCENTUAL-FIX - Elemento atualizado com:', `${percentualConclusao}%`);
+            console.log('🎯 VALOR-BASEADO - Elemento atualizado com:', `${percentualConclusao}%`);
         }
     }
 
-    // 🎯 NOVA FUNÇÃO: Calcular percentual de conclusão da obra
-    async calcularPercentualConclusao(obraId) {
-        console.log('🎯 PERCENTUAL-FIX - Calculando percentual para obra:', obraId);
+    // 🎯 NOVA FUNÇÃO: Calcular percentual de conclusão baseado em VALORES dos serviços
+    async calcularPercentualConclusaoBaseadoEmValor(obraId) {
+        console.log('🎯 VALOR-BASEADO - Calculando percentual para obra:', obraId);
         
         try {
-            // Buscar todos os serviços da obra
+            // Buscar todos os serviços da obra com seus valores e status
             const { data: andamentos, error } = await supabaseClient
                 .from('servicos_andamento')
-                .select('status')
+                .select(`
+                    status,
+                    itens_proposta_hvc (
+                        quantidade,
+                        valor_mao_obra,
+                        valor_material
+                    )
+                `)
                 .eq('obra_id', obraId);
 
             if (error) {
-                console.error('🎯 PERCENTUAL-FIX - Erro ao buscar andamentos:', error);
+                console.error('🎯 VALOR-BASEADO - Erro ao buscar andamentos:', error);
                 return 0;
             }
 
             if (!andamentos || andamentos.length === 0) {
-                console.log('🎯 PERCENTUAL-FIX - Nenhum andamento encontrado');
+                console.log('🎯 VALOR-BASEADO - Nenhum andamento encontrado');
                 return 0;
             }
 
-            // Contar serviços por status
-            const totalServicos = andamentos.length;
-            const servicosConcluidos = andamentos.filter(a => a.status === 'CONCLUIDO').length;
-            
-            console.log('🎯 PERCENTUAL-FIX - Total de serviços:', totalServicos);
-            console.log('🎯 PERCENTUAL-FIX - Serviços concluídos:', servicosConcluidos);
+            // 🎯 CÁLCULO BASEADO EM VALORES
+            let valorTotalObra = 0;
+            let valorConcluido = 0;
+
+            andamentos.forEach(andamento => {
+                const item = andamento.itens_proposta_hvc;
+                if (!item) return;
+
+                // Calcular valor total do serviço
+                const valorUnitario = (item.valor_mao_obra || 0) + (item.valor_material || 0);
+                const valorTotalServico = valorUnitario * (item.quantidade || 1);
+                
+                valorTotalObra += valorTotalServico;
+
+                // 🎯 APLICAR PESOS POR STATUS
+                switch (andamento.status) {
+                    case 'PENDENTE':
+                        // 0% do valor (não contribui)
+                        break;
+                    case 'INICIADO':
+                        // 50% do valor
+                        valorConcluido += valorTotalServico * 0.5;
+                        break;
+                    case 'CONCLUIDO':
+                        // 100% do valor
+                        valorConcluido += valorTotalServico;
+                        break;
+                }
+            });
+
+            console.log('🎯 VALOR-BASEADO - Valor total da obra:', valorTotalObra);
+            console.log('🎯 VALOR-BASEADO - Valor concluído:', valorConcluido);
             
             // Calcular percentual
-            const percentual = totalServicos > 0 ? Math.round((servicosConcluidos / totalServicos) * 100) : 0;
+            const percentual = valorTotalObra > 0 ? Math.round((valorConcluido / valorTotalObra) * 100) : 0;
             
-            console.log('🎯 PERCENTUAL-FIX - Percentual calculado:', percentual);
+            console.log('🎯 VALOR-BASEADO - Percentual calculado:', percentual);
             
             // 🎯 CORREÇÃO ADICIONAL: Atualizar percentual na tabela obras_hvc
             await this.atualizarPercentualNoBanco(obraId, percentual);
@@ -614,14 +647,14 @@ class ObrasManager {
             return percentual;
             
         } catch (error) {
-            console.error('🎯 PERCENTUAL-FIX - Erro no cálculo:', error);
+            console.error('🎯 VALOR-BASEADO - Erro no cálculo:', error);
             return 0;
         }
     }
 
     // 🎯 NOVA FUNÇÃO: Atualizar percentual no banco de dados
     async atualizarPercentualNoBanco(obraId, percentual) {
-        console.log('🎯 PERCENTUAL-FIX - Atualizando percentual no banco:', obraId, percentual);
+        console.log('🎯 VALOR-BASEADO - Atualizando percentual no banco:', obraId, percentual);
         
         try {
             const { error } = await supabaseClient
@@ -630,12 +663,12 @@ class ObrasManager {
                 .eq('id', obraId);
 
             if (error) {
-                console.error('🎯 PERCENTUAL-FIX - Erro ao atualizar banco:', error);
+                console.error('🎯 VALOR-BASEADO - Erro ao atualizar banco:', error);
             } else {
-                console.log('🎯 PERCENTUAL-FIX - Percentual atualizado no banco com sucesso');
+                console.log('🎯 VALOR-BASEADO - Percentual atualizado no banco com sucesso');
             }
         } catch (error) {
-            console.error('🎯 PERCENTUAL-FIX - Erro na atualização do banco:', error);
+            console.error('🎯 VALOR-BASEADO - Erro na atualização do banco:', error);
         }
     }
 
@@ -710,7 +743,7 @@ class ObrasManager {
                 return;
             }
             
-            // Criar tabela de serviços
+            // 🎯 NOVA TABELA: Incluindo coluna de VALOR para mostrar peso do serviço
             container.innerHTML = `
                 <table class="propostas-table" style="width: 100%;">
                     <thead>
@@ -718,6 +751,7 @@ class ObrasManager {
                             <th>Proposta</th>
                             <th>Serviço</th>
                             <th>Quantidade</th>
+                            <th>Valor Total</th>
                             <th>Status</th>
                             <th>Previsão</th>
                             <th>Observações</th>
@@ -734,6 +768,10 @@ class ObrasManager {
                 // Buscar andamento existente para este item
                 const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
                 
+                // 🎯 CALCULAR VALOR TOTAL DO SERVIÇO
+                const valorUnitario = (item.valor_mao_obra || 0) + (item.valor_material || 0);
+                const valorTotalServico = valorUnitario * (item.quantidade || 1);
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${item.propostas_hvc?.numero_proposta}</strong></td>
@@ -742,11 +780,12 @@ class ObrasManager {
                         <small>${item.servicos_hvc?.descricao}</small>
                     </td>
                     <td>${item.quantidade} ${item.servicos_hvc?.unidade || ''}</td>
+                    <td><strong>${this.formatMoney(valorTotalServico)}</strong></td>
                     <td>
                         <select class="form-select status-servico" data-index="${index}" style="width: 150px;">
-                            <option value="PENDENTE" ${andamentoExistente?.status === 'PENDENTE' ? 'selected' : ''}>Pendente</option>
-                            <option value="INICIADO" ${andamentoExistente?.status === 'INICIADO' ? 'selected' : ''}>Iniciado</option>
-                            <option value="CONCLUIDO" ${andamentoExistente?.status === 'CONCLUIDO' ? 'selected' : ''}>Concluído</option>
+                            <option value="PENDENTE" ${andamentoExistente?.status === 'PENDENTE' ? 'selected' : ''}>Pendente (0%)</option>
+                            <option value="INICIADO" ${andamentoExistente?.status === 'INICIADO' ? 'selected' : ''}>Iniciado (50%)</option>
+                            <option value="CONCLUIDO" ${andamentoExistente?.status === 'CONCLUIDO' ? 'selected' : ''}>Concluído (100%)</option>
                         </select>
                     </td>
                     <td>
@@ -780,9 +819,9 @@ class ObrasManager {
         }
     }
 
-    // 🎯 FUNÇÃO ULTRA CORRIGIDA: salvarAndamento com atualização automática do percentual
+    // 🎯 FUNÇÃO ULTRA CORRIGIDA: salvarAndamento com atualização automática do percentual baseado em valor
     async salvarAndamento() {
-        console.log('🎯 PERCENTUAL-FIX - Salvando andamento dos serviços...');
+        console.log('🎯 VALOR-BASEADO - Salvando andamento dos serviços...');
         
         if (!this.currentObraId) {
             this.showNotification('Salve a obra primeiro antes de gerenciar o andamento', 'warning');
@@ -827,25 +866,25 @@ class ObrasManager {
                 if (error) throw error;
             }
             
-            // 🎯 CORREÇÃO PRINCIPAL: Recalcular e atualizar percentual automaticamente
-            console.log('🎯 PERCENTUAL-FIX - Recalculando percentual após salvar andamento...');
-            const novoPercentual = await this.calcularPercentualConclusao(this.currentObraId);
+            // 🎯 CORREÇÃO PRINCIPAL: Recalcular percentual baseado em VALORES
+            console.log('🎯 VALOR-BASEADO - Recalculando percentual após salvar andamento...');
+            const novoPercentual = await this.calcularPercentualConclusaoBaseadoEmValor(this.currentObraId);
             
             // Atualizar interface imediatamente
             const progressoEl = document.getElementById('progresso-geral');
             if (progressoEl) {
                 progressoEl.textContent = `${novoPercentual}%`;
-                console.log('🎯 PERCENTUAL-FIX - Interface atualizada com novo percentual:', `${novoPercentual}%`);
+                console.log('🎯 VALOR-BASEADO - Interface atualizada com novo percentual:', `${novoPercentual}%`);
             }
             
             // Recarregar lista de obras para mostrar percentual atualizado
             await this.loadObras();
             
             this.hideModalAndamento();
-            this.showNotification(`Andamento salvo! Percentual de conclusão: ${novoPercentual}%`, 'success');
+            this.showNotification(`Andamento salvo! Percentual de conclusão: ${novoPercentual}% (baseado em valores)`, 'success');
             
         } catch (error) {
-            console.error('🎯 PERCENTUAL-FIX - Erro ao salvar andamento:', error);
+            console.error('🎯 VALOR-BASEADO - Erro ao salvar andamento:', error);
             this.showNotification('Erro ao salvar andamento: ' + error.message, 'error');
         }
     }
@@ -879,7 +918,7 @@ class ObrasManager {
         }
     }
 
-    // 🎯 FUNÇÃO ULTRA CORRIGIDA: renderObras com percentual de conclusão
+    // 🎯 FUNÇÃO ULTRA CORRIGIDA: renderObras com coluna percentual e barra visual
     renderObras(obras) {
         const tbody = document.getElementById('obras-tbody');
         if (!tbody) return;
@@ -905,7 +944,7 @@ class ObrasManager {
             )];
             const clientesTexto = clientesUnicos.length > 0 ? clientesUnicos.join(', ') : '-';
             
-            // 🎯 CORREÇÃO: Mostrar percentual de conclusão real
+            // 🎯 CORREÇÃO: Mostrar percentual de conclusão real baseado em valores
             const percentualConclusao = obra.percentual_conclusao || 0;
             
             const row = document.createElement('tr');
@@ -913,12 +952,14 @@ class ObrasManager {
                 <td><strong>${obra.numero_obra}</strong></td>
                 <td>${clientesTexto}</td>
                 <td><strong>${this.formatMoney(((obra.valor_total)/100) || 0)}</strong></td>
-                <td>
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <div style="flex: 1; background: #e9ecef; border-radius: 10px; height: 20px; overflow: hidden;">
-                            <div style="background: linear-gradient(90deg, #28a745, #20c997); height: 100%; width: ${percentualConclusao}%; transition: width 0.3s ease;"></div>
+                <td class="percentual-cell">
+                    <div class="percentual-container">
+                        <div class="percentual-bar">
+                            <div class="percentual-fill" style="width: ${percentualConclusao}%;">
+                                ${percentualConclusao > 15 ? percentualConclusao + '%' : ''}
+                            </div>
                         </div>
-                        <span style="font-weight: 600; color: #28a745; min-width: 40px;">${percentualConclusao}%</span>
+                        <span class="percentual-text">${percentualConclusao}%</span>
                     </div>
                 </td>
                 <td>
