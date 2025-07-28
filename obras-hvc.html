@@ -261,6 +261,48 @@
       background: rgba(173, 216, 230, 0.1);
     }
 
+    /* 🎯 NOVO: Estilos para coluna de percentual */
+    .percentual-cell {
+      text-align: center;
+      min-width: 120px;
+    }
+
+    .percentual-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .percentual-bar {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      height: 20px;
+      overflow: hidden;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      min-width: 60px;
+    }
+
+    .percentual-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #28a745, #20c997);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .percentual-text {
+      font-weight: 600;
+      color: #28a745;
+      min-width: 40px;
+      text-align: center;
+    }
+
     /* Resumo da Obra */
     .resumo-obra {
       background: rgba(40, 167, 69, 0.2);
@@ -533,6 +575,16 @@
       .filter-controls {
         flex-direction: column;
       }
+
+      /* 🎯 NOVO: Responsividade para percentual */
+      .percentual-container {
+        flex-direction: column;
+        gap: 5px;
+      }
+
+      .percentual-bar {
+        min-width: 80px;
+      }
     }
 
     /* Animações */
@@ -720,19 +772,21 @@
         </div>
       </div>
 
+      <!-- 🎯 TABELA CORRIGIDA: Adicionada coluna PERCENTUAL -->
       <table class="obras-table">
         <thead>
           <tr>
             <th>Número</th>
             <th>Clientes</th>
             <th>Valor Total</th>
+            <th class="percentual-cell">Percentual</th>
             <th>Status</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody id="obras-tbody">
           <tr>
-            <td colspan="5" style="text-align: center; padding: 2rem; color: #888;">
+            <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
               <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
               Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
             </td>
