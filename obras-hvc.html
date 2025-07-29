@@ -261,48 +261,6 @@
       background: rgba(173, 216, 230, 0.1);
     }
 
-    /* 🎯 NOVO: Estilos para coluna de percentual */
-    .percentual-cell {
-      text-align: center;
-      min-width: 120px;
-    }
-
-    .percentual-container {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      justify-content: center;
-    }
-
-    .percentual-bar {
-      flex: 1;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 10px;
-      height: 20px;
-      overflow: hidden;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      min-width: 60px;
-    }
-
-    .percentual-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #28a745, #20c997);
-      transition: width 0.3s ease;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      color: white;
-      font-weight: 600;
-      font-size: 0.8rem;
-    }
-
-    .percentual-text {
-      font-weight: 600;
-      color: #28a745;
-      min-width: 40px;
-      text-align: center;
-    }
-
     /* Resumo da Obra */
     .resumo-obra {
       background: rgba(40, 167, 69, 0.2);
@@ -407,6 +365,46 @@
       color: white;
     }
 
+    /* Percentual com barra visual */
+    .percentual-cell {
+      min-width: 120px;
+    }
+
+    .percentual-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .percentual-bar {
+      flex: 1;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      position: relative;
+    }
+
+    .percentual-fill {
+      height: 100%;
+      background: linear-gradient(135deg, #28a745, #20c997);
+      transition: width 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+
+    .percentual-text {
+      font-weight: 600;
+      color: #e0e0e0;
+      min-width: 35px;
+      text-align: right;
+    }
+
     /* Modais */
     .modal {
       display: none;
@@ -431,11 +429,19 @@
       border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 15px;
       padding: 2rem;
-      max-width: 90vw;
-      max-height: 90vh;
+      max-width: 95vw;
+      max-height: 95vh;
       overflow-y: auto;
       box-shadow: 0 20px 60px rgba(0,0,0,0.5);
       color: #e0e0e0;
+    }
+
+    /* 🎯 MODAL DE ANDAMENTO MAIOR */
+    #modal-andamento .modal-content {
+      max-width: 98vw;
+      max-height: 98vh;
+      width: 1400px;
+      height: 800px;
     }
 
     .modal-header {
@@ -479,6 +485,65 @@
       margin-top: 2rem;
       padding-top: 1rem;
       border-top: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    /* 🎯 TABELA DE ANDAMENTO MELHORADA */
+    #servicos-andamento {
+      max-height: 600px;
+      overflow-y: auto;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    #servicos-andamento table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    #servicos-andamento th {
+      background: rgba(173, 216, 230, 0.2);
+      color: #add8e6;
+      padding: 12px 8px;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    #servicos-andamento td {
+      padding: 12px 8px;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      color: #e0e0e0;
+      vertical-align: top;
+    }
+
+    #servicos-andamento tr:hover {
+      background: rgba(173, 216, 230, 0.1);
+    }
+
+    /* 🎯 CAMPOS DO MODAL MAIORES */
+    #servicos-andamento .form-select {
+      width: 160px;
+      padding: 8px;
+      font-size: 0.85rem;
+    }
+
+    #servicos-andamento .form-input {
+      width: 140px;
+      padding: 8px;
+      font-size: 0.85rem;
+    }
+
+    #servicos-andamento .form-textarea {
+      width: 220px;
+      min-height: 60px;
+      padding: 8px;
+      font-size: 0.85rem;
+      resize: vertical;
     }
 
     /* Filtros */
@@ -541,6 +606,17 @@
     }
 
     /* Responsividade */
+    @media (max-width: 1200px) {
+      #modal-andamento .modal-content {
+        width: 95vw;
+        height: 90vh;
+      }
+      
+      #servicos-andamento {
+        max-height: 500px;
+      }
+    }
+
     @media (max-width: 768px) {
       #main-content-obras-hvc {
         margin-left: 0;
@@ -576,14 +652,32 @@
         flex-direction: column;
       }
 
-      /* 🎯 NOVO: Responsividade para percentual */
-      .percentual-container {
-        flex-direction: column;
-        gap: 5px;
+      /* Modal responsivo em mobile */
+      #modal-andamento .modal-content {
+        width: 98vw;
+        height: 95vh;
+        padding: 1rem;
       }
 
-      .percentual-bar {
-        min-width: 80px;
+      #servicos-andamento {
+        max-height: 400px;
+        font-size: 0.8rem;
+      }
+
+      #servicos-andamento th,
+      #servicos-andamento td {
+        padding: 8px 4px;
+      }
+
+      #servicos-andamento .form-select,
+      #servicos-andamento .form-input {
+        width: 120px;
+        font-size: 0.8rem;
+      }
+
+      #servicos-andamento .form-textarea {
+        width: 180px;
+        font-size: 0.8rem;
       }
     }
 
@@ -595,6 +689,25 @@
 
     .form-section, .obras-list {
       animation: fadeIn 0.5s ease-out;
+    }
+
+    /* Scrollbar personalizada */
+    #servicos-andamento::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    #servicos-andamento::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    #servicos-andamento::-webkit-scrollbar-thumb {
+      background: rgba(173, 216, 230, 0.5);
+      border-radius: 4px;
+    }
+
+    #servicos-andamento::-webkit-scrollbar-thumb:hover {
+      background: rgba(173, 216, 230, 0.7);
     }
   </style>
 </head>
@@ -772,14 +885,13 @@
         </div>
       </div>
 
-      <!-- 🎯 TABELA CORRIGIDA: Adicionada coluna PERCENTUAL -->
       <table class="obras-table">
         <thead>
           <tr>
             <th>Número</th>
             <th>Clientes</th>
             <th>Valor Total</th>
-            <th class="percentual-cell">Percentual</th>
+            <th>Percentual</th>
             <th>Status</th>
             <th>Ações</th>
           </tr>
@@ -850,7 +962,7 @@
 
   <!-- Modal de Andamento de Serviços -->
   <div id="modal-andamento" class="modal">
-    <div class="modal-content" style="max-width: 1000px;">
+    <div class="modal-content">
       <div class="modal-header">
         <h3 class="modal-title">
           <i class="fas fa-tasks"></i>
