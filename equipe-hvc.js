@@ -1,12 +1,13 @@
-// SISTEMA DE EQUIPES HVC - JAVASCRIPT CORRIGIDO
 // ========================================
-// Sistema completo para gerenciamento de equipes, integrantes e funções
-// Compatível com a estrutura ES6 modules do projeto HVC
+// SISTEMA DE EQUIPES HVC - JAVASCRIPT SEM COLUNA STATUS
+// ========================================
+// Versão que funciona sem a coluna status nas tabelas
 
 // ========================================
 // IMPORTS
 // ========================================
 import { supabase } from './supabase.js';
+import { injectSidebarWithAutoDetection } from './sidebar.js';
 
 // ========================================
 // VARIÁVEIS GLOBAIS
@@ -46,15 +47,15 @@ function isValidCPF(cpf) {
     const cleanCPF = cpf.replace(/\D/g, '');
     if (cleanCPF.length !== 11) return false;
     
-    // Verificar se todos os dígitos são iguais
+    // Verifica se todos os dígitos são iguais
     if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
     
-    // Validar dígitos verificadores
+    // Validação dos dígitos verificadores
     let sum = 0;
     for (let i = 0; i < 9; i++) {
         sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
     }
-    let remainder = 11 - (sum % 11);
+    let remainder = (sum * 10) % 11;
     if (remainder === 10 || remainder === 11) remainder = 0;
     if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
     
@@ -62,7 +63,7 @@ function isValidCPF(cpf) {
     for (let i = 0; i < 10; i++) {
         sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
     }
-    remainder = 11 - (sum % 11);
+    remainder = (sum * 10) % 11;
     if (remainder === 10 || remainder === 11) remainder = 0;
     if (remainder !== parseInt(cleanCPF.charAt(10))) return false;
     
@@ -86,7 +87,7 @@ function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.innerHTML = `
-        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle'}"></i>
+        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
         ${message}
     `;
     
@@ -95,7 +96,7 @@ function showNotification(message, type = 'success') {
     // Mostrar notificação
     setTimeout(() => notification.classList.add('show'), 100);
     
-    // Remover notificação após 3 segundos
+    // Remover após 3 segundos
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 300);
@@ -155,6 +156,7 @@ async function loadIntegrantes() {
         integrantesData = data || [];
         console.log('Integrantes carregados:', integrantesData.length);
         updateIntegrantesTable();
+        updateIntegrantesSelect();
         return integrantesData;
     } catch (error) {
         console.error('Erro ao carregar integrantes:', error);
@@ -172,6 +174,7 @@ async function loadEquipes() {
             .select(`
                 *,
                 equipes_integrantes (
+                    integrante_id,
                     integrantes_hvc (
                         id,
                         nome
@@ -204,7 +207,7 @@ async function saveFuncaoToDB(funcaoData) {
             const { data, error } = await supabase
                 .from('funcoes_hvc')
                 .update(funcaoData)
-                .eq('id', currentEditingFuncao)
+                .eq('id', currentEditingFuncao.id)
                 .select();
             
             if (error) throw error;
@@ -229,7 +232,7 @@ async function saveFuncaoToDB(funcaoData) {
     }
 }
 
-// Salvar integrante
+// Salvar integrante - SEM COLUNA STATUS
 async function saveIntegranteToDB(integranteData) {
     try {
         if (currentEditingIntegrante) {
@@ -237,7 +240,7 @@ async function saveIntegranteToDB(integranteData) {
             const { data, error } = await supabase
                 .from('integrantes_hvc')
                 .update(integranteData)
-                .eq('id', currentEditingIntegrante)
+                .eq('id', currentEditingIntegrante.id)
                 .select();
             
             if (error) throw error;
@@ -266,7 +269,7 @@ async function saveIntegranteToDB(integranteData) {
     }
 }
 
-// Salvar equipe
+// Salvar equipe - SEM COLUNA STATUS
 async function saveEquipeToDB(equipeData, integrantesSelecionados) {
     try {
         let equipeId;
@@ -276,11 +279,11 @@ async function saveEquipeToDB(equipeData, integrantesSelecionados) {
             const { data, error } = await supabase
                 .from('equipes_hvc')
                 .update(equipeData)
-                .eq('id', currentEditingEquipe)
+                .eq('id', currentEditingEquipe.id)
                 .select();
             
             if (error) throw error;
-            equipeId = currentEditingEquipe;
+            equipeId = currentEditingEquipe.id;
             
             // Remover integrantes existentes
             await supabase
@@ -399,83 +402,102 @@ async function deleteEquipe(id) {
 
 // Modal Equipe
 function openEquipeModal(equipeId = null) {
-    currentEditingEquipe = equipeId;
-    const modal = document.getElementById('modal-equipe');
-    const title = document.getElementById('modal-equipe-title');
+    currentEditingEquipe = equipeId ? equipesData.find(e => e.id === equipeId) : null;
     
-    if (equipeId) {
-        title.textContent = 'Editar Equipe';
-        const equipe = equipesData.find(e => e.id === equipeId);
-        if (equipe) {
-            document.getElementById('numero-equipe').value = equipe.numero;
-            document.getElementById('observacoes-equipe').value = equipe.observacoes || '';
-            
-            // Marcar integrantes selecionados
-            const integrantesSelecionados = equipe.equipes_integrantes?.map(ei => ei.integrantes_hvc.id) || [];
-            updateIntegrantesSelect(integrantesSelecionados);
-        }
+    const modal = document.getElementById('modalEquipe');
+    const title = document.getElementById('modalEquipeTitle');
+    const form = document.getElementById('formEquipe');
+    
+    title.textContent = currentEditingEquipe ? 'Editar Equipe' : 'Nova Equipe';
+    
+    if (currentEditingEquipe) {
+        document.getElementById('numeroEquipe').value = currentEditingEquipe.numero;
+        document.getElementById('observacoesEquipe').value = currentEditingEquipe.observacoes || '';
+        
+        // Marcar integrantes da equipe
+        const integrantesEquipe = currentEditingEquipe.equipes_integrantes?.map(ei => ei.integrante_id) || [];
+        document.querySelectorAll('#integrantesSelect input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = integrantesEquipe.includes(parseInt(checkbox.value));
+        });
     } else {
-        title.textContent = 'Nova Equipe';
-        document.getElementById('form-equipe').reset();
-        updateIntegrantesSelect([]);
+        form.reset();
+        document.querySelectorAll('#integrantesSelect input[type="checkbox"]').forEach(checkbox => {
+            checkbox.checked = false;
+        });
     }
     
+    updateSelectedCount();
     modal.classList.add('show');
 }
 
 function closeEquipeModal() {
-    const modal = document.getElementById('modal-equipe');
+    const modal = document.getElementById('modalEquipe');
     modal.classList.remove('show');
     currentEditingEquipe = null;
 }
 
 // Modal Integrante
 function openIntegranteModal(integranteId = null) {
-    currentEditingIntegrante = integranteId;
-    const modal = document.getElementById('modal-integrante');
-    const title = document.getElementById('modal-integrante-title');
+    currentEditingIntegrante = integranteId ? integrantesData.find(i => i.id === integranteId) : null;
     
-    if (integranteId) {
-        title.textContent = 'Editar Integrante';
-        const integrante = integrantesData.find(i => i.id === integranteId);
-        if (integrante) {
-            document.getElementById('nome-integrante').value = integrante.nome;
-            document.getElementById('cpf-integrante').value = integrante.cpf;
-            document.getElementById('whatsapp-integrante').value = integrante.whatsapp;
-            document.getElementById('funcao-integrante').value = integrante.funcao_id;
-            document.getElementById('observacoes-integrante').value = integrante.observacoes || '';
-        }
+    const modal = document.getElementById('modalIntegrante');
+    const title = document.getElementById('modalIntegranteTitle');
+    const form = document.getElementById('formIntegrante');
+    
+    title.textContent = currentEditingIntegrante ? 'Editar Integrante' : 'Novo Integrante';
+    
+    if (currentEditingIntegrante) {
+        document.getElementById('nomeIntegrante').value = currentEditingIntegrante.nome;
+        document.getElementById('cpfIntegrante').value = currentEditingIntegrante.cpf;
+        document.getElementById('whatsappIntegrante').value = currentEditingIntegrante.whatsapp;
+        document.getElementById('funcaoIntegrante').value = currentEditingIntegrante.funcao_id;
+        document.getElementById('observacoesIntegrante').value = currentEditingIntegrante.observacoes || '';
     } else {
-        title.textContent = 'Novo Integrante';
-        document.getElementById('form-integrante').reset();
+        form.reset();
     }
     
     modal.classList.add('show');
 }
 
 function closeIntegranteModal() {
-    const modal = document.getElementById('modal-integrante');
+    const modal = document.getElementById('modalIntegrante');
     modal.classList.remove('show');
     currentEditingIntegrante = null;
 }
 
-// Modal Funções
+// Modal Funções - CORRIGIDO
 function openFuncoesModal() {
-    const modal = document.getElementById('modal-funcoes');
+    // Tentar primeiro com o ID do HTML atual
+    let modal = document.getElementById('modal-funcoes');
+    
+    // Se não encontrar, tentar com o ID alternativo
+    if (!modal) {
+        modal = document.getElementById('modalFuncoes');
+    }
+    
     if (modal) {
         modal.classList.add('show');
         cancelNovaFuncao(); // Garantir que formulário está fechado
+        console.log('Modal de funções aberto com sucesso');
     } else {
-        console.error('Modal de funções não encontrado');
+        console.error('Modal de funções não encontrado. IDs testados: modal-funcoes, modalFuncoes');
         showNotification('Erro: Modal de funções não encontrado', 'error');
     }
 }
 
 function closeFuncoesModal() {
-    const modal = document.getElementById('modal-funcoes');
+    // Tentar primeiro com o ID do HTML atual
+    let modal = document.getElementById('modal-funcoes');
+    
+    // Se não encontrar, tentar com o ID alternativo
+    if (!modal) {
+        modal = document.getElementById('modalFuncoes');
+    }
+    
     if (modal) {
         modal.classList.remove('show');
         cancelNovaFuncao();
+        console.log('Modal de funções fechado com sucesso');
     }
 }
 
@@ -485,19 +507,62 @@ function closeFuncoesModal() {
 
 // Formulário de nova função
 function openNovaFuncaoForm() {
-    const form = document.getElementById('nova-funcao-form');
+    // Tentar primeiro com o ID do HTML atual
+    let form = document.getElementById('nova-funcao-form');
+    
+    // Se não encontrar, tentar com o ID alternativo
+    if (!form) {
+        form = document.getElementById('novaFuncaoForm');
+    }
+    
     if (form) {
         form.style.display = 'block';
-        document.getElementById('nome-funcao').focus();
+        
+        // Tentar focar no campo nome
+        let nomeField = document.getElementById('nome-funcao');
+        if (!nomeField) {
+            nomeField = document.getElementById('nomeFuncao');
+        }
+        
+        if (nomeField) {
+            nomeField.focus();
+        }
     }
 }
 
 function cancelNovaFuncao() {
-    const form = document.getElementById('nova-funcao-form');
+    // Tentar primeiro com o ID do HTML atual
+    let form = document.getElementById('nova-funcao-form');
+    
+    // Se não encontrar, tentar com o ID alternativo
+    if (!form) {
+        form = document.getElementById('novaFuncaoForm');
+    }
+    
     if (form) {
         form.style.display = 'none';
-        form.querySelector('form').reset();
+        
+        // Limpar campo nome
+        let nomeField = document.getElementById('nome-funcao');
+        if (!nomeField) {
+            nomeField = document.getElementById('nomeFuncao');
+        }
+        
+        if (nomeField) {
+            nomeField.value = '';
+        }
+        
         currentEditingFuncao = null;
+    }
+}
+
+// Atualizar contador de selecionados
+function updateSelectedCount() {
+    const selectedCheckboxes = document.querySelectorAll('#integrantesSelect input[type="checkbox"]:checked');
+    const countElement = document.getElementById('selectedCount');
+    
+    if (countElement) {
+        countElement.textContent = `${selectedCheckboxes.length} integrante${selectedCheckboxes.length !== 1 ? 's' : ''} selecionado${selectedCheckboxes.length !== 1 ? 's' : ''}`;
     }
 }
 
@@ -505,7 +570,18 @@ function cancelNovaFuncao() {
 function saveFuncao(event) {
     event.preventDefault();
     
-    const nome = document.getElementById('nome-funcao').value.trim();
+    // Tentar primeiro com o ID do HTML atual
+    let nomeField = document.getElementById('nome-funcao');
+    if (!nomeField) {
+        nomeField = document.getElementById('nomeFuncao');
+    }
+    
+    if (!nomeField) {
+        showNotification('Campo nome da função não encontrado', 'error');
+        return;
+    }
+    
+    const nome = nomeField.value.trim();
     
     if (!nome) {
         showNotification('Nome da função é obrigatório', 'error');
@@ -523,15 +599,15 @@ function saveFuncao(event) {
     });
 }
 
-// Salvar integrante
+// Salvar integrante - SEM COLUNA STATUS
 function saveIntegrante(event) {
     event.preventDefault();
     
-    const nome = document.getElementById('nome-integrante').value.trim();
-    const cpf = document.getElementById('cpf-integrante').value.trim();
-    const whatsapp = document.getElementById('whatsapp-integrante').value.trim();
-    const funcaoId = document.getElementById('funcao-integrante').value;
-    const observacoes = document.getElementById('observacoes-integrante').value.trim();
+    const nome = document.getElementById('nomeIntegrante').value.trim();
+    const cpf = document.getElementById('cpfIntegrante').value.trim();
+    const whatsapp = document.getElementById('whatsappIntegrante').value.trim();
+    const funcaoId = document.getElementById('funcaoIntegrante').value;
+    const observacoes = document.getElementById('observacoesIntegrante').value.trim();
     
     // Validações
     if (!nome || !cpf || !whatsapp || !funcaoId) {
@@ -558,13 +634,14 @@ function saveIntegrante(event) {
         }
     }
     
+    // Dados do integrante SEM campo status
     const integranteData = {
         nome: nome,
         cpf: cpf,
         whatsapp: whatsapp,
         funcao_id: parseInt(funcaoId),
-        observacoes: observacoes || null,
-        status: 'ativo'
+        observacoes: observacoes || null
+        // Removido: status: 'ativo'
     };
     
     saveIntegranteToDB(integranteData).then(success => {
@@ -574,12 +651,12 @@ function saveIntegrante(event) {
     });
 }
 
-// Salvar equipe
+// Salvar equipe - SEM COLUNA STATUS
 function saveEquipe(event) {
     event.preventDefault();
     
-    const numero = document.getElementById('numero-equipe').value.trim();
-    const observacoes = document.getElementById('observacoes-equipe').value.trim();
+    const numero = document.getElementById('numeroEquipe').value.trim();
+    const observacoes = document.getElementById('observacoesEquipe').value.trim();
     
     // Validações
     if (!numero) {
@@ -598,7 +675,7 @@ function saveEquipe(event) {
     
     // Obter integrantes selecionados
     const integrantesSelecionados = [];
-    const checkboxes = document.querySelectorAll('#integrantes-select input[type="checkbox"]:checked');
+    const checkboxes = document.querySelectorAll('#integrantesSelect input[type="checkbox"]:checked');
     checkboxes.forEach(checkbox => {
         integrantesSelecionados.push(parseInt(checkbox.value));
     });
@@ -608,10 +685,11 @@ function saveEquipe(event) {
         return;
     }
     
+    // Dados da equipe SEM campo status
     const equipeData = {
         numero: numero,
-        observacoes: observacoes || null,
-        status: 'ativa'
+        observacoes: observacoes || null
+        // Removido: status: 'ativa'
     };
     
     saveEquipeToDB(equipeData, integrantesSelecionados).then(success => {
@@ -627,7 +705,12 @@ function saveEquipe(event) {
 
 // Atualizar tabela de funções
 function updateFuncoesTable() {
-    const tbody = document.querySelector('#tabela-funcoes tbody');
+    const tbody = document.querySelector('#tabelaFuncoes tbody');
+    
+    if (!tbody) {
+        console.error('Tabela de funções não encontrada');
+        return;
+    }
     
     if (funcoesData.length === 0) {
         tbody.innerHTML = `
@@ -662,14 +745,19 @@ function updateFuncoesTable() {
     }).join('');
 }
 
-// Atualizar tabela de integrantes
+// Atualizar tabela de integrantes - SEM COLUNA STATUS
 function updateIntegrantesTable() {
-    const tbody = document.querySelector('#tabela-integrantes tbody');
+    const tbody = document.querySelector('#tabelaIntegrantes tbody');
+    
+    if (!tbody) {
+        console.error('Tabela de integrantes não encontrada');
+        return;
+    }
     
     if (integrantesData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="empty-state">
+                <td colspan="5" class="empty-state">
                     <i class="fas fa-user"></i>
                     <h3>Nenhum integrante cadastrado</h3>
                     <p>Clique em "Novo Integrante" para começar</p>
@@ -685,17 +773,9 @@ function updateIntegrantesTable() {
             <td>${integrante.cpf}</td>
             <td>${integrante.whatsapp}</td>
             <td>${integrante.funcoes_hvc?.nome || 'N/A'}</td>
-            <td>
-                <span class="status-badge status-${integrante.status}">
-                    ${integrante.status}
-                </span>
-            </td>
             <td class="actions-cell">
                 <button class="btn-info" onclick="openIntegranteModal(${integrante.id})" title="Editar">
                     <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-warning" onclick="toggleIntegranteStatus(${integrante.id})" title="${integrante.status === 'ativo' ? 'Desativar' : 'Ativar'}">
-                    <i class="fas fa-${integrante.status === 'ativo' ? 'pause' : 'play'}"></i>
                 </button>
                 <button class="btn-danger" onclick="confirmDeleteIntegrante(${integrante.id})" title="Excluir">
                     <i class="fas fa-trash"></i>
@@ -705,14 +785,19 @@ function updateIntegrantesTable() {
     `).join('');
 }
 
-// Atualizar tabela de equipes
+// Atualizar tabela de equipes - SEM COLUNA STATUS
 function updateEquipesTable() {
-    const tbody = document.querySelector('#tabela-equipes tbody');
+    const tbody = document.querySelector('#tabelaEquipes tbody');
+    
+    if (!tbody) {
+        console.error('Tabela de equipes não encontrada');
+        return;
+    }
     
     if (equipesData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="empty-state">
+                <td colspan="4" class="empty-state">
                     <i class="fas fa-users"></i>
                     <h3>Nenhuma equipe cadastrada</h3>
                     <p>Clique em "Nova Equipe" para começar</p>
@@ -730,18 +815,10 @@ function updateEquipesTable() {
             <tr>
                 <td>${equipe.numero}</td>
                 <td title="${integrantesNomes}">${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
-                <td>
-                    <span class="status-badge status-${equipe.status}">
-                        ${equipe.status}
-                    </span>
-                </td>
                 <td>${equipe.observacoes || '-'}</td>
                 <td class="actions-cell">
                     <button class="btn-info" onclick="openEquipeModal(${equipe.id})" title="Editar">
                         <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-warning" onclick="toggleEquipeStatus(${equipe.id})" title="${equipe.status === 'ativa' ? 'Desativar' : 'Ativar'}">
-                        <i class="fas fa-${equipe.status === 'ativa' ? 'pause' : 'play'}"></i>
                     </button>
                     <button class="btn-danger" onclick="confirmDeleteEquipe(${equipe.id})" title="Excluir">
                         <i class="fas fa-trash"></i>
@@ -754,11 +831,13 @@ function updateEquipesTable() {
 
 // Atualizar selects de função
 function updateFuncaoSelects() {
-    const selects = document.querySelectorAll('#funcao-integrante, #filtro-funcao-integrante');
+    const selects = document.querySelectorAll('#funcaoIntegrante, #filtroFuncaoIntegrante');
     
     selects.forEach(select => {
+        if (!select) return;
+        
         const currentValue = select.value;
-        const isFilter = select.id === 'filtro-funcao-integrante';
+        const isFilter = select.id === 'filtroFuncaoIntegrante';
         
         select.innerHTML = isFilter ? '<option value="">Todas</option>' : '<option value="">Selecione uma função</option>';
         
@@ -773,10 +852,14 @@ function updateFuncaoSelects() {
     });
 }
 
-// Atualizar seleção de integrantes
-function updateIntegrantesSelect(integrantesSelecionados = []) {
-    const container = document.getElementById('integrantes-select');
-    const countElement = document.getElementById('selected-count');
+// Atualizar seleção de integrantes - SEM FILTRO POR STATUS
+function updateIntegrantesSelect() {
+    const container = document.getElementById('integrantesSelect');
+    
+    if (!container) {
+        console.error('Container de seleção de integrantes não encontrado');
+        return;
+    }
     
     if (integrantesData.length === 0) {
         container.innerHTML = `
@@ -786,33 +869,18 @@ function updateIntegrantesSelect(integrantesSelecionados = []) {
                 <p>Cadastre integrantes primeiro</p>
             </div>
         `;
-        countElement.textContent = '0 integrantes selecionados';
         return;
     }
     
     container.innerHTML = integrantesData
-        .filter(integrante => integrante.status === 'ativo')
-        .map(integrante => {
-            const isSelected = integrantesSelecionados.includes(integrante.id);
-            return `
-                <div class="multi-select-item">
-                    <input type="checkbox" id="integrante-${integrante.id}" value="${integrante.id}" ${isSelected ? 'checked' : ''} onchange="updateSelectedCount()">
-                    <label for="integrante-${integrante.id}">
-                        ${integrante.nome} - ${integrante.funcoes_hvc?.nome || 'N/A'}
-                    </label>
-                </div>
-            `;
-        }).join('');
-    
-    updateSelectedCount();
-}
-
-// Atualizar contador de selecionados
-function updateSelectedCount() {
-    const checkboxes = document.querySelectorAll('#integrantes-select input[type="checkbox"]:checked');
-    const count = checkboxes.length;
-    const countElement = document.getElementById('selected-count');
-    countElement.textContent = `${count} integrante${count !== 1 ? 's' : ''} selecionado${count !== 1 ? 's' : ''}`;
+        .map(integrante => `
+            <div class="multi-select-item">
+                <input type="checkbox" id="integrante-${integrante.id}" value="${integrante.id}" onchange="updateSelectedCount()">
+                <label for="integrante-${integrante.id}">
+                    ${integrante.nome} - ${integrante.funcoes_hvc?.nome || 'N/A'}
+                </label>
+            </div>
+        `).join('');
 }
 
 // ========================================
@@ -823,8 +891,18 @@ function updateSelectedCount() {
 function editFuncao(id) {
     const funcao = funcoesData.find(f => f.id === id);
     if (funcao) {
-        currentEditingFuncao = id;
-        document.getElementById('nome-funcao').value = funcao.nome;
+        currentEditingFuncao = funcao;
+        
+        // Tentar primeiro com o ID do HTML atual
+        let nomeField = document.getElementById('nome-funcao');
+        if (!nomeField) {
+            nomeField = document.getElementById('nomeFuncao');
+        }
+        
+        if (nomeField) {
+            nomeField.value = funcao.nome;
+        }
+        
         openNovaFuncaoForm();
     }
 }
@@ -853,71 +931,28 @@ function confirmDeleteEquipe(id) {
     }
 }
 
-// Toggle status integrante
-async function toggleIntegranteStatus(id) {
-    try {
-        const integrante = integrantesData.find(i => i.id === id);
-        const novoStatus = integrante.status === 'ativo' ? 'inativo' : 'ativo';
-        
-        const { error } = await supabase
-            .from('integrantes_hvc')
-            .update({ status: novoStatus })
-            .eq('id', id);
-        
-        if (error) throw error;
-        
-        showNotification(`Integrante ${novoStatus === 'ativo' ? 'ativado' : 'desativado'} com sucesso!`);
-        await loadIntegrantes();
-    } catch (error) {
-        console.error('Erro ao alterar status do integrante:', error);
-        showNotification('Erro ao alterar status do integrante', 'error');
-    }
-}
-
-// Toggle status equipe
-async function toggleEquipeStatus(id) {
-    try {
-        const equipe = equipesData.find(e => e.id === id);
-        const novoStatus = equipe.status === 'ativa' ? 'inativa' : 'ativa';
-        
-        const { error } = await supabase
-            .from('equipes_hvc')
-            .update({ status: novoStatus })
-            .eq('id', id);
-        
-        if (error) throw error;
-        
-        showNotification(`Equipe ${novoStatus === 'ativa' ? 'ativada' : 'desativada'} com sucesso!`);
-        await loadEquipes();
-    } catch (error) {
-        console.error('Erro ao alterar status da equipe:', error);
-        showNotification('Erro ao alterar status da equipe', 'error');
-    }
-}
-
 // ========================================
-// FUNÇÕES DE FILTRO
+// FUNÇÕES DE FILTRO - SEM FILTRO POR STATUS
 // ========================================
 
-// Filtrar equipes
+// Filtrar equipes - SEM FILTRO POR STATUS
 function filtrarEquipes() {
-    const filtroNumero = document.getElementById('filtro-numero-equipe').value.toLowerCase();
-    const filtroStatus = document.getElementById('filtro-status-equipe').value;
+    const filtroNumero = document.getElementById('filtroNumeroEquipe')?.value.toLowerCase() || '';
     
     const equipesFiltradas = equipesData.filter(equipe => {
         const matchNumero = !filtroNumero || equipe.numero.toLowerCase().includes(filtroNumero);
-        const matchStatus = !filtroStatus || equipe.status === filtroStatus;
-        
-        return matchNumero && matchStatus;
+        return matchNumero;
     });
     
     // Atualizar tabela com dados filtrados
-    const tbody = document.querySelector('#tabela-equipes tbody');
+    const tbody = document.querySelector('#tabelaEquipes tbody');
+    
+    if (!tbody) return;
     
     if (equipesFiltradas.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="empty-state">
+                <td colspan="4" class="empty-state">
                     <i class="fas fa-search"></i>
                     <h3>Nenhuma equipe encontrada</h3>
                     <p>Ajuste os filtros ou cadastre novas equipes</p>
@@ -935,18 +970,10 @@ function filtrarEquipes() {
             <tr>
                 <td>${equipe.numero}</td>
                 <td title="${integrantesNomes}">${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
-                <td>
-                    <span class="status-badge status-${equipe.status}">
-                        ${equipe.status}
-                    </span>
-                </td>
                 <td>${equipe.observacoes || '-'}</td>
                 <td class="actions-cell">
                     <button class="btn-info" onclick="openEquipeModal(${equipe.id})" title="Editar">
                         <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-warning" onclick="toggleEquipeStatus(${equipe.id})" title="${equipe.status === 'ativa' ? 'Desativar' : 'Ativar'}">
-                        <i class="fas fa-${equipe.status === 'ativa' ? 'pause' : 'play'}"></i>
                     </button>
                     <button class="btn-danger" onclick="confirmDeleteEquipe(${equipe.id})" title="Excluir">
                         <i class="fas fa-trash"></i>
@@ -957,27 +984,26 @@ function filtrarEquipes() {
     }).join('');
 }
 
-// Filtrar integrantes
+// Filtrar integrantes - SEM FILTRO POR STATUS
 function filtrarIntegrantes() {
-    const filtroNome = document.getElementById('filtro-nome-integrante').value.toLowerCase();
-    const filtroFuncao = document.getElementById('filtro-funcao-integrante').value;
-    const filtroStatus = document.getElementById('filtro-status-integrante').value;
+    const filtroNome = document.getElementById('filtroNomeIntegrante')?.value.toLowerCase() || '';
+    const filtroFuncao = document.getElementById('filtroFuncaoIntegrante')?.value || '';
     
     const integrantesFiltrados = integrantesData.filter(integrante => {
         const matchNome = !filtroNome || integrante.nome.toLowerCase().includes(filtroNome);
         const matchFuncao = !filtroFuncao || integrante.funcao_id == filtroFuncao;
-        const matchStatus = !filtroStatus || integrante.status === filtroStatus;
-        
-        return matchNome && matchFuncao && matchStatus;
+        return matchNome && matchFuncao;
     });
     
     // Atualizar tabela com dados filtrados
-    const tbody = document.querySelector('#tabela-integrantes tbody');
+    const tbody = document.querySelector('#tabelaIntegrantes tbody');
+    
+    if (!tbody) return;
     
     if (integrantesFiltrados.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" class="empty-state">
+                <td colspan="5" class="empty-state">
                     <i class="fas fa-search"></i>
                     <h3>Nenhum integrante encontrado</h3>
                     <p>Ajuste os filtros ou cadastre novos integrantes</p>
@@ -993,17 +1019,9 @@ function filtrarIntegrantes() {
             <td>${integrante.cpf}</td>
             <td>${integrante.whatsapp}</td>
             <td>${integrante.funcoes_hvc?.nome || 'N/A'}</td>
-            <td>
-                <span class="status-badge status-${integrante.status}">
-                    ${integrante.status}
-                </span>
-            </td>
             <td class="actions-cell">
                 <button class="btn-info" onclick="openIntegranteModal(${integrante.id})" title="Editar">
                     <i class="fas fa-edit"></i>
-                </button>
-                <button class="btn-warning" onclick="toggleIntegranteStatus(${integrante.id})" title="${integrante.status === 'ativo' ? 'Desativar' : 'Ativar'}">
-                    <i class="fas fa-${integrante.status === 'ativo' ? 'pause' : 'play'}"></i>
                 </button>
                 <button class="btn-danger" onclick="confirmDeleteIntegrante(${integrante.id})" title="Excluir">
                     <i class="fas fa-trash"></i>
@@ -1020,7 +1038,7 @@ function filtrarIntegrantes() {
 // Aplicar formatação aos campos
 function setupFieldFormatting() {
     // Formatação CPF
-    const cpfField = document.getElementById('cpf-integrante');
+    const cpfField = document.getElementById('cpfIntegrante');
     if (cpfField) {
         cpfField.addEventListener('input', function(e) {
             e.target.value = formatCPF(e.target.value);
@@ -1028,7 +1046,7 @@ function setupFieldFormatting() {
     }
     
     // Formatação WhatsApp
-    const whatsappField = document.getElementById('whatsapp-integrante');
+    const whatsappField = document.getElementById('whatsappIntegrante');
     if (whatsappField) {
         whatsappField.addEventListener('input', function(e) {
             e.target.value = formatWhatsApp(e.target.value);
@@ -1092,8 +1110,6 @@ window.editFuncao = editFuncao;
 window.confirmDeleteFuncao = confirmDeleteFuncao;
 window.confirmDeleteIntegrante = confirmDeleteIntegrante;
 window.confirmDeleteEquipe = confirmDeleteEquipe;
-window.toggleIntegranteStatus = toggleIntegranteStatus;
-window.toggleEquipeStatus = toggleEquipeStatus;
 window.filtrarEquipes = filtrarEquipes;
 window.filtrarIntegrantes = filtrarIntegrantes;
 window.updateSelectedCount = updateSelectedCount;
