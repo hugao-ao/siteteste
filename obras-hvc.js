@@ -1073,7 +1073,7 @@ class ObrasManager {
             const percentualConclusao = obra.percentual_conclusao || 0;
             
             // Mostrar valor correto na lista
-            const valorObra = obra.valor_total ? (obra.valor_total / 100) : 0;
+            const valorObra = obra.valor_total ? (obra.valor_total) : 0;
             
             const row = document.createElement('tr');
             row.innerHTML = `
