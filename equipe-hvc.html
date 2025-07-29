@@ -26,16 +26,45 @@
 
         /* === LAYOUT PRINCIPAL === */
         .main-content {
-            margin-left: 250px;
+            margin-left: 0;
             padding: 20px;
-            transition: margin-left 0.3s ease;
             background: var(--theme-bg-dark);
             min-height: 100vh;
             color: var(--theme-text-light);
         }
 
-        .main-content.sidebar-collapsed {
-            margin-left: 60px;
+        /* === BARRA DE NAVEGAÇÃO SIMPLES === */
+        .nav-bar {
+            background: var(--theme-primary);
+            padding: 15px 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            box-shadow: 0 2px 10px var(--theme-shadow-color);
+        }
+
+        .nav-bar a {
+            color: white;
+            text-decoration: none;
+            padding: 8px 15px;
+            border-radius: 4px;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-bar a:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-bar .nav-title {
+            color: white;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-right: auto;
         }
 
         /* === HEADER === */
@@ -378,8 +407,17 @@
         /* === RESPONSIVIDADE === */
         @media (max-width: 768px) {
             .main-content {
-                margin-left: 0;
                 padding: 10px;
+            }
+
+            .nav-bar {
+                flex-direction: column;
+                gap: 10px;
+                align-items: flex-start;
+            }
+
+            .nav-bar .nav-title {
+                margin-right: 0;
             }
 
             .filters {
@@ -454,7 +492,45 @@
     </style>
 </head>
 <body class="theme-hvc">
-    <!-- Sidebar será injetada aqui -->
+    <!-- Barra de Navegação -->
+    <div class="nav-bar">
+        <div class="nav-title">
+            <i class="fas fa-hard-hat"></i>
+            Projeto HVC
+        </div>
+        <a href="dashboard-hvc.html">
+            <i class="fas fa-chart-line"></i>
+            Dashboard
+        </a>
+        <a href="clientes-hvc.html">
+            <i class="fas fa-users"></i>
+            Clientes
+        </a>
+        <a href="servicos-hvc.html">
+            <i class="fas fa-tools"></i>
+            Serviços
+        </a>
+        <a href="equipe-hvc.html" style="background: rgba(255, 255, 255, 0.1);">
+            <i class="fas fa-users-cog"></i>
+            Equipe
+        </a>
+        <a href="propostas-hvc.html">
+            <i class="fas fa-file-contract"></i>
+            Propostas
+        </a>
+        <a href="obras-hvc.html">
+            <i class="fas fa-building"></i>
+            Obras
+        </a>
+        <a href="medicoes-hvc.html">
+            <i class="fas fa-ruler-combined"></i>
+            Medições
+        </a>
+        <a href="fluxo-caixa-hvc.html">
+            <i class="fas fa-money-bill-wave"></i>
+            Fluxo de Caixa
+        </a>
+    </div>
     
     <div class="main-content">
         <!-- Header -->
@@ -744,7 +820,6 @@
 
     <!-- Scripts -->
     <script type="module" src="supabase.js"></script>
-    <script type="module" src="sidebar.js"></script>
     <script type="module" src="equipe-hvc.js"></script>
 </body>
 </html>
