@@ -26,6 +26,7 @@ function createAdminSidebarHTML(projectContext = null) {
             <li class="sub-menu"><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
             <li class="sub-menu"><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
             <li class="sub-menu"><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
+            <li class="sub-menu"><a href="equipe-hvc.html" id="nav-equipe-hvc"><i class="fas fa-users-cog"></i> <span>Equipe HVC</span></a></li>
             <li class="sub-menu"><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
         `;
     } else if (projectContext === 'Argos') {
@@ -83,6 +84,7 @@ function createUserSidebarHTML(userProject) {
             <li><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
             <li><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
             <li><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
+            <li><a href="equipe-hvc.html" id="nav-equipe-hvc"><i class="fas fa-users-cog"></i> <span>Equipe HVC</span></a></li>
             <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
         `;
     } else if (userProject === 'Argos') {
@@ -130,6 +132,7 @@ function createAdminViewingUserSidebarHTML(viewedUserProject) {
             <li><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
             <li><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
             <li><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
+            <li><a href="equipe-hvc.html" id="nav-equipe-hvc"><i class="fas fa-users-cog"></i> <span>Equipe HVC</span></a></li>
             <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
         `;
     } else if (viewedUserProject === 'Argos') {
@@ -288,75 +291,81 @@ async function injectSidebar(mainContentElementId, forceProject = null) { // Tor
 
     const mainContentElement = document.getElementById(mainContentElementId);
     if (!mainContentElement) {
-        console.error(`Elemento com ID '${mainContentElementId}' não encontrado para injetar a sidebar.`);
+        console.error(`Elemento com ID '${mainContentElementId}' não encontrado`);
         return;
     }
 
-    // Injeta o CSS comum da Sidebar
+    // Injeta CSS da sidebar
     injectSidebarCSS();
 
-    let sidebarHTML;
-    let isViewingAsUser = loggedInUserLevel === "admin" && viewingUserId;
+    let sidebarHTML = '';
 
-    if (isViewingAsUser) {
-        // CASO 1: Admin está visualizando como usuário
-        let viewedUserProject = null;
-        try {
-            // Busca o projeto do usuário que está sendo visualizado
-            const { data: viewedUserData, error: viewedUserError } = await supabase
-                .from('credenciais')
-                .select('projeto')
-                .eq('id', viewingUserId)
-                .single();
-            if (viewedUserError) throw viewedUserError;
-            viewedUserProject = viewedUserData?.projeto;
-        } catch (error) {
-            console.error("Erro ao buscar projeto do usuário visualizado para a sidebar:", error);
-            // Continua com projeto nulo/default em caso de erro
+    // Determina qual sidebar mostrar
+    if (loggedInUserLevel === "admin") {
+        if (viewingUserId) {
+            // Admin visualizando como usuário
+            const viewedUserProject = sessionStorage.getItem("viewed_user_project");
+            sidebarHTML = createAdminViewingUserSidebarHTML(viewedUserProject);
+        } else {
+            // Admin normal - usa projeto detectado ou projeto do admin
+            const contextProject = projectFromUrl || loggedInUserProject;
+            sidebarHTML = createAdminSidebarHTML(contextProject);
         }
-        sidebarHTML = createAdminViewingUserSidebarHTML(viewedUserProject);
-
-    } else if (loggedInUserLevel === "admin") {
-        // CASO 2: Admin acessando suas próprias páginas
-        sidebarHTML = createAdminSidebarHTML(projectFromUrl);
-    } else if (loggedInUserLevel === "usuario") {
-        // CASO 3: Usuário normal acessando suas páginas
+    } else {
+        // Usuário normal
         sidebarHTML = createUserSidebarHTML(loggedInUserProject);
-    } else {
-        return; // Não injeta para outros níveis
     }
 
-    // Insere a sidebar no início do body
-    document.body.insertAdjacentHTML('afterbegin', sidebarHTML);
-    const sidebarElement = document.getElementById('sidebar');
+    // Injeta o HTML da sidebar
+    const sidebarContainer = document.createElement('div');
+    sidebarContainer.innerHTML = sidebarHTML;
+    const sidebarElement = sidebarContainer.firstElementChild;
 
-    if (sidebarElement) {
-        initializeSidebar(sidebarElement, mainContentElement);
-        // *** MODIFICADO: Aplica classe de tema ao BODY e ao main content ***
-        const themeClass = sidebarElement.className; // Pega a classe de tema da sidebar
-        
-        // Aplica ao Body
-        document.body.classList.remove("theme-admin", "theme-argos", "theme-hvc", "theme-planejamento", "theme-default");
-        if (themeClass.startsWith("theme-")) {
-            document.body.classList.add(themeClass);
-            console.log(`Aplicando tema ${themeClass} ao body.`);
-        }
+    // Insere a sidebar no DOM
+    document.body.insertBefore(sidebarElement, document.body.firstChild);
 
-        // Aplica ao Main Content (se existir)
-        if (mainContentElement && themeClass.startsWith("theme-")) {
-            mainContentElement.classList.remove("theme-admin", "theme-argos", "theme-hvc", "theme-planejamento", "theme-default");
-            mainContentElement.classList.add(themeClass);
-            console.log(`Aplicando tema ${themeClass} ao main content.`);
-        }
-        // *** NOVO: Dispara evento para indicar que a sidebar está pronta ***
-        console.log("Dispatching sidebarReady event");
-        document.dispatchEvent(new CustomEvent('sidebarReady'));
+    // Inicializa a lógica da sidebar
+    initializeSidebar(sidebarElement, mainContentElement);
 
-    } else {
-         console.error("Sidebar element not found after injection.");
-    }
+    console.log(`Sidebar injetada com sucesso para ${loggedInUserLevel} no projeto ${projectFromUrl || loggedInUserProject}`);
 }
 
-// Exporta a função principal a ser usada em outras páginas
-export { injectSidebar };
+// Função para aplicar tema baseado no projeto (NOVA)
+function applyProjectTheme(project) {
+    const body = document.body;
+    
+    // Remove classes de tema existentes
+    body.classList.remove('theme-hvc', 'theme-argos', 'theme-planejamento', 'theme-admin', 'theme-default');
+    
+    // Aplica novo tema
+    if (project) {
+        body.classList.add(`theme-${project.toLowerCase()}`);
+    } else {
+        body.classList.add('theme-default');
+    }
+    
+    console.log(`Tema aplicado: theme-${project ? project.toLowerCase() : 'default'}`);
+}
+
+// Função de conveniência para páginas que precisam detectar projeto automaticamente (NOVA)
+function injectSidebarWithAutoDetection(mainContentElementId) {
+    // Detecta projeto da URL ou página atual
+    const urlParams = new URLSearchParams(window.location.search);
+    let project = urlParams.get('projeto');
+    
+    if (!project) {
+        const currentPage = window.location.pathname.split('/').pop();
+        if (currentPage.includes('hvc') || currentPage === 'dashboard-hvc.html') {
+            project = 'Hvc';
+        } else if (currentPage.includes('argos')) {
+            project = 'Argos';
+        } else if (currentPage.includes('planejamento')) {
+            project = 'Planejamento';
+        }
+    }
+    
+    // Aplica tema e injeta sidebar
+    applyProjectTheme(project);
+    injectSidebar(mainContentElementId, project);
+}
 
