@@ -1,7 +1,7 @@
 // ========================================
-// SISTEMA DE EQUIPES HVC - JAVASCRIPT SEM COLUNA STATUS
+// SISTEMA DE EQUIPES HVC - JAVASCRIPT COM IDS CORRETOS
 // ========================================
-// Versão que funciona sem a coluna status nas tabelas
+// Versão que usa os IDs corretos do HTML atual
 
 // ========================================
 // IMPORTS
@@ -156,7 +156,7 @@ async function loadIntegrantes() {
         integrantesData = data || [];
         console.log('Integrantes carregados:', integrantesData.length);
         updateIntegrantesTable();
-        updateIntegrantesSelect();
+        updateIntegrantesDisponiveis();
         return integrantesData;
     } catch (error) {
         console.error('Erro ao carregar integrantes:', error);
@@ -232,7 +232,7 @@ async function saveFuncaoToDB(funcaoData) {
     }
 }
 
-// Salvar integrante - SEM COLUNA STATUS
+// Salvar integrante
 async function saveIntegranteToDB(integranteData) {
     try {
         if (currentEditingIntegrante) {
@@ -269,7 +269,7 @@ async function saveIntegranteToDB(integranteData) {
     }
 }
 
-// Salvar equipe - SEM COLUNA STATUS
+// Salvar equipe
 async function saveEquipeToDB(equipeData, integrantesSelecionados) {
     try {
         let equipeId;
@@ -400,49 +400,63 @@ async function deleteEquipe(id) {
 // FUNÇÕES DE INTERFACE - MODAIS
 // ========================================
 
-// Modal Equipe
-function openEquipeModal(equipeId = null) {
+// Modal Equipe - USANDO IDS CORRETOS DO HTML
+function abrirModalEquipe(equipeId = null) {
     currentEditingEquipe = equipeId ? equipesData.find(e => e.id === equipeId) : null;
     
     const modal = document.getElementById('modalEquipe');
-    const title = document.getElementById('modalEquipeTitle');
+    const title = document.getElementById('tituloModalEquipe');
     const form = document.getElementById('formEquipe');
+    
+    if (!modal || !title || !form) {
+        console.error('Elementos do modal de equipe não encontrados');
+        showNotification('Erro: Modal de equipe não encontrado', 'error');
+        return;
+    }
     
     title.textContent = currentEditingEquipe ? 'Editar Equipe' : 'Nova Equipe';
     
     if (currentEditingEquipe) {
         document.getElementById('numeroEquipe').value = currentEditingEquipe.numero;
+        document.getElementById('statusEquipe').value = currentEditingEquipe.status || 'ativa';
         document.getElementById('observacoesEquipe').value = currentEditingEquipe.observacoes || '';
         
         // Marcar integrantes da equipe
         const integrantesEquipe = currentEditingEquipe.equipes_integrantes?.map(ei => ei.integrante_id) || [];
-        document.querySelectorAll('#integrantesSelect input[type="checkbox"]').forEach(checkbox => {
+        document.querySelectorAll('#integrantesDisponiveis input[type="checkbox"]').forEach(checkbox => {
             checkbox.checked = integrantesEquipe.includes(parseInt(checkbox.value));
         });
     } else {
         form.reset();
-        document.querySelectorAll('#integrantesSelect input[type="checkbox"]').forEach(checkbox => {
+        document.querySelectorAll('#integrantesDisponiveis input[type="checkbox"]').forEach(checkbox => {
             checkbox.checked = false;
         });
     }
     
-    updateSelectedCount();
-    modal.classList.add('show');
+    modal.style.display = 'block';
 }
 
-function closeEquipeModal() {
+function fecharModalEquipe() {
     const modal = document.getElementById('modalEquipe');
-    modal.classList.remove('show');
-    currentEditingEquipe = null;
+    if (modal) {
+        modal.style.display = 'none';
+        currentEditingEquipe = null;
+    }
 }
 
-// Modal Integrante
-function openIntegranteModal(integranteId = null) {
+// Modal Integrante - USANDO IDS CORRETOS DO HTML
+function abrirModalIntegrante(integranteId = null) {
     currentEditingIntegrante = integranteId ? integrantesData.find(i => i.id === integranteId) : null;
     
     const modal = document.getElementById('modalIntegrante');
-    const title = document.getElementById('modalIntegranteTitle');
+    const title = document.getElementById('tituloModalIntegrante');
     const form = document.getElementById('formIntegrante');
+    
+    if (!modal || !title || !form) {
+        console.error('Elementos do modal de integrante não encontrados');
+        showNotification('Erro: Modal de integrante não encontrado', 'error');
+        return;
+    }
     
     title.textContent = currentEditingIntegrante ? 'Editar Integrante' : 'Novo Integrante';
     
@@ -451,52 +465,42 @@ function openIntegranteModal(integranteId = null) {
         document.getElementById('cpfIntegrante').value = currentEditingIntegrante.cpf;
         document.getElementById('whatsappIntegrante').value = currentEditingIntegrante.whatsapp;
         document.getElementById('funcaoIntegrante').value = currentEditingIntegrante.funcao_id;
+        document.getElementById('statusIntegrante').value = currentEditingIntegrante.status || 'ativo';
         document.getElementById('observacoesIntegrante').value = currentEditingIntegrante.observacoes || '';
     } else {
         form.reset();
     }
     
-    modal.classList.add('show');
+    modal.style.display = 'block';
 }
 
-function closeIntegranteModal() {
+function fecharModalIntegrante() {
     const modal = document.getElementById('modalIntegrante');
-    modal.classList.remove('show');
-    currentEditingIntegrante = null;
+    if (modal) {
+        modal.style.display = 'none';
+        currentEditingIntegrante = null;
+    }
 }
 
-// Modal Funções - CORRIGIDO
-function openFuncoesModal() {
-    // Tentar primeiro com o ID do HTML atual
-    let modal = document.getElementById('modal-funcoes');
+// Modal Funções - USANDO IDS CORRETOS DO HTML
+function abrirModalFuncoes() {
+    const modal = document.getElementById('modalFuncoes');
     
-    // Se não encontrar, tentar com o ID alternativo
     if (!modal) {
-        modal = document.getElementById('modalFuncoes');
-    }
-    
-    if (modal) {
-        modal.classList.add('show');
-        cancelNovaFuncao(); // Garantir que formulário está fechado
-        console.log('Modal de funções aberto com sucesso');
-    } else {
-        console.error('Modal de funções não encontrado. IDs testados: modal-funcoes, modalFuncoes');
+        console.error('Modal de funções não encontrado');
         showNotification('Erro: Modal de funções não encontrado', 'error');
+        return;
     }
+    
+    modal.style.display = 'block';
+    console.log('Modal de funções aberto com sucesso');
 }
 
-function closeFuncoesModal() {
-    // Tentar primeiro com o ID do HTML atual
-    let modal = document.getElementById('modal-funcoes');
-    
-    // Se não encontrar, tentar com o ID alternativo
-    if (!modal) {
-        modal = document.getElementById('modalFuncoes');
-    }
-    
+function fecharModalFuncoes() {
+    const modal = document.getElementById('modalFuncoes');
     if (modal) {
-        modal.classList.remove('show');
-        cancelNovaFuncao();
+        modal.style.display = 'none';
+        cancelarNovaFuncao();
         console.log('Modal de funções fechado com sucesso');
     }
 }
@@ -506,75 +510,36 @@ function closeFuncoesModal() {
 // ========================================
 
 // Formulário de nova função
-function openNovaFuncaoForm() {
-    // Tentar primeiro com o ID do HTML atual
-    let form = document.getElementById('nova-funcao-form');
-    
-    // Se não encontrar, tentar com o ID alternativo
-    if (!form) {
-        form = document.getElementById('novaFuncaoForm');
-    }
+function abrirFormNovaFuncao() {
+    const form = document.getElementById('formNovaFuncao');
+    const nomeField = document.getElementById('nomeFuncao');
     
     if (form) {
         form.style.display = 'block';
-        
-        // Tentar focar no campo nome
-        let nomeField = document.getElementById('nome-funcao');
-        if (!nomeField) {
-            nomeField = document.getElementById('nomeFuncao');
-        }
-        
         if (nomeField) {
             nomeField.focus();
         }
     }
 }
 
-function cancelNovaFuncao() {
-    // Tentar primeiro com o ID do HTML atual
-    let form = document.getElementById('nova-funcao-form');
-    
-    // Se não encontrar, tentar com o ID alternativo
-    if (!form) {
-        form = document.getElementById('novaFuncaoForm');
-    }
+function cancelarNovaFuncao() {
+    const form = document.getElementById('formNovaFuncao');
+    const nomeField = document.getElementById('nomeFuncao');
     
     if (form) {
         form.style.display = 'none';
-        
-        // Limpar campo nome
-        let nomeField = document.getElementById('nome-funcao');
-        if (!nomeField) {
-            nomeField = document.getElementById('nomeFuncao');
-        }
-        
         if (nomeField) {
             nomeField.value = '';
         }
-        
         currentEditingFuncao = null;
     }
 }
 
-// Atualizar contador de selecionados
-function updateSelectedCount() {
-    const selectedCheckboxes = document.querySelectorAll('#integrantesSelect input[type="checkbox"]:checked');
-    const countElement = document.getElementById('selectedCount');
-    
-    if (countElement) {
-        countElement.textContent = `${selectedCheckboxes.length} integrante${selectedCheckboxes.length !== 1 ? 's' : ''} selecionado${selectedCheckboxes.length !== 1 ? 's' : ''}`;
-    }
-}
-
 // Salvar função
-function saveFuncao(event) {
+function salvarFuncao(event) {
     event.preventDefault();
     
-    // Tentar primeiro com o ID do HTML atual
-    let nomeField = document.getElementById('nome-funcao');
-    if (!nomeField) {
-        nomeField = document.getElementById('nomeFuncao');
-    }
+    const nomeField = document.getElementById('nomeFuncao');
     
     if (!nomeField) {
         showNotification('Campo nome da função não encontrado', 'error');
@@ -594,19 +559,20 @@ function saveFuncao(event) {
     
     saveFuncaoToDB(funcaoData).then(success => {
         if (success) {
-            cancelNovaFuncao();
+            cancelarNovaFuncao();
         }
     });
 }
 
-// Salvar integrante - SEM COLUNA STATUS
-function saveIntegrante(event) {
+// Salvar integrante
+function salvarIntegrante(event) {
     event.preventDefault();
     
     const nome = document.getElementById('nomeIntegrante').value.trim();
     const cpf = document.getElementById('cpfIntegrante').value.trim();
     const whatsapp = document.getElementById('whatsappIntegrante').value.trim();
     const funcaoId = document.getElementById('funcaoIntegrante').value;
+    const status = document.getElementById('statusIntegrante').value;
     const observacoes = document.getElementById('observacoesIntegrante').value.trim();
     
     // Validações
@@ -634,28 +600,28 @@ function saveIntegrante(event) {
         }
     }
     
-    // Dados do integrante SEM campo status
     const integranteData = {
         nome: nome,
         cpf: cpf,
         whatsapp: whatsapp,
         funcao_id: parseInt(funcaoId),
+        status: status,
         observacoes: observacoes || null
-        // Removido: status: 'ativo'
     };
     
     saveIntegranteToDB(integranteData).then(success => {
         if (success) {
-            closeIntegranteModal();
+            fecharModalIntegrante();
         }
     });
 }
 
-// Salvar equipe - SEM COLUNA STATUS
-function saveEquipe(event) {
+// Salvar equipe
+function salvarEquipe(event) {
     event.preventDefault();
     
     const numero = document.getElementById('numeroEquipe').value.trim();
+    const status = document.getElementById('statusEquipe').value;
     const observacoes = document.getElementById('observacoesEquipe').value.trim();
     
     // Validações
@@ -675,7 +641,7 @@ function saveEquipe(event) {
     
     // Obter integrantes selecionados
     const integrantesSelecionados = [];
-    const checkboxes = document.querySelectorAll('#integrantesSelect input[type="checkbox"]:checked');
+    const checkboxes = document.querySelectorAll('#integrantesDisponiveis input[type="checkbox"]:checked');
     checkboxes.forEach(checkbox => {
         integrantesSelecionados.push(parseInt(checkbox.value));
     });
@@ -685,16 +651,15 @@ function saveEquipe(event) {
         return;
     }
     
-    // Dados da equipe SEM campo status
     const equipeData = {
         numero: numero,
+        status: status,
         observacoes: observacoes || null
-        // Removido: status: 'ativa'
     };
     
     saveEquipeToDB(equipeData, integrantesSelecionados).then(success => {
         if (success) {
-            closeEquipeModal();
+            fecharModalEquipe();
         }
     });
 }
@@ -703,12 +668,12 @@ function saveEquipe(event) {
 // FUNÇÕES DE INTERFACE - TABELAS
 // ========================================
 
-// Atualizar tabela de funções
+// Atualizar tabela de funções - USANDO ID CORRETO
 function updateFuncoesTable() {
-    const tbody = document.querySelector('#tabelaFuncoes tbody');
+    const tbody = document.querySelector('#tabelaFuncoes');
     
     if (!tbody) {
-        console.error('Tabela de funções não encontrada');
+        console.error('Tabela de funções não encontrada - ID: tabelaFuncoes');
         return;
     }
     
@@ -733,10 +698,10 @@ function updateFuncoesTable() {
                 <td>${funcao.nome}</td>
                 <td>${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
                 <td class="actions-cell">
-                    <button class="btn-warning" onclick="editFuncao(${funcao.id})" title="Editar">
+                    <button class="btn-warning" onclick="editarFuncao(${funcao.id})" title="Editar">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-danger" onclick="confirmDeleteFuncao(${funcao.id})" title="Excluir">
+                    <button class="btn-danger" onclick="confirmarExclusaoFuncao(${funcao.id})" title="Excluir">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -745,19 +710,19 @@ function updateFuncoesTable() {
     }).join('');
 }
 
-// Atualizar tabela de integrantes - SEM COLUNA STATUS
+// Atualizar tabela de integrantes - USANDO ID CORRETO
 function updateIntegrantesTable() {
-    const tbody = document.querySelector('#tabelaIntegrantes tbody');
+    const tbody = document.querySelector('#tabelaIntegrantes');
     
     if (!tbody) {
-        console.error('Tabela de integrantes não encontrada');
+        console.error('Tabela de integrantes não encontrada - ID: tabelaIntegrantes');
         return;
     }
     
     if (integrantesData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="empty-state">
+                <td colspan="6" class="empty-state">
                     <i class="fas fa-user"></i>
                     <h3>Nenhum integrante cadastrado</h3>
                     <p>Clique em "Novo Integrante" para começar</p>
@@ -773,11 +738,16 @@ function updateIntegrantesTable() {
             <td>${integrante.cpf}</td>
             <td>${integrante.whatsapp}</td>
             <td>${integrante.funcoes_hvc?.nome || 'N/A'}</td>
+            <td>
+                <span class="badge ${integrante.status === 'ativo' ? 'badge-success' : 'badge-danger'}">
+                    ${integrante.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                </span>
+            </td>
             <td class="actions-cell">
-                <button class="btn-info" onclick="openIntegranteModal(${integrante.id})" title="Editar">
+                <button class="btn-info" onclick="abrirModalIntegrante(${integrante.id})" title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn-danger" onclick="confirmDeleteIntegrante(${integrante.id})" title="Excluir">
+                <button class="btn-danger" onclick="confirmarExclusaoIntegrante(${integrante.id})" title="Excluir">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -785,19 +755,19 @@ function updateIntegrantesTable() {
     `).join('');
 }
 
-// Atualizar tabela de equipes - SEM COLUNA STATUS
+// Atualizar tabela de equipes - USANDO ID CORRETO
 function updateEquipesTable() {
-    const tbody = document.querySelector('#tabelaEquipes tbody');
+    const tbody = document.querySelector('#tabelaEquipes');
     
     if (!tbody) {
-        console.error('Tabela de equipes não encontrada');
+        console.error('Tabela de equipes não encontrada - ID: tabelaEquipes');
         return;
     }
     
     if (equipesData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" class="empty-state">
+                <td colspan="5" class="empty-state">
                     <i class="fas fa-users"></i>
                     <h3>Nenhuma equipe cadastrada</h3>
                     <p>Clique em "Nova Equipe" para começar</p>
@@ -815,12 +785,17 @@ function updateEquipesTable() {
             <tr>
                 <td>${equipe.numero}</td>
                 <td title="${integrantesNomes}">${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
+                <td>
+                    <span class="badge ${equipe.status === 'ativa' ? 'badge-success' : 'badge-danger'}">
+                        ${equipe.status === 'ativa' ? 'Ativa' : 'Inativa'}
+                    </span>
+                </td>
                 <td>${equipe.observacoes || '-'}</td>
                 <td class="actions-cell">
-                    <button class="btn-info" onclick="openEquipeModal(${equipe.id})" title="Editar">
+                    <button class="btn-info" onclick="abrirModalEquipe(${equipe.id})" title="Editar">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-danger" onclick="confirmDeleteEquipe(${equipe.id})" title="Excluir">
+                    <button class="btn-danger" onclick="confirmarExclusaoEquipe(${equipe.id})" title="Excluir">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -852,12 +827,12 @@ function updateFuncaoSelects() {
     });
 }
 
-// Atualizar seleção de integrantes - SEM FILTRO POR STATUS
-function updateIntegrantesSelect() {
-    const container = document.getElementById('integrantesSelect');
+// Atualizar integrantes disponíveis - USANDO ID CORRETO
+function updateIntegrantesDisponiveis() {
+    const container = document.getElementById('integrantesDisponiveis');
     
     if (!container) {
-        console.error('Container de seleção de integrantes não encontrado');
+        console.error('Container de integrantes disponíveis não encontrado - ID: integrantesDisponiveis');
         return;
     }
     
@@ -873,9 +848,10 @@ function updateIntegrantesSelect() {
     }
     
     container.innerHTML = integrantesData
+        .filter(integrante => integrante.status === 'ativo')
         .map(integrante => `
             <div class="multi-select-item">
-                <input type="checkbox" id="integrante-${integrante.id}" value="${integrante.id}" onchange="updateSelectedCount()">
+                <input type="checkbox" id="integrante-${integrante.id}" value="${integrante.id}">
                 <label for="integrante-${integrante.id}">
                     ${integrante.nome} - ${integrante.funcoes_hvc?.nome || 'N/A'}
                 </label>
@@ -888,27 +864,22 @@ function updateIntegrantesSelect() {
 // ========================================
 
 // Editar função
-function editFuncao(id) {
+function editarFuncao(id) {
     const funcao = funcoesData.find(f => f.id === id);
     if (funcao) {
         currentEditingFuncao = funcao;
-        
-        // Tentar primeiro com o ID do HTML atual
-        let nomeField = document.getElementById('nome-funcao');
-        if (!nomeField) {
-            nomeField = document.getElementById('nomeFuncao');
-        }
+        const nomeField = document.getElementById('nomeFuncao');
         
         if (nomeField) {
             nomeField.value = funcao.nome;
         }
         
-        openNovaFuncaoForm();
+        abrirFormNovaFuncao();
     }
 }
 
 // Confirmar exclusão de função
-function confirmDeleteFuncao(id) {
+function confirmarExclusaoFuncao(id) {
     const funcao = funcoesData.find(f => f.id === id);
     if (funcao && confirm(`Tem certeza que deseja excluir a função "${funcao.nome}"?`)) {
         deleteFuncao(id);
@@ -916,7 +887,7 @@ function confirmDeleteFuncao(id) {
 }
 
 // Confirmar exclusão de integrante
-function confirmDeleteIntegrante(id) {
+function confirmarExclusaoIntegrante(id) {
     const integrante = integrantesData.find(i => i.id === id);
     if (integrante && confirm(`Tem certeza que deseja excluir o integrante "${integrante.nome}"?`)) {
         deleteIntegrante(id);
@@ -924,7 +895,7 @@ function confirmDeleteIntegrante(id) {
 }
 
 // Confirmar exclusão de equipe
-function confirmDeleteEquipe(id) {
+function confirmarExclusaoEquipe(id) {
     const equipe = equipesData.find(e => e.id === id);
     if (equipe && confirm(`Tem certeza que deseja excluir a equipe "${equipe.numero}"?`)) {
         deleteEquipe(id);
@@ -932,27 +903,29 @@ function confirmDeleteEquipe(id) {
 }
 
 // ========================================
-// FUNÇÕES DE FILTRO - SEM FILTRO POR STATUS
+// FUNÇÕES DE FILTRO
 // ========================================
 
-// Filtrar equipes - SEM FILTRO POR STATUS
+// Filtrar equipes
 function filtrarEquipes() {
     const filtroNumero = document.getElementById('filtroNumeroEquipe')?.value.toLowerCase() || '';
+    const filtroStatus = document.getElementById('filtroStatusEquipe')?.value || '';
     
     const equipesFiltradas = equipesData.filter(equipe => {
         const matchNumero = !filtroNumero || equipe.numero.toLowerCase().includes(filtroNumero);
-        return matchNumero;
+        const matchStatus = !filtroStatus || equipe.status === filtroStatus;
+        return matchNumero && matchStatus;
     });
     
     // Atualizar tabela com dados filtrados
-    const tbody = document.querySelector('#tabelaEquipes tbody');
+    const tbody = document.querySelector('#tabelaEquipes');
     
     if (!tbody) return;
     
     if (equipesFiltradas.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="4" class="empty-state">
+                <td colspan="5" class="empty-state">
                     <i class="fas fa-search"></i>
                     <h3>Nenhuma equipe encontrada</h3>
                     <p>Ajuste os filtros ou cadastre novas equipes</p>
@@ -970,12 +943,17 @@ function filtrarEquipes() {
             <tr>
                 <td>${equipe.numero}</td>
                 <td title="${integrantesNomes}">${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
+                <td>
+                    <span class="badge ${equipe.status === 'ativa' ? 'badge-success' : 'badge-danger'}">
+                        ${equipe.status === 'ativa' ? 'Ativa' : 'Inativa'}
+                    </span>
+                </td>
                 <td>${equipe.observacoes || '-'}</td>
                 <td class="actions-cell">
-                    <button class="btn-info" onclick="openEquipeModal(${equipe.id})" title="Editar">
+                    <button class="btn-info" onclick="abrirModalEquipe(${equipe.id})" title="Editar">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-danger" onclick="confirmDeleteEquipe(${equipe.id})" title="Excluir">
+                    <button class="btn-danger" onclick="confirmarExclusaoEquipe(${equipe.id})" title="Excluir">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -984,26 +962,28 @@ function filtrarEquipes() {
     }).join('');
 }
 
-// Filtrar integrantes - SEM FILTRO POR STATUS
+// Filtrar integrantes
 function filtrarIntegrantes() {
     const filtroNome = document.getElementById('filtroNomeIntegrante')?.value.toLowerCase() || '';
     const filtroFuncao = document.getElementById('filtroFuncaoIntegrante')?.value || '';
+    const filtroStatus = document.getElementById('filtroStatusIntegrante')?.value || '';
     
     const integrantesFiltrados = integrantesData.filter(integrante => {
         const matchNome = !filtroNome || integrante.nome.toLowerCase().includes(filtroNome);
         const matchFuncao = !filtroFuncao || integrante.funcao_id == filtroFuncao;
-        return matchNome && matchFuncao;
+        const matchStatus = !filtroStatus || integrante.status === filtroStatus;
+        return matchNome && matchFuncao && matchStatus;
     });
     
     // Atualizar tabela com dados filtrados
-    const tbody = document.querySelector('#tabelaIntegrantes tbody');
+    const tbody = document.querySelector('#tabelaIntegrantes');
     
     if (!tbody) return;
     
     if (integrantesFiltrados.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="empty-state">
+                <td colspan="6" class="empty-state">
                     <i class="fas fa-search"></i>
                     <h3>Nenhum integrante encontrado</h3>
                     <p>Ajuste os filtros ou cadastre novos integrantes</p>
@@ -1019,11 +999,16 @@ function filtrarIntegrantes() {
             <td>${integrante.cpf}</td>
             <td>${integrante.whatsapp}</td>
             <td>${integrante.funcoes_hvc?.nome || 'N/A'}</td>
+            <td>
+                <span class="badge ${integrante.status === 'ativo' ? 'badge-success' : 'badge-danger'}">
+                    ${integrante.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                </span>
+            </td>
             <td class="actions-cell">
-                <button class="btn-info" onclick="openIntegranteModal(${integrante.id})" title="Editar">
+                <button class="btn-info" onclick="abrirModalIntegrante(${integrante.id})" title="Editar">
                     <i class="fas fa-edit"></i>
                 </button>
-                <button class="btn-danger" onclick="confirmDeleteIntegrante(${integrante.id})" title="Excluir">
+                <button class="btn-danger" onclick="confirmarExclusaoIntegrante(${integrante.id})" title="Excluir">
                     <i class="fas fa-trash"></i>
                 </button>
             </td>
@@ -1051,6 +1036,32 @@ function setupFieldFormatting() {
         whatsappField.addEventListener('input', function(e) {
             e.target.value = formatWhatsApp(e.target.value);
         });
+    }
+    
+    // Filtros em tempo real
+    const filtroNumeroEquipe = document.getElementById('filtroNumeroEquipe');
+    if (filtroNumeroEquipe) {
+        filtroNumeroEquipe.addEventListener('input', filtrarEquipes);
+    }
+    
+    const filtroStatusEquipe = document.getElementById('filtroStatusEquipe');
+    if (filtroStatusEquipe) {
+        filtroStatusEquipe.addEventListener('change', filtrarEquipes);
+    }
+    
+    const filtroNomeIntegrante = document.getElementById('filtroNomeIntegrante');
+    if (filtroNomeIntegrante) {
+        filtroNomeIntegrante.addEventListener('input', filtrarIntegrantes);
+    }
+    
+    const filtroFuncaoIntegrante = document.getElementById('filtroFuncaoIntegrante');
+    if (filtroFuncaoIntegrante) {
+        filtroFuncaoIntegrante.addEventListener('change', filtrarIntegrantes);
+    }
+    
+    const filtroStatusIntegrante = document.getElementById('filtroStatusIntegrante');
+    if (filtroStatusIntegrante) {
+        filtroStatusIntegrante.addEventListener('change', filtrarIntegrantes);
     }
 }
 
@@ -1095,24 +1106,23 @@ async function initializeSystem() {
 // ========================================
 
 // Tornar funções disponíveis globalmente
-window.openEquipeModal = openEquipeModal;
-window.closeEquipeModal = closeEquipeModal;
-window.openIntegranteModal = openIntegranteModal;
-window.closeIntegranteModal = closeIntegranteModal;
-window.openFuncoesModal = openFuncoesModal;
-window.closeFuncoesModal = closeFuncoesModal;
-window.openNovaFuncaoForm = openNovaFuncaoForm;
-window.cancelNovaFuncao = cancelNovaFuncao;
-window.saveFuncao = saveFuncao;
-window.saveIntegrante = saveIntegrante;
-window.saveEquipe = saveEquipe;
-window.editFuncao = editFuncao;
-window.confirmDeleteFuncao = confirmDeleteFuncao;
-window.confirmDeleteIntegrante = confirmDeleteIntegrante;
-window.confirmDeleteEquipe = confirmDeleteEquipe;
+window.abrirModalEquipe = abrirModalEquipe;
+window.fecharModalEquipe = fecharModalEquipe;
+window.abrirModalIntegrante = abrirModalIntegrante;
+window.fecharModalIntegrante = fecharModalIntegrante;
+window.abrirModalFuncoes = abrirModalFuncoes;
+window.fecharModalFuncoes = fecharModalFuncoes;
+window.abrirFormNovaFuncao = abrirFormNovaFuncao;
+window.cancelarNovaFuncao = cancelarNovaFuncao;
+window.salvarFuncao = salvarFuncao;
+window.salvarIntegrante = salvarIntegrante;
+window.salvarEquipe = salvarEquipe;
+window.editarFuncao = editarFuncao;
+window.confirmarExclusaoFuncao = confirmarExclusaoFuncao;
+window.confirmarExclusaoIntegrante = confirmarExclusaoIntegrante;
+window.confirmarExclusaoEquipe = confirmarExclusaoEquipe;
 window.filtrarEquipes = filtrarEquipes;
 window.filtrarIntegrantes = filtrarIntegrantes;
-window.updateSelectedCount = updateSelectedCount;
 
 // ========================================
 // INICIALIZAÇÃO AUTOMÁTICA
