@@ -1,14 +1,13 @@
 // ========================================
-// SISTEMA DE EQUIPES HVC - JAVASCRIPT CORRIGIDO
+// SISTEMA DE EQUIPES HVC - JAVASCRIPT SEM SIDEBAR AUTOMÁTICA
 // ========================================
 // Sistema completo para gerenciamento de equipes, integrantes e funções
-// Compatível com a estrutura ES6 modules do projeto HVC
+// Versão simplificada sem dependência da sidebar automática
 
 // ========================================
 // IMPORTS
 // ========================================
 import { supabase } from './supabase.js';
-import { injectSidebarWithAutoDetection } from './sidebar.js';
 
 // ========================================
 // VARIÁVEIS GLOBAIS
@@ -119,14 +118,6 @@ async function initializeSystem() {
         }
         
         console.log('Supabase disponível:', !!supabase);
-        
-        // Injetar sidebar
-        if (typeof injectSidebarWithAutoDetection === 'function') {
-            injectSidebarWithAutoDetection();
-            console.log('Sidebar injetada com sucesso');
-        } else {
-            console.warn('Função de sidebar não disponível');
-        }
         
         // Carregar dados iniciais
         await Promise.all([
