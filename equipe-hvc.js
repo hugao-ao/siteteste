@@ -662,6 +662,11 @@ function abrirModalFuncoes() {
     document.getElementById('modal-funcoes').classList.add('show');
 }
 
+// Função de compatibilidade para o HTML que chama openFuncoesModal
+function openFuncoesModal() {
+    abrirModalFuncoes();
+}
+
 function fecharModalFuncoes() {
     document.getElementById('modal-funcoes').classList.remove('show');
 }
@@ -1048,4 +1053,60 @@ document.addEventListener('DOMContentLoaded', async function() {
 
     console.log('Sistema de equipes inicializado com sucesso!');
 });
+
+// ========================================
+// INICIALIZAÇÃO COM SUPABASE
+// ========================================
+
+// Função para inicializar sistema quando Supabase estiver pronto
+function initializeEquipeSystem() {
+    console.log('Inicializando sistema de equipes...');
+    
+    // Verificar se Supabase está disponível
+    if (window.supabase) {
+        console.log('Supabase disponível, carregando dados...');
+        carregarDadosIniciais();
+    } else {
+        console.log('Aguardando Supabase...');
+        // Aguardar evento de Supabase pronto
+        window.addEventListener('supabaseReady', function() {
+            console.log('Supabase pronto, carregando dados...');
+            carregarDadosIniciais();
+        });
+        
+        // Fallback: tentar novamente após 2 segundos
+        setTimeout(() => {
+            if (window.supabase) {
+                console.log('Supabase disponível (fallback), carregando dados...');
+                carregarDadosIniciais();
+            } else {
+                console.warn('Supabase não disponível após timeout');
+                showNotification('Erro: Não foi possível conectar ao banco de dados', 'error');
+            }
+        }, 2000);
+    }
+}
+
+// Função para carregar dados iniciais
+async function carregarDadosIniciais() {
+    try {
+        console.log('Carregando dados iniciais...');
+        await Promise.all([
+            carregarFuncoes(),
+            carregarIntegrantes(),
+            carregarEquipes()
+        ]);
+        console.log('Dados iniciais carregados com sucesso!');
+    } catch (error) {
+        console.error('Erro ao carregar dados iniciais:', error);
+        showNotification('Erro ao carregar dados do sistema', 'error');
+    }
+}
+
+// Inicializar sistema quando DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeEquipeSystem);
+} else {
+    initializeEquipeSystem();
+}
 
