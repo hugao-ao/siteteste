@@ -1,4 +1,3 @@
-// ========================================
 // SISTEMA DE EQUIPES HVC - JAVASCRIPT CORRIGIDO
 // ========================================
 // Sistema completo para gerenciamento de equipes, integrantes e funções
@@ -8,7 +7,6 @@
 // IMPORTS
 // ========================================
 import { supabase } from './supabase.js';
-import { injectSidebarWithAutoDetection } from './sidebar.js';
 
 // ========================================
 // VARIÁVEIS GLOBAIS
@@ -48,15 +46,15 @@ function isValidCPF(cpf) {
     const cleanCPF = cpf.replace(/\D/g, '');
     if (cleanCPF.length !== 11) return false;
     
-    // Verifica se todos os dígitos são iguais
+    // Verificar se todos os dígitos são iguais
     if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
     
-    // Validação dos dígitos verificadores
+    // Validar dígitos verificadores
     let sum = 0;
     for (let i = 0; i < 9; i++) {
         sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
     }
-    let remainder = (sum * 10) % 11;
+    let remainder = 11 - (sum % 11);
     if (remainder === 10 || remainder === 11) remainder = 0;
     if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
     
@@ -64,7 +62,7 @@ function isValidCPF(cpf) {
     for (let i = 0; i < 10; i++) {
         sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
     }
-    remainder = (sum * 10) % 11;
+    remainder = 11 - (sum % 11);
     if (remainder === 10 || remainder === 11) remainder = 0;
     if (remainder !== parseInt(cleanCPF.charAt(10))) return false;
     
@@ -88,7 +86,7 @@ function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle'}"></i>
         ${message}
     `;
     
@@ -97,7 +95,7 @@ function showNotification(message, type = 'success') {
     // Mostrar notificação
     setTimeout(() => notification.classList.add('show'), 100);
     
-    // Remover após 3 segundos
+    // Remover notificação após 3 segundos
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 300);
@@ -105,84 +103,13 @@ function showNotification(message, type = 'success') {
 }
 
 // ========================================
-// FUNÇÕES DE INICIALIZAÇÃO
-// ========================================
-
-// Inicializar sistema
-async function initializeSystem() {
-    console.log('Inicializando sistema de equipes...');
-    
-    try {
-        // Verificar se Supabase está disponível
-        if (!supabase) {
-            throw new Error('Supabase não está disponível');
-        }
-        
-        console.log('Supabase disponível:', !!supabase);
-        
-        // Injetar sidebar
-        if (typeof injectSidebarWithAutoDetection === 'function') {
-            injectSidebarWithAutoDetection();
-            console.log('Sidebar injetada com sucesso');
-        } else {
-            console.warn('Função de sidebar não disponível');
-        }
-        
-        // Carregar dados iniciais
-        await Promise.all([
-            loadFuncoes(),
-            loadIntegrantes(),
-            loadEquipes()
-        ]);
-        
-        // Configurar event listeners
-        setupEventListeners();
-        
-        console.log('Sistema de equipes inicializado com sucesso');
-        showNotification('Sistema de equipes carregado com sucesso!');
-        
-    } catch (error) {
-        console.error('Erro ao inicializar sistema:', error);
-        showNotification('Erro ao carregar sistema de equipes: ' + error.message, 'error');
-    }
-}
-
-// Configurar event listeners
-function setupEventListeners() {
-    // Formatação automática de campos
-    const cpfInput = document.getElementById('cpfIntegrante');
-    if (cpfInput) {
-        cpfInput.addEventListener('input', function(e) {
-            e.target.value = formatCPF(e.target.value);
-        });
-    }
-    
-    const whatsappInput = document.getElementById('whatsappIntegrante');
-    if (whatsappInput) {
-        whatsappInput.addEventListener('input', function(e) {
-            e.target.value = formatWhatsApp(e.target.value);
-        });
-    }
-    
-    // Fechar modais ao clicar fora
-    document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal')) {
-            if (e.target.id === 'modalEquipe') closeEquipeModal();
-            if (e.target.id === 'modalIntegrante') closeIntegranteModal();
-            if (e.target.id === 'modalFuncoes') closeFuncoesModal();
-        }
-    });
-}
-
-// ========================================
-// FUNÇÕES DE DADOS - FUNÇÕES
+// FUNÇÕES DE BANCO DE DADOS
 // ========================================
 
 // Carregar funções
 async function loadFuncoes() {
     try {
         console.log('Carregando funções...');
-        
         const { data, error } = await supabase
             .from('funcoes_hvc')
             .select('*')
@@ -195,188 +122,20 @@ async function loadFuncoes() {
         
         funcoesData = data || [];
         console.log('Funções carregadas:', funcoesData.length);
-        
         updateFuncoesTable();
         updateFuncaoSelects();
-        
+        return funcoesData;
     } catch (error) {
         console.error('Erro ao carregar funções:', error);
-        showNotification('Erro ao carregar funções: ' + error.message, 'error');
+        showNotification('Erro ao carregar funções', 'error');
+        return [];
     }
 }
-
-// Salvar função
-async function saveFuncao(event) {
-    event.preventDefault();
-    
-    const nome = document.getElementById('nomeFuncao').value.trim();
-    
-    if (!nome) {
-        showNotification('Nome da função é obrigatório', 'error');
-        return;
-    }
-    
-    try {
-        // Verificar se função já existe
-        const existingFuncao = funcoesData.find(f => 
-            f.nome.toLowerCase() === nome.toLowerCase() && 
-            (!currentEditingFuncao || f.id !== currentEditingFuncao.id)
-        );
-        
-        if (existingFuncao) {
-            showNotification('Já existe uma função com este nome', 'error');
-            return;
-        }
-        
-        let result;
-        
-        if (currentEditingFuncao) {
-            // Atualizar função existente
-            result = await supabase
-                .from('funcoes_hvc')
-                .update({ nome })
-                .eq('id', currentEditingFuncao.id)
-                .select();
-        } else {
-            // Criar nova função
-            result = await supabase
-                .from('funcoes_hvc')
-                .insert([{ nome }])
-                .select();
-        }
-        
-        if (result.error) {
-            throw result.error;
-        }
-        
-        showNotification(
-            currentEditingFuncao ? 'Função atualizada com sucesso!' : 'Função criada com sucesso!'
-        );
-        
-        // Recarregar dados
-        await loadFuncoes();
-        
-        // Limpar formulário
-        cancelNovaFuncao();
-        
-    } catch (error) {
-        console.error('Erro ao salvar função:', error);
-        showNotification('Erro ao salvar função: ' + error.message, 'error');
-    }
-}
-
-// Excluir função
-async function deleteFuncao(id) {
-    if (!confirm('Tem certeza que deseja excluir esta função?')) {
-        return;
-    }
-    
-    try {
-        // Verificar se função está sendo usada
-        const { data: integrantesUsandoFuncao } = await supabase
-            .from('integrantes_hvc')
-            .select('id')
-            .eq('funcao_id', id);
-        
-        if (integrantesUsandoFuncao && integrantesUsandoFuncao.length > 0) {
-            showNotification('Não é possível excluir função que está sendo usada por integrantes', 'error');
-            return;
-        }
-        
-        const { error } = await supabase
-            .from('funcoes_hvc')
-            .delete()
-            .eq('id', id);
-        
-        if (error) {
-            throw error;
-        }
-        
-        showNotification('Função excluída com sucesso!');
-        await loadFuncoes();
-        
-    } catch (error) {
-        console.error('Erro ao excluir função:', error);
-        showNotification('Erro ao excluir função: ' + error.message, 'error');
-    }
-}
-
-// Atualizar tabela de funções
-function updateFuncoesTable() {
-    const tbody = document.querySelector('#tabelaFuncoes tbody');
-    if (!tbody) return;
-    
-    if (funcoesData.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="3" class="empty-state">
-                    <i class="fas fa-cog"></i>
-                    <div>Nenhuma função cadastrada</div>
-                    <div>Clique em "Nova Função" para começar</div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    tbody.innerHTML = funcoesData.map(funcao => {
-        const integrantesCount = integrantesData.filter(i => i.funcao_id === funcao.id).length;
-        
-        return `
-            <tr>
-                <td>${funcao.nome}</td>
-                <td>${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editFuncao(${funcao.id})" title="Editar">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteFuncao(${funcao.id})" title="Excluir">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// Atualizar selects de função
-function updateFuncaoSelects() {
-    const selects = [
-        document.getElementById('funcaoIntegrante'),
-        document.getElementById('filtroFuncaoIntegrante')
-    ];
-    
-    selects.forEach(select => {
-        if (!select) return;
-        
-        const currentValue = select.value;
-        const isFilter = select.id.includes('filtro');
-        
-        select.innerHTML = isFilter ? '<option value="">Todas</option>' : '<option value="">Selecione uma função</option>';
-        
-        funcoesData.forEach(funcao => {
-            const option = document.createElement('option');
-            option.value = funcao.id;
-            option.textContent = funcao.nome;
-            select.appendChild(option);
-        });
-        
-        // Restaurar valor selecionado
-        if (currentValue) {
-            select.value = currentValue;
-        }
-    });
-}
-
-// ========================================
-// FUNÇÕES DE DADOS - INTEGRANTES
-// ========================================
 
 // Carregar integrantes
 async function loadIntegrantes() {
     try {
         console.log('Carregando integrantes...');
-        
         const { data, error } = await supabase
             .from('integrantes_hvc')
             .select(`
@@ -395,25 +154,384 @@ async function loadIntegrantes() {
         
         integrantesData = data || [];
         console.log('Integrantes carregados:', integrantesData.length);
-        
         updateIntegrantesTable();
-        updateIntegrantesSelect();
-        
+        return integrantesData;
     } catch (error) {
         console.error('Erro ao carregar integrantes:', error);
-        showNotification('Erro ao carregar integrantes: ' + error.message, 'error');
+        showNotification('Erro ao carregar integrantes', 'error');
+        return [];
+    }
+}
+
+// Carregar equipes
+async function loadEquipes() {
+    try {
+        console.log('Carregando equipes...');
+        const { data, error } = await supabase
+            .from('equipes_hvc')
+            .select(`
+                *,
+                equipes_integrantes (
+                    integrantes_hvc (
+                        id,
+                        nome
+                    )
+                )
+            `)
+            .order('numero');
+        
+        if (error) {
+            console.error('Erro ao carregar equipes:', error);
+            throw error;
+        }
+        
+        equipesData = data || [];
+        console.log('Equipes carregadas:', equipesData.length);
+        updateEquipesTable();
+        return equipesData;
+    } catch (error) {
+        console.error('Erro ao carregar equipes:', error);
+        showNotification('Erro ao carregar equipes', 'error');
+        return [];
+    }
+}
+
+// Salvar função
+async function saveFuncaoToDB(funcaoData) {
+    try {
+        if (currentEditingFuncao) {
+            // Editar função existente
+            const { data, error } = await supabase
+                .from('funcoes_hvc')
+                .update(funcaoData)
+                .eq('id', currentEditingFuncao)
+                .select();
+            
+            if (error) throw error;
+            showNotification('Função atualizada com sucesso!');
+        } else {
+            // Criar nova função
+            const { data, error } = await supabase
+                .from('funcoes_hvc')
+                .insert([funcaoData])
+                .select();
+            
+            if (error) throw error;
+            showNotification('Função criada com sucesso!');
+        }
+        
+        await loadFuncoes();
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar função:', error);
+        showNotification('Erro ao salvar função: ' + error.message, 'error');
+        return false;
     }
 }
 
 // Salvar integrante
-async function saveIntegrante(event) {
+async function saveIntegranteToDB(integranteData) {
+    try {
+        if (currentEditingIntegrante) {
+            // Editar integrante existente
+            const { data, error } = await supabase
+                .from('integrantes_hvc')
+                .update(integranteData)
+                .eq('id', currentEditingIntegrante)
+                .select();
+            
+            if (error) throw error;
+            showNotification('Integrante atualizado com sucesso!');
+        } else {
+            // Criar novo integrante
+            const { data, error } = await supabase
+                .from('integrantes_hvc')
+                .insert([integranteData])
+                .select();
+            
+            if (error) throw error;
+            showNotification('Integrante criado com sucesso!');
+        }
+        
+        await loadIntegrantes();
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar integrante:', error);
+        if (error.code === '23505') {
+            showNotification('CPF já cadastrado no sistema', 'error');
+        } else {
+            showNotification('Erro ao salvar integrante: ' + error.message, 'error');
+        }
+        return false;
+    }
+}
+
+// Salvar equipe
+async function saveEquipeToDB(equipeData, integrantesSelecionados) {
+    try {
+        let equipeId;
+        
+        if (currentEditingEquipe) {
+            // Editar equipe existente
+            const { data, error } = await supabase
+                .from('equipes_hvc')
+                .update(equipeData)
+                .eq('id', currentEditingEquipe)
+                .select();
+            
+            if (error) throw error;
+            equipeId = currentEditingEquipe;
+            
+            // Remover integrantes existentes
+            await supabase
+                .from('equipes_integrantes')
+                .delete()
+                .eq('equipe_id', equipeId);
+        } else {
+            // Criar nova equipe
+            const { data, error } = await supabase
+                .from('equipes_hvc')
+                .insert([equipeData])
+                .select();
+            
+            if (error) throw error;
+            equipeId = data[0].id;
+        }
+        
+        // Adicionar integrantes selecionados
+        if (integrantesSelecionados.length > 0) {
+            const integrantesEquipe = integrantesSelecionados.map(integranteId => ({
+                equipe_id: equipeId,
+                integrante_id: integranteId
+            }));
+            
+            const { error: integrantesError } = await supabase
+                .from('equipes_integrantes')
+                .insert(integrantesEquipe);
+            
+            if (integrantesError) throw integrantesError;
+        }
+        
+        showNotification(currentEditingEquipe ? 'Equipe atualizada com sucesso!' : 'Equipe criada com sucesso!');
+        await loadEquipes();
+        return true;
+    } catch (error) {
+        console.error('Erro ao salvar equipe:', error);
+        if (error.code === '23505') {
+            showNotification('Número da equipe já existe', 'error');
+        } else {
+            showNotification('Erro ao salvar equipe: ' + error.message, 'error');
+        }
+        return false;
+    }
+}
+
+// Deletar função
+async function deleteFuncao(id) {
+    try {
+        const { error } = await supabase
+            .from('funcoes_hvc')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        showNotification('Função excluída com sucesso!');
+        await loadFuncoes();
+        await loadIntegrantes(); // Recarregar para atualizar referências
+    } catch (error) {
+        console.error('Erro ao deletar função:', error);
+        if (error.code === '23503') {
+            showNotification('Não é possível excluir função que possui integrantes associados', 'error');
+        } else {
+            showNotification('Erro ao excluir função: ' + error.message, 'error');
+        }
+    }
+}
+
+// Deletar integrante
+async function deleteIntegrante(id) {
+    try {
+        const { error } = await supabase
+            .from('integrantes_hvc')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        showNotification('Integrante excluído com sucesso!');
+        await loadIntegrantes();
+        await loadEquipes(); // Recarregar para atualizar referências
+    } catch (error) {
+        console.error('Erro ao deletar integrante:', error);
+        showNotification('Erro ao excluir integrante: ' + error.message, 'error');
+    }
+}
+
+// Deletar equipe
+async function deleteEquipe(id) {
+    try {
+        // Primeiro deletar relacionamentos
+        await supabase
+            .from('equipes_integrantes')
+            .delete()
+            .eq('equipe_id', id);
+        
+        // Depois deletar a equipe
+        const { error } = await supabase
+            .from('equipes_hvc')
+            .delete()
+            .eq('id', id);
+        
+        if (error) throw error;
+        
+        showNotification('Equipe excluída com sucesso!');
+        await loadEquipes();
+    } catch (error) {
+        console.error('Erro ao deletar equipe:', error);
+        showNotification('Erro ao excluir equipe: ' + error.message, 'error');
+    }
+}
+
+// ========================================
+// FUNÇÕES DE INTERFACE - MODAIS
+// ========================================
+
+// Modal Equipe
+function openEquipeModal(equipeId = null) {
+    currentEditingEquipe = equipeId;
+    const modal = document.getElementById('modal-equipe');
+    const title = document.getElementById('modal-equipe-title');
+    
+    if (equipeId) {
+        title.textContent = 'Editar Equipe';
+        const equipe = equipesData.find(e => e.id === equipeId);
+        if (equipe) {
+            document.getElementById('numero-equipe').value = equipe.numero;
+            document.getElementById('observacoes-equipe').value = equipe.observacoes || '';
+            
+            // Marcar integrantes selecionados
+            const integrantesSelecionados = equipe.equipes_integrantes?.map(ei => ei.integrantes_hvc.id) || [];
+            updateIntegrantesSelect(integrantesSelecionados);
+        }
+    } else {
+        title.textContent = 'Nova Equipe';
+        document.getElementById('form-equipe').reset();
+        updateIntegrantesSelect([]);
+    }
+    
+    modal.classList.add('show');
+}
+
+function closeEquipeModal() {
+    const modal = document.getElementById('modal-equipe');
+    modal.classList.remove('show');
+    currentEditingEquipe = null;
+}
+
+// Modal Integrante
+function openIntegranteModal(integranteId = null) {
+    currentEditingIntegrante = integranteId;
+    const modal = document.getElementById('modal-integrante');
+    const title = document.getElementById('modal-integrante-title');
+    
+    if (integranteId) {
+        title.textContent = 'Editar Integrante';
+        const integrante = integrantesData.find(i => i.id === integranteId);
+        if (integrante) {
+            document.getElementById('nome-integrante').value = integrante.nome;
+            document.getElementById('cpf-integrante').value = integrante.cpf;
+            document.getElementById('whatsapp-integrante').value = integrante.whatsapp;
+            document.getElementById('funcao-integrante').value = integrante.funcao_id;
+            document.getElementById('observacoes-integrante').value = integrante.observacoes || '';
+        }
+    } else {
+        title.textContent = 'Novo Integrante';
+        document.getElementById('form-integrante').reset();
+    }
+    
+    modal.classList.add('show');
+}
+
+function closeIntegranteModal() {
+    const modal = document.getElementById('modal-integrante');
+    modal.classList.remove('show');
+    currentEditingIntegrante = null;
+}
+
+// Modal Funções
+function openFuncoesModal() {
+    const modal = document.getElementById('modal-funcoes');
+    if (modal) {
+        modal.classList.add('show');
+        cancelNovaFuncao(); // Garantir que formulário está fechado
+    } else {
+        console.error('Modal de funções não encontrado');
+        showNotification('Erro: Modal de funções não encontrado', 'error');
+    }
+}
+
+function closeFuncoesModal() {
+    const modal = document.getElementById('modal-funcoes');
+    if (modal) {
+        modal.classList.remove('show');
+        cancelNovaFuncao();
+    }
+}
+
+// ========================================
+// FUNÇÕES DE INTERFACE - FORMULÁRIOS
+// ========================================
+
+// Formulário de nova função
+function openNovaFuncaoForm() {
+    const form = document.getElementById('nova-funcao-form');
+    if (form) {
+        form.style.display = 'block';
+        document.getElementById('nome-funcao').focus();
+    }
+}
+
+function cancelNovaFuncao() {
+    const form = document.getElementById('nova-funcao-form');
+    if (form) {
+        form.style.display = 'none';
+        form.querySelector('form').reset();
+        currentEditingFuncao = null;
+    }
+}
+
+// Salvar função
+function saveFuncao(event) {
     event.preventDefault();
     
-    const nome = document.getElementById('nomeIntegrante').value.trim();
-    const cpf = document.getElementById('cpfIntegrante').value.trim();
-    const whatsapp = document.getElementById('whatsappIntegrante').value.trim();
-    const funcaoId = document.getElementById('funcaoIntegrante').value;
-    const observacoes = document.getElementById('observacoesIntegrante').value.trim();
+    const nome = document.getElementById('nome-funcao').value.trim();
+    
+    if (!nome) {
+        showNotification('Nome da função é obrigatório', 'error');
+        return;
+    }
+    
+    const funcaoData = {
+        nome: nome
+    };
+    
+    saveFuncaoToDB(funcaoData).then(success => {
+        if (success) {
+            cancelNovaFuncao();
+        }
+    });
+}
+
+// Salvar integrante
+function saveIntegrante(event) {
+    event.preventDefault();
+    
+    const nome = document.getElementById('nome-integrante').value.trim();
+    const cpf = document.getElementById('cpf-integrante').value.trim();
+    const whatsapp = document.getElementById('whatsapp-integrante').value.trim();
+    const funcaoId = document.getElementById('funcao-integrante').value;
+    const observacoes = document.getElementById('observacoes-integrante').value.trim();
     
     // Validações
     if (!nome || !cpf || !whatsapp || !funcaoId) {
@@ -431,261 +549,37 @@ async function saveIntegrante(event) {
         return;
     }
     
-    try {
-        // Verificar se CPF já existe
-        const existingIntegrante = integrantesData.find(i => 
-            i.cpf === cpf && 
-            (!currentEditingIntegrante || i.id !== currentEditingIntegrante.id)
-        );
-        
-        if (existingIntegrante) {
-            showNotification('Já existe um integrante com este CPF', 'error');
+    // Verificar CPF duplicado (apenas para novos integrantes)
+    if (!currentEditingIntegrante) {
+        const cpfExists = integrantesData.some(i => i.cpf === cpf);
+        if (cpfExists) {
+            showNotification('CPF já cadastrado no sistema', 'error');
             return;
         }
-        
-        const integranteData = {
-            nome,
-            cpf,
-            whatsapp,
-            funcao_id: parseInt(funcaoId),
-            observacoes: observacoes || null,
-            status: 'ativo'
-        };
-        
-        let result;
-        
-        if (currentEditingIntegrante) {
-            // Atualizar integrante existente
-            result = await supabase
-                .from('integrantes_hvc')
-                .update(integranteData)
-                .eq('id', currentEditingIntegrante.id)
-                .select();
-        } else {
-            // Criar novo integrante
-            result = await supabase
-                .from('integrantes_hvc')
-                .insert([integranteData])
-                .select();
+    }
+    
+    const integranteData = {
+        nome: nome,
+        cpf: cpf,
+        whatsapp: whatsapp,
+        funcao_id: parseInt(funcaoId),
+        observacoes: observacoes || null,
+        status: 'ativo'
+    };
+    
+    saveIntegranteToDB(integranteData).then(success => {
+        if (success) {
+            closeIntegranteModal();
         }
-        
-        if (result.error) {
-            throw result.error;
-        }
-        
-        showNotification(
-            currentEditingIntegrante ? 'Integrante atualizado com sucesso!' : 'Integrante criado com sucesso!'
-        );
-        
-        // Recarregar dados
-        await loadIntegrantes();
-        
-        // Fechar modal
-        closeIntegranteModal();
-        
-    } catch (error) {
-        console.error('Erro ao salvar integrante:', error);
-        showNotification('Erro ao salvar integrante: ' + error.message, 'error');
-    }
-}
-
-// Excluir integrante
-async function deleteIntegrante(id) {
-    if (!confirm('Tem certeza que deseja excluir este integrante?')) {
-        return;
-    }
-    
-    try {
-        // Verificar se integrante está em alguma equipe
-        const { data: equipesComIntegrante } = await supabase
-            .from('equipes_integrantes')
-            .select('equipe_id')
-            .eq('integrante_id', id);
-        
-        if (equipesComIntegrante && equipesComIntegrante.length > 0) {
-            showNotification('Não é possível excluir integrante que faz parte de equipes', 'error');
-            return;
-        }
-        
-        const { error } = await supabase
-            .from('integrantes_hvc')
-            .delete()
-            .eq('id', id);
-        
-        if (error) {
-            throw error;
-        }
-        
-        showNotification('Integrante excluído com sucesso!');
-        await loadIntegrantes();
-        
-    } catch (error) {
-        console.error('Erro ao excluir integrante:', error);
-        showNotification('Erro ao excluir integrante: ' + error.message, 'error');
-    }
-}
-
-// Atualizar tabela de integrantes
-function updateIntegrantesTable() {
-    const tbody = document.querySelector('#tabelaIntegrantes tbody');
-    if (!tbody) return;
-    
-    let filteredIntegrantes = [...integrantesData];
-    
-    // Aplicar filtros
-    const filtroNome = document.getElementById('filtroNomeIntegrante')?.value.toLowerCase() || '';
-    const filtroFuncao = document.getElementById('filtroFuncaoIntegrante')?.value || '';
-    const filtroStatus = document.getElementById('filtroStatusIntegrante')?.value || '';
-    
-    if (filtroNome) {
-        filteredIntegrantes = filteredIntegrantes.filter(i => 
-            i.nome.toLowerCase().includes(filtroNome)
-        );
-    }
-    
-    if (filtroFuncao) {
-        filteredIntegrantes = filteredIntegrantes.filter(i => 
-            i.funcao_id === parseInt(filtroFuncao)
-        );
-    }
-    
-    if (filtroStatus) {
-        filteredIntegrantes = filteredIntegrantes.filter(i => 
-            i.status === filtroStatus
-        );
-    }
-    
-    if (filteredIntegrantes.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" class="empty-state">
-                    <i class="fas fa-user"></i>
-                    <div>Nenhum integrante encontrado</div>
-                    <div>Ajuste os filtros ou cadastre novos integrantes</div>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    tbody.innerHTML = filteredIntegrantes.map(integrante => {
-        const funcaoNome = integrante.funcoes_hvc?.nome || 'Função não encontrada';
-        const statusClass = integrante.status === 'ativo' ? 'success' : 'secondary';
-        
-        return `
-            <tr>
-                <td>${integrante.nome}</td>
-                <td>${integrante.cpf}</td>
-                <td>${integrante.whatsapp}</td>
-                <td>${funcaoNome}</td>
-                <td>
-                    <span class="btn btn-${statusClass} btn-sm" style="cursor: default;">
-                        ${integrante.status}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editIntegrante(${integrante.id})" title="Editar">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteIntegrante(${integrante.id})" title="Excluir">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                    <button class="btn btn-${integrante.status === 'ativo' ? 'secondary' : 'success'} btn-sm" 
-                            onclick="toggleIntegranteStatus(${integrante.id})" 
-                            title="${integrante.status === 'ativo' ? 'Desativar' : 'Ativar'}">
-                        <i class="fas fa-${integrante.status === 'ativo' ? 'pause' : 'play'}"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-// Atualizar select de integrantes
-function updateIntegrantesSelect() {
-    const container = document.getElementById('integrantesSelect');
-    if (!container) return;
-    
-    const integrantesAtivos = integrantesData.filter(i => i.status === 'ativo');
-    
-    if (integrantesAtivos.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <i class="fas fa-user-plus"></i>
-                <div>Nenhum integrante ativo disponível</div>
-                <div>Cadastre integrantes primeiro</div>
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = integrantesAtivos.map(integrante => {
-        const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
-        
-        return `
-            <div class="multi-select-item">
-                <input type="checkbox" id="integrante_${integrante.id}" value="${integrante.id}" onchange="updateSelectedCount()">
-                <label for="integrante_${integrante.id}" style="margin: 0; cursor: pointer; flex: 1;">
-                    <strong>${integrante.nome}</strong> - ${funcaoNome}
-                </label>
-            </div>
-        `;
-    }).join('');
-}
-
-// ========================================
-// FUNÇÕES DE DADOS - EQUIPES
-// ========================================
-
-// Carregar equipes
-async function loadEquipes() {
-    try {
-        console.log('Carregando equipes...');
-        
-        const { data, error } = await supabase
-            .from('equipes_hvc')
-            .select(`
-                *,
-                equipes_integrantes (
-                    integrante_id,
-                    integrantes_hvc (
-                        id,
-                        nome,
-                        funcoes_hvc (
-                            nome
-                        )
-                    )
-                )
-            `)
-            .order('numero');
-        
-        if (error) {
-            console.error('Erro ao carregar equipes:', error);
-            throw error;
-        }
-        
-        equipesData = data || [];
-        console.log('Equipes carregadas:', equipesData.length);
-        
-        updateEquipesTable();
-        
-    } catch (error) {
-        console.error('Erro ao carregar equipes:', error);
-        showNotification('Erro ao carregar equipes: ' + error.message, 'error');
-    }
+    });
 }
 
 // Salvar equipe
-async function saveEquipe(event) {
+function saveEquipe(event) {
     event.preventDefault();
     
-    const numero = document.getElementById('numeroEquipe').value.trim();
-    const observacoes = document.getElementById('observacoesEquipe').value.trim();
-    
-    // Obter integrantes selecionados
-    const integrantesSelecionados = Array.from(
-        document.querySelectorAll('#integrantesSelect input[type="checkbox"]:checked')
-    ).map(checkbox => parseInt(checkbox.value));
+    const numero = document.getElementById('numero-equipe').value.trim();
+    const observacoes = document.getElementById('observacoes-equipe').value.trim();
     
     // Validações
     if (!numero) {
@@ -693,200 +587,74 @@ async function saveEquipe(event) {
         return;
     }
     
+    // Verificar número duplicado (apenas para novas equipes)
+    if (!currentEditingEquipe) {
+        const numeroExists = equipesData.some(e => e.numero === numero);
+        if (numeroExists) {
+            showNotification('Número da equipe já existe', 'error');
+            return;
+        }
+    }
+    
+    // Obter integrantes selecionados
+    const integrantesSelecionados = [];
+    const checkboxes = document.querySelectorAll('#integrantes-select input[type="checkbox"]:checked');
+    checkboxes.forEach(checkbox => {
+        integrantesSelecionados.push(parseInt(checkbox.value));
+    });
+    
     if (integrantesSelecionados.length === 0) {
         showNotification('Selecione pelo menos um integrante', 'error');
         return;
     }
     
-    try {
-        // Verificar se número já existe
-        const existingEquipe = equipesData.find(e => 
-            e.numero === numero && 
-            (!currentEditingEquipe || e.id !== currentEditingEquipe.id)
-        );
-        
-        if (existingEquipe) {
-            showNotification('Já existe uma equipe com este número', 'error');
-            return;
+    const equipeData = {
+        numero: numero,
+        observacoes: observacoes || null,
+        status: 'ativa'
+    };
+    
+    saveEquipeToDB(equipeData, integrantesSelecionados).then(success => {
+        if (success) {
+            closeEquipeModal();
         }
-        
-        const equipeData = {
-            numero,
-            observacoes: observacoes || null,
-            status: 'ativa'
-        };
-        
-        let equipeId;
-        
-        if (currentEditingEquipe) {
-            // Atualizar equipe existente
-            const { error: updateError } = await supabase
-                .from('equipes_hvc')
-                .update(equipeData)
-                .eq('id', currentEditingEquipe.id);
-            
-            if (updateError) throw updateError;
-            
-            equipeId = currentEditingEquipe.id;
-            
-            // Remover integrantes existentes
-            const { error: deleteError } = await supabase
-                .from('equipes_integrantes')
-                .delete()
-                .eq('equipe_id', equipeId);
-            
-            if (deleteError) throw deleteError;
-            
-        } else {
-            // Criar nova equipe
-            const { data: newEquipe, error: insertError } = await supabase
-                .from('equipes_hvc')
-                .insert([equipeData])
-                .select()
-                .single();
-            
-            if (insertError) throw insertError;
-            
-            equipeId = newEquipe.id;
-        }
-        
-        // Adicionar integrantes à equipe
-        const integrantesData = integrantesSelecionados.map(integranteId => ({
-            equipe_id: equipeId,
-            integrante_id: integranteId
-        }));
-        
-        const { error: integrantesError } = await supabase
-            .from('equipes_integrantes')
-            .insert(integrantesData);
-        
-        if (integrantesError) throw integrantesError;
-        
-        showNotification(
-            currentEditingEquipe ? 'Equipe atualizada com sucesso!' : 'Equipe criada com sucesso!'
-        );
-        
-        // Recarregar dados
-        await loadEquipes();
-        
-        // Fechar modal
-        closeEquipeModal();
-        
-    } catch (error) {
-        console.error('Erro ao salvar equipe:', error);
-        showNotification('Erro ao salvar equipe: ' + error.message, 'error');
-    }
+    });
 }
 
-// Excluir equipe
-async function deleteEquipe(id) {
-    if (!confirm('Tem certeza que deseja excluir esta equipe?')) {
-        return;
-    }
-    
-    try {
-        // Remover integrantes da equipe primeiro
-        const { error: deleteIntegrantesError } = await supabase
-            .from('equipes_integrantes')
-            .delete()
-            .eq('equipe_id', id);
-        
-        if (deleteIntegrantesError) throw deleteIntegrantesError;
-        
-        // Remover equipe
-        const { error: deleteEquipeError } = await supabase
-            .from('equipes_hvc')
-            .delete()
-            .eq('id', id);
-        
-        if (deleteEquipeError) throw deleteEquipeError;
-        
-        showNotification('Equipe excluída com sucesso!');
-        await loadEquipes();
-        
-    } catch (error) {
-        console.error('Erro ao excluir equipe:', error);
-        showNotification('Erro ao excluir equipe: ' + error.message, 'error');
-    }
-}
+// ========================================
+// FUNÇÕES DE INTERFACE - TABELAS
+// ========================================
 
-// Atualizar tabela de equipes
-function updateEquipesTable() {
-    const tbody = document.querySelector('#tabelaEquipes tbody');
-    if (!tbody) return;
+// Atualizar tabela de funções
+function updateFuncoesTable() {
+    const tbody = document.querySelector('#tabela-funcoes tbody');
     
-    let filteredEquipes = [...equipesData];
-    
-    // Aplicar filtros
-    const filtroNumero = document.getElementById('filtroNumeroEquipe')?.value.toLowerCase() || '';
-    const filtroStatus = document.getElementById('filtroStatusEquipe')?.value || '';
-    
-    if (filtroNumero) {
-        filteredEquipes = filteredEquipes.filter(e => 
-            e.numero.toLowerCase().includes(filtroNumero)
-        );
-    }
-    
-    if (filtroStatus) {
-        filteredEquipes = filteredEquipes.filter(e => 
-            e.status === filtroStatus
-        );
-    }
-    
-    if (filteredEquipes.length === 0) {
+    if (funcoesData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="empty-state">
-                    <i class="fas fa-users"></i>
-                    <div>Nenhuma equipe encontrada</div>
-                    <div>Ajuste os filtros ou cadastre novas equipes</div>
+                <td colspan="3" class="empty-state">
+                    <i class="fas fa-cog"></i>
+                    <h3>Nenhuma função cadastrada</h3>
+                    <p>Clique em "Nova Função" para começar</p>
                 </td>
             </tr>
         `;
         return;
     }
     
-    tbody.innerHTML = filteredEquipes.map(equipe => {
-        const integrantes = equipe.equipes_integrantes || [];
-        const integrantesNomes = integrantes
-            .map(ei => ei.integrantes_hvc?.nome)
-            .filter(nome => nome)
-            .join(', ');
-        
-        const statusClass = equipe.status === 'ativa' ? 'success' : 'secondary';
+    tbody.innerHTML = funcoesData.map(funcao => {
+        const integrantesCount = integrantesData.filter(i => i.funcao_id === funcao.id).length;
         
         return `
             <tr>
-                <td><strong>${equipe.numero}</strong></td>
-                <td>
-                    <div style="max-width: 300px; overflow: hidden; text-overflow: ellipsis;">
-                        ${integrantesNomes || 'Nenhum integrante'}
-                    </div>
-                    <small style="color: var(--theme-text-muted);">
-                        ${integrantes.length} integrante${integrantes.length !== 1 ? 's' : ''}
-                    </small>
-                </td>
-                <td>
-                    <span class="btn btn-${statusClass} btn-sm" style="cursor: default;">
-                        ${equipe.status}
-                    </span>
-                </td>
-                <td>
-                    <div style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
-                        ${equipe.observacoes || '-'}
-                    </div>
-                </td>
-                <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editEquipe(${equipe.id})" title="Editar">
+                <td>${funcao.nome}</td>
+                <td>${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
+                <td class="actions-cell">
+                    <button class="btn-warning" onclick="editFuncao(${funcao.id})" title="Editar">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-danger btn-sm" onclick="deleteEquipe(${equipe.id})" title="Excluir">
+                    <button class="btn-danger" onclick="confirmDeleteFuncao(${funcao.id})" title="Excluir">
                         <i class="fas fa-trash"></i>
-                    </button>
-                    <button class="btn btn-${equipe.status === 'ativa' ? 'secondary' : 'success'} btn-sm" 
-                            onclick="toggleEquipeStatus(${equipe.id})" 
-                            title="${equipe.status === 'ativa' ? 'Desativar' : 'Ativar'}">
-                        <i class="fas fa-${equipe.status === 'ativa' ? 'pause' : 'play'}"></i>
                     </button>
                 </td>
             </tr>
@@ -894,149 +662,203 @@ function updateEquipesTable() {
     }).join('');
 }
 
-// ========================================
-// FUNÇÕES DE INTERFACE - MODAIS
-// ========================================
-
-// Modal Equipe
-function openEquipeModal(equipeId = null) {
-    currentEditingEquipe = equipeId ? equipesData.find(e => e.id === equipeId) : null;
+// Atualizar tabela de integrantes
+function updateIntegrantesTable() {
+    const tbody = document.querySelector('#tabela-integrantes tbody');
     
-    const modal = document.getElementById('modalEquipe');
-    const title = document.getElementById('modalEquipeTitle');
-    const form = document.getElementById('formEquipe');
-    
-    title.textContent = currentEditingEquipe ? 'Editar Equipe' : 'Nova Equipe';
-    
-    if (currentEditingEquipe) {
-        document.getElementById('numeroEquipe').value = currentEditingEquipe.numero;
-        document.getElementById('observacoesEquipe').value = currentEditingEquipe.observacoes || '';
-        
-        // Marcar integrantes da equipe
-        const integrantesEquipe = currentEditingEquipe.equipes_integrantes?.map(ei => ei.integrante_id) || [];
-        document.querySelectorAll('#integrantesSelect input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = integrantesEquipe.includes(parseInt(checkbox.value));
-        });
-    } else {
-        form.reset();
-        document.querySelectorAll('#integrantesSelect input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = false;
-        });
+    if (integrantesData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <i class="fas fa-user"></i>
+                    <h3>Nenhum integrante cadastrado</h3>
+                    <p>Clique em "Novo Integrante" para começar</p>
+                </td>
+            </tr>
+        `;
+        return;
     }
+    
+    tbody.innerHTML = integrantesData.map(integrante => `
+        <tr>
+            <td>${integrante.nome}</td>
+            <td>${integrante.cpf}</td>
+            <td>${integrante.whatsapp}</td>
+            <td>${integrante.funcoes_hvc?.nome || 'N/A'}</td>
+            <td>
+                <span class="status-badge status-${integrante.status}">
+                    ${integrante.status}
+                </span>
+            </td>
+            <td class="actions-cell">
+                <button class="btn-info" onclick="openIntegranteModal(${integrante.id})" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-warning" onclick="toggleIntegranteStatus(${integrante.id})" title="${integrante.status === 'ativo' ? 'Desativar' : 'Ativar'}">
+                    <i class="fas fa-${integrante.status === 'ativo' ? 'pause' : 'play'}"></i>
+                </button>
+                <button class="btn-danger" onclick="confirmDeleteIntegrante(${integrante.id})" title="Excluir">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Atualizar tabela de equipes
+function updateEquipesTable() {
+    const tbody = document.querySelector('#tabela-equipes tbody');
+    
+    if (equipesData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>Nenhuma equipe cadastrada</h3>
+                    <p>Clique em "Nova Equipe" para começar</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = equipesData.map(equipe => {
+        const integrantesCount = equipe.equipes_integrantes?.length || 0;
+        const integrantesNomes = equipe.equipes_integrantes?.map(ei => ei.integrantes_hvc.nome).join(', ') || 'Nenhum';
+        
+        return `
+            <tr>
+                <td>${equipe.numero}</td>
+                <td title="${integrantesNomes}">${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
+                <td>
+                    <span class="status-badge status-${equipe.status}">
+                        ${equipe.status}
+                    </span>
+                </td>
+                <td>${equipe.observacoes || '-'}</td>
+                <td class="actions-cell">
+                    <button class="btn-info" onclick="openEquipeModal(${equipe.id})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-warning" onclick="toggleEquipeStatus(${equipe.id})" title="${equipe.status === 'ativa' ? 'Desativar' : 'Ativar'}">
+                        <i class="fas fa-${equipe.status === 'ativa' ? 'pause' : 'play'}"></i>
+                    </button>
+                    <button class="btn-danger" onclick="confirmDeleteEquipe(${equipe.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Atualizar selects de função
+function updateFuncaoSelects() {
+    const selects = document.querySelectorAll('#funcao-integrante, #filtro-funcao-integrante');
+    
+    selects.forEach(select => {
+        const currentValue = select.value;
+        const isFilter = select.id === 'filtro-funcao-integrante';
+        
+        select.innerHTML = isFilter ? '<option value="">Todas</option>' : '<option value="">Selecione uma função</option>';
+        
+        funcoesData.forEach(funcao => {
+            const option = document.createElement('option');
+            option.value = funcao.id;
+            option.textContent = funcao.nome;
+            select.appendChild(option);
+        });
+        
+        select.value = currentValue;
+    });
+}
+
+// Atualizar seleção de integrantes
+function updateIntegrantesSelect(integrantesSelecionados = []) {
+    const container = document.getElementById('integrantes-select');
+    const countElement = document.getElementById('selected-count');
+    
+    if (integrantesData.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-user-plus"></i>
+                <h3>Nenhum integrante disponível</h3>
+                <p>Cadastre integrantes primeiro</p>
+            </div>
+        `;
+        countElement.textContent = '0 integrantes selecionados';
+        return;
+    }
+    
+    container.innerHTML = integrantesData
+        .filter(integrante => integrante.status === 'ativo')
+        .map(integrante => {
+            const isSelected = integrantesSelecionados.includes(integrante.id);
+            return `
+                <div class="multi-select-item">
+                    <input type="checkbox" id="integrante-${integrante.id}" value="${integrante.id}" ${isSelected ? 'checked' : ''} onchange="updateSelectedCount()">
+                    <label for="integrante-${integrante.id}">
+                        ${integrante.nome} - ${integrante.funcoes_hvc?.nome || 'N/A'}
+                    </label>
+                </div>
+            `;
+        }).join('');
     
     updateSelectedCount();
-    modal.classList.add('show');
-}
-
-function closeEquipeModal() {
-    const modal = document.getElementById('modalEquipe');
-    modal.classList.remove('show');
-    currentEditingEquipe = null;
-}
-
-// Modal Integrante
-function openIntegranteModal(integranteId = null) {
-    currentEditingIntegrante = integranteId ? integrantesData.find(i => i.id === integranteId) : null;
-    
-    const modal = document.getElementById('modalIntegrante');
-    const title = document.getElementById('modalIntegranteTitle');
-    const form = document.getElementById('formIntegrante');
-    
-    title.textContent = currentEditingIntegrante ? 'Editar Integrante' : 'Novo Integrante';
-    
-    if (currentEditingIntegrante) {
-        document.getElementById('nomeIntegrante').value = currentEditingIntegrante.nome;
-        document.getElementById('cpfIntegrante').value = currentEditingIntegrante.cpf;
-        document.getElementById('whatsappIntegrante').value = currentEditingIntegrante.whatsapp;
-        document.getElementById('funcaoIntegrante').value = currentEditingIntegrante.funcao_id;
-        document.getElementById('observacoesIntegrante').value = currentEditingIntegrante.observacoes || '';
-    } else {
-        form.reset();
-    }
-    
-    modal.classList.add('show');
-}
-
-function closeIntegranteModal() {
-    const modal = document.getElementById('modalIntegrante');
-    modal.classList.remove('show');
-    currentEditingIntegrante = null;
-}
-
-// Modal Funções
-function openFuncoesModal() {
-    const modal = document.getElementById('modalFuncoes');
-    modal.classList.add('show');
-    cancelNovaFuncao(); // Garantir que formulário está fechado
-}
-
-function closeFuncoesModal() {
-    const modal = document.getElementById('modalFuncoes');
-    modal.classList.remove('show');
-    cancelNovaFuncao();
-}
-
-// ========================================
-// FUNÇÕES DE INTERFACE - FORMULÁRIOS
-// ========================================
-
-// Formulário de nova função
-function openNovaFuncaoForm() {
-    const form = document.getElementById('novaFuncaoForm');
-    form.style.display = 'block';
-    document.getElementById('nomeFuncao').focus();
-}
-
-function cancelNovaFuncao() {
-    const form = document.getElementById('novaFuncaoForm');
-    form.style.display = 'none';
-    document.getElementById('nomeFuncao').value = '';
-    currentEditingFuncao = null;
 }
 
 // Atualizar contador de selecionados
 function updateSelectedCount() {
-    const selectedCheckboxes = document.querySelectorAll('#integrantesSelect input[type="checkbox"]:checked');
-    const countElement = document.getElementById('selectedCount');
-    
-    if (countElement) {
-        const count = selectedCheckboxes.length;
-        countElement.textContent = `${count} integrante${count !== 1 ? 's' : ''} selecionado${count !== 1 ? 's' : ''}`;
-    }
+    const checkboxes = document.querySelectorAll('#integrantes-select input[type="checkbox"]:checked');
+    const count = checkboxes.length;
+    const countElement = document.getElementById('selected-count');
+    countElement.textContent = `${count} integrante${count !== 1 ? 's' : ''} selecionado${count !== 1 ? 's' : ''}`;
 }
 
 // ========================================
-// FUNÇÕES DE INTERFACE - AÇÕES
+// FUNÇÕES DE AÇÕES
 // ========================================
 
 // Editar função
 function editFuncao(id) {
     const funcao = funcoesData.find(f => f.id === id);
-    if (!funcao) return;
-    
-    currentEditingFuncao = funcao;
-    document.getElementById('nomeFuncao').value = funcao.nome;
-    openNovaFuncaoForm();
+    if (funcao) {
+        currentEditingFuncao = id;
+        document.getElementById('nome-funcao').value = funcao.nome;
+        openNovaFuncaoForm();
+    }
 }
 
-// Editar integrante
-function editIntegrante(id) {
-    openIntegranteModal(id);
+// Confirmar exclusão de função
+function confirmDeleteFuncao(id) {
+    const funcao = funcoesData.find(f => f.id === id);
+    if (funcao && confirm(`Tem certeza que deseja excluir a função "${funcao.nome}"?`)) {
+        deleteFuncao(id);
+    }
 }
 
-// Editar equipe
-function editEquipe(id) {
-    openEquipeModal(id);
+// Confirmar exclusão de integrante
+function confirmDeleteIntegrante(id) {
+    const integrante = integrantesData.find(i => i.id === id);
+    if (integrante && confirm(`Tem certeza que deseja excluir o integrante "${integrante.nome}"?`)) {
+        deleteIntegrante(id);
+    }
+}
+
+// Confirmar exclusão de equipe
+function confirmDeleteEquipe(id) {
+    const equipe = equipesData.find(e => e.id === id);
+    if (equipe && confirm(`Tem certeza que deseja excluir a equipe "${equipe.numero}"?`)) {
+        deleteEquipe(id);
+    }
 }
 
 // Toggle status integrante
 async function toggleIntegranteStatus(id) {
-    const integrante = integrantesData.find(i => i.id === id);
-    if (!integrante) return;
-    
-    const novoStatus = integrante.status === 'ativo' ? 'inativo' : 'ativo';
-    
     try {
+        const integrante = integrantesData.find(i => i.id === id);
+        const novoStatus = integrante.status === 'ativo' ? 'inativo' : 'ativo';
+        
         const { error } = await supabase
             .from('integrantes_hvc')
             .update({ status: novoStatus })
@@ -1046,21 +868,18 @@ async function toggleIntegranteStatus(id) {
         
         showNotification(`Integrante ${novoStatus === 'ativo' ? 'ativado' : 'desativado'} com sucesso!`);
         await loadIntegrantes();
-        
     } catch (error) {
-        console.error('Erro ao alterar status:', error);
-        showNotification('Erro ao alterar status: ' + error.message, 'error');
+        console.error('Erro ao alterar status do integrante:', error);
+        showNotification('Erro ao alterar status do integrante', 'error');
     }
 }
 
 // Toggle status equipe
 async function toggleEquipeStatus(id) {
-    const equipe = equipesData.find(e => e.id === id);
-    if (!equipe) return;
-    
-    const novoStatus = equipe.status === 'ativa' ? 'inativa' : 'ativa';
-    
     try {
+        const equipe = equipesData.find(e => e.id === id);
+        const novoStatus = equipe.status === 'ativa' ? 'inativa' : 'ativa';
+        
         const { error } = await supabase
             .from('equipes_hvc')
             .update({ status: novoStatus })
@@ -1070,32 +889,194 @@ async function toggleEquipeStatus(id) {
         
         showNotification(`Equipe ${novoStatus === 'ativa' ? 'ativada' : 'desativada'} com sucesso!`);
         await loadEquipes();
-        
     } catch (error) {
-        console.error('Erro ao alterar status:', error);
-        showNotification('Erro ao alterar status: ' + error.message, 'error');
+        console.error('Erro ao alterar status da equipe:', error);
+        showNotification('Erro ao alterar status da equipe', 'error');
     }
 }
 
 // ========================================
-// FUNÇÕES DE FILTROS
+// FUNÇÕES DE FILTRO
 // ========================================
-
-// Filtrar integrantes
-function filtrarIntegrantes() {
-    updateIntegrantesTable();
-}
 
 // Filtrar equipes
 function filtrarEquipes() {
-    updateEquipesTable();
+    const filtroNumero = document.getElementById('filtro-numero-equipe').value.toLowerCase();
+    const filtroStatus = document.getElementById('filtro-status-equipe').value;
+    
+    const equipesFiltradas = equipesData.filter(equipe => {
+        const matchNumero = !filtroNumero || equipe.numero.toLowerCase().includes(filtroNumero);
+        const matchStatus = !filtroStatus || equipe.status === filtroStatus;
+        
+        return matchNumero && matchStatus;
+    });
+    
+    // Atualizar tabela com dados filtrados
+    const tbody = document.querySelector('#tabela-equipes tbody');
+    
+    if (equipesFiltradas.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>Nenhuma equipe encontrada</h3>
+                    <p>Ajuste os filtros ou cadastre novas equipes</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = equipesFiltradas.map(equipe => {
+        const integrantesCount = equipe.equipes_integrantes?.length || 0;
+        const integrantesNomes = equipe.equipes_integrantes?.map(ei => ei.integrantes_hvc.nome).join(', ') || 'Nenhum';
+        
+        return `
+            <tr>
+                <td>${equipe.numero}</td>
+                <td title="${integrantesNomes}">${integrantesCount} integrante${integrantesCount !== 1 ? 's' : ''}</td>
+                <td>
+                    <span class="status-badge status-${equipe.status}">
+                        ${equipe.status}
+                    </span>
+                </td>
+                <td>${equipe.observacoes || '-'}</td>
+                <td class="actions-cell">
+                    <button class="btn-info" onclick="openEquipeModal(${equipe.id})" title="Editar">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-warning" onclick="toggleEquipeStatus(${equipe.id})" title="${equipe.status === 'ativa' ? 'Desativar' : 'Ativar'}">
+                        <i class="fas fa-${equipe.status === 'ativa' ? 'pause' : 'play'}"></i>
+                    </button>
+                    <button class="btn-danger" onclick="confirmDeleteEquipe(${equipe.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Filtrar integrantes
+function filtrarIntegrantes() {
+    const filtroNome = document.getElementById('filtro-nome-integrante').value.toLowerCase();
+    const filtroFuncao = document.getElementById('filtro-funcao-integrante').value;
+    const filtroStatus = document.getElementById('filtro-status-integrante').value;
+    
+    const integrantesFiltrados = integrantesData.filter(integrante => {
+        const matchNome = !filtroNome || integrante.nome.toLowerCase().includes(filtroNome);
+        const matchFuncao = !filtroFuncao || integrante.funcao_id == filtroFuncao;
+        const matchStatus = !filtroStatus || integrante.status === filtroStatus;
+        
+        return matchNome && matchFuncao && matchStatus;
+    });
+    
+    // Atualizar tabela com dados filtrados
+    const tbody = document.querySelector('#tabela-integrantes tbody');
+    
+    if (integrantesFiltrados.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <i class="fas fa-search"></i>
+                    <h3>Nenhum integrante encontrado</h3>
+                    <p>Ajuste os filtros ou cadastre novos integrantes</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = integrantesFiltrados.map(integrante => `
+        <tr>
+            <td>${integrante.nome}</td>
+            <td>${integrante.cpf}</td>
+            <td>${integrante.whatsapp}</td>
+            <td>${integrante.funcoes_hvc?.nome || 'N/A'}</td>
+            <td>
+                <span class="status-badge status-${integrante.status}">
+                    ${integrante.status}
+                </span>
+            </td>
+            <td class="actions-cell">
+                <button class="btn-info" onclick="openIntegranteModal(${integrante.id})" title="Editar">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-warning" onclick="toggleIntegranteStatus(${integrante.id})" title="${integrante.status === 'ativo' ? 'Desativar' : 'Ativar'}">
+                    <i class="fas fa-${integrante.status === 'ativo' ? 'pause' : 'play'}"></i>
+                </button>
+                <button class="btn-danger" onclick="confirmDeleteIntegrante(${integrante.id})" title="Excluir">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ========================================
+// FORMATAÇÃO DE CAMPOS
+// ========================================
+
+// Aplicar formatação aos campos
+function setupFieldFormatting() {
+    // Formatação CPF
+    const cpfField = document.getElementById('cpf-integrante');
+    if (cpfField) {
+        cpfField.addEventListener('input', function(e) {
+            e.target.value = formatCPF(e.target.value);
+        });
+    }
+    
+    // Formatação WhatsApp
+    const whatsappField = document.getElementById('whatsapp-integrante');
+    if (whatsappField) {
+        whatsappField.addEventListener('input', function(e) {
+            e.target.value = formatWhatsApp(e.target.value);
+        });
+    }
+}
+
+// ========================================
+// INICIALIZAÇÃO
+// ========================================
+
+// Inicializar sistema
+async function initializeSystem() {
+    try {
+        console.log('Inicializando sistema de equipes...');
+        
+        // Verificar se Supabase está disponível
+        if (!supabase) {
+            throw new Error('Supabase não está disponível');
+        }
+        console.log('Supabase disponível:', !!supabase);
+        
+        // Carregar dados
+        await Promise.all([
+            loadFuncoes(),
+            loadIntegrantes(),
+            loadEquipes()
+        ]);
+        
+        // Configurar formatação de campos
+        setupFieldFormatting();
+        
+        console.log('Sistema de equipes inicializado com sucesso');
+        console.log('Funções carregadas:', funcoesData.length);
+        console.log('Integrantes carregados:', integrantesData.length);
+        console.log('Equipes carregadas:', equipesData.length);
+        
+    } catch (error) {
+        console.error('Erro ao inicializar sistema:', error);
+        showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
+    }
 }
 
 // ========================================
 // EXPOSIÇÃO DE FUNÇÕES GLOBAIS
 // ========================================
 
-// Expor funções necessárias globalmente para uso nos event handlers HTML
+// Tornar funções disponíveis globalmente
 window.openEquipeModal = openEquipeModal;
 window.closeEquipeModal = closeEquipeModal;
 window.openIntegranteModal = openIntegranteModal;
@@ -1104,32 +1085,23 @@ window.openFuncoesModal = openFuncoesModal;
 window.closeFuncoesModal = closeFuncoesModal;
 window.openNovaFuncaoForm = openNovaFuncaoForm;
 window.cancelNovaFuncao = cancelNovaFuncao;
-window.saveEquipe = saveEquipe;
-window.saveIntegrante = saveIntegrante;
 window.saveFuncao = saveFuncao;
-window.editEquipe = editEquipe;
-window.editIntegrante = editIntegrante;
+window.saveIntegrante = saveIntegrante;
+window.saveEquipe = saveEquipe;
 window.editFuncao = editFuncao;
-window.deleteEquipe = deleteEquipe;
-window.deleteIntegrante = deleteIntegrante;
-window.deleteFuncao = deleteFuncao;
-window.toggleEquipeStatus = toggleEquipeStatus;
+window.confirmDeleteFuncao = confirmDeleteFuncao;
+window.confirmDeleteIntegrante = confirmDeleteIntegrante;
+window.confirmDeleteEquipe = confirmDeleteEquipe;
 window.toggleIntegranteStatus = toggleIntegranteStatus;
+window.toggleEquipeStatus = toggleEquipeStatus;
 window.filtrarEquipes = filtrarEquipes;
 window.filtrarIntegrantes = filtrarIntegrantes;
 window.updateSelectedCount = updateSelectedCount;
 
 // ========================================
-// INICIALIZAÇÃO
+// INICIALIZAÇÃO AUTOMÁTICA
 // ========================================
 
-// Inicializar quando DOM estiver carregado
+// Inicializar quando DOM estiver pronto
 document.addEventListener('DOMContentLoaded', initializeSystem);
-
-// Fallback para inicialização imediata se DOM já estiver carregado
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeSystem);
-} else {
-    initializeSystem();
-}
 
