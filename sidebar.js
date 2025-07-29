@@ -369,3 +369,15 @@ function injectSidebarWithAutoDetection(mainContentElementId) {
     injectSidebar(mainContentElementId, project);
 }
 
+// Exporta as funções principais para uso como módulo ES6
+export { 
+    injectSidebar, 
+    injectSidebarWithAutoDetection, 
+    applyProjectTheme,
+    createAdminSidebarHTML,
+    createUserSidebarHTML,
+    createAdminViewingUserSidebarHTML,
+    injectSidebarCSS,
+    initializeSidebar
+};
+
