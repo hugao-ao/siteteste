@@ -1,4 +1,3 @@
-// ========================================
 // SISTEMA DE EQUIPES HVC - JAVASCRIPT CORRIGIDO
 // ========================================
 // Sistema completo para gerenciamento de equipes, integrantes e funções
@@ -8,7 +7,6 @@
 // IMPORTS
 // ========================================
 import { supabase } from './supabase.js';
-import { injectSidebarWithAutoDetection } from './sidebar.js';
 
 // ========================================
 // VARIÁVEIS GLOBAIS
@@ -48,15 +46,15 @@ function isValidCPF(cpf) {
     const cleanCPF = cpf.replace(/\D/g, '');
     if (cleanCPF.length !== 11) return false;
     
-    // Verifica se todos os dígitos são iguais
+    // Verificar se todos os dígitos são iguais
     if (/^(\d)\1{10}$/.test(cleanCPF)) return false;
     
-    // Validação dos dígitos verificadores
+    // Validar dígitos verificadores
     let sum = 0;
     for (let i = 0; i < 9; i++) {
         sum += parseInt(cleanCPF.charAt(i)) * (10 - i);
     }
-    let remainder = (sum * 10) % 11;
+    let remainder = 11 - (sum % 11);
     if (remainder === 10 || remainder === 11) remainder = 0;
     if (remainder !== parseInt(cleanCPF.charAt(9))) return false;
     
@@ -64,7 +62,7 @@ function isValidCPF(cpf) {
     for (let i = 0; i < 10; i++) {
         sum += parseInt(cleanCPF.charAt(i)) * (11 - i);
     }
-    remainder = (sum * 10) % 11;
+    remainder = 11 - (sum % 11);
     if (remainder === 10 || remainder === 11) remainder = 0;
     if (remainder !== parseInt(cleanCPF.charAt(10))) return false;
     
@@ -88,7 +86,7 @@ function showNotification(message, type = 'success') {
     const notification = document.createElement('div');
     notification.className = `notification ${type}`;
     notification.innerHTML = `
-        <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'exclamation-triangle'}"></i>
+        <i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : 'fa-exclamation-triangle'}"></i>
         ${message}
     `;
     
@@ -97,7 +95,7 @@ function showNotification(message, type = 'success') {
     // Mostrar notificação
     setTimeout(() => notification.classList.add('show'), 100);
     
-    // Remover após 3 segundos
+    // Remover notificação após 3 segundos
     setTimeout(() => {
         notification.classList.remove('show');
         setTimeout(() => notification.remove(), 300);
@@ -157,7 +155,6 @@ async function loadIntegrantes() {
         integrantesData = data || [];
         console.log('Integrantes carregados:', integrantesData.length);
         updateIntegrantesTable();
-        updateIntegrantesSelect();
         return integrantesData;
     } catch (error) {
         console.error('Erro ao carregar integrantes:', error);
@@ -175,7 +172,6 @@ async function loadEquipes() {
             .select(`
                 *,
                 equipes_integrantes (
-                    integrante_id,
                     integrantes_hvc (
                         id,
                         nome
@@ -208,7 +204,7 @@ async function saveFuncaoToDB(funcaoData) {
             const { data, error } = await supabase
                 .from('funcoes_hvc')
                 .update(funcaoData)
-                .eq('id', currentEditingFuncao.id)
+                .eq('id', currentEditingFuncao)
                 .select();
             
             if (error) throw error;
@@ -241,7 +237,7 @@ async function saveIntegranteToDB(integranteData) {
             const { data, error } = await supabase
                 .from('integrantes_hvc')
                 .update(integranteData)
-                .eq('id', currentEditingIntegrante.id)
+                .eq('id', currentEditingIntegrante)
                 .select();
             
             if (error) throw error;
@@ -280,11 +276,11 @@ async function saveEquipeToDB(equipeData, integrantesSelecionados) {
             const { data, error } = await supabase
                 .from('equipes_hvc')
                 .update(equipeData)
-                .eq('id', currentEditingEquipe.id)
+                .eq('id', currentEditingEquipe)
                 .select();
             
             if (error) throw error;
-            equipeId = currentEditingEquipe.id;
+            equipeId = currentEditingEquipe;
             
             // Remover integrantes existentes
             await supabase
@@ -403,102 +399,83 @@ async function deleteEquipe(id) {
 
 // Modal Equipe
 function openEquipeModal(equipeId = null) {
-    currentEditingEquipe = equipeId ? equipesData.find(e => e.id === equipeId) : null;
+    currentEditingEquipe = equipeId;
+    const modal = document.getElementById('modal-equipe');
+    const title = document.getElementById('modal-equipe-title');
     
-    const modal = document.getElementById('modalEquipe');
-    const title = document.getElementById('modalEquipeTitle');
-    const form = document.getElementById('formEquipe');
-    
-    title.textContent = currentEditingEquipe ? 'Editar Equipe' : 'Nova Equipe';
-    
-    if (currentEditingEquipe) {
-        document.getElementById('numeroEquipe').value = currentEditingEquipe.numero;
-        document.getElementById('observacoesEquipe').value = currentEditingEquipe.observacoes || '';
-        
-        // Marcar integrantes da equipe
-        const integrantesEquipe = currentEditingEquipe.equipes_integrantes?.map(ei => ei.integrante_id) || [];
-        document.querySelectorAll('#integrantesSelect input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = integrantesEquipe.includes(parseInt(checkbox.value));
-        });
+    if (equipeId) {
+        title.textContent = 'Editar Equipe';
+        const equipe = equipesData.find(e => e.id === equipeId);
+        if (equipe) {
+            document.getElementById('numero-equipe').value = equipe.numero;
+            document.getElementById('observacoes-equipe').value = equipe.observacoes || '';
+            
+            // Marcar integrantes selecionados
+            const integrantesSelecionados = equipe.equipes_integrantes?.map(ei => ei.integrantes_hvc.id) || [];
+            updateIntegrantesSelect(integrantesSelecionados);
+        }
     } else {
-        form.reset();
-        document.querySelectorAll('#integrantesSelect input[type="checkbox"]').forEach(checkbox => {
-            checkbox.checked = false;
-        });
+        title.textContent = 'Nova Equipe';
+        document.getElementById('form-equipe').reset();
+        updateIntegrantesSelect([]);
     }
     
-    updateSelectedCount();
     modal.classList.add('show');
 }
 
 function closeEquipeModal() {
-    const modal = document.getElementById('modalEquipe');
+    const modal = document.getElementById('modal-equipe');
     modal.classList.remove('show');
     currentEditingEquipe = null;
 }
 
 // Modal Integrante
 function openIntegranteModal(integranteId = null) {
-    currentEditingIntegrante = integranteId ? integrantesData.find(i => i.id === integranteId) : null;
+    currentEditingIntegrante = integranteId;
+    const modal = document.getElementById('modal-integrante');
+    const title = document.getElementById('modal-integrante-title');
     
-    const modal = document.getElementById('modalIntegrante');
-    const title = document.getElementById('modalIntegranteTitle');
-    const form = document.getElementById('formIntegrante');
-    
-    title.textContent = currentEditingIntegrante ? 'Editar Integrante' : 'Novo Integrante';
-    
-    if (currentEditingIntegrante) {
-        document.getElementById('nomeIntegrante').value = currentEditingIntegrante.nome;
-        document.getElementById('cpfIntegrante').value = currentEditingIntegrante.cpf;
-        document.getElementById('whatsappIntegrante').value = currentEditingIntegrante.whatsapp;
-        document.getElementById('funcaoIntegrante').value = currentEditingIntegrante.funcao_id;
-        document.getElementById('observacoesIntegrante').value = currentEditingIntegrante.observacoes || '';
+    if (integranteId) {
+        title.textContent = 'Editar Integrante';
+        const integrante = integrantesData.find(i => i.id === integranteId);
+        if (integrante) {
+            document.getElementById('nome-integrante').value = integrante.nome;
+            document.getElementById('cpf-integrante').value = integrante.cpf;
+            document.getElementById('whatsapp-integrante').value = integrante.whatsapp;
+            document.getElementById('funcao-integrante').value = integrante.funcao_id;
+            document.getElementById('observacoes-integrante').value = integrante.observacoes || '';
+        }
     } else {
-        form.reset();
+        title.textContent = 'Novo Integrante';
+        document.getElementById('form-integrante').reset();
     }
     
     modal.classList.add('show');
 }
 
 function closeIntegranteModal() {
-    const modal = document.getElementById('modalIntegrante');
+    const modal = document.getElementById('modal-integrante');
     modal.classList.remove('show');
     currentEditingIntegrante = null;
 }
 
-// Modal Funções - CORRIGIDO
+// Modal Funções
 function openFuncoesModal() {
-    // Tentar primeiro com o ID do HTML atual
-    let modal = document.getElementById('modal-funcoes');
-    
-    // Se não encontrar, tentar com o ID alternativo
-    if (!modal) {
-        modal = document.getElementById('modalFuncoes');
-    }
-    
+    const modal = document.getElementById('modal-funcoes');
     if (modal) {
         modal.classList.add('show');
         cancelNovaFuncao(); // Garantir que formulário está fechado
-        console.log('Modal de funções aberto com sucesso');
     } else {
-        console.error('Modal de funções não encontrado. IDs testados: modal-funcoes, modalFuncoes');
+        console.error('Modal de funções não encontrado');
         showNotification('Erro: Modal de funções não encontrado', 'error');
     }
 }
 
 function closeFuncoesModal() {
-    // Tentar primeiro com o ID do HTML atual
-    let modal = document.getElementById('modal-funcoes');
-    
-    // Se não encontrar, tentar com o ID alternativo
-    if (!modal) {
-        modal = document.getElementById('modalFuncoes');
-    }
-    
+    const modal = document.getElementById('modal-funcoes');
     if (modal) {
         modal.classList.remove('show');
         cancelNovaFuncao();
-        console.log('Modal de funções fechado com sucesso');
     }
 }
 
@@ -508,62 +485,19 @@ function closeFuncoesModal() {
 
 // Formulário de nova função
 function openNovaFuncaoForm() {
-    // Tentar primeiro com o ID do HTML atual
-    let form = document.getElementById('nova-funcao-form');
-    
-    // Se não encontrar, tentar com o ID alternativo
-    if (!form) {
-        form = document.getElementById('novaFuncaoForm');
-    }
-    
+    const form = document.getElementById('nova-funcao-form');
     if (form) {
         form.style.display = 'block';
-        
-        // Tentar focar no campo nome
-        let nomeField = document.getElementById('nome-funcao');
-        if (!nomeField) {
-            nomeField = document.getElementById('nomeFuncao');
-        }
-        
-        if (nomeField) {
-            nomeField.focus();
-        }
+        document.getElementById('nome-funcao').focus();
     }
 }
 
 function cancelNovaFuncao() {
-    // Tentar primeiro com o ID do HTML atual
-    let form = document.getElementById('nova-funcao-form');
-    
-    // Se não encontrar, tentar com o ID alternativo
-    if (!form) {
-        form = document.getElementById('novaFuncaoForm');
-    }
-    
+    const form = document.getElementById('nova-funcao-form');
     if (form) {
         form.style.display = 'none';
-        
-        // Limpar campo nome
-        let nomeField = document.getElementById('nome-funcao');
-        if (!nomeField) {
-            nomeField = document.getElementById('nomeFuncao');
-        }
-        
-        if (nomeField) {
-            nomeField.value = '';
-        }
-        
+        form.querySelector('form').reset();
         currentEditingFuncao = null;
-    }
-}
-
-// Atualizar contador de selecionados
-function updateSelectedCount() {
-    const selectedCheckboxes = document.querySelectorAll('#integrantesSelect input[type="checkbox"]:checked');
-    const countElement = document.getElementById('selectedCount');
-    
-    if (countElement) {
-        countElement.textContent = `${selectedCheckboxes.length} integrante${selectedCheckboxes.length !== 1 ? 's' : ''} selecionado${selectedCheckboxes.length !== 1 ? 's' : ''}`;
     }
 }
 
@@ -571,18 +505,7 @@ function updateSelectedCount() {
 function saveFuncao(event) {
     event.preventDefault();
     
-    // Tentar primeiro com o ID do HTML atual
-    let nomeField = document.getElementById('nome-funcao');
-    if (!nomeField) {
-        nomeField = document.getElementById('nomeFuncao');
-    }
-    
-    if (!nomeField) {
-        showNotification('Campo nome da função não encontrado', 'error');
-        return;
-    }
-    
-    const nome = nomeField.value.trim();
+    const nome = document.getElementById('nome-funcao').value.trim();
     
     if (!nome) {
         showNotification('Nome da função é obrigatório', 'error');
@@ -604,11 +527,11 @@ function saveFuncao(event) {
 function saveIntegrante(event) {
     event.preventDefault();
     
-    const nome = document.getElementById('nomeIntegrante').value.trim();
-    const cpf = document.getElementById('cpfIntegrante').value.trim();
-    const whatsapp = document.getElementById('whatsappIntegrante').value.trim();
-    const funcaoId = document.getElementById('funcaoIntegrante').value;
-    const observacoes = document.getElementById('observacoesIntegrante').value.trim();
+    const nome = document.getElementById('nome-integrante').value.trim();
+    const cpf = document.getElementById('cpf-integrante').value.trim();
+    const whatsapp = document.getElementById('whatsapp-integrante').value.trim();
+    const funcaoId = document.getElementById('funcao-integrante').value;
+    const observacoes = document.getElementById('observacoes-integrante').value.trim();
     
     // Validações
     if (!nome || !cpf || !whatsapp || !funcaoId) {
@@ -655,8 +578,8 @@ function saveIntegrante(event) {
 function saveEquipe(event) {
     event.preventDefault();
     
-    const numero = document.getElementById('numeroEquipe').value.trim();
-    const observacoes = document.getElementById('observacoesEquipe').value.trim();
+    const numero = document.getElementById('numero-equipe').value.trim();
+    const observacoes = document.getElementById('observacoes-equipe').value.trim();
     
     // Validações
     if (!numero) {
@@ -675,7 +598,7 @@ function saveEquipe(event) {
     
     // Obter integrantes selecionados
     const integrantesSelecionados = [];
-    const checkboxes = document.querySelectorAll('#integrantesSelect input[type="checkbox"]:checked');
+    const checkboxes = document.querySelectorAll('#integrantes-select input[type="checkbox"]:checked');
     checkboxes.forEach(checkbox => {
         integrantesSelecionados.push(parseInt(checkbox.value));
     });
@@ -704,12 +627,7 @@ function saveEquipe(event) {
 
 // Atualizar tabela de funções
 function updateFuncoesTable() {
-    const tbody = document.querySelector('#tabelaFuncoes tbody');
-    
-    if (!tbody) {
-        console.error('Tabela de funções não encontrada');
-        return;
-    }
+    const tbody = document.querySelector('#tabela-funcoes tbody');
     
     if (funcoesData.length === 0) {
         tbody.innerHTML = `
@@ -746,12 +664,7 @@ function updateFuncoesTable() {
 
 // Atualizar tabela de integrantes
 function updateIntegrantesTable() {
-    const tbody = document.querySelector('#tabelaIntegrantes tbody');
-    
-    if (!tbody) {
-        console.error('Tabela de integrantes não encontrada');
-        return;
-    }
+    const tbody = document.querySelector('#tabela-integrantes tbody');
     
     if (integrantesData.length === 0) {
         tbody.innerHTML = `
@@ -794,12 +707,7 @@ function updateIntegrantesTable() {
 
 // Atualizar tabela de equipes
 function updateEquipesTable() {
-    const tbody = document.querySelector('#tabelaEquipes tbody');
-    
-    if (!tbody) {
-        console.error('Tabela de equipes não encontrada');
-        return;
-    }
+    const tbody = document.querySelector('#tabela-equipes tbody');
     
     if (equipesData.length === 0) {
         tbody.innerHTML = `
@@ -846,13 +754,11 @@ function updateEquipesTable() {
 
 // Atualizar selects de função
 function updateFuncaoSelects() {
-    const selects = document.querySelectorAll('#funcaoIntegrante, #filtroFuncaoIntegrante');
+    const selects = document.querySelectorAll('#funcao-integrante, #filtro-funcao-integrante');
     
     selects.forEach(select => {
-        if (!select) return;
-        
         const currentValue = select.value;
-        const isFilter = select.id === 'filtroFuncaoIntegrante';
+        const isFilter = select.id === 'filtro-funcao-integrante';
         
         select.innerHTML = isFilter ? '<option value="">Todas</option>' : '<option value="">Selecione uma função</option>';
         
@@ -868,13 +774,9 @@ function updateFuncaoSelects() {
 }
 
 // Atualizar seleção de integrantes
-function updateIntegrantesSelect() {
-    const container = document.getElementById('integrantesSelect');
-    
-    if (!container) {
-        console.error('Container de seleção de integrantes não encontrado');
-        return;
-    }
+function updateIntegrantesSelect(integrantesSelecionados = []) {
+    const container = document.getElementById('integrantes-select');
+    const countElement = document.getElementById('selected-count');
     
     if (integrantesData.length === 0) {
         container.innerHTML = `
@@ -884,19 +786,33 @@ function updateIntegrantesSelect() {
                 <p>Cadastre integrantes primeiro</p>
             </div>
         `;
+        countElement.textContent = '0 integrantes selecionados';
         return;
     }
     
     container.innerHTML = integrantesData
         .filter(integrante => integrante.status === 'ativo')
-        .map(integrante => `
-            <div class="multi-select-item">
-                <input type="checkbox" id="integrante-${integrante.id}" value="${integrante.id}" onchange="updateSelectedCount()">
-                <label for="integrante-${integrante.id}">
-                    ${integrante.nome} - ${integrante.funcoes_hvc?.nome || 'N/A'}
-                </label>
-            </div>
-        `).join('');
+        .map(integrante => {
+            const isSelected = integrantesSelecionados.includes(integrante.id);
+            return `
+                <div class="multi-select-item">
+                    <input type="checkbox" id="integrante-${integrante.id}" value="${integrante.id}" ${isSelected ? 'checked' : ''} onchange="updateSelectedCount()">
+                    <label for="integrante-${integrante.id}">
+                        ${integrante.nome} - ${integrante.funcoes_hvc?.nome || 'N/A'}
+                    </label>
+                </div>
+            `;
+        }).join('');
+    
+    updateSelectedCount();
+}
+
+// Atualizar contador de selecionados
+function updateSelectedCount() {
+    const checkboxes = document.querySelectorAll('#integrantes-select input[type="checkbox"]:checked');
+    const count = checkboxes.length;
+    const countElement = document.getElementById('selected-count');
+    countElement.textContent = `${count} integrante${count !== 1 ? 's' : ''} selecionado${count !== 1 ? 's' : ''}`;
 }
 
 // ========================================
@@ -907,18 +823,8 @@ function updateIntegrantesSelect() {
 function editFuncao(id) {
     const funcao = funcoesData.find(f => f.id === id);
     if (funcao) {
-        currentEditingFuncao = funcao;
-        
-        // Tentar primeiro com o ID do HTML atual
-        let nomeField = document.getElementById('nome-funcao');
-        if (!nomeField) {
-            nomeField = document.getElementById('nomeFuncao');
-        }
-        
-        if (nomeField) {
-            nomeField.value = funcao.nome;
-        }
-        
+        currentEditingFuncao = id;
+        document.getElementById('nome-funcao').value = funcao.nome;
         openNovaFuncaoForm();
     }
 }
@@ -995,8 +901,8 @@ async function toggleEquipeStatus(id) {
 
 // Filtrar equipes
 function filtrarEquipes() {
-    const filtroNumero = document.getElementById('filtroNumeroEquipe')?.value.toLowerCase() || '';
-    const filtroStatus = document.getElementById('filtroStatusEquipe')?.value || '';
+    const filtroNumero = document.getElementById('filtro-numero-equipe').value.toLowerCase();
+    const filtroStatus = document.getElementById('filtro-status-equipe').value;
     
     const equipesFiltradas = equipesData.filter(equipe => {
         const matchNumero = !filtroNumero || equipe.numero.toLowerCase().includes(filtroNumero);
@@ -1006,9 +912,7 @@ function filtrarEquipes() {
     });
     
     // Atualizar tabela com dados filtrados
-    const tbody = document.querySelector('#tabelaEquipes tbody');
-    
-    if (!tbody) return;
+    const tbody = document.querySelector('#tabela-equipes tbody');
     
     if (equipesFiltradas.length === 0) {
         tbody.innerHTML = `
@@ -1055,9 +959,9 @@ function filtrarEquipes() {
 
 // Filtrar integrantes
 function filtrarIntegrantes() {
-    const filtroNome = document.getElementById('filtroNomeIntegrante')?.value.toLowerCase() || '';
-    const filtroFuncao = document.getElementById('filtroFuncaoIntegrante')?.value || '';
-    const filtroStatus = document.getElementById('filtroStatusIntegrante')?.value || '';
+    const filtroNome = document.getElementById('filtro-nome-integrante').value.toLowerCase();
+    const filtroFuncao = document.getElementById('filtro-funcao-integrante').value;
+    const filtroStatus = document.getElementById('filtro-status-integrante').value;
     
     const integrantesFiltrados = integrantesData.filter(integrante => {
         const matchNome = !filtroNome || integrante.nome.toLowerCase().includes(filtroNome);
@@ -1068,9 +972,7 @@ function filtrarIntegrantes() {
     });
     
     // Atualizar tabela com dados filtrados
-    const tbody = document.querySelector('#tabelaIntegrantes tbody');
-    
-    if (!tbody) return;
+    const tbody = document.querySelector('#tabela-integrantes tbody');
     
     if (integrantesFiltrados.length === 0) {
         tbody.innerHTML = `
@@ -1118,7 +1020,7 @@ function filtrarIntegrantes() {
 // Aplicar formatação aos campos
 function setupFieldFormatting() {
     // Formatação CPF
-    const cpfField = document.getElementById('cpfIntegrante');
+    const cpfField = document.getElementById('cpf-integrante');
     if (cpfField) {
         cpfField.addEventListener('input', function(e) {
             e.target.value = formatCPF(e.target.value);
@@ -1126,7 +1028,7 @@ function setupFieldFormatting() {
     }
     
     // Formatação WhatsApp
-    const whatsappField = document.getElementById('whatsappIntegrante');
+    const whatsappField = document.getElementById('whatsapp-integrante');
     if (whatsappField) {
         whatsappField.addEventListener('input', function(e) {
             e.target.value = formatWhatsApp(e.target.value);
