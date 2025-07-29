@@ -1,6 +1,6 @@
-// obras-hvc.js - Sistema de Gestão de Obras HVC (VALORES CORRIGIDOS)
+// obras-hvc.js - Sistema de Gestão de Obras HVC (VALORES E MODAL CORRIGIDOS)
 // Gerenciamento completo de obras com cálculo de percentual baseado em VALORES CORRETOS
-// 🎯 VERSÃO CORRIGIDA: Busca valores corretos da tabela itens_proposta_hvc
+// 🎯 VERSÃO CORRIGIDA: Valores dos serviços exibidos corretamente + Modal maior
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -837,18 +837,18 @@ class ObrasManager {
                 return;
             }
             
-            // 🎯 TABELA COM COLUNA DE VALOR CORRIGIDA
+            // 🎯 TABELA COM VALORES CORRIGIDOS E RESPONSIVA
             container.innerHTML = `
-                <table class="propostas-table" style="width: 100%;">
+                <table class="propostas-table" style="width: 100%; font-size: 0.9rem;">
                     <thead>
                         <tr>
-                            <th>Proposta</th>
-                            <th>Serviço</th>
-                            <th>Quantidade</th>
-                            <th>Valor Total</th>
-                            <th>Status</th>
-                            <th>Previsão</th>
-                            <th>Observações</th>
+                            <th style="min-width: 100px;">Proposta</th>
+                            <th style="min-width: 150px;">Serviço</th>
+                            <th style="min-width: 80px;">Quantidade</th>
+                            <th style="min-width: 120px;">Valor Total</th>
+                            <th style="min-width: 160px;">Status</th>
+                            <th style="min-width: 140px;">Previsão</th>
+                            <th style="min-width: 220px;">Observações</th>
                         </tr>
                     </thead>
                     <tbody id="servicos-andamento-tbody">
@@ -863,22 +863,29 @@ class ObrasManager {
                 const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
                 
                 // 🎯 CORREÇÃO: Calcular valor total do item corretamente
-                const valorMaoObra = item.valor_mao_obra || 0;
-                const valorMaterial = item.valor_material || 0;
-                const quantidade = item.quantidade || 1;
+                const valorMaoObra = parseFloat(item.valor_mao_obra) || 0;
+                const valorMaterial = parseFloat(item.valor_material) || 0;
+                const quantidade = parseFloat(item.quantidade) || 1;
                 const valorTotalItem = (valorMaoObra + valorMaterial) * quantidade;
+                
+                console.log(`🎯 VALORES CORRIGIDOS - Item ${item.id}:`, {
+                    valorMaoObra,
+                    valorMaterial,
+                    quantidade,
+                    valorTotalItem
+                });
                 
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${item.propostas_hvc?.numero_proposta}</strong></td>
                     <td>
                         <strong>${item.servicos_hvc?.codigo}</strong><br>
-                        <small>${item.servicos_hvc?.descricao}</small>
+                        <small style="color: #add8e6;">${item.servicos_hvc?.descricao}</small>
                     </td>
                     <td>${quantidade} ${item.servicos_hvc?.unidade || ''}</td>
-                    <td><strong>${this.formatMoney(valorTotalItem)}</strong></td>
+                    <td><strong style="color: #20c997;">${this.formatMoney(valorTotalItem)}</strong></td>
                     <td>
-                        <select class="form-select status-servico" data-index="${index}" style="width: 150px;">
+                        <select class="form-select status-servico" data-index="${index}" style="width: 160px; padding: 8px; font-size: 0.85rem;">
                             <option value="PENDENTE" ${andamentoExistente?.status === 'PENDENTE' ? 'selected' : ''}>Pendente (0%)</option>
                             <option value="INICIADO" ${andamentoExistente?.status === 'INICIADO' ? 'selected' : ''}>Iniciado (50%)</option>
                             <option value="CONCLUIDO" ${andamentoExistente?.status === 'CONCLUIDO' ? 'selected' : ''}>Concluído (100%)</option>
@@ -889,14 +896,14 @@ class ObrasManager {
                                class="form-input previsao-servico" 
                                data-index="${index}"
                                value="${andamentoExistente?.previsao_conclusao || ''}"
-                               style="width: 150px;">
+                               style="width: 140px; padding: 8px; font-size: 0.85rem;">
                     </td>
                     <td>
                         <textarea class="form-textarea observacoes-servico" 
                                   data-index="${index}"
                                   placeholder="Digite suas observações..."
                                   rows="2"
-                                  style="width: 200px; min-height: 60px; resize: vertical;">${andamentoExistente?.observacoes || ''}</textarea>
+                                  style="width: 220px; min-height: 60px; padding: 8px; font-size: 0.85rem; resize: vertical;">${andamentoExistente?.observacoes || ''}</textarea>
                     </td>
                 `;
                 tbody.appendChild(row);
