@@ -49,17 +49,12 @@
         }
 
         .header h1 {
+            margin: 0;
             color: var(--theme-text-light);
-            font-size: 2rem;
-            font-weight: 600;
+            font-size: 1.8rem;
             display: flex;
             align-items: center;
-            gap: 15px;
-            margin: 0;
-        }
-
-        .header h1 i {
-            color: var(--theme-secondary);
+            gap: 10px;
         }
 
         /* === SEÇÕES === */
@@ -72,117 +67,27 @@
             box-shadow: 0 2px 10px var(--theme-shadow-color);
         }
 
-        .section-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            flex-wrap: wrap;
-            gap: 15px;
-        }
-
-        .section-title {
+        .section h2 {
+            margin: 0 0 20px 0;
             color: var(--theme-text-light);
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 1.4rem;
             display: flex;
             align-items: center;
             gap: 10px;
-            margin: 0;
-        }
-
-        .section-title i {
-            color: var(--theme-secondary);
-        }
-
-        .section-controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-        }
-
-        /* === BOTÕES === */
-        .btn {
-            padding: 10px 16px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            text-decoration: none;
-            font-family: var(--font-primary);
-        }
-
-        .btn-primary {
-            background: var(--theme-primary);
-            color: var(--theme-secondary-lighter);
-            border: 1px solid var(--theme-primary);
-        }
-
-        .btn-primary:hover {
-            background: var(--theme-primary-darker);
-            border-color: var(--theme-primary-darker);
-            transform: translateY(-1px);
-        }
-
-        .btn-success {
-            background: #28a745;
-            color: white;
-            border: 1px solid #28a745;
-        }
-
-        .btn-success:hover {
-            background: #218838;
-            border-color: #218838;
-            transform: translateY(-1px);
-        }
-
-        .btn-warning {
-            background: #ffc107;
-            color: #212529;
-            border: 1px solid #ffc107;
-        }
-
-        .btn-warning:hover {
-            background: #e0a800;
-            border-color: #e0a800;
-            transform: translateY(-1px);
-        }
-
-        .btn-danger {
-            background: #dc3545;
-            color: white;
-            border: 1px solid #dc3545;
-        }
-
-        .btn-danger:hover {
-            background: #c82333;
-            border-color: #c82333;
-            transform: translateY(-1px);
-        }
-
-        .btn-secondary {
-            background: var(--theme-text-muted);
-            color: var(--theme-bg-dark);
-            border: 1px solid var(--theme-text-muted);
-        }
-
-        .btn-secondary:hover {
-            background: var(--theme-border-color);
-            border-color: var(--theme-border-color);
-            transform: translateY(-1px);
+            border-bottom: 2px solid var(--theme-border-color);
+            padding-bottom: 10px;
         }
 
         /* === FILTROS === */
         .filters {
-            display: flex;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
             margin-bottom: 20px;
-            flex-wrap: wrap;
+            padding: 15px;
+            background: var(--theme-bg-dark);
+            border-radius: 6px;
+            border: 1px solid var(--theme-border-color);
         }
 
         .filter-group {
@@ -192,66 +97,129 @@
         }
 
         .filter-group label {
+            color: var(--theme-text-muted);
+            font-size: 0.9rem;
             font-weight: 500;
-            color: var(--theme-text-light);
-            font-size: 14px;
         }
 
-        .filter-input {
+        .filter-group input,
+        .filter-group select {
             padding: 8px 12px;
             border: 1px solid var(--theme-border-color);
             border-radius: 4px;
-            font-size: 14px;
-            background: var(--theme-bg-dark);
+            background: var(--theme-bg-surface);
             color: var(--theme-text-light);
-            transition: all 0.3s ease;
-            min-width: 180px;
+            font-size: 0.9rem;
         }
 
-        .filter-input:focus {
+        .filter-group input:focus,
+        .filter-group select:focus {
             outline: none;
-            border-color: var(--theme-secondary);
-            box-shadow: 0 0 0 2px var(--theme-shadow-color);
+            border-color: var(--theme-primary);
+            box-shadow: 0 0 0 2px rgba(0, 0, 128, 0.2);
+        }
+
+        /* === BOTÕES === */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: var(--theme-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--hvc-primary-darker);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--theme-border-color);
+            color: var(--theme-text-light);
+        }
+
+        .btn-secondary:hover {
+            background: var(--theme-text-muted);
+        }
+
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #c82333;
+        }
+
+        .btn-sm {
+            padding: 6px 12px;
+            font-size: 0.8rem;
         }
 
         /* === TABELAS === */
         .table-container {
             overflow-x: auto;
-            border-radius: 4px;
+            border-radius: 6px;
             border: 1px solid var(--theme-border-color);
         }
 
-        .table {
+        table {
             width: 100%;
             border-collapse: collapse;
-            background: var(--theme-bg-dark);
-            color: var(--theme-text-light);
+            background: var(--theme-bg-surface);
         }
 
-        .table th {
+        th {
             background: var(--theme-primary);
-            color: var(--theme-secondary-lighter);
+            color: white;
             padding: 12px;
             text-align: left;
             font-weight: 600;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            border-bottom: 1px solid var(--theme-border-color);
+            font-size: 0.9rem;
+            border-bottom: 2px solid var(--theme-border-color);
         }
 
-        .table td {
+        td {
             padding: 12px;
             border-bottom: 1px solid var(--theme-border-color);
-            font-size: 14px;
+            color: var(--theme-text-light);
+            font-size: 0.9rem;
         }
 
-        .table tbody tr:hover {
-            background-color: var(--theme-bg-surface);
+        tr:hover {
+            background: var(--theme-bg-dark);
         }
 
-        .table tbody tr:last-child td {
-            border-bottom: none;
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--theme-text-muted);
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            opacity: 0.5;
         }
 
         /* === MODAIS === */
@@ -264,24 +232,29 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(3px);
+        }
+
+        .modal.show {
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .modal-content {
             background: var(--theme-bg-surface);
-            margin: 2% auto;
-            padding: 0;
+            border: 1px solid var(--theme-border-color);
             border-radius: 8px;
             width: 90%;
-            max-width: 1000px;
+            max-width: 800px;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            border: 1px solid var(--theme-border-color);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
         }
 
         .modal-header {
             background: var(--theme-primary);
-            color: var(--theme-secondary-lighter);
+            color: white;
             padding: 15px 20px;
             border-radius: 8px 8px 0 0;
             display: flex;
@@ -289,157 +262,163 @@
             align-items: center;
         }
 
-        .modal-header h2 {
+        .modal-header h3 {
             margin: 0;
-            font-size: 1.3rem;
-            font-weight: 600;
+            font-size: 1.2rem;
         }
 
-        .close {
-            color: var(--theme-secondary-lighter);
-            font-size: 24px;
-            font-weight: bold;
+        .modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
             cursor: pointer;
-            transition: all 0.3s ease;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            transition: background 0.3s ease;
         }
 
-        .close:hover {
-            color: var(--theme-secondary);
-            transform: scale(1.1);
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .modal-body {
             padding: 20px;
-            color: var(--theme-text-light);
         }
 
         /* === FORMULÁRIOS === */
-        .form-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 15px;
+        .form-group {
             margin-bottom: 15px;
         }
 
-        .form-group {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
         .form-group label {
-            font-weight: 500;
+            display: block;
+            margin-bottom: 5px;
             color: var(--theme-text-light);
-            font-size: 14px;
+            font-weight: 500;
+            font-size: 0.9rem;
         }
 
-        .form-control {
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
             padding: 10px 12px;
             border: 1px solid var(--theme-border-color);
             border-radius: 4px;
-            font-size: 14px;
             background: var(--theme-bg-dark);
             color: var(--theme-text-light);
-            transition: all 0.3s ease;
+            font-size: 0.9rem;
+            box-sizing: border-box;
         }
 
-        .form-control:focus {
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
             outline: none;
-            border-color: var(--theme-secondary);
-            box-shadow: 0 0 0 2px var(--theme-shadow-color);
+            border-color: var(--theme-primary);
+            box-shadow: 0 0 0 2px rgba(0, 0, 128, 0.2);
         }
 
-        .form-control.error {
-            border-color: #dc3545;
-            box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
         }
 
         /* === SELEÇÃO MÚLTIPLA === */
-        .multi-select-container {
+        .multi-select {
             border: 1px solid var(--theme-border-color);
             border-radius: 4px;
+            background: var(--theme-bg-dark);
             max-height: 200px;
             overflow-y: auto;
-            background: var(--theme-bg-dark);
         }
 
         .multi-select-item {
-            padding: 10px 12px;
+            padding: 8px 12px;
             border-bottom: 1px solid var(--theme-border-color);
             display: flex;
             align-items: center;
             gap: 8px;
             cursor: pointer;
-            transition: background-color 0.2s ease;
-            color: var(--theme-text-light);
+            transition: background 0.3s ease;
         }
 
         .multi-select-item:hover {
-            background-color: var(--theme-bg-surface);
+            background: var(--theme-bg-surface);
         }
 
         .multi-select-item:last-child {
             border-bottom: none;
         }
 
-        /* === BADGES === */
-        .badge {
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
+        .multi-select-item input[type="checkbox"] {
+            width: auto;
+            margin: 0;
         }
 
-        .badge-success {
-            background-color: #28a745;
-            color: white;
-        }
-
-        .badge-warning {
-            background-color: #ffc107;
-            color: #212529;
-        }
-
-        .badge-danger {
-            background-color: #dc3545;
-            color: white;
-        }
-
-        /* === CONTADOR === */
-        .counter {
-            background: var(--theme-secondary);
+        .selected-count {
             color: var(--theme-primary);
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 11px;
             font-weight: 600;
-            margin-left: 6px;
+            margin-top: 5px;
+            font-size: 0.8rem;
         }
 
-        /* === EMPTY STATE === */
-        .empty-state {
-            text-align: center;
-            padding: 30px 20px;
+        /* === RESPONSIVIDADE === */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 10px;
+            }
+
+            .filters {
+                grid-template-columns: 1fr;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 10px;
+            }
+
+            .table-container {
+                font-size: 0.8rem;
+            }
+
+            th, td {
+                padding: 8px;
+            }
+        }
+
+        /* === LOADING === */
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             color: var(--theme-text-muted);
         }
 
-        .empty-state i {
-            font-size: 2.5rem;
-            color: var(--theme-border-color);
-            margin-bottom: 10px;
+        .loading i {
+            animation: spin 1s linear infinite;
         }
 
-        .empty-state h3 {
-            margin-bottom: 8px;
-            color: var(--theme-text-muted);
-            font-size: 1.1rem;
-        }
-
-        .empty-state p {
-            color: var(--theme-text-muted);
-            font-size: 0.9rem;
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
         }
 
         /* === NOTIFICAÇÕES === */
@@ -447,14 +426,13 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            padding: 12px 16px;
-            border-radius: 4px;
+            padding: 15px 20px;
+            border-radius: 6px;
             color: white;
             font-weight: 500;
             z-index: 1001;
             transform: translateX(400px);
             transition: transform 0.3s ease;
-            font-size: 14px;
         }
 
         .notification.show {
@@ -473,84 +451,40 @@
             background: #ffc107;
             color: #212529;
         }
-
-        /* === RESPONSIVO === */
-        @media (max-width: 768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 15px;
-            }
-
-            .main-content.sidebar-collapsed {
-                margin-left: 0;
-            }
-
-            .header h1 {
-                font-size: 1.5rem;
-            }
-
-            .section-header {
-                flex-direction: column;
-                align-items: stretch;
-            }
-
-            .filters {
-                flex-direction: column;
-            }
-
-            .filter-input {
-                min-width: 100%;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .modal-content {
-                width: 95%;
-                margin: 5% auto;
-            }
-
-            .table-container {
-                font-size: 12px;
-            }
-
-            .table th,
-            .table td {
-                padding: 8px 6px;
-            }
-        }
     </style>
 </head>
 <body class="theme-hvc">
-    <div class="main-content" id="main-content">
+    <!-- Sidebar será injetada aqui -->
+    
+    <div class="main-content">
         <!-- Header -->
         <div class="header">
-            <h1><i class="fas fa-users-cog"></i> Gestão de Equipes HVC</h1>
+            <h1>
+                <i class="fas fa-users-cog"></i>
+                Gestão de Equipes HVC
+            </h1>
         </div>
 
-        <!-- Seção de Equipes -->
+        <!-- Seção Equipes -->
         <div class="section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-users"></i> Equipes
-                </h2>
-                <div class="section-controls">
-                    <button class="btn btn-primary" onclick="abrirModalEquipe()">
-                        <i class="fas fa-plus"></i> Nova Equipe
-                    </button>
-                </div>
-            </div>
+            <h2>
+                <i class="fas fa-users"></i>
+                Equipes
+                <button class="btn btn-primary" onclick="openEquipeModal()">
+                    <i class="fas fa-plus"></i>
+                    Nova Equipe
+                </button>
+            </h2>
 
-            <!-- Filtros de Equipes -->
+            <!-- Filtros Equipes -->
             <div class="filters">
                 <div class="filter-group">
                     <label>Buscar por Número:</label>
-                    <input type="text" class="filter-input" id="filtroNumeroEquipe" placeholder="Digite o número da equipe...">
+                    <input type="text" id="filtroNumeroEquipe" placeholder="Digite o número da equipe" onkeyup="filtrarEquipes()">
                 </div>
                 <div class="filter-group">
                     <label>Status:</label>
-                    <select class="filter-input" id="filtroStatusEquipe">
+                    <select id="filtroStatusEquipe" onchange="filtrarEquipes()">
                         <option value="">Todos</option>
                         <option value="ativa">Ativa</option>
                         <option value="inativa">Inativa</option>
@@ -558,24 +492,24 @@
                 </div>
             </div>
 
-            <!-- Tabela de Equipes -->
+            <!-- Tabela Equipes -->
             <div class="table-container">
-                <table class="table">
+                <table id="tabelaEquipes">
                     <thead>
                         <tr>
-                            <th>Número</th>
-                            <th>Integrantes</th>
-                            <th>Status</th>
-                            <th>Observações</th>
-                            <th>Ações</th>
+                            <th>NÚMERO</th>
+                            <th>INTEGRANTES</th>
+                            <th>STATUS</th>
+                            <th>OBSERVAÇÕES</th>
+                            <th>AÇÕES</th>
                         </tr>
                     </thead>
-                    <tbody id="tabelaEquipes">
+                    <tbody>
                         <tr>
                             <td colspan="5" class="empty-state">
                                 <i class="fas fa-users"></i>
-                                <h3>Nenhuma equipe cadastrada</h3>
-                                <p>Clique em "Nova Equipe" para começar</p>
+                                <div>Nenhuma equipe cadastrada</div>
+                                <div>Clique em "Nova Equipe" para começar</div>
                             </td>
                         </tr>
                     </tbody>
@@ -583,37 +517,36 @@
             </div>
         </div>
 
-        <!-- Seção de Integrantes -->
+        <!-- Seção Integrantes -->
         <div class="section">
-            <div class="section-header">
-                <h2 class="section-title">
-                    <i class="fas fa-user-friends"></i> Integrantes
-                </h2>
-                <div class="section-controls">
-                    <button class="btn btn-primary" onclick="abrirModalIntegrante()">
-                        <i class="fas fa-user-plus"></i> Novo Integrante
-                    </button>
-                    <button class="btn btn-secondary" onclick="abrirModalFuncoes()">
-                        <i class="fas fa-cogs"></i> Gerenciar Funções
-                    </button>
-                </div>
-            </div>
+            <h2>
+                <i class="fas fa-user"></i>
+                Integrantes
+                <button class="btn btn-primary" onclick="openIntegranteModal()">
+                    <i class="fas fa-plus"></i>
+                    Novo Integrante
+                </button>
+                <button class="btn btn-secondary" onclick="openFuncoesModal()">
+                    <i class="fas fa-cog"></i>
+                    Gerenciar Funções
+                </button>
+            </h2>
 
-            <!-- Filtros de Integrantes -->
+            <!-- Filtros Integrantes -->
             <div class="filters">
                 <div class="filter-group">
                     <label>Buscar por Nome:</label>
-                    <input type="text" class="filter-input" id="filtroNomeIntegrante" placeholder="Digite o nome do integrante...">
+                    <input type="text" id="filtroNomeIntegrante" placeholder="Digite o nome do integrante" onkeyup="filtrarIntegrantes()">
                 </div>
                 <div class="filter-group">
                     <label>Função:</label>
-                    <select class="filter-input" id="filtroFuncaoIntegrante">
+                    <select id="filtroFuncaoIntegrante" onchange="filtrarIntegrantes()">
                         <option value="">Todas</option>
                     </select>
                 </div>
                 <div class="filter-group">
                     <label>Status:</label>
-                    <select class="filter-input" id="filtroStatusIntegrante">
+                    <select id="filtroStatusIntegrante" onchange="filtrarIntegrantes()">
                         <option value="">Todos</option>
                         <option value="ativo">Ativo</option>
                         <option value="inativo">Inativo</option>
@@ -621,25 +554,25 @@
                 </div>
             </div>
 
-            <!-- Tabela de Integrantes -->
+            <!-- Tabela Integrantes -->
             <div class="table-container">
-                <table class="table">
+                <table id="tabelaIntegrantes">
                     <thead>
                         <tr>
-                            <th>Nome</th>
+                            <th>NOME</th>
                             <th>CPF</th>
-                            <th>WhatsApp</th>
-                            <th>Função</th>
-                            <th>Status</th>
-                            <th>Ações</th>
+                            <th>WHATSAPP</th>
+                            <th>FUNÇÃO</th>
+                            <th>STATUS</th>
+                            <th>AÇÕES</th>
                         </tr>
                     </thead>
-                    <tbody id="tabelaIntegrantes">
+                    <tbody>
                         <tr>
                             <td colspan="6" class="empty-state">
-                                <i class="fas fa-user-friends"></i>
-                                <h3>Nenhum integrante cadastrado</h3>
-                                <p>Clique em "Novo Integrante" para começar</p>
+                                <i class="fas fa-user"></i>
+                                <div>Nenhum integrante cadastrado</div>
+                                <div>Clique em "Novo Integrante" para começar</div>
                             </td>
                         </tr>
                     </tbody>
@@ -648,140 +581,160 @@
         </div>
     </div>
 
-    <!-- Modal de Equipe -->
+    <!-- Modal Equipe -->
     <div id="modalEquipe" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="tituloModalEquipe">Nova Equipe</h2>
-                <span class="close" onclick="fecharModalEquipe()">&times;</span>
+                <h3 id="modalEquipeTitle">Nova Equipe</h3>
+                <button class="modal-close" onclick="closeEquipeModal()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div class="modal-body">
-                <form id="formEquipe">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label for="numeroEquipe">Número da Equipe *</label>
-                            <input type="text" id="numeroEquipe" class="form-control" required>
-                        </div>
-                        <div class="form-group">
-                            <label for="statusEquipe">Status *</label>
-                            <select id="statusEquipe" class="form-control" required>
-                                <option value="ativa">Ativa</option>
-                                <option value="inativa">Inativa</option>
-                            </select>
-                        </div>
-                    </div>
-                    
+                <form id="formEquipe" onsubmit="saveEquipe(event)">
                     <div class="form-group">
-                        <label>Integrantes da Equipe</label>
-                        <div id="integrantesDisponiveis" class="multi-select-container">
-                            <!-- Integrantes serão carregados aqui -->
+                        <label for="numeroEquipe">Número da Equipe *</label>
+                        <input type="text" id="numeroEquipe" required placeholder="Ex: 001, 002, etc.">
+                    </div>
+
+                    <div class="form-group">
+                        <label>Selecionar Integrantes *</label>
+                        <div id="integrantesSelect" class="multi-select">
+                            <div class="empty-state">
+                                <i class="fas fa-user-plus"></i>
+                                <div>Carregando integrantes...</div>
+                            </div>
                         </div>
-                        <small style="color: var(--theme-text-muted);">Selecione os integrantes que farão parte desta equipe</small>
+                        <div id="selectedCount" class="selected-count">0 integrantes selecionados</div>
                     </div>
 
                     <div class="form-group">
                         <label for="observacoesEquipe">Observações</label>
-                        <textarea id="observacoesEquipe" class="form-control" rows="3" placeholder="Observações sobre a equipe..."></textarea>
+                        <textarea id="observacoesEquipe" placeholder="Observações sobre a equipe..."></textarea>
                     </div>
 
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                        <button type="button" class="btn btn-secondary" onclick="fecharModalEquipe()">Cancelar</button>
-                        <button type="submit" class="btn btn-success">Salvar Equipe</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeEquipeModal()">
+                            <i class="fas fa-times"></i>
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Salvar Equipe
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Integrante -->
+    <!-- Modal Integrante -->
     <div id="modalIntegrante" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 id="tituloModalIntegrante">Novo Integrante</h2>
-                <span class="close" onclick="fecharModalIntegrante()">&times;</span>
+                <h3 id="modalIntegranteTitle">Novo Integrante</h3>
+                <button class="modal-close" onclick="closeIntegranteModal()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div class="modal-body">
-                <form id="formIntegrante">
-                    <div class="form-grid">
+                <form id="formIntegrante" onsubmit="saveIntegrante(event)">
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="nomeIntegrante">Nome Completo *</label>
-                            <input type="text" id="nomeIntegrante" class="form-control" required>
+                            <input type="text" id="nomeIntegrante" required placeholder="Nome completo do integrante">
                         </div>
                         <div class="form-group">
                             <label for="cpfIntegrante">CPF *</label>
-                            <input type="text" id="cpfIntegrante" class="form-control" required placeholder="000.000.000-00">
+                            <input type="text" id="cpfIntegrante" required placeholder="000.000.000-00" maxlength="14">
                         </div>
+                    </div>
+
+                    <div class="form-row">
                         <div class="form-group">
                             <label for="whatsappIntegrante">WhatsApp *</label>
-                            <input type="text" id="whatsappIntegrante" class="form-control" required placeholder="+5511999999999">
+                            <input type="text" id="whatsappIntegrante" required placeholder="+5511999999999" maxlength="14">
                         </div>
                         <div class="form-group">
                             <label for="funcaoIntegrante">Função *</label>
-                            <select id="funcaoIntegrante" class="form-control" required>
+                            <select id="funcaoIntegrante" required>
                                 <option value="">Selecione uma função</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="statusIntegrante">Status *</label>
-                            <select id="statusIntegrante" class="form-control" required>
-                                <option value="ativo">Ativo</option>
-                                <option value="inativo">Inativo</option>
                             </select>
                         </div>
                     </div>
 
                     <div class="form-group">
                         <label for="observacoesIntegrante">Observações</label>
-                        <textarea id="observacoesIntegrante" class="form-control" rows="3" placeholder="Observações sobre o integrante..."></textarea>
+                        <textarea id="observacoesIntegrante" placeholder="Observações sobre o integrante..."></textarea>
                     </div>
 
                     <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                        <button type="button" class="btn btn-secondary" onclick="fecharModalIntegrante()">Cancelar</button>
-                        <button type="submit" class="btn btn-success">Salvar Integrante</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeIntegranteModal()">
+                            <i class="fas fa-times"></i>
+                            Cancelar
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i>
+                            Salvar Integrante
+                        </button>
                     </div>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Funções -->
+    <!-- Modal Funções -->
     <div id="modalFuncoes" class="modal">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Gerenciar Funções</h2>
-                <span class="close" onclick="fecharModalFuncoes()">&times;</span>
+                <h3>Gerenciar Funções</h3>
+                <button class="modal-close" onclick="closeFuncoesModal()">
+                    <i class="fas fa-times"></i>
+                </button>
             </div>
             <div class="modal-body">
                 <div style="margin-bottom: 20px;">
-                    <button class="btn btn-primary" onclick="abrirFormNovaFuncao()">
-                        <i class="fas fa-plus"></i> Nova Função
+                    <button class="btn btn-primary" onclick="openNovaFuncaoForm()">
+                        <i class="fas fa-plus"></i>
+                        Nova Função
                     </button>
                 </div>
 
-                <!-- Formulário de Nova Função -->
-                <div id="formNovaFuncao" style="display: none; margin-bottom: 20px; padding: 15px; background: var(--theme-bg-dark); border-radius: 4px; border: 1px solid var(--theme-border-color);">
-                    <div class="form-group">
-                        <label for="nomeFuncao">Nome da Função *</label>
-                        <input type="text" id="nomeFuncao" class="form-control" required>
-                    </div>
-                    <div style="display: flex; gap: 10px; margin-top: 10px;">
-                        <button type="button" class="btn btn-success" onclick="salvarFuncao()">Salvar</button>
-                        <button type="button" class="btn btn-secondary" onclick="cancelarNovaFuncao()">Cancelar</button>
-                    </div>
+                <div id="novaFuncaoForm" style="display: none; margin-bottom: 20px; padding: 15px; background: var(--theme-bg-dark); border-radius: 6px;">
+                    <form onsubmit="saveFuncao(event)">
+                        <div class="form-group">
+                            <label for="nomeFuncao">Nome da Função *</label>
+                            <input type="text" id="nomeFuncao" required placeholder="Ex: Pedreiro, Eletricista, etc.">
+                        </div>
+                        <div style="display: flex; gap: 10px;">
+                            <button type="submit" class="btn btn-success btn-sm">
+                                <i class="fas fa-save"></i>
+                                Salvar
+                            </button>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="cancelNovaFuncao()">
+                                <i class="fas fa-times"></i>
+                                Cancelar
+                            </button>
+                        </div>
+                    </form>
                 </div>
 
-                <!-- Lista de Funções -->
                 <div class="table-container">
-                    <table class="table">
+                    <table id="tabelaFuncoes">
                         <thead>
                             <tr>
-                                <th>Função</th>
-                                <th>Integrantes</th>
-                                <th>Ações</th>
+                                <th>FUNÇÃO</th>
+                                <th>INTEGRANTES</th>
+                                <th>AÇÕES</th>
                             </tr>
                         </thead>
-                        <tbody id="tabelaFuncoes">
-                            <!-- Funções serão carregadas aqui -->
+                        <tbody>
+                            <tr>
+                                <td colspan="3" class="empty-state">
+                                    <i class="fas fa-cog"></i>
+                                    <div>Carregando funções...</div>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -790,37 +743,9 @@
     </div>
 
     <!-- Scripts -->
-    <script src="supabase.js"></script>
-    <script src="sidebar.js"></script>
-    <script src="equipe-hvc.js"></script>
-    <script>
-        // Inicializar página quando carregar
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('Inicializando sistema de equipes...');
-            
-            // Verificar se Supabase está disponível
-            if (typeof supabase === 'undefined') {
-                console.error('Supabase não está disponível. Certifique-se de que o arquivo supabase.js está carregado.');
-                return;
-            }
-            
-            // Verificar se sidebar está disponível
-            if (typeof injectSidebarWithAutoDetection === 'function') {
-                console.log('Carregando sidebar...');
-                injectSidebarWithAutoDetection('main-content');
-            } else {
-                console.warn('Função da sidebar não encontrada. Sidebar não será carregada.');
-            }
-            
-            // Inicializar sistema de equipes
-            if (typeof inicializarSistemaEquipes === 'function') {
-                console.log('Inicializando sistema de equipes...');
-                inicializarSistemaEquipes();
-            } else {
-                console.warn('Sistema de equipes não encontrado. Verifique se equipe-hvc.js está carregado.');
-            }
-        });
-    </script>
+    <script type="module" src="supabase.js"></script>
+    <script type="module" src="sidebar.js"></script>
+    <script type="module" src="equipe-hvc.js"></script>
 </body>
 </html>
 
