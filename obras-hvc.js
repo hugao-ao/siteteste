@@ -1,6 +1,6 @@
-// obras-hvc.js - Sistema de Gestão de Obras HVC (VERSÃO SIMPLIFICADA FUNCIONAL)
-// Gerenciamento completo de obras com cálculo de percentual baseado em QUANTIDADE (funciona sempre)
-// 🎯 VERSÃO ULTRA SEGURA: Usa apenas colunas que sabemos que existem
+// obras-hvc.js - Sistema de Gestão de Obras HVC (CÁLCULO EXATO POR VALORES)
+// Gerenciamento completo de obras com cálculo de percentual baseado em VALORES EXATOS dos serviços
+// 🎯 VERSÃO EXATA: Implementa a fórmula matemática precisa especificada pelo usuário
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -544,7 +544,7 @@ class ObrasManager {
     }
 
     async updateResumoObra() {
-        console.log('🎯 SIMPLES - Atualizando resumo da obra...');
+        console.log('🎯 EXATO - Atualizando resumo da obra...');
         
         // Calcular totais
         const totalPropostas = this.propostasSelecionadas.length;
@@ -552,11 +552,11 @@ class ObrasManager {
         const totalClientes = clientesUnicos.length;
         const valorTotal = this.propostasSelecionadas.reduce((sum, p) => sum + ((p.total_proposta)/100), 0);
         
-        // 🎯 VERSÃO SIMPLES: Calcular percentual baseado em QUANTIDADE (sempre funciona)
+        // 🎯 CÁLCULO EXATO: Calcular percentual usando a fórmula matemática especificada
         let percentualConclusao = 0;
         if (this.currentObraId) {
-            percentualConclusao = await this.calcularPercentualSimples(this.currentObraId);
-            console.log('🎯 SIMPLES - Percentual calculado:', percentualConclusao);
+            percentualConclusao = await this.calcularPercentualExato(this.currentObraId);
+            console.log('🎯 EXATO - Percentual calculado:', percentualConclusao);
         }
         
         // Atualizar elementos
@@ -570,72 +570,140 @@ class ObrasManager {
         if (valorTotalEl) valorTotalEl.textContent = this.formatMoney(valorTotal);
         if (progressoEl) {
             progressoEl.textContent = `${percentualConclusao}%`;
-            console.log('🎯 SIMPLES - Elemento atualizado com:', `${percentualConclusao}%`);
+            console.log('🎯 EXATO - Elemento atualizado com:', `${percentualConclusao}%`);
         }
     }
 
-    // 🎯 FUNÇÃO ULTRA SIMPLES: Calcular percentual baseado em QUANTIDADE (sempre funciona)
-    async calcularPercentualSimples(obraId) {
-        console.log('🎯 SIMPLES - Calculando percentual para obra:', obraId);
+    // 🎯 FUNÇÃO MATEMÁTICA EXATA: Implementa a fórmula especificada pelo usuário
+    async calcularPercentualExato(obraId) {
+        console.log('🎯 EXATO - Calculando percentual para obra:', obraId);
+        console.log('🎯 FÓRMULA: Σ[(valor_serviço/valor_total_obra) × multiplicador_status]');
         
         try {
-            // Buscar apenas os andamentos (sem joins complexos)
-            const { data: andamentos, error } = await supabaseClient
-                .from('servicos_andamento')
-                .select('status')
+            // PASSO 1: Buscar propostas da obra
+            const { data: obrasPropostas, error: errorObrasPropostas } = await supabaseClient
+                .from('obras_propostas')
+                .select('proposta_id')
                 .eq('obra_id', obraId);
 
-            if (error) {
-                console.error('🎯 SIMPLES - Erro ao buscar andamentos:', error);
+            if (errorObrasPropostas) {
+                console.error('🎯 EXATO - Erro ao buscar propostas da obra:', errorObrasPropostas);
                 return 0;
             }
 
-            if (!andamentos || andamentos.length === 0) {
-                console.log('🎯 SIMPLES - Nenhum andamento encontrado');
+            if (!obrasPropostas || obrasPropostas.length === 0) {
+                console.log('🎯 EXATO - Nenhuma proposta encontrada para a obra');
                 return 0;
             }
 
-            // 🎯 CÁLCULO SIMPLES BASEADO EM QUANTIDADE
-            const totalServicos = andamentos.length;
-            let servicosConcluidos = 0;
+            const propostaIds = obrasPropostas.map(op => op.proposta_id);
+            console.log('🎯 EXATO - Propostas da obra:', propostaIds);
 
-            andamentos.forEach(andamento => {
-                switch (andamento.status) {
-                    case 'PENDENTE':
-                        // 0 pontos
-                        break;
-                    case 'INICIADO':
-                        // 0.5 pontos
-                        servicosConcluidos += 0.5;
-                        break;
-                    case 'CONCLUIDO':
-                        // 1 ponto
-                        servicosConcluidos += 1;
-                        break;
-                }
+            // PASSO 2: Buscar todos os serviços das propostas
+            const { data: servicosPropostas, error: errorServicos } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select('*')
+                .in('proposta_id', propostaIds);
+
+            if (errorServicos) {
+                console.error('🎯 EXATO - Erro ao buscar serviços:', errorServicos);
+                return 0;
+            }
+
+            if (!servicosPropostas || servicosPropostas.length === 0) {
+                console.log('🎯 EXATO - Nenhum serviço encontrado');
+                return 0;
+            }
+
+            console.log('🎯 EXATO - Serviços encontrados:', servicosPropostas.length);
+
+            // PASSO 3: Calcular valor total da obra
+            let valorTotalObra = 0;
+            const servicosComValor = [];
+
+            for (const servico of servicosPropostas) {
+                // Usar apenas as colunas que sabemos que existem
+                const valorMaoObra = servico.valor_mao_obra || 0;
+                const valorMaterial = servico.valor_material || 0;
+                const quantidade = servico.quantidade || 1;
+                
+                const valorTotalServico = (valorMaoObra + valorMaterial) * quantidade;
+                valorTotalObra += valorTotalServico;
+                
+                servicosComValor.push({
+                    id: servico.id,
+                    valorTotal: valorTotalServico,
+                    percentualObra: 0 // Será calculado depois
+                });
+            }
+
+            console.log('🎯 EXATO - Valor total da obra:', valorTotalObra);
+
+            if (valorTotalObra === 0) {
+                console.log('🎯 EXATO - Valor total da obra é zero');
+                return 0;
+            }
+
+            // PASSO 4: Calcular percentual de cada serviço em relação ao total da obra
+            servicosComValor.forEach(servico => {
+                servico.percentualObra = (servico.valorTotal / valorTotalObra) * 100;
+                console.log(`🎯 EXATO - Serviço ${servico.id}: R$ ${servico.valorTotal.toFixed(2)} = ${servico.percentualObra.toFixed(2)}% da obra`);
             });
 
-            console.log('🎯 SIMPLES - Total de serviços:', totalServicos);
-            console.log('🎯 SIMPLES - Serviços concluídos (pontos):', servicosConcluidos);
-            
-            // Calcular percentual
-            const percentual = totalServicos > 0 ? Math.round((servicosConcluidos / totalServicos) * 100) : 0;
-            
-            console.log('🎯 SIMPLES - Percentual calculado:', percentual);
+            // PASSO 5: Buscar status dos serviços
+            const { data: andamentos, error: errorAndamentos } = await supabaseClient
+                .from('servicos_andamento')
+                .select('item_proposta_id, status')
+                .eq('obra_id', obraId);
+
+            if (errorAndamentos) {
+                console.error('🎯 EXATO - Erro ao buscar andamentos:', errorAndamentos);
+                return 0;
+            }
+
+            // PASSO 6: Aplicar fórmula matemática
+            let somaPercentuais = 0;
+
+            servicosComValor.forEach(servico => {
+                const andamento = andamentos?.find(a => a.item_proposta_id === servico.id);
+                const status = andamento?.status || 'PENDENTE';
+                
+                // Aplicar multiplicadores conforme especificação
+                let multiplicador = 0;
+                switch (status) {
+                    case 'PENDENTE':
+                        multiplicador = 0;
+                        break;
+                    case 'INICIADO':
+                        multiplicador = 0.5;
+                        break;
+                    case 'CONCLUIDO':
+                        multiplicador = 1;
+                        break;
+                }
+
+                const contribuicao = servico.percentualObra * multiplicador;
+                somaPercentuais += contribuicao;
+                
+                console.log(`🎯 EXATO - Serviço ${servico.id}: ${servico.percentualObra.toFixed(2)}% × ${multiplicador} = ${contribuicao.toFixed(2)}%`);
+            });
+
+            const percentualFinal = Math.round(somaPercentuais);
+            console.log('🎯 EXATO - Percentual final calculado:', percentualFinal);
             
             // Atualizar percentual na tabela obras_hvc
-            await this.atualizarPercentualNoBanco(obraId, percentual);
+            await this.atualizarPercentualNoBanco(obraId, percentualFinal);
             
-            return percentual;
+            return percentualFinal;
             
         } catch (error) {
-            console.error('🎯 SIMPLES - Erro no cálculo:', error);
+            console.error('🎯 EXATO - Erro no cálculo:', error);
             return 0;
         }
     }
 
     async atualizarPercentualNoBanco(obraId, percentual) {
-        console.log('🎯 SIMPLES - Atualizando percentual no banco:', obraId, percentual);
+        console.log('🎯 EXATO - Atualizando percentual no banco:', obraId, percentual);
         
         try {
             const { error } = await supabaseClient
@@ -644,12 +712,12 @@ class ObrasManager {
                 .eq('id', obraId);
 
             if (error) {
-                console.error('🎯 SIMPLES - Erro ao atualizar banco:', error);
+                console.error('🎯 EXATO - Erro ao atualizar banco:', error);
             } else {
-                console.log('🎯 SIMPLES - Percentual atualizado no banco com sucesso');
+                console.log('🎯 EXATO - Percentual atualizado no banco com sucesso');
             }
         } catch (error) {
-            console.error('🎯 SIMPLES - Erro na atualização do banco:', error);
+            console.error('🎯 EXATO - Erro na atualização do banco:', error);
         }
     }
 
@@ -724,7 +792,7 @@ class ObrasManager {
                 return;
             }
             
-            // 🎯 VERSÃO SIMPLES: Tabela sem coluna de valor (evita erros)
+            // 🎯 TABELA COM COLUNA DE VALOR PARA VISUALIZAÇÃO
             container.innerHTML = `
                 <table class="propostas-table" style="width: 100%;">
                     <thead>
@@ -732,6 +800,7 @@ class ObrasManager {
                             <th>Proposta</th>
                             <th>Serviço</th>
                             <th>Quantidade</th>
+                            <th>Valor Total</th>
                             <th>Status</th>
                             <th>Previsão</th>
                             <th>Observações</th>
@@ -748,6 +817,12 @@ class ObrasManager {
                 // Buscar andamento existente para este item
                 const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
                 
+                // Calcular valor total do serviço
+                const valorMaoObra = item.valor_mao_obra || 0;
+                const valorMaterial = item.valor_material || 0;
+                const quantidade = item.quantidade || 1;
+                const valorTotalServico = (valorMaoObra + valorMaterial) * quantidade;
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${item.propostas_hvc?.numero_proposta}</strong></td>
@@ -755,7 +830,8 @@ class ObrasManager {
                         <strong>${item.servicos_hvc?.codigo}</strong><br>
                         <small>${item.servicos_hvc?.descricao}</small>
                     </td>
-                    <td>${item.quantidade} ${item.servicos_hvc?.unidade || ''}</td>
+                    <td>${quantidade} ${item.servicos_hvc?.unidade || ''}</td>
+                    <td><strong>${this.formatMoney(valorTotalServico)}</strong></td>
                     <td>
                         <select class="form-select status-servico" data-index="${index}" style="width: 150px;">
                             <option value="PENDENTE" ${andamentoExistente?.status === 'PENDENTE' ? 'selected' : ''}>Pendente (0%)</option>
@@ -794,9 +870,9 @@ class ObrasManager {
         }
     }
 
-    // 🎯 FUNÇÃO ULTRA SIMPLES: salvarAndamento
+    // 🎯 FUNÇÃO EXATA: salvarAndamento
     async salvarAndamento() {
-        console.log('🎯 SIMPLES - Salvando andamento dos serviços...');
+        console.log('🎯 EXATO - Salvando andamento dos serviços...');
         
         if (!this.currentObraId) {
             this.showNotification('Salve a obra primeiro antes de gerenciar o andamento', 'warning');
@@ -841,25 +917,25 @@ class ObrasManager {
                 if (error) throw error;
             }
             
-            // 🎯 VERSÃO SIMPLES: Recalcular percentual usando função simples
-            console.log('🎯 SIMPLES - Recalculando percentual após salvar andamento...');
-            const novoPercentual = await this.calcularPercentualSimples(this.currentObraId);
+            // 🎯 CÁLCULO EXATO: Recalcular percentual usando função matemática exata
+            console.log('🎯 EXATO - Recalculando percentual após salvar andamento...');
+            const novoPercentual = await this.calcularPercentualExato(this.currentObraId);
             
             // Atualizar interface imediatamente
             const progressoEl = document.getElementById('progresso-geral');
             if (progressoEl) {
                 progressoEl.textContent = `${novoPercentual}%`;
-                console.log('🎯 SIMPLES - Interface atualizada com novo percentual:', `${novoPercentual}%`);
+                console.log('🎯 EXATO - Interface atualizada com novo percentual:', `${novoPercentual}%`);
             }
             
             // Recarregar lista de obras para mostrar percentual atualizado
             await this.loadObras();
             
             this.hideModalAndamento();
-            this.showNotification(`Andamento salvo! Percentual de conclusão: ${novoPercentual}% (baseado em quantidade)`, 'success');
+            this.showNotification(`Andamento salvo! Percentual de conclusão: ${novoPercentual}% (baseado em valores exatos)`, 'success');
             
         } catch (error) {
-            console.error('🎯 SIMPLES - Erro ao salvar andamento:', error);
+            console.error('🎯 EXATO - Erro ao salvar andamento:', error);
             this.showNotification('Erro ao salvar andamento: ' + error.message, 'error');
         }
     }
