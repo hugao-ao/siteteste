@@ -1,6 +1,6 @@
-// obras-hvc.js - Sistema de Gestão de Obras HVC (VALORES E MODAL CORRIGIDOS)
+// obras-hvc.js - Sistema de Gestão de Obras HVC (PREÇO TOTAL CORRIGIDO)
 // Gerenciamento completo de obras com cálculo de percentual baseado em VALORES CORRETOS
-// 🎯 VERSÃO CORRIGIDA: Valores dos serviços exibidos corretamente + Modal maior
+// 🎯 VERSÃO CORRIGIDA: Busca valores da coluna preco_total
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -544,14 +544,14 @@ class ObrasManager {
     }
 
     async updateResumoObra() {
-        console.log('🎯 CORRIGIDO - Atualizando resumo da obra...');
+        console.log('🎯 PREÇO TOTAL - Atualizando resumo da obra...');
         
         // Calcular totais
         const totalPropostas = this.propostasSelecionadas.length;
         const clientesUnicos = [...new Set(this.propostasSelecionadas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
         const totalClientes = clientesUnicos.length;
         
-        // 🎯 CORREÇÃO: Calcular valor total baseado nos itens reais
+        // 🎯 CORREÇÃO: Calcular valor total baseado na coluna preco_total
         let valorTotal = 0;
         if (this.propostasSelecionadas.length > 0) {
             valorTotal = await this.calcularValorTotalCorreto();
@@ -561,7 +561,7 @@ class ObrasManager {
         let percentualConclusao = 0;
         if (this.currentObraId) {
             percentualConclusao = await this.calcularPercentualCorrigido(this.currentObraId);
-            console.log('🎯 CORRIGIDO - Percentual calculado:', percentualConclusao);
+            console.log('🎯 PREÇO TOTAL - Percentual calculado:', percentualConclusao);
         }
         
         // Atualizar elementos
@@ -575,55 +575,52 @@ class ObrasManager {
         if (valorTotalEl) valorTotalEl.textContent = this.formatMoney(valorTotal);
         if (progressoEl) {
             progressoEl.textContent = `${percentualConclusao}%`;
-            console.log('🎯 CORRIGIDO - Elemento atualizado com:', `${percentualConclusao}%`);
+            console.log('🎯 PREÇO TOTAL - Elemento atualizado com:', `${percentualConclusao}%`);
         }
     }
 
-    // 🎯 FUNÇÃO NOVA: Calcular valor total correto baseado nos itens
+    // 🎯 FUNÇÃO CORRIGIDA: Calcular valor total usando coluna preco_total
     async calcularValorTotalCorreto() {
-        console.log('🎯 CORRIGIDO - Calculando valor total correto...');
+        console.log('🎯 PREÇO TOTAL - Calculando valor total correto...');
         
         try {
             let valorTotalObra = 0;
             
             for (const proposta of this.propostasSelecionadas) {
-                // Buscar itens da proposta
+                // 🎯 CORREÇÃO: Buscar preco_total da tabela itens_proposta_hvc
                 const { data: itens, error } = await supabaseClient
                     .from('itens_proposta_hvc')
-                    .select('quantidade, valor_mao_obra, valor_material')
+                    .select('preco_total')
                     .eq('proposta_id', proposta.id);
 
                 if (error) {
-                    console.error('🎯 CORRIGIDO - Erro ao buscar itens:', error);
+                    console.error('🎯 PREÇO TOTAL - Erro ao buscar itens:', error);
                     continue;
                 }
 
                 if (itens && itens.length > 0) {
                     for (const item of itens) {
-                        const valorMaoObra = item.valor_mao_obra || 0;
-                        const valorMaterial = item.valor_material || 0;
-                        const quantidade = item.quantidade || 1;
+                        // 🎯 CORREÇÃO: Usar preco_total diretamente
+                        const precoTotal = parseFloat(item.preco_total) || 0;
+                        valorTotalObra += precoTotal;
                         
-                        const valorTotalItem = (valorMaoObra + valorMaterial) * quantidade;
-                        valorTotalObra += valorTotalItem;
-                        
-                        console.log(`🎯 CORRIGIDO - Item: R$ ${valorTotalItem.toFixed(2)} (${quantidade} × R$ ${(valorMaoObra + valorMaterial).toFixed(2)})`);
+                        console.log(`🎯 PREÇO TOTAL - Item: R$ ${precoTotal.toFixed(2)}`);
                     }
                 }
             }
             
-            console.log('🎯 CORRIGIDO - Valor total da obra:', valorTotalObra);
+            console.log('🎯 PREÇO TOTAL - Valor total da obra:', valorTotalObra);
             return valorTotalObra;
             
         } catch (error) {
-            console.error('🎯 CORRIGIDO - Erro no cálculo do valor total:', error);
+            console.error('🎯 PREÇO TOTAL - Erro no cálculo do valor total:', error);
             return 0;
         }
     }
 
-    // 🎯 FUNÇÃO CORRIGIDA: Calcular percentual com valores corretos
+    // 🎯 FUNÇÃO CORRIGIDA: Calcular percentual usando preco_total
     async calcularPercentualCorrigido(obraId) {
-        console.log('🎯 CORRIGIDO - Calculando percentual para obra:', obraId);
+        console.log('🎯 PREÇO TOTAL - Calculando percentual para obra:', obraId);
         
         try {
             // PASSO 1: Buscar propostas da obra
@@ -633,66 +630,63 @@ class ObrasManager {
                 .eq('obra_id', obraId);
 
             if (errorObrasPropostas) {
-                console.error('🎯 CORRIGIDO - Erro ao buscar propostas da obra:', errorObrasPropostas);
+                console.error('🎯 PREÇO TOTAL - Erro ao buscar propostas da obra:', errorObrasPropostas);
                 return 0;
             }
 
             if (!obrasPropostas || obrasPropostas.length === 0) {
-                console.log('🎯 CORRIGIDO - Nenhuma proposta encontrada para a obra');
+                console.log('🎯 PREÇO TOTAL - Nenhuma proposta encontrada para a obra');
                 return 0;
             }
 
             const propostaIds = obrasPropostas.map(op => op.proposta_id);
-            console.log('🎯 CORRIGIDO - Propostas da obra:', propostaIds);
+            console.log('🎯 PREÇO TOTAL - Propostas da obra:', propostaIds);
 
-            // PASSO 2: Buscar todos os itens das propostas
+            // PASSO 2: Buscar todos os itens das propostas com preco_total
             const { data: itensPropostas, error: errorItens } = await supabaseClient
                 .from('itens_proposta_hvc')
-                .select('id, quantidade, valor_mao_obra, valor_material')
+                .select('id, preco_total')
                 .in('proposta_id', propostaIds);
 
             if (errorItens) {
-                console.error('🎯 CORRIGIDO - Erro ao buscar itens:', errorItens);
+                console.error('🎯 PREÇO TOTAL - Erro ao buscar itens:', errorItens);
                 return 0;
             }
 
             if (!itensPropostas || itensPropostas.length === 0) {
-                console.log('🎯 CORRIGIDO - Nenhum item encontrado');
+                console.log('🎯 PREÇO TOTAL - Nenhum item encontrado');
                 return 0;
             }
 
-            console.log('🎯 CORRIGIDO - Itens encontrados:', itensPropostas.length);
+            console.log('🎯 PREÇO TOTAL - Itens encontrados:', itensPropostas.length);
 
             // PASSO 3: Calcular valor total da obra e percentual de cada item
             let valorTotalObra = 0;
             const itensComValor = [];
 
             for (const item of itensPropostas) {
-                const valorMaoObra = item.valor_mao_obra || 0;
-                const valorMaterial = item.valor_material || 0;
-                const quantidade = item.quantidade || 1;
-                
-                const valorTotalItem = (valorMaoObra + valorMaterial) * quantidade;
-                valorTotalObra += valorTotalItem;
+                // 🎯 CORREÇÃO: Usar preco_total
+                const precoTotal = parseFloat(item.preco_total) || 0;
+                valorTotalObra += precoTotal;
                 
                 itensComValor.push({
                     id: item.id,
-                    valorTotal: valorTotalItem,
+                    valorTotal: precoTotal,
                     percentualObra: 0 // Será calculado depois
                 });
             }
 
-            console.log('🎯 CORRIGIDO - Valor total da obra:', valorTotalObra);
+            console.log('🎯 PREÇO TOTAL - Valor total da obra:', valorTotalObra);
 
             if (valorTotalObra === 0) {
-                console.log('🎯 CORRIGIDO - Valor total da obra é zero');
+                console.log('🎯 PREÇO TOTAL - Valor total da obra é zero');
                 return 0;
             }
 
             // PASSO 4: Calcular percentual de cada item em relação ao total da obra
             itensComValor.forEach(item => {
                 item.percentualObra = (item.valorTotal / valorTotalObra) * 100;
-                console.log(`🎯 CORRIGIDO - Item ${item.id}: R$ ${item.valorTotal.toFixed(2)} = ${item.percentualObra.toFixed(2)}% da obra`);
+                console.log(`🎯 PREÇO TOTAL - Item ${item.id}: R$ ${item.valorTotal.toFixed(2)} = ${item.percentualObra.toFixed(2)}% da obra`);
             });
 
             // PASSO 5: Buscar status dos itens
@@ -702,7 +696,7 @@ class ObrasManager {
                 .eq('obra_id', obraId);
 
             if (errorAndamentos) {
-                console.error('🎯 CORRIGIDO - Erro ao buscar andamentos:', errorAndamentos);
+                console.error('🎯 PREÇO TOTAL - Erro ao buscar andamentos:', errorAndamentos);
                 return 0;
             }
 
@@ -730,11 +724,11 @@ class ObrasManager {
                 const contribuicao = item.percentualObra * multiplicador;
                 somaPercentuais += contribuicao;
                 
-                console.log(`🎯 CORRIGIDO - Item ${item.id}: ${item.percentualObra.toFixed(2)}% × ${multiplicador} = ${contribuicao.toFixed(2)}%`);
+                console.log(`🎯 PREÇO TOTAL - Item ${item.id}: ${item.percentualObra.toFixed(2)}% × ${multiplicador} = ${contribuicao.toFixed(2)}%`);
             });
 
             const percentualFinal = Math.round(somaPercentuais);
-            console.log('🎯 CORRIGIDO - Percentual final calculado:', percentualFinal);
+            console.log('🎯 PREÇO TOTAL - Percentual final calculado:', percentualFinal);
             
             // Atualizar percentual na tabela obras_hvc
             await this.atualizarPercentualNoBanco(obraId, percentualFinal);
@@ -742,13 +736,13 @@ class ObrasManager {
             return percentualFinal;
             
         } catch (error) {
-            console.error('🎯 CORRIGIDO - Erro no cálculo:', error);
+            console.error('🎯 PREÇO TOTAL - Erro no cálculo:', error);
             return 0;
         }
     }
 
     async atualizarPercentualNoBanco(obraId, percentual) {
-        console.log('🎯 CORRIGIDO - Atualizando percentual no banco:', obraId, percentual);
+        console.log('🎯 PREÇO TOTAL - Atualizando percentual no banco:', obraId, percentual);
         
         try {
             const { error } = await supabaseClient
@@ -757,12 +751,12 @@ class ObrasManager {
                 .eq('id', obraId);
 
             if (error) {
-                console.error('🎯 CORRIGIDO - Erro ao atualizar banco:', error);
+                console.error('🎯 PREÇO TOTAL - Erro ao atualizar banco:', error);
             } else {
-                console.log('🎯 CORRIGIDO - Percentual atualizado no banco com sucesso');
+                console.log('🎯 PREÇO TOTAL - Percentual atualizado no banco com sucesso');
             }
         } catch (error) {
-            console.error('🎯 CORRIGIDO - Erro na atualização do banco:', error);
+            console.error('🎯 PREÇO TOTAL - Erro na atualização do banco:', error);
         }
     }
 
@@ -798,6 +792,7 @@ class ObrasManager {
         try {
             // Carregar todos os serviços das propostas selecionadas
             const servicosPromises = this.propostasSelecionadas.map(async (proposta) => {
+                // 🎯 CORREÇÃO: Buscar preco_total junto com outros dados
                 const { data, error } = await supabaseClient
                     .from('itens_proposta_hvc')
                     .select(`
@@ -837,7 +832,7 @@ class ObrasManager {
                 return;
             }
             
-            // 🎯 TABELA COM VALORES CORRIGIDOS E RESPONSIVA
+            // 🎯 TABELA COM VALORES CORRETOS DA COLUNA PRECO_TOTAL
             container.innerHTML = `
                 <table class="propostas-table" style="width: 100%; font-size: 0.9rem;">
                     <thead>
@@ -862,17 +857,13 @@ class ObrasManager {
                 // Buscar andamento existente para este item
                 const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
                 
-                // 🎯 CORREÇÃO: Calcular valor total do item corretamente
-                const valorMaoObra = parseFloat(item.valor_mao_obra) || 0;
-                const valorMaterial = parseFloat(item.valor_material) || 0;
+                // 🎯 CORREÇÃO: Usar preco_total diretamente
+                const precoTotal = parseFloat(item.preco_total) || 0;
                 const quantidade = parseFloat(item.quantidade) || 1;
-                const valorTotalItem = (valorMaoObra + valorMaterial) * quantidade;
                 
-                console.log(`🎯 VALORES CORRIGIDOS - Item ${item.id}:`, {
-                    valorMaoObra,
-                    valorMaterial,
-                    quantidade,
-                    valorTotalItem
+                console.log(`🎯 PREÇO TOTAL MODAL - Item ${item.id}:`, {
+                    precoTotal,
+                    quantidade
                 });
                 
                 const row = document.createElement('tr');
@@ -883,7 +874,7 @@ class ObrasManager {
                         <small style="color: #add8e6;">${item.servicos_hvc?.descricao}</small>
                     </td>
                     <td>${quantidade} ${item.servicos_hvc?.unidade || ''}</td>
-                    <td><strong style="color: #20c997;">${this.formatMoney(valorTotalItem)}</strong></td>
+                    <td><strong style="color: #20c997;">${this.formatMoney(precoTotal)}</strong></td>
                     <td>
                         <select class="form-select status-servico" data-index="${index}" style="width: 160px; padding: 8px; font-size: 0.85rem;">
                             <option value="PENDENTE" ${andamentoExistente?.status === 'PENDENTE' ? 'selected' : ''}>Pendente (0%)</option>
@@ -924,7 +915,7 @@ class ObrasManager {
 
     // 🎯 FUNÇÃO CORRIGIDA: salvarAndamento
     async salvarAndamento() {
-        console.log('🎯 CORRIGIDO - Salvando andamento dos serviços...');
+        console.log('🎯 PREÇO TOTAL - Salvando andamento dos serviços...');
         
         if (!this.currentObraId) {
             this.showNotification('Salve a obra primeiro antes de gerenciar o andamento', 'warning');
@@ -970,14 +961,14 @@ class ObrasManager {
             }
             
             // 🎯 CÁLCULO CORRIGIDO: Recalcular percentual usando função corrigida
-            console.log('🎯 CORRIGIDO - Recalculando percentual após salvar andamento...');
+            console.log('🎯 PREÇO TOTAL - Recalculando percentual após salvar andamento...');
             const novoPercentual = await this.calcularPercentualCorrigido(this.currentObraId);
             
             // Atualizar interface imediatamente
             const progressoEl = document.getElementById('progresso-geral');
             if (progressoEl) {
                 progressoEl.textContent = `${novoPercentual}%`;
-                console.log('🎯 CORRIGIDO - Interface atualizada com novo percentual:', `${novoPercentual}%`);
+                console.log('🎯 PREÇO TOTAL - Interface atualizada com novo percentual:', `${novoPercentual}%`);
             }
             
             // 🎯 CORREÇÃO: Atualizar valor total da obra no banco
@@ -991,14 +982,14 @@ class ObrasManager {
             this.showNotification(`Andamento salvo! Percentual: ${novoPercentual}% | Valor: ${this.formatMoney(valorTotalCorreto)}`, 'success');
             
         } catch (error) {
-            console.error('🎯 CORRIGIDO - Erro ao salvar andamento:', error);
+            console.error('🎯 PREÇO TOTAL - Erro ao salvar andamento:', error);
             this.showNotification('Erro ao salvar andamento: ' + error.message, 'error');
         }
     }
 
-    // 🎯 FUNÇÃO NOVA: Atualizar valor total da obra no banco
+    // 🎯 FUNÇÃO CORRIGIDA: Atualizar valor total da obra no banco
     async atualizarValorTotalNoBanco(obraId, valorTotal) {
-        console.log('🎯 CORRIGIDO - Atualizando valor total no banco:', obraId, valorTotal);
+        console.log('🎯 PREÇO TOTAL - Atualizando valor total no banco:', obraId, valorTotal);
         
         try {
             const { error } = await supabaseClient
@@ -1007,12 +998,12 @@ class ObrasManager {
                 .eq('id', obraId);
 
             if (error) {
-                console.error('🎯 CORRIGIDO - Erro ao atualizar valor total:', error);
+                console.error('🎯 PREÇO TOTAL - Erro ao atualizar valor total:', error);
             } else {
-                console.log('🎯 CORRIGIDO - Valor total atualizado no banco com sucesso');
+                console.log('🎯 PREÇO TOTAL - Valor total atualizado no banco com sucesso');
             }
         } catch (error) {
-            console.error('🎯 CORRIGIDO - Erro na atualização do valor total:', error);
+            console.error('🎯 PREÇO TOTAL - Erro na atualização do valor total:', error);
         }
     }
 
