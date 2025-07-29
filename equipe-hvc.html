@@ -791,13 +791,34 @@
 
     <!-- Scripts -->
     <script src="supabase.js"></script>
+    <script src="sidebar.js"></script>
     <script src="equipe-hvc.js"></script>
-    <script type="module">
-        import { injectSidebarWithAutoDetection } from './sidebar.js';
-        
-        // Inicializar sidebar
+    <script>
+        // Inicializar página quando carregar
         document.addEventListener('DOMContentLoaded', function() {
-            injectSidebarWithAutoDetection('main-content');
+            console.log('Inicializando sistema de equipes...');
+            
+            // Verificar se Supabase está disponível
+            if (typeof supabase === 'undefined') {
+                console.error('Supabase não está disponível. Certifique-se de que o arquivo supabase.js está carregado.');
+                return;
+            }
+            
+            // Verificar se sidebar está disponível
+            if (typeof injectSidebarWithAutoDetection === 'function') {
+                console.log('Carregando sidebar...');
+                injectSidebarWithAutoDetection('main-content');
+            } else {
+                console.warn('Função da sidebar não encontrada. Sidebar não será carregada.');
+            }
+            
+            // Inicializar sistema de equipes
+            if (typeof inicializarSistemaEquipes === 'function') {
+                console.log('Inicializando sistema de equipes...');
+                inicializarSistemaEquipes();
+            } else {
+                console.warn('Sistema de equipes não encontrado. Verifique se equipe-hvc.js está carregado.');
+            }
         });
     </script>
 </body>
