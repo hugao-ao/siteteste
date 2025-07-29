@@ -1,362 +1,800 @@
-// Função para injetar o HTML da Sidebar do Admin (MODIFICADA com destaque de projeto ativo e ícones apropriados)
-function createAdminSidebarHTML(projectContext = null) {
-    // Se houver contexto de projeto, aplica tema do projeto, senão usa theme-admin
-    const themeClass = projectContext ? `theme-${projectContext.toLowerCase()}` : 'theme-admin';
-    console.log(`Criando sidebar admin com tema/contexto: ${themeClass}`);
-
-    // Define os links base dos projetos com ícones apropriados e destaque do projeto ativo
-    const projectLinks = `
-        <li ${projectContext === 'Argos' ? 'class="active-project"' : ''}><a href="admin-projeto-dashboard.html?projeto=Argos" id="nav-projeto-argos"><i class="fas fa-child"></i> <span>Projeto Argos</span></a></li>
-        <li ${projectContext === 'Hvc' ? 'class="active-project"' : ''}><a href="dashboard-hvc.html" id="nav-projeto-hvc"><i class="fas fa-hard-hat"></i> <span>Projeto HVC</span></a></li>
-        <li ${projectContext === 'Planejamento' ? 'class="active-project"' : ''}><a href="admin-projeto-dashboard.html?projeto=Planejamento" id="nav-projeto-planejamento"><i class="fas fa-calculator"></i> <span>Projeto Planejamento</span></a></li>
-    `;
-
-    // Define o rótulo de gerenciamento
-    const managementLabel = projectContext ? `(${projectContext})` : '(Administrativo)';
-    const userManagementLink = projectContext ? `admin-dashboard.html?projeto=${projectContext}#gerenciar-usuarios` : 'admin-dashboard.html#gerenciar-usuarios';
-
-    // Links específicos por projeto (o que os usuários desse projeto veem)
-    let projectSpecificLinks = '';
-    
-    if (projectContext === 'Hvc') {
-        projectSpecificLinks = `
-            <li class="sub-menu"><a href="dashboard-hvc.html" id="nav-dashboard-hvc"><i class="fas fa-chart-line"></i> <span>Dashboard HVC</span></a></li>
-            <li class="sub-menu"><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
-            <li class="sub-menu"><a href="servicos-hvc.html" id="nav-servicos-hvc"><i class="fas fa-tools"></i> <span>Serviços HVC</span></a></li>
-            <li class="sub-menu"><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
-            <li class="sub-menu"><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
-            <li class="sub-menu"><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
-            <li class="sub-menu"><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
-        `;
-    } else if (projectContext === 'Argos') {
-        projectSpecificLinks = `
-            <li class="sub-menu"><a href="clientes-dashboard.html" id="nav-gerenciar-clientes-argos"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li class="sub-menu"><a href="mensagens-whats.html" id="nav-mensagens-whats-argos"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
-        `;
-    } else if (projectContext === 'Planejamento') {
-        projectSpecificLinks = `
-            <li class="sub-menu"><a href="atualizacao-variaveis.html" id="nav-atualizacao-variaveis"><i class="fas fa-sliders-h"></i> <span>Atualização de Variáveis</span></a></li>
-            <li class="sub-menu"><a href="clientes-dashboard.html" id="nav-gerenciar-clientes-planejamento"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li class="sub-menu"><a href="mensagens-whats.html" id="nav-mensagens-whats-planejamento"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
-        `;
-    }
-
-    // Links de gerenciamento - sempre mostra Gerenciar Usuários + funcionalidades específicas do projeto
-    const managementLinks = `
-        <hr class="sidebar-divider">
-        <li class="sub-menu-header"><span>Gerenciamento ${managementLabel}</span></li>
-        <li class="sub-menu"><a href="${userManagementLink}" id="nav-gerenciar-usuarios"><i class="fas fa-users-cog"></i> <span>Gerenciar Usuários</span></a></li>
-        ${projectSpecificLinks}
-    `;
-
-    return `
-    <nav id="sidebar" class="${themeClass}">
-      <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
-      <ul class="sidebar-menu">
-        <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-tachometer-alt"></i> <span>Painel Admin Geral</span></a></li>
-        <hr class="sidebar-divider">
-        <li class="sub-menu-header"><span>Projetos</span></li>
-        ${projectLinks}
-        ${managementLinks}
-        <hr class="sidebar-divider">
-        <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
-      </ul>
-    </nav>
-    `;
-}
-
-// Função para criar o HTML da Sidebar do Usuário (MODIFICADA com ícones apropriados)
-function createUserSidebarHTML(userProject) {
-    // Determina a página inicial baseada no projeto
-    const homePage = userProject === 'Planejamento' ? 'planejamento-dashboard.html' : 
-                     userProject === 'Hvc' ? 'dashboard-hvc.html' : 'user-dashboard.html';
-    // Define a classe de tema baseada no projeto (fallback para 'default' se não houver projeto)
-    const themeClass = `theme-${userProject ? userProject.toLowerCase() : 'default'}`;
-
-    // Links específicos por projeto
-    let projectSpecificLinks = '';
-    
-    if (userProject === 'Hvc') {
-        projectSpecificLinks = `
-            <li><a href="dashboard-hvc.html" id="nav-dashboard-hvc"><i class="fas fa-chart-line"></i> <span>Dashboard HVC</span></a></li>
-            <li><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
-            <li><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
-            <li><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
-            <li><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
-            <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
-        `;
-    } else if (userProject === 'Argos') {
-        projectSpecificLinks = `
-            <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li><a href="mensagens-whats.html" id="nav-mensagens-whats-usuario"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
-        `;
-    } else if (userProject === 'Planejamento') {
-        projectSpecificLinks = `
-            <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li><a href="mensagens-whats.html" id="nav-mensagens-whats-usuario"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
-        `;
-    } else {
-        // Projeto padrão ou desconhecido
-        projectSpecificLinks = `
-            <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li><a href="mensagens-whats.html" id="nav-mensagens-whats-usuario"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
-        `;
-    }
-
-    return `
-    <nav id="sidebar" class="${themeClass}">
-      <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
-      <ul class="sidebar-menu">
-        <li><a href="${homePage}" id="nav-painel-inicial"><i class="fas fa-home"></i> <span>Painel Inicial</span></a></li>
-        ${projectSpecificLinks}
-        <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
-      </ul>
-    </nav>
-    `;
-}
-
-// Função para Criar Sidebar para Admin Visualizando como Usuário (MODIFICADA)
-function createAdminViewingUserSidebarHTML(viewedUserProject) {
-    // Define a classe de tema baseada no projeto do usuário visualizado
-    const themeClass = `theme-${viewedUserProject ? viewedUserProject.toLowerCase() : 'default'}`;
-
-    // Links específicos por projeto (igual ao que o usuário vê)
-    let projectSpecificLinks = '';
-    
-    if (viewedUserProject === 'Hvc') {
-        projectSpecificLinks = `
-            <li><a href="dashboard-hvc.html" id="nav-dashboard-hvc"><i class="fas fa-chart-line"></i> <span>Dashboard HVC</span></a></li>
-            <li><a href="clientes-hvc.html" id="nav-clientes-hvc"><i class="fas fa-users"></i> <span>Clientes HVC</span></a></li>
-            <li><a href="propostas-hvc.html" id="nav-propostas-hvc"><i class="fas fa-file-contract"></i> <span>Propostas HVC</span></a></li>
-            <li><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
-            <li><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
-            <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
-        `;
-    } else if (viewedUserProject === 'Argos') {
-        projectSpecificLinks = `
-            <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li><a href="mensagens-whats.html" id="nav-mensagens-whats"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
-        `;
-    } else if (viewedUserProject === 'Planejamento') {
-        projectSpecificLinks = `
-            <li><a href="atualizacao-variaveis.html" id="nav-atualizacao-variaveis"><i class="fas fa-sliders-h"></i> <span>Atualização de Variáveis</span></a></li>
-            <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li><a href="mensagens-whats.html" id="nav-mensagens-whats"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
-        `;
-    } else {
-        projectSpecificLinks = `
-            <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-        `;
-    }
-
-    return `
-    <nav id="sidebar" class="${themeClass}">
-      <button id="sidebar-toggle"><i class="fas fa-bars"></i></button>
-      <ul class="sidebar-menu">
-        <li><a href="admin-dashboard.html" id="nav-painel-admin"><i class="fas fa-arrow-left"></i> <span>Painel Admin</span></a></li>
-        ${projectSpecificLinks}
-        <li><button id="sidebar-logout-btn"><i class="fas fa-sign-out-alt"></i> <span>Logout</span></button></li>
-      </ul>
-    </nav>
-    `;
-}
-
-// Função para injetar o CSS da Sidebar (MODIFICADA para incluir estilo do projeto ativo)
-function injectSidebarCSS() {
-    const cssLink = document.createElement('link');
-    cssLink.rel = 'stylesheet';
-    cssLink.href = 'sidebar.css'; // Referencia o arquivo CSS externo
-    document.head.appendChild(cssLink);
-
-    // Adiciona também Font Awesome se não estiver presente
-    if (!document.querySelector('link[href*="font-awesome"]')) {
-        const faLink = document.createElement('link');
-        faLink.rel = 'stylesheet';
-        faLink.href = 'https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css';
-        faLink.integrity = 'sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==';
-        faLink.crossOrigin = 'anonymous';
-        faLink.referrerPolicy = 'no-referrer';
-        document.head.appendChild(faLink);
-    }
-
-    // Adiciona CSS personalizado para destacar projeto ativo
-    const customCSS = document.createElement('style');
-    customCSS.textContent = `
-        .sidebar-menu li.active-project {
-            background: rgba(255, 255, 255, 0.1);
-            border-left: 4px solid #00ffff;
-            margin: 2px 0;
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Equipes HVC</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="sidebar.css">
+    <style>
+        /* === RESET E BASE === */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
-        
-        .sidebar-menu li.active-project a {
-            color: #00ffff !important;
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        /* === LAYOUT PRINCIPAL === */
+        .main-content {
+            margin-left: 250px;
+            padding: 20px;
+            transition: margin-left 0.3s ease;
+        }
+
+        .main-content.sidebar-collapsed {
+            margin-left: 60px;
+        }
+
+        /* === HEADER === */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .header h1 i {
+            color: #3498db;
+        }
+
+        /* === SEÇÕES === */
+        .section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .section-title {
+            color: #2c3e50;
+            font-size: 1.8rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        /* === BOTÕES === */
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, #2980b9, #1f5f8b);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(52, 152, 219, 0.4);
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: linear-gradient(135deg, #229954, #1e8449);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(39, 174, 96, 0.4);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+        }
+
+        .btn-warning:hover {
+            background: linear-gradient(135deg, #e67e22, #d35400);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(243, 156, 18, 0.4);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: linear-gradient(135deg, #c0392b, #a93226);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(231, 76, 60, 0.4);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #95a5a6, #7f8c8d);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, #7f8c8d, #6c7b7d);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(149, 165, 166, 0.4);
+        }
+
+        /* === FILTROS === */
+        .filters {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .filter-input {
+            padding: 10px 15px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            min-width: 200px;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        /* === TABELAS === */
+        .table-container {
+            overflow-x: auto;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+        }
+
+        .table th {
+            background: linear-gradient(135deg, #34495e, #2c3e50);
+            color: white;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .table td {
+            padding: 15px;
+            border-bottom: 1px solid #e0e6ed;
+            font-size: 14px;
+        }
+
+        .table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .table tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        /* === MODAIS === */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 2% auto;
+            padding: 0;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 1200px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            animation: modalSlideIn 0.3s ease;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #3498db, #2980b9);
+            color: white;
+            padding: 20px 25px;
+            border-radius: 15px 15px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .close {
+            color: white;
+            font-size: 28px;
             font-weight: bold;
-            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-        }
-        
-        .sidebar-menu li.active-project a i {
-            color: #00ffff !important;
-            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
-        }
-    `;
-    document.head.appendChild(customCSS);
-}
-
-// Função para inicializar a lógica da Sidebar (mantida)
-function initializeSidebar(sidebarElement, mainContentElement) {
-    const sidebarToggle = sidebarElement.querySelector("#sidebar-toggle");
-    const sidebarLogoutBtn = sidebarElement.querySelector("#sidebar-logout-btn");
-
-    // Função Toggle
-    function toggleSidebar() {
-        sidebarElement.classList.toggle("collapsed");
-        // Ajusta a classe no main content para margem (se existir)
-        if (mainContentElement) {
-             mainContentElement.classList.toggle("sidebar-collapsed");
-        }
-        localStorage.setItem("sidebarCollapsed", sidebarElement.classList.contains("collapsed"));
-    }
-
-    // Função Logout
-    function logout() {
-        sessionStorage.clear();
-        localStorage.removeItem("sidebarCollapsed"); // Limpa estado da sidebar no logout
-        window.location.href = "index.html";
-    }
-
-    // Event Listeners
-    if (sidebarToggle) {
-        sidebarToggle.addEventListener('click', toggleSidebar);
-    }
-    if (sidebarLogoutBtn) {
-        sidebarLogoutBtn.addEventListener('click', logout);
-    }
-
-    // Aplica estado inicial baseado no localStorage
-    const sidebarCollapsed = localStorage.getItem("sidebarCollapsed") === "true";
-    if (sidebarCollapsed) {
-        sidebarElement.classList.add("collapsed");
-        if (mainContentElement) {
-            mainContentElement.classList.add("sidebar-collapsed");
-        }
-    }
-
-    // Adiciona lógica para destacar item ativo baseado na URL
-    const currentPage = window.location.pathname.split('/').pop();
-    const menuItems = sidebarElement.querySelectorAll('.sidebar-menu a');
-
-    menuItems.forEach(item => {
-        const itemHref = item.getAttribute('href').split('#')[0]; // Ignora hash para comparação de página
-        if (itemHref === currentPage) {
-            item.classList.add('active');
-        } else {
-            item.classList.remove('active');
-        }
-    });
-}
-
-// Função para injetar e inicializar a Sidebar (MODIFICADA para detectar projeto ativo automaticamente)
-async function injectSidebar(mainContentElementId, forceProject = null) { // Tornou-se async e aceita projeto forçado
-    const loggedInUserLevel = sessionStorage.getItem("nivel");
-    const loggedInUserProject = sessionStorage.getItem("projeto");
-    const viewingUserId = sessionStorage.getItem("viewing_user_id");
-
-    // *** DETECTAR PROJETO ATIVO: forçado, da URL ou da página atual ***
-    let projectFromUrl = forceProject; // Usar projeto forçado se fornecido
-    
-    if (!projectFromUrl) {
-        const urlParams = new URLSearchParams(window.location.search);
-        projectFromUrl = urlParams.get('projeto');
-    }
-    
-    // Se não há projeto na URL, detectar pela página atual
-    if (!projectFromUrl) {
-        const currentPage = window.location.pathname.split('/').pop();
-        if (currentPage.includes('hvc') || currentPage === 'dashboard-hvc.html') {
-            projectFromUrl = 'Hvc';
-        } else if (currentPage.includes('argos')) {
-            projectFromUrl = 'Argos';
-        } else if (currentPage.includes('planejamento')) {
-            projectFromUrl = 'Planejamento';
-        } else if (currentPage === 'clientes-dashboard.html' || currentPage === 'cliente-detalhes.html') {
-            // Para páginas genéricas, assumir Planejamento como padrão se não especificado
-            projectFromUrl = 'Planejamento';
-        }
-    }
-
-    if (!loggedInUserLevel) return; // Sai se não houver nível definido (não logado)
-
-    const mainContentElement = document.getElementById(mainContentElementId);
-    if (!mainContentElement) {
-        console.error(`Elemento com ID '${mainContentElementId}' não encontrado para injetar a sidebar.`);
-        return;
-    }
-
-    // Injeta o CSS comum da Sidebar
-    injectSidebarCSS();
-
-    let sidebarHTML;
-    let isViewingAsUser = loggedInUserLevel === "admin" && viewingUserId;
-
-    if (isViewingAsUser) {
-        // CASO 1: Admin está visualizando como usuário
-        let viewedUserProject = null;
-        try {
-            // Busca o projeto do usuário que está sendo visualizado
-            const { data: viewedUserData, error: viewedUserError } = await supabase
-                .from('credenciais')
-                .select('projeto')
-                .eq('id', viewingUserId)
-                .single();
-            if (viewedUserError) throw viewedUserError;
-            viewedUserProject = viewedUserData?.projeto;
-        } catch (error) {
-            console.error("Erro ao buscar projeto do usuário visualizado para a sidebar:", error);
-            // Continua com projeto nulo/default em caso de erro
-        }
-        sidebarHTML = createAdminViewingUserSidebarHTML(viewedUserProject);
-
-    } else if (loggedInUserLevel === "admin") {
-        // CASO 2: Admin acessando suas próprias páginas
-        sidebarHTML = createAdminSidebarHTML(projectFromUrl);
-    } else if (loggedInUserLevel === "usuario") {
-        // CASO 3: Usuário normal acessando suas páginas
-        sidebarHTML = createUserSidebarHTML(loggedInUserProject);
-    } else {
-        return; // Não injeta para outros níveis
-    }
-
-    // Insere a sidebar no início do body
-    document.body.insertAdjacentHTML('afterbegin', sidebarHTML);
-    const sidebarElement = document.getElementById('sidebar');
-
-    if (sidebarElement) {
-        initializeSidebar(sidebarElement, mainContentElement);
-        // *** MODIFICADO: Aplica classe de tema ao BODY e ao main content ***
-        const themeClass = sidebarElement.className; // Pega a classe de tema da sidebar
-        
-        // Aplica ao Body
-        document.body.classList.remove("theme-admin", "theme-argos", "theme-hvc", "theme-planejamento", "theme-default");
-        if (themeClass.startsWith("theme-")) {
-            document.body.classList.add(themeClass);
-            console.log(`Aplicando tema ${themeClass} ao body.`);
+            cursor: pointer;
+            transition: all 0.3s ease;
         }
 
-        // Aplica ao Main Content (se existir)
-        if (mainContentElement && themeClass.startsWith("theme-")) {
-            mainContentElement.classList.remove("theme-admin", "theme-argos", "theme-hvc", "theme-planejamento", "theme-default");
-            mainContentElement.classList.add(themeClass);
-            console.log(`Aplicando tema ${themeClass} ao main content.`);
+        .close:hover {
+            color: #f1c40f;
+            transform: scale(1.1);
         }
-        // *** NOVO: Dispara evento para indicar que a sidebar está pronta ***
-        console.log("Dispatching sidebarReady event");
-        document.dispatchEvent(new CustomEvent('sidebarReady'));
 
-    } else {
-         console.error("Sidebar element not found after injection.");
-    }
-}
+        .modal-body {
+            padding: 25px;
+        }
 
-// Exporta a função principal a ser usada em outras páginas
-export { injectSidebar };
+        /* === FORMULÁRIOS === */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .form-control {
+            padding: 12px 15px;
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+        }
+
+        .form-control.error {
+            border-color: #e74c3c;
+            box-shadow: 0 0 0 3px rgba(231, 76, 60, 0.1);
+        }
+
+        /* === SELEÇÃO MÚLTIPLA === */
+        .multi-select-container {
+            border: 2px solid #e0e6ed;
+            border-radius: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            background: white;
+        }
+
+        .multi-select-item {
+            padding: 10px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .multi-select-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .multi-select-item:last-child {
+            border-bottom: none;
+        }
+
+        .multi-select-item input[type="checkbox"] {
+            margin: 0;
+        }
+
+        /* === BADGES === */
+        .badge {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge-success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .badge-warning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-danger {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        /* === CONTADOR === */
+        .counter {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        /* === RESPONSIVO === */
+        @media (max-width: 768px) {
+            .main-content {
+                margin-left: 0;
+                padding: 15px;
+            }
+
+            .main-content.sidebar-collapsed {
+                margin-left: 0;
+            }
+
+            .header h1 {
+                font-size: 2rem;
+            }
+
+            .section-header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .filters {
+                flex-direction: column;
+            }
+
+            .filter-input {
+                min-width: 100%;
+            }
+
+            .form-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+            }
+
+            .table-container {
+                font-size: 12px;
+            }
+
+            .table th,
+            .table td {
+                padding: 10px 8px;
+            }
+        }
+
+        /* === LOADING === */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        /* === EMPTY STATE === */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 3rem;
+            color: #bdc3c7;
+            margin-bottom: 15px;
+        }
+
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #7f8c8d;
+        }
+
+        /* === NOTIFICAÇÕES === */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 600;
+            z-index: 1001;
+            transform: translateX(400px);
+            transition: transform 0.3s ease;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            background: linear-gradient(135deg, #27ae60, #229954);
+        }
+
+        .notification.error {
+            background: linear-gradient(135deg, #e74c3c, #c0392b);
+        }
+
+        .notification.warning {
+            background: linear-gradient(135deg, #f39c12, #e67e22);
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content" id="main-content">
+        <!-- Header -->
+        <div class="header">
+            <h1><i class="fas fa-users-cog"></i> Gestão de Equipes HVC</h1>
+        </div>
+
+        <!-- Seção de Equipes -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-users"></i> Equipes
+                </h2>
+                <div class="section-controls">
+                    <button class="btn btn-primary" onclick="abrirModalEquipe()">
+                        <i class="fas fa-plus"></i> Nova Equipe
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros de Equipes -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Buscar por Número:</label>
+                    <input type="text" class="filter-input" id="filtroNumeroEquipe" placeholder="Digite o número da equipe...">
+                </div>
+                <div class="filter-group">
+                    <label>Status:</label>
+                    <select class="filter-input" id="filtroStatusEquipe">
+                        <option value="">Todos</option>
+                        <option value="ativa">Ativa</option>
+                        <option value="inativa">Inativa</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tabela de Equipes -->
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Número</th>
+                            <th>Integrantes</th>
+                            <th>Status</th>
+                            <th>Observações</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaEquipes">
+                        <tr>
+                            <td colspan="5" class="empty-state">
+                                <i class="fas fa-users"></i>
+                                <h3>Nenhuma equipe cadastrada</h3>
+                                <p>Clique em "Nova Equipe" para começar</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Seção de Integrantes -->
+        <div class="section">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <i class="fas fa-user-friends"></i> Integrantes
+                </h2>
+                <div class="section-controls">
+                    <button class="btn btn-primary" onclick="abrirModalIntegrante()">
+                        <i class="fas fa-user-plus"></i> Novo Integrante
+                    </button>
+                    <button class="btn btn-secondary" onclick="abrirModalFuncoes()">
+                        <i class="fas fa-cogs"></i> Gerenciar Funções
+                    </button>
+                </div>
+            </div>
+
+            <!-- Filtros de Integrantes -->
+            <div class="filters">
+                <div class="filter-group">
+                    <label>Buscar por Nome:</label>
+                    <input type="text" class="filter-input" id="filtroNomeIntegrante" placeholder="Digite o nome do integrante...">
+                </div>
+                <div class="filter-group">
+                    <label>Função:</label>
+                    <select class="filter-input" id="filtroFuncaoIntegrante">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label>Status:</label>
+                    <select class="filter-input" id="filtroStatusIntegrante">
+                        <option value="">Todos</option>
+                        <option value="ativo">Ativo</option>
+                        <option value="inativo">Inativo</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Tabela de Integrantes -->
+            <div class="table-container">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>CPF</th>
+                            <th>WhatsApp</th>
+                            <th>Função</th>
+                            <th>Status</th>
+                            <th>Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaIntegrantes">
+                        <tr>
+                            <td colspan="6" class="empty-state">
+                                <i class="fas fa-user-friends"></i>
+                                <h3>Nenhum integrante cadastrado</h3>
+                                <p>Clique em "Novo Integrante" para começar</p>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Equipe -->
+    <div id="modalEquipe" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="tituloModalEquipe">Nova Equipe</h2>
+                <span class="close" onclick="fecharModalEquipe()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="formEquipe">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="numeroEquipe">Número da Equipe *</label>
+                            <input type="text" id="numeroEquipe" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="statusEquipe">Status *</label>
+                            <select id="statusEquipe" class="form-control" required>
+                                <option value="ativa">Ativa</option>
+                                <option value="inativa">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Integrantes da Equipe</label>
+                        <div id="integrantesDisponiveis" class="multi-select-container">
+                            <!-- Integrantes serão carregados aqui -->
+                        </div>
+                        <small>Selecione os integrantes que farão parte desta equipe</small>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="observacoesEquipe">Observações</label>
+                        <textarea id="observacoesEquipe" class="form-control" rows="3" placeholder="Observações sobre a equipe..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="fecharModalEquipe()">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Salvar Equipe</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Integrante -->
+    <div id="modalIntegrante" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="tituloModalIntegrante">Novo Integrante</h2>
+                <span class="close" onclick="fecharModalIntegrante()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="formIntegrante">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="nomeIntegrante">Nome Completo *</label>
+                            <input type="text" id="nomeIntegrante" class="form-control" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="cpfIntegrante">CPF *</label>
+                            <input type="text" id="cpfIntegrante" class="form-control" required placeholder="000.000.000-00">
+                        </div>
+                        <div class="form-group">
+                            <label for="whatsappIntegrante">WhatsApp *</label>
+                            <input type="text" id="whatsappIntegrante" class="form-control" required placeholder="+5511999999999">
+                        </div>
+                        <div class="form-group">
+                            <label for="funcaoIntegrante">Função *</label>
+                            <select id="funcaoIntegrante" class="form-control" required>
+                                <option value="">Selecione uma função</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="statusIntegrante">Status *</label>
+                            <select id="statusIntegrante" class="form-control" required>
+                                <option value="ativo">Ativo</option>
+                                <option value="inativo">Inativo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="observacoesIntegrante">Observações</label>
+                        <textarea id="observacoesIntegrante" class="form-control" rows="3" placeholder="Observações sobre o integrante..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
+                        <button type="button" class="btn btn-secondary" onclick="fecharModalIntegrante()">Cancelar</button>
+                        <button type="submit" class="btn btn-success">Salvar Integrante</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Funções -->
+    <div id="modalFuncoes" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Gerenciar Funções</h2>
+                <span class="close" onclick="fecharModalFuncoes()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" onclick="abrirFormNovaFuncao()">
+                        <i class="fas fa-plus"></i> Nova Função
+                    </button>
+                </div>
+
+                <!-- Formulário de Nova Função -->
+                <div id="formNovaFuncao" style="display: none; margin-bottom: 20px; padding: 15px; background: #f8f9fa; border-radius: 8px;">
+                    <div class="form-group">
+                        <label for="nomeFuncao">Nome da Função *</label>
+                        <input type="text" id="nomeFuncao" class="form-control" required>
+                    </div>
+                    <div style="display: flex; gap: 10px; margin-top: 10px;">
+                        <button type="button" class="btn btn-success" onclick="salvarFuncao()">Salvar</button>
+                        <button type="button" class="btn btn-secondary" onclick="cancelarNovaFuncao()">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- Lista de Funções -->
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Função</th>
+                                <th>Integrantes</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabelaFuncoes">
+                            <!-- Funções serão carregadas aqui -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="sidebar.js"></script>
+    <script src="supabase.js"></script>
+    <script src="equipe-hvc.js"></script>
+    <script>
+        // Inicializar sidebar
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof injectSidebarWithAutoDetection === 'function') {
+                injectSidebarWithAutoDetection('main-content');
+            }
+        });
+    </script>
+</body>
+</html>
 
