@@ -902,6 +902,297 @@
       injectSidebar('main-content-equipe-hvc', 'Hvc');
     });
   </script>
+<!-- SOLUÇÃO DEFINITIVA - COLE ESTE SCRIPT NO FINAL DO SEU equipe-hvc.html, ANTES DA TAG </body> -->
+
+<script>
+console.log('🚀 Carregando sistema completo de integrantes...');
+
+// ========================================
+// FUNÇÃO PARA SALVAR INTEGRANTE
+// ========================================
+window.saveIntegrante = async function(event) {
+    event.preventDefault();
+    console.log('💾 Salvando novo integrante...');
+    
+    // Pegar dados do formulário
+    const nome = document.getElementById('nome-integrante')?.value?.trim();
+    const cpf = document.getElementById('cpf-integrante')?.value?.trim();
+    const whatsapp = document.getElementById('whatsapp-integrante')?.value?.trim();
+    const funcaoId = document.getElementById('funcao-integrante')?.value;
+    const observacoes = document.getElementById('observacoes-integrante')?.value?.trim();
+    
+    // Validações básicas
+    if (!nome) {
+        alert('Por favor, digite o nome do integrante');
+        return;
+    }
+    
+    if (!cpf) {
+        alert('Por favor, digite o CPF do integrante');
+        return;
+    }
+    
+    if (!whatsapp) {
+        alert('Por favor, digite o WhatsApp do integrante');
+        return;
+    }
+    
+    try {
+        const supabaseClient = window.supabase || window.supabaseClient;
+        if (!supabaseClient) {
+            throw new Error('Supabase não está disponível');
+        }
+        
+        // Preparar dados para inserção
+        const dadosIntegrante = {
+            nome: nome,
+            cpf: cpf,
+            whatsapp: whatsapp,
+            observacoes: observacoes || null
+        };
+        
+        // Adicionar função se selecionada
+        if (funcaoId && funcaoId !== '') {
+            dadosIntegrante.funcao_id = funcaoId;
+        }
+        
+        console.log('📤 Enviando para Supabase:', dadosIntegrante);
+        
+        const { data, error } = await supabaseClient
+            .from('integrantes_hvc')
+            .insert([dadosIntegrante])
+            .select();
+            
+        if (error) {
+            console.error('❌ Erro ao salvar:', error);
+            
+            // Tratar erro de CPF duplicado
+            if (error.message.includes('duplicate key') || error.message.includes('unique constraint')) {
+                alert('❌ ERRO: Este CPF já está cadastrado!\n\nVerifique se o integrante já existe no sistema.');
+                return;
+            }
+            
+            throw error;
+        }
+        
+        console.log('✅ Integrante salvo com sucesso:', data);
+        
+        // Limpar formulário
+        document.getElementById('form-integrante').reset();
+        
+        // Fechar modal
+        if (window.closeIntegranteModal) {
+            window.closeIntegranteModal();
+        }
+        
+        alert('✅ Integrante salvo com sucesso!');
+        
+        // Recarregar lista de integrantes
+        setTimeout(() => {
+            carregarIntegrantes();
+        }, 500);
+        
+    } catch (error) {
+        console.error('💥 Erro ao salvar integrante:', error);
+        alert('❌ Erro ao salvar integrante: ' + error.message);
+    }
+};
+
+// ========================================
+// FUNÇÃO PARA CARREGAR INTEGRANTES
+// ========================================
+window.carregarIntegrantes = async function() {
+    console.log('🔄 Carregando integrantes...');
+    
+    const tbody = document.querySelector('#tabela-integrantes tbody');
+    if (!tbody) {
+        console.error('❌ Tabela de integrantes não encontrada');
+        return;
+    }
+    
+    // Mostrar loading
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" class="empty-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <h3>Carregando integrantes...</h3>
+            </td>
+        </tr>
+    `;
+    
+    try {
+        const supabaseClient = window.supabase || window.supabaseClient;
+        if (!supabaseClient) {
+            throw new Error('Supabase não está disponível');
+        }
+        
+        const { data, error } = await supabaseClient
+            .from('integrantes_hvc')
+            .select(`
+                *,
+                funcoes_hvc (
+                    id,
+                    nome
+                )
+            `)
+            .order('nome', { ascending: true });
+            
+        if (error) {
+            console.error('❌ Erro ao carregar integrantes:', error);
+            throw error;
+        }
+        
+        console.log('✅ Integrantes carregados:', data);
+        
+        // Renderizar na tabela
+        renderizarIntegrantes(data);
+        
+        return data || [];
+        
+    } catch (error) {
+        console.error('💥 Erro ao carregar integrantes:', error);
+        
+        // Mostrar erro na tabela
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state" style="color: #ff6b6b;">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <h3>Erro ao carregar integrantes</h3>
+                    <p>${error.message}</p>
+                    <button class="btn-primary btn-sm" onclick="carregarIntegrantes()">
+                        <i class="fas fa-refresh"></i> Tentar novamente
+                    </button>
+                </td>
+            </tr>
+        `;
+        
+        return [];
+    }
+};
+
+// ========================================
+// FUNÇÃO PARA RENDERIZAR INTEGRANTES
+// ========================================
+window.renderizarIntegrantes = function(integrantes) {
+    console.log('🎨 Renderizando integrantes na tabela...', integrantes);
+    
+    const tbody = document.querySelector('#tabela-integrantes tbody');
+    if (!tbody) {
+        console.error('❌ Tabela de integrantes não encontrada');
+        return;
+    }
+    
+    // Limpar tabela
+    tbody.innerHTML = '';
+    
+    if (!integrantes || integrantes.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-state">
+                    <i class="fas fa-users"></i>
+                    <h3>Nenhum integrante cadastrado</h3>
+                    <p>Clique em "Novo Integrante" para adicionar</p>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    // Renderizar cada integrante
+    integrantes.forEach(integrante => {
+        const row = document.createElement('tr');
+        
+        const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
+        const whatsapp = integrante.whatsapp || 'Não informado';
+        
+        row.innerHTML = `
+            <td>${integrante.nome || 'Sem nome'}</td>
+            <td>${integrante.cpf || 'Não informado'}</td>
+            <td>${whatsapp}</td>
+            <td>${funcaoNome}</td>
+            <td>Ativo</td>
+            <td>
+                <button class="btn-primary btn-sm" onclick="editarIntegrante('${integrante.id}')">
+                    <i class="fas fa-edit"></i>
+                </button>
+                <button class="btn-danger btn-sm" onclick="excluirIntegrante('${integrante.id}')">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+    
+    console.log(`✅ ${integrantes.length} integrantes renderizados`);
+};
+
+// ========================================
+// FUNÇÃO PARA EXCLUIR INTEGRANTE
+// ========================================
+window.excluirIntegrante = async function(id) {
+    if (!confirm('Tem certeza que deseja excluir este integrante?')) {
+        return;
+    }
+    
+    try {
+        const supabaseClient = window.supabase || window.supabaseClient;
+        if (!supabaseClient) {
+            throw new Error('Supabase não está disponível');
+        }
+        
+        const { error } = await supabaseClient
+            .from('integrantes_hvc')
+            .delete()
+            .eq('id', id);
+            
+        if (error) {
+            throw error;
+        }
+        
+        console.log('✅ Integrante excluído com sucesso');
+        alert('Integrante excluído com sucesso!');
+        
+        // Recarregar lista
+        carregarIntegrantes();
+        
+    } catch (error) {
+        console.error('💥 Erro ao excluir integrante:', error);
+        alert('Erro ao excluir integrante: ' + error.message);
+    }
+};
+
+// ========================================
+// FUNÇÃO PARA EDITAR INTEGRANTE (PLACEHOLDER)
+// ========================================
+window.editarIntegrante = function(id) {
+    console.log('✏️ Editar integrante:', id);
+    alert('Funcionalidade de edição será implementada em breve!');
+};
+
+// ========================================
+// CARREGAR INTEGRANTES AUTOMATICAMENTE
+// ========================================
+// Carregar integrantes quando a página estiver pronta
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📋 DOM carregado, iniciando carregamento de integrantes...');
+    
+    // Aguardar um pouco para garantir que o Supabase está carregado
+    setTimeout(() => {
+        carregarIntegrantes();
+    }, 2000);
+});
+
+// Também carregar quando o Supabase estiver disponível
+if (window.supabase || window.supabaseClient) {
+    setTimeout(() => {
+        carregarIntegrantes();
+    }, 1000);
+}
+
+console.log('✅ Sistema completo de integrantes carregado!');
+</script>
+
+
 </body>
 </html>
 
