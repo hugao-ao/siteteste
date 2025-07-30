@@ -29,6 +29,15 @@ function hideModal(modalId) {
 window.openFuncoesModal = function() {
     console.log('🎯 openFuncoesModal chamada');
     showModal('modal-funcoes');
+    
+    // Carregar funções automaticamente quando abrir o modal
+    setTimeout(() => {
+        if (window.carregarFuncoesComFeedback) {
+            window.carregarFuncoesComFeedback();
+        } else {
+            console.warn('⚠️ Função carregarFuncoesComFeedback não encontrada');
+        }
+    }, 100);
 };
 
 window.closeFuncoesModal = function() {
@@ -48,19 +57,35 @@ window.closeIntegranteModal = function() {
 
 window.openNovaFuncaoForm = function() {
     console.log('🎯 openNovaFuncaoForm chamada');
-    showModal('modal-funcao');
     
-    // Limpar formulário se existir
-    const form = document.getElementById('form-funcao');
+    // Mostrar o formulário dentro do modal de funções
+    const form = document.getElementById('nova-funcao-form');
     if (form) {
-        form.reset();
-        console.log('📝 Formulário limpo');
+        form.style.display = 'block';
+        console.log('✅ Formulário Nova Função exibido');
+        
+        // Limpar formulário
+        const inputNome = document.getElementById('nome-funcao');
+        if (inputNome) {
+            inputNome.value = '';
+            inputNome.focus();
+        }
+    } else {
+        console.error('❌ Formulário nova-funcao-form não encontrado');
     }
 };
 
 window.cancelNovaFuncao = function() {
     console.log('🎯 cancelNovaFuncao chamada');
-    hideModal('modal-funcao');
+    
+    // Esconder o formulário dentro do modal de funções
+    const form = document.getElementById('nova-funcao-form');
+    if (form) {
+        form.style.display = 'none';
+        console.log('✅ Formulário Nova Função escondido');
+    } else {
+        console.error('❌ Formulário nova-funcao-form não encontrado');
+    }
 };
 
 // Função para abrir modal de integrante
