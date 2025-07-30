@@ -6,9 +6,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Equipe HVC - Gerenciamento</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="sidebar.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
-    /* ===== ESTILOS PRINCIPAIS ===== */
+    /* ===== ESTILOS ESPECÍFICOS PARA EQUIPE HVC ===== */
     body {
       display: flex;
       margin: 0;
@@ -18,7 +19,7 @@
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     }
 
-    #main-content-equipe-hvc {
+    #main-content {
       flex-grow: 1;
       padding: 2rem;
       margin-left: 250px;
@@ -27,7 +28,7 @@
       color: #e0e0e0;
     }
 
-    #main-content-equipe-hvc.sidebar-collapsed {
+    #main-content.sidebar-collapsed {
       margin-left: 60px;
     }
 
@@ -606,12 +607,12 @@
 
     /* ===== RESPONSIVIDADE ===== */
     @media (max-width: 768px) {
-      #main-content-equipe-hvc {
+      #main-content {
         margin-left: 0;
         padding: 1rem;
       }
 
-      #main-content-equipe-hvc.sidebar-collapsed {
+      #main-content.sidebar-collapsed {
         margin-left: 0;
       }
 
@@ -683,9 +684,12 @@
     }
   </style>
 </head>
-<body>
+<body class="theme-hvc">
+  <!-- Sidebar será injetada aqui -->
+  <div id="sidebar-container"></div>
+
   <!-- Main Content -->
-  <main id="main-content-equipe-hvc">
+  <main id="main-content">
     <!-- Header -->
     <div class="page-header">
       <h1 class="page-title"><i class="fas fa-users-cog"></i> Gestão de Equipes HVC</h1>
@@ -1043,6 +1047,7 @@
 
   <!-- Scripts -->
   <script src="supabase.js"></script>
+  <script src="sidebar.js"></script>
   <script>
     // ===== VARIÁVEIS GLOBAIS =====
     let integrantesData = [];
@@ -1051,6 +1056,41 @@
     let integrantesSelecionados = [];
     let editandoEquipe = null;
     let editandoIntegrante = null;
+
+    // ===== INICIALIZAÇÃO =====
+    document.addEventListener('DOMContentLoaded', function() {
+      console.log('🚀 Inicializando página Equipe HVC...');
+      
+      // Inicializar sidebar
+      if (typeof createAdminSidebarHTML === 'function') {
+        const sidebarContainer = document.getElementById('sidebar-container');
+        sidebarContainer.innerHTML = createAdminSidebarHTML('Hvc');
+        
+        // Aplicar tema HVC
+        document.body.classList.add('theme-hvc');
+        
+        console.log('✅ Sidebar HVC carregada');
+      } else {
+        console.warn('⚠️ Função createAdminSidebarHTML não encontrada');
+      }
+
+      // Verificar conexão com Supabase
+      if (typeof supabase === 'undefined') {
+        console.error('❌ Supabase não carregado');
+        showNotification('Erro: Conexão com banco de dados não disponível', 'error');
+        return;
+      }
+
+      // Carregar dados iniciais
+      carregarFuncoes();
+      carregarIntegrantes();
+      carregarEquipes();
+
+      // Configurar eventos
+      configurarEventos();
+      
+      console.log('✅ Página Equipe HVC inicializada com sucesso!');
+    });
 
     // ===== FUNÇÕES AUXILIARES =====
     function showLoading(message = 'Carregando...') {
@@ -1246,18 +1286,23 @@
     // ===== FUNÇÕES DE CARREGAMENTO =====
     async function carregarFuncoes() {
       try {
+        console.log('📋 Carregando funções...');
+        
         const { data, error } = await supabase
           .from('funcoes_hvc')
           .select('*')
           .order('nome');
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Erro Supabase ao carregar funções:', error);
+          throw error;
+        }
 
         funcoesData = data || [];
         atualizarSelectFuncoes();
         atualizarTabelaFuncoes();
         
-        console.log('✅ Funções carregadas:', funcoesData.length);
+        console.log(`✅ ${funcoesData.length} funções carregadas`);
         return funcoesData;
       } catch (error) {
         console.error('❌ Erro ao carregar funções:', error);
@@ -1268,6 +1313,8 @@
 
     async function carregarIntegrantes() {
       try {
+        console.log('👥 Carregando integrantes...');
+        
         const { data, error } = await supabase
           .from('integrantes_hvc')
           .select(`
@@ -1279,12 +1326,15 @@
           `)
           .order('nome');
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Erro Supabase ao carregar integrantes:', error);
+          throw error;
+        }
 
         integrantesData = data || [];
         atualizarTabelaIntegrantes();
         
-        console.log('✅ Integrantes carregados:', integrantesData.length);
+        console.log(`✅ ${integrantesData.length} integrantes carregados`);
         return integrantesData;
       } catch (error) {
         console.error('❌ Erro ao carregar integrantes:', error);
@@ -1295,6 +1345,8 @@
 
     async function carregarEquipes() {
       try {
+        console.log('🏗️ Carregando equipes...');
+        
         const { data, error } = await supabase
           .from('equipes_hvc')
           .select(`
@@ -1312,12 +1364,15 @@
           `)
           .order('numero');
 
-        if (error) throw error;
+        if (error) {
+          console.error('❌ Erro Supabase ao carregar equipes:', error);
+          throw error;
+        }
 
         equipesData = data || [];
         atualizarTabelaEquipes();
         
-        console.log('✅ Equipes carregadas:', equipesData.length);
+        console.log(`✅ ${equipesData.length} equipes carregadas`);
         return equipesData;
       } catch (error) {
         console.error('❌ Erro ao carregar equipes:', error);
@@ -2240,9 +2295,6 @@
         if (linha.querySelector('.empty-state')) return;
         
         const nome = linha.cells[0].textContent.toLowerCase();
-        const funcaoCell = linha.cells[3];
-        
-        // Encontrar o integrante correspondente para verificar a função
         const nomeCompleto = linha.cells[0].textContent.trim();
         const integrante = integrantesData.find(i => i.nome === nomeCompleto);
         
@@ -2253,9 +2305,9 @@
       });
     }
 
-    // ===== EVENTOS DE FORMATAÇÃO =====
-    document.addEventListener('DOMContentLoaded', function() {
-      // Formatação automática de CPF
+    // ===== CONFIGURAÇÃO DE EVENTOS =====
+    function configurarEventos() {
+      // Formatação automática de CPF e WhatsApp
       document.addEventListener('input', function(e) {
         if (e.target.id === 'integrante-cpf') {
           e.target.value = formatCPF(e.target.value);
@@ -2281,12 +2333,7 @@
           e.target.classList.remove('show');
         }
       });
-
-      // Carregar dados iniciais
-      carregarFuncoes();
-      carregarIntegrantes();
-      carregarEquipes();
-    });
+    }
 
     console.log('✅ Sistema de Equipes HVC carregado com sucesso!');
   </script>
