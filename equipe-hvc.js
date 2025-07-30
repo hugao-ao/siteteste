@@ -1103,6 +1103,31 @@ async function carregarDadosIniciais() {
     }
 }
 
+// ========================================
+// FUNÇÕES DE COMPATIBILIDADE PARA O HTML
+// ========================================
+
+// Funções de compatibilidade para os modais (HTML usa nomes em inglês)
+function closeEquipeModal() {
+    fecharModalEquipe();
+}
+
+function closeIntegranteModal() {
+    fecharModalIntegrante();
+}
+
+function closeFuncoesModal() {
+    fecharModalFuncoes();
+}
+
+function openNovaFuncaoForm() {
+    abrirModalFuncao();
+}
+
+function cancelNovaFuncao() {
+    fecharModalFuncao();
+}
+
 // Inicializar sistema quando DOM estiver pronto
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeEquipeSystem);
