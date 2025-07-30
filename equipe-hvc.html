@@ -1200,402 +1200,19 @@
   </script>
 
   <!-- ========================================= -->
-  <!-- SISTEMA DE CONTAGEM DE FUNÇÕES -->
+  <!-- SISTEMA COMPLETO DE FUNÇÕES E MODAIS -->
   <!-- ========================================= -->
   <script>
-  console.log('🔧 Carregando correção para contagem de integrantes por função...');
+  console.log('🚀 SISTEMA COMPLETO - Carregando todas as funcionalidades...');
 
   // ========================================
-  // FUNÇÃO MELHORADA PARA CARREGAR FUNÇÕES COM CONTAGEM
+  // VARIÁVEIS GLOBAIS
   // ========================================
-  window.carregarFuncoesComContagem = async function() {
-      console.log('🔄 Carregando funções com contagem de integrantes...');
-      
-      const tbody = document.querySelector('#tabela-funcoes tbody');
-      if (!tbody) {
-          console.error('❌ Tabela de funções não encontrada');
-          return;
-      }
-      
-      // Mostrar loading
-      tbody.innerHTML = `
-          <tr>
-              <td colspan="3" class="empty-state">
-                  <i class="fas fa-spinner fa-spin"></i>
-                  <h3>Carregando funções...</h3>
-              </td>
-          </tr>
-      `;
-      
-      try {
-          const supabaseClient = window.supabase || window.supabaseClient;
-          if (!supabaseClient) {
-              throw new Error('Supabase não está disponível');
-          }
-          
-          // Primeiro, carregar todas as funções
-          const { data: funcoes, error: funcoesError } = await supabaseClient
-              .from('funcoes_hvc')
-              .select('*')
-              .order('nome', { ascending: true });
-              
-          if (funcoesError) {
-              console.error('❌ Erro ao carregar funções:', funcoesError);
-              throw funcoesError;
-          }
-          
-          console.log('✅ Funções carregadas:', funcoes);
-          
-          // Para cada função, contar quantos integrantes tem
-          const funcoesComContagem = [];
-          
-          for (const funcao of funcoes) {
-              // Contar integrantes desta função
-              const { count, error: countError } = await supabaseClient
-                  .from('integrantes_hvc')
-                  .select('*', { count: 'exact', head: true })
-                  .eq('funcao_id', funcao.id);
-                  
-              if (countError) {
-                  console.warn('⚠️ Erro ao contar integrantes da função', funcao.nome, ':', countError);
-                  funcao.total_integrantes = 0;
-              } else {
-                  funcao.total_integrantes = count || 0;
-              }
-              
-              funcoesComContagem.push(funcao);
-              console.log(`📊 Função ${funcao.nome}: ${funcao.total_integrantes} integrantes`);
-          }
-          
-          // Renderizar na tabela
-          renderizarFuncoesComContagem(funcoesComContagem);
-          
-          return funcoesComContagem;
-          
-      } catch (error) {
-          console.error('💥 Erro ao carregar funções:', error);
-          
-          // Mostrar erro na tabela
-          tbody.innerHTML = `
-              <tr>
-                  <td colspan="3" class="empty-state" style="color: #ff6b6b;">
-                      <i class="fas fa-exclamation-triangle"></i>
-                      <h3>Erro ao carregar funções</h3>
-                      <p>${error.message}</p>
-                      <button class="btn-primary btn-sm" onclick="carregarFuncoesComContagem()">
-                          <i class="fas fa-refresh"></i> Tentar novamente
-                      </button>
-                  </td>
-              </tr>
-          `;
-          
-          return [];
-      }
-  };
+  window.integrantesSelecionados = new Set();
 
   // ========================================
-  // FUNÇÃO PARA RENDERIZAR FUNÇÕES COM CONTAGEM
+  // FUNÇÕES BÁSICAS DOS MODAIS
   // ========================================
-  window.renderizarFuncoesComContagem = function(funcoes) {
-      console.log('🎨 Renderizando funções com contagem na tabela...', funcoes);
-      
-      const tbody = document.querySelector('#tabela-funcoes tbody');
-      if (!tbody) {
-          console.error('❌ Tabela de funções não encontrada');
-          return;
-      }
-      
-      // Limpar tabela
-      tbody.innerHTML = '';
-      
-      if (!funcoes || funcoes.length === 0) {
-          tbody.innerHTML = `
-              <tr>
-                  <td colspan="3" class="empty-state">
-                      <i class="fas fa-info-circle"></i>
-                      <h3>Nenhuma função cadastrada</h3>
-                      <p>Clique em "Nova Função" para adicionar</p>
-                  </td>
-              </tr>
-          `;
-          return;
-      }
-      
-      // Renderizar cada função
-      funcoes.forEach(funcao => {
-          const row = document.createElement('tr');
-          const totalIntegrantes = funcao.total_integrantes || 0;
-          
-          row.innerHTML = `
-              <td>${funcao.nome || 'Sem nome'}</td>
-              <td><strong>${totalIntegrantes}</strong></td>
-              <td>
-                  <button class="btn-danger btn-sm" onclick="excluirFuncao('${funcao.id}')">
-                      <i class="fas fa-trash"></i>
-                  </button>
-              </td>
-          `;
-          tbody.appendChild(row);
-      });
-      
-      console.log(`✅ ${funcoes.length} funções renderizadas com contagem`);
-  };
-
-  // ========================================
-  // SUBSTITUIR A FUNÇÃO ORIGINAL
-  // ========================================
-  // Substituir a função original para usar a nova versão
-  window.carregarFuncoesComFeedback = window.carregarFuncoesComContagem;
-  window.renderizarFuncoesNaTabela = window.renderizarFuncoesComContagem;
-
-  // ========================================
-  // ATUALIZAR MODAL QUANDO ABRIR
-  // ========================================
-  // Melhorar a função openFuncoesModal para usar a nova versão
-  const openFuncoesModalOriginal = window.openFuncoesModal;
-  window.openFuncoesModal = function() {
-      console.log('🎯 openFuncoesModal chamada (versão melhorada)');
-      
-      // Chamar função original para abrir modal
-      if (openFuncoesModalOriginal) {
-          openFuncoesModalOriginal();
-      }
-      
-      // Carregar funções com contagem após um pequeno delay
-      setTimeout(() => {
-          carregarFuncoesComContagem();
-      }, 200);
-  };
-
-  console.log('✅ Correção de contagem de integrantes por função carregada!');
-  </script>
-
-  <!-- ========================================= -->
-  <!-- SISTEMA DE MODAL DE EQUIPE -->
-  <!-- ========================================= -->
-  <script>
-  console.log('🔧 Carregando correção para modal Nova Equipe...');
-
-  // ========================================
-  // FUNÇÃO PARA CARREGAR INTEGRANTES NO MODAL DE EQUIPE
-  // ========================================
-  window.carregarIntegrantesParaEquipe = async function() {
-      console.log('🔄 Carregando integrantes para seleção de equipe...');
-      
-      const container = document.querySelector('#integrantes-disponiveis');
-      if (!container) {
-          console.error('❌ Container de integrantes disponíveis não encontrado');
-          return;
-      }
-      
-      // Mostrar loading
-      container.innerHTML = `
-          <div class="loading-state" style="text-align: center; padding: 20px;">
-              <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #4CAF50;"></i>
-              <h3 style="margin: 10px 0; color: #fff;">Carregando integrantes...</h3>
-          </div>
-      `;
-      
-      try {
-          const supabaseClient = window.supabase || window.supabaseClient;
-          if (!supabaseClient) {
-              throw new Error('Supabase não está disponível');
-          }
-          
-          const { data, error } = await supabaseClient
-              .from('integrantes_hvc')
-              .select(`
-                  *,
-                  funcoes_hvc (
-                      id,
-                      nome
-                  )
-              `)
-              .order('nome', { ascending: true });
-              
-          if (error) {
-              console.error('❌ Erro ao carregar integrantes:', error);
-              throw error;
-          }
-          
-          console.log('✅ Integrantes carregados para equipe:', data);
-          
-          // Renderizar integrantes para seleção
-          renderizarIntegrantesParaSelecao(data, container);
-          
-          return data || [];
-          
-      } catch (error) {
-          console.error('💥 Erro ao carregar integrantes para equipe:', error);
-          
-          // Mostrar erro
-          container.innerHTML = `
-              <div class="error-state" style="text-align: center; padding: 20px;">
-                  <i class="fas fa-exclamation-triangle" style="font-size: 24px; color: #ff6b6b;"></i>
-                  <h3 style="margin: 10px 0; color: #ff6b6b;">Erro ao carregar integrantes</h3>
-                  <p style="color: #ccc; margin-bottom: 15px;">${error.message}</p>
-                  <button class="btn-primary btn-sm" onclick="carregarIntegrantesParaEquipe()">
-                      <i class="fas fa-refresh"></i> Tentar novamente
-                  </button>
-              </div>
-          `;
-          
-          return [];
-      }
-  };
-
-  // ========================================
-  // FUNÇÃO PARA RENDERIZAR INTEGRANTES PARA SELEÇÃO
-  // ========================================
-  window.renderizarIntegrantesParaSelecao = function(integrantes, container) {
-      console.log('🎨 Renderizando integrantes para seleção...', integrantes);
-      
-      if (!container) {
-          console.error('❌ Container não fornecido');
-          return;
-      }
-      
-      // Limpar container
-      container.innerHTML = '';
-      
-      if (!integrantes || integrantes.length === 0) {
-          container.innerHTML = `
-              <div class="empty-state" style="text-align: center; padding: 20px;">
-                  <i class="fas fa-users" style="font-size: 24px; color: #ccc;"></i>
-                  <h3 style="margin: 10px 0; color: #ccc;">Nenhum integrante cadastrado</h3>
-                  <p style="color: #999;">Cadastre integrantes primeiro para formar equipes</p>
-              </div>
-          `;
-          return;
-      }
-      
-      // Criar lista de integrantes selecionáveis
-      const listaHTML = integrantes.map(integrante => {
-          const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
-          
-          return `
-              <div class="integrante-item" style="
-                  display: flex; 
-                  align-items: center; 
-                  padding: 10px; 
-                  margin: 5px 0; 
-                  background: rgba(255,255,255,0.1); 
-                  border-radius: 8px;
-                  cursor: pointer;
-                  transition: background 0.2s;
-              " onclick="toggleIntegrante('${integrante.id}', this)">
-                  <input type="checkbox" 
-                         id="integrante_${integrante.id}" 
-                         value="${integrante.id}" 
-                         style="margin-right: 10px; transform: scale(1.2);">
-                  <div style="flex: 1;">
-                      <div style="font-weight: bold; color: #fff; margin-bottom: 2px;">
-                          ${integrante.nome}
-                      </div>
-                      <div style="font-size: 12px; color: #ccc;">
-                          ${funcaoNome} • ${integrante.whatsapp || 'Sem WhatsApp'}
-                      </div>
-                  </div>
-              </div>
-          `;
-      }).join('');
-      
-      container.innerHTML = `
-          <div style="max-height: 300px; overflow-y: auto; padding: 5px;">
-              ${listaHTML}
-          </div>
-          <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
-              <div style="color: #ccc; font-size: 14px;">
-                  <span id="contador-selecionados">0</span> integrantes selecionados
-              </div>
-          </div>
-      `;
-      
-      console.log(`✅ ${integrantes.length} integrantes renderizados para seleção`);
-      
-      // Atualizar contador
-      atualizarContadorSelecionados();
-  };
-
-  // ========================================
-  // FUNÇÃO PARA ALTERNAR SELEÇÃO DE INTEGRANTE
-  // ========================================
-  window.toggleIntegrante = function(integranteId, elemento) {
-      const checkbox = elemento.querySelector('input[type="checkbox"]');
-      checkbox.checked = !checkbox.checked;
-      
-      // Atualizar visual
-      if (checkbox.checked) {
-          elemento.style.background = 'rgba(76, 175, 80, 0.3)';
-          elemento.style.borderLeft = '4px solid #4CAF50';
-      } else {
-          elemento.style.background = 'rgba(255,255,255,0.1)';
-          elemento.style.borderLeft = 'none';
-      }
-      
-      // Atualizar contador
-      atualizarContadorSelecionados();
-      
-      console.log('🔄 Integrante', integranteId, checkbox.checked ? 'selecionado' : 'desmarcado');
-  };
-
-  // ========================================
-  // FUNÇÃO PARA ATUALIZAR CONTADOR
-  // ========================================
-  window.atualizarContadorSelecionados = function() {
-      const checkboxes = document.querySelectorAll('#integrantes-disponiveis input[type="checkbox"]:checked');
-      const contador = document.getElementById('contador-selecionados');
-      
-      if (contador) {
-          contador.textContent = checkboxes.length;
-      }
-      
-      // Atualizar também o contador principal se existir
-      const contadorPrincipal = document.querySelector('#selected-count');
-      if (contadorPrincipal) {
-          contadorPrincipal.textContent = `${checkboxes.length} integrantes selecionados`;
-      }
-  };
-
-  // ========================================
-  // FUNÇÃO PARA OBTER INTEGRANTES SELECIONADOS
-  // ========================================
-  window.obterIntegrantesSelecionados = function() {
-      const checkboxes = document.querySelectorAll('#integrantes-disponiveis input[type="checkbox"]:checked');
-      const selecionados = Array.from(checkboxes).map(cb => cb.value);
-      
-      console.log('📋 Integrantes selecionados:', selecionados);
-      return selecionados;
-  };
-
-  // ========================================
-  // MELHORAR FUNÇÃO openEquipeModal
-  // ========================================
-  const openEquipeModalOriginal = window.openEquipeModal;
-  window.openEquipeModal = function() {
-      console.log('🎯 openEquipeModal chamada (versão melhorada)');
-      
-      // Chamar função original para abrir modal
-      if (openEquipeModalOriginal) {
-          openEquipeModalOriginal();
-      }
-      
-      // Carregar integrantes após um pequeno delay
-      setTimeout(() => {
-          carregarIntegrantesParaEquipe();
-      }, 300);
-  };
-
-  console.log('✅ Correção para modal Nova Equipe carregada!');
-  </script>
-
-  <!-- ========================================= -->
-  <!-- FUNÇÕES BÁSICAS DOS MODAIS -->
-  <!-- ========================================= -->
-  <script>
-  console.log('🔧 Carregando funções básicas dos modais...');
-
-  // Função genérica para mostrar modal
   window.showModal = function(modalId) {
       const modal = document.getElementById(modalId);
       if (modal) {
@@ -1606,7 +1223,6 @@
       }
   };
 
-  // Função genérica para fechar modal
   window.hideModal = function(modalId) {
       const modal = document.getElementById(modalId);
       if (modal) {
@@ -1615,19 +1231,19 @@
       }
   };
 
-  // Funções específicas dos modais
+  // ========================================
+  // FUNÇÕES ESPECÍFICAS DOS MODAIS
+  // ========================================
   window.openIntegranteModal = function() {
       console.log('🎯 openIntegranteModal chamada');
       showModal('modal-integrante');
       
-      // Limpar formulário se existir
       const form = document.getElementById('form-integrante');
       if (form) {
           form.reset();
           console.log('📝 Formulário integrante limpo');
       }
       
-      // Carregar funções no select
       setTimeout(() => {
           carregarFuncoesNoSelect();
       }, 100);
@@ -1642,22 +1258,33 @@
       console.log('🎯 openEquipeModal chamada');
       showModal('modal-equipe');
       
-      // Limpar formulário se existir
       const form = document.getElementById('form-equipe');
       if (form) {
           form.reset();
           console.log('📝 Formulário equipe limpo');
       }
+      
+      // Limpar seleções anteriores
+      window.integrantesSelecionados.clear();
+      
+      setTimeout(() => {
+          carregarIntegrantesEquipeRapido();
+      }, 300);
   };
 
   window.closeEquipeModal = function() {
       console.log('🎯 closeEquipeModal chamada');
       hideModal('modal-equipe');
+      window.integrantesSelecionados.clear();
   };
 
   window.openFuncoesModal = function() {
       console.log('🎯 openFuncoesModal chamada');
       showModal('modal-funcoes');
+      
+      setTimeout(() => {
+          carregarFuncoesRapido();
+      }, 200);
   };
 
   window.closeFuncoesModal = function() {
@@ -1681,7 +1308,6 @@
       const form = document.getElementById('nova-funcao-form');
       if (form) {
           form.style.display = 'none';
-          // Limpar campo
           const input = document.getElementById('nome-funcao');
           if (input) input.value = '';
           console.log('📝 Formulário nova função fechado');
@@ -1690,7 +1316,166 @@
       }
   };
 
-  // Função para carregar funções no select do formulário de integrante
+  // ========================================
+  // SISTEMA DE FUNÇÕES
+  // ========================================
+  window.salvarNovaFuncao = async function(event) {
+      event.preventDefault();
+      console.log('💾 Salvando nova função...');
+      
+      const nome = document.getElementById('nome-funcao')?.value?.trim();
+      
+      if (!nome) {
+          alert('Por favor, digite o nome da função');
+          return;
+      }
+      
+      try {
+          const supabaseClient = window.supabase || window.supabaseClient;
+          if (!supabaseClient) {
+              throw new Error('Supabase não está disponível');
+          }
+          
+          const { data, error } = await supabaseClient
+              .from('funcoes_hvc')
+              .insert([{ nome: nome }])
+              .select();
+              
+          if (error) {
+              console.error('❌ Erro ao salvar função:', error);
+              throw error;
+          }
+          
+          console.log('✅ Função salva com sucesso:', data);
+          
+          document.getElementById('nome-funcao').value = '';
+          cancelNovaFuncao();
+          alert('✅ Função salva com sucesso!');
+          
+          setTimeout(() => {
+              carregarFuncoesRapido();
+          }, 500);
+          
+      } catch (error) {
+          console.error('💥 Erro ao salvar função:', error);
+          alert('❌ Erro ao salvar função: ' + error.message);
+      }
+  };
+
+  window.carregarFuncoesRapido = async function() {
+      console.log('🔄 Carregando funções...');
+      
+      const tbody = document.querySelector('#tabela-funcoes tbody');
+      if (!tbody) {
+          console.error('❌ Tabela de funções não encontrada');
+          return;
+      }
+      
+      tbody.innerHTML = `
+          <tr>
+              <td colspan="3" class="empty-state">
+                  <i class="fas fa-spinner fa-spin"></i>
+                  <h3>Carregando funções...</h3>
+              </td>
+          </tr>
+      `;
+      
+      try {
+          const supabaseClient = window.supabase || window.supabaseClient;
+          if (!supabaseClient) {
+              throw new Error('Supabase não está disponível');
+          }
+          
+          const { data: funcoes, error } = await supabaseClient
+              .from('funcoes_hvc')
+              .select('*')
+              .order('nome', { ascending: true });
+              
+          if (error) {
+              throw error;
+          }
+          
+          console.log('✅ Funções carregadas:', funcoes);
+          
+          tbody.innerHTML = '';
+          
+          if (!funcoes || funcoes.length === 0) {
+              tbody.innerHTML = `
+                  <tr>
+                      <td colspan="3" class="empty-state">
+                          <i class="fas fa-info-circle"></i>
+                          <h3>Nenhuma função cadastrada</h3>
+                          <p>Clique em "Nova Função" para adicionar</p>
+                      </td>
+                  </tr>
+              `;
+              return;
+          }
+          
+          for (const funcao of funcoes) {
+              const { count } = await supabaseClient
+                  .from('integrantes_hvc')
+                  .select('*', { count: 'exact', head: true })
+                  .eq('funcao_id', funcao.id);
+                  
+              const row = document.createElement('tr');
+              row.innerHTML = `
+                  <td>${funcao.nome}</td>
+                  <td><strong>${count || 0}</strong></td>
+                  <td>
+                      <button class="btn-danger btn-sm" onclick="excluirFuncao('${funcao.id}')">
+                          <i class="fas fa-trash"></i>
+                      </button>
+                  </td>
+              `;
+              tbody.appendChild(row);
+          }
+          
+          console.log(`✅ ${funcoes.length} funções renderizadas`);
+          
+      } catch (error) {
+          console.error('💥 Erro ao carregar funções:', error);
+          tbody.innerHTML = `
+              <tr>
+                  <td colspan="3" class="empty-state" style="color: #ff6b6b;">
+                      <i class="fas fa-exclamation-triangle"></i>
+                      <h3>Erro ao carregar funções</h3>
+                      <p>${error.message}</p>
+                  </td>
+              </tr>
+          `;
+      }
+  };
+
+  window.excluirFuncao = async function(id) {
+      if (!confirm('Tem certeza que deseja excluir esta função?')) {
+          return;
+      }
+      
+      try {
+          const supabaseClient = window.supabase || window.supabaseClient;
+          if (!supabaseClient) {
+              throw new Error('Supabase não está disponível');
+          }
+          
+          const { error } = await supabaseClient
+              .from('funcoes_hvc')
+              .delete()
+              .eq('id', id);
+              
+          if (error) {
+              throw error;
+          }
+          
+          alert('Função excluída com sucesso!');
+          carregarFuncoesRapido();
+          
+      } catch (error) {
+          console.error('💥 Erro ao excluir função:', error);
+          alert('Erro ao excluir função: ' + error.message);
+      }
+  };
+
   window.carregarFuncoesNoSelect = async function() {
       console.log('🔄 Carregando funções no select...');
       
@@ -1716,10 +1501,8 @@
               return;
           }
           
-          // Limpar select
           select.innerHTML = '<option value="">Selecione uma função</option>';
           
-          // Adicionar opções
           if (data && data.length > 0) {
               data.forEach(funcao => {
                   const option = document.createElement('option');
@@ -1738,1010 +1521,259 @@
       }
   };
 
-  console.log('✅ Funções básicas dos modais carregadas!');
+  // ========================================
+  // SISTEMA DE SELEÇÃO MÚLTIPLA DE INTEGRANTES
+  // ========================================
+  window.carregarIntegrantesEquipeRapido = async function() {
+      console.log('🔄 Carregando integrantes para equipe...');
+      
+      const container = document.querySelector('#integrantes-disponiveis');
+      if (!container) {
+          console.error('❌ Container integrantes-disponiveis não encontrado');
+          return;
+      }
+      
+      window.integrantesSelecionados.clear();
+      
+      container.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+              <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #4CAF50;"></i>
+              <h3 style="margin: 10px 0; color: #fff;">Carregando integrantes...</h3>
+          </div>
+      `;
+      
+      try {
+          const supabaseClient = window.supabase || window.supabaseClient;
+          if (!supabaseClient) {
+              throw new Error('Supabase não está disponível');
+          }
+          
+          const { data, error } = await supabaseClient
+              .from('integrantes_hvc')
+              .select(`
+                  *,
+                  funcoes_hvc (
+                      id,
+                      nome
+                  )
+              `)
+              .order('nome', { ascending: true });
+              
+          if (error) {
+              throw error;
+          }
+          
+          console.log('✅ Integrantes carregados:', data);
+          
+          if (!data || data.length === 0) {
+              container.innerHTML = `
+                  <div style="text-align: center; padding: 20px;">
+                      <i class="fas fa-users" style="font-size: 24px; color: #ccc;"></i>
+                      <h3 style="margin: 10px 0; color: #ccc;">Nenhum integrante cadastrado</h3>
+                      <p style="color: #999;">Cadastre integrantes primeiro</p>
+                  </div>
+              `;
+              return;
+          }
+          
+          const itensHTML = data.map(integrante => {
+              const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
+              
+              return `
+                  <div class="integrante-selecao" 
+                       data-id="${integrante.id}"
+                       style="
+                          display: flex; 
+                          align-items: center; 
+                          padding: 15px; 
+                          margin: 10px 0; 
+                          background: rgba(255,255,255,0.1); 
+                          border-radius: 10px;
+                          cursor: pointer;
+                          transition: all 0.3s ease;
+                          border: 2px solid transparent;
+                          user-select: none;
+                       ">
+                      
+                      <div style="
+                          width: 20px;
+                          height: 20px;
+                          border: 2px solid #add8e6;
+                          border-radius: 4px;
+                          margin-right: 15px;
+                          display: flex;
+                          align-items: center;
+                          justify-content: center;
+                          background: transparent;
+                          transition: all 0.2s;
+                      " class="custom-checkbox">
+                          <i class="fas fa-check" style="color: #4CAF50; font-size: 12px; display: none;"></i>
+                      </div>
+                      
+                      <div style="flex: 1;">
+                          <div style="
+                              font-weight: bold; 
+                              color: #fff; 
+                              margin-bottom: 6px;
+                              font-size: 16px;
+                          ">
+                              ${integrante.nome}
+                          </div>
+                          <div style="
+                              font-size: 13px; 
+                              color: #add8e6;
+                              display: flex;
+                              gap: 15px;
+                          ">
+                              <span><i class="fas fa-briefcase"></i> ${funcaoNome}</span>
+                              <span><i class="fas fa-phone"></i> ${integrante.whatsapp || 'Sem WhatsApp'}</span>
+                          </div>
+                      </div>
+                  </div>
+              `;
+          }).join('');
+          
+          container.innerHTML = `
+              <div style="max-height: 400px; overflow-y: auto; padding: 10px;">
+                  ${itensHTML}
+              </div>
+              <div style="
+                  margin-top: 20px; 
+                  padding: 15px; 
+                  border-top: 2px solid rgba(173, 216, 230, 0.3);
+                  background: rgba(255,255,255,0.05);
+                  border-radius: 8px;
+                  text-align: center;
+              ">
+                  <div style="color: #add8e6; font-size: 16px; font-weight: bold;">
+                      <i class="fas fa-users"></i>
+                      <span id="contador-selecionados">0</span> integrantes selecionados
+                  </div>
+              </div>
+          `;
+          
+          const itens = container.querySelectorAll('.integrante-selecao');
+          itens.forEach(item => {
+              const integranteId = item.dataset.id;
+              
+              item.addEventListener('click', function(e) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  
+                  const checkbox = this.querySelector('.custom-checkbox');
+                  const checkIcon = checkbox.querySelector('i');
+                  
+                  if (window.integrantesSelecionados.has(integranteId)) {
+                      window.integrantesSelecionados.delete(integranteId);
+                      
+                      this.style.background = 'rgba(255,255,255,0.1)';
+                      this.style.borderLeft = 'none';
+                      checkbox.style.background = 'transparent';
+                      checkIcon.style.display = 'none';
+                      
+                      console.log('❌ Desmarcado:', integranteId);
+                  } else {
+                      window.integrantesSelecionados.add(integranteId);
+                      
+                      this.style.background = 'rgba(76, 175, 80, 0.3)';
+                      this.style.borderLeft = '5px solid #4CAF50';
+                      checkbox.style.background = '#4CAF50';
+                      checkIcon.style.display = 'block';
+                      
+                      console.log('✅ Marcado:', integranteId);
+                  }
+                  
+                  atualizarContadorSelecionados();
+              });
+              
+              item.addEventListener('mouseenter', function() {
+                  if (!window.integrantesSelecionados.has(integranteId)) {
+                      this.style.background = 'rgba(255,255,255,0.15)';
+                  }
+              });
+              
+              item.addEventListener('mouseleave', function() {
+                  if (!window.integrantesSelecionados.has(integranteId)) {
+                      this.style.background = 'rgba(255,255,255,0.1)';
+                  }
+              });
+          });
+          
+          console.log(`✅ ${data.length} integrantes carregados com eventos`);
+          atualizarContadorSelecionados();
+          
+      } catch (error) {
+          console.error('💥 Erro ao carregar integrantes:', error);
+          container.innerHTML = `
+              <div style="text-align: center; padding: 20px;">
+                  <i class="fas fa-exclamation-triangle" style="font-size: 24px; color: #ff6b6b;"></i>
+                  <h3 style="margin: 10px 0; color: #ff6b6b;">Erro ao carregar</h3>
+                  <p style="color: #ccc;">${error.message}</p>
+              </div>
+          `;
+      }
+  };
+
+  window.atualizarContadorSelecionados = function() {
+      const total = window.integrantesSelecionados.size;
+      
+      console.log('📊 Atualizando contador. Total selecionados:', total);
+      
+      const contador = document.getElementById('contador-selecionados');
+      if (contador) {
+          contador.textContent = total;
+      }
+      
+      const contadores = document.querySelectorAll('[id*="selected"], [class*="selected"]');
+      contadores.forEach(el => {
+          if (el.textContent.includes('selecionados')) {
+              el.textContent = `${total} integrantes selecionados`;
+          }
+      });
+  };
+
+  window.obterIntegrantesSelecionados = function() {
+      const selecionados = Array.from(window.integrantesSelecionados);
+      console.log('📋 Integrantes selecionados para equipe:', selecionados);
+      return selecionados;
+  };
+
+  // ========================================
+  // FUNÇÃO PARA SALVAR EQUIPE
+  // ========================================
+  window.saveEquipe = async function(event) {
+      event.preventDefault();
+      console.log('💾 Salvando nova equipe...');
+      
+      const numero = document.getElementById('numero-equipe')?.value?.trim();
+      const observacoes = document.getElementById('observacoes-equipe')?.value?.trim();
+      const integrantesSelecionados = obterIntegrantesSelecionados();
+      
+      if (!numero) {
+          alert('Por favor, digite o número da equipe');
+          return;
+      }
+      
+      if (integrantesSelecionados.length === 0) {
+          alert('Por favor, selecione pelo menos um integrante');
+          return;
+      }
+      
+      try {
+          alert(`✅ Equipe ${numero} criada com ${integrantesSelecionados.length} integrantes!\n\nIntegrantes: ${integrantesSelecionados.join(', ')}`);
+          
+          closeEquipeModal();
+          window.integrantesSelecionados.clear();
+          
+      } catch (error) {
+          console.error('💥 Erro ao salvar equipe:', error);
+          alert('❌ Erro ao salvar equipe: ' + error.message);
+      }
+  };
+
+  console.log('✅ SISTEMA COMPLETO carregado!');
   </script>
 
-<!-- COLE ESTE CÓDIGO NO FINAL DO SEU equipe-hvc.html, ANTES DA TAG </body> -->
-
-<script>
-console.log('🚀 CORREÇÃO RÁPIDA - Carregando sistemas...');
-
-// ========================================
-// FUNÇÃO PARA SALVAR NOVA FUNÇÃO
-// ========================================
-window.salvarNovaFuncao = async function(event) {
-    event.preventDefault();
-    console.log('💾 Salvando nova função...');
-    
-    const nome = document.getElementById('nome-funcao')?.value?.trim();
-    
-    if (!nome) {
-        alert('Por favor, digite o nome da função');
-        return;
-    }
-    
-    try {
-        const supabaseClient = window.supabase || window.supabaseClient;
-        if (!supabaseClient) {
-            throw new Error('Supabase não está disponível');
-        }
-        
-        const { data, error } = await supabaseClient
-            .from('funcoes_hvc')
-            .insert([{ nome: nome }])
-            .select();
-            
-        if (error) {
-            console.error('❌ Erro ao salvar função:', error);
-            throw error;
-        }
-        
-        console.log('✅ Função salva com sucesso:', data);
-        
-        // Limpar formulário
-        document.getElementById('nome-funcao').value = '';
-        
-        // Fechar formulário
-        cancelNovaFuncao();
-        
-        alert('✅ Função salva com sucesso!');
-        
-        // Recarregar lista
-        setTimeout(() => {
-            carregarFuncoesRapido();
-        }, 500);
-        
-    } catch (error) {
-        console.error('💥 Erro ao salvar função:', error);
-        alert('❌ Erro ao salvar função: ' + error.message);
-    }
-};
-
-// ========================================
-// FUNÇÃO PARA CARREGAR FUNÇÕES (RÁPIDA)
-// ========================================
-window.carregarFuncoesRapido = async function() {
-    console.log('🔄 Carregando funções (versão rápida)...');
-    
-    const tbody = document.querySelector('#tabela-funcoes tbody');
-    if (!tbody) {
-        console.error('❌ Tabela de funções não encontrada');
-        return;
-    }
-    
-    // Mostrar loading
-    tbody.innerHTML = `
-        <tr>
-            <td colspan="3" class="empty-state">
-                <i class="fas fa-spinner fa-spin"></i>
-                <h3>Carregando funções...</h3>
-            </td>
-        </tr>
-    `;
-    
-    try {
-        const supabaseClient = window.supabase || window.supabaseClient;
-        if (!supabaseClient) {
-            throw new Error('Supabase não está disponível');
-        }
-        
-        // Carregar funções
-        const { data: funcoes, error } = await supabaseClient
-            .from('funcoes_hvc')
-            .select('*')
-            .order('nome', { ascending: true });
-            
-        if (error) {
-            throw error;
-        }
-        
-        console.log('✅ Funções carregadas:', funcoes);
-        
-        // Limpar tabela
-        tbody.innerHTML = '';
-        
-        if (!funcoes || funcoes.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="3" class="empty-state">
-                        <i class="fas fa-info-circle"></i>
-                        <h3>Nenhuma função cadastrada</h3>
-                        <p>Clique em "Nova Função" para adicionar</p>
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-        
-        // Para cada função, contar integrantes
-        for (const funcao of funcoes) {
-            const { count } = await supabaseClient
-                .from('integrantes_hvc')
-                .select('*', { count: 'exact', head: true })
-                .eq('funcao_id', funcao.id);
-                
-            const row = document.createElement('tr');
-            row.innerHTML = `
-                <td>${funcao.nome}</td>
-                <td><strong>${count || 0}</strong></td>
-                <td>
-                    <button class="btn-danger btn-sm" onclick="excluirFuncao('${funcao.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            tbody.appendChild(row);
-        }
-        
-        console.log(`✅ ${funcoes.length} funções renderizadas`);
-        
-    } catch (error) {
-        console.error('💥 Erro ao carregar funções:', error);
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="3" class="empty-state" style="color: #ff6b6b;">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <h3>Erro ao carregar funções</h3>
-                    <p>${error.message}</p>
-                </td>
-            </tr>
-        `;
-    }
-};
-
-// ========================================
-// FUNÇÃO PARA EXCLUIR FUNÇÃO
-// ========================================
-window.excluirFuncao = async function(id) {
-    if (!confirm('Tem certeza que deseja excluir esta função?')) {
-        return;
-    }
-    
-    try {
-        const supabaseClient = window.supabase || window.supabaseClient;
-        if (!supabaseClient) {
-            throw new Error('Supabase não está disponível');
-        }
-        
-        const { error } = await supabaseClient
-            .from('funcoes_hvc')
-            .delete()
-            .eq('id', id);
-            
-        if (error) {
-            throw error;
-        }
-        
-        alert('Função excluída com sucesso!');
-        carregarFuncoesRapido();
-        
-    } catch (error) {
-        console.error('💥 Erro ao excluir função:', error);
-        alert('Erro ao excluir função: ' + error.message);
-    }
-};
-
-// ========================================
-// FUNÇÃO PARA CARREGAR INTEGRANTES NO MODAL EQUIPE
-// ========================================
-window.carregarIntegrantesEquipeRapido = async function() {
-    console.log('🔄 Carregando integrantes para equipe (versão rápida)...');
-    
-    const container = document.querySelector('#integrantes-disponiveis');
-    if (!container) {
-        console.error('❌ Container integrantes-disponiveis não encontrado');
-        return;
-    }
-    
-    // Mostrar loading
-    container.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #4CAF50;"></i>
-            <h3 style="margin: 10px 0; color: #fff;">Carregando integrantes...</h3>
-        </div>
-    `;
-    
-    try {
-        const supabaseClient = window.supabase || window.supabaseClient;
-        if (!supabaseClient) {
-            throw new Error('Supabase não está disponível');
-        }
-        
-        const { data, error } = await supabaseClient
-            .from('integrantes_hvc')
-            .select(`
-                *,
-                funcoes_hvc (
-                    id,
-                    nome
-                )
-            `)
-            .order('nome', { ascending: true });
-            
-        if (error) {
-            throw error;
-        }
-        
-        console.log('✅ Integrantes carregados para equipe:', data);
-        
-        // Limpar container
-        container.innerHTML = '';
-        
-        if (!data || data.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 20px;">
-                    <i class="fas fa-users" style="font-size: 24px; color: #ccc;"></i>
-                    <h3 style="margin: 10px 0; color: #ccc;">Nenhum integrante cadastrado</h3>
-                    <p style="color: #999;">Cadastre integrantes primeiro</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Criar lista de integrantes
-        const listaHTML = data.map(integrante => {
-            const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
-            
-            return `
-                <div class="integrante-item" style="
-                    display: flex; 
-                    align-items: center; 
-                    padding: 10px; 
-                    margin: 5px 0; 
-                    background: rgba(255,255,255,0.1); 
-                    border-radius: 8px;
-                    cursor: pointer;
-                " onclick="toggleIntegranteRapido('${integrante.id}', this)">
-                    <input type="checkbox" 
-                           id="integrante_${integrante.id}" 
-                           value="${integrante.id}" 
-                           style="margin-right: 10px; transform: scale(1.2);">
-                    <div style="flex: 1;">
-                        <div style="font-weight: bold; color: #fff; margin-bottom: 2px;">
-                            ${integrante.nome}
-                        </div>
-                        <div style="font-size: 12px; color: #ccc;">
-                            ${funcaoNome} • ${integrante.whatsapp || 'Sem WhatsApp'}
-                        </div>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        container.innerHTML = `
-            <div style="max-height: 300px; overflow-y: auto; padding: 5px;">
-                ${listaHTML}
-            </div>
-            <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
-                <div style="color: #ccc; font-size: 14px;">
-                    <span id="contador-selecionados">0</span> integrantes selecionados
-                </div>
-            </div>
-        `;
-        
-        console.log(`✅ ${data.length} integrantes renderizados para seleção`);
-        
-    } catch (error) {
-        console.error('💥 Erro ao carregar integrantes para equipe:', error);
-        container.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 24px; color: #ff6b6b;"></i>
-                <h3 style="margin: 10px 0; color: #ff6b6b;">Erro ao carregar</h3>
-                <p style="color: #ccc;">${error.message}</p>
-            </div>
-        `;
-    }
-};
-
-// ========================================
-// FUNÇÃO PARA ALTERNAR SELEÇÃO
-// ========================================
-window.toggleIntegranteRapido = function(integranteId, elemento) {
-    const checkbox = elemento.querySelector('input[type="checkbox"]');
-    checkbox.checked = !checkbox.checked;
-    
-    // Atualizar visual
-    if (checkbox.checked) {
-        elemento.style.background = 'rgba(76, 175, 80, 0.3)';
-        elemento.style.borderLeft = '4px solid #4CAF50';
-    } else {
-        elemento.style.background = 'rgba(255,255,255,0.1)';
-        elemento.style.borderLeft = 'none';
-    }
-    
-    // Atualizar contador
-    const checkboxes = document.querySelectorAll('#integrantes-disponiveis input[type="checkbox"]:checked');
-    const contador = document.getElementById('contador-selecionados');
-    if (contador) {
-        contador.textContent = checkboxes.length;
-    }
-    
-    console.log('🔄 Integrante', integranteId, checkbox.checked ? 'selecionado' : 'desmarcado');
-};
-
-// ========================================
-// SUBSTITUIR FUNÇÕES ORIGINAIS
-// ========================================
-window.openFuncoesModal = function() {
-    console.log('🎯 openFuncoesModal chamada (versão corrigida)');
-    
-    const modal = document.getElementById('modal-funcoes');
-    if (modal) {
-        modal.classList.add('show');
-        
-        // Carregar funções após um delay
-        setTimeout(() => {
-            carregarFuncoesRapido();
-        }, 200);
-    }
-};
-
-window.openEquipeModal = function() {
-    console.log('🎯 openEquipeModal chamada (versão corrigida)');
-    
-    const modal = document.getElementById('modal-equipe');
-    if (modal) {
-        modal.classList.add('show');
-        
-        // Limpar formulário
-        const form = document.getElementById('form-equipe');
-        if (form) {
-            form.reset();
-        }
-        
-        // Carregar integrantes após um delay
-        setTimeout(() => {
-            carregarIntegrantesEquipeRapido();
-        }, 300);
-    }
-};
-
-console.log('✅ CORREÇÃO RÁPIDA carregada!');
-</script>
-
-<!-- COLE ESTE CÓDIGO NO FINAL DO SEU equipe-hvc.html, DEPOIS DO SCRIPT ANTERIOR -->
-
-<script>
-console.log('🔧 CORREÇÃO SELEÇÃO - Corrigindo seleção de integrantes...');
-
-// ========================================
-// FUNÇÃO MELHORADA PARA ALTERNAR SELEÇÃO
-// ========================================
-window.toggleIntegranteRapido = function(integranteId, elemento) {
-    console.log('🔄 Tentando selecionar integrante:', integranteId);
-    
-    const checkbox = elemento.querySelector('input[type="checkbox"]');
-    if (!checkbox) {
-        console.error('❌ Checkbox não encontrado');
-        return;
-    }
-    
-    // Alternar estado
-    checkbox.checked = !checkbox.checked;
-    
-    // Atualizar visual do elemento
-    if (checkbox.checked) {
-        elemento.style.background = 'rgba(76, 175, 80, 0.3)';
-        elemento.style.borderLeft = '4px solid #4CAF50';
-        elemento.style.transform = 'scale(1.02)';
-        console.log('✅ Integrante selecionado:', integranteId);
-    } else {
-        elemento.style.background = 'rgba(255,255,255,0.1)';
-        elemento.style.borderLeft = 'none';
-        elemento.style.transform = 'scale(1)';
-        console.log('❌ Integrante desmarcado:', integranteId);
-    }
-    
-    // Atualizar contador
-    atualizarContadorSelecionados();
-    
-    // Parar propagação do evento
-    event.stopPropagation();
-};
-
-// ========================================
-// FUNÇÃO PARA ATUALIZAR CONTADOR
-// ========================================
-window.atualizarContadorSelecionados = function() {
-    const checkboxes = document.querySelectorAll('#integrantes-disponiveis input[type="checkbox"]:checked');
-    const total = checkboxes.length;
-    
-    console.log('📊 Total selecionados:', total);
-    
-    // Atualizar contador principal
-    const contador = document.getElementById('contador-selecionados');
-    if (contador) {
-        contador.textContent = total;
-    }
-    
-    // Atualizar contador secundário
-    const contadorSecundario = document.querySelector('#selected-count');
-    if (contadorSecundario) {
-        contadorSecundario.textContent = `${total} integrantes selecionados`;
-    }
-    
-    // Atualizar texto na parte inferior
-    const textoInferior = document.querySelector('.selected-count');
-    if (textoInferior) {
-        textoInferior.textContent = `${total} integrantes selecionados`;
-    }
-};
-
-// ========================================
-// FUNÇÃO MELHORADA PARA CARREGAR INTEGRANTES
-// ========================================
-window.carregarIntegrantesEquipeRapido = async function() {
-    console.log('🔄 Carregando integrantes para equipe (versão melhorada)...');
-    
-    const container = document.querySelector('#integrantes-disponiveis');
-    if (!container) {
-        console.error('❌ Container integrantes-disponiveis não encontrado');
-        return;
-    }
-    
-    // Mostrar loading
-    container.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #4CAF50;"></i>
-            <h3 style="margin: 10px 0; color: #fff;">Carregando integrantes...</h3>
-        </div>
-    `;
-    
-    try {
-        const supabaseClient = window.supabase || window.supabaseClient;
-        if (!supabaseClient) {
-            throw new Error('Supabase não está disponível');
-        }
-        
-        const { data, error } = await supabaseClient
-            .from('integrantes_hvc')
-            .select(`
-                *,
-                funcoes_hvc (
-                    id,
-                    nome
-                )
-            `)
-            .order('nome', { ascending: true });
-            
-        if (error) {
-            throw error;
-        }
-        
-        console.log('✅ Integrantes carregados para equipe:', data);
-        
-        // Limpar container
-        container.innerHTML = '';
-        
-        if (!data || data.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 20px;">
-                    <i class="fas fa-users" style="font-size: 24px; color: #ccc;"></i>
-                    <h3 style="margin: 10px 0; color: #ccc;">Nenhum integrante cadastrado</h3>
-                    <p style="color: #999;">Cadastre integrantes primeiro</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Criar lista de integrantes com eventos melhorados
-        const listaHTML = data.map(integrante => {
-            const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
-            
-            return `
-                <div class="integrante-item" 
-                     id="item_${integrante.id}"
-                     style="
-                        display: flex; 
-                        align-items: center; 
-                        padding: 12px; 
-                        margin: 8px 0; 
-                        background: rgba(255,255,255,0.1); 
-                        border-radius: 8px;
-                        cursor: pointer;
-                        transition: all 0.2s ease;
-                        border: 2px solid transparent;
-                     " 
-                     onclick="toggleIntegranteRapido('${integrante.id}', this)"
-                     onmouseover="this.style.background='rgba(255,255,255,0.15)'"
-                     onmouseout="if(!this.querySelector('input').checked) this.style.background='rgba(255,255,255,0.1)'">
-                    
-                    <input type="checkbox" 
-                           id="integrante_${integrante.id}" 
-                           value="${integrante.id}" 
-                           style="
-                               margin-right: 12px; 
-                               transform: scale(1.3);
-                               cursor: pointer;
-                           "
-                           onclick="event.stopPropagation(); toggleIntegranteRapido('${integrante.id}', this.parentElement)">
-                    
-                    <div style="flex: 1;">
-                        <div style="
-                            font-weight: bold; 
-                            color: #fff; 
-                            margin-bottom: 4px;
-                            font-size: 14px;
-                        ">
-                            ${integrante.nome}
-                        </div>
-                        <div style="
-                            font-size: 12px; 
-                            color: #add8e6;
-                            display: flex;
-                            gap: 10px;
-                        ">
-                            <span><i class="fas fa-briefcase"></i> ${funcaoNome}</span>
-                            <span><i class="fas fa-phone"></i> ${integrante.whatsapp || 'Sem WhatsApp'}</span>
-                        </div>
-                    </div>
-                    
-                    <div style="
-                        width: 20px;
-                        height: 20px;
-                        border-radius: 50%;
-                        background: rgba(76, 175, 80, 0.2);
-                        border: 2px solid #4CAF50;
-                        display: none;
-                        align-items: center;
-                        justify-content: center;
-                    " class="check-indicator">
-                        <i class="fas fa-check" style="color: #4CAF50; font-size: 10px;"></i>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        container.innerHTML = `
-            <div style="max-height: 350px; overflow-y: auto; padding: 8px;">
-                ${listaHTML}
-            </div>
-            <div style="
-                margin-top: 15px; 
-                padding-top: 15px; 
-                border-top: 2px solid rgba(173, 216, 230, 0.3);
-                background: rgba(255,255,255,0.05);
-                border-radius: 8px;
-                padding: 15px;
-            ">
-                <div style="
-                    color: #add8e6; 
-                    font-size: 16px; 
-                    font-weight: bold;
-                    text-align: center;
-                ">
-                    <i class="fas fa-users"></i>
-                    <span id="contador-selecionados">0</span> integrantes selecionados
-                </div>
-            </div>
-        `;
-        
-        console.log(`✅ ${data.length} integrantes renderizados para seleção`);
-        
-        // Inicializar contador
-        atualizarContadorSelecionados();
-        
-    } catch (error) {
-        console.error('💥 Erro ao carregar integrantes para equipe:', error);
-        container.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 24px; color: #ff6b6b;"></i>
-                <h3 style="margin: 10px 0; color: #ff6b6b;">Erro ao carregar</h3>
-                <p style="color: #ccc;">${error.message}</p>
-                <button class="btn-primary btn-sm" onclick="carregarIntegrantesEquipeRapido()" style="margin-top: 10px;">
-                    <i class="fas fa-refresh"></i> Tentar novamente
-                </button>
-            </div>
-        `;
-    }
-};
-
-// ========================================
-// FUNÇÃO PARA OBTER SELECIONADOS
-// ========================================
-window.obterIntegrantesSelecionados = function() {
-    const checkboxes = document.querySelectorAll('#integrantes-disponiveis input[type="checkbox"]:checked');
-    const selecionados = Array.from(checkboxes).map(cb => cb.value);
-    
-    console.log('📋 Integrantes selecionados para equipe:', selecionados);
-    return selecionados;
-};
-
-// ========================================
-// FUNÇÃO PARA SALVAR EQUIPE
-// ========================================
-window.saveEquipe = async function(event) {
-    event.preventDefault();
-    console.log('💾 Salvando nova equipe...');
-    
-    const numero = document.getElementById('numero-equipe')?.value?.trim();
-    const observacoes = document.getElementById('observacoes-equipe')?.value?.trim();
-    const integrantesSelecionados = obterIntegrantesSelecionados();
-    
-    // Validações
-    if (!numero) {
-        alert('Por favor, digite o número da equipe');
-        return;
-    }
-    
-    if (integrantesSelecionados.length === 0) {
-        alert('Por favor, selecione pelo menos um integrante');
-        return;
-    }
-    
-    try {
-        const supabaseClient = window.supabase || window.supabaseClient;
-        if (!supabaseClient) {
-            throw new Error('Supabase não está disponível');
-        }
-        
-        // Dados da equipe
-        const dadosEquipe = {
-            numero: numero,
-            observacoes: observacoes || null,
-            integrantes_ids: integrantesSelecionados
-        };
-        
-        console.log('📤 Salvando equipe:', dadosEquipe);
-        
-        // Aqui você pode implementar a lógica de salvamento
-        // Por enquanto, apenas simular sucesso
-        alert(`✅ Equipe ${numero} criada com ${integrantesSelecionados.length} integrantes!`);
-        
-        // Fechar modal
-        closeEquipeModal();
-        
-        // Limpar formulário
-        document.getElementById('form-equipe').reset();
-        
-    } catch (error) {
-        console.error('💥 Erro ao salvar equipe:', error);
-        alert('❌ Erro ao salvar equipe: ' + error.message);
-    }
-};
-
-console.log('✅ CORREÇÃO SELEÇÃO carregada!');
-</script>
-
-<!-- COLE ESTE CÓDIGO NO FINAL DO SEU equipe-hvc.html, DEPOIS DOS SCRIPTS ANTERIORES -->
-
-<script>
-console.log('🔧 CORREÇÃO MÚLTIPLA SELEÇÃO - Permitindo seleção múltipla...');
-
-// ========================================
-// FUNÇÃO CORRIGIDA PARA SELEÇÃO MÚLTIPLA
-// ========================================
-window.toggleIntegranteRapido = function(integranteId, elemento) {
-    console.log('🔄 Alternando seleção do integrante:', integranteId);
-    
-    const checkbox = elemento.querySelector('input[type="checkbox"]');
-    if (!checkbox) {
-        console.error('❌ Checkbox não encontrado');
-        return;
-    }
-    
-    // IMPORTANTE: Não alterar o estado atual, apenas alternar
-    const novoEstado = !checkbox.checked;
-    checkbox.checked = novoEstado;
-    
-    console.log('🎯 Novo estado do checkbox:', novoEstado ? 'SELECIONADO' : 'DESMARCADO');
-    
-    // Atualizar visual do elemento
-    if (novoEstado) {
-        // SELECIONADO
-        elemento.style.background = 'rgba(76, 175, 80, 0.4)';
-        elemento.style.borderLeft = '5px solid #4CAF50';
-        elemento.style.transform = 'scale(1.02)';
-        elemento.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.3)';
-        
-        // Mostrar indicador visual
-        const indicator = elemento.querySelector('.check-indicator');
-        if (indicator) {
-            indicator.style.display = 'flex';
-        }
-        
-        console.log('✅ Integrante SELECIONADO:', integranteId);
-    } else {
-        // DESMARCADO
-        elemento.style.background = 'rgba(255,255,255,0.1)';
-        elemento.style.borderLeft = 'none';
-        elemento.style.transform = 'scale(1)';
-        elemento.style.boxShadow = 'none';
-        
-        // Esconder indicador visual
-        const indicator = elemento.querySelector('.check-indicator');
-        if (indicator) {
-            indicator.style.display = 'none';
-        }
-        
-        console.log('❌ Integrante DESMARCADO:', integranteId);
-    }
-    
-    // Atualizar contador
-    atualizarContadorSelecionados();
-    
-    // Listar todos os selecionados no console
-    const todosSelecionados = obterIntegrantesSelecionados();
-    console.log('📋 TOTAL SELECIONADOS AGORA:', todosSelecionados.length, '→', todosSelecionados);
-};
-
-// ========================================
-// FUNÇÃO MELHORADA PARA ATUALIZAR CONTADOR
-// ========================================
-window.atualizarContadorSelecionados = function() {
-    const checkboxes = document.querySelectorAll('#integrantes-disponiveis input[type="checkbox"]:checked');
-    const total = checkboxes.length;
-    
-    console.log('📊 Atualizando contador. Total selecionados:', total);
-    
-    // Atualizar todos os contadores possíveis
-    const contadores = [
-        document.getElementById('contador-selecionados'),
-        document.querySelector('#selected-count'),
-        document.querySelector('.selected-count')
-    ];
-    
-    contadores.forEach(contador => {
-        if (contador) {
-            if (contador.id === 'contador-selecionados') {
-                contador.textContent = total;
-            } else {
-                contador.textContent = `${total} integrantes selecionados`;
-            }
-        }
-    });
-    
-    // Atualizar texto na parte inferior do modal
-    const textoInferior = document.querySelector('#integrantes-disponiveis + div');
-    if (textoInferior) {
-        textoInferior.innerHTML = `
-            <div style="
-                color: #add8e6; 
-                font-size: 16px; 
-                font-weight: bold;
-                text-align: center;
-                background: rgba(76, 175, 80, 0.1);
-                padding: 10px;
-                border-radius: 8px;
-                border: 2px solid rgba(76, 175, 80, 0.3);
-            ">
-                <i class="fas fa-users"></i>
-                <span id="contador-selecionados">${total}</span> integrantes selecionados
-                ${total > 0 ? '<br><small style="color: #90EE90;">✓ Pronto para formar equipe!</small>' : ''}
-            </div>
-        `;
-    }
-};
-
-// ========================================
-// FUNÇÃO PARA PERMITIR CLIQUE EM QUALQUER LUGAR
-// ========================================
-window.adicionarEventosDeClique = function() {
-    console.log('🎯 Adicionando eventos de clique melhorados...');
-    
-    // Encontrar todos os itens de integrante
-    const itens = document.querySelectorAll('.integrante-item');
-    
-    itens.forEach(item => {
-        // Remover eventos antigos
-        item.onclick = null;
-        
-        // Adicionar novo evento
-        item.addEventListener('click', function(event) {
-            event.preventDefault();
-            event.stopPropagation();
-            
-            const integranteId = this.id.replace('item_', '');
-            console.log('🖱️ Clique no item do integrante:', integranteId);
-            
-            toggleIntegranteRapido(integranteId, this);
-        });
-        
-        // Também adicionar evento no checkbox
-        const checkbox = item.querySelector('input[type="checkbox"]');
-        if (checkbox) {
-            checkbox.addEventListener('click', function(event) {
-                event.stopPropagation();
-                
-                const integranteId = this.value;
-                console.log('☑️ Clique direto no checkbox:', integranteId);
-                
-                // Forçar o estado correto
-                setTimeout(() => {
-                    toggleIntegranteRapido(integranteId, this.parentElement);
-                }, 10);
-            });
-        }
-    });
-    
-    console.log(`✅ Eventos adicionados para ${itens.length} integrantes`);
-};
-
-// ========================================
-// FUNÇÃO MELHORADA PARA CARREGAR INTEGRANTES
-// ========================================
-window.carregarIntegrantesEquipeRapido = async function() {
-    console.log('🔄 Carregando integrantes para equipe (versão múltipla seleção)...');
-    
-    const container = document.querySelector('#integrantes-disponiveis');
-    if (!container) {
-        console.error('❌ Container integrantes-disponiveis não encontrado');
-        return;
-    }
-    
-    // Mostrar loading
-    container.innerHTML = `
-        <div style="text-align: center; padding: 20px;">
-            <i class="fas fa-spinner fa-spin" style="font-size: 24px; color: #4CAF50;"></i>
-            <h3 style="margin: 10px 0; color: #fff;">Carregando integrantes...</h3>
-        </div>
-    `;
-    
-    try {
-        const supabaseClient = window.supabase || window.supabaseClient;
-        if (!supabaseClient) {
-            throw new Error('Supabase não está disponível');
-        }
-        
-        const { data, error } = await supabaseClient
-            .from('integrantes_hvc')
-            .select(`
-                *,
-                funcoes_hvc (
-                    id,
-                    nome
-                )
-            `)
-            .order('nome', { ascending: true });
-            
-        if (error) {
-            throw error;
-        }
-        
-        console.log('✅ Integrantes carregados para equipe:', data);
-        
-        // Limpar container
-        container.innerHTML = '';
-        
-        if (!data || data.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 20px;">
-                    <i class="fas fa-users" style="font-size: 24px; color: #ccc;"></i>
-                    <h3 style="margin: 10px 0; color: #ccc;">Nenhum integrante cadastrado</h3>
-                    <p style="color: #999;">Cadastre integrantes primeiro</p>
-                </div>
-            `;
-            return;
-        }
-        
-        // Criar lista de integrantes com IDs únicos
-        const listaHTML = data.map(integrante => {
-            const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
-            
-            return `
-                <div class="integrante-item" 
-                     id="item_${integrante.id}"
-                     data-integrante-id="${integrante.id}"
-                     style="
-                        display: flex; 
-                        align-items: center; 
-                        padding: 15px; 
-                        margin: 10px 0; 
-                        background: rgba(255,255,255,0.1); 
-                        border-radius: 10px;
-                        cursor: pointer;
-                        transition: all 0.3s ease;
-                        border: 2px solid transparent;
-                        position: relative;
-                     " 
-                     onmouseover="this.style.background='rgba(255,255,255,0.15)'"
-                     onmouseout="if(!this.querySelector('input').checked) this.style.background='rgba(255,255,255,0.1)'">
-                    
-                    <input type="checkbox" 
-                           id="checkbox_${integrante.id}" 
-                           value="${integrante.id}" 
-                           style="
-                               margin-right: 15px; 
-                               transform: scale(1.5);
-                               cursor: pointer;
-                               accent-color: #4CAF50;
-                           ">
-                    
-                    <div style="flex: 1;">
-                        <div style="
-                            font-weight: bold; 
-                            color: #fff; 
-                            margin-bottom: 6px;
-                            font-size: 16px;
-                        ">
-                            ${integrante.nome}
-                        </div>
-                        <div style="
-                            font-size: 13px; 
-                            color: #add8e6;
-                            display: flex;
-                            gap: 15px;
-                            align-items: center;
-                        ">
-                            <span><i class="fas fa-briefcase" style="margin-right: 5px;"></i> ${funcaoNome}</span>
-                            <span><i class="fas fa-phone" style="margin-right: 5px;"></i> ${integrante.whatsapp || 'Sem WhatsApp'}</span>
-                        </div>
-                    </div>
-                    
-                    <div style="
-                        width: 25px;
-                        height: 25px;
-                        border-radius: 50%;
-                        background: rgba(76, 175, 80, 0.2);
-                        border: 2px solid #4CAF50;
-                        display: none;
-                        align-items: center;
-                        justify-content: center;
-                        margin-left: 10px;
-                    " class="check-indicator">
-                        <i class="fas fa-check" style="color: #4CAF50; font-size: 12px;"></i>
-                    </div>
-                </div>
-            `;
-        }).join('');
-        
-        container.innerHTML = `
-            <div style="max-height: 400px; overflow-y: auto; padding: 10px;">
-                ${listaHTML}
-            </div>
-        `;
-        
-        // Adicionar container do contador separadamente
-        const contadorContainer = document.createElement('div');
-        contadorContainer.style.cssText = `
-            margin-top: 20px; 
-            padding: 15px; 
-            border-top: 2px solid rgba(173, 216, 230, 0.3);
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
-        `;
-        contadorContainer.innerHTML = `
-            <div style="
-                color: #add8e6; 
-                font-size: 16px; 
-                font-weight: bold;
-                text-align: center;
-            ">
-                <i class="fas fa-users"></i>
-                <span id="contador-selecionados">0</span> integrantes selecionados
-            </div>
-        `;
-        
-        container.parentElement.appendChild(contadorContainer);
-        
-        console.log(`✅ ${data.length} integrantes renderizados para seleção múltipla`);
-        
-        // Adicionar eventos de clique após renderizar
-        setTimeout(() => {
-            adicionarEventosDeClique();
-            atualizarContadorSelecionados();
-        }, 100);
-        
-    } catch (error) {
-        console.error('💥 Erro ao carregar integrantes para equipe:', error);
-        container.innerHTML = `
-            <div style="text-align: center; padding: 20px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 24px; color: #ff6b6b;"></i>
-                <h3 style="margin: 10px 0; color: #ff6b6b;">Erro ao carregar</h3>
-                <p style="color: #ccc;">${error.message}</p>
-                <button class="btn-primary btn-sm" onclick="carregarIntegrantesEquipeRapido()" style="margin-top: 10px;">
-                    <i class="fas fa-refresh"></i> Tentar novamente
-                </button>
-            </div>
-        `;
-    }
-};
-
-console.log('✅ CORREÇÃO MÚLTIPLA SELEÇÃO carregada!');
-</script>
-
-
-  
 </body>
 </html>
 
