@@ -1,0 +1,2295 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Equipe HVC - Gerenciamento</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    /* ===== ESTILOS PRINCIPAIS ===== */
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    }
+
+    #main-content-equipe-hvc {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background: linear-gradient(135deg, #000080, #191970);
+      color: #e0e0e0;
+    }
+
+    #main-content-equipe-hvc.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .page-title {
+      font-size: 2.5rem;
+      font-weight: bold;
+      color: #add8e6;
+      text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
+    }
+
+    /* ===== BOTÕES ===== */
+    .btn-primary {
+      background: linear-gradient(135deg, #4CAF50, #45a049);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
+    }
+
+    .btn-secondary {
+      background: linear-gradient(135deg, #6c757d, #5a6268);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-danger {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-success {
+      background: linear-gradient(135deg, #28a745, #218838);
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-info {
+      background: linear-gradient(135deg, #17a2b8, #138496);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn-warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800);
+      color: #212529;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover {
+      transform: translateY(-2px);
+    }
+
+    .btn.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.8rem;
+    }
+
+    /* ===== SEÇÕES ===== */
+    .section {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .section.hidden {
+      display: none;
+    }
+
+    .section-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: #add8e6;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .section-title h2 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .section-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    /* ===== FILTROS ===== */
+    .filter-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+      padding: 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      flex-wrap: wrap;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      min-width: 200px;
+    }
+
+    .filter-controls label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+      font-weight: 600;
+    }
+
+    .form-input, .form-select, .form-textarea {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      color: #e0e0e0;
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      outline: none;
+      border-color: #add8e6;
+      box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
+    }
+
+    .form-textarea {
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    /* ===== TABELAS ===== */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 10px;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .data-table {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      border-collapse: collapse;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    }
+
+    .data-table th {
+      background: rgba(173, 216, 230, 0.2);
+      color: #add8e6;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .data-table td {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      color: #e0e0e0;
+    }
+
+    .data-table tr:hover {
+      background: rgba(173, 216, 230, 0.1);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 2rem;
+      color: rgba(224, 224, 224, 0.6);
+    }
+
+    .empty-state i {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+      opacity: 0.5;
+    }
+
+    .empty-state h3 {
+      margin-bottom: 0.5rem;
+      font-size: 1.2rem;
+    }
+
+    .empty-state p {
+      margin: 0;
+      font-size: 0.9rem;
+    }
+
+    /* ===== ACTIONS ===== */
+    .actions-cell {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .actions-cell .btn {
+      padding: 0.5rem;
+      font-size: 0.8rem;
+    }
+
+    /* ===== STATUS BADGE ===== */
+    .status-badge {
+      padding: 0.25rem 0.75rem;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .status-ativo {
+      background: #28a745;
+      color: white;
+    }
+
+    .status-inativo {
+      background: #6c757d;
+      color: white;
+    }
+
+    .status-ativa {
+      background: #28a745;
+      color: white;
+    }
+
+    .status-inativa {
+      background: #6c757d;
+      color: white;
+    }
+
+    /* ===== MODAIS REDIMENSIONÁVEIS ===== */
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
+      backdrop-filter: blur(5px);
+    }
+
+    .modal.show {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-content {
+      background: rgba(25, 25, 112, 0.95);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 15px;
+      padding: 2rem;
+      max-width: 95vw;
+      max-height: 95vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      color: #e0e0e0;
+      width: 800px;
+      position: relative;
+      resize: both;
+      min-width: 400px;
+      min-height: 300px;
+    }
+
+    .modal-content.dragging {
+      user-select: none;
+    }
+
+    .modal-content.resizing {
+      user-select: none;
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding-bottom: 1rem;
+      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
+      cursor: move;
+      user-select: none;
+    }
+
+    .modal-title {
+      color: #add8e6;
+      font-size: 1.5rem;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin: 0;
+    }
+
+    .modal-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .modal-maximize {
+      background: none;
+      border: none;
+      font-size: 1.2rem;
+      cursor: pointer;
+      color: #6c757d;
+      padding: 0.5rem;
+      border-radius: 4px;
+      transition: all 0.3s ease;
+    }
+
+    .modal-maximize:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #add8e6;
+    }
+
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #6c757d;
+      padding: 0.5rem;
+      border-radius: 50%;
+      transition: all 0.3s ease;
+    }
+
+    .close-modal:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #dc3545;
+    }
+
+    .modal-footer {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 2px solid rgba(173, 216, 230, 0.3);
+    }
+
+    /* Resize handles */
+    .resize-handle {
+      position: absolute;
+      background: transparent;
+    }
+
+    .resize-handle.se {
+      bottom: 0;
+      right: 0;
+      width: 20px;
+      height: 20px;
+      cursor: se-resize;
+    }
+
+    .resize-handle.se::after {
+      content: '';
+      position: absolute;
+      bottom: 3px;
+      right: 3px;
+      width: 0;
+      height: 0;
+      border-left: 8px solid transparent;
+      border-bottom: 8px solid rgba(173, 216, 230, 0.5);
+    }
+
+    /* ===== FORMULÁRIOS ===== */
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+
+    .form-label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: #add8e6;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* ===== SELEÇÃO MÚLTIPLA ===== */
+    .multi-select {
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.1);
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .multi-select-item {
+      padding: 12px;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      cursor: pointer;
+      transition: all 0.3s ease;
+      user-select: none;
+    }
+
+    .multi-select-item:hover {
+      background: rgba(173, 216, 230, 0.1);
+    }
+
+    .multi-select-item:last-child {
+      border-bottom: none;
+    }
+
+    .multi-select-item.selected {
+      background: rgba(76, 175, 80, 0.2);
+      border-left: 4px solid #4CAF50;
+    }
+
+    .selected-count {
+      color: #add8e6;
+      font-weight: 600;
+      margin-top: 10px;
+      padding: 10px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 8px;
+      text-align: center;
+    }
+
+    /* ===== NOTIFICAÇÕES ===== */
+    .notification {
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 15px 20px;
+      border-radius: 8px;
+      color: white;
+      font-weight: 600;
+      z-index: 1001;
+      transform: translateX(400px);
+      transition: transform 0.3s ease;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: 400px;
+    }
+
+    .notification.show {
+      transform: translateX(0);
+    }
+
+    .notification.success {
+      background: linear-gradient(135deg, #28a745, #20c997);
+    }
+
+    .notification.error {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+    }
+
+    .notification.warning {
+      background: linear-gradient(135deg, #ffc107, #e0a800);
+      color: #212529;
+    }
+
+    /* ===== LOADING ===== */
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .loading-content {
+      background: rgba(25, 25, 112, 0.95);
+      padding: 2rem;
+      border-radius: 15px;
+      text-align: center;
+      color: #e0e0e0;
+      border: 1px solid rgba(173, 216, 230, 0.3);
+    }
+
+    .loading-spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid rgba(173, 216, 230, 0.3);
+      border-top: 4px solid #add8e6;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin: 0 auto 1rem;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* ===== RESPONSIVIDADE ===== */
+    @media (max-width: 768px) {
+      #main-content-equipe-hvc {
+        margin-left: 0;
+        padding: 1rem;
+      }
+
+      #main-content-equipe-hvc.sidebar-collapsed {
+        margin-left: 0;
+      }
+
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
+      .filter-controls {
+        flex-direction: column;
+      }
+
+      .filter-group {
+        min-width: auto;
+      }
+
+      .data-table {
+        font-size: 0.9rem;
+      }
+
+      .data-table th, .data-table td {
+        padding: 0.5rem;
+      }
+
+      .modal-content {
+        width: 95vw;
+        padding: 1rem;
+        min-width: 300px;
+      }
+
+      .section-title {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+
+      .section-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+    }
+
+    /* ===== ANIMAÇÕES ===== */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .section {
+      animation: fadeIn 0.5s ease-out;
+    }
+
+    /* ===== SCROLLBAR ===== */
+    .multi-select::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .multi-select::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+    }
+
+    .multi-select::-webkit-scrollbar-thumb {
+      background: rgba(173, 216, 230, 0.5);
+      border-radius: 4px;
+    }
+
+    .multi-select::-webkit-scrollbar-thumb:hover {
+      background: rgba(173, 216, 230, 0.7);
+    }
+  </style>
+</head>
+<body>
+  <!-- Main Content -->
+  <main id="main-content-equipe-hvc">
+    <!-- Header -->
+    <div class="page-header">
+      <h1 class="page-title"><i class="fas fa-users-cog"></i> Gestão de Equipes HVC</h1>
+    </div>
+
+    <!-- Seção Equipes -->
+    <div class="section">
+      <div class="section-title">
+        <h2><i class="fas fa-users"></i> Equipes</h2>
+        <div class="section-actions">
+          <button class="btn-primary" onclick="openEquipeModal()">
+            <i class="fas fa-plus"></i>
+            Nova Equipe
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Equipes -->
+      <div class="filter-controls">
+        <div class="filter-group">
+          <label>Buscar por Número:</label>
+          <input type="text" id="filtro-numero-equipe" class="form-input" placeholder="Digite o número da equipe" onkeyup="filtrarEquipes()">
+        </div>
+        <div class="filter-group">
+          <label>Status:</label>
+          <select id="filtro-status-equipe" class="form-select" onchange="filtrarEquipes()">
+            <option value="">Todos</option>
+            <option value="ativa">Ativa</option>
+            <option value="inativa">Inativa</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabela Equipes -->
+      <div class="table-container">
+        <table id="tabela-equipes" class="data-table">
+          <thead>
+            <tr>
+              <th>NÚMERO</th>
+              <th>INTEGRANTES</th>
+              <th>STATUS</th>
+              <th>OBSERVAÇÕES</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="5" class="empty-state">
+                <i class="fas fa-users"></i>
+                <h3>Nenhuma equipe cadastrada</h3>
+                <p>Clique em "Nova Equipe" para começar</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Seção Integrantes -->
+    <div class="section">
+      <div class="section-title">
+        <h2><i class="fas fa-user"></i> Integrantes</h2>
+        <div class="section-actions">
+          <button class="btn-primary" onclick="openIntegranteModal()">
+            <i class="fas fa-plus"></i>
+            Novo Integrante
+          </button>
+          <button class="btn-secondary" onclick="openFuncoesModal()">
+            <i class="fas fa-cog"></i>
+            Gerenciar Funções
+          </button>
+        </div>
+      </div>
+
+      <!-- Filtros Integrantes -->
+      <div class="filter-controls">
+        <div class="filter-group">
+          <label>Buscar por Nome:</label>
+          <input type="text" id="filtro-nome-integrante" class="form-input" placeholder="Digite o nome do integrante" onkeyup="filtrarIntegrantes()">
+        </div>
+        <div class="filter-group">
+          <label>Função:</label>
+          <select id="filtro-funcao-integrante" class="form-select" onchange="filtrarIntegrantes()">
+            <option value="">Todas</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Tabela Integrantes -->
+      <div class="table-container">
+        <table id="tabela-integrantes" class="data-table">
+          <thead>
+            <tr>
+              <th>NOME</th>
+              <th>CPF</th>
+              <th>WHATSAPP</th>
+              <th>FUNÇÃO</th>
+              <th>OBSERVAÇÕES</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="6" class="empty-state">
+                <i class="fas fa-user"></i>
+                <h3>Nenhum integrante cadastrado</h3>
+                <p>Clique em "Novo Integrante" para começar</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal Nova Equipe -->
+  <div id="modal-equipe" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-users"></i>
+          <span id="modal-equipe-title">Nova Equipe</span>
+        </h3>
+        <div class="modal-controls">
+          <button class="modal-maximize" onclick="toggleMaximizeModal('modal-equipe')">
+            <i class="fas fa-expand"></i>
+          </button>
+          <button class="close-modal" onclick="closeEquipeModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <form id="equipe-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Número da Equipe *</label>
+            <input type="text" id="equipe-numero" class="form-input" required placeholder="Ex: E001">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="equipe-status" class="form-select">
+              <option value="ativa">Ativa</option>
+              <option value="inativa">Inativa</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Observações</label>
+          <textarea id="equipe-observacoes" class="form-textarea" placeholder="Observações sobre a equipe"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Selecionar Integrantes</label>
+          <div id="integrantes-container" class="multi-select">
+            <div style="text-align: center; padding: 20px; color: #6c757d;">
+              <i class="fas fa-spinner fa-spin"></i>
+              Carregando integrantes...
+            </div>
+          </div>
+          <div id="contador-selecionados-container" class="selected-count" style="display: none;">
+            <i class="fas fa-users"></i>
+            <span id="contador-selecionados">0</span> integrantes selecionados
+          </div>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeEquipeModal()">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+        <button type="button" class="btn-success" onclick="saveEquipe()">
+          <i class="fas fa-save"></i>
+          Salvar Equipe
+        </button>
+      </div>
+
+      <div class="resize-handle se"></div>
+    </div>
+  </div>
+
+  <!-- Modal Novo Integrante -->
+  <div id="modal-integrante" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-user"></i>
+          <span id="modal-integrante-title">Novo Integrante</span>
+        </h3>
+        <div class="modal-controls">
+          <button class="modal-maximize" onclick="toggleMaximizeModal('modal-integrante')">
+            <i class="fas fa-expand"></i>
+          </button>
+          <button class="close-modal" onclick="closeIntegranteModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <form id="integrante-form">
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nome Completo *</label>
+            <input type="text" id="integrante-nome" class="form-input" required placeholder="Nome completo">
+          </div>
+          <div class="form-group">
+            <label class="form-label">CPF *</label>
+            <input type="text" id="integrante-cpf" class="form-input" required placeholder="000.000.000-00" maxlength="14">
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">WhatsApp</label>
+            <input type="text" id="integrante-whatsapp" class="form-input" placeholder="(00) 00000-0000" maxlength="15">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Função *</label>
+            <select id="integrante-funcao" class="form-select" required>
+              <option value="">Selecione uma função</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Observações</label>
+          <textarea id="integrante-observacoes" class="form-textarea" placeholder="Observações sobre o integrante"></textarea>
+        </div>
+      </form>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeIntegranteModal()">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+        <button type="button" class="btn-success" onclick="saveIntegrante()">
+          <i class="fas fa-save"></i>
+          Salvar Integrante
+        </button>
+      </div>
+
+      <div class="resize-handle se"></div>
+    </div>
+  </div>
+
+  <!-- Modal Gerenciar Funções -->
+  <div id="modal-funcoes" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-cog"></i>
+          Gerenciar Funções
+        </h3>
+        <div class="modal-controls">
+          <button class="modal-maximize" onclick="toggleMaximizeModal('modal-funcoes')">
+            <i class="fas fa-expand"></i>
+          </button>
+          <button class="close-modal" onclick="closeFuncoesModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <!-- Formulário Nova Função -->
+      <div id="nova-funcao-form" style="background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
+        <h4 style="color: #add8e6; margin-bottom: 1rem;">
+          <i class="fas fa-plus"></i>
+          Nova Função
+        </h4>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Nome da Função *</label>
+            <input type="text" id="nova-funcao-nome" class="form-input" required placeholder="Ex: Aplicador">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Descrição</label>
+            <input type="text" id="nova-funcao-descricao" class="form-input" placeholder="Descrição da função">
+          </div>
+        </div>
+        <div style="text-align: right;">
+          <button type="button" class="btn-success btn-sm" onclick="salvarNovaFuncao()">
+            <i class="fas fa-plus"></i>
+            Adicionar Função
+          </button>
+        </div>
+      </div>
+
+      <!-- Lista de Funções -->
+      <div class="table-container">
+        <table id="tabela-funcoes" class="data-table">
+          <thead>
+            <tr>
+              <th>FUNÇÃO</th>
+              <th>DESCRIÇÃO</th>
+              <th>INTEGRANTES</th>
+              <th>AÇÕES</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td colspan="4" class="empty-state">
+                <i class="fas fa-spinner fa-spin"></i>
+                <h3>Carregando funções...</h3>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeFuncoesModal()">
+          <i class="fas fa-times"></i>
+          Fechar
+        </button>
+      </div>
+
+      <div class="resize-handle se"></div>
+    </div>
+  </div>
+
+  <!-- Modal Visualizar Equipe -->
+  <div id="modal-visualizar-equipe" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-eye"></i>
+          Visualizar Equipe
+        </h3>
+        <div class="modal-controls">
+          <button class="modal-maximize" onclick="toggleMaximizeModal('modal-visualizar-equipe')">
+            <i class="fas fa-expand"></i>
+          </button>
+          <button class="close-modal" onclick="closeVisualizarEquipeModal()">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="visualizar-equipe-content">
+        <!-- Conteúdo será preenchido dinamicamente -->
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" onclick="closeVisualizarEquipeModal()">
+          <i class="fas fa-times"></i>
+          Fechar
+        </button>
+      </div>
+
+      <div class="resize-handle se"></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="supabase.js"></script>
+  <script>
+    // ===== VARIÁVEIS GLOBAIS =====
+    let integrantesData = [];
+    let equipesData = [];
+    let funcoesData = [];
+    let integrantesSelecionados = [];
+    let editandoEquipe = null;
+    let editandoIntegrante = null;
+
+    // ===== FUNÇÕES AUXILIARES =====
+    function showLoading(message = 'Carregando...') {
+      const overlay = document.createElement('div');
+      overlay.className = 'loading-overlay';
+      overlay.id = 'loading-overlay';
+      overlay.innerHTML = `
+        <div class="loading-content">
+          <div class="loading-spinner"></div>
+          <p>${message}</p>
+        </div>
+      `;
+      document.body.appendChild(overlay);
+    }
+
+    function hideLoading() {
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) {
+        overlay.remove();
+      }
+    }
+
+    function showNotification(message, type = 'success') {
+      const notification = document.createElement('div');
+      notification.className = `notification ${type}`;
+      
+      const icon = type === 'success' ? 'fa-check-circle' : 
+                   type === 'error' ? 'fa-exclamation-circle' : 
+                   'fa-info-circle';
+      
+      notification.innerHTML = `
+        <i class="fas ${icon}"></i>
+        <span>${message}</span>
+      `;
+      
+      document.body.appendChild(notification);
+      
+      setTimeout(() => notification.classList.add('show'), 100);
+      
+      setTimeout(() => {
+        notification.classList.remove('show');
+        setTimeout(() => notification.remove(), 300);
+      }, 3000);
+    }
+
+    function formatCPF(cpf) {
+      return cpf.replace(/\D/g, '')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d)/, '$1.$2')
+                .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+                .replace(/(-\d{2})\d+?$/, '$1');
+    }
+
+    function formatWhatsApp(phone) {
+      return phone.replace(/\D/g, '')
+                  .replace(/(\d{2})(\d)/, '($1) $2')
+                  .replace(/(\d{5})(\d)/, '$1-$2')
+                  .replace(/(-\d{4})\d+?$/, '$1');
+    }
+
+    function validarCPF(cpf) {
+      cpf = cpf.replace(/\D/g, '');
+      if (cpf.length !== 11) return false;
+      
+      let soma = 0;
+      for (let i = 0; i < 9; i++) {
+        soma += parseInt(cpf.charAt(i)) * (10 - i);
+      }
+      let resto = 11 - (soma % 11);
+      if (resto === 10 || resto === 11) resto = 0;
+      if (resto !== parseInt(cpf.charAt(9))) return false;
+      
+      soma = 0;
+      for (let i = 0; i < 10; i++) {
+        soma += parseInt(cpf.charAt(i)) * (11 - i);
+      }
+      resto = 11 - (soma % 11);
+      if (resto === 10 || resto === 11) resto = 0;
+      if (resto !== parseInt(cpf.charAt(10))) return false;
+      
+      return true;
+    }
+
+    // ===== SISTEMA DE MODAIS REDIMENSIONÁVEIS =====
+    function makeModalDraggable(modalId) {
+      const modal = document.getElementById(modalId);
+      const modalContent = modal.querySelector('.modal-content');
+      const header = modal.querySelector('.modal-header');
+      
+      let isDragging = false;
+      let currentX;
+      let currentY;
+      let initialX;
+      let initialY;
+      let xOffset = 0;
+      let yOffset = 0;
+
+      header.addEventListener('mousedown', dragStart);
+      document.addEventListener('mousemove', drag);
+      document.addEventListener('mouseup', dragEnd);
+
+      function dragStart(e) {
+        if (e.target.closest('.modal-controls')) return;
+        
+        initialX = e.clientX - xOffset;
+        initialY = e.clientY - yOffset;
+
+        if (e.target === header || header.contains(e.target)) {
+          isDragging = true;
+          modalContent.classList.add('dragging');
+        }
+      }
+
+      function drag(e) {
+        if (isDragging) {
+          e.preventDefault();
+          currentX = e.clientX - initialX;
+          currentY = e.clientY - initialY;
+
+          xOffset = currentX;
+          yOffset = currentY;
+
+          modalContent.style.transform = `translate(${currentX}px, ${currentY}px)`;
+        }
+      }
+
+      function dragEnd() {
+        initialX = currentX;
+        initialY = currentY;
+        isDragging = false;
+        modalContent.classList.remove('dragging');
+      }
+    }
+
+    function makeModalResizable(modalId) {
+      const modal = document.getElementById(modalId);
+      const modalContent = modal.querySelector('.modal-content');
+      const resizeHandle = modal.querySelector('.resize-handle.se');
+      
+      let isResizing = false;
+
+      resizeHandle.addEventListener('mousedown', initResize);
+      document.addEventListener('mousemove', doResize);
+      document.addEventListener('mouseup', stopResize);
+
+      function initResize(e) {
+        isResizing = true;
+        modalContent.classList.add('resizing');
+        e.preventDefault();
+      }
+
+      function doResize(e) {
+        if (!isResizing) return;
+
+        const rect = modalContent.getBoundingClientRect();
+        const newWidth = e.clientX - rect.left;
+        const newHeight = e.clientY - rect.top;
+
+        if (newWidth > 400) {
+          modalContent.style.width = newWidth + 'px';
+        }
+        if (newHeight > 300) {
+          modalContent.style.height = newHeight + 'px';
+        }
+      }
+
+      function stopResize() {
+        isResizing = false;
+        modalContent.classList.remove('resizing');
+      }
+    }
+
+    function toggleMaximizeModal(modalId) {
+      const modal = document.getElementById(modalId);
+      const modalContent = modal.querySelector('.modal-content');
+      const maximizeBtn = modal.querySelector('.modal-maximize i');
+      
+      if (modalContent.style.width === '95vw') {
+        // Restaurar
+        modalContent.style.width = '800px';
+        modalContent.style.height = 'auto';
+        modalContent.style.transform = 'translate(0, 0)';
+        maximizeBtn.className = 'fas fa-expand';
+      } else {
+        // Maximizar
+        modalContent.style.width = '95vw';
+        modalContent.style.height = '95vh';
+        modalContent.style.transform = 'translate(0, 0)';
+        maximizeBtn.className = 'fas fa-compress';
+      }
+    }
+
+    // ===== FUNÇÕES DE CARREGAMENTO =====
+    async function carregarFuncoes() {
+      try {
+        const { data, error } = await supabase
+          .from('funcoes_hvc')
+          .select('*')
+          .order('nome');
+
+        if (error) throw error;
+
+        funcoesData = data || [];
+        atualizarSelectFuncoes();
+        atualizarTabelaFuncoes();
+        
+        console.log('✅ Funções carregadas:', funcoesData.length);
+        return funcoesData;
+      } catch (error) {
+        console.error('❌ Erro ao carregar funções:', error);
+        showNotification('Erro ao carregar funções: ' + error.message, 'error');
+        return [];
+      }
+    }
+
+    async function carregarIntegrantes() {
+      try {
+        const { data, error } = await supabase
+          .from('integrantes_hvc')
+          .select(`
+            *,
+            funcoes_hvc (
+              id,
+              nome
+            )
+          `)
+          .order('nome');
+
+        if (error) throw error;
+
+        integrantesData = data || [];
+        atualizarTabelaIntegrantes();
+        
+        console.log('✅ Integrantes carregados:', integrantesData.length);
+        return integrantesData;
+      } catch (error) {
+        console.error('❌ Erro ao carregar integrantes:', error);
+        showNotification('Erro ao carregar integrantes: ' + error.message, 'error');
+        return [];
+      }
+    }
+
+    async function carregarEquipes() {
+      try {
+        const { data, error } = await supabase
+          .from('equipes_hvc')
+          .select(`
+            *,
+            equipe_integrantes (
+              integrante_id,
+              integrantes_hvc (
+                id,
+                nome,
+                funcoes_hvc (
+                  nome
+                )
+              )
+            )
+          `)
+          .order('numero');
+
+        if (error) throw error;
+
+        equipesData = data || [];
+        atualizarTabelaEquipes();
+        
+        console.log('✅ Equipes carregadas:', equipesData.length);
+        return equipesData;
+      } catch (error) {
+        console.error('❌ Erro ao carregar equipes:', error);
+        showNotification('Erro ao carregar equipes: ' + error.message, 'error');
+        return [];
+      }
+    }
+
+    // ===== FUNÇÕES DE ATUALIZAÇÃO DE INTERFACE =====
+    function atualizarSelectFuncoes() {
+      const select = document.getElementById('integrante-funcao');
+      const filtroSelect = document.getElementById('filtro-funcao-integrante');
+      
+      if (select) {
+        select.innerHTML = '<option value="">Selecione uma função</option>';
+        funcoesData.forEach(funcao => {
+          select.innerHTML += `<option value="${funcao.id}">${funcao.nome}</option>`;
+        });
+      }
+      
+      if (filtroSelect) {
+        const valorAtual = filtroSelect.value;
+        filtroSelect.innerHTML = '<option value="">Todas</option>';
+        funcoesData.forEach(funcao => {
+          filtroSelect.innerHTML += `<option value="${funcao.id}">${funcao.nome}</option>`;
+        });
+        filtroSelect.value = valorAtual;
+      }
+    }
+
+    function atualizarTabelaFuncoes() {
+      const tbody = document.querySelector('#tabela-funcoes tbody');
+      
+      if (funcoesData.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="empty-state">
+              <i class="fas fa-cog"></i>
+              <h3>Nenhuma função cadastrada</h3>
+              <p>Adicione uma nova função acima</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = funcoesData.map(funcao => {
+        const qtdIntegrantes = integrantesData.filter(i => i.funcao_id === funcao.id).length;
+        
+        return `
+          <tr>
+            <td><strong>${funcao.nome}</strong></td>
+            <td>${funcao.descricao || '-'}</td>
+            <td>
+              <span class="status-badge ${qtdIntegrantes > 0 ? 'status-ativo' : 'status-inativo'}">
+                ${qtdIntegrantes}
+              </span>
+            </td>
+            <td class="actions-cell">
+              <button class="btn-danger btn-sm" onclick="excluirFuncao('${funcao.id}', '${funcao.nome}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function atualizarTabelaIntegrantes() {
+      const tbody = document.querySelector('#tabela-integrantes tbody');
+      
+      if (integrantesData.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" class="empty-state">
+              <i class="fas fa-user"></i>
+              <h3>Nenhum integrante cadastrado</h3>
+              <p>Clique em "Novo Integrante" para começar</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = integrantesData.map(integrante => {
+        const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
+        
+        return `
+          <tr>
+            <td><strong>${integrante.nome}</strong></td>
+            <td>${integrante.cpf}</td>
+            <td>${integrante.whatsapp || '-'}</td>
+            <td>
+              <span class="status-badge status-ativo">${funcaoNome}</span>
+            </td>
+            <td>${integrante.observacoes || '-'}</td>
+            <td class="actions-cell">
+              <button class="btn-info btn-sm" onclick="editarIntegrante('${integrante.id}')">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn-danger btn-sm" onclick="excluirIntegrante('${integrante.id}', '${integrante.nome}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function atualizarTabelaEquipes() {
+      const tbody = document.querySelector('#tabela-equipes tbody');
+      
+      if (equipesData.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="empty-state">
+              <i class="fas fa-users"></i>
+              <h3>Nenhuma equipe cadastrada</h3>
+              <p>Clique em "Nova Equipe" para começar</p>
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = equipesData.map(equipe => {
+        const integrantes = equipe.equipe_integrantes || [];
+        const qtdIntegrantes = integrantes.length;
+        
+        return `
+          <tr>
+            <td><strong>${equipe.numero}</strong></td>
+            <td>
+              <span class="status-badge ${qtdIntegrantes > 0 ? 'status-ativo' : 'status-inativo'}">
+                ${qtdIntegrantes} integrante${qtdIntegrantes !== 1 ? 's' : ''}
+              </span>
+            </td>
+            <td>
+              <span class="status-badge status-${equipe.status}">
+                ${equipe.status}
+              </span>
+            </td>
+            <td>${equipe.observacoes || '-'}</td>
+            <td class="actions-cell">
+              <button class="btn-info btn-sm" onclick="visualizarEquipe('${equipe.id}')">
+                <i class="fas fa-eye"></i>
+              </button>
+              <button class="btn-warning btn-sm" onclick="editarEquipe('${equipe.id}')">
+                <i class="fas fa-edit"></i>
+              </button>
+              <button class="btn-danger btn-sm" onclick="excluirEquipe('${equipe.id}', '${equipe.numero}')">
+                <i class="fas fa-trash"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ===== FUNÇÕES DE MODAL =====
+    function openEquipeModal() {
+      editandoEquipe = null;
+      integrantesSelecionados = [];
+      
+      document.getElementById('modal-equipe-title').textContent = 'Nova Equipe';
+      document.getElementById('equipe-numero').value = '';
+      document.getElementById('equipe-status').value = 'ativa';
+      document.getElementById('equipe-observacoes').value = '';
+      
+      carregarIntegrantesParaSelecao();
+      
+      const modal = document.getElementById('modal-equipe');
+      modal.classList.add('show');
+      
+      makeModalDraggable('modal-equipe');
+      makeModalResizable('modal-equipe');
+    }
+
+    function closeEquipeModal() {
+      document.getElementById('modal-equipe').classList.remove('show');
+      integrantesSelecionados = [];
+    }
+
+    function openIntegranteModal() {
+      editandoIntegrante = null;
+      
+      document.getElementById('modal-integrante-title').textContent = 'Novo Integrante';
+      document.getElementById('integrante-nome').value = '';
+      document.getElementById('integrante-cpf').value = '';
+      document.getElementById('integrante-whatsapp').value = '';
+      document.getElementById('integrante-funcao').value = '';
+      document.getElementById('integrante-observacoes').value = '';
+      
+      const modal = document.getElementById('modal-integrante');
+      modal.classList.add('show');
+      
+      makeModalDraggable('modal-integrante');
+      makeModalResizable('modal-integrante');
+    }
+
+    function closeIntegranteModal() {
+      document.getElementById('modal-integrante').classList.remove('show');
+    }
+
+    function openFuncoesModal() {
+      const modal = document.getElementById('modal-funcoes');
+      modal.classList.add('show');
+      
+      carregarFuncoes();
+      
+      makeModalDraggable('modal-funcoes');
+      makeModalResizable('modal-funcoes');
+    }
+
+    function closeFuncoesModal() {
+      document.getElementById('modal-funcoes').classList.remove('show');
+    }
+
+    function closeVisualizarEquipeModal() {
+      document.getElementById('modal-visualizar-equipe').classList.remove('show');
+    }
+
+    // ===== FUNÇÕES DE SELEÇÃO MÚLTIPLA =====
+    async function carregarIntegrantesParaSelecao() {
+      const container = document.getElementById('integrantes-container');
+      const contadorContainer = document.getElementById('contador-selecionados-container');
+      
+      try {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 20px; color: #6c757d;">
+            <i class="fas fa-spinner fa-spin"></i>
+            Carregando integrantes...
+          </div>
+        `;
+
+        const { data, error } = await supabase
+          .from('integrantes_hvc')
+          .select(`
+            *,
+            funcoes_hvc (
+              nome
+            )
+          `)
+          .order('nome');
+
+        if (error) throw error;
+
+        if (!data || data.length === 0) {
+          container.innerHTML = `
+            <div style="text-align: center; padding: 20px; color: #6c757d;">
+              <i class="fas fa-user-plus"></i>
+              <h3>Nenhum integrante cadastrado</h3>
+              <p>Cadastre integrantes primeiro para formar equipes</p>
+            </div>
+          `;
+          return;
+        }
+
+        container.innerHTML = data.map(integrante => {
+          const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
+          
+          return `
+            <div class="multi-select-item" data-integrante-id="${integrante.id}">
+              <div style="display: flex; align-items: center; width: 100%;">
+                <div style="
+                  width: 20px;
+                  height: 20px;
+                  border: 2px solid #4CAF50;
+                  border-radius: 4px;
+                  margin-right: 12px;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  background: transparent;
+                  transition: all 0.3s ease;
+                " class="custom-checkbox">
+                  <i class="fas fa-check" style="color: #4CAF50; font-size: 12px; display: none;"></i>
+                </div>
+                
+                <div style="flex: 1;">
+                  <div style="font-weight: bold; color: #fff; margin-bottom: 4px;">
+                    ${integrante.nome}
+                  </div>
+                  <div style="font-size: 12px; color: #add8e6; display: flex; gap: 15px;">
+                    <span><i class="fas fa-briefcase" style="margin-right: 5px;"></i> ${funcaoNome}</span>
+                    <span><i class="fas fa-phone" style="margin-right: 5px;"></i> ${integrante.whatsapp || 'Sem WhatsApp'}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        contadorContainer.style.display = 'block';
+        atualizarContadorSelecionados();
+        adicionarEventosSelecao();
+        
+        console.log('✅ Integrantes carregados para seleção:', data.length);
+        
+      } catch (error) {
+        console.error('❌ Erro ao carregar integrantes:', error);
+        container.innerHTML = `
+          <div style="text-align: center; padding: 20px;">
+            <i class="fas fa-exclamation-triangle" style="color: #dc3545;"></i>
+            <h3 style="color: #dc3545;">Erro ao carregar</h3>
+            <p style="color: #6c757d;">${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function adicionarEventosSelecao() {
+      const items = document.querySelectorAll('.multi-select-item');
+      
+      items.forEach(item => {
+        item.addEventListener('click', function() {
+          const integranteId = this.dataset.integranteId;
+          const checkbox = this.querySelector('.custom-checkbox');
+          const checkIcon = checkbox.querySelector('i');
+          
+          if (integrantesSelecionados.includes(integranteId)) {
+            // Desmarcar
+            integrantesSelecionados = integrantesSelecionados.filter(id => id !== integranteId);
+            this.classList.remove('selected');
+            checkbox.style.background = 'transparent';
+            checkIcon.style.display = 'none';
+          } else {
+            // Marcar
+            integrantesSelecionados.push(integranteId);
+            this.classList.add('selected');
+            checkbox.style.background = '#4CAF50';
+            checkIcon.style.display = 'block';
+          }
+          
+          atualizarContadorSelecionados();
+        });
+      });
+    }
+
+    function atualizarContadorSelecionados() {
+      const contador = document.getElementById('contador-selecionados');
+      if (contador) {
+        contador.textContent = integrantesSelecionados.length;
+      }
+    }
+
+    // ===== FUNÇÕES DE SALVAMENTO =====
+    async function saveEquipe() {
+      try {
+        const numero = document.getElementById('equipe-numero').value.trim();
+        const status = document.getElementById('equipe-status').value;
+        const observacoes = document.getElementById('equipe-observacoes').value.trim();
+
+        if (!numero) {
+          showNotification('Por favor, informe o número da equipe', 'error');
+          return;
+        }
+
+        if (integrantesSelecionados.length === 0) {
+          showNotification('Selecione pelo menos um integrante para a equipe', 'error');
+          return;
+        }
+
+        showLoading('Salvando equipe...');
+
+        // Verificar se número já existe (apenas para nova equipe)
+        if (!editandoEquipe) {
+          const { data: existente } = await supabase
+            .from('equipes_hvc')
+            .select('id')
+            .eq('numero', numero)
+            .single();
+
+          if (existente) {
+            hideLoading();
+            showNotification('Já existe uma equipe com este número', 'error');
+            return;
+          }
+        }
+
+        let equipeId;
+
+        if (editandoEquipe) {
+          // Atualizar equipe existente
+          const { data, error } = await supabase
+            .from('equipes_hvc')
+            .update({
+              numero,
+              status,
+              observacoes,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', editandoEquipe)
+            .select()
+            .single();
+
+          if (error) throw error;
+          equipeId = editandoEquipe;
+
+          // Remover integrantes antigos
+          await supabase
+            .from('equipe_integrantes')
+            .delete()
+            .eq('equipe_id', equipeId);
+
+        } else {
+          // Criar nova equipe
+          const { data, error } = await supabase
+            .from('equipes_hvc')
+            .insert({
+              numero,
+              status,
+              observacoes
+            })
+            .select()
+            .single();
+
+          if (error) throw error;
+          equipeId = data.id;
+        }
+
+        // Associar integrantes
+        const integrantesParaInserir = integrantesSelecionados.map(integranteId => ({
+          equipe_id: equipeId,
+          integrante_id: integranteId
+        }));
+
+        const { error: errorIntegrantes } = await supabase
+          .from('equipe_integrantes')
+          .insert(integrantesParaInserir);
+
+        if (errorIntegrantes) throw errorIntegrantes;
+
+        hideLoading();
+        showNotification(
+          editandoEquipe ? 'Equipe atualizada com sucesso!' : 'Equipe criada com sucesso!',
+          'success'
+        );
+
+        closeEquipeModal();
+        await carregarEquipes();
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao salvar equipe:', error);
+        showNotification('Erro ao salvar equipe: ' + error.message, 'error');
+      }
+    }
+
+    async function saveIntegrante() {
+      try {
+        const nome = document.getElementById('integrante-nome').value.trim();
+        const cpf = document.getElementById('integrante-cpf').value.trim();
+        const whatsapp = document.getElementById('integrante-whatsapp').value.trim();
+        const funcaoId = document.getElementById('integrante-funcao').value;
+        const observacoes = document.getElementById('integrante-observacoes').value.trim();
+
+        if (!nome || !cpf || !funcaoId) {
+          showNotification('Por favor, preencha todos os campos obrigatórios', 'error');
+          return;
+        }
+
+        if (!validarCPF(cpf)) {
+          showNotification('CPF inválido', 'error');
+          return;
+        }
+
+        showLoading('Salvando integrante...');
+
+        // Verificar CPF duplicado (apenas para novo integrante)
+        if (!editandoIntegrante) {
+          const { data: existente } = await supabase
+            .from('integrantes_hvc')
+            .select('id')
+            .eq('cpf', cpf)
+            .single();
+
+          if (existente) {
+            hideLoading();
+            showNotification('Já existe um integrante com este CPF', 'error');
+            return;
+          }
+        }
+
+        const dadosIntegrante = {
+          nome,
+          cpf,
+          whatsapp: whatsapp || null,
+          funcao_id: funcaoId,
+          observacoes: observacoes || null
+        };
+
+        if (editandoIntegrante) {
+          // Atualizar integrante existente
+          dadosIntegrante.updated_at = new Date().toISOString();
+          
+          const { error } = await supabase
+            .from('integrantes_hvc')
+            .update(dadosIntegrante)
+            .eq('id', editandoIntegrante);
+
+          if (error) throw error;
+        } else {
+          // Criar novo integrante
+          const { error } = await supabase
+            .from('integrantes_hvc')
+            .insert(dadosIntegrante);
+
+          if (error) throw error;
+        }
+
+        hideLoading();
+        showNotification(
+          editandoIntegrante ? 'Integrante atualizado com sucesso!' : 'Integrante cadastrado com sucesso!',
+          'success'
+        );
+
+        closeIntegranteModal();
+        await carregarIntegrantes();
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao salvar integrante:', error);
+        showNotification('Erro ao salvar integrante: ' + error.message, 'error');
+      }
+    }
+
+    async function salvarNovaFuncao() {
+      try {
+        const nome = document.getElementById('nova-funcao-nome').value.trim();
+        const descricao = document.getElementById('nova-funcao-descricao').value.trim();
+
+        if (!nome) {
+          showNotification('Por favor, informe o nome da função', 'error');
+          return;
+        }
+
+        // Verificar se já existe
+        const funcaoExistente = funcoesData.find(f => f.nome.toLowerCase() === nome.toLowerCase());
+        if (funcaoExistente) {
+          showNotification('Já existe uma função com este nome', 'error');
+          return;
+        }
+
+        showLoading('Salvando função...');
+
+        const { error } = await supabase
+          .from('funcoes_hvc')
+          .insert({
+            nome,
+            descricao: descricao || null
+          });
+
+        if (error) throw error;
+
+        // Limpar formulário
+        document.getElementById('nova-funcao-nome').value = '';
+        document.getElementById('nova-funcao-descricao').value = '';
+
+        hideLoading();
+        showNotification('Função criada com sucesso!', 'success');
+
+        await carregarFuncoes();
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao salvar função:', error);
+        showNotification('Erro ao salvar função: ' + error.message, 'error');
+      }
+    }
+
+    // ===== FUNÇÕES DE EDIÇÃO =====
+    async function editarEquipe(equipeId) {
+      try {
+        showLoading('Carregando dados da equipe...');
+
+        const { data, error } = await supabase
+          .from('equipes_hvc')
+          .select(`
+            *,
+            equipe_integrantes (
+              integrante_id
+            )
+          `)
+          .eq('id', equipeId)
+          .single();
+
+        if (error) throw error;
+
+        editandoEquipe = equipeId;
+        integrantesSelecionados = data.equipe_integrantes.map(ei => ei.integrante_id);
+
+        document.getElementById('modal-equipe-title').textContent = 'Editar Equipe';
+        document.getElementById('equipe-numero').value = data.numero;
+        document.getElementById('equipe-status').value = data.status;
+        document.getElementById('equipe-observacoes').value = data.observacoes || '';
+
+        await carregarIntegrantesParaSelecao();
+
+        // Marcar integrantes selecionados
+        setTimeout(() => {
+          integrantesSelecionados.forEach(integranteId => {
+            const item = document.querySelector(`[data-integrante-id="${integranteId}"]`);
+            if (item) {
+              const checkbox = item.querySelector('.custom-checkbox');
+              const checkIcon = checkbox.querySelector('i');
+              
+              item.classList.add('selected');
+              checkbox.style.background = '#4CAF50';
+              checkIcon.style.display = 'block';
+            }
+          });
+          atualizarContadorSelecionados();
+        }, 100);
+
+        hideLoading();
+
+        const modal = document.getElementById('modal-equipe');
+        modal.classList.add('show');
+        
+        makeModalDraggable('modal-equipe');
+        makeModalResizable('modal-equipe');
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao carregar equipe:', error);
+        showNotification('Erro ao carregar dados da equipe: ' + error.message, 'error');
+      }
+    }
+
+    async function editarIntegrante(integranteId) {
+      try {
+        showLoading('Carregando dados do integrante...');
+
+        const { data, error } = await supabase
+          .from('integrantes_hvc')
+          .select('*')
+          .eq('id', integranteId)
+          .single();
+
+        if (error) throw error;
+
+        editandoIntegrante = integranteId;
+
+        document.getElementById('modal-integrante-title').textContent = 'Editar Integrante';
+        document.getElementById('integrante-nome').value = data.nome;
+        document.getElementById('integrante-cpf').value = data.cpf;
+        document.getElementById('integrante-whatsapp').value = data.whatsapp || '';
+        document.getElementById('integrante-funcao').value = data.funcao_id;
+        document.getElementById('integrante-observacoes').value = data.observacoes || '';
+
+        hideLoading();
+
+        const modal = document.getElementById('modal-integrante');
+        modal.classList.add('show');
+        
+        makeModalDraggable('modal-integrante');
+        makeModalResizable('modal-integrante');
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao carregar integrante:', error);
+        showNotification('Erro ao carregar dados do integrante: ' + error.message, 'error');
+      }
+    }
+
+    // ===== FUNÇÕES DE VISUALIZAÇÃO =====
+    async function visualizarEquipe(equipeId) {
+      try {
+        showLoading('Carregando dados da equipe...');
+
+        const { data, error } = await supabase
+          .from('equipes_hvc')
+          .select(`
+            *,
+            equipe_integrantes (
+              integrante_id,
+              integrantes_hvc (
+                id,
+                nome,
+                cpf,
+                whatsapp,
+                funcoes_hvc (
+                  nome
+                )
+              )
+            )
+          `)
+          .eq('id', equipeId)
+          .single();
+
+        if (error) throw error;
+
+        const content = document.getElementById('visualizar-equipe-content');
+        const integrantes = data.equipe_integrantes || [];
+
+        content.innerHTML = `
+          <div style="margin-bottom: 2rem;">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Número da Equipe</label>
+                <div style="padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px; color: #add8e6; font-weight: bold;">
+                  ${data.numero}
+                </div>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Status</label>
+                <div style="padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px;">
+                  <span class="status-badge status-${data.status}">${data.status}</span>
+                </div>
+              </div>
+            </div>
+            
+            ${data.observacoes ? `
+              <div class="form-group">
+                <label class="form-label">Observações</label>
+                <div style="padding: 12px; background: rgba(255,255,255,0.1); border-radius: 8px; color: #e0e0e0;">
+                  ${data.observacoes}
+                </div>
+              </div>
+            ` : ''}
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">
+              <i class="fas fa-users"></i>
+              Integrantes da Equipe (${integrantes.length})
+            </label>
+            <div style="border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 8px; background: rgba(255,255,255,0.05);">
+              ${integrantes.length === 0 ? `
+                <div style="text-align: center; padding: 2rem; color: #6c757d;">
+                  <i class="fas fa-user-slash" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                  <h3>Nenhum integrante</h3>
+                  <p>Esta equipe não possui integrantes cadastrados</p>
+                </div>
+              ` : integrantes.map(ei => {
+                const integrante = ei.integrantes_hvc;
+                const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
+                
+                return `
+                  <div style="padding: 1rem; border-bottom: 1px solid rgba(173, 216, 230, 0.1); display: flex; align-items: center; gap: 1rem;">
+                    <div style="
+                      width: 40px;
+                      height: 40px;
+                      background: linear-gradient(135deg, #4CAF50, #45a049);
+                      border-radius: 50%;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      color: white;
+                      font-weight: bold;
+                      font-size: 1.2rem;
+                    ">
+                      ${integrante.nome.charAt(0).toUpperCase()}
+                    </div>
+                    <div style="flex: 1;">
+                      <div style="font-weight: bold; color: #add8e6; margin-bottom: 4px;">
+                        ${integrante.nome}
+                      </div>
+                      <div style="font-size: 0.9rem; color: #e0e0e0; display: flex; gap: 1rem;">
+                        <span><i class="fas fa-briefcase"></i> ${funcaoNome}</span>
+                        <span><i class="fas fa-id-card"></i> ${integrante.cpf}</span>
+                        ${integrante.whatsapp ? `<span><i class="fas fa-phone"></i> ${integrante.whatsapp}</span>` : ''}
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `;
+
+        hideLoading();
+
+        const modal = document.getElementById('modal-visualizar-equipe');
+        modal.classList.add('show');
+        
+        makeModalDraggable('modal-visualizar-equipe');
+        makeModalResizable('modal-visualizar-equipe');
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao visualizar equipe:', error);
+        showNotification('Erro ao carregar dados da equipe: ' + error.message, 'error');
+      }
+    }
+
+    // ===== FUNÇÕES DE EXCLUSÃO =====
+    async function excluirEquipe(equipeId, numeroEquipe) {
+      if (!confirm(`Tem certeza que deseja excluir a equipe "${numeroEquipe}"?\n\nEsta ação não pode ser desfeita.`)) {
+        return;
+      }
+
+      try {
+        showLoading('Excluindo equipe...');
+
+        // Excluir relacionamentos primeiro
+        await supabase
+          .from('equipe_integrantes')
+          .delete()
+          .eq('equipe_id', equipeId);
+
+        // Excluir equipe
+        const { error } = await supabase
+          .from('equipes_hvc')
+          .delete()
+          .eq('id', equipeId);
+
+        if (error) throw error;
+
+        hideLoading();
+        showNotification('Equipe excluída com sucesso!', 'success');
+
+        await carregarEquipes();
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao excluir equipe:', error);
+        showNotification('Erro ao excluir equipe: ' + error.message, 'error');
+      }
+    }
+
+    async function excluirIntegrante(integranteId, nomeIntegrante) {
+      if (!confirm(`Tem certeza que deseja excluir o integrante "${nomeIntegrante}"?\n\nEsta ação não pode ser desfeita.`)) {
+        return;
+      }
+
+      try {
+        showLoading('Excluindo integrante...');
+
+        // Excluir relacionamentos com equipes primeiro
+        await supabase
+          .from('equipe_integrantes')
+          .delete()
+          .eq('integrante_id', integranteId);
+
+        // Excluir integrante
+        const { error } = await supabase
+          .from('integrantes_hvc')
+          .delete()
+          .eq('id', integranteId);
+
+        if (error) throw error;
+
+        hideLoading();
+        showNotification('Integrante excluído com sucesso!', 'success');
+
+        await carregarIntegrantes();
+        await carregarEquipes(); // Atualizar contadores
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao excluir integrante:', error);
+        showNotification('Erro ao excluir integrante: ' + error.message, 'error');
+      }
+    }
+
+    async function excluirFuncao(funcaoId, nomeFuncao) {
+      // Verificar se há integrantes usando esta função
+      const integrantesComFuncao = integrantesData.filter(i => i.funcao_id === funcaoId);
+      
+      if (integrantesComFuncao.length > 0) {
+        showNotification(`Não é possível excluir a função "${nomeFuncao}" pois há ${integrantesComFuncao.length} integrante(s) usando ela.`, 'error');
+        return;
+      }
+
+      if (!confirm(`Tem certeza que deseja excluir a função "${nomeFuncao}"?\n\nEsta ação não pode ser desfeita.`)) {
+        return;
+      }
+
+      try {
+        showLoading('Excluindo função...');
+
+        const { error } = await supabase
+          .from('funcoes_hvc')
+          .delete()
+          .eq('id', funcaoId);
+
+        if (error) throw error;
+
+        hideLoading();
+        showNotification('Função excluída com sucesso!', 'success');
+
+        await carregarFuncoes();
+
+      } catch (error) {
+        hideLoading();
+        console.error('❌ Erro ao excluir função:', error);
+        showNotification('Erro ao excluir função: ' + error.message, 'error');
+      }
+    }
+
+    // ===== FUNÇÕES DE FILTRO =====
+    function filtrarEquipes() {
+      const filtroNumero = document.getElementById('filtro-numero-equipe').value.toLowerCase();
+      const filtroStatus = document.getElementById('filtro-status-equipe').value;
+      
+      const linhas = document.querySelectorAll('#tabela-equipes tbody tr');
+      
+      linhas.forEach(linha => {
+        if (linha.querySelector('.empty-state')) return;
+        
+        const numero = linha.cells[0].textContent.toLowerCase();
+        const status = linha.cells[2].textContent.toLowerCase().trim();
+        
+        const matchNumero = numero.includes(filtroNumero);
+        const matchStatus = !filtroStatus || status.includes(filtroStatus);
+        
+        linha.style.display = matchNumero && matchStatus ? '' : 'none';
+      });
+    }
+
+    function filtrarIntegrantes() {
+      const filtroNome = document.getElementById('filtro-nome-integrante').value.toLowerCase();
+      const filtroFuncao = document.getElementById('filtro-funcao-integrante').value;
+      
+      const linhas = document.querySelectorAll('#tabela-integrantes tbody tr');
+      
+      linhas.forEach(linha => {
+        if (linha.querySelector('.empty-state')) return;
+        
+        const nome = linha.cells[0].textContent.toLowerCase();
+        const funcaoCell = linha.cells[3];
+        
+        // Encontrar o integrante correspondente para verificar a função
+        const nomeCompleto = linha.cells[0].textContent.trim();
+        const integrante = integrantesData.find(i => i.nome === nomeCompleto);
+        
+        const matchNome = nome.includes(filtroNome);
+        const matchFuncao = !filtroFuncao || (integrante && integrante.funcao_id === filtroFuncao);
+        
+        linha.style.display = matchNome && matchFuncao ? '' : 'none';
+      });
+    }
+
+    // ===== EVENTOS DE FORMATAÇÃO =====
+    document.addEventListener('DOMContentLoaded', function() {
+      // Formatação automática de CPF
+      document.addEventListener('input', function(e) {
+        if (e.target.id === 'integrante-cpf') {
+          e.target.value = formatCPF(e.target.value);
+        }
+        if (e.target.id === 'integrante-whatsapp') {
+          e.target.value = formatWhatsApp(e.target.value);
+        }
+      });
+
+      // Fechar modais com ESC
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+          const modalsAbertos = document.querySelectorAll('.modal.show');
+          modalsAbertos.forEach(modal => {
+            modal.classList.remove('show');
+          });
+        }
+      });
+
+      // Fechar modais clicando fora
+      document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+          e.target.classList.remove('show');
+        }
+      });
+
+      // Carregar dados iniciais
+      carregarFuncoes();
+      carregarIntegrantes();
+      carregarEquipes();
+    });
+
+    console.log('✅ Sistema de Equipes HVC carregado com sucesso!');
+  </script>
+</body>
+</html>
+
