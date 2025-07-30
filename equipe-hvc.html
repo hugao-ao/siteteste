@@ -839,7 +839,7 @@
       </div>
 
       <div id="nova-funcao-form" style="display: none;">
-        <form onsubmit="saveFuncao(event)">
+        <form onsubmit="salvarNovaFuncao(event)">
           <div class="form-group">
             <label for="nome-funcao" class="form-label">Nome da Função *</label>
             <input type="text" id="nome-funcao" class="form-input" required placeholder="Ex: Pedreiro, Eletricista, etc.">
@@ -881,9 +881,16 @@
 
   <!-- Scripts -->
   <script type="module" src="sidebar.js"></script>
+  <script type="module" src="supabase.js"></script>
   
   <!-- Funções críticas dos modais - DEVE SER CARREGADO PRIMEIRO -->
   <script src="modal-functions.js"></script>
+  
+  <!-- Carregador de funções -->
+  <script src="funcoes-loader.js"></script>
+  
+  <!-- Script de teste (opcional) -->
+  <script type="module" src="supabase-test.js"></script>
   
   <script type="module" src="equipe-hvc.js"></script>
   <script type="module">
