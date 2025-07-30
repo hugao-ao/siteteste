@@ -1774,6 +1774,269 @@
   console.log('✅ SISTEMA COMPLETO carregado!');
   </script>
 
+<!-- COLE ESTE CÓDIGO NO FINAL DO SEU equipe-hvc.html, ANTES DA TAG </body> -->
+
+<script>
+console.log('🔧 CORREÇÃO SALVAMENTO DE EQUIPES - Carregando...');
+
+// ========================================
+// FUNÇÃO CORRIGIDA PARA SALVAR EQUIPE
+// ========================================
+window.saveEquipe = async function(event) {
+    event.preventDefault();
+    console.log('💾 Salvando nova equipe (versão corrigida)...');
+    
+    // Pegar dados do formulário
+    const numeroInput = document.getElementById('numero-equipe');
+    const observacoesInput = document.getElementById('observacoes-equipe');
+    
+    if (!numeroInput) {
+        console.error('❌ Campo numero-equipe não encontrado');
+        alert('❌ Erro: Campo número da equipe não encontrado');
+        return;
+    }
+    
+    const numero = numeroInput.value?.trim();
+    const observacoes = observacoesInput?.value?.trim() || '';
+    const integrantesSelecionados = Array.from(window.integrantesSelecionados || []);
+    
+    console.log('📋 Dados coletados:', {
+        numero,
+        observacoes,
+        integrantesSelecionados
+    });
+    
+    // Validações
+    if (!numero) {
+        alert('❌ Por favor, digite o número da equipe');
+        numeroInput.focus();
+        return;
+    }
+    
+    if (integrantesSelecionados.length === 0) {
+        alert('❌ Por favor, selecione pelo menos um integrante');
+        return;
+    }
+    
+    try {
+        // Verificar se Supabase está disponível
+        const supabaseClient = window.supabase || window.supabaseClient;
+        if (!supabaseClient) {
+            throw new Error('Supabase não está disponível. Verifique a conexão.');
+        }
+        
+        console.log('🔗 Supabase conectado, salvando equipe...');
+        
+        // Preparar dados da equipe
+        const dadosEquipe = {
+            numero: numero,
+            observacoes: observacoes,
+            status: 'ativa',
+            created_at: new Date().toISOString()
+        };
+        
+        console.log('📤 Enviando equipe para Supabase:', dadosEquipe);
+        
+        // Salvar equipe na tabela equipes_hvc
+        const { data: equipeData, error: equipeError } = await supabaseClient
+            .from('equipes_hvc')
+            .insert([dadosEquipe])
+            .select()
+            .single();
+            
+        if (equipeError) {
+            console.error('❌ Erro ao salvar equipe:', equipeError);
+            
+            // Tratar erro de número duplicado
+            if (equipeError.message.includes('duplicate key') || equipeError.message.includes('unique constraint')) {
+                alert('❌ ERRO: Este número de equipe já existe!\n\nEscolha um número diferente.');
+                numeroInput.focus();
+                return;
+            }
+            
+            throw equipeError;
+        }
+        
+        console.log('✅ Equipe salva com sucesso:', equipeData);
+        
+        // Agora salvar os integrantes da equipe
+        const equipeId = equipeData.id;
+        const integrantesEquipe = integrantesSelecionados.map(integranteId => ({
+            equipe_id: equipeId,
+            integrante_id: integranteId,
+            created_at: new Date().toISOString()
+        }));
+        
+        console.log('📤 Salvando integrantes da equipe:', integrantesEquipe);
+        
+        const { error: integrantesError } = await supabaseClient
+            .from('equipe_integrantes')
+            .insert(integrantesEquipe);
+            
+        if (integrantesError) {
+            console.error('❌ Erro ao salvar integrantes da equipe:', integrantesError);
+            
+            // Se der erro nos integrantes, excluir a equipe criada
+            await supabaseClient
+                .from('equipes_hvc')
+                .delete()
+                .eq('id', equipeId);
+                
+            throw new Error('Erro ao associar integrantes à equipe: ' + integrantesError.message);
+        }
+        
+        console.log('✅ Integrantes da equipe salvos com sucesso!');
+        
+        // Sucesso total!
+        alert(`✅ EQUIPE CRIADA COM SUCESSO!\n\n🏷️ Número: ${numero}\n👥 Integrantes: ${integrantesSelecionados.length}\n📝 Observações: ${observacoes || 'Nenhuma'}`);
+        
+        // Limpar formulário
+        document.getElementById('form-equipe').reset();
+        
+        // Limpar seleções
+        window.integrantesSelecionados.clear();
+        
+        // Fechar modal
+        if (window.closeEquipeModal) {
+            window.closeEquipeModal();
+        }
+        
+        // Recarregar lista de equipes (se existir)
+        setTimeout(() => {
+            if (window.carregarEquipes) {
+                window.carregarEquipes();
+            }
+        }, 500);
+        
+        console.log('🎉 Processo de criação de equipe concluído!');
+        
+    } catch (error) {
+        console.error('💥 Erro ao salvar equipe:', error);
+        
+        let mensagemErro = 'Erro desconhecido';
+        
+        if (error.message) {
+            mensagemErro = error.message;
+        } else if (typeof error === 'string') {
+            mensagemErro = error;
+        }
+        
+        alert(`❌ ERRO AO SALVAR EQUIPE:\n\n${mensagemErro}\n\nVerifique:\n• Conexão com internet\n• Configuração do Supabase\n• Se as tabelas existem`);
+    }
+};
+
+// ========================================
+// FUNÇÃO PARA VERIFICAR TABELAS DO SUPABASE
+// ========================================
+window.verificarTabelasSupabase = async function() {
+    console.log('🔍 Verificando tabelas do Supabase...');
+    
+    try {
+        const supabaseClient = window.supabase || window.supabaseClient;
+        if (!supabaseClient) {
+            throw new Error('Supabase não está disponível');
+        }
+        
+        // Testar tabela equipes_hvc
+        const { data: equipes, error: equipesError } = await supabaseClient
+            .from('equipes_hvc')
+            .select('*')
+            .limit(1);
+            
+        if (equipesError) {
+            console.error('❌ Tabela equipes_hvc não encontrada:', equipesError);
+            throw new Error('Tabela equipes_hvc não existe ou não tem permissão');
+        }
+        
+        console.log('✅ Tabela equipes_hvc OK');
+        
+        // Testar tabela equipe_integrantes
+        const { data: equipeIntegrantes, error: equipeIntegrantesError } = await supabaseClient
+            .from('equipe_integrantes')
+            .select('*')
+            .limit(1);
+            
+        if (equipeIntegrantesError) {
+            console.error('❌ Tabela equipe_integrantes não encontrada:', equipeIntegrantesError);
+            throw new Error('Tabela equipe_integrantes não existe ou não tem permissão');
+        }
+        
+        console.log('✅ Tabela equipe_integrantes OK');
+        console.log('✅ Todas as tabelas necessárias estão disponíveis!');
+        
+        return true;
+        
+    } catch (error) {
+        console.error('💥 Erro ao verificar tabelas:', error);
+        
+        alert(`❌ PROBLEMA COM TABELAS DO SUPABASE:\n\n${error.message}\n\nVocê precisa criar as tabelas:\n• equipes_hvc\n• equipe_integrantes\n\nQuer que eu te ajude a criar?`);
+        
+        return false;
+    }
+};
+
+// ========================================
+// FUNÇÃO PARA CRIAR TABELAS (SE NECESSÁRIO)
+// ========================================
+window.criarTabelasSupabase = function() {
+    const sqlEquipes = `
+-- Tabela para equipes
+CREATE TABLE IF NOT EXISTS equipes_hvc (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    numero VARCHAR(10) UNIQUE NOT NULL,
+    observacoes TEXT,
+    status VARCHAR(20) DEFAULT 'ativa',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tabela para relacionar equipes e integrantes
+CREATE TABLE IF NOT EXISTS equipe_integrantes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    equipe_id UUID REFERENCES equipes_hvc(id) ON DELETE CASCADE,
+    integrante_id UUID REFERENCES integrantes_hvc(id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(equipe_id, integrante_id)
+);
+
+-- Índices para melhor performance
+CREATE INDEX IF NOT EXISTS idx_equipes_numero ON equipes_hvc(numero);
+CREATE INDEX IF NOT EXISTS idx_equipe_integrantes_equipe ON equipe_integrantes(equipe_id);
+CREATE INDEX IF NOT EXISTS idx_equipe_integrantes_integrante ON equipe_integrantes(integrante_id);
+    `;
+    
+    console.log('📋 SQL para criar tabelas:');
+    console.log(sqlEquipes);
+    
+    alert(`📋 COPIE ESTE SQL E EXECUTE NO SUPABASE:\n\n1. Vá para o Supabase\n2. Abra o SQL Editor\n3. Cole o código abaixo\n4. Execute\n\nO código será copiado para sua área de transferência.`);
+    
+    // Copiar para clipboard se possível
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(sqlEquipes).then(() => {
+            console.log('✅ SQL copiado para clipboard');
+        }).catch(err => {
+            console.error('❌ Erro ao copiar SQL:', err);
+        });
+    }
+    
+    return sqlEquipes;
+};
+
+// ========================================
+// VERIFICAR TABELAS AUTOMATICAMENTE
+// ========================================
+// Verificar tabelas quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    setTimeout(() => {
+        verificarTabelasSupabase();
+    }, 3000);
+});
+
+console.log('✅ CORREÇÃO SALVAMENTO DE EQUIPES carregada!');
+</script>
+
+
+  
 </body>
 </html>
 
