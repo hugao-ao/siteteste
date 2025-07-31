@@ -776,6 +776,14 @@
             <option value="">Todas</option>
           </select>
         </div>
+        <div class="filter-group">
+          <label>Status:</label>
+          <select id="filtro-status-integrante" class="form-select" onchange="filtrarIntegrantes()">
+            <option value="">Todos</option>
+            <option value="ativo">Ativo</option>
+            <option value="inativo">Inativo</option>
+          </select>
+        </div>
       </div>
 
       <!-- Tabela Integrantes -->
@@ -787,13 +795,14 @@
               <th>CPF</th>
               <th>WHATSAPP</th>
               <th>FUNÇÃO</th>
+              <th>STATUS</th>
               <th>OBSERVAÇÕES</th>
               <th>AÇÕES</th>
             </tr>
           </thead>
           <tbody>
             <tr>
-              <td colspan="6" class="empty-state">
+              <td colspan="7" class="empty-state">
                 <i class="fas fa-user"></i>
                 <h3>Nenhum integrante cadastrado</h3>
                 <p>Clique em "Novo Integrante" para começar</p>
@@ -913,6 +922,19 @@
             <select id="integrante-funcao" class="form-select" required>
               <option value="">Selecione uma função</option>
             </select>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select id="integrante-status" class="form-select">
+              <option value="ativo">Ativo</option>
+              <option value="inativo">Inativo</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <!-- Espaço vazio para manter layout -->
           </div>
         </div>
 
@@ -1190,9 +1212,16 @@
     }
 
     function validarCPF(cpf) {
+      // Remove caracteres não numéricos
       cpf = cpf.replace(/\D/g, '');
+      
+      // Verifica se tem 11 dígitos
       if (cpf.length !== 11) return false;
       
+      // Verifica se todos os dígitos são iguais
+      if (/^(\d)\1{10}$/.test(cpf)) return false;
+      
+      // Validação do primeiro dígito verificador
       let soma = 0;
       for (let i = 0; i < 9; i++) {
         soma += parseInt(cpf.charAt(i)) * (10 - i);
@@ -1201,6 +1230,7 @@
       if (resto === 10 || resto === 11) resto = 0;
       if (resto !== parseInt(cpf.charAt(9))) return false;
       
+      // Validação do segundo dígito verificador
       soma = 0;
       for (let i = 0; i < 10; i++) {
         soma += parseInt(cpf.charAt(i)) * (11 - i);
@@ -1485,7 +1515,7 @@
       if (integrantesData.length === 0) {
         tbody.innerHTML = `
           <tr>
-            <td colspan="6" class="empty-state">
+            <td colspan="7" class="empty-state">
               <i class="fas fa-user"></i>
               <h3>Nenhum integrante cadastrado</h3>
               <p>Clique em "Novo Integrante" para começar</p>
@@ -1497,6 +1527,7 @@
 
       tbody.innerHTML = integrantesData.map(integrante => {
         const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
+        const status = integrante.status || 'ativo';
         
         return `
           <tr>
@@ -1505,6 +1536,9 @@
             <td>${integrante.whatsapp || '-'}</td>
             <td>
               <span class="status-badge status-ativo">${funcaoNome}</span>
+            </td>
+            <td>
+              <span class="status-badge status-${status}">${status}</span>
             </td>
             <td>${integrante.observacoes || '-'}</td>
             <td class="actions-cell">
@@ -1602,6 +1636,7 @@
       document.getElementById('integrante-cpf').value = '';
       document.getElementById('integrante-whatsapp').value = '';
       document.getElementById('integrante-funcao').value = '';
+      document.getElementById('integrante-status').value = 'ativo';
       document.getElementById('integrante-observacoes').value = '';
       
       const modal = document.getElementById('modal-integrante');
@@ -1654,6 +1689,7 @@
               nome
             )
           `)
+          .eq('status', 'ativo')
           .order('nome');
 
         if (error) throw error;
@@ -1662,8 +1698,8 @@
           container.innerHTML = `
             <div style="text-align: center; padding: 20px; color: #6c757d;">
               <i class="fas fa-user-plus"></i>
-              <h3>Nenhum integrante cadastrado</h3>
-              <p>Cadastre integrantes primeiro para formar equipes</p>
+              <h3>Nenhum integrante ativo</h3>
+              <p>Cadastre integrantes ativos primeiro para formar equipes</p>
             </div>
           `;
           return;
@@ -1866,6 +1902,7 @@
         const cpf = document.getElementById('integrante-cpf').value.trim();
         const whatsapp = document.getElementById('integrante-whatsapp').value.trim();
         const funcaoId = document.getElementById('integrante-funcao').value;
+        const status = document.getElementById('integrante-status').value;
         const observacoes = document.getElementById('integrante-observacoes').value.trim();
 
         if (!nome || !cpf || !funcaoId) {
@@ -1874,13 +1911,13 @@
         }
 
         if (!validarCPF(cpf)) {
-          showNotification('CPF inválido', 'error');
+          showNotification('CPF inválido. Verifique os números digitados.', 'error');
           return;
         }
 
         showLoading('Salvando integrante...');
 
-        // Verificar CPF duplicado (apenas para novo integrante)
+        // Verificar CPF duplicado (apenas para novo integrante ou se CPF foi alterado)
         if (!editandoIntegrante) {
           const { data: existente } = await supabase
             .from('integrantes_hvc')
@@ -1893,6 +1930,23 @@
             showNotification('Já existe um integrante com este CPF', 'error');
             return;
           }
+        } else {
+          // Verificar se CPF foi alterado e se já existe
+          const integranteAtual = integrantesData.find(i => i.id === editandoIntegrante);
+          if (integranteAtual && integranteAtual.cpf !== cpf) {
+            const { data: existente } = await supabase
+              .from('integrantes_hvc')
+              .select('id')
+              .eq('cpf', cpf)
+              .neq('id', editandoIntegrante)
+              .single();
+
+            if (existente) {
+              hideLoading();
+              showNotification('Já existe outro integrante com este CPF', 'error');
+              return;
+            }
+          }
         }
 
         const dadosIntegrante = {
@@ -1900,6 +1954,7 @@
           cpf,
           whatsapp: whatsapp || null,
           funcao_id: funcaoId,
+          status,
           observacoes: observacoes || null
         };
 
@@ -2060,6 +2115,7 @@
         document.getElementById('integrante-cpf').value = data.cpf;
         document.getElementById('integrante-whatsapp').value = data.whatsapp || '';
         document.getElementById('integrante-funcao').value = data.funcao_id;
+        document.getElementById('integrante-status').value = data.status || 'ativo';
         document.getElementById('integrante-observacoes').value = data.observacoes || '';
 
         hideLoading();
@@ -2093,6 +2149,7 @@
                 nome,
                 cpf,
                 whatsapp,
+                status,
                 funcoes_hvc (
                   nome
                 )
@@ -2149,6 +2206,7 @@
               ` : integrantes.map(ei => {
                 const integrante = ei.integrantes_hvc;
                 const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
+                const status = integrante.status || 'ativo';
                 
                 return `
                   <div style="padding: 1rem; border-bottom: 1px solid rgba(173, 216, 230, 0.1); display: flex; align-items: center; gap: 1rem;">
@@ -2167,8 +2225,9 @@
                       ${integrante.nome.charAt(0).toUpperCase()}
                     </div>
                     <div style="flex: 1;">
-                      <div style="font-weight: bold; color: #add8e6; margin-bottom: 4px;">
+                      <div style="font-weight: bold; color: #add8e6; margin-bottom: 4px; display: flex; align-items: center; gap: 10px;">
                         ${integrante.nome}
+                        <span class="status-badge status-${status}">${status}</span>
                       </div>
                       <div style="font-size: 0.9rem; color: #e0e0e0; display: flex; gap: 1rem;">
                         <span><i class="fas fa-briefcase"></i> ${funcaoNome}</span>
@@ -2326,6 +2385,7 @@
     function filtrarIntegrantes() {
       const filtroNome = document.getElementById('filtro-nome-integrante').value.toLowerCase();
       const filtroFuncao = document.getElementById('filtro-funcao-integrante').value;
+      const filtroStatus = document.getElementById('filtro-status-integrante').value;
       
       const linhas = document.querySelectorAll('#tabela-integrantes tbody tr');
       
@@ -2334,12 +2394,14 @@
         
         const nome = linha.cells[0].textContent.toLowerCase();
         const nomeCompleto = linha.cells[0].textContent.trim();
+        const status = linha.cells[4].textContent.toLowerCase().trim();
         const integrante = integrantesData.find(i => i.nome === nomeCompleto);
         
         const matchNome = nome.includes(filtroNome);
         const matchFuncao = !filtroFuncao || (integrante && integrante.funcao_id === filtroFuncao);
+        const matchStatus = !filtroStatus || status.includes(filtroStatus);
         
-        linha.style.display = matchNome && matchFuncao ? '' : 'none';
+        linha.style.display = matchNome && matchFuncao && matchStatus ? '' : 'none';
       });
     }
 
