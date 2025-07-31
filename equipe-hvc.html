@@ -915,7 +915,10 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">WhatsApp</label>
-            <input type="text" id="integrante-whatsapp" class="form-input" placeholder="(00) 00000-0000" maxlength="15">
+            <input type="text" id="integrante-whatsapp" class="form-input" placeholder="+5581999999999" maxlength="14">
+            <small style="color: #6c757d; font-size: 0.8rem; margin-top: 0.5rem; display: block;">
+              Formato: +5581999999999 (DDI + DDD + 9 dígitos)
+            </small>
           </div>
           <div class="form-group">
             <label class="form-label">Função *</label>
@@ -1204,22 +1207,82 @@
                 .replace(/(-\d{2})\d+?$/, '$1');
     }
 
-    function formatWhatsApp(phone) {
+    // ===== FORMATAÇÃO DE WHATSAPP CORRIGIDA =====
+    function formatWhatsAppDisplay(phone) {
+      // Formatação para exibição no campo (visual)
       return phone.replace(/\D/g, '')
                   .replace(/(\d{2})(\d)/, '($1) $2')
                   .replace(/(\d{5})(\d)/, '$1-$2')
                   .replace(/(-\d{4})\d+?$/, '$1');
     }
 
-    function validarCPF(cpf) {
+    function formatWhatsAppForDatabase(phone) {
+      // Formatação para salvar no banco (apenas números com +55)
+      if (!phone) return null;
+      
+      const numbersOnly = phone.replace(/\D/g, '');
+      
+      // Se já tem 13 dígitos (55 + DDD + 9 dígitos), adicionar apenas o +
+      if (numbersOnly.length === 13 && numbersOnly.startsWith('55')) {
+        return '+' + numbersOnly;
+      }
+      
+      // Se tem 11 dígitos (DDD + 9 dígitos), adicionar +55
+      if (numbersOnly.length === 11) {
+        return '+55' + numbersOnly;
+      }
+      
+      // Se tem 10 dígitos (DDD + 8 dígitos), adicionar 9 e +55
+      if (numbersOnly.length === 10) {
+        const ddd = numbersOnly.substring(0, 2);
+        const numero = numbersOnly.substring(2);
+        return '+55' + ddd + '9' + numero;
+      }
+      
+      // Se não está em formato reconhecido, tentar adicionar +55
+      if (numbersOnly.length > 0) {
+        return '+55' + numbersOnly;
+      }
+      
+      return null;
+    }
+
+    function formatWhatsAppFromDatabase(phone) {
+      // Formatação para exibir dados vindos do banco
+      if (!phone) return '';
+      
+      // Remove o +55 e formata para exibição
+      const numbersOnly = phone.replace(/^\+55/, '').replace(/\D/g, '');
+      
+      if (numbersOnly.length === 11) {
+        return numbersOnly.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+      }
+      
+      return phone; // Retorna como está se não conseguir formatar
+    }
+
+    // ===== VALIDAÇÃO DE CPF FLEXÍVEL =====
+    function validarCPF(cpf, isEdicao = false) {
+      // Se está editando, não validar CPF (permite salvar com CPF existente)
+      if (isEdicao) {
+        console.log('🔄 Modo edição: validação de CPF desabilitada');
+        return true;
+      }
+
       // Remove caracteres não numéricos
       cpf = cpf.replace(/\D/g, '');
       
       // Verifica se tem 11 dígitos
-      if (cpf.length !== 11) return false;
+      if (cpf.length !== 11) {
+        console.log('❌ CPF deve ter 11 dígitos');
+        return false;
+      }
       
       // Verifica se todos os dígitos são iguais
-      if (/^(\d)\1{10}$/.test(cpf)) return false;
+      if (/^(\d)\1{10}$/.test(cpf)) {
+        console.log('❌ CPF não pode ter todos os dígitos iguais');
+        return false;
+      }
       
       // Validação do primeiro dígito verificador
       let soma = 0;
@@ -1228,7 +1291,10 @@
       }
       let resto = 11 - (soma % 11);
       if (resto === 10 || resto === 11) resto = 0;
-      if (resto !== parseInt(cpf.charAt(9))) return false;
+      if (resto !== parseInt(cpf.charAt(9))) {
+        console.log('❌ Primeiro dígito verificador inválido');
+        return false;
+      }
       
       // Validação do segundo dígito verificador
       soma = 0;
@@ -1237,8 +1303,12 @@
       }
       resto = 11 - (soma % 11);
       if (resto === 10 || resto === 11) resto = 0;
-      if (resto !== parseInt(cpf.charAt(10))) return false;
+      if (resto !== parseInt(cpf.charAt(10))) {
+        console.log('❌ Segundo dígito verificador inválido');
+        return false;
+      }
       
+      console.log('✅ CPF válido');
       return true;
     }
 
@@ -1528,12 +1598,13 @@
       tbody.innerHTML = integrantesData.map(integrante => {
         const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
         const status = integrante.status || 'ativo';
+        const whatsappFormatado = formatWhatsAppFromDatabase(integrante.whatsapp);
         
         return `
           <tr>
             <td><strong>${integrante.nome}</strong></td>
             <td>${integrante.cpf}</td>
-            <td>${integrante.whatsapp || '-'}</td>
+            <td>${whatsappFormatado || '-'}</td>
             <td>
               <span class="status-badge status-ativo">${funcaoNome}</span>
             </td>
@@ -1707,6 +1778,7 @@
 
         container.innerHTML = data.map(integrante => {
           const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
+          const whatsappFormatado = formatWhatsAppFromDatabase(integrante.whatsapp);
           
           return `
             <div class="multi-select-item" data-integrante-id="${integrante.id}">
@@ -1732,7 +1804,7 @@
                   </div>
                   <div style="font-size: 12px; color: #add8e6; display: flex; gap: 15px;">
                     <span><i class="fas fa-briefcase" style="margin-right: 5px;"></i> ${funcaoNome}</span>
-                    <span><i class="fas fa-phone" style="margin-right: 5px;"></i> ${integrante.whatsapp || 'Sem WhatsApp'}</span>
+                    <span><i class="fas fa-phone" style="margin-right: 5px;"></i> ${whatsappFormatado || 'Sem WhatsApp'}</span>
                   </div>
                 </div>
               </div>
@@ -1910,7 +1982,9 @@
           return;
         }
 
-        if (!validarCPF(cpf)) {
+        // Validar CPF (flexível para edição)
+        const isEdicao = !!editandoIntegrante;
+        if (!validarCPF(cpf, isEdicao)) {
           showNotification('CPF inválido. Verifique os números digitados.', 'error');
           return;
         }
@@ -1949,10 +2023,13 @@
           }
         }
 
+        // Formatar WhatsApp para o banco
+        const whatsappFormatado = formatWhatsAppForDatabase(whatsapp);
+
         const dadosIntegrante = {
           nome,
           cpf,
-          whatsapp: whatsapp || null,
+          whatsapp: whatsappFormatado,
           funcao_id: funcaoId,
           status,
           observacoes: observacoes || null
@@ -2113,7 +2190,7 @@
         document.getElementById('modal-integrante-title').textContent = 'Editar Integrante';
         document.getElementById('integrante-nome').value = data.nome;
         document.getElementById('integrante-cpf').value = data.cpf;
-        document.getElementById('integrante-whatsapp').value = data.whatsapp || '';
+        document.getElementById('integrante-whatsapp').value = formatWhatsAppFromDatabase(data.whatsapp);
         document.getElementById('integrante-funcao').value = data.funcao_id;
         document.getElementById('integrante-status').value = data.status || 'ativo';
         document.getElementById('integrante-observacoes').value = data.observacoes || '';
@@ -2207,6 +2284,7 @@
                 const integrante = ei.integrantes_hvc;
                 const funcaoNome = integrante.funcoes_hvc?.nome || 'Sem função';
                 const status = integrante.status || 'ativo';
+                const whatsappFormatado = formatWhatsAppFromDatabase(integrante.whatsapp);
                 
                 return `
                   <div style="padding: 1rem; border-bottom: 1px solid rgba(173, 216, 230, 0.1); display: flex; align-items: center; gap: 1rem;">
@@ -2232,7 +2310,7 @@
                       <div style="font-size: 0.9rem; color: #e0e0e0; display: flex; gap: 1rem;">
                         <span><i class="fas fa-briefcase"></i> ${funcaoNome}</span>
                         <span><i class="fas fa-id-card"></i> ${integrante.cpf}</span>
-                        ${integrante.whatsapp ? `<span><i class="fas fa-phone"></i> ${integrante.whatsapp}</span>` : ''}
+                        ${whatsappFormatado ? `<span><i class="fas fa-phone"></i> ${whatsappFormatado}</span>` : ''}
                       </div>
                     </div>
                   </div>
@@ -2413,7 +2491,7 @@
           e.target.value = formatCPF(e.target.value);
         }
         if (e.target.id === 'integrante-whatsapp') {
-          e.target.value = formatWhatsApp(e.target.value);
+          e.target.value = formatWhatsAppDisplay(e.target.value);
         }
       });
 
