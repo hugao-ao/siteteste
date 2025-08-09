@@ -157,6 +157,158 @@
     .project-btn-hvc { background: linear-gradient(145deg, #000080, #191970); color: #e0e0e0; text-shadow: 0 0 5px #ffffff, 0 0 10px #c0c0c0; }
     .project-btn-planejamento { background: linear-gradient(145deg, #006400, #2e8b57); color: #fffacd; text-shadow: 0 0 5px #ffd700, 0 0 8px #daa520; }
 
+
+    </style>
+  <script>
+    // Detectar se estamos no contexto do projeto HVC
+    function applyHVCTheme() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const projeto = urlParams.get('projeto');
+      
+      if (projeto === 'Hvc') {
+        // Aplicar CSS do padrão HVC apenas para projeto HVC
+        const hvcStyles = `
+          body {
+            background: linear-gradient(135deg, #000080, #191970) !important;
+            color: #e0e0e0 !important;
+          }
+
+          #main-content {
+            background: linear-gradient(135deg, #000080, #191970) !important;
+            color: #e0e0e0 !important;
+          }
+
+          h1, h2, h3, h4, h5, h6 {
+            color: #add8e6 !important;
+            text-shadow: 0 0 10px rgba(173, 216, 230, 0.3) !important;
+          }
+
+          input[type="text"],
+          input[type="email"],
+          input[type="password"],
+          select,
+          textarea {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(173, 216, 230, 0.3) !important;
+            border-radius: 8px !important;
+            color: #e0e0e0 !important;
+            padding: 12px 15px !important;
+          }
+
+          input[type="text"]:focus,
+          input[type="email"]:focus,
+          input[type="password"]:focus,
+          select:focus,
+          textarea:focus {
+            border-color: #add8e6 !important;
+            box-shadow: 0 0 10px rgba(173, 216, 230, 0.3) !important;
+            outline: none !important;
+            background: rgba(255, 255, 255, 0.15) !important;
+          }
+
+          button,
+          .btn,
+          input[type="submit"],
+          input[type="button"] {
+            background: linear-gradient(135deg, #4169e1, #6495ed) !important;
+            border: none !important;
+            border-radius: 8px !important;
+            color: white !important;
+            padding: 12px 24px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+          }
+
+          button:hover,
+          .btn:hover,
+          input[type="submit"]:hover,
+          input[type="button"]:hover {
+            background: linear-gradient(135deg, #6495ed, #87ceeb) !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 5px 15px rgba(100, 149, 237, 0.4) !important;
+          }
+
+          button[type="submit"],
+          #create-user-form button {
+            background: linear-gradient(135deg, #ffd700, #ffed4e) !important;
+            color: #000080 !important;
+            font-weight: bold !important;
+          }
+
+          button[type="submit"]:hover,
+          #create-user-form button:hover {
+            background: linear-gradient(135deg, #ffed4e, #fff59d) !important;
+            box-shadow: 0 5px 15px rgba(255, 215, 0, 0.4) !important;
+          }
+
+          .btn-danger,
+          button.btn-danger {
+            background: linear-gradient(135deg, #dc3545, #c82333) !important;
+          }
+
+          .btn-danger:hover,
+          button.btn-danger:hover {
+            background: linear-gradient(135deg, #c82333, #a71e2a) !important;
+            box-shadow: 0 5px 15px rgba(220, 53, 69, 0.4) !important;
+          }
+
+          table {
+            background: rgba(255, 255, 255, 0.05) !important;
+            border: 1px solid rgba(173, 216, 230, 0.2) !important;
+            border-radius: 15px !important;
+            overflow: hidden !important;
+          }
+
+          thead th {
+            background: linear-gradient(135deg, #4169e1, #6495ed) !important;
+            color: white !important;
+            font-weight: bold !important;
+            border: none !important;
+          }
+
+          tbody tr {
+            border-bottom: 1px solid rgba(173, 216, 230, 0.1) !important;
+          }
+
+          tbody tr:hover {
+            background: rgba(173, 216, 230, 0.1) !important;
+          }
+
+          tbody td {
+            color: #e0e0e0 !important;
+            border: none !important;
+          }
+
+          td input,
+          td select {
+            background: rgba(255, 255, 255, 0.1) !important;
+            border: 1px solid rgba(173, 216, 230, 0.3) !important;
+            color: #e0e0e0 !important;
+          }
+
+          #save-all-users-btn {
+            background: linear-gradient(135deg, #28a745, #20c997) !important;
+            color: white !important;
+          }
+
+          #save-all-users-btn:hover {
+            background: linear-gradient(135deg, #20c997, #17a2b8) !important;
+            box-shadow: 0 5px 15px rgba(40, 167, 69, 0.4) !important;
+          }
+        `;
+        
+        const styleElement = document.createElement('style');
+        styleElement.textContent = hvcStyles;
+        document.head.appendChild(styleElement);
+      }
+    }
+
+    // Aplicar tema quando a página carregar
+    document.addEventListener('DOMContentLoaded', applyHVCTheme);
+  </script>
+
+    
   </style>
 </head>
 <body>
