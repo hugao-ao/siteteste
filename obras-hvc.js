@@ -1511,23 +1511,38 @@ class ObrasManager {
         }
     }
     
-    async populateFormProducao() {
-        // Popular select de equipes/integrantes
-        const selectEquipe = document.getElementById('equipe-producao');
-        if (selectEquipe) {
-            selectEquipe.innerHTML = '<option value="">Selecione...</option>';
-            
-            this.equipesIntegrantes.forEach(item => {
-                const option = document.createElement('option');
-                option.value = `${item.tipo}:${item.id}`;
-                option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
-                selectEquipe.appendChild(option);
-            });
-        }
-        
-        // Popular serviços da obra
-        await this.populateServicosProducao();
-    }
+                async populateFormProducao() {
+                console.log('=== POPULATE FORM PRODUCAO ===');
+                console.log('Equipes e integrantes disponíveis:', this.equipesIntegrantes);
+                
+                // Popular select de equipes/integrantes
+                const selectEquipe = document.getElementById('equipe-producao');
+                console.log('Select equipe encontrado:', selectEquipe);
+                
+                if (selectEquipe) {
+                    selectEquipe.innerHTML = '<option value="">Selecione...</option>';
+                    
+                    console.log('Populando select com', this.equipesIntegrantes.length, 'itens');
+                    
+                    this.equipesIntegrantes.forEach((item, index) => {
+                        console.log(`Item ${index}:`, item);
+                        const option = document.createElement('option');
+                        option.value = `${item.tipo}:${item.id}`;
+                        option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
+                        selectEquipe.appendChild(option);
+                    });
+                    
+                    console.log('Select populado. Total de options:', selectEquipe.options.length);
+                } else {
+                    console.error('Select equipe-producao não encontrado!');
+                }
+                
+                // Popular serviços da obra
+                await this.populateServicosProducao();
+                
+                console.log('=== FIM POPULATE FORM ===');
+            }
+
     
     async populateServicosProducao() {
         const container = document.getElementById('servicos-producao');
