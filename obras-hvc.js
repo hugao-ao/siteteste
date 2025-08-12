@@ -1974,27 +1974,6 @@ class ObrasManager {
     }
 }
 
-
-async populateFiltroEquipeProducao() {
-    const select = document.getElementById('filtro-equipe-producao');
-    if (!select) return;
-    
-    select.innerHTML = '<option value="">Todos</option>';
-    
-    this.equipesIntegrantes.forEach(item => {
-        const option = document.createElement('option');
-        option.value = `${item.tipo}:${item.id}`;
-        option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
-        select.appendChild(option);
-    });
-}
-
-limparFiltrosProducao() {
-    document.getElementById('filtro-data-producao').value = '';
-    document.getElementById('filtro-equipe-producao').value = '';
-    this.renderProducoesDiarias();
-}
-
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
 
