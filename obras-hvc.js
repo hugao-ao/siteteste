@@ -897,7 +897,7 @@ class ObrasManager {
             
             const tbody = document.getElementById('servicos-andamento-tbody');
             
-            todosServicos.forEach((item, index) => {
+                     todosServicos.forEach((item, index) => {
                 // Buscar andamento existente para este item
                 const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
                 
@@ -905,9 +905,28 @@ class ObrasManager {
                 const precoTotal = parseFloat(item.preco_total) || 0;
                 const quantidade = parseFloat(item.quantidade) || 1;
                 
+                // Calcular quantidades executadas nas produções diárias para este serviço
+                let quantidadeExecutada = 0;
+                if (this.producoesDiarias && this.producoesDiarias.length > 0) {
+                    this.producoesDiarias.forEach(producao => {
+                        const quantidades = producao.quantidades_servicos || {};
+                        const servicoId = item.servicos_hvc?.id;
+                        if (servicoId && quantidades[servicoId]) {
+                            quantidadeExecutada += parseFloat(quantidades[servicoId]) || 0;
+                        }
+                    });
+                }
+                
+                // Formatar quantidade: "executado / total unidade"
+                const unidade = item.servicos_hvc?.unidade || '';
+                const quantidadeTexto = quantidadeExecutada > 0 
+                    ? `${quantidadeExecutada} / ${quantidade} ${unidade}`.trim()
+                    : `${quantidade} ${unidade}`.trim();
+                
                 console.log(`🎯 DUAS DATAS MODAL - Item ${item.id}:`, {
                     precoTotal,
-                    quantidade
+                    quantidade,
+                    quantidadeExecutada
                 });
                 
                 const row = document.createElement('tr');
@@ -917,7 +936,11 @@ class ObrasManager {
                         <strong>${item.servicos_hvc?.codigo}</strong><br>
                         <small style="color: #add8e6;">${item.servicos_hvc?.descricao}</small>
                     </td>
-                    <td>${quantidade} ${item.servicos_hvc?.unidade || ''}</td>
+                    <td>
+                        <strong style="color: ${quantidadeExecutada > 0 ? '#90EE90' : '#e0e0e0'};">
+                            ${quantidadeTexto}
+                        </strong>
+                    </td>
                     <td><strong style="color: #20c997;">${this.formatMoney(precoTotal)}</strong></td>
                     <td>
                         <select class="form-select status-servico" data-index="${index}" style="width: 160px; padding: 8px; font-size: 0.85rem;">
@@ -950,7 +973,7 @@ class ObrasManager {
                 `;
                 tbody.appendChild(row);
             });
-            
+                        
             this.servicosAndamento = todosServicos;
             
             // Carregar serviços únicos da obra para as produções diárias
@@ -1902,34 +1925,34 @@ class ObrasManager {
         }
     }
     
-             filtrarProducoes() {
-                const filtroData = document.getElementById('filtro-data-producao').value;
-                const filtroEquipe = document.getElementById('filtro-equipe-producao').value;
-                
-                let producoesFiltradas = [...this.producoesDiarias];
-                
-                if (filtroData) {
-                    producoesFiltradas = producoesFiltradas.filter(p => p.data_producao === filtroData);
+                           filtrarProducoes() {
+                    const filtroData = document.getElementById('filtro-data-producao').value;
+                    const filtroEquipe = document.getElementById('filtro-equipe-producao').value;
+                    
+                    let producoesFiltradas = [...this.producoesDiarias];
+                    
+                    if (filtroData) {
+                        producoesFiltradas = producoesFiltradas.filter(p => p.data_producao === filtroData);
+                    }
+                    
+                    if (filtroEquipe && filtroEquipe !== '') {
+                        const [tipo, id] = filtroEquipe.split(':');
+                        producoesFiltradas = producoesFiltradas.filter(p => 
+                            p.tipo_responsavel === tipo && p.responsavel_id == id
+                        );
+                    }
+                    
+                    // Salvar original e aplicar filtro
+                    if (!this.producoesDiariasOriginal) {
+                        this.producoesDiariasOriginal = [...this.producoesDiarias];
+                    }
+                    
+                    this.producoesDiarias = producoesFiltradas;
+                    this.renderProducoesDiarias();
+                    
+                    // Restaurar original
+                    this.producoesDiarias = this.producoesDiariasOriginal;
                 }
-                
-                if (filtroEquipe && filtroEquipe !== '') {
-                    const [tipo, id] = filtroEquipe.split(':');
-                    producoesFiltradas = producoesFiltradas.filter(p => 
-                        p.tipo_responsavel === tipo && p.responsavel_id == id
-                    );
-                }
-                
-                // Salvar original e aplicar filtro
-                if (!this.producoesDiariasOriginal) {
-                    this.producoesDiariasOriginal = [...this.producoesDiarias];
-                }
-                
-                this.producoesDiarias = producoesFiltradas;
-                this.renderProducoesDiarias();
-                
-                // Restaurar original
-                this.producoesDiarias = this.producoesDiariasOriginal;
-            }
     
     limparFiltrosProducao() {
         document.getElementById('filtro-data-producao').value = '';
