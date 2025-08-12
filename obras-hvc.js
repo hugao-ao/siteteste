@@ -1718,11 +1718,7 @@ class ObrasManager {
             
             const { data, error } = await supabaseClient
                 .from('producoes_diarias_hvc')
-                .select(`
-                    *,
-                    equipes_hvc!producoes_diarias_hvc_responsavel_id_fkey (nome),
-                    integrantes_hvc!producoes_diarias_hvc_responsavel_id_fkey (nome)
-                `)
+                .select('*')
                 .eq('obra_id', this.currentObraId)
                 .order('data_producao', { ascending: false });
             
@@ -1764,9 +1760,10 @@ class ObrasManager {
             });
             
             // Obter nome do responsável
-            const nomeResponsavel = producao.tipo_responsavel === 'equipe' 
-                ? producao.equipes_hvc?.nome 
-                : producao.integrantes_hvc?.nome;
+            const responsavel = this.equipesIntegrantes.find(item => 
+                item.id === producao.responsavel_id && item.tipo === producao.tipo_responsavel
+            );
+            const nomeResponsavel = responsavel ? responsavel.nome : 'N/A';
             
             // Formatar data
             const dataFormatada = new Date(producao.data_producao + 'T00:00:00').toLocaleDateString('pt-BR');
