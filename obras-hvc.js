@@ -1974,6 +1974,59 @@ class ObrasManager {
     }
 }
 
+
+                            // DEBUG PARA PRODUÇÕES DIÁRIAS
+                            async function debugProducoesDiarias() {
+                                console.log('=== DEBUG PRODUÇÕES DIÁRIAS ===');
+                                
+                                // 1. Verificar se obrasManager existe
+                                console.log('1. ObrasManager:', window.obrasManager);
+                                
+                                if (!window.obrasManager) {
+                                    console.error('ObrasManager não encontrado!');
+                                    return;
+                                }
+                                
+                                // 2. Verificar obra atual
+                                console.log('2. Obra atual ID:', window.obrasManager.currentObraId);
+                                
+                                // 3. Verificar container
+                                const container = document.getElementById('lista-producoes-diarias');
+                                console.log('3. Container encontrado:', container);
+                                
+                                // 4. Verificar produções carregadas
+                                console.log('4. Produções carregadas:', window.obrasManager.producoesDiarias);
+                                console.log('4.1. Quantidade:', window.obrasManager.producoesDiarias?.length || 0);
+                                
+                                // 5. Testar consulta direta
+                                try {
+                                    console.log('5. Testando consulta direta...');
+                                    const { data, error } = await supabaseClient
+                                        .from('producoes_diarias_hvc')
+                                        .select('*')
+                                        .eq('obra_id', window.obrasManager.currentObraId);
+                                    
+                                    console.log('5.1. Dados:', data);
+                                    console.log('5.2. Erro:', error);
+                                    
+                                } catch (err) {
+                                    console.error('Erro na consulta:', err);
+                                }
+                                
+                                // 6. Forçar renderização
+                                console.log('6. Forçando renderização...');
+                                if (window.obrasManager.renderProducoesDiarias) {
+                                    await window.obrasManager.renderProducoesDiarias();
+                                }
+                                
+                                console.log('=== FIM DEBUG ===');
+                            }
+                            
+                            // Executar
+                            debugProducoesDiarias();
+
+
+
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
 
