@@ -1581,41 +1581,46 @@ class ObrasManager {
         });
     }
     
-    async loadEquipesIntegrantes() {
-        try {
-            console.log('Carregando equipes e integrantes...');
-            
-            // Carregar equipes ativas
-            const { data: equipes, error: errorEquipes } = await supabaseClient
-                .from('equipes_hvc')
-                .select('id, nome')
-                .eq('ativa', true)
-                .order('nome');
-            
-            if (errorEquipes) throw errorEquipes;
-            
-            // Carregar integrantes ativos
-            const { data: integrantes, error: errorIntegrantes } = await supabaseClient
-                .from('integrantes_hvc')
-                .select('id, nome')
-                .eq('ativo', true)
-                .order('nome');
-            
-            if (errorIntegrantes) throw errorIntegrantes;
-            
-            // Combinar em uma lista
-            this.equipesIntegrantes = [
-                ...(equipes || []).map(e => ({ ...e, tipo: 'equipe' })),
-                ...(integrantes || []).map(i => ({ ...i, tipo: 'integrante' }))
-            ];
-            
-            console.log('Equipes e integrantes carregados:', this.equipesIntegrantes.length);
-            
-        } catch (error) {
-            console.error('Erro ao carregar equipes e integrantes:', error);
-            this.showNotification('Erro ao carregar equipes e integrantes: ' + error.message, 'error');
-        }
+   async loadEquipesIntegrantes() {
+    try {
+        console.log('Carregando equipes e integrantes...');
+        
+        // Carregar equipes ativas (usando NUMERO em vez de NOME)
+        const { data: equipes, error: errorEquipes } = await supabaseClient
+            .from('equipes_hvc')
+            .select('id, numero, ativa')
+            .eq('ativa', true)
+            .order('numero');
+        
+        if (errorEquipes) throw errorEquipes;
+        
+        // Carregar integrantes ativos
+        const { data: integrantes, error: errorIntegrantes } = await supabaseClient
+            .from('integrantes_hvc')
+            .select('id, nome, ativo')
+            .eq('ativo', true)
+            .order('nome');
+        
+        if (errorIntegrantes) throw errorIntegrantes;
+        
+        // Combinar em uma lista (usando numero para equipes e nome para integrantes)
+        this.equipesIntegrantes = [
+            ...(equipes || []).map(e => ({ 
+                ...e, 
+                tipo: 'equipe',
+                nome: e.numero // Usar numero como nome para exibição
+            })),
+            ...(integrantes || []).map(i => ({ ...i, tipo: 'integrante' }))
+        ];
+        
+        console.log('Equipes e integrantes carregados:', this.equipesIntegrantes.length);
+        
+    } catch (error) {
+        console.error('Erro ao carregar equipes e integrantes:', error);
+        this.showNotification('Erro ao carregar equipes e integrantes: ' + error.message, 'error');
     }
+}
+
     
     async handleSubmitProducao(e) {
         e.preventDefault();
