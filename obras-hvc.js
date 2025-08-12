@@ -804,21 +804,25 @@ class ObrasManager {
     }
 
     // === MODAL DE ANDAMENTO ===
-    showModalAndamento() {
-        console.log('Mostrando modal de andamento...');
-        
-        if (this.propostasSelecionadas.length === 0) {
-            this.showNotification('Adicione propostas à obra primeiro', 'warning');
-            return;
-        }
-        
-        const modal = document.getElementById('modal-andamento');
-        if (modal) {
-            modal.classList.add('show');
-            this.renderServicosAndamento();
-        }
+    async showModalAndamento() {
+    if (!this.currentObraId) {
+        this.showNotification('Selecione uma obra primeiro', 'warning');
+        return;
     }
-
+    
+    const modal = document.getElementById('modal-andamento');
+    if (modal) {
+        modal.classList.add('show');
+        
+        // 🎯 CORREÇÃO: Carregar produções diárias ANTES de renderizar serviços
+        await this.loadEquipesIntegrantes();
+        await this.loadProducoesDiarias();
+        await this.renderServicosAndamento();
+        
+        // Popular filtro de equipes/integrantes
+        await this.populateFiltroEquipeProducao();
+    }
+}
     hideModalAndamento() {
         const modal = document.getElementById('modal-andamento');
         if (modal) {
@@ -1926,33 +1930,28 @@ class ObrasManager {
     }
     
                            filtrarProducoes() {
-                    const filtroData = document.getElementById('filtro-data-producao').value;
-                    const filtroEquipe = document.getElementById('filtro-equipe-producao').value;
-                    
-                    let producoesFiltradas = [...this.producoesDiarias];
-                    
-                    if (filtroData) {
-                        producoesFiltradas = producoesFiltradas.filter(p => p.data_producao === filtroData);
-                    }
-                    
-                    if (filtroEquipe && filtroEquipe !== '') {
-                        const [tipo, id] = filtroEquipe.split(':');
-                        producoesFiltradas = producoesFiltradas.filter(p => 
-                            p.tipo_responsavel === tipo && p.responsavel_id == id
-                        );
-                    }
-                    
-                    // Salvar original e aplicar filtro
-                    if (!this.producoesDiariasOriginal) {
-                        this.producoesDiariasOriginal = [...this.producoesDiarias];
-                    }
-                    
-                    this.producoesDiarias = producoesFiltradas;
-                    this.renderProducoesDiarias();
-                    
-                    // Restaurar original
-                    this.producoesDiarias = this.producoesDiariasOriginal;
-                }
+                                const filtroData = document.getElementById('filtro-data-producao').value;
+                                const filtroEquipe = document.getElementById('filtro-equipe-producao').value;
+                                
+                                let producoesFiltradas = [...this.producoesDiarias];
+                                
+                                if (filtroData) {
+                                    producoesFiltradas = producoesFiltradas.filter(p => p.data_producao === filtroData);
+                                }
+                                
+                                if (filtroEquipe && filtroEquipe !== '') {
+                                    const [tipo, id] = filtroEquipe.split(':');
+                                    producoesFiltradas = producoesFiltradas.filter(p => 
+                                        p.tipo_responsavel === tipo && p.responsavel_id == id
+                                    );
+                                }
+                                
+                                // Temporariamente substituir para renderizar filtrado
+                                const originalProducoes = this.producoesDiarias;
+                                this.producoesDiarias = producoesFiltradas;
+                                this.renderProducoesDiarias();
+                                this.producoesDiarias = originalProducoes;
+                            }
     
     limparFiltrosProducao() {
         document.getElementById('filtro-data-producao').value = '';
@@ -1975,69 +1974,26 @@ class ObrasManager {
     }
 }
 
-// CÓDIGO DE DEBUG - Adicione temporariamente no final do obras-hvc.js
 
-// Função para debugar equipes e integrantes
-async function debugEquipesIntegrantes() {
-    console.log('=== DEBUG EQUIPES E INTEGRANTES ===');
+async populateFiltroEquipeProducao() {
+    const select = document.getElementById('filtro-equipe-producao');
+    if (!select) return;
     
-    try {
-        // Testar consulta de equipes
-        console.log('1. Testando consulta de equipes...');
-        const { data: equipes, error: errorEquipes } = await supabaseClient
-            .from('equipes_hvc')
-            .select('*');
-        
-        console.log('Todas as equipes:', equipes);
-        console.log('Erro equipes:', errorEquipes);
-        
-        // Testar consulta de equipes ativas
-        console.log('2. Testando consulta de equipes ativas...');
-        const { data: equipesAtivas, error: errorEquipesAtivas } = await supabaseClient
-            .from('equipes_hvc')
-            .select('id, nome, ativa')
-            .eq('ativa', true);
-        
-        console.log('Equipes ativas:', equipesAtivas);
-        console.log('Erro equipes ativas:', errorEquipesAtivas);
-        
-        // Testar consulta de integrantes
-        console.log('3. Testando consulta de integrantes...');
-        const { data: integrantes, error: errorIntegrantes } = await supabaseClient
-            .from('integrantes_hvc')
-            .select('*');
-        
-        console.log('Todos os integrantes:', integrantes);
-        console.log('Erro integrantes:', errorIntegrantes);
-        
-        // Testar consulta de integrantes ativos
-        console.log('4. Testando consulta de integrantes ativos...');
-        const { data: integrantesAtivos, error: errorIntegrantesAtivos } = await supabaseClient
-            .from('integrantes_hvc')
-            .select('id, nome, ativo')
-            .eq('ativo', true);
-        
-        console.log('Integrantes ativos:', integrantesAtivos);
-        console.log('Erro integrantes ativos:', errorIntegrantesAtivos);
-        
-    } catch (error) {
-        console.error('Erro no debug:', error);
-    }
+    select.innerHTML = '<option value="">Todos</option>';
     
-    console.log('=== FIM DEBUG ===');
+    this.equipesIntegrantes.forEach(item => {
+        const option = document.createElement('option');
+        option.value = `${item.tipo}:${item.id}`;
+        option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
+        select.appendChild(option);
+    });
 }
 
-// Executar debug automaticamente quando a página carregar
-if (typeof window !== 'undefined') {
-    window.debugEquipesIntegrantes = debugEquipesIntegrantes;
-    
-    // Executar após 3 segundos
-    setTimeout(() => {
-        debugEquipesIntegrantes();
-    }, 3000);
+limparFiltrosProducao() {
+    document.getElementById('filtro-data-producao').value = '';
+    document.getElementById('filtro-equipe-producao').value = '';
+    this.renderProducoesDiarias();
 }
-
-
 
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
