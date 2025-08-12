@@ -1902,29 +1902,34 @@ class ObrasManager {
         }
     }
     
-    filtrarProducoes() {
-        const filtroData = document.getElementById('filtro-data-producao').value;
-        const filtroEquipe = document.getElementById('filtro-equipe-producao').value;
-        
-        let producoesFiltradas = [...this.producoesDiarias];
-        
-        if (filtroData) {
-            producoesFiltradas = producoesFiltradas.filter(p => p.data_producao === filtroData);
-        }
-        
-        if (filtroEquipe) {
-            const [tipo, id] = filtroEquipe.split(':');
-            producoesFiltradas = producoesFiltradas.filter(p => 
-                p.tipo_responsavel === tipo && p.responsavel_id.toString() === id
-            );
-        }
-        
-        // Temporariamente substituir a lista para renderização
-        const producaoOriginal = this.producoesDiarias;
-        this.producoesDiarias = producoesFiltradas;
-        this.renderProducoesDiarias();
-        this.producoesDiarias = producaoOriginal;
-    }
+             filtrarProducoes() {
+                const filtroData = document.getElementById('filtro-data-producao').value;
+                const filtroEquipe = document.getElementById('filtro-equipe-producao').value;
+                
+                let producoesFiltradas = [...this.producoesDiarias];
+                
+                if (filtroData) {
+                    producoesFiltradas = producoesFiltradas.filter(p => p.data_producao === filtroData);
+                }
+                
+                if (filtroEquipe && filtroEquipe !== '') {
+                    const [tipo, id] = filtroEquipe.split(':');
+                    producoesFiltradas = producoesFiltradas.filter(p => 
+                        p.tipo_responsavel === tipo && p.responsavel_id == id
+                    );
+                }
+                
+                // Salvar original e aplicar filtro
+                if (!this.producoesDiariasOriginal) {
+                    this.producoesDiariasOriginal = [...this.producoesDiarias];
+                }
+                
+                this.producoesDiarias = producoesFiltradas;
+                this.renderProducoesDiarias();
+                
+                // Restaurar original
+                this.producoesDiarias = this.producoesDiariasOriginal;
+            }
     
     limparFiltrosProducao() {
         document.getElementById('filtro-data-producao').value = '';
