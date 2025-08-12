@@ -1753,96 +1753,124 @@ class ObrasManager {
         }
     }
     
-    renderProducoesDiarias() {
-        const container = document.getElementById('lista-producoes');
-        if (!container) return;
-        
-        if (this.producoesDiarias.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: #c0c0c0;">
-                    <i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <p>Nenhuma produção diária cadastrada</p>
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = '';
-        
-        this.producoesDiarias.forEach(producao => {
-            const producaoDiv = document.createElement('div');
-            producaoDiv.style.cssText = 'border-bottom: 1px solid rgba(173, 216, 230, 0.1); padding: 1rem; transition: background-color 0.3s ease;';
-            producaoDiv.addEventListener('mouseenter', () => {
-                producaoDiv.style.backgroundColor = 'rgba(173, 216, 230, 0.1)';
-            });
-            producaoDiv.addEventListener('mouseleave', () => {
-                producaoDiv.style.backgroundColor = 'transparent';
-            });
-            
-            // Obter nome do responsável
-            const responsavel = this.equipesIntegrantes.find(item => 
-                item.id === producao.responsavel_id && item.tipo === producao.tipo_responsavel
-            );
-            const nomeResponsavel = responsavel ? responsavel.nome : 'N/A';
-            
-            // Formatar data
-            const dataFormatada = new Date(producao.data_producao + 'T00:00:00').toLocaleDateString('pt-BR');
-            
-            // Contar serviços com quantidade
-            const quantidadesObj = producao.quantidades_servicos || {};
-            const totalServicos = Object.keys(quantidadesObj).length;
-            
-            producaoDiv.innerHTML = `
-                <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
-                    <div style="flex: 1;">
-                        <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                            <strong style="color: #add8e6; font-size: 1.1em;">
-                                <i class="fas fa-calendar-day"></i>
-                                ${dataFormatada}
-                            </strong>
-                            <span style="color: #e0e0e0;">
-                                <i class="fas fa-${producao.tipo_responsavel === 'equipe' ? 'users' : 'user'}"></i>
-                                ${nomeResponsavel || 'N/A'}
-                            </span>
+              async renderProducoesDiarias() {
+                const container = document.getElementById('lista-producoes-diarias');
+                if (!container) return;
+                
+                if (!this.producoesDiarias || this.producoesDiarias.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; padding: 2rem; color: #c0c0c0;">
+                            <i class="fas fa-calendar-times" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
+                            <p>Nenhuma produção diária cadastrada</p>
                         </div>
-                        
-                        <div style="color: #c0c0c0; font-size: 0.9em; margin-bottom: 0.5rem;">
-                            <i class="fas fa-tools"></i>
-                            ${totalServicos} serviço(s) executado(s)
-                        </div>
-                        
-                        ${producao.observacoes ? `
-                            <div style="color: #a0a0a0; font-size: 0.9em; font-style: italic;">
-                                <i class="fas fa-comment"></i>
-                                ${producao.observacoes}
-                            </div>
-                        ` : ''}
-                    </div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = '';
+                
+                this.producoesDiarias.forEach(producao => {
+                    const producaoDiv = document.createElement('div');
+                    producaoDiv.style.cssText = 'border-bottom: 1px solid rgba(173, 216, 230, 0.1); padding: 1rem; transition: background-color 0.3s ease;';
+                    producaoDiv.addEventListener('mouseenter', () => {
+                        producaoDiv.style.backgroundColor = 'rgba(173, 216, 230, 0.1)';
+                    });
+                    producaoDiv.addEventListener('mouseleave', () => {
+                        producaoDiv.style.backgroundColor = 'transparent';
+                    });
                     
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button 
-                            onclick="window.obrasManager.showModalProducao('${producao.id}')"
-                            class="btn-secondary" 
-                            style="padding: 0.3rem 0.6rem; font-size: 0.8em;"
-                            title="Editar produção"
-                        >
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button 
-                            onclick="window.obrasManager.deleteProducao('${producao.id}')"
-                            class="btn-danger" 
-                            style="padding: 0.3rem 0.6rem; font-size: 0.8em;"
-                            title="Excluir produção"
-                        >
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            `;
-            
-            container.appendChild(producaoDiv);
-        });
-    }
+                    // Obter nome do responsável
+                    const responsavel = this.equipesIntegrantes.find(item => 
+                        item.id === producao.responsavel_id && item.tipo === producao.tipo_responsavel
+                    );
+                    const nomeResponsavel = responsavel ? responsavel.nome : 'N/A';
+                    
+                    // Se for equipe, buscar integrantes da equipe
+                    let integrantesTexto = '';
+                    if (producao.tipo_responsavel === 'equipe' && responsavel) {
+                        // Buscar integrantes desta equipe
+                        const integrantesEquipe = this.equipesIntegrantes.filter(item => 
+                            item.tipo === 'integrante' && item.equipe_id === responsavel.id
+                        );
+                        if (integrantesEquipe.length > 0) {
+                            integrantesTexto = `<div style="color: #b0b0b0; font-size: 0.85em; margin-top: 0.3rem;">
+                                <i class="fas fa-users"></i> Integrantes: ${integrantesEquipe.map(i => i.nome).join(', ')}
+                            </div>`;
+                        }
+                    }
+                    
+                    // Formatar data
+                    const dataFormatada = new Date(producao.data_producao + 'T00:00:00').toLocaleDateString('pt-BR');
+                    
+                    // Processar serviços executados
+                    const quantidadesObj = producao.quantidades_servicos || {};
+                    const servicosExecutados = Object.entries(quantidadesObj)
+                        .filter(([servicoId, quantidade]) => quantidade > 0)
+                        .map(([servicoId, quantidade]) => {
+                            // Buscar informações do serviço
+                            const servico = this.servicosObra.find(s => s.id == servicoId);
+                            const codigo = servico ? servico.codigo : `ID:${servicoId}`;
+                            const unidade = servico ? servico.unidade : '';
+                            return `${codigo}: ${quantidade}${unidade ? ' ' + unidade : ''}`;
+                        });
+                    
+                    const servicosTexto = servicosExecutados.length > 0 
+                        ? servicosExecutados.join(' • ') 
+                        : 'Nenhum serviço executado';
+                    
+                    producaoDiv.innerHTML = `
+                        <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
+                            <div style="flex: 1;">
+                                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                                    <strong style="color: #add8e6; font-size: 1.1em;">
+                                        <i class="fas fa-calendar-day"></i>
+                                        ${dataFormatada}
+                                    </strong>
+                                    <span style="color: #e0e0e0;">
+                                        <i class="fas fa-${producao.tipo_responsavel === 'equipe' ? 'users' : 'user'}"></i>
+                                        ${producao.tipo_responsavel === 'equipe' ? 'Equipe' : 'Integrante'}: ${nomeResponsavel}
+                                    </span>
+                                </div>
+                                
+                                ${integrantesTexto}
+                                
+                                <div style="color: #c0c0c0; font-size: 0.9em; margin: 0.5rem 0;">
+                                    <i class="fas fa-tools"></i>
+                                    <strong>Serviços:</strong> ${servicosTexto}
+                                </div>
+                                
+                                ${producao.observacoes ? `
+                                    <div style="color: #a0a0a0; font-size: 0.9em; font-style: italic; margin-top: 0.5rem;">
+                                        <i class="fas fa-comment"></i>
+                                        ${producao.observacoes}
+                                    </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button 
+                                    onclick="window.obrasManager.showModalProducao('${producao.id}')"
+                                    class="btn-secondary" 
+                                    style="padding: 0.3rem 0.6rem; font-size: 0.8em;"
+                                    title="Editar produção"
+                                >
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button 
+                                    onclick="window.obrasManager.deleteProducao('${producao.id}')"
+                                    class="btn-danger" 
+                                    style="padding: 0.3rem 0.6rem; font-size: 0.8em;"
+                                    title="Excluir produção"
+                                >
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(producaoDiv);
+                });
+            }
     
     async loadProducaoData(producaoId) {
         try {
