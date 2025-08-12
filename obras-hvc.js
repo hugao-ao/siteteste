@@ -1899,6 +1899,70 @@ class ObrasManager {
     }
 }
 
+// CÓDIGO DE DEBUG - Adicione temporariamente no final do obras-hvc.js
+
+// Função para debugar equipes e integrantes
+async function debugEquipesIntegrantes() {
+    console.log('=== DEBUG EQUIPES E INTEGRANTES ===');
+    
+    try {
+        // Testar consulta de equipes
+        console.log('1. Testando consulta de equipes...');
+        const { data: equipes, error: errorEquipes } = await supabaseClient
+            .from('equipes_hvc')
+            .select('*');
+        
+        console.log('Todas as equipes:', equipes);
+        console.log('Erro equipes:', errorEquipes);
+        
+        // Testar consulta de equipes ativas
+        console.log('2. Testando consulta de equipes ativas...');
+        const { data: equipesAtivas, error: errorEquipesAtivas } = await supabaseClient
+            .from('equipes_hvc')
+            .select('id, nome, ativa')
+            .eq('ativa', true);
+        
+        console.log('Equipes ativas:', equipesAtivas);
+        console.log('Erro equipes ativas:', errorEquipesAtivas);
+        
+        // Testar consulta de integrantes
+        console.log('3. Testando consulta de integrantes...');
+        const { data: integrantes, error: errorIntegrantes } = await supabaseClient
+            .from('integrantes_hvc')
+            .select('*');
+        
+        console.log('Todos os integrantes:', integrantes);
+        console.log('Erro integrantes:', errorIntegrantes);
+        
+        // Testar consulta de integrantes ativos
+        console.log('4. Testando consulta de integrantes ativos...');
+        const { data: integrantesAtivos, error: errorIntegrantesAtivos } = await supabaseClient
+            .from('integrantes_hvc')
+            .select('id, nome, ativo')
+            .eq('ativo', true);
+        
+        console.log('Integrantes ativos:', integrantesAtivos);
+        console.log('Erro integrantes ativos:', errorIntegrantesAtivos);
+        
+    } catch (error) {
+        console.error('Erro no debug:', error);
+    }
+    
+    console.log('=== FIM DEBUG ===');
+}
+
+// Executar debug automaticamente quando a página carregar
+if (typeof window !== 'undefined') {
+    window.debugEquipesIntegrantes = debugEquipesIntegrantes;
+    
+    // Executar após 3 segundos
+    setTimeout(() => {
+        debugEquipesIntegrantes();
+    }, 3000);
+}
+
+
+
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
 
