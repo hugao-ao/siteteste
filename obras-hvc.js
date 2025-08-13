@@ -1823,33 +1823,49 @@ class ObrasManager {
                         producaoDiv.style.backgroundColor = 'transparent';
                     });
                     
-                    // Obter nome do responsável
+                    // Obter informações do responsável e criar exibição melhorada
                     const responsavel = this.equipesIntegrantes.find(item => 
                         item.id === producao.responsavel_id && item.tipo === producao.tipo_responsavel
                     );
-                    const nomeResponsavel = responsavel ? responsavel.nome : 'N/A';
                     
-                    // Buscar TODOS os integrantes envolvidos na produção
-                    let integrantesTexto = '';
-                    let todosIntegrantes = [];
+                    // Criar texto de equipes e integrantes
+                    let equipesIntegrantesTexto = '';
                     
                     if (producao.tipo_responsavel === 'equipe' && responsavel) {
-                        // Se for equipe, buscar integrantes desta equipe
+                        // Se for equipe, mostrar número da equipe e integrantes
+                        const numeroEquipe = responsavel.nome; // nome já contém o número
                         const integrantesEquipe = this.equipesIntegrantes.filter(item => 
                             item.tipo === 'integrante' && item.equipe_id === responsavel.id
                         );
-                        todosIntegrantes = integrantesEquipe;
+                        
+                        equipesIntegrantesTexto = `
+                            <span style="color: #e0e0e0;">
+                                <i class="fas fa-users"></i> Equipe: ${numeroEquipe}
+                            </span>
+                        `;
+                        
+                        if (integrantesEquipe.length > 0) {
+                            const nomesIntegrantes = integrantesEquipe.map(i => i.nome).join(', ');
+                            equipesIntegrantesTexto += `
+                                <div style="color: #b0b0b0; font-size: 0.85em; margin-top: 0.3rem; padding-left: 1.5rem;">
+                                    <i class="fas fa-user-friends"></i> Integrantes: ${nomesIntegrantes}
+                                </div>
+                            `;
+                        }
                     } else if (producao.tipo_responsavel === 'integrante' && responsavel) {
-                        // Se for integrante individual, adicionar apenas ele
-                        todosIntegrantes = [responsavel];
-                    }
-                    
-                    // Criar texto dos integrantes (evitando duplicação)
-                    if (todosIntegrantes.length > 0) {
-                        const nomesIntegrantes = [...new Set(todosIntegrantes.map(i => i.nome))];
-                        integrantesTexto = `<div style="color: #b0b0b0; font-size: 0.85em; margin-top: 0.3rem;">
-                            <i class="fas fa-users"></i> Integrantes: ${nomesIntegrantes.join(', ')}
-                        </div>`;
+                        // Se for integrante individual
+                        equipesIntegrantesTexto = `
+                            <span style="color: #e0e0e0;">
+                                <i class="fas fa-user"></i> Integrante: ${responsavel.nome}
+                            </span>
+                        `;
+                    } else {
+                        // Caso não encontre o responsável
+                        equipesIntegrantesTexto = `
+                            <span style="color: #e0e0e0;">
+                                <i class="fas fa-question-circle"></i> Responsável: N/A
+                            </span>
+                        `;
                     }
                     
                     // Formatar data
@@ -1879,13 +1895,8 @@ class ObrasManager {
                                         <i class="fas fa-calendar-day"></i>
                                         ${dataFormatada}
                                     </strong>
-                                    <span style="color: #e0e0e0;">
-                                        <i class="fas fa-${producao.tipo_responsavel === 'equipe' ? 'users' : 'user'}"></i>
-                                        ${producao.tipo_responsavel === 'equipe' ? 'Equipe' : 'Integrante'}: ${nomeResponsavel}
-                                    </span>
+                                    ${equipesIntegrantesTexto}
                                 </div>
-                                
-                                ${integrantesTexto}
                                 
                                 <div style="color: #c0c0c0; font-size: 0.9em; margin: 0.5rem 0;">
                                     <i class="fas fa-tools"></i>
