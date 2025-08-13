@@ -1621,14 +1621,31 @@ class ObrasManager {
         
         if (errorEquipes) throw errorEquipes;
         
-        // Carregar integrantes ativos COM informação da equipe
+        // Carregar integrantes ativos
         const { data: integrantes, error: errorIntegrantes } = await supabaseClient
             .from('integrantes_hvc')
-            .select('id, nome, ativo, equipe_id')
+            .select('id, nome, ativo')
             .eq('ativo', true)
             .order('nome');
         
         if (errorIntegrantes) throw errorIntegrantes;
+        
+        // Carregar relacionamentos equipe-integrante
+        const { data: relacionamentos, error: errorRelacionamentos } = await supabaseClient
+            .from('equipe_integrantes')
+            .select('equipe_id, integrante_id');
+        
+        if (errorRelacionamentos) throw errorRelacionamentos;
+        
+        // Adicionar informação de equipe aos integrantes
+        const integrantesComEquipe = (integrantes || []).map(integrante => {
+            const relacionamento = relacionamentos?.find(r => r.integrante_id === integrante.id);
+            return {
+                ...integrante,
+                equipe_id: relacionamento?.equipe_id || null,
+                tipo: 'integrante'
+            };
+        });
         
         // Combinar em uma lista (usando numero para equipes e nome para integrantes)
         this.equipesIntegrantes = [
@@ -1637,7 +1654,7 @@ class ObrasManager {
                 tipo: 'equipe',
                 nome: e.numero // Usar numero como nome para exibição
             })),
-            ...(integrantes || []).map(i => ({ ...i, tipo: 'integrante' }))
+            ...integrantesComEquipe
         ];
         
         console.log('Equipes e integrantes carregados:', this.equipesIntegrantes.length);
