@@ -1823,69 +1823,97 @@ class ObrasManager {
                         producaoDiv.style.backgroundColor = 'transparent';
                     });
                     
-                    // Obter informações do responsável e criar exibição melhorada
-                    let responsavel = null;
+                    // Debug: mostrar dados disponíveis
+                    console.log('=== DEBUG PRODUÇÃO ===');
+                    console.log('Produção ID:', producao.id);
+                    console.log('Tipo responsável:', producao.tipo_responsavel);
+                    console.log('Responsável ID:', producao.responsavel_id);
+                    console.log('Equipes disponíveis:', this.equipesIntegrantes.filter(i => i.tipo === 'equipe'));
+                    console.log('Integrantes disponíveis:', this.equipesIntegrantes.filter(i => i.tipo === 'integrante'));
                     
-                    // Primeiro tentar buscar por ID exato
-                    responsavel = this.equipesIntegrantes.find(item => 
-                        item.id === producao.responsavel_id && item.tipo === producao.tipo_responsavel
-                    );
+                    // Criar texto no formato: "Equipes: [números] ::: Integrantes: [todos]"
+                    let equipesTexto = '';
+                    let integrantesTexto = '';
+                    let todosIntegrantes = [];
                     
-                    // Se não encontrar e for equipe, tentar buscar por número
-                    if (!responsavel && producao.tipo_responsavel === 'equipe') {
-                        responsavel = this.equipesIntegrantes.find(item => 
-                            item.tipo === 'equipe' && item.nome == producao.responsavel_id
-                        );
-                    }
-                    
-                    // Se ainda não encontrar e for integrante, tentar buscar por ID numérico
-                    if (!responsavel && producao.tipo_responsavel === 'integrante') {
-                        responsavel = this.equipesIntegrantes.find(item => 
-                            item.tipo === 'integrante' && item.id == producao.responsavel_id
-                        );
-                    }
-                    
-                    console.log('Produção:', producao.id, 'Tipo:', producao.tipo_responsavel, 'ID:', producao.responsavel_id, 'Responsável encontrado:', responsavel);
-                    
-                    // Criar texto de equipes e integrantes
-                    let equipesIntegrantesTexto = '';
-                    
-                    if (producao.tipo_responsavel === 'equipe' && responsavel) {
-                        // Se for equipe, mostrar número da equipe e integrantes
-                        const numeroEquipe = responsavel.nome; // nome já contém o número
-                        const integrantesEquipe = this.equipesIntegrantes.filter(item => 
-                            item.tipo === 'integrante' && item.equipe_id === responsavel.id
+                    if (producao.tipo_responsavel === 'equipe') {
+                        // Buscar equipe por diferentes critérios
+                        let equipe = null;
+                        
+                        // Tentar buscar por UUID
+                        equipe = this.equipesIntegrantes.find(item => 
+                            item.tipo === 'equipe' && item.id === producao.responsavel_id
                         );
                         
-                        equipesIntegrantesTexto = `
-                            <span style="color: #e0e0e0;">
-                                <i class="fas fa-users"></i> Equipe: ${numeroEquipe}
-                            </span>
-                        `;
-                        
-                        if (integrantesEquipe.length > 0) {
-                            const nomesIntegrantes = integrantesEquipe.map(i => i.nome).join(', ');
-                            equipesIntegrantesTexto += `
-                                <div style="color: #b0b0b0; font-size: 0.85em; margin-top: 0.3rem; padding-left: 1.5rem;">
-                                    <i class="fas fa-user-friends"></i> Integrantes: ${nomesIntegrantes}
-                                </div>
-                            `;
+                        // Se não encontrar, tentar buscar por número
+                        if (!equipe) {
+                            equipe = this.equipesIntegrantes.find(item => 
+                                item.tipo === 'equipe' && item.nome === String(producao.responsavel_id).padStart(4, '0')
+                            );
                         }
-                    } else if (producao.tipo_responsavel === 'integrante' && responsavel) {
-                        // Se for integrante individual
-                        equipesIntegrantesTexto = `
-                            <span style="color: #e0e0e0;">
-                                <i class="fas fa-user"></i> Integrante: ${responsavel.nome}
-                            </span>
-                        `;
-                    } else {
-                        // Caso não encontre o responsável
-                        equipesIntegrantesTexto = `
-                            <span style="color: #e0e0e0;">
-                                <i class="fas fa-question-circle"></i> Responsável: N/A (ID: ${producao.responsavel_id}, Tipo: ${producao.tipo_responsavel})
-                            </span>
-                        `;
+                        
+                        // Se ainda não encontrar, tentar buscar por número sem zeros
+                        if (!equipe) {
+                            equipe = this.equipesIntegrantes.find(item => 
+                                item.tipo === 'equipe' && parseInt(item.nome) === producao.responsavel_id
+                            );
+                        }
+                        
+                        console.log('Equipe encontrada:', equipe);
+                        
+                        if (equipe) {
+                            equipesTexto = `Equipes: ${equipe.nome}`;
+                            
+                            // Buscar integrantes desta equipe
+                            const integrantesEquipe = this.equipesIntegrantes.filter(item => 
+                                item.tipo === 'integrante' && item.equipe_id === equipe.id
+                            );
+                            
+                            todosIntegrantes = integrantesEquipe;
+                        } else {
+                            equipesTexto = `Equipes: N/A (ID: ${producao.responsavel_id})`;
+                        }
+                        
+                    } else if (producao.tipo_responsavel === 'integrante') {
+                        // Buscar integrante individual
+                        let integrante = null;
+                        
+                        // Tentar buscar por UUID
+                        integrante = this.equipesIntegrantes.find(item => 
+                            item.tipo === 'integrante' && item.id === producao.responsavel_id
+                        );
+                        
+                        // Se não encontrar, tentar buscar por ID numérico
+                        if (!integrante) {
+                            integrante = this.equipesIntegrantes.find(item => 
+                                item.tipo === 'integrante' && item.id == producao.responsavel_id
+                            );
+                        }
+                        
+                        console.log('Integrante encontrado:', integrante);
+                        
+                        if (integrante) {
+                            equipesTexto = `Integrante Individual`;
+                            todosIntegrantes = [integrante];
+                        } else {
+                            equipesTexto = `Integrante: N/A (ID: ${producao.responsavel_id})`;
+                        }
                     }
+                    
+                    // Criar texto dos integrantes
+                    if (todosIntegrantes.length > 0) {
+                        const nomesIntegrantes = todosIntegrantes.map(i => i.nome).join(', ');
+                        integrantesTexto = `Integrantes: ${nomesIntegrantes}`;
+                    } else {
+                        integrantesTexto = `Integrantes: N/A`;
+                    }
+                    
+                    // Formato final: "Equipes: [números] ::: Integrantes: [todos]"
+                    const equipesIntegrantesTexto = `
+                        <span style="color: #e0e0e0;">
+                            <i class="fas fa-users"></i> ${equipesTexto} ::: ${integrantesTexto}
+                        </span>
+                    `;
                     
                     // Formatar data
                     const dataFormatada = new Date(producao.data_producao + 'T00:00:00').toLocaleDateString('pt-BR');
