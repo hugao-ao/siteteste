@@ -1824,9 +1824,28 @@ class ObrasManager {
                     });
                     
                     // Obter informações do responsável e criar exibição melhorada
-                    const responsavel = this.equipesIntegrantes.find(item => 
+                    let responsavel = null;
+                    
+                    // Primeiro tentar buscar por ID exato
+                    responsavel = this.equipesIntegrantes.find(item => 
                         item.id === producao.responsavel_id && item.tipo === producao.tipo_responsavel
                     );
+                    
+                    // Se não encontrar e for equipe, tentar buscar por número
+                    if (!responsavel && producao.tipo_responsavel === 'equipe') {
+                        responsavel = this.equipesIntegrantes.find(item => 
+                            item.tipo === 'equipe' && item.nome == producao.responsavel_id
+                        );
+                    }
+                    
+                    // Se ainda não encontrar e for integrante, tentar buscar por ID numérico
+                    if (!responsavel && producao.tipo_responsavel === 'integrante') {
+                        responsavel = this.equipesIntegrantes.find(item => 
+                            item.tipo === 'integrante' && item.id == producao.responsavel_id
+                        );
+                    }
+                    
+                    console.log('Produção:', producao.id, 'Tipo:', producao.tipo_responsavel, 'ID:', producao.responsavel_id, 'Responsável encontrado:', responsavel);
                     
                     // Criar texto de equipes e integrantes
                     let equipesIntegrantesTexto = '';
@@ -1863,7 +1882,7 @@ class ObrasManager {
                         // Caso não encontre o responsável
                         equipesIntegrantesTexto = `
                             <span style="color: #e0e0e0;">
-                                <i class="fas fa-question-circle"></i> Responsável: N/A
+                                <i class="fas fa-question-circle"></i> Responsável: N/A (ID: ${producao.responsavel_id}, Tipo: ${producao.tipo_responsavel})
                             </span>
                         `;
                     }
