@@ -1,7 +1,7 @@
 // Sistema de Medições HVC - Novo com Cálculos Automáticos
 
-// Importar Supabase do arquivo existente
-import { supabase as supabaseClient } from './supabase.js';
+// Usar Supabase global (carregado pelo supabase.js)
+let supabaseClient = null;
 
 let medicoesManager = null;
 
@@ -14,8 +14,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeApp() {
     console.log('Inicializando aplicação de medições...');
     
-    // Verificar se o Supabase está disponível
-    if (supabaseClient) {
+    // Verificar se o Supabase está disponível globalmente
+    if (window.supabase) {
+        supabaseClient = window.supabase;
         console.log('Supabase conectado com sucesso!');
         
         // Inicializar o gerenciador de medições
@@ -483,7 +484,8 @@ class MedicoesManager {
                     <div class="valor-item valor-contratado">
                         <div class="valor-label">Total Contratado</div>
                         <div class="valor-numero">
-                            ${servico.quantidade_contratada.toFixed(2)} ${servico.unidade}<br>
+                            ${servico.quantidade_contratada.toFixed(2)} ${servico.unidade}  
+
                             <small>${this.formatarMoeda(servico.valor_total_contratado)}</small>
                         </div>
                     </div>
@@ -491,7 +493,8 @@ class MedicoesManager {
                     <div class="valor-item valor-produzido">
                         <div class="valor-label">Total Produzido</div>
                         <div class="valor-numero">
-                            ${servico.quantidade_produzida.toFixed(2)} ${servico.unidade}<br>
+                            ${servico.quantidade_produzida.toFixed(2)} ${servico.unidade}  
+
                             <small>${this.formatarMoeda(servico.valor_produzido)}</small>
                         </div>
                     </div>
@@ -499,7 +502,8 @@ class MedicoesManager {
                     <div class="valor-item valor-medido">
                         <div class="valor-label">Total Medido</div>
                         <div class="valor-numero">
-                            ${servico.quantidade_medida.toFixed(2)} ${servico.unidade}<br>
+                            ${servico.quantidade_medida.toFixed(2)} ${servico.unidade}  
+
                             <small>${this.formatarMoeda(servico.valor_medido)}</small>
                         </div>
                     </div>
@@ -507,7 +511,8 @@ class MedicoesManager {
                     <div class="valor-item valor-disponivel">
                         <div class="valor-label">Disponível para Medição</div>
                         <div class="valor-numero">
-                            ${servico.quantidade_disponivel.toFixed(2)} ${servico.unidade}<br>
+                            ${servico.quantidade_disponivel.toFixed(2)} ${servico.unidade}  
+
                             <small>${this.formatarMoeda(servico.valor_disponivel)}</small>
                         </div>
                     </div>
@@ -872,35 +877,3 @@ window.showNotification = function(message, type) {
         medicoesManager.showNotification(message, type);
     }
 };
-
-// CSS adicional para badges
-const additionalCSS = `
-    .badge {
-        padding: 0.25rem 0.5rem;
-        border-radius: 0.375rem;
-        font-size: 0.75rem;
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-    
-    .badge-primary {
-        background-color: #007bff;
-        color: white;
-    }
-    
-    .badge-success {
-        background-color: #28a745;
-        color: white;
-    }
-    
-    .badge-secondary {
-        background-color: #6c757d;
-        color: white;
-    }
-`;
-
-// Adicionar CSS ao documento
-const style = document.createElement('style');
-style.textContent = additionalCSS;
-document.head.appendChild(style);
-
