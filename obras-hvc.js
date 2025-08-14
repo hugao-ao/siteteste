@@ -2130,3 +2130,5 @@ class ObrasManager {
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
 
+
+
