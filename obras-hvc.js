@@ -1698,7 +1698,7 @@ class ObrasManager {
                 obra_id: this.currentObraId,
                 data_producao: data,
                 tipo_responsavel: tipo,
-                responsavel_id: parseInt(id),
+                responsavel_id: id, // Manter como string (UUID ou ID numérico)
                 observacoes: observacao || null,
                 quantidades_servicos: quantidades
             };
