@@ -1682,20 +1682,13 @@ class ObrasManager {
             
             // Coletar quantidades dos serviços
             const quantidades = {};
-            let temQuantidade = false;
             
             this.servicosObra.forEach(servico => {
                 const input = document.getElementById(`servico-${servico.id}`);
                 if (input && input.value && parseFloat(input.value) > 0) {
                     quantidades[servico.id] = parseFloat(input.value);
-                    temQuantidade = true;
                 }
             });
-            
-            if (!temQuantidade) {
-                this.showNotification('Preencha pelo menos um serviço com quantidade maior que zero', 'warning');
-                return;
-            }
             
             // Separar tipo e ID da equipe/integrante
             const [tipo, id] = equipe.split(':');
