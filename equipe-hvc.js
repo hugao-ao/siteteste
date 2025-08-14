@@ -418,8 +418,9 @@ function atualizarContadorSelecao() {
 
 async function saveEquipe() {
     try {
-        const numero = document.getElementById('numero-equipe').value.trim();
-        const observacoes = document.getElementById('observacoes-equipe').value.trim();
+        const numero = document.getElementById('equipe-numero').value.trim();
+        const observacoes = document.getElementById('equipe-observacoes').value.trim();
+
         
         // Validações
         if (!numero) {
@@ -487,11 +488,12 @@ async function saveEquipe() {
 
 async function saveIntegrante() {
     try {
-        const nome = document.getElementById('nome-integrante').value.trim();
-        const cpf = document.getElementById('cpf-integrante').value.trim();
-        const whatsapp = document.getElementById('whatsapp-integrante').value.trim();
-        const funcaoId = document.getElementById('funcao-integrante').value;
-        const observacoes = document.getElementById('observacoes-integrante').value.trim();
+        const nome = document.getElementById('integrante-nome').value.trim();
+        const cpf = document.getElementById('integrante-cpf').value.trim();
+        const whatsapp = document.getElementById('integrante-whatsapp').value.trim();
+        const funcaoId = document.getElementById('integrante-funcao').value;
+        const observacoes = document.getElementById('integrante-observacoes').value.trim();
+
         
         // Validações
         if (!nome || !cpf || !whatsapp || !funcaoId) {
