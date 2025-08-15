@@ -104,7 +104,7 @@ class MedicoesManager {
             const { data: obras, error: obrasError } = await supabaseClient
                 .from('obras_hvc')
                 .select('*')
-                .eq('status', 'ativa')
+                .eq('status', 'Em Andamento')
                 .order('numero_obra');
 
             if (obrasError) throw obrasError;
