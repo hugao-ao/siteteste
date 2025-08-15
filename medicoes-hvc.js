@@ -96,52 +96,51 @@ class MedicoesManager {
     // CARREGAMENTO DE DADOS - CONSULTAS CORRIGIDAS
     // ========================================
 
-    async loadObras() {
-        try {
-            console.log('Carregando obras...');
-            
-            // CONSULTA CORRIGIDA: Buscar obras primeiro
-            const { data: obras, error: obrasError } = await supabaseClient
-                .from('obras_hvc')
-                .select('*')
-                .eq('status', 'Andamento')
-                .order('numero_obra');
-
-            if (obrasError) throw obrasError;
-
-            // Buscar clientes separadamente para cada obra
-            const obrasComClientes = [];
-            for (const obra of obras || []) {
-                const { data: cliente, error: clienteError } = await supabaseClient
-                    .from('clientes_hvc')
-                    .select('nome')
-                    .eq('id', obra.cliente_id)
-                    .single();
-
-                if (clienteError) {
-                    console.warn(`Cliente não encontrado para obra ${obra.id}:`, clienteError);
-                    obrasComClientes.push({
-                        ...obra,
-                        clientes_hvc: { nome: 'Cliente não encontrado' }
-                    });
-                } else {
-                    obrasComClientes.push({
-                        ...obra,
-                        clientes_hvc: cliente
-                    });
+                async loadObras() {
+                    try {
+                        console.log('Carregando obras...');
+                        
+                        // Buscar obras com relacionamento correto via obras_propostas
+                        const { data: obras, error: obrasError } = await supabaseClient
+                            .from('obras_hvc')
+                            .select(`
+                                *,
+                                obras_propostas (
+                                    propostas_hvc (
+                                        clientes_hvc (
+                                            nome
+                                        )
+                                    )
+                                )
+                            `)
+                            .eq('status', 'Andamento')
+                            .order('numero_obra');
+                
+                        if (obrasError) throw obrasError;
+                
+                        // Processar dados para formato esperado
+                        const obrasProcessadas = obras.map(obra => {
+                            // Pegar o primeiro cliente da primeira proposta
+                            const primeiraPropostaNaObra = obra.obras_propostas?.[0];
+                            const cliente = primeiraPropostaNaObra?.propostas_hvc?.clientes_hvc;
+                            
+                            return {
+                                ...obra,
+                                clientes_hvc: cliente || { nome: 'Cliente não encontrado' }
+                            };
+                        });
+                
+                        this.obras = obrasProcessadas;
+                        console.log('Obras carregadas:', this.obras.length);
+                        
+                        this.populateObrasFilter();
+                        
+                    } catch (error) {
+                        console.error('Erro ao carregar obras:', error);
+                        this.showNotification('Erro ao carregar obras: ' + error.message, 'error');
+                    }
                 }
-            }
 
-            this.obras = obrasComClientes;
-            console.log('Obras carregadas:', this.obras.length);
-            
-            this.populateObrasFilter();
-            
-        } catch (error) {
-            console.error('Erro ao carregar obras:', error);
-            this.showNotification('Erro ao carregar obras: ' + error.message, 'error');
-        }
-    }
 
     async loadMedicoes() {
         try {
@@ -215,73 +214,64 @@ class MedicoesManager {
         }
     }
 
-    async loadServicosObra(obraId) {
-        try {
-            console.log('Carregando serviços da obra:', obraId);
-            
-            // CONSULTA CORRIGIDA: Buscar proposta contratada primeiro
-            const { data: propostas, error: propError } = await supabaseClient
-                .from('propostas_hvc')
-                .select('id')
-                .eq('obra_id', obraId)
-                .eq('status', 'contratada');
+                        async loadServicosObra(obraId) {
+                            try {
+                                console.log('Carregando serviços da obra:', obraId);
+                                
+                                // Buscar propostas da obra via tabela obras_propostas
+                                const { data: obrasPropostas, error: opError } = await supabaseClient
+                                    .from('obras_propostas')
+                                    .select(`
+                                        propostas_hvc (
+                                            id,
+                                            status
+                                        )
+                                    `)
+                                    .eq('obra_id', obraId);
+                        
+                                if (opError) throw opError;
+                        
+                                if (!obrasPropostas || obrasPropostas.length === 0) {
+                                    this.showNotification('Nenhuma proposta encontrada para esta obra', 'warning');
+                                    return [];
+                                }
+                        
+                                // Filtrar propostas contratadas/aprovadas
+                                const propostasContratadas = obrasPropostas
+                                    .map(op => op.propostas_hvc)
+                                    .filter(prop => prop && (prop.status === 'Aprovada' || prop.status === 'contratada'));
+                        
+                                if (propostasContratadas.length === 0) {
+                                    this.showNotification('Nenhuma proposta aprovada encontrada para esta obra', 'warning');
+                                    return [];
+                                }
+                        
+                                const propostaId = propostasContratadas[0].id;
+                        
+                                // Buscar serviços da proposta
+                                const { data: servicos, error: servicosError } = await supabaseClient
+                                    .from('itens_proposta_hvc')
+                                    .select(`
+                                        *,
+                                        servicos_hvc (
+                                            nome,
+                                            unidade
+                                        )
+                                    `)
+                                    .eq('proposta_id', propostaId);
+                        
+                                if (servicosError) throw servicosError;
+                        
+                                console.log('Serviços carregados:', servicos?.length || 0);
+                                return servicos || [];
+                                
+                            } catch (error) {
+                                console.error('Erro ao carregar serviços da obra:', error);
+                                this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
+                                return [];
+                            }
+                        }
 
-            if (propError) throw propError;
-
-            if (!propostas || propostas.length === 0) {
-                this.showNotification('Nenhuma proposta contratada encontrada para esta obra', 'warning');
-                return [];
-            }
-
-            const propostaId = propostas[0].id;
-
-            // Buscar serviços da proposta
-            const { data: servicosProposta, error: servicosError } = await supabaseClient
-                .from('propostas_servicos_hvc')
-                .select('*')
-                .eq('proposta_id', propostaId);
-
-            if (servicosError) throw servicosError;
-
-            // Buscar detalhes dos serviços separadamente
-            const servicosCompletos = [];
-            for (const servicoProposta of servicosProposta || []) {
-                const { data: servico, error: servicoError } = await supabaseClient
-                    .from('servicos_hvc')
-                    .select('codigo, nome, unidade')
-                    .eq('id', servicoProposta.servico_id)
-                    .single();
-
-                if (servicoError) {
-                    console.warn(`Serviço não encontrado ${servicoProposta.servico_id}:`, servicoError);
-                    continue;
-                }
-
-                servicosCompletos.push({
-                    servico_id: servicoProposta.servico_id,
-                    codigo: servico.codigo,
-                    nome: servico.nome,
-                    unidade: servico.unidade,
-                    quantidade_contratada: servicoProposta.quantidade,
-                    valor_unitario_contratado: servicoProposta.valor_unitario,
-                    valor_total_contratado: servicoProposta.valor_total
-                });
-            }
-
-            this.servicosObra = servicosCompletos;
-            console.log('Serviços da obra carregados:', this.servicosObra.length);
-            
-            // Calcular quantidades produzidas e medidas
-            await this.calcularQuantidadesServicos(obraId);
-            
-            return this.servicosObra;
-            
-        } catch (error) {
-            console.error('Erro ao carregar serviços da obra:', error);
-            this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
-            return [];
-        }
-    }
 
     async calcularQuantidadesServicos(obraId) {
         try {
