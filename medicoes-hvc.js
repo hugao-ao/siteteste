@@ -253,7 +253,7 @@ class MedicoesManager {
                                             .from('servicos_andamento')
                                             .select(`
                                                 *,
-                                                itens_proposta_hvc (
+                                                item_proposta_id (
                                                     codigo,
                                                     descricao,
                                                     detalhe
