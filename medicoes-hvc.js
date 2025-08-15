@@ -251,10 +251,7 @@ class MedicoesManager {
                                 // Buscar serviços da proposta
                                 const { data: servicos, error: servicosError } = await supabaseClient
                                     .from('itens_proposta_hvc')
-                                    .select(`
-                                        *,
-                                        servicos_hvc (*)
-                                    `)
+                                    .select('*')
                                     .eq('proposta_id', propostaId);
                         
                                 if (servicosError) throw servicosError;
