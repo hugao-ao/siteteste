@@ -253,10 +253,7 @@ class MedicoesManager {
                                     .from('itens_proposta_hvc')
                                     .select(`
                                         *,
-                                        servicos_hvc (
-                                            nome,
-                                            unidade
-                                        )
+                                        servicos_hvc (*)
                                     `)
                                     .eq('proposta_id', propostaId);
                         
