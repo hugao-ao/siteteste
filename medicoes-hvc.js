@@ -105,7 +105,7 @@ class MedicoesManager {
                 .from('obras_hvc')
                 .select('*')
                 .eq('status', 'ativa')
-                .order('nome');
+                .order('numero_obra');
 
             if (obrasError) throw obrasError;
 
@@ -451,7 +451,7 @@ class MedicoesManager {
                 <div class="obra-selecionada">
                     <div class="obra-info">
                         <div>
-                            <div class="obra-nome">${obra.nome}</div>
+                            <div class="obra-nome">${obra.numero_obra}</div>
                             <div class="obra-cliente">${obra.clientes_hvc.nome}</div>
                         </div>
                         <button type="button" class="btn-secondary" onclick="abrirModalObras()">
@@ -509,7 +509,7 @@ class MedicoesManager {
             <tr>
                 <td><strong>${medicao.numero}</strong></td>
                 <td>
-                    <div>${medicao.obras_hvc.nome}</div>
+                    <div>${medicao.obras_hvc.numero_obra}</div>
                     <small style="color: #b0c4de;">${medicao.obras_hvc.clientes_hvc.nome}</small>
                 </td>
                 <td>${this.formatarData(medicao.data_medicao)}</td>
@@ -557,7 +557,7 @@ class MedicoesManager {
                 <tbody>
                     ${this.obras.map(obra => `
                         <tr>
-                            <td><strong>${obra.nome}</strong></td>
+                            <td><strong>${obra.numero_obra}</strong></td>
                             <td>${obra.clientes_hvc.nome}</td>
                             <td>
                                 <button class="btn-primary" onclick="selecionarObra('${obra.id}')">
@@ -843,7 +843,7 @@ class MedicoesManager {
         
         select.innerHTML = '<option value="">Todas as obras</option>';
         this.obras.forEach(obra => {
-            select.innerHTML += `<option value="${obra.id}">${obra.nome}</option>`;
+            select.innerHTML += `<option value="${obra.id}">${obra.numero_obra}</option>`;
         });
     }
 
