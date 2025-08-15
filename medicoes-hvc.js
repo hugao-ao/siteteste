@@ -1,5 +1,6 @@
 // medicoes-hvc.js - Sistema de Gestão de Medições HVC
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
+// VERSÃO CORRIGIDA - Consultas SQL ajustadas para relacionamentos corretos
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -92,25 +93,46 @@ class MedicoesManager {
     }
 
     // ========================================
-    // CARREGAMENTO DE DADOS
+    // CARREGAMENTO DE DADOS - CONSULTAS CORRIGIDAS
     // ========================================
 
     async loadObras() {
         try {
             console.log('Carregando obras...');
             
-            const { data, error } = await supabaseClient
+            // CONSULTA CORRIGIDA: Buscar obras primeiro
+            const { data: obras, error: obrasError } = await supabaseClient
                 .from('obras_hvc')
-                .select(`
-                    *,
-                    clientes_hvc (nome)
-                `)
+                .select('*')
                 .eq('status', 'ativa')
                 .order('nome');
 
-            if (error) throw error;
+            if (obrasError) throw obrasError;
 
-            this.obras = data || [];
+            // Buscar clientes separadamente para cada obra
+            const obrasComClientes = [];
+            for (const obra of obras || []) {
+                const { data: cliente, error: clienteError } = await supabaseClient
+                    .from('clientes_hvc')
+                    .select('nome')
+                    .eq('id', obra.cliente_id)
+                    .single();
+
+                if (clienteError) {
+                    console.warn(`Cliente não encontrado para obra ${obra.id}:`, clienteError);
+                    obrasComClientes.push({
+                        ...obra,
+                        clientes_hvc: { nome: 'Cliente não encontrado' }
+                    });
+                } else {
+                    obrasComClientes.push({
+                        ...obra,
+                        clientes_hvc: cliente
+                    });
+                }
+            }
+
+            this.obras = obrasComClientes;
             console.log('Obras carregadas:', this.obras.length);
             
             this.populateObrasFilter();
@@ -125,17 +147,64 @@ class MedicoesManager {
         try {
             console.log('Carregando medições...');
             
-            const { data, error } = await supabaseClient
+            // CONSULTA CORRIGIDA: Buscar medições primeiro
+            const { data: medicoes, error: medicoesError } = await supabaseClient
                 .from('medicoes_hvc')
-                .select(`
-                    *,
-                    obras_hvc (nome, clientes_hvc (nome))
-                `)
+                .select('*')
                 .order('created_at', { ascending: false });
 
-            if (error) throw error;
+            if (medicoesError) throw medicoesError;
 
-            this.medicoes = data || [];
+            // Buscar obras e clientes separadamente para cada medição
+            const medicoesCompletas = [];
+            for (const medicao of medicoes || []) {
+                // Buscar obra
+                const { data: obra, error: obraError } = await supabaseClient
+                    .from('obras_hvc')
+                    .select('nome, cliente_id')
+                    .eq('id', medicao.obra_id)
+                    .single();
+
+                if (obraError) {
+                    console.warn(`Obra não encontrada para medição ${medicao.id}:`, obraError);
+                    medicoesCompletas.push({
+                        ...medicao,
+                        obras_hvc: { 
+                            nome: 'Obra não encontrada',
+                            clientes_hvc: { nome: 'Cliente não encontrado' }
+                        }
+                    });
+                    continue;
+                }
+
+                // Buscar cliente da obra
+                const { data: cliente, error: clienteError } = await supabaseClient
+                    .from('clientes_hvc')
+                    .select('nome')
+                    .eq('id', obra.cliente_id)
+                    .single();
+
+                if (clienteError) {
+                    console.warn(`Cliente não encontrado para obra ${obra.cliente_id}:`, clienteError);
+                    medicoesCompletas.push({
+                        ...medicao,
+                        obras_hvc: {
+                            ...obra,
+                            clientes_hvc: { nome: 'Cliente não encontrado' }
+                        }
+                    });
+                } else {
+                    medicoesCompletas.push({
+                        ...medicao,
+                        obras_hvc: {
+                            ...obra,
+                            clientes_hvc: cliente
+                        }
+                    });
+                }
+            }
+
+            this.medicoes = medicoesCompletas;
             console.log('Medições carregadas:', this.medicoes.length);
             
             this.renderMedicoes();
@@ -150,40 +219,56 @@ class MedicoesManager {
         try {
             console.log('Carregando serviços da obra:', obraId);
             
-            // Buscar serviços da proposta contratada
+            // CONSULTA CORRIGIDA: Buscar proposta contratada primeiro
             const { data: propostas, error: propError } = await supabaseClient
                 .from('propostas_hvc')
-                .select(`
-                    id,
-                    propostas_servicos_hvc (
-                        servico_id,
-                        quantidade,
-                        valor_unitario,
-                        valor_total,
-                        servicos_hvc (codigo, nome, unidade)
-                    )
-                `)
+                .select('id')
                 .eq('obra_id', obraId)
-                .eq('status', 'contratada')
-                .single();
+                .eq('status', 'contratada');
 
             if (propError) throw propError;
 
-            if (!propostas || !propostas.propostas_servicos_hvc) {
+            if (!propostas || propostas.length === 0) {
                 this.showNotification('Nenhuma proposta contratada encontrada para esta obra', 'warning');
                 return [];
             }
 
-            this.servicosObra = propostas.propostas_servicos_hvc.map(item => ({
-                servico_id: item.servico_id,
-                codigo: item.servicos_hvc.codigo,
-                nome: item.servicos_hvc.nome,
-                unidade: item.servicos_hvc.unidade,
-                quantidade_contratada: item.quantidade,
-                valor_unitario_contratado: item.valor_unitario,
-                valor_total_contratado: item.valor_total
-            }));
+            const propostaId = propostas[0].id;
 
+            // Buscar serviços da proposta
+            const { data: servicosProposta, error: servicosError } = await supabaseClient
+                .from('propostas_servicos_hvc')
+                .select('*')
+                .eq('proposta_id', propostaId);
+
+            if (servicosError) throw servicosError;
+
+            // Buscar detalhes dos serviços separadamente
+            const servicosCompletos = [];
+            for (const servicoProposta of servicosProposta || []) {
+                const { data: servico, error: servicoError } = await supabaseClient
+                    .from('servicos_hvc')
+                    .select('codigo, nome, unidade')
+                    .eq('id', servicoProposta.servico_id)
+                    .single();
+
+                if (servicoError) {
+                    console.warn(`Serviço não encontrado ${servicoProposta.servico_id}:`, servicoError);
+                    continue;
+                }
+
+                servicosCompletos.push({
+                    servico_id: servicoProposta.servico_id,
+                    codigo: servico.codigo,
+                    nome: servico.nome,
+                    unidade: servico.unidade,
+                    quantidade_contratada: servicoProposta.quantidade,
+                    valor_unitario_contratado: servicoProposta.valor_unitario,
+                    valor_total_contratado: servicoProposta.valor_total
+                });
+            }
+
+            this.servicosObra = servicosCompletos;
             console.log('Serviços da obra carregados:', this.servicosObra.length);
             
             // Calcular quantidades produzidas e medidas
@@ -210,47 +295,62 @@ class MedicoesManager {
                     .select('quantidades_servicos')
                     .eq('obra_id', obraId);
 
-                if (prodError) throw prodError;
-
-                let totalProduzido = 0;
-                producoes.forEach(producao => {
-                    const quantidades = producao.quantidades_servicos || {};
-                    if (quantidades[servico.servico_id]) {
-                        totalProduzido += parseFloat(quantidades[servico.servico_id]);
-                    }
-                });
+                if (prodError) {
+                    console.warn('Erro ao buscar produções:', prodError);
+                    servico.quantidade_produzida = 0;
+                } else {
+                    let totalProduzido = 0;
+                    producoes.forEach(producao => {
+                        const quantidades = producao.quantidades_servicos || {};
+                        if (quantidades[servico.servico_id]) {
+                            totalProduzido += parseFloat(quantidades[servico.servico_id]);
+                        }
+                    });
+                    servico.quantidade_produzida = totalProduzido;
+                }
 
                 // 2. TOTAL JÁ MEDIDO - das medições anteriores
-                const { data: medicoes, error: medError } = await supabaseClient
-                    .from('medicoes_servicos')
-                    .select(`
-                        quantidade_medida,
-                        medicoes_hvc!inner (obra_id)
-                    `)
-                    .eq('servico_id', servico.servico_id)
-                    .eq('medicoes_hvc.obra_id', obraId);
+                // CONSULTA CORRIGIDA: Buscar medições da obra primeiro
+                const { data: medicoesObra, error: medObrasError } = await supabaseClient
+                    .from('medicoes_hvc')
+                    .select('id')
+                    .eq('obra_id', obraId);
 
-                if (medError) throw medError;
+                if (medObrasError) {
+                    console.warn('Erro ao buscar medições da obra:', medObrasError);
+                    servico.quantidade_medida = 0;
+                } else {
+                    let totalMedido = 0;
+                    
+                    // Para cada medição da obra, buscar os serviços medidos
+                    for (const medicaoObra of medicoesObra || []) {
+                        const { data: servicosMedidos, error: servMedError } = await supabaseClient
+                            .from('medicoes_servicos')
+                            .select('quantidade_medida')
+                            .eq('medicao_id', medicaoObra.id)
+                            .eq('servico_id', servico.servico_id);
 
-                let totalMedido = 0;
-                medicoes.forEach(medicao => {
-                    totalMedido += parseFloat(medicao.quantidade_medida);
-                });
+                        if (!servMedError && servicosMedidos) {
+                            servicosMedidos.forEach(servicoMedido => {
+                                totalMedido += parseFloat(servicoMedido.quantidade_medida);
+                            });
+                        }
+                    }
+                    
+                    servico.quantidade_medida = totalMedido;
+                }
 
                 // 3. CALCULAR DISPONÍVEL PARA MEDIÇÃO
                 const disponivelParaMedicao = Math.min(
                     servico.quantidade_contratada,
-                    totalProduzido
-                ) - totalMedido;
+                    servico.quantidade_produzida
+                ) - servico.quantidade_medida;
 
-                // Adicionar dados calculados ao serviço
-                servico.quantidade_produzida = totalProduzido;
-                servico.quantidade_medida = totalMedido;
                 servico.quantidade_disponivel = Math.max(0, disponivelParaMedicao);
                 
                 // Calcular valores
-                servico.valor_produzido = totalProduzido * servico.valor_unitario_contratado;
-                servico.valor_medido = totalMedido * servico.valor_unitario_contratado;
+                servico.valor_produzido = servico.quantidade_produzida * servico.valor_unitario_contratado;
+                servico.valor_medido = servico.quantidade_medida * servico.valor_unitario_contratado;
                 servico.valor_disponivel = servico.quantidade_disponivel * servico.valor_unitario_contratado;
             }
 
