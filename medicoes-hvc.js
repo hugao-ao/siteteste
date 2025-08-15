@@ -557,78 +557,45 @@ class MedicoesManager {
         `;
     }
 
-    async renderServicos() {
-        const container = document.getElementById('servicos-list');
-        if (!container) return;
+async renderServicos() {
+    const container = document.getElementById('servicos-list');
+    if (!container) return;
 
-        if (this.servicosObra.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: #b0c4de;">
-                    <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                    Nenhum serviço disponível para medição
-                </div>
-            `;
-            return;
-        }
+    if (this.servicosObra.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 2rem; color: #b0c4de;">
+                <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                Nenhum serviço disponível para medição
+            </div>
+        `;
+        return;
+    }
 
-        container.innerHTML = this.servicosObra.map(servico => `
-            <div class="servico-item">
-                <div class="servico-header">
-                    <div>
-                        <div class="servico-nome">${servico.nome}</div>
-                        <div class="servico-codigo">${servico.codigo} - ${servico.unidade}</div>
-                    </div>
-                </div>
-                
-                <div class="servico-valores">
-                    <div class="valor-item valor-contratado">
-                        <div class="valor-label">Total Contratado</div>
-                        <div class="valor-numero">
-                            ${servico.quantidade_contratada.toFixed(2)} ${servico.unidade}<br>
-                            <small>${this.formatarMoeda(servico.valor_total_contratado)}</small>
-                        </div>
-                    </div>
-                    
-                    <div class="valor-item valor-produzido">
-                        <div class="valor-label">Total Produzido</div>
-                        <div class="valor-numero">
-                            ${servico.quantidade_produzida.toFixed(2)} ${servico.unidade}<br>
-                            <small>${this.formatarMoeda(servico.valor_produzido)}</small>
-                        </div>
-                    </div>
-                    
-                    <div class="valor-item valor-medido">
-                        <div class="valor-label">Total Medido</div>
-                        <div class="valor-numero">
-                            ${servico.quantidade_medida.toFixed(2)} ${servico.unidade}<br>
-                            <small>${this.formatarMoeda(servico.valor_medido)}</small>
-                        </div>
-                    </div>
-                    
-                    <div class="valor-item valor-disponivel">
-                        <div class="valor-label">Disponível para Medição</div>
-                        <div class="valor-numero">
-                            ${servico.quantidade_disponivel.toFixed(2)} ${servico.unidade}<br>
-                            <small>${this.formatarMoeda(servico.valor_disponivel)}</small>
-                        </div>
-                    </div>
-                </div>
-                
-                <div style="margin-top: 1rem;">
-                    <label class="valor-label">Quantidade a Medir:</label>
-                    <input type="number" 
-                           class="input-medicao" 
-                           id="medicao-${servico.servico_id}"
-                           step="0.01" 
-                           min="0" 
-                           max="${servico.quantidade_disponivel}"
-                           placeholder="0.00"
-                           onchange="atualizarCalculos()">
-                    <small style="color: #b0c4de;">Máximo: ${servico.quantidade_disponivel.toFixed(2)} ${servico.unidade}</small>
+    container.innerHTML = this.servicosObra.map(servico => `
+        <div class="servico-item">
+            <div class="servico-header">
+                <div>
+                    <div class="servico-nome">Serviço ID: ${servico.id}</div>
+                    <div class="servico-codigo">Status: ${servico.status}</div>
                 </div>
             </div>
-        `).join('');
-    }
+            
+            <div class="servico-valores">
+                <div class="valor-item">
+                    <div class="valor-label">Item Proposta ID</div>
+                    <div class="valor-numero">${servico.item_proposta_id}</div>
+                </div>
+            </div>
+            
+            <div class="servico-actions">
+                <button class="btn-medicao" onclick="medicaoManager.adicionarMedicao('${servico.id}')">
+                    <i class="fas fa-plus"></i> Adicionar Medição
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
 
     // ========================================
     // CÁLCULOS
