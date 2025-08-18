@@ -555,41 +555,42 @@ class MedicoesManager {
     }
 
 async renderServicos() {
-    const container = document.getElementById('servicos-list');
-    if (!container) return;
+    const tbody = document.getElementById('medicoes-list');
+    if (!tbody) return;
 
-    if (this.servicosObra.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 2rem; color: #b0c4de;">
-                <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                Nenhum serviço disponível para medição
-            </div>
+    if (!this.servicosObra || this.servicosObra.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" style="text-align: center; color: #b0b4e0; padding: 2rem;">
+                    <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                    Nenhum serviço disponível para medição
+                </td>
+            </tr>
         `;
         return;
     }
 
-    container.innerHTML = this.servicosObra.map(servico => `
-        <div class="servico-item">
-            <div class="servico-header">
-                <div>
-                    <div class="servico-nome">Serviço ID: ${servico.id}</div>
-                    <div class="servico-codigo">Status: ${servico.status}</div>
-                </div>
-            </div>
-            
-            <div class="servico-valores">
-                <div class="valor-item">
-                    <div class="valor-label">Item Proposta ID</div>
-                    <div class="valor-numero">${servico.item_proposta_id}</div>
-                </div>
-            </div>
-            
-            <div class="servico-actions">
-                <button class="btn-medicao" onclick="medicaoManager.adicionarMedicao('${servico.id}')">
-                    <i class="fas fa-plus"></i> Adicionar Medição
+    tbody.innerHTML = this.servicosObra.map(servico => `
+        <tr>
+            <td><strong>${servico.servico_codigo}</strong></td>
+            <td>${servico.servico_descricao}</td>
+            <td>${servico.unidade || ''}</td>
+            <td>${servico.quantidade_produzida || 0}</td>
+            <td>
+                <input type="number" 
+                       class="form-control quantidade-input" 
+                       data-servico-id="${servico.servico_id}"
+                       min="0" 
+                       max="${servico.quantidade_disponivel || 0}"
+                       step="0.01"
+                       placeholder="Quantidade a medir">
+            </td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="adicionarServicoMedicao('${servico.servico_id}')" title="Adicionar">
+                    <i class="fas fa-plus"></i>
                 </button>
-            </div>
-        </div>
+            </td>
+        </tr>
     `).join('');
 }
 
