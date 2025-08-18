@@ -249,11 +249,8 @@ class MedicoesManager {
                                 const propostaId = propostasContratadas[0].id;
                         
                                 // Buscar serviços da proposta
-                                    const { data: servicos, error: servicosError } = await supabaseClient
-                                        .from('servicos_andamento')
-                                        .select('*')
-                                        .eq('obra_id', obraId);
-
+                                const { data: servicos, error: servicosError } = await supabaseClient
+                                    .rpc('buscar_servicos_disponiveis_medicao', { obra_id_param: obraId });
 
                                 if (servicosError) throw servicosError;
                         
