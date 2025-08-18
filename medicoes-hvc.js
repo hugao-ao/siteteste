@@ -446,7 +446,7 @@ class MedicoesManager {
             
             // Carregar serviços da obra
             this.showLoading();
-            await this.loadServicosObra(obraId);
+            this.servicosObra = await this.loadServicosObra(obraId);
             this.hideLoading();
             
             // Renderizar serviços
