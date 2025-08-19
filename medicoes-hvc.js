@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO DEBUG DETALHADO - Para identificar problema dos totais medidos
+// VERSÃO CORRIGIDA - Com coluna de previsão e correção do cliente
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -106,7 +106,7 @@ class MedicoesManager {
 
     async loadObras() {
         try {
-            console.log('Carregando obras...');
+            console.log('🏗️ Carregando obras...');
             
             // Buscar obras simples primeiro
             const { data: obras, error: obrasError } = await supabaseClient
@@ -124,29 +124,40 @@ class MedicoesManager {
 
             if (clientesError) throw clientesError;
 
-            // Combinar dados manualmente
+            console.log('👥 Clientes encontrados:', clientes?.length || 0);
+            console.log('🏗️ Obras encontradas:', obras?.length || 0);
+
+            // Combinar dados manualmente com debug
             this.obras = (obras || []).map(obra => {
+                console.log(`🔍 Processando obra ${obra.numero_obra} (ID: ${obra.id})`);
+                console.log(`👤 Cliente ID da obra: ${obra.cliente_id}`);
+                
                 const cliente = clientes.find(c => c.id === obra.cliente_id);
+                console.log(`👤 Cliente encontrado:`, cliente ? cliente.nome : 'NÃO ENCONTRADO');
+                
                 return {
                     ...obra,
-                    clientes_hvc: cliente || { nome: 'Cliente não encontrado' }
+                    clientes_hvc: cliente || { 
+                        nome: 'Cliente não encontrado',
+                        id: obra.cliente_id 
+                    }
                 };
             });
 
-            console.log('Obras carregadas:', this.obras.length);
+            console.log('✅ Obras carregadas:', this.obras.length);
             
             this.populateObrasFilter();
             this.renderObrasModal();
             
         } catch (error) {
-            console.error('Erro ao carregar obras:', error);
+            console.error('❌ Erro ao carregar obras:', error);
             this.showNotification('Erro ao carregar obras: ' + error.message, 'error');
         }
     }
 
     async loadMedicoes() {
         try {
-            console.log('Carregando medições...');
+            console.log('📋 Carregando medições...');
             
             // Buscar medições da tabela medicoes_hvc
             const { data: medicoes, error: medicoesError } = await supabaseClient
@@ -155,9 +166,11 @@ class MedicoesManager {
                 .order('created_at', { ascending: false });
 
             if (medicoesError) {
-                console.log('Erro ao carregar medições:', medicoesError);
+                console.log('❌ Erro ao carregar medições:', medicoesError);
                 this.medicoes = [];
             } else {
+                console.log('📋 Medições encontradas:', medicoes?.length || 0);
+                
                 // Buscar obras e clientes separadamente
                 const { data: obras, error: obrasError } = await supabaseClient
                     .from('obras_hvc')
@@ -171,27 +184,43 @@ class MedicoesManager {
 
                 if (clientesError) throw clientesError;
 
-                // Combinar dados manualmente
+                console.log('🏗️ Obras para relacionamento:', obras?.length || 0);
+                console.log('👥 Clientes para relacionamento:', clientes?.length || 0);
+
+                // Combinar dados manualmente com debug detalhado
                 this.medicoes = (medicoes || []).map(medicao => {
+                    console.log(`\n📋 Processando medição ${medicao.numero_medicao}`);
+                    console.log(`🏗️ Obra ID da medição: ${medicao.obra_id}`);
+                    
                     const obra = obras.find(o => o.id === medicao.obra_id);
-                    const cliente = obra ? clientes.find(c => c.id === obra.cliente_id) : null;
+                    console.log(`🏗️ Obra encontrada:`, obra ? obra.numero_obra : 'NÃO ENCONTRADA');
+                    
+                    let cliente = null;
+                    if (obra) {
+                        console.log(`👤 Cliente ID da obra: ${obra.cliente_id}`);
+                        cliente = clientes.find(c => c.id === obra.cliente_id);
+                        console.log(`👤 Cliente encontrado:`, cliente ? cliente.nome : 'NÃO ENCONTRADO');
+                    }
                     
                     return {
                         ...medicao,
                         obras_hvc: {
                             ...obra,
-                            clientes_hvc: cliente || { nome: 'Cliente não encontrado' }
+                            clientes_hvc: cliente || { 
+                                nome: 'Cliente não encontrado',
+                                id: obra?.cliente_id || 'N/A'
+                            }
                         }
                     };
                 });
             }
 
-            console.log('Medições carregadas:', this.medicoes.length);
+            console.log('✅ Medições processadas:', this.medicoes.length);
             
             this.renderMedicoes();
             
         } catch (error) {
-            console.error('Erro ao carregar medições:', error);
+            console.error('❌ Erro ao carregar medições:', error);
             this.showNotification('Erro ao carregar medições: ' + error.message, 'error');
         }
     }
@@ -293,7 +322,7 @@ class MedicoesManager {
                 }
             }
 
-            // 5. BUSCAR MEDIÇÕES ANTERIORES COM DEBUG SUPER DETALHADO
+            // 5. BUSCAR MEDIÇÕES ANTERIORES
             console.log('🔍 ===== PASSO 5: BUSCANDO MEDIÇÕES ANTERIORES =====');
             let quantidadesMedidas = {};
             
@@ -305,82 +334,40 @@ class MedicoesManager {
                     .select('*')
                     .eq('obra_id', obraId);
 
-                console.log('📊 ===== RESULTADO DA BUSCA DE MEDIÇÕES =====');
-                console.log('❓ Erro na busca:', medError);
                 console.log('📊 Quantidade de medições encontradas:', medicoesAnteriores?.length || 0);
                 
                 if (medicoesAnteriores && medicoesAnteriores.length > 0) {
-                    console.log('📋 ===== DETALHES DE CADA MEDIÇÃO =====');
-                    
                     medicoesAnteriores.forEach((medicao, index) => {
                         console.log(`\n📋 ===== MEDIÇÃO ${index + 1} =====`);
                         console.log('🆔 ID:', medicao.id);
                         console.log('📝 Número:', medicao.numero_medicao);
-                        console.log('🏗️ Obra ID:', medicao.obra_id);
-                        console.log('💰 Valor:', medicao.valor_total);
-                        console.log('📅 Data criação:', medicao.created_at);
-                        console.log('📄 Observações (raw):', medicao.observacoes);
-                        console.log('📄 Tipo das observações:', typeof medicao.observacoes);
-                        console.log('📄 Tamanho das observações:', medicao.observacoes?.length || 0);
                         
                         try {
                             if (medicao.observacoes) {
-                                console.log('🔍 Tentando fazer parse das observações...');
                                 const dadosMedicao = JSON.parse(medicao.observacoes);
-                                console.log('✅ Parse bem-sucedido!');
-                                console.log('📊 Dados parseados:', dadosMedicao);
-                                console.log('📊 Tipo de dadosMedicao:', typeof dadosMedicao);
-                                console.log('📊 Chaves disponíveis:', Object.keys(dadosMedicao));
                                 
-                                if (dadosMedicao.servicos) {
-                                    console.log('✅ Campo "servicos" encontrado!');
-                                    console.log('📊 Tipo de servicos:', typeof dadosMedicao.servicos);
-                                    console.log('📊 É array?', Array.isArray(dadosMedicao.servicos));
-                                    console.log('📊 Quantidade de serviços:', dadosMedicao.servicos?.length || 0);
-                                    console.log('📊 Serviços:', dadosMedicao.servicos);
-                                    
-                                    if (Array.isArray(dadosMedicao.servicos)) {
-                                        dadosMedicao.servicos.forEach((servico, sIndex) => {
-                                            console.log(`\n🔧 ===== SERVIÇO ${sIndex + 1} DA MEDIÇÃO ${index + 1} =====`);
-                                            console.log('🆔 Serviço ID:', servico.servico_id);
-                                            console.log('📊 Quantidade medida:', servico.quantidade_medida);
-                                            console.log('💰 Valor unitário:', servico.valor_unitario);
-                                            console.log('💰 Valor total:', servico.valor_total);
-                                            
-                                            const servicoId = servico.servico_id;
-                                            const quantidade = parseFloat(servico.quantidade_medida || 0);
-                                            
-                                            if (!quantidadesMedidas[servicoId]) {
-                                                quantidadesMedidas[servicoId] = 0;
-                                                console.log(`🆕 Criando entrada para serviço ${servicoId}`);
-                                            }
-                                            
-                                            const valorAnterior = quantidadesMedidas[servicoId];
-                                            quantidadesMedidas[servicoId] += quantidade;
-                                            
-                                            console.log(`📊 Serviço ${servicoId}: ${valorAnterior} + ${quantidade} = ${quantidadesMedidas[servicoId]}`);
-                                        });
-                                    } else {
-                                        console.log('❌ Campo "servicos" não é um array!');
-                                    }
-                                } else {
-                                    console.log('❌ Campo "servicos" não encontrado nos dados!');
+                                if (dadosMedicao.servicos && Array.isArray(dadosMedicao.servicos)) {
+                                    dadosMedicao.servicos.forEach((servico, sIndex) => {
+                                        console.log(`🔧 Serviço ${sIndex + 1}: ${servico.servico_id} = ${servico.quantidade_medida}`);
+                                        
+                                        const servicoId = servico.servico_id;
+                                        const quantidade = parseFloat(servico.quantidade_medida || 0);
+                                        
+                                        if (!quantidadesMedidas[servicoId]) {
+                                            quantidadesMedidas[servicoId] = 0;
+                                        }
+                                        
+                                        quantidadesMedidas[servicoId] += quantidade;
+                                    });
                                 }
-                            } else {
-                                console.log('❌ Observações estão vazias ou null');
                             }
                         } catch (parseError) {
                             console.log('❌ Erro ao fazer parse das observações:', parseError.message);
-                            console.log('📄 Conteúdo que causou erro:', medicao.observacoes);
                         }
                     });
-                } else {
-                    console.log('❌ Nenhuma medição anterior encontrada para esta obra');
                 }
                 
-                console.log('\n📊 ===== RESULTADO FINAL DAS QUANTIDADES MEDIDAS =====');
-                console.log('📊 Quantidades medidas (objeto completo):', quantidadesMedidas);
-                console.log('📊 Quantidade de serviços com medições:', Object.keys(quantidadesMedidas).length);
+                console.log('\n📊 ===== QUANTIDADES MEDIDAS FINAIS =====');
                 Object.keys(quantidadesMedidas).forEach(servicoId => {
                     console.log(`📊 Serviço ${servicoId}: ${quantidadesMedidas[servicoId]} unidades medidas`);
                 });
@@ -396,7 +383,6 @@ class MedicoesManager {
                 
                 // Buscar valores da proposta
                 const itemProposta = itensPropostas.find(ip => ip.servico_id === servico.id);
-                console.log('📋 Item da proposta encontrado:', !!itemProposta);
                 
                 let valorUnitario = 0;
                 let quantidadeContratada = 0;
@@ -408,25 +394,16 @@ class MedicoesManager {
                     valorUnitario = precoMaoObra + precoMaterial;
                     quantidadeContratada = parseFloat(itemProposta.quantidade || 0);
                     totalContratado = quantidadeContratada * valorUnitario;
-                    
-                    console.log('💰 Preço mão de obra:', precoMaoObra);
-                    console.log('💰 Preço material:', precoMaterial);
-                    console.log('💰 Valor unitário total:', valorUnitario);
-                    console.log('📊 Quantidade contratada:', quantidadeContratada);
-                    console.log('💰 Total contratado:', totalContratado);
                 }
 
                 // Quantidade produzida
                 const quantidadeProduzida = quantidadesPorServico[servico.id] || 0;
-                console.log('🏭 Quantidade produzida:', quantidadeProduzida);
 
                 // Quantidade já medida
                 const quantidadeJaMedida = quantidadesMedidas[servico.id] || 0;
-                console.log('📊 Quantidade já medida:', quantidadeJaMedida);
 
                 // Calcular quantidade disponível
                 const quantidadeDisponivel = Math.max(0, quantidadeProduzida - quantidadeJaMedida);
-                console.log('✅ Quantidade disponível:', quantidadeDisponivel);
 
                 const resultado = {
                     servico_id: servico.id,
@@ -441,11 +418,10 @@ class MedicoesManager {
                     quantidade_disponivel: quantidadeDisponivel
                 };
                 
-                console.log('🎯 Resultado final do serviço:', resultado);
                 return resultado;
             });
 
-            console.log('\n🎉 ===== PROCESSAMENTO CONCLUÍDO =====');
+            console.log('🎉 ===== PROCESSAMENTO CONCLUÍDO =====');
             console.log('📊 Total de serviços processados:', servicosCompletos.length);
             return servicosCompletos || [];
             
@@ -651,7 +627,7 @@ class MedicoesManager {
         if (this.medicoes.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="text-align: center; color: #b0c4de; padding: 2rem;">
+                    <td colspan="7" style="text-align: center; color: #b0c4de; padding: 2rem;">
                         <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma medição cadastrada
                     </td>
@@ -660,15 +636,16 @@ class MedicoesManager {
             return;
         }
 
-        // REMOVIDO: Botão de editar - apenas excluir
+        // CORRIGIDO: Adicionada coluna de Previsão de Pagamento
         tbody.innerHTML = this.medicoes.map(medicao => `
             <tr>
                 <td><strong>${medicao.numero_medicao || 'N/A'}</strong></td>
                 <td>
                     <div>${medicao.obras_hvc?.numero_obra || 'N/A'}</div>
-                    <small style="color: #b0c4de;">${medicao.obras_hvc?.clientes_hvc?.nome || 'N/A'}</small>
+                    <small style="color: #b0c4de;">${medicao.obras_hvc?.clientes_hvc?.nome || 'Cliente não encontrado'}</small>
                 </td>
-                <td>${this.formatarData(medicao.previsao_pagamento)}</td>
+                <td>${this.formatarData(medicao.created_at)}</td>
+                <td><strong>${this.formatarData(medicao.previsao_pagamento)}</strong></td>
                 <td><strong>${this.formatarMoeda(medicao.valor_bruto || medicao.valor_total)}</strong></td>
                 <td>
                     <span class="badge badge-${this.getStatusColor(medicao.status)}">
@@ -920,7 +897,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // SALVAMENTO DA MEDIÇÃO - VERSÃO FINAL
+    // SALVAMENTO DA MEDIÇÃO
     // ========================================
 
     async salvarMedicao(event) {
@@ -1004,7 +981,6 @@ class MedicoesManager {
             };
 
             console.log('📋 Dados da medição:', dadosMedicao);
-            console.log('📋 Serviços para medir:', servicosParaMedir);
 
             this.showLoading();
 
