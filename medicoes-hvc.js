@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO MELHORADA - Valores corretos e layout de tabela
+// VERSÃO SEM RPC - Consultas diretas nas tabelas
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -102,7 +102,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // CARREGAMENTO DE DADOS - VERSÃO MELHORADA
+    // CARREGAMENTO DE DADOS - SEM RPC
     // ========================================
 
     async loadObras() {
@@ -228,46 +228,109 @@ class MedicoesManager {
 
             const propostaId = propostas[0].id;
 
-            // 3. Buscar serviços básicos via RPC
-            const { data: servicosBasicos, error: servicosError } = await supabaseClient
-                .rpc('buscar_servicos_disponiveis_medicao', { obra_id_param: obraId });
-
-            if (servicosError) throw servicosError;
-
-            if (!servicosBasicos || servicosBasicos.length === 0) {
-                this.showNotification('Nenhum serviço disponível para medição', 'warning');
-                return [];
-            }
-
-            // 4. Buscar valores unitários e totais contratados da tabela itens_proposta_hvc
-            const servicoIds = servicosBasicos.map(s => s.servico_id);
+            // 3. Buscar itens da proposta (serviços contratados)
             const { data: itensPropostas, error: itensError } = await supabaseClient
                 .from('itens_proposta_hvc')
                 .select('*')
-                .eq('proposta_id', propostaId)
-                .in('servico_id', servicoIds);
+                .eq('proposta_id', propostaId);
 
             if (itensError) throw itensError;
 
-            // 5. Combinar dados e calcular valores
-            const servicosCompletos = servicosBasicos.map(servico => {
-                const itemProposta = itensPropostas.find(ip => ip.servico_id === servico.servico_id);
+            if (!itensPropostas || itensPropostas.length === 0) {
+                this.showNotification('Nenhum serviço encontrado na proposta', 'warning');
+                return [];
+            }
+
+            // 4. Buscar dados dos serviços
+            const servicoIds = itensPropostas.map(ip => ip.servico_id);
+            const { data: servicos, error: servicosError } = await supabaseClient
+                .from('servicos_hvc')
+                .select('*')
+                .in('id', servicoIds);
+
+            if (servicosError) throw servicosError;
+
+            // 5. Buscar produções diárias para calcular quantidades produzidas
+            const { data: producoes, error: prodError } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('quantidades_servicos')
+                .eq('obra_id', obraId);
+
+            if (prodError) {
+                console.warn('Erro ao buscar produções:', prodError);
+            }
+
+            // 6. Buscar medições anteriores para calcular quantidades já medidas
+            const { data: medicoesAnteriores, error: medError } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('id')
+                .eq('obra_id', obraId);
+
+            if (medError) {
+                console.warn('Erro ao buscar medições anteriores:', medError);
+            }
+
+            let servicosMedidos = [];
+            if (medicoesAnteriores && medicoesAnteriores.length > 0) {
+                const medicaoIds = medicoesAnteriores.map(m => m.id);
+                const { data: servMedidos, error: servMedError } = await supabaseClient
+                    .from('medicoes_servicos')
+                    .select('*')
+                    .in('medicao_id', medicaoIds);
+
+                if (!servMedError) {
+                    servicosMedidos = servMedidos || [];
+                }
+            }
+
+            // 7. Combinar todos os dados
+            const servicosCompletos = itensPropostas.map(itemProposta => {
+                const servico = servicos.find(s => s.id === itemProposta.servico_id);
                 
+                if (!servico) return null;
+
                 // Calcular valor unitário: mão de obra + material
-                const valorUnitario = itemProposta ? 
-                    (parseFloat(itemProposta.preco_mao_obra || 0) + parseFloat(itemProposta.preco_material || 0)) : 0;
+                const valorUnitario = parseFloat(itemProposta.preco_mao_obra || 0) + parseFloat(itemProposta.preco_material || 0);
                 
                 // Total contratado: quantidade * valor unitário
-                const totalContratado = itemProposta ? 
-                    parseFloat(itemProposta.quantidade || 0) * valorUnitario : 0;
+                const quantidadeContratada = parseFloat(itemProposta.quantidade || 0);
+                const totalContratado = quantidadeContratada * valorUnitario;
+
+                // Calcular quantidade produzida
+                let quantidadeProduzida = 0;
+                if (producoes) {
+                    producoes.forEach(producao => {
+                        const quantidades = producao.quantidades_servicos || {};
+                        if (quantidades[servico.id]) {
+                            quantidadeProduzida += parseFloat(quantidades[servico.id]);
+                        }
+                    });
+                }
+
+                // Calcular quantidade já medida
+                let quantidadeJaMedida = 0;
+                servicosMedidos.forEach(sm => {
+                    if (sm.servico_id === servico.id) {
+                        quantidadeJaMedida += parseFloat(sm.quantidade_medida || 0);
+                    }
+                });
+
+                // Calcular quantidade disponível
+                const quantidadeDisponivel = Math.max(0, quantidadeProduzida - quantidadeJaMedida);
 
                 return {
-                    ...servico,
+                    servico_id: servico.id,
+                    servico_codigo: servico.codigo,
+                    servico_descricao: servico.descricao,
+                    unidade: servico.unidade,
                     valor_unitario_contratado: valorUnitario,
-                    quantidade_contratada: itemProposta?.quantidade || 0,
-                    total_contratado: totalContratado
+                    quantidade_contratada: quantidadeContratada,
+                    total_contratado: totalContratado,
+                    quantidade_produzida: quantidadeProduzida,
+                    quantidade_ja_medida: quantidadeJaMedida,
+                    quantidade_disponivel: quantidadeDisponivel
                 };
-            });
+            }).filter(s => s !== null && s.quantidade_disponivel > 0); // Só serviços com quantidade disponível
 
             console.log('Serviços carregados:', servicosCompletos?.length || 0);
             
@@ -286,6 +349,7 @@ class MedicoesManager {
                         quantidade_contratada: servico.quantidade_contratada,
                         total_contratado: servico.total_contratado,
                         quantidade_produzida: servico.quantidade_produzida,
+                        quantidade_ja_medida: servico.quantidade_ja_medida,
                         quantidade_disponivel: servico.quantidade_disponivel
                     });
                 });
