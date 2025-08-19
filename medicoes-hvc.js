@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO FINAL - Sem edição, com totais corretos e campo de data
+// VERSÃO DEBUG DETALHADO - Para identificar problema dos totais medidos
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -198,18 +198,22 @@ class MedicoesManager {
 
     async loadServicosObra(obraId) {
         try {
-            console.log('🚀 Buscando serviços da produção diária da obra:', obraId);
+            console.log('🚀 ===== INICIANDO BUSCA DE SERVIÇOS =====');
+            console.log('🏗️ Obra ID:', obraId);
             
             // 1. Buscar produções diárias para encontrar TODOS os serviços com produção
+            console.log('📊 Passo 1: Buscando produções diárias...');
             const { data: producoes, error: prodError } = await supabaseClient
                 .from('producoes_diarias_hvc')
                 .select('quantidades_servicos')
                 .eq('obra_id', obraId);
 
             if (prodError) {
-                console.error('Erro ao buscar produções:', prodError);
+                console.error('❌ Erro ao buscar produções:', prodError);
                 return [];
             }
+
+            console.log('📊 Produções encontradas:', producoes?.length || 0);
 
             if (!producoes || producoes.length === 0) {
                 this.showNotification('Nenhuma produção encontrada para esta obra', 'warning');
@@ -217,10 +221,12 @@ class MedicoesManager {
             }
 
             // 2. Extrair TODOS os IDs de serviços que têm produção
+            console.log('🔍 Passo 2: Extraindo serviços das produções...');
             const servicosComProducao = new Set();
             const quantidadesPorServico = {};
 
-            producoes.forEach(producao => {
+            producoes.forEach((producao, index) => {
+                console.log(`📋 Produção ${index + 1}:`, producao.quantidades_servicos);
                 const quantidades = producao.quantidades_servicos || {};
                 Object.keys(quantidades).forEach(servicoId => {
                     servicosComProducao.add(servicoId);
@@ -231,12 +237,16 @@ class MedicoesManager {
                 });
             });
 
+            console.log('🎯 Serviços com produção:', Array.from(servicosComProducao));
+            console.log('📊 Quantidades por serviço:', quantidadesPorServico);
+
             if (servicosComProducao.size === 0) {
                 this.showNotification('Nenhum serviço com produção encontrado', 'warning');
                 return [];
             }
 
             // 3. Buscar dados dos serviços
+            console.log('🔍 Passo 3: Buscando dados dos serviços...');
             const servicoIds = Array.from(servicosComProducao);
             const { data: servicos, error: servicosError } = await supabaseClient
                 .from('servicos_hvc')
@@ -244,22 +254,29 @@ class MedicoesManager {
                 .in('id', servicoIds);
 
             if (servicosError) throw servicosError;
+            console.log('📋 Serviços encontrados:', servicos?.length || 0);
 
             // 4. Buscar valores das propostas
+            console.log('🔍 Passo 4: Buscando valores das propostas...');
             const { data: obrasPropostas, error: opError } = await supabaseClient
                 .from('obras_propostas')
                 .select('proposta_id')
                 .eq('obra_id', obraId);
 
+            console.log('📋 Obras-propostas encontradas:', obrasPropostas?.length || 0);
+
             let itensPropostas = [];
             if (!opError && obrasPropostas && obrasPropostas.length > 0) {
                 const propostaIds = obrasPropostas.map(op => op.proposta_id);
+                console.log('🎯 IDs das propostas:', propostaIds);
                 
                 const { data: propostas, error: propError } = await supabaseClient
                     .from('propostas_hvc')
                     .select('*')
                     .in('id', propostaIds)
                     .in('status', ['Aprovada', 'contratada']);
+
+                console.log('📋 Propostas aprovadas:', propostas?.length || 0);
 
                 if (!propError && propostas && propostas.length > 0) {
                     const propostasAprovadas = propostas.map(p => p.id);
@@ -271,64 +288,115 @@ class MedicoesManager {
 
                     if (!itensError) {
                         itensPropostas = itens || [];
+                        console.log('📋 Itens de proposta encontrados:', itensPropostas.length);
                     }
                 }
             }
 
-            // 5. CORRIGIR: Buscar medições anteriores de forma mais robusta
+            // 5. BUSCAR MEDIÇÕES ANTERIORES COM DEBUG SUPER DETALHADO
+            console.log('🔍 ===== PASSO 5: BUSCANDO MEDIÇÕES ANTERIORES =====');
             let quantidadesMedidas = {};
             
-            console.log('🔍 Buscando medições anteriores para a obra:', obraId);
-            
             try {
+                console.log('🔍 Buscando todas as medições da obra:', obraId);
+                
                 const { data: medicoesAnteriores, error: medError } = await supabaseClient
                     .from('medicoes_hvc')
                     .select('*')
                     .eq('obra_id', obraId);
 
-                console.log('📊 Medições encontradas:', medicoesAnteriores?.length || 0);
-
-                if (!medError && medicoesAnteriores && medicoesAnteriores.length > 0) {
+                console.log('📊 ===== RESULTADO DA BUSCA DE MEDIÇÕES =====');
+                console.log('❓ Erro na busca:', medError);
+                console.log('📊 Quantidade de medições encontradas:', medicoesAnteriores?.length || 0);
+                
+                if (medicoesAnteriores && medicoesAnteriores.length > 0) {
+                    console.log('📋 ===== DETALHES DE CADA MEDIÇÃO =====');
+                    
                     medicoesAnteriores.forEach((medicao, index) => {
-                        console.log(`📋 Processando medição ${index + 1}:`, medicao.numero_medicao);
+                        console.log(`\n📋 ===== MEDIÇÃO ${index + 1} =====`);
+                        console.log('🆔 ID:', medicao.id);
+                        console.log('📝 Número:', medicao.numero_medicao);
+                        console.log('🏗️ Obra ID:', medicao.obra_id);
+                        console.log('💰 Valor:', medicao.valor_total);
+                        console.log('📅 Data criação:', medicao.created_at);
+                        console.log('📄 Observações (raw):', medicao.observacoes);
+                        console.log('📄 Tipo das observações:', typeof medicao.observacoes);
+                        console.log('📄 Tamanho das observações:', medicao.observacoes?.length || 0);
                         
                         try {
-                            // Tentar parsear observacoes como JSON com dados dos serviços
-                            const dadosMedicao = JSON.parse(medicao.observacoes || '{}');
-                            console.log('📝 Dados da medição:', dadosMedicao);
-                            
-                            if (dadosMedicao.servicos && Array.isArray(dadosMedicao.servicos)) {
-                                dadosMedicao.servicos.forEach(servico => {
-                                    const servicoId = servico.servico_id;
-                                    const quantidade = parseFloat(servico.quantidade_medida || 0);
+                            if (medicao.observacoes) {
+                                console.log('🔍 Tentando fazer parse das observações...');
+                                const dadosMedicao = JSON.parse(medicao.observacoes);
+                                console.log('✅ Parse bem-sucedido!');
+                                console.log('📊 Dados parseados:', dadosMedicao);
+                                console.log('📊 Tipo de dadosMedicao:', typeof dadosMedicao);
+                                console.log('📊 Chaves disponíveis:', Object.keys(dadosMedicao));
+                                
+                                if (dadosMedicao.servicos) {
+                                    console.log('✅ Campo "servicos" encontrado!');
+                                    console.log('📊 Tipo de servicos:', typeof dadosMedicao.servicos);
+                                    console.log('📊 É array?', Array.isArray(dadosMedicao.servicos));
+                                    console.log('📊 Quantidade de serviços:', dadosMedicao.servicos?.length || 0);
+                                    console.log('📊 Serviços:', dadosMedicao.servicos);
                                     
-                                    if (!quantidadesMedidas[servicoId]) {
-                                        quantidadesMedidas[servicoId] = 0;
+                                    if (Array.isArray(dadosMedicao.servicos)) {
+                                        dadosMedicao.servicos.forEach((servico, sIndex) => {
+                                            console.log(`\n🔧 ===== SERVIÇO ${sIndex + 1} DA MEDIÇÃO ${index + 1} =====`);
+                                            console.log('🆔 Serviço ID:', servico.servico_id);
+                                            console.log('📊 Quantidade medida:', servico.quantidade_medida);
+                                            console.log('💰 Valor unitário:', servico.valor_unitario);
+                                            console.log('💰 Valor total:', servico.valor_total);
+                                            
+                                            const servicoId = servico.servico_id;
+                                            const quantidade = parseFloat(servico.quantidade_medida || 0);
+                                            
+                                            if (!quantidadesMedidas[servicoId]) {
+                                                quantidadesMedidas[servicoId] = 0;
+                                                console.log(`🆕 Criando entrada para serviço ${servicoId}`);
+                                            }
+                                            
+                                            const valorAnterior = quantidadesMedidas[servicoId];
+                                            quantidadesMedidas[servicoId] += quantidade;
+                                            
+                                            console.log(`📊 Serviço ${servicoId}: ${valorAnterior} + ${quantidade} = ${quantidadesMedidas[servicoId]}`);
+                                        });
+                                    } else {
+                                        console.log('❌ Campo "servicos" não é um array!');
                                     }
-                                    quantidadesMedidas[servicoId] += quantidade;
-                                    
-                                    console.log(`📊 Serviço ${servicoId}: +${quantidade} = ${quantidadesMedidas[servicoId]}`);
-                                });
+                                } else {
+                                    console.log('❌ Campo "servicos" não encontrado nos dados!');
+                                }
                             } else {
-                                console.log('⚠️ Medição sem dados de serviços válidos');
+                                console.log('❌ Observações estão vazias ou null');
                             }
-                        } catch (e) {
-                            console.log('⚠️ Erro ao parsear observações da medição:', e.message);
-                            console.log('📄 Conteúdo das observações:', medicao.observacoes);
+                        } catch (parseError) {
+                            console.log('❌ Erro ao fazer parse das observações:', parseError.message);
+                            console.log('📄 Conteúdo que causou erro:', medicao.observacoes);
                         }
                     });
+                } else {
+                    console.log('❌ Nenhuma medição anterior encontrada para esta obra');
                 }
                 
-                console.log('📊 Quantidades já medidas (final):', quantidadesMedidas);
+                console.log('\n📊 ===== RESULTADO FINAL DAS QUANTIDADES MEDIDAS =====');
+                console.log('📊 Quantidades medidas (objeto completo):', quantidadesMedidas);
+                console.log('📊 Quantidade de serviços com medições:', Object.keys(quantidadesMedidas).length);
+                Object.keys(quantidadesMedidas).forEach(servicoId => {
+                    console.log(`📊 Serviço ${servicoId}: ${quantidadesMedidas[servicoId]} unidades medidas`);
+                });
                 
             } catch (e) {
-                console.error('❌ Erro ao buscar medições anteriores:', e);
+                console.error('❌ Erro geral ao buscar medições anteriores:', e);
             }
 
             // 6. Combinar TODOS os dados
+            console.log('\n🔧 ===== PASSO 6: COMBINANDO DADOS =====');
             const servicosCompletos = servicos.map(servico => {
+                console.log(`\n🔧 Processando serviço: ${servico.codigo} (ID: ${servico.id})`);
+                
                 // Buscar valores da proposta
                 const itemProposta = itensPropostas.find(ip => ip.servico_id === servico.id);
+                console.log('📋 Item da proposta encontrado:', !!itemProposta);
                 
                 let valorUnitario = 0;
                 let quantidadeContratada = 0;
@@ -340,24 +408,27 @@ class MedicoesManager {
                     valorUnitario = precoMaoObra + precoMaterial;
                     quantidadeContratada = parseFloat(itemProposta.quantidade || 0);
                     totalContratado = quantidadeContratada * valorUnitario;
+                    
+                    console.log('💰 Preço mão de obra:', precoMaoObra);
+                    console.log('💰 Preço material:', precoMaterial);
+                    console.log('💰 Valor unitário total:', valorUnitario);
+                    console.log('📊 Quantidade contratada:', quantidadeContratada);
+                    console.log('💰 Total contratado:', totalContratado);
                 }
 
                 // Quantidade produzida
                 const quantidadeProduzida = quantidadesPorServico[servico.id] || 0;
+                console.log('🏭 Quantidade produzida:', quantidadeProduzida);
 
-                // Quantidade já medida (corrigida)
+                // Quantidade já medida
                 const quantidadeJaMedida = quantidadesMedidas[servico.id] || 0;
+                console.log('📊 Quantidade já medida:', quantidadeJaMedida);
 
                 // Calcular quantidade disponível
                 const quantidadeDisponivel = Math.max(0, quantidadeProduzida - quantidadeJaMedida);
+                console.log('✅ Quantidade disponível:', quantidadeDisponivel);
 
-                console.log(`🔧 Serviço ${servico.codigo}:`, {
-                    produzida: quantidadeProduzida,
-                    jaMedida: quantidadeJaMedida,
-                    disponivel: quantidadeDisponivel
-                });
-
-                return {
+                const resultado = {
                     servico_id: servico.id,
                     servico_codigo: servico.codigo,
                     servico_descricao: servico.descricao,
@@ -369,13 +440,17 @@ class MedicoesManager {
                     quantidade_ja_medida: quantidadeJaMedida,
                     quantidade_disponivel: quantidadeDisponivel
                 };
+                
+                console.log('🎯 Resultado final do serviço:', resultado);
+                return resultado;
             });
 
-            console.log('🎉 Serviços processados:', servicosCompletos.length);
+            console.log('\n🎉 ===== PROCESSAMENTO CONCLUÍDO =====');
+            console.log('📊 Total de serviços processados:', servicosCompletos.length);
             return servicosCompletos || [];
             
         } catch (error) {
-            console.error('Erro ao carregar serviços da obra:', error);
+            console.error('❌ Erro geral ao carregar serviços da obra:', error);
             this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
             return [];
         }
