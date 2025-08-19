@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO CORRIGIDA - Com coluna de previsão e correção do cliente
+// VERSÃO CORRIGIDA - Com problema do cliente resolvido
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -127,19 +127,32 @@ class MedicoesManager {
             console.log('👥 Clientes encontrados:', clientes?.length || 0);
             console.log('🏗️ Obras encontradas:', obras?.length || 0);
 
-            // Combinar dados manualmente com debug
+            // Combinar dados manualmente com tratamento melhorado
             this.obras = (obras || []).map(obra => {
                 console.log(`🔍 Processando obra ${obra.numero_obra} (ID: ${obra.id})`);
-                console.log(`👤 Cliente ID da obra: ${obra.cliente_id}`);
+                console.log(`👤 Cliente ID da obra: ${obra.cliente_id || 'undefined'}`);
                 
-                const cliente = clientes.find(c => c.id === obra.cliente_id);
-                console.log(`👤 Cliente encontrado:`, cliente ? cliente.nome : 'NÃO ENCONTRADO');
+                let cliente = null;
+                let nomeCliente = 'Cliente não definido';
+                
+                if (obra.cliente_id) {
+                    cliente = clientes.find(c => c.id === obra.cliente_id);
+                    if (cliente) {
+                        nomeCliente = cliente.nome;
+                        console.log(`👤 Cliente encontrado: ${cliente.nome}`);
+                    } else {
+                        nomeCliente = 'Cliente não encontrado';
+                        console.log(`❌ Cliente com ID ${obra.cliente_id} não encontrado na tabela clientes_hvc`);
+                    }
+                } else {
+                    console.log(`⚠️ Obra ${obra.numero_obra} não tem cliente_id definido`);
+                }
                 
                 return {
                     ...obra,
                     clientes_hvc: cliente || { 
-                        nome: 'Cliente não encontrado',
-                        id: obra.cliente_id 
+                        nome: nomeCliente,
+                        id: obra.cliente_id || null
                     }
                 };
             });
@@ -187,7 +200,7 @@ class MedicoesManager {
                 console.log('🏗️ Obras para relacionamento:', obras?.length || 0);
                 console.log('👥 Clientes para relacionamento:', clientes?.length || 0);
 
-                // Combinar dados manualmente com debug detalhado
+                // Combinar dados manualmente com tratamento melhorado
                 this.medicoes = (medicoes || []).map(medicao => {
                     console.log(`\n📋 Processando medição ${medicao.numero_medicao}`);
                     console.log(`🏗️ Obra ID da medição: ${medicao.obra_id}`);
@@ -196,10 +209,23 @@ class MedicoesManager {
                     console.log(`🏗️ Obra encontrada:`, obra ? obra.numero_obra : 'NÃO ENCONTRADA');
                     
                     let cliente = null;
+                    let nomeCliente = 'Cliente não definido';
+                    
                     if (obra) {
-                        console.log(`👤 Cliente ID da obra: ${obra.cliente_id}`);
-                        cliente = clientes.find(c => c.id === obra.cliente_id);
-                        console.log(`👤 Cliente encontrado:`, cliente ? cliente.nome : 'NÃO ENCONTRADO');
+                        console.log(`👤 Cliente ID da obra: ${obra.cliente_id || 'undefined'}`);
+                        
+                        if (obra.cliente_id) {
+                            cliente = clientes.find(c => c.id === obra.cliente_id);
+                            if (cliente) {
+                                nomeCliente = cliente.nome;
+                                console.log(`👤 Cliente encontrado: ${cliente.nome}`);
+                            } else {
+                                nomeCliente = 'Cliente não encontrado';
+                                console.log(`❌ Cliente com ID ${obra.cliente_id} não encontrado`);
+                            }
+                        } else {
+                            console.log(`⚠️ Obra ${obra.numero_obra} não tem cliente_id definido`);
+                        }
                     }
                     
                     return {
@@ -207,8 +233,8 @@ class MedicoesManager {
                         obras_hvc: {
                             ...obra,
                             clientes_hvc: cliente || { 
-                                nome: 'Cliente não encontrado',
-                                id: obra?.cliente_id || 'N/A'
+                                nome: nomeCliente,
+                                id: obra?.cliente_id || null
                             }
                         }
                     };
@@ -327,8 +353,6 @@ class MedicoesManager {
             let quantidadesMedidas = {};
             
             try {
-                console.log('🔍 Buscando todas as medições da obra:', obraId);
-                
                 const { data: medicoesAnteriores, error: medError } = await supabaseClient
                     .from('medicoes_hvc')
                     .select('*')
@@ -338,18 +362,12 @@ class MedicoesManager {
                 
                 if (medicoesAnteriores && medicoesAnteriores.length > 0) {
                     medicoesAnteriores.forEach((medicao, index) => {
-                        console.log(`\n📋 ===== MEDIÇÃO ${index + 1} =====`);
-                        console.log('🆔 ID:', medicao.id);
-                        console.log('📝 Número:', medicao.numero_medicao);
-                        
                         try {
                             if (medicao.observacoes) {
                                 const dadosMedicao = JSON.parse(medicao.observacoes);
                                 
                                 if (dadosMedicao.servicos && Array.isArray(dadosMedicao.servicos)) {
-                                    dadosMedicao.servicos.forEach((servico, sIndex) => {
-                                        console.log(`🔧 Serviço ${sIndex + 1}: ${servico.servico_id} = ${servico.quantidade_medida}`);
-                                        
+                                    dadosMedicao.servicos.forEach((servico) => {
                                         const servicoId = servico.servico_id;
                                         const quantidade = parseFloat(servico.quantidade_medida || 0);
                                         
@@ -367,11 +385,6 @@ class MedicoesManager {
                     });
                 }
                 
-                console.log('\n📊 ===== QUANTIDADES MEDIDAS FINAIS =====');
-                Object.keys(quantidadesMedidas).forEach(servicoId => {
-                    console.log(`📊 Serviço ${servicoId}: ${quantidadesMedidas[servicoId]} unidades medidas`);
-                });
-                
             } catch (e) {
                 console.error('❌ Erro geral ao buscar medições anteriores:', e);
             }
@@ -379,8 +392,6 @@ class MedicoesManager {
             // 6. Combinar TODOS os dados
             console.log('\n🔧 ===== PASSO 6: COMBINANDO DADOS =====');
             const servicosCompletos = servicos.map(servico => {
-                console.log(`\n🔧 Processando serviço: ${servico.codigo} (ID: ${servico.id})`);
-                
                 // Buscar valores da proposta
                 const itemProposta = itensPropostas.find(ip => ip.servico_id === servico.id);
                 
@@ -405,7 +416,7 @@ class MedicoesManager {
                 // Calcular quantidade disponível
                 const quantidadeDisponivel = Math.max(0, quantidadeProduzida - quantidadeJaMedida);
 
-                const resultado = {
+                return {
                     servico_id: servico.id,
                     servico_codigo: servico.codigo,
                     servico_descricao: servico.descricao,
@@ -417,8 +428,6 @@ class MedicoesManager {
                     quantidade_ja_medida: quantidadeJaMedida,
                     quantidade_disponivel: quantidadeDisponivel
                 };
-                
-                return resultado;
             });
 
             console.log('🎉 ===== PROCESSAMENTO CONCLUÍDO =====');
@@ -636,13 +645,17 @@ class MedicoesManager {
             return;
         }
 
-        // CORRIGIDO: Adicionada coluna de Previsão de Pagamento
-        tbody.innerHTML = this.medicoes.map(medicao => `
+        // Renderizar com tratamento melhorado do cliente
+        tbody.innerHTML = this.medicoes.map(medicao => {
+            const nomeCliente = medicao.obras_hvc?.clientes_hvc?.nome || 'Cliente não definido';
+            const corCliente = nomeCliente.includes('não') ? '#ff6b6b' : '#b0c4de';
+            
+            return `
             <tr>
                 <td><strong>${medicao.numero_medicao || 'N/A'}</strong></td>
                 <td>
                     <div>${medicao.obras_hvc?.numero_obra || 'N/A'}</div>
-                    <small style="color: #b0c4de;">${medicao.obras_hvc?.clientes_hvc?.nome || 'Cliente não encontrado'}</small>
+                    <small style="color: ${corCliente};">${nomeCliente}</small>
                 </td>
                 <td>${this.formatarData(medicao.created_at)}</td>
                 <td><strong>${this.formatarData(medicao.previsao_pagamento)}</strong></td>
@@ -658,7 +671,7 @@ class MedicoesManager {
                     </button>
                 </td>
             </tr>
-        `).join('');
+        `}).join('');
     }
 
     renderObrasModal() {
@@ -685,10 +698,14 @@ class MedicoesManager {
                     </tr>
                 </thead>
                 <tbody>
-                    ${this.obras.map(obra => `
+                    ${this.obras.map(obra => {
+                        const nomeCliente = obra.clientes_hvc.nome;
+                        const corCliente = nomeCliente.includes('não') ? '#ff6b6b' : '#ffffff';
+                        
+                        return `
                         <tr>
                             <td><strong>${obra.numero_obra}</strong></td>
-                            <td>${obra.clientes_hvc.nome}</td>
+                            <td style="color: ${corCliente};">${nomeCliente}</td>
                             <td>
                                 <button class="btn-primary" onclick="selecionarObra('${obra.id}')">
                                     <i class="fas fa-check"></i>
@@ -696,7 +713,7 @@ class MedicoesManager {
                                 </button>
                             </td>
                         </tr>
-                    `).join('')}
+                    `}).join('')}
                 </tbody>
             </table>
         `;
@@ -1105,10 +1122,14 @@ class MedicoesManager {
                     </tr>
                 </thead>
                 <tbody>
-                    ${obras.map(obra => `
+                    ${obras.map(obra => {
+                        const nomeCliente = obra.clientes_hvc.nome;
+                        const corCliente = nomeCliente.includes('não') ? '#ff6b6b' : '#ffffff';
+                        
+                        return `
                         <tr>
                             <td><strong>${obra.numero_obra}</strong></td>
-                            <td>${obra.clientes_hvc.nome}</td>
+                            <td style="color: ${corCliente};">${nomeCliente}</td>
                             <td>
                                 <button class="btn-primary" onclick="selecionarObra('${obra.id}')">
                                     <i class="fas fa-check"></i>
@@ -1116,7 +1137,7 @@ class MedicoesManager {
                                 </button>
                             </td>
                         </tr>
-                    `).join('')}
+                    `}).join('')}
                 </tbody>
             </table>
         `;
@@ -1225,4 +1246,7 @@ class MedicoesManager {
         return icons[type] || 'info-circle';
     }
 }
+
+// Finalizar tarefa
+console.log('✅ Aplicação de medições carregada e pronta para uso!');
 
