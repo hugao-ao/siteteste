@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO SEM RPC - Consultas diretas nas tabelas
+// VERSÃO DEBUG COMPLETO - Mostra todos os serviços com logs detalhados
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -102,7 +102,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // CARREGAMENTO DE DADOS - SEM RPC
+    // CARREGAMENTO DE DADOS - COM DEBUG COMPLETO
     // ========================================
 
     async loadObras() {
@@ -196,15 +196,17 @@ class MedicoesManager {
 
     async loadServicosObra(obraId) {
         try {
-            console.log('Carregando serviços da obra:', obraId);
+            console.log('🔍 DEBUG COMPLETO - Carregando serviços da obra:', obraId);
             
             // 1. Buscar propostas da obra
+            console.log('📋 Passo 1: Buscando propostas da obra...');
             const { data: obrasPropostas, error: opError } = await supabaseClient
                 .from('obras_propostas')
                 .select('proposta_id')
                 .eq('obra_id', obraId);
 
             if (opError) throw opError;
+            console.log('📋 Propostas encontradas:', obrasPropostas);
 
             if (!obrasPropostas || obrasPropostas.length === 0) {
                 this.showNotification('Nenhuma proposta encontrada para esta obra', 'warning');
@@ -212,6 +214,7 @@ class MedicoesManager {
             }
 
             // 2. Buscar propostas aprovadas
+            console.log('📋 Passo 2: Buscando propostas aprovadas...');
             const propostaIds = obrasPropostas.map(op => op.proposta_id);
             const { data: propostas, error: propError } = await supabaseClient
                 .from('propostas_hvc')
@@ -220,6 +223,7 @@ class MedicoesManager {
                 .in('status', ['Aprovada', 'contratada']);
 
             if (propError) throw propError;
+            console.log('📋 Propostas aprovadas:', propostas);
 
             if (!propostas || propostas.length === 0) {
                 this.showNotification('Nenhuma proposta aprovada encontrada para esta obra', 'warning');
@@ -227,14 +231,17 @@ class MedicoesManager {
             }
 
             const propostaId = propostas[0].id;
+            console.log('📋 Usando proposta ID:', propostaId);
 
             // 3. Buscar itens da proposta (serviços contratados)
+            console.log('📋 Passo 3: Buscando itens da proposta...');
             const { data: itensPropostas, error: itensError } = await supabaseClient
                 .from('itens_proposta_hvc')
                 .select('*')
                 .eq('proposta_id', propostaId);
 
             if (itensError) throw itensError;
+            console.log('📋 Itens da proposta encontrados:', itensPropostas);
 
             if (!itensPropostas || itensPropostas.length === 0) {
                 this.showNotification('Nenhum serviço encontrado na proposta', 'warning');
@@ -242,6 +249,7 @@ class MedicoesManager {
             }
 
             // 4. Buscar dados dos serviços
+            console.log('📋 Passo 4: Buscando dados dos serviços...');
             const servicoIds = itensPropostas.map(ip => ip.servico_id);
             const { data: servicos, error: servicosError } = await supabaseClient
                 .from('servicos_hvc')
@@ -249,26 +257,31 @@ class MedicoesManager {
                 .in('id', servicoIds);
 
             if (servicosError) throw servicosError;
+            console.log('📋 Serviços encontrados:', servicos);
 
             // 5. Buscar produções diárias para calcular quantidades produzidas
+            console.log('📋 Passo 5: Buscando produções diárias...');
             const { data: producoes, error: prodError } = await supabaseClient
                 .from('producoes_diarias_hvc')
                 .select('quantidades_servicos')
                 .eq('obra_id', obraId);
 
             if (prodError) {
-                console.warn('Erro ao buscar produções:', prodError);
+                console.warn('⚠️ Erro ao buscar produções:', prodError);
             }
+            console.log('📋 Produções encontradas:', producoes);
 
             // 6. Buscar medições anteriores para calcular quantidades já medidas
+            console.log('📋 Passo 6: Buscando medições anteriores...');
             const { data: medicoesAnteriores, error: medError } = await supabaseClient
                 .from('medicoes_hvc')
                 .select('id')
                 .eq('obra_id', obraId);
 
             if (medError) {
-                console.warn('Erro ao buscar medições anteriores:', medError);
+                console.warn('⚠️ Erro ao buscar medições anteriores:', medError);
             }
+            console.log('📋 Medições anteriores encontradas:', medicoesAnteriores);
 
             let servicosMedidos = [];
             if (medicoesAnteriores && medicoesAnteriores.length > 0) {
@@ -282,19 +295,30 @@ class MedicoesManager {
                     servicosMedidos = servMedidos || [];
                 }
             }
+            console.log('📋 Serviços já medidos:', servicosMedidos);
 
-            // 7. Combinar todos os dados
+            // 7. Combinar todos os dados COM DEBUG DETALHADO
+            console.log('📋 Passo 7: Combinando dados...');
             const servicosCompletos = itensPropostas.map(itemProposta => {
                 const servico = servicos.find(s => s.id === itemProposta.servico_id);
                 
-                if (!servico) return null;
+                if (!servico) {
+                    console.log(`❌ Serviço não encontrado para ID: ${itemProposta.servico_id}`);
+                    return null;
+                }
+
+                console.log(`🔧 Processando serviço: ${servico.codigo} - ${servico.descricao}`);
 
                 // Calcular valor unitário: mão de obra + material
-                const valorUnitario = parseFloat(itemProposta.preco_mao_obra || 0) + parseFloat(itemProposta.preco_material || 0);
+                const precoMaoObra = parseFloat(itemProposta.preco_mao_obra || 0);
+                const precoMaterial = parseFloat(itemProposta.preco_material || 0);
+                const valorUnitario = precoMaoObra + precoMaterial;
+                console.log(`💰 Valor unitário: ${precoMaoObra} + ${precoMaterial} = ${valorUnitario}`);
                 
                 // Total contratado: quantidade * valor unitário
                 const quantidadeContratada = parseFloat(itemProposta.quantidade || 0);
                 const totalContratado = quantidadeContratada * valorUnitario;
+                console.log(`📊 Total contratado: ${quantidadeContratada} × ${valorUnitario} = ${totalContratado}`);
 
                 // Calcular quantidade produzida
                 let quantidadeProduzida = 0;
@@ -302,23 +326,30 @@ class MedicoesManager {
                     producoes.forEach(producao => {
                         const quantidades = producao.quantidades_servicos || {};
                         if (quantidades[servico.id]) {
-                            quantidadeProduzida += parseFloat(quantidades[servico.id]);
+                            const qtd = parseFloat(quantidades[servico.id]);
+                            quantidadeProduzida += qtd;
+                            console.log(`🏗️ Produção encontrada: +${qtd} (total: ${quantidadeProduzida})`);
                         }
                     });
                 }
+                console.log(`🏗️ Quantidade total produzida: ${quantidadeProduzida}`);
 
                 // Calcular quantidade já medida
                 let quantidadeJaMedida = 0;
                 servicosMedidos.forEach(sm => {
                     if (sm.servico_id === servico.id) {
-                        quantidadeJaMedida += parseFloat(sm.quantidade_medida || 0);
+                        const qtd = parseFloat(sm.quantidade_medida || 0);
+                        quantidadeJaMedida += qtd;
+                        console.log(`📏 Medição encontrada: +${qtd} (total: ${quantidadeJaMedida})`);
                     }
                 });
+                console.log(`📏 Quantidade total já medida: ${quantidadeJaMedida}`);
 
                 // Calcular quantidade disponível
                 const quantidadeDisponivel = Math.max(0, quantidadeProduzida - quantidadeJaMedida);
+                console.log(`✅ Quantidade disponível: ${quantidadeProduzida} - ${quantidadeJaMedida} = ${quantidadeDisponivel}`);
 
-                return {
+                const servicoCompleto = {
                     servico_id: servico.id,
                     servico_codigo: servico.codigo,
                     servico_descricao: servico.descricao,
@@ -330,9 +361,15 @@ class MedicoesManager {
                     quantidade_ja_medida: quantidadeJaMedida,
                     quantidade_disponivel: quantidadeDisponivel
                 };
-            }).filter(s => s !== null && s.quantidade_disponivel > 0); // Só serviços com quantidade disponível
 
-            console.log('Serviços carregados:', servicosCompletos?.length || 0);
+                // MOSTRAR TODOS OS SERVIÇOS, MESMO SEM QUANTIDADE DISPONÍVEL
+                console.log(`🎯 Serviço ${servico.codigo}: ${quantidadeDisponivel > 0 ? 'DISPONÍVEL' : 'SEM QUANTIDADE DISPONÍVEL'}`);
+                
+                return servicoCompleto;
+            }).filter(s => s !== null); // Só remove serviços que não foram encontrados
+
+            console.log('📋 Serviços processados:', servicosCompletos.length);
+            console.log('📋 Serviços com quantidade disponível:', servicosCompletos.filter(s => s.quantidade_disponivel > 0).length);
             
             // DEBUG TEMPORÁRIO - INÍCIO
             console.log('🔍 DEBUG - Dados dos serviços com valores corretos:');
@@ -544,7 +581,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // RENDERIZAÇÃO - NOVO LAYOUT DE TABELA
+    // RENDERIZAÇÃO - MOSTRA TODOS OS SERVIÇOS
     // ========================================
 
     renderMedicoes() {
@@ -648,13 +685,13 @@ class MedicoesManager {
             container.innerHTML = `
                 <div style="text-align: center; color: #b0b4e0; padding: 2rem;">
                     <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                    Nenhum serviço disponível para medição
+                    Nenhum serviço encontrado para esta obra
                 </div>
             `;
             return;
         }
 
-        // NOVO LAYOUT DE TABELA
+        // MOSTRAR TODOS OS SERVIÇOS - COM INDICAÇÃO DE STATUS
         container.innerHTML = `
             <table class="table" style="width: 100%; margin-top: 1rem;">
                 <thead>
@@ -667,8 +704,13 @@ class MedicoesManager {
                     </tr>
                 </thead>
                 <tbody>
-                    ${this.servicosObra.map(servico => `
-                        <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.2);">
+                    ${this.servicosObra.map(servico => {
+                        const disponivel = servico.quantidade_disponivel > 0;
+                        const corLinha = disponivel ? 'rgba(173, 216, 230, 0.2)' : 'rgba(255, 255, 255, 0.05)';
+                        const statusTexto = disponivel ? '' : '<div style="color: #ff6b6b; font-size: 0.8rem; margin-top: 0.25rem;">⚠️ Sem quantidade disponível</div>';
+                        
+                        return `
+                        <tr style="border-bottom: 1px solid ${corLinha}; ${!disponivel ? 'opacity: 0.6;' : ''}">
                             <td style="padding: 1rem;">
                                 <div style="color: #add8e6; font-weight: 600; margin-bottom: 0.25rem;">
                                     ${servico.servico_codigo}
@@ -679,6 +721,7 @@ class MedicoesManager {
                                 <div style="color: #87ceeb; font-size: 0.8rem; margin-top: 0.25rem;">
                                     Valor unitário: ${this.formatarMoeda(servico.valor_unitario_contratado || 0)}
                                 </div>
+                                ${statusTexto}
                             </td>
                             <td style="padding: 1rem; text-align: center;">
                                 <div style="color: #add8e6; font-weight: 600;">
@@ -699,6 +742,7 @@ class MedicoesManager {
                                 </div>
                             </td>
                             <td style="padding: 1rem; text-align: center;">
+                                ${disponivel ? `
                                 <input type="number" 
                                        id="medicao-${servico.servico_id}"
                                        style="width: 120px; padding: 0.5rem; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: #add8e6; text-align: center;"
@@ -710,14 +754,22 @@ class MedicoesManager {
                                 <div style="color: #87ceeb; font-size: 0.8rem; margin-top: 0.25rem;">
                                     Disponível: ${servico.quantidade_disponivel || 0} ${servico.unidade || ''}
                                 </div>
+                                ` : `
+                                <div style="color: #ff6b6b; font-weight: 600;">
+                                    Não disponível
+                                </div>
+                                <div style="color: #87ceeb; font-size: 0.8rem; margin-top: 0.25rem;">
+                                    Disponível: ${servico.quantidade_disponivel || 0} ${servico.unidade || ''}
+                                </div>
+                                `}
                             </td>
                         </tr>
-                    `).join('')}
+                    `}).join('')}
                 </tbody>
             </table>
         `;
         
-        console.log('✅ Serviços renderizados em formato de tabela com sucesso!');
+        console.log('✅ Todos os serviços renderizados com sucesso!');
     }
 
     // ========================================
