@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO SOLUÇÃO - Busca serviços da produção diária
+// VERSÃO FINAL - Com salvamento e valor total em tempo real
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -102,7 +102,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // CARREGAMENTO DE DADOS - NOVA ESTRATÉGIA
+    // CARREGAMENTO DE DADOS
     // ========================================
 
     async loadObras() {
@@ -196,10 +196,9 @@ class MedicoesManager {
 
     async loadServicosObra(obraId) {
         try {
-            console.log('🚀 NOVA ESTRATÉGIA - Buscando serviços da produção diária da obra:', obraId);
+            console.log('🚀 Buscando serviços da produção diária da obra:', obraId);
             
-            // 1. PRIMEIRO: Buscar produções diárias para encontrar TODOS os serviços com produção
-            console.log('📋 Passo 1: Buscando produções diárias...');
+            // 1. Buscar produções diárias para encontrar TODOS os serviços com produção
             const { data: producoes, error: prodError } = await supabaseClient
                 .from('producoes_diarias_hvc')
                 .select('quantidades_servicos')
@@ -209,8 +208,6 @@ class MedicoesManager {
                 console.error('Erro ao buscar produções:', prodError);
                 return [];
             }
-
-            console.log('📋 Produções encontradas:', producoes);
 
             if (!producoes || producoes.length === 0) {
                 this.showNotification('Nenhuma produção encontrada para esta obra', 'warning');
@@ -232,16 +229,12 @@ class MedicoesManager {
                 });
             });
 
-            console.log('📋 Serviços com produção encontrados:', Array.from(servicosComProducao));
-            console.log('📋 Quantidades por serviço:', quantidadesPorServico);
-
             if (servicosComProducao.size === 0) {
                 this.showNotification('Nenhum serviço com produção encontrado', 'warning');
                 return [];
             }
 
             // 3. Buscar dados dos serviços
-            console.log('📋 Passo 2: Buscando dados dos serviços...');
             const servicoIds = Array.from(servicosComProducao);
             const { data: servicos, error: servicosError } = await supabaseClient
                 .from('servicos_hvc')
@@ -249,12 +242,8 @@ class MedicoesManager {
                 .in('id', servicoIds);
 
             if (servicosError) throw servicosError;
-            console.log('📋 Dados dos serviços:', servicos);
 
-            // 4. Buscar valores das propostas (se existirem)
-            console.log('📋 Passo 3: Buscando valores das propostas...');
-            
-            // Buscar propostas da obra
+            // 4. Buscar valores das propostas
             const { data: obrasPropostas, error: opError } = await supabaseClient
                 .from('obras_propostas')
                 .select('proposta_id')
@@ -264,7 +253,6 @@ class MedicoesManager {
             if (!opError && obrasPropostas && obrasPropostas.length > 0) {
                 const propostaIds = obrasPropostas.map(op => op.proposta_id);
                 
-                // Buscar propostas aprovadas
                 const { data: propostas, error: propError } = await supabaseClient
                     .from('propostas_hvc')
                     .select('*')
@@ -272,7 +260,6 @@ class MedicoesManager {
                     .in('status', ['Aprovada', 'contratada']);
 
                 if (!propError && propostas && propostas.length > 0) {
-                    // Buscar itens de todas as propostas
                     const propostasAprovadas = propostas.map(p => p.id);
                     const { data: itens, error: itensError } = await supabaseClient
                         .from('itens_proposta_hvc')
@@ -286,10 +273,7 @@ class MedicoesManager {
                 }
             }
 
-            console.log('📋 Itens das propostas encontrados:', itensPropostas);
-
             // 5. Buscar medições anteriores
-            console.log('📋 Passo 4: Buscando medições anteriores...');
             const { data: medicoesAnteriores, error: medError } = await supabaseClient
                 .from('medicoes_hvc')
                 .select('id')
@@ -309,17 +293,11 @@ class MedicoesManager {
                 }
             }
 
-            console.log('📋 Serviços já medidos:', servicosMedidos);
-
             // 6. Combinar TODOS os dados
-            console.log('📋 Passo 5: Combinando dados...');
             const servicosCompletos = servicos.map(servico => {
-                console.log(`🔧 Processando serviço: ${servico.codigo} - ${servico.descricao}`);
-
-                // Buscar valores da proposta (se existir)
+                // Buscar valores da proposta
                 const itemProposta = itensPropostas.find(ip => ip.servico_id === servico.id);
                 
-                // Calcular valor unitário
                 let valorUnitario = 0;
                 let quantidadeContratada = 0;
                 let totalContratado = 0;
@@ -330,14 +308,10 @@ class MedicoesManager {
                     valorUnitario = precoMaoObra + precoMaterial;
                     quantidadeContratada = parseFloat(itemProposta.quantidade || 0);
                     totalContratado = quantidadeContratada * valorUnitario;
-                    console.log(`💰 Valores da proposta: ${precoMaoObra} + ${precoMaterial} = ${valorUnitario}`);
-                } else {
-                    console.log(`⚠️ Serviço ${servico.codigo} não encontrado nas propostas - usando valores padrão`);
                 }
 
-                // Quantidade produzida (da produção diária)
+                // Quantidade produzida
                 const quantidadeProduzida = quantidadesPorServico[servico.id] || 0;
-                console.log(`🏗️ Quantidade produzida: ${quantidadeProduzida}`);
 
                 // Calcular quantidade já medida
                 let quantidadeJaMedida = 0;
@@ -346,11 +320,9 @@ class MedicoesManager {
                         quantidadeJaMedida += parseFloat(sm.quantidade_medida || 0);
                     }
                 });
-                console.log(`📏 Quantidade já medida: ${quantidadeJaMedida}`);
 
                 // Calcular quantidade disponível
                 const quantidadeDisponivel = Math.max(0, quantidadeProduzida - quantidadeJaMedida);
-                console.log(`✅ Quantidade disponível: ${quantidadeDisponivel}`);
 
                 return {
                     servico_id: servico.id,
@@ -366,30 +338,7 @@ class MedicoesManager {
                 };
             });
 
-            console.log('🎉 SUCESSO! Serviços processados:', servicosCompletos.length);
-            
-            // DEBUG TEMPORÁRIO - INÍCIO
-            console.log('🔍 DEBUG - Dados dos serviços com valores corretos:');
-            console.log('📊 Quantidade de serviços:', servicosCompletos?.length || 0);
-            console.log('📋 Lista completa dos serviços:', servicosCompletos);
-            if (servicosCompletos && servicosCompletos.length > 0) {
-                servicosCompletos.forEach((servico, index) => {
-                    console.log(`🔧 Serviço ${index + 1}:`, {
-                        id: servico.servico_id,
-                        codigo: servico.servico_codigo,
-                        descricao: servico.servico_descricao,
-                        unidade: servico.unidade,
-                        valor_unitario: servico.valor_unitario_contratado,
-                        quantidade_contratada: servico.quantidade_contratada,
-                        total_contratado: servico.total_contratado,
-                        quantidade_produzida: servico.quantidade_produzida,
-                        quantidade_ja_medida: servico.quantidade_ja_medida,
-                        quantidade_disponivel: servico.quantidade_disponivel
-                    });
-                });
-            }
-            // DEBUG TEMPORÁRIO - FIM
-            
+            console.log('🎉 Serviços processados:', servicosCompletos.length);
             return servicosCompletos || [];
             
         } catch (error) {
@@ -400,7 +349,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // MODAIS - COM VERIFICAÇÕES DE SEGURANÇA
+    // MODAIS
     // ========================================
 
     abrirModalNovaMedicao() {
@@ -440,13 +389,14 @@ class MedicoesManager {
             servicosContainer.style.display = 'none';
         }
         
-        // Mostrar modal - USANDO ID CORRETO
+        // Resetar valor total
+        this.atualizarExibicaoValorTotal();
+        
+        // Mostrar modal
         const modal = this.getElement('modal-medicao');
         if (modal) {
             modal.style.display = 'block';
             console.log('✅ Modal aberto com sucesso');
-        } else {
-            console.error('❌ Modal não encontrado - ID: modal-medicao');
         }
     }
 
@@ -546,14 +496,6 @@ class MedicoesManager {
             // Carregar serviços da obra
             this.showLoading();
             this.servicosObra = await this.loadServicosObra(obraId);
-            
-            // DEBUG TEMPORÁRIO - INÍCIO
-            console.log('🎯 DEBUG - Verificando this.servicosObra após carregamento:');
-            console.log('📦 this.servicosObra existe?', !!this.servicosObra);
-            console.log('📊 Quantidade em this.servicosObra:', this.servicosObra?.length || 0);
-            console.log('📋 Conteúdo de this.servicosObra:', this.servicosObra);
-            // DEBUG TEMPORÁRIO - FIM
-            
             this.hideLoading();
             
             // Renderizar serviços
@@ -578,7 +520,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // RENDERIZAÇÃO - TODOS OS SERVIÇOS
+    // RENDERIZAÇÃO
     // ========================================
 
     renderMedicoes() {
@@ -665,18 +607,8 @@ class MedicoesManager {
     }
 
     async renderServicos() {
-        // DEBUG TEMPORÁRIO - INÍCIO
-        console.log('🖼️ DEBUG - Iniciando renderização dos serviços:');
-        console.log('📦 this.servicosObra existe?', !!this.servicosObra);
-        console.log('📊 Quantidade para renderizar:', this.servicosObra?.length || 0);
-        console.log('🎯 Elemento servicos-list encontrado?', !!this.getElement('servicos-list'));
-        // DEBUG TEMPORÁRIO - FIM
-
         const container = this.getElement('servicos-list');
-        if (!container) {
-            console.log('❌ ERRO: Container servicos-list não encontrado no DOM');
-            return;
-        }
+        if (!container) return;
 
         if (!this.servicosObra || this.servicosObra.length === 0) {
             container.innerHTML = `
@@ -688,8 +620,17 @@ class MedicoesManager {
             return;
         }
 
-        // MOSTRAR TODOS OS SERVIÇOS
-        container.innerHTML = `
+        // Adicionar área do valor total antes da tabela
+        const valorTotalHtml = `
+            <div id="valor-total-container" style="background: rgba(173, 216, 230, 0.1); padding: 1rem; margin-bottom: 1rem; border-radius: 8px; text-align: center;">
+                <div style="color: #add8e6; font-size: 1.2rem; font-weight: 600;">
+                    Valor Total da Medição: <span id="valor-total-display" style="color: #ffd700;">${this.formatarMoeda(0)}</span>
+                </div>
+            </div>
+        `;
+
+        // Renderizar tabela de serviços
+        container.innerHTML = valorTotalHtml + `
             <table class="table" style="width: 100%; margin-top: 1rem;">
                 <thead>
                     <tr style="background: rgba(173, 216, 230, 0.1);">
@@ -749,12 +690,13 @@ class MedicoesManager {
                                 ${disponivel ? `
                                 <input type="number" 
                                        id="medicao-${servico.servico_id}"
+                                       data-valor-unitario="${servico.valor_unitario_contratado}"
                                        style="width: 120px; padding: 0.5rem; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: #add8e6; text-align: center;"
                                        min="0" 
                                        max="${servico.quantidade_disponivel || 0}"
                                        step="0.01"
                                        placeholder="0.00"
-                                       onchange="atualizarCalculos()">
+                                       oninput="atualizarCalculos()">
                                 <div style="color: #87ceeb; font-size: 0.8rem; margin-top: 0.25rem;">
                                     Disponível: ${servico.quantidade_disponivel || 0} ${servico.unidade || ''}
                                 </div>
@@ -773,11 +715,14 @@ class MedicoesManager {
             </table>
         `;
         
+        // Atualizar valor total inicial
+        this.atualizarExibicaoValorTotal();
+        
         console.log('✅ Todos os serviços renderizados com sucesso!');
     }
 
     // ========================================
-    // CÁLCULOS
+    // CÁLCULOS E VALOR TOTAL EM TEMPO REAL
     // ========================================
 
     calcularValorTotal() {
@@ -798,7 +743,174 @@ class MedicoesManager {
 
     atualizarCalculos() {
         this.calcularValorTotal();
+        this.atualizarExibicaoValorTotal();
         console.log('Valor total calculado:', this.valorTotalCalculado);
+    }
+
+    atualizarExibicaoValorTotal() {
+        const display = this.getElement('valor-total-display');
+        if (display) {
+            display.textContent = this.formatarMoeda(this.valorTotalCalculado);
+            
+            // Animação de destaque quando valor muda
+            display.style.transform = 'scale(1.1)';
+            display.style.transition = 'transform 0.2s ease';
+            setTimeout(() => {
+                display.style.transform = 'scale(1)';
+            }, 200);
+        }
+    }
+
+    // ========================================
+    // SALVAMENTO DA MEDIÇÃO - IMPLEMENTAÇÃO COMPLETA
+    // ========================================
+
+    async salvarMedicao(event) {
+        event.preventDefault();
+        
+        try {
+            console.log('💾 Iniciando salvamento da medição...');
+            
+            // Validações
+            if (!this.obraSelecionada) {
+                this.showNotification('Selecione uma obra antes de salvar', 'error');
+                return;
+            }
+
+            const dataMedicao = this.getElement('data-medicao');
+            if (!dataMedicao || !dataMedicao.value) {
+                this.showNotification('Informe a data da medição', 'error');
+                return;
+            }
+
+            // Coletar serviços com quantidades
+            const servicosParaMedir = [];
+            let temServicos = false;
+
+            this.servicosObra.forEach(servico => {
+                const input = this.getElement(`medicao-${servico.servico_id}`);
+                if (input && input.value) {
+                    const quantidade = parseFloat(input.value);
+                    if (quantidade > 0) {
+                        servicosParaMedir.push({
+                            servico_id: servico.servico_id,
+                            quantidade_medida: quantidade,
+                            valor_unitario: servico.valor_unitario_contratado,
+                            valor_total: quantidade * servico.valor_unitario_contratado
+                        });
+                        temServicos = true;
+                    }
+                }
+            });
+
+            if (!temServicos) {
+                this.showNotification('Informe pelo menos uma quantidade para medir', 'error');
+                return;
+            }
+
+            // Calcular valor total
+            this.calcularValorTotal();
+
+            // Gerar número da medição
+            const numeroMedicao = await this.gerarNumeroMedicao();
+
+            // Preparar dados da medição
+            const observacoes = this.getElement('observacoes-medicao');
+            const dadosMedicao = {
+                numero: numeroMedicao,
+                obra_id: this.obraSelecionada.id,
+                data_medicao: dataMedicao.value,
+                valor_total: this.valorTotalCalculado,
+                valor_ajustado: this.valorTotalCalculado,
+                observacoes: observacoes ? observacoes.value : '',
+                status: 'rascunho',
+                created_at: new Date().toISOString()
+            };
+
+            console.log('📋 Dados da medição:', dadosMedicao);
+            console.log('📋 Serviços para medir:', servicosParaMedir);
+
+            this.showLoading();
+
+            // 1. Salvar medição principal
+            const { data: medicaoSalva, error: medicaoError } = await supabaseClient
+                .from('medicoes_hvc')
+                .insert([dadosMedicao])
+                .select()
+                .single();
+
+            if (medicaoError) throw medicaoError;
+
+            console.log('✅ Medição salva:', medicaoSalva);
+
+            // 2. Salvar serviços da medição
+            const servicosComMedicaoId = servicosParaMedir.map(servico => ({
+                ...servico,
+                medicao_id: medicaoSalva.id
+            }));
+
+            const { error: servicosError } = await supabaseClient
+                .from('medicoes_servicos')
+                .insert(servicosComMedicaoId);
+
+            if (servicosError) throw servicosError;
+
+            console.log('✅ Serviços da medição salvos');
+
+            this.hideLoading();
+
+            // Sucesso!
+            this.showNotification(`Medição ${numeroMedicao} salva com sucesso!`, 'success');
+            
+            // Recarregar medições
+            await this.loadMedicoes();
+            
+            // Fechar modal
+            this.fecharModalMedicao();
+
+        } catch (error) {
+            console.error('❌ Erro ao salvar medição:', error);
+            this.hideLoading();
+            this.showNotification('Erro ao salvar medição: ' + error.message, 'error');
+        }
+    }
+
+    async gerarNumeroMedicao() {
+        try {
+            // Buscar última medição para gerar número sequencial
+            const { data: ultimaMedicao, error } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('numero')
+                .order('created_at', { ascending: false })
+                .limit(1);
+
+            if (error) throw error;
+
+            let proximoNumero = 1;
+            if (ultimaMedicao && ultimaMedicao.length > 0) {
+                const ultimoNumero = ultimaMedicao[0].numero;
+                // Extrair número da string (ex: "MED-001" -> 1)
+                const match = ultimoNumero.match(/(\d+)$/);
+                if (match) {
+                    proximoNumero = parseInt(match[1]) + 1;
+                }
+            }
+
+            // Formatar número com zeros à esquerda
+            return `MED-${proximoNumero.toString().padStart(3, '0')}`;
+
+        } catch (error) {
+            console.error('Erro ao gerar número da medição:', error);
+            // Fallback: usar timestamp
+            return `MED-${Date.now()}`;
+        }
+    }
+
+    async confirmarESalvarMedicao() {
+        // Esta função pode ser usada para confirmar valores antes de salvar
+        this.fecharModalValor();
+        // Aqui poderia implementar lógica adicional de confirmação
+        console.log('Medição confirmada e pronta para salvar');
     }
 
     // ========================================
@@ -874,14 +986,8 @@ class MedicoesManager {
     }
 
     // ========================================
-    // SALVAMENTO (SIMPLIFICADO)
+    // EDIÇÃO E EXCLUSÃO (PLACEHOLDER)
     // ========================================
-
-    async salvarMedicao(event) {
-        event.preventDefault();
-        console.log('Função salvar medição chamada - implementar conforme necessário');
-        this.showNotification('Funcionalidade de salvamento em desenvolvimento', 'info');
-    }
 
     async editarMedicao(medicaoId) {
         console.log('Função editar medição chamada - implementar conforme necessário');
@@ -889,8 +995,32 @@ class MedicoesManager {
     }
 
     async excluirMedicao(medicaoId) {
-        console.log('Função excluir medição chamada - implementar conforme necessário');
-        this.showNotification('Funcionalidade de exclusão em desenvolvimento', 'info');
+        if (confirm('Tem certeza que deseja excluir esta medição?')) {
+            try {
+                // Excluir serviços da medição primeiro
+                const { error: servicosError } = await supabaseClient
+                    .from('medicoes_servicos')
+                    .delete()
+                    .eq('medicao_id', medicaoId);
+
+                if (servicosError) throw servicosError;
+
+                // Excluir medição
+                const { error: medicaoError } = await supabaseClient
+                    .from('medicoes_hvc')
+                    .delete()
+                    .eq('id', medicaoId);
+
+                if (medicaoError) throw medicaoError;
+
+                this.showNotification('Medição excluída com sucesso!', 'success');
+                await this.loadMedicoes();
+
+            } catch (error) {
+                console.error('Erro ao excluir medição:', error);
+                this.showNotification('Erro ao excluir medição: ' + error.message, 'error');
+            }
+        }
     }
 
     // ========================================
