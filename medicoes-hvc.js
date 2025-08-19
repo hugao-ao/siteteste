@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO CORRIGIDA - Com problema do cliente resolvido
+// VERSÃO CORRIGIDA - Cliente via propostas e cabeçalho corrigido
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -101,6 +101,71 @@ class MedicoesManager {
     }
 
     // ========================================
+    // BUSCA DE CLIENTE VIA PROPOSTAS
+    // ========================================
+
+    async buscarClienteViaPropostas(obraId) {
+        try {
+            console.log('🔍 Buscando cliente via propostas para obra:', obraId);
+            
+            // 1. Buscar propostas da obra
+            const { data: obrasPropostas, error: opError } = await supabaseClient
+                .from('obras_propostas')
+                .select('proposta_id')
+                .eq('obra_id', obraId);
+
+            if (opError || !obrasPropostas || obrasPropostas.length === 0) {
+                console.log('❌ Nenhuma proposta encontrada para a obra');
+                return null;
+            }
+
+            console.log('📋 Propostas encontradas:', obrasPropostas.length);
+
+            // 2. Buscar dados das propostas
+            const propostaIds = obrasPropostas.map(op => op.proposta_id);
+            const { data: propostas, error: propError } = await supabaseClient
+                .from('propostas_hvc')
+                .select('*')
+                .in('id', propostaIds);
+
+            if (propError || !propostas || propostas.length === 0) {
+                console.log('❌ Dados das propostas não encontrados');
+                return null;
+            }
+
+            console.log('📋 Dados das propostas:', propostas.length);
+
+            // 3. Buscar cliente da primeira proposta (assumindo que todas são do mesmo cliente)
+            const primeiraProposta = propostas[0];
+            console.log('👤 Cliente ID da proposta:', primeiraProposta.cliente_id);
+
+            if (!primeiraProposta.cliente_id) {
+                console.log('❌ Proposta não tem cliente_id definido');
+                return null;
+            }
+
+            // 4. Buscar dados do cliente
+            const { data: cliente, error: clienteError } = await supabaseClient
+                .from('clientes_hvc')
+                .select('*')
+                .eq('id', primeiraProposta.cliente_id)
+                .single();
+
+            if (clienteError || !cliente) {
+                console.log('❌ Cliente não encontrado na tabela clientes_hvc');
+                return null;
+            }
+
+            console.log('✅ Cliente encontrado via propostas:', cliente.nome);
+            return cliente;
+
+        } catch (error) {
+            console.error('❌ Erro ao buscar cliente via propostas:', error);
+            return null;
+        }
+    }
+
+    // ========================================
     // CARREGAMENTO DE DADOS
     // ========================================
 
@@ -127,35 +192,49 @@ class MedicoesManager {
             console.log('👥 Clientes encontrados:', clientes?.length || 0);
             console.log('🏗️ Obras encontradas:', obras?.length || 0);
 
-            // Combinar dados manualmente com tratamento melhorado
-            this.obras = (obras || []).map(obra => {
-                console.log(`🔍 Processando obra ${obra.numero_obra} (ID: ${obra.id})`);
-                console.log(`👤 Cliente ID da obra: ${obra.cliente_id || 'undefined'}`);
+            // Combinar dados manualmente com busca via propostas
+            this.obras = [];
+            
+            for (const obra of obras || []) {
+                console.log(`\n🔍 Processando obra ${obra.numero_obra} (ID: ${obra.id})`);
+                console.log(`👤 Cliente ID direto da obra: ${obra.cliente_id || 'undefined'}`);
                 
                 let cliente = null;
-                let nomeCliente = 'Cliente não definido';
+                let nomeCliente = 'Cliente não encontrado';
                 
+                // Tentar buscar cliente direto da obra primeiro
                 if (obra.cliente_id) {
                     cliente = clientes.find(c => c.id === obra.cliente_id);
                     if (cliente) {
                         nomeCliente = cliente.nome;
-                        console.log(`👤 Cliente encontrado: ${cliente.nome}`);
+                        console.log(`✅ Cliente encontrado diretamente: ${cliente.nome}`);
                     } else {
-                        nomeCliente = 'Cliente não encontrado';
                         console.log(`❌ Cliente com ID ${obra.cliente_id} não encontrado na tabela clientes_hvc`);
                     }
-                } else {
-                    console.log(`⚠️ Obra ${obra.numero_obra} não tem cliente_id definido`);
                 }
                 
-                return {
+                // Se não encontrou cliente direto, buscar via propostas
+                if (!cliente) {
+                    console.log('🔍 Tentando buscar cliente via propostas...');
+                    cliente = await this.buscarClienteViaPropostas(obra.id);
+                    
+                    if (cliente) {
+                        nomeCliente = cliente.nome;
+                        console.log(`✅ Cliente encontrado via propostas: ${cliente.nome}`);
+                    } else {
+                        nomeCliente = 'Cliente não definido';
+                        console.log(`⚠️ Obra ${obra.numero_obra} não tem cliente definido nem via obra nem via propostas`);
+                    }
+                }
+                
+                this.obras.push({
                     ...obra,
                     clientes_hvc: cliente || { 
                         nome: nomeCliente,
                         id: obra.cliente_id || null
                     }
-                };
-            });
+                });
+            }
 
             console.log('✅ Obras carregadas:', this.obras.length);
             
@@ -200,8 +279,10 @@ class MedicoesManager {
                 console.log('🏗️ Obras para relacionamento:', obras?.length || 0);
                 console.log('👥 Clientes para relacionamento:', clientes?.length || 0);
 
-                // Combinar dados manualmente com tratamento melhorado
-                this.medicoes = (medicoes || []).map(medicao => {
+                // Combinar dados manualmente com busca via propostas
+                this.medicoes = [];
+                
+                for (const medicao of medicoes || []) {
                     console.log(`\n📋 Processando medição ${medicao.numero_medicao}`);
                     console.log(`🏗️ Obra ID da medição: ${medicao.obra_id}`);
                     
@@ -209,26 +290,38 @@ class MedicoesManager {
                     console.log(`🏗️ Obra encontrada:`, obra ? obra.numero_obra : 'NÃO ENCONTRADA');
                     
                     let cliente = null;
-                    let nomeCliente = 'Cliente não definido';
+                    let nomeCliente = 'Cliente não encontrado';
                     
                     if (obra) {
-                        console.log(`👤 Cliente ID da obra: ${obra.cliente_id || 'undefined'}`);
+                        console.log(`👤 Cliente ID direto da obra: ${obra.cliente_id || 'undefined'}`);
                         
+                        // Tentar buscar cliente direto da obra primeiro
                         if (obra.cliente_id) {
                             cliente = clientes.find(c => c.id === obra.cliente_id);
                             if (cliente) {
                                 nomeCliente = cliente.nome;
-                                console.log(`👤 Cliente encontrado: ${cliente.nome}`);
+                                console.log(`✅ Cliente encontrado diretamente: ${cliente.nome}`);
                             } else {
-                                nomeCliente = 'Cliente não encontrado';
                                 console.log(`❌ Cliente com ID ${obra.cliente_id} não encontrado`);
                             }
-                        } else {
-                            console.log(`⚠️ Obra ${obra.numero_obra} não tem cliente_id definido`);
+                        }
+                        
+                        // Se não encontrou cliente direto, buscar via propostas
+                        if (!cliente) {
+                            console.log('🔍 Tentando buscar cliente via propostas...');
+                            cliente = await this.buscarClienteViaPropostas(obra.id);
+                            
+                            if (cliente) {
+                                nomeCliente = cliente.nome;
+                                console.log(`✅ Cliente encontrado via propostas: ${cliente.nome}`);
+                            } else {
+                                nomeCliente = 'Cliente não definido';
+                                console.log(`⚠️ Obra ${obra.numero_obra} não tem cliente definido`);
+                            }
                         }
                     }
                     
-                    return {
+                    this.medicoes.push({
                         ...medicao,
                         obras_hvc: {
                             ...obra,
@@ -237,8 +330,8 @@ class MedicoesManager {
                                 id: obra?.cliente_id || null
                             }
                         }
-                    };
-                });
+                    });
+                }
             }
 
             console.log('✅ Medições processadas:', this.medicoes.length);
