@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO COMPLETA - Com edição, status e correções de totais
+// VERSÃO FINAL - Sem edição, com totais corretos e campo de data
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -35,7 +35,6 @@ function initializeApp() {
         window.selecionarObra = (obraId) => medicoesManager.selecionarObra(obraId);
         window.salvarMedicao = (event) => medicoesManager.salvarMedicao(event);
         window.confirmarESalvarMedicao = () => medicoesManager.confirmarESalvarMedicao();
-        window.editarMedicao = (medicaoId) => medicoesManager.editarMedicao(medicaoId);
         window.excluirMedicao = (medicaoId) => medicoesManager.excluirMedicao(medicaoId);
         window.limparFiltros = () => medicoesManager.limparFiltros();
         window.atualizarCalculos = () => medicoesManager.atualizarCalculos();
@@ -54,7 +53,6 @@ class MedicoesManager {
         this.servicosObra = [];
         this.obraSelecionada = null;
         this.valorTotalCalculado = 0;
-        this.medicaoEditando = null; // Para controlar edição
         
         this.init();
     }
@@ -277,36 +275,54 @@ class MedicoesManager {
                 }
             }
 
-            // 5. CORRIGIR: Buscar medições anteriores usando campo observacoes como JSON
+            // 5. CORRIGIR: Buscar medições anteriores de forma mais robusta
             let quantidadesMedidas = {};
+            
+            console.log('🔍 Buscando medições anteriores para a obra:', obraId);
             
             try {
                 const { data: medicoesAnteriores, error: medError } = await supabaseClient
                     .from('medicoes_hvc')
-                    .select('observacoes')
-                    .eq('obra_id', obraId)
-                    .neq('id', this.medicaoEditando?.id || 'null'); // Excluir medição sendo editada
+                    .select('*')
+                    .eq('obra_id', obraId);
+
+                console.log('📊 Medições encontradas:', medicoesAnteriores?.length || 0);
 
                 if (!medError && medicoesAnteriores && medicoesAnteriores.length > 0) {
-                    medicoesAnteriores.forEach(medicao => {
+                    medicoesAnteriores.forEach((medicao, index) => {
+                        console.log(`📋 Processando medição ${index + 1}:`, medicao.numero_medicao);
+                        
                         try {
                             // Tentar parsear observacoes como JSON com dados dos serviços
-                            const servicosMedicao = JSON.parse(medicao.observacoes || '{}');
-                            if (servicosMedicao.servicos) {
-                                servicosMedicao.servicos.forEach(servico => {
-                                    if (!quantidadesMedidas[servico.servico_id]) {
-                                        quantidadesMedidas[servico.servico_id] = 0;
+                            const dadosMedicao = JSON.parse(medicao.observacoes || '{}');
+                            console.log('📝 Dados da medição:', dadosMedicao);
+                            
+                            if (dadosMedicao.servicos && Array.isArray(dadosMedicao.servicos)) {
+                                dadosMedicao.servicos.forEach(servico => {
+                                    const servicoId = servico.servico_id;
+                                    const quantidade = parseFloat(servico.quantidade_medida || 0);
+                                    
+                                    if (!quantidadesMedidas[servicoId]) {
+                                        quantidadesMedidas[servicoId] = 0;
                                     }
-                                    quantidadesMedidas[servico.servico_id] += parseFloat(servico.quantidade_medida || 0);
+                                    quantidadesMedidas[servicoId] += quantidade;
+                                    
+                                    console.log(`📊 Serviço ${servicoId}: +${quantidade} = ${quantidadesMedidas[servicoId]}`);
                                 });
+                            } else {
+                                console.log('⚠️ Medição sem dados de serviços válidos');
                             }
                         } catch (e) {
-                            // Se não for JSON válido, ignorar
+                            console.log('⚠️ Erro ao parsear observações da medição:', e.message);
+                            console.log('📄 Conteúdo das observações:', medicao.observacoes);
                         }
                     });
                 }
+                
+                console.log('📊 Quantidades já medidas (final):', quantidadesMedidas);
+                
             } catch (e) {
-                console.log('Erro ao buscar medições anteriores:', e.message);
+                console.error('❌ Erro ao buscar medições anteriores:', e);
             }
 
             // 6. Combinar TODOS os dados
@@ -335,6 +351,12 @@ class MedicoesManager {
                 // Calcular quantidade disponível
                 const quantidadeDisponivel = Math.max(0, quantidadeProduzida - quantidadeJaMedida);
 
+                console.log(`🔧 Serviço ${servico.codigo}:`, {
+                    produzida: quantidadeProduzida,
+                    jaMedida: quantidadeJaMedida,
+                    disponivel: quantidadeDisponivel
+                });
+
                 return {
                     servico_id: servico.id,
                     servico_codigo: servico.codigo,
@@ -350,7 +372,6 @@ class MedicoesManager {
             });
 
             console.log('🎉 Serviços processados:', servicosCompletos.length);
-            console.log('📊 Quantidades já medidas:', quantidadesMedidas);
             return servicosCompletos || [];
             
         } catch (error) {
@@ -367,16 +388,21 @@ class MedicoesManager {
     abrirModalNovaMedicao() {
         console.log('Abrindo modal de nova medição...');
         
-        // Resetar modo de edição
-        this.medicaoEditando = null;
-        
         // Verificar e limpar formulário
         const dataMedicao = this.getElement('data-medicao');
+        const dataRecebimento = this.getElement('data-recebimento');
         const observacoes = this.getElement('observacoes-medicao');
         const statusMedicao = this.getElement('status-medicao');
         
         if (dataMedicao) {
             dataMedicao.value = new Date().toISOString().split('T')[0];
+        }
+        
+        if (dataRecebimento) {
+            // Data de recebimento padrão: 30 dias após a data da medição
+            const dataFutura = new Date();
+            dataFutura.setDate(dataFutura.getDate() + 30);
+            dataRecebimento.value = dataFutura.toISOString().split('T')[0];
         }
         
         if (observacoes) {
@@ -412,12 +438,6 @@ class MedicoesManager {
         // Resetar valor total
         this.atualizarExibicaoValorTotal();
         
-        // Atualizar título do modal
-        const modalTitle = this.getElement('modal-title');
-        if (modalTitle) {
-            modalTitle.textContent = 'Nova Medição';
-        }
-        
         // Mostrar modal
         const modal = this.getElement('modal-medicao');
         if (modal) {
@@ -431,7 +451,6 @@ class MedicoesManager {
         if (modal) {
             modal.style.display = 'none';
         }
-        this.medicaoEditando = null;
     }
 
     abrirModalObras() {
@@ -566,6 +585,7 @@ class MedicoesManager {
             return;
         }
 
+        // REMOVIDO: Botão de editar - apenas excluir
         tbody.innerHTML = this.medicoes.map(medicao => `
             <tr>
                 <td><strong>${medicao.numero_medicao || 'N/A'}</strong></td>
@@ -581,9 +601,6 @@ class MedicoesManager {
                     </span>
                 </td>
                 <td>
-                    <button class="btn-secondary" onclick="editarMedicao('${medicao.id}')" title="Editar">
-                        <i class="fas fa-edit"></i>
-                    </button>
                     <button class="btn-danger" onclick="excluirMedicao('${medicao.id}')" title="Excluir">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -647,16 +664,21 @@ class MedicoesManager {
             return;
         }
 
-        // Adicionar área do valor total e status antes da tabela
-        const valorTotalHtml = `
-            <div id="valor-total-container" style="background: rgba(173, 216, 230, 0.1); padding: 1rem; margin-bottom: 1rem; border-radius: 8px;">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <div style="color: #add8e6; font-size: 1.2rem; font-weight: 600;">
-                        Valor Total da Medição: <span id="valor-total-display" style="color: #ffd700;">${this.formatarMoeda(0)}</span>
+        // Adicionar campos de data e valor total antes da tabela
+        const cabecalhoHtml = `
+            <div style="background: rgba(173, 216, 230, 0.1); padding: 1rem; margin-bottom: 1rem; border-radius: 8px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <label for="data-medicao" style="color: #add8e6; display: block; margin-bottom: 0.5rem;">Data da Medição:</label>
+                        <input type="date" id="data-medicao" style="width: 100%; padding: 0.5rem; border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3);">
                     </div>
-                    <div style="color: #add8e6;">
-                        <label for="status-medicao" style="margin-right: 0.5rem;">Status:</label>
-                        <select id="status-medicao" style="padding: 0.5rem; border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3);">
+                    <div>
+                        <label for="data-recebimento" style="color: #add8e6; display: block; margin-bottom: 0.5rem;">Previsão de Recebimento:</label>
+                        <input type="date" id="data-recebimento" style="width: 100%; padding: 0.5rem; border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3);">
+                    </div>
+                    <div>
+                        <label for="status-medicao" style="color: #add8e6; display: block; margin-bottom: 0.5rem;">Status:</label>
+                        <select id="status-medicao" style="width: 100%; padding: 0.5rem; border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3);">
                             <option value="pendente">Pendente</option>
                             <option value="aprovada">Aprovada</option>
                             <option value="paga">Paga</option>
@@ -664,11 +686,20 @@ class MedicoesManager {
                         </select>
                     </div>
                 </div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div style="color: #add8e6; font-size: 1.2rem; font-weight: 600;">
+                        Valor Total da Medição: <span id="valor-total-display" style="color: #ffd700;">${this.formatarMoeda(0)}</span>
+                    </div>
+                    <div>
+                        <label for="observacoes-medicao" style="color: #add8e6; margin-right: 0.5rem;">Observações:</label>
+                        <input type="text" id="observacoes-medicao" placeholder="Observações da medição..." style="padding: 0.5rem; border-radius: 4px; background: rgba(255, 255, 255, 0.1); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3); width: 300px;">
+                    </div>
+                </div>
             </div>
         `;
 
         // Renderizar tabela de serviços
-        container.innerHTML = valorTotalHtml + `
+        container.innerHTML = cabecalhoHtml + `
             <table class="table" style="width: 100%; margin-top: 1rem;">
                 <thead>
                     <tr style="background: rgba(173, 216, 230, 0.1);">
@@ -753,6 +784,20 @@ class MedicoesManager {
             </table>
         `;
         
+        // Definir valores padrão para os campos de data
+        const dataMedicao = this.getElement('data-medicao');
+        const dataRecebimento = this.getElement('data-recebimento');
+        
+        if (dataMedicao && !dataMedicao.value) {
+            dataMedicao.value = new Date().toISOString().split('T')[0];
+        }
+        
+        if (dataRecebimento && !dataRecebimento.value) {
+            const dataFutura = new Date();
+            dataFutura.setDate(dataFutura.getDate() + 30);
+            dataRecebimento.value = dataFutura.toISOString().split('T')[0];
+        }
+        
         // Atualizar valor total inicial
         this.atualizarExibicaoValorTotal();
         
@@ -800,7 +845,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // SALVAMENTO DA MEDIÇÃO - VERSÃO COMPLETA
+    // SALVAMENTO DA MEDIÇÃO - VERSÃO FINAL
     // ========================================
 
     async salvarMedicao(event) {
@@ -816,8 +861,15 @@ class MedicoesManager {
             }
 
             const dataMedicao = this.getElement('data-medicao');
+            const dataRecebimento = this.getElement('data-recebimento');
+            
             if (!dataMedicao || !dataMedicao.value) {
                 this.showNotification('Informe a data da medição', 'error');
+                return;
+            }
+
+            if (!dataRecebimento || !dataRecebimento.value) {
+                this.showNotification('Informe a previsão de recebimento', 'error');
                 return;
             }
 
@@ -849,21 +901,14 @@ class MedicoesManager {
             // Calcular valor total
             this.calcularValorTotal();
 
-            // Obter status selecionado
+            // Obter status e observações
             const statusMedicao = this.getElement('status-medicao');
+            const observacoes = this.getElement('observacoes-medicao');
             const status = statusMedicao ? statusMedicao.value : 'pendente';
 
-            // Gerar número da medição (se nova)
-            let numeroMedicao;
-            if (this.medicaoEditando) {
-                numeroMedicao = this.medicaoEditando.numero_medicao;
-            } else {
-                numeroMedicao = await this.gerarNumeroMedicao();
-            }
+            // Gerar número da medição
+            const numeroMedicao = await this.gerarNumeroMedicao();
 
-            // Preparar dados da medição com estrutura EXATA da tabela medicoes_hvc
-            const observacoes = this.getElement('observacoes-medicao');
-            
             // Salvar dados dos serviços no campo observacoes como JSON
             const dadosServicos = {
                 servicos: servicosParaMedir,
@@ -877,7 +922,7 @@ class MedicoesManager {
                 valor_total: this.valorTotalCalculado,
                 valor_bruto: this.valorTotalCalculado,
                 tipo_preco: 'total',
-                previsao_pagamento: dataMedicao.value,
+                previsao_pagamento: dataRecebimento.value,
                 emitir_boleto: false,
                 status: status,
                 observacoes: JSON.stringify(dadosServicos)
@@ -888,38 +933,19 @@ class MedicoesManager {
 
             this.showLoading();
 
-            let medicaoSalva;
+            // Criar nova medição
+            const { data, error } = await supabaseClient
+                .from('medicoes_hvc')
+                .insert([dadosMedicao])
+                .select()
+                .single();
 
-            if (this.medicaoEditando) {
-                // Atualizar medição existente
-                const { data, error } = await supabaseClient
-                    .from('medicoes_hvc')
-                    .update(dadosMedicao)
-                    .eq('id', this.medicaoEditando.id)
-                    .select()
-                    .single();
-
-                if (error) throw error;
-                medicaoSalva = data;
-                console.log('✅ Medição atualizada com sucesso:', medicaoSalva);
-            } else {
-                // Criar nova medição
-                const { data, error } = await supabaseClient
-                    .from('medicoes_hvc')
-                    .insert([dadosMedicao])
-                    .select()
-                    .single();
-
-                if (error) throw error;
-                medicaoSalva = data;
-                console.log('✅ Medição criada com sucesso:', medicaoSalva);
-            }
+            if (error) throw error;
 
             this.hideLoading();
 
             // Sucesso!
-            const acao = this.medicaoEditando ? 'atualizada' : 'salva';
-            this.showNotification(`Medição ${numeroMedicao} ${acao} com sucesso!`, 'success');
+            this.showNotification(`Medição ${numeroMedicao} salva com sucesso!`, 'success');
             
             // Recarregar medições
             await this.loadMedicoes();
@@ -967,96 +993,9 @@ class MedicoesManager {
         }
     }
 
-    // ========================================
-    // EDIÇÃO DE MEDIÇÃO - IMPLEMENTAÇÃO COMPLETA
-    // ========================================
-
-    async editarMedicao(medicaoId) {
-        try {
-            console.log('📝 Iniciando edição da medição:', medicaoId);
-            
-            // Buscar dados da medição
-            const medicao = this.medicoes.find(m => m.id === medicaoId);
-            if (!medicao) {
-                this.showNotification('Medição não encontrada', 'error');
-                return;
-            }
-
-            this.medicaoEditando = medicao;
-
-            // Preencher formulário
-            const dataMedicao = this.getElement('data-medicao');
-            const observacoes = this.getElement('observacoes-medicao');
-            
-            if (dataMedicao) {
-                dataMedicao.value = medicao.previsao_pagamento || new Date().toISOString().split('T')[0];
-            }
-
-            // Extrair dados dos serviços das observações
-            let dadosServicos = null;
-            try {
-                dadosServicos = JSON.parse(medicao.observacoes || '{}');
-                if (observacoes && dadosServicos.observacoes_usuario) {
-                    observacoes.value = dadosServicos.observacoes_usuario;
-                }
-            } catch (e) {
-                console.log('Observações não são JSON válido');
-                if (observacoes) {
-                    observacoes.value = medicao.observacoes || '';
-                }
-            }
-
-            // Selecionar obra automaticamente
-            if (medicao.obra_id) {
-                await this.selecionarObra(medicao.obra_id);
-                
-                // Aguardar renderização dos serviços
-                setTimeout(() => {
-                    // Preencher quantidades dos serviços
-                    if (dadosServicos && dadosServicos.servicos) {
-                        dadosServicos.servicos.forEach(servico => {
-                            const input = this.getElement(`medicao-${servico.servico_id}`);
-                            if (input) {
-                                input.value = servico.quantidade_medida;
-                            }
-                        });
-                        
-                        // Atualizar cálculos
-                        this.atualizarCalculos();
-                    }
-
-                    // Definir status
-                    const statusMedicao = this.getElement('status-medicao');
-                    if (statusMedicao) {
-                        statusMedicao.value = medicao.status || 'pendente';
-                    }
-                }, 1000);
-            }
-
-            // Atualizar título do modal
-            const modalTitle = this.getElement('modal-title');
-            if (modalTitle) {
-                modalTitle.textContent = `Editar Medição ${medicao.numero_medicao}`;
-            }
-
-            // Abrir modal
-            const modal = this.getElement('modal-medicao');
-            if (modal) {
-                modal.style.display = 'block';
-            }
-
-            this.showNotification('Medição carregada para edição', 'info');
-
-        } catch (error) {
-            console.error('Erro ao editar medição:', error);
-            this.showNotification('Erro ao carregar medição para edição: ' + error.message, 'error');
-        }
-    }
-
     async confirmarESalvarMedicao() {
         // Esta função pode ser usada para confirmar valores antes de salvar
         this.fecharModalValor();
-        // Aqui poderia implementar lógica adicional de confirmação
         console.log('Medição confirmada e pronta para salvar');
     }
 
