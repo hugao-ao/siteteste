@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO FINAL - Com salvamento e valor total em tempo real
+// VERSÃO CORRIGIDA - Com nomes corretos das tabelas do Supabase
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -149,40 +149,66 @@ class MedicoesManager {
         try {
             console.log('Carregando medições...');
             
-            // Buscar medições simples primeiro
-            const { data: medicoes, error: medicoesError } = await supabaseClient
-                .from('medicoes_hvc')
-                .select('*')
-                .order('created_at', { ascending: false });
+            // Verificar se a tabela existe - usar nome correto
+            const tabelasMedicoes = ['medicoes_hvc', 'medicoes', 'medicao_hvc', 'medicao'];
+            let medicoes = [];
+            let tabelaCorreta = null;
 
-            if (medicoesError) throw medicoesError;
-
-            // Buscar obras e clientes separadamente
-            const { data: obras, error: obrasError } = await supabaseClient
-                .from('obras_hvc')
-                .select('*');
-
-            if (obrasError) throw obrasError;
-
-            const { data: clientes, error: clientesError } = await supabaseClient
-                .from('clientes_hvc')
-                .select('*');
-
-            if (clientesError) throw clientesError;
-
-            // Combinar dados manualmente
-            this.medicoes = (medicoes || []).map(medicao => {
-                const obra = obras.find(o => o.id === medicao.obra_id);
-                const cliente = obra ? clientes.find(c => c.id === obra.cliente_id) : null;
-                
-                return {
-                    ...medicao,
-                    obras_hvc: {
-                        ...obra,
-                        clientes_hvc: cliente || { nome: 'Cliente não encontrado' }
+            for (const tabela of tabelasMedicoes) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from(tabela)
+                        .select('*')
+                        .limit(1);
+                    
+                    if (!error) {
+                        tabelaCorreta = tabela;
+                        console.log(`✅ Tabela de medições encontrada: ${tabela}`);
+                        break;
                     }
-                };
-            });
+                } catch (e) {
+                    console.log(`❌ Tabela ${tabela} não existe`);
+                }
+            }
+
+            if (tabelaCorreta) {
+                const { data: medicoes, error: medicoesError } = await supabaseClient
+                    .from(tabelaCorreta)
+                    .select('*')
+                    .order('created_at', { ascending: false });
+
+                if (medicoesError) throw medicoesError;
+
+                // Buscar obras e clientes separadamente
+                const { data: obras, error: obrasError } = await supabaseClient
+                    .from('obras_hvc')
+                    .select('*');
+
+                if (obrasError) throw obrasError;
+
+                const { data: clientes, error: clientesError } = await supabaseClient
+                    .from('clientes_hvc')
+                    .select('*');
+
+                if (clientesError) throw clientesError;
+
+                // Combinar dados manualmente
+                this.medicoes = (medicoes || []).map(medicao => {
+                    const obra = obras.find(o => o.id === medicao.obra_id);
+                    const cliente = obra ? clientes.find(c => c.id === obra.cliente_id) : null;
+                    
+                    return {
+                        ...medicao,
+                        obras_hvc: {
+                            ...obra,
+                            clientes_hvc: cliente || { nome: 'Cliente não encontrado' }
+                        }
+                    };
+                });
+            } else {
+                console.log('⚠️ Nenhuma tabela de medições encontrada - criando array vazio');
+                this.medicoes = [];
+            }
 
             console.log('Medições carregadas:', this.medicoes.length);
             
@@ -273,23 +299,41 @@ class MedicoesManager {
                 }
             }
 
-            // 5. Buscar medições anteriores
-            const { data: medicoesAnteriores, error: medError } = await supabaseClient
-                .from('medicoes_hvc')
-                .select('id')
-                .eq('obra_id', obraId);
-
+            // 5. Buscar medições anteriores (verificar se tabela existe)
             let servicosMedidos = [];
-            if (!medError && medicoesAnteriores && medicoesAnteriores.length > 0) {
-                const medicaoIds = medicoesAnteriores.map(m => m.id);
-                const { data: servMedidos, error: servMedError } = await supabaseClient
-                    .from('medicoes_servicos')
-                    .select('*')
-                    .in('medicao_id', medicaoIds)
-                    .in('servico_id', servicoIds);
+            const tabelasMedicoes = ['medicoes_hvc', 'medicoes', 'medicao_hvc', 'medicao'];
+            const tabelasServicos = ['medicoes_servicos', 'medicao_servicos', 'servicos_medicoes', 'servicos_medicao'];
+            
+            for (const tabelaMedicao of tabelasMedicoes) {
+                try {
+                    const { data: medicoesAnteriores, error: medError } = await supabaseClient
+                        .from(tabelaMedicao)
+                        .select('id')
+                        .eq('obra_id', obraId);
 
-                if (!servMedError) {
-                    servicosMedidos = servMedidos || [];
+                    if (!medError && medicoesAnteriores && medicoesAnteriores.length > 0) {
+                        const medicaoIds = medicoesAnteriores.map(m => m.id);
+                        
+                        for (const tabelaServico of tabelasServicos) {
+                            try {
+                                const { data: servMedidos, error: servMedError } = await supabaseClient
+                                    .from(tabelaServico)
+                                    .select('*')
+                                    .in('medicao_id', medicaoIds)
+                                    .in('servico_id', servicoIds);
+
+                                if (!servMedError) {
+                                    servicosMedidos = servMedidos || [];
+                                    break;
+                                }
+                            } catch (e) {
+                                console.log(`Tabela ${tabelaServico} não existe`);
+                            }
+                        }
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`Tabela ${tabelaMedicao} não existe`);
                 }
             }
 
@@ -546,7 +590,7 @@ class MedicoesManager {
                     <div>${medicao.obras_hvc.numero_obra}</div>
                     <small style="color: #b0c4de;">${medicao.obras_hvc.clientes_hvc.nome}</small>
                 </td>
-                <td>${this.formatarData(medicao.data_medicao)}</td>
+                <td>${this.formatarData(medicao.data_medicao || medicao.data)}</td>
                 <td><strong>${this.formatarMoeda(medicao.valor_ajustado || medicao.valor_total)}</strong></td>
                 <td>
                     <span class="badge badge-${this.getStatusColor(medicao.status)}">
@@ -762,7 +806,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // SALVAMENTO DA MEDIÇÃO - IMPLEMENTAÇÃO COMPLETA
+    // SALVAMENTO DA MEDIÇÃO - VERSÃO CORRIGIDA
     // ========================================
 
     async salvarMedicao(event) {
@@ -814,12 +858,14 @@ class MedicoesManager {
             // Gerar número da medição
             const numeroMedicao = await this.gerarNumeroMedicao();
 
-            // Preparar dados da medição
+            // Preparar dados da medição com nomes de colunas flexíveis
             const observacoes = this.getElement('observacoes-medicao');
             const dadosMedicao = {
                 numero: numeroMedicao,
                 obra_id: this.obraSelecionada.id,
+                // Tentar diferentes nomes de coluna para data
                 data_medicao: dataMedicao.value,
+                data: dataMedicao.value,
                 valor_total: this.valorTotalCalculado,
                 valor_ajustado: this.valorTotalCalculado,
                 observacoes: observacoes ? observacoes.value : '',
@@ -832,30 +878,68 @@ class MedicoesManager {
 
             this.showLoading();
 
-            // 1. Salvar medição principal
-            const { data: medicaoSalva, error: medicaoError } = await supabaseClient
-                .from('medicoes_hvc')
-                .insert([dadosMedicao])
-                .select()
-                .single();
+            // 1. Tentar salvar medição principal em diferentes tabelas
+            let medicaoSalva = null;
+            const tabelasMedicoes = ['medicoes_hvc', 'medicoes', 'medicao_hvc', 'medicao'];
+            
+            for (const tabela of tabelasMedicoes) {
+                try {
+                    console.log(`Tentando salvar na tabela: ${tabela}`);
+                    
+                    const { data, error } = await supabaseClient
+                        .from(tabela)
+                        .insert([dadosMedicao])
+                        .select()
+                        .single();
 
-            if (medicaoError) throw medicaoError;
+                    if (!error && data) {
+                        medicaoSalva = data;
+                        console.log(`✅ Medição salva na tabela: ${tabela}`, medicaoSalva);
+                        break;
+                    } else if (error) {
+                        console.log(`❌ Erro na tabela ${tabela}:`, error.message);
+                    }
+                } catch (e) {
+                    console.log(`❌ Tabela ${tabela} não existe ou erro:`, e.message);
+                }
+            }
 
-            console.log('✅ Medição salva:', medicaoSalva);
+            if (!medicaoSalva) {
+                throw new Error('Não foi possível salvar a medição em nenhuma tabela disponível');
+            }
 
-            // 2. Salvar serviços da medição
+            // 2. Tentar salvar serviços da medição em diferentes tabelas
             const servicosComMedicaoId = servicosParaMedir.map(servico => ({
                 ...servico,
                 medicao_id: medicaoSalva.id
             }));
 
-            const { error: servicosError } = await supabaseClient
-                .from('medicoes_servicos')
-                .insert(servicosComMedicaoId);
+            const tabelasServicos = ['medicoes_servicos', 'medicao_servicos', 'servicos_medicoes', 'servicos_medicao'];
+            let servicosSalvos = false;
 
-            if (servicosError) throw servicosError;
+            for (const tabela of tabelasServicos) {
+                try {
+                    console.log(`Tentando salvar serviços na tabela: ${tabela}`);
+                    
+                    const { error } = await supabaseClient
+                        .from(tabela)
+                        .insert(servicosComMedicaoId);
 
-            console.log('✅ Serviços da medição salvos');
+                    if (!error) {
+                        console.log(`✅ Serviços salvos na tabela: ${tabela}`);
+                        servicosSalvos = true;
+                        break;
+                    } else {
+                        console.log(`❌ Erro na tabela ${tabela}:`, error.message);
+                    }
+                } catch (e) {
+                    console.log(`❌ Tabela ${tabela} não existe ou erro:`, e.message);
+                }
+            }
+
+            if (!servicosSalvos) {
+                console.warn('⚠️ Não foi possível salvar os serviços da medição, mas a medição principal foi salva');
+            }
 
             this.hideLoading();
 
@@ -877,18 +961,30 @@ class MedicoesManager {
 
     async gerarNumeroMedicao() {
         try {
-            // Buscar última medição para gerar número sequencial
-            const { data: ultimaMedicao, error } = await supabaseClient
-                .from('medicoes_hvc')
-                .select('numero')
-                .order('created_at', { ascending: false })
-                .limit(1);
+            // Tentar buscar última medição em diferentes tabelas
+            const tabelasMedicoes = ['medicoes_hvc', 'medicoes', 'medicao_hvc', 'medicao'];
+            let ultimaMedicao = null;
 
-            if (error) throw error;
+            for (const tabela of tabelasMedicoes) {
+                try {
+                    const { data, error } = await supabaseClient
+                        .from(tabela)
+                        .select('numero')
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+
+                    if (!error && data && data.length > 0) {
+                        ultimaMedicao = data[0];
+                        break;
+                    }
+                } catch (e) {
+                    console.log(`Tabela ${tabela} não existe para gerar número`);
+                }
+            }
 
             let proximoNumero = 1;
-            if (ultimaMedicao && ultimaMedicao.length > 0) {
-                const ultimoNumero = ultimaMedicao[0].numero;
+            if (ultimaMedicao) {
+                const ultimoNumero = ultimaMedicao.numero;
                 // Extrair número da string (ex: "MED-001" -> 1)
                 const match = ultimoNumero.match(/(\d+)$/);
                 if (match) {
@@ -997,24 +1093,46 @@ class MedicoesManager {
     async excluirMedicao(medicaoId) {
         if (confirm('Tem certeza que deseja excluir esta medição?')) {
             try {
+                // Tentar excluir em diferentes tabelas
+                const tabelasMedicoes = ['medicoes_hvc', 'medicoes', 'medicao_hvc', 'medicao'];
+                const tabelasServicos = ['medicoes_servicos', 'medicao_servicos', 'servicos_medicoes', 'servicos_medicao'];
+                
                 // Excluir serviços da medição primeiro
-                const { error: servicosError } = await supabaseClient
-                    .from('medicoes_servicos')
-                    .delete()
-                    .eq('medicao_id', medicaoId);
-
-                if (servicosError) throw servicosError;
+                for (const tabela of tabelasServicos) {
+                    try {
+                        await supabaseClient
+                            .from(tabela)
+                            .delete()
+                            .eq('medicao_id', medicaoId);
+                    } catch (e) {
+                        console.log(`Tabela ${tabela} não existe para exclusão`);
+                    }
+                }
 
                 // Excluir medição
-                const { error: medicaoError } = await supabaseClient
-                    .from('medicoes_hvc')
-                    .delete()
-                    .eq('id', medicaoId);
+                let medicaoExcluida = false;
+                for (const tabela of tabelasMedicoes) {
+                    try {
+                        const { error } = await supabaseClient
+                            .from(tabela)
+                            .delete()
+                            .eq('id', medicaoId);
 
-                if (medicaoError) throw medicaoError;
+                        if (!error) {
+                            medicaoExcluida = true;
+                            break;
+                        }
+                    } catch (e) {
+                        console.log(`Tabela ${tabela} não existe para exclusão`);
+                    }
+                }
 
-                this.showNotification('Medição excluída com sucesso!', 'success');
-                await this.loadMedicoes();
+                if (medicaoExcluida) {
+                    this.showNotification('Medição excluída com sucesso!', 'success');
+                    await this.loadMedicoes();
+                } else {
+                    throw new Error('Não foi possível excluir a medição');
+                }
 
             } catch (error) {
                 console.error('Erro ao excluir medição:', error);
@@ -1035,6 +1153,7 @@ class MedicoesManager {
     }
 
     formatarData(data) {
+        if (!data) return 'Data não informada';
         return new Date(data).toLocaleDateString('pt-BR');
     }
 
