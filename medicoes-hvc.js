@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO DEBUG COMPLETO - Mostra todos os serviços com logs detalhados
+// VERSÃO SOLUÇÃO - Busca serviços da produção diária
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -102,7 +102,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // CARREGAMENTO DE DADOS - COM DEBUG COMPLETO
+    // CARREGAMENTO DE DADOS - NOVA ESTRATÉGIA
     // ========================================
 
     async loadObras() {
@@ -196,160 +196,163 @@ class MedicoesManager {
 
     async loadServicosObra(obraId) {
         try {
-            console.log('🔍 DEBUG COMPLETO - Carregando serviços da obra:', obraId);
+            console.log('🚀 NOVA ESTRATÉGIA - Buscando serviços da produção diária da obra:', obraId);
             
-            // 1. Buscar propostas da obra
-            console.log('📋 Passo 1: Buscando propostas da obra...');
-            const { data: obrasPropostas, error: opError } = await supabaseClient
-                .from('obras_propostas')
-                .select('proposta_id')
-                .eq('obra_id', obraId);
-
-            if (opError) throw opError;
-            console.log('📋 Propostas encontradas:', obrasPropostas);
-
-            if (!obrasPropostas || obrasPropostas.length === 0) {
-                this.showNotification('Nenhuma proposta encontrada para esta obra', 'warning');
-                return [];
-            }
-
-            // 2. Buscar propostas aprovadas
-            console.log('📋 Passo 2: Buscando propostas aprovadas...');
-            const propostaIds = obrasPropostas.map(op => op.proposta_id);
-            const { data: propostas, error: propError } = await supabaseClient
-                .from('propostas_hvc')
-                .select('*')
-                .in('id', propostaIds)
-                .in('status', ['Aprovada', 'contratada']);
-
-            if (propError) throw propError;
-            console.log('📋 Propostas aprovadas:', propostas);
-
-            if (!propostas || propostas.length === 0) {
-                this.showNotification('Nenhuma proposta aprovada encontrada para esta obra', 'warning');
-                return [];
-            }
-
-            const propostaId = propostas[0].id;
-            console.log('📋 Usando proposta ID:', propostaId);
-
-            // 3. Buscar itens da proposta (serviços contratados)
-            console.log('📋 Passo 3: Buscando itens da proposta...');
-            const { data: itensPropostas, error: itensError } = await supabaseClient
-                .from('itens_proposta_hvc')
-                .select('*')
-                .eq('proposta_id', propostaId);
-
-            if (itensError) throw itensError;
-            console.log('📋 Itens da proposta encontrados:', itensPropostas);
-
-            if (!itensPropostas || itensPropostas.length === 0) {
-                this.showNotification('Nenhum serviço encontrado na proposta', 'warning');
-                return [];
-            }
-
-            // 4. Buscar dados dos serviços
-            console.log('📋 Passo 4: Buscando dados dos serviços...');
-            const servicoIds = itensPropostas.map(ip => ip.servico_id);
-            const { data: servicos, error: servicosError } = await supabaseClient
-                .from('servicos_hvc')
-                .select('*')
-                .in('id', servicoIds);
-
-            if (servicosError) throw servicosError;
-            console.log('📋 Serviços encontrados:', servicos);
-
-            // 5. Buscar produções diárias para calcular quantidades produzidas
-            console.log('📋 Passo 5: Buscando produções diárias...');
+            // 1. PRIMEIRO: Buscar produções diárias para encontrar TODOS os serviços com produção
+            console.log('📋 Passo 1: Buscando produções diárias...');
             const { data: producoes, error: prodError } = await supabaseClient
                 .from('producoes_diarias_hvc')
                 .select('quantidades_servicos')
                 .eq('obra_id', obraId);
 
             if (prodError) {
-                console.warn('⚠️ Erro ao buscar produções:', prodError);
+                console.error('Erro ao buscar produções:', prodError);
+                return [];
             }
+
             console.log('📋 Produções encontradas:', producoes);
 
-            // 6. Buscar medições anteriores para calcular quantidades já medidas
-            console.log('📋 Passo 6: Buscando medições anteriores...');
+            if (!producoes || producoes.length === 0) {
+                this.showNotification('Nenhuma produção encontrada para esta obra', 'warning');
+                return [];
+            }
+
+            // 2. Extrair TODOS os IDs de serviços que têm produção
+            const servicosComProducao = new Set();
+            const quantidadesPorServico = {};
+
+            producoes.forEach(producao => {
+                const quantidades = producao.quantidades_servicos || {};
+                Object.keys(quantidades).forEach(servicoId => {
+                    servicosComProducao.add(servicoId);
+                    if (!quantidadesPorServico[servicoId]) {
+                        quantidadesPorServico[servicoId] = 0;
+                    }
+                    quantidadesPorServico[servicoId] += parseFloat(quantidades[servicoId] || 0);
+                });
+            });
+
+            console.log('📋 Serviços com produção encontrados:', Array.from(servicosComProducao));
+            console.log('📋 Quantidades por serviço:', quantidadesPorServico);
+
+            if (servicosComProducao.size === 0) {
+                this.showNotification('Nenhum serviço com produção encontrado', 'warning');
+                return [];
+            }
+
+            // 3. Buscar dados dos serviços
+            console.log('📋 Passo 2: Buscando dados dos serviços...');
+            const servicoIds = Array.from(servicosComProducao);
+            const { data: servicos, error: servicosError } = await supabaseClient
+                .from('servicos_hvc')
+                .select('*')
+                .in('id', servicoIds);
+
+            if (servicosError) throw servicosError;
+            console.log('📋 Dados dos serviços:', servicos);
+
+            // 4. Buscar valores das propostas (se existirem)
+            console.log('📋 Passo 3: Buscando valores das propostas...');
+            
+            // Buscar propostas da obra
+            const { data: obrasPropostas, error: opError } = await supabaseClient
+                .from('obras_propostas')
+                .select('proposta_id')
+                .eq('obra_id', obraId);
+
+            let itensPropostas = [];
+            if (!opError && obrasPropostas && obrasPropostas.length > 0) {
+                const propostaIds = obrasPropostas.map(op => op.proposta_id);
+                
+                // Buscar propostas aprovadas
+                const { data: propostas, error: propError } = await supabaseClient
+                    .from('propostas_hvc')
+                    .select('*')
+                    .in('id', propostaIds)
+                    .in('status', ['Aprovada', 'contratada']);
+
+                if (!propError && propostas && propostas.length > 0) {
+                    // Buscar itens de todas as propostas
+                    const propostasAprovadas = propostas.map(p => p.id);
+                    const { data: itens, error: itensError } = await supabaseClient
+                        .from('itens_proposta_hvc')
+                        .select('*')
+                        .in('proposta_id', propostasAprovadas)
+                        .in('servico_id', servicoIds);
+
+                    if (!itensError) {
+                        itensPropostas = itens || [];
+                    }
+                }
+            }
+
+            console.log('📋 Itens das propostas encontrados:', itensPropostas);
+
+            // 5. Buscar medições anteriores
+            console.log('📋 Passo 4: Buscando medições anteriores...');
             const { data: medicoesAnteriores, error: medError } = await supabaseClient
                 .from('medicoes_hvc')
                 .select('id')
                 .eq('obra_id', obraId);
 
-            if (medError) {
-                console.warn('⚠️ Erro ao buscar medições anteriores:', medError);
-            }
-            console.log('📋 Medições anteriores encontradas:', medicoesAnteriores);
-
             let servicosMedidos = [];
-            if (medicoesAnteriores && medicoesAnteriores.length > 0) {
+            if (!medError && medicoesAnteriores && medicoesAnteriores.length > 0) {
                 const medicaoIds = medicoesAnteriores.map(m => m.id);
                 const { data: servMedidos, error: servMedError } = await supabaseClient
                     .from('medicoes_servicos')
                     .select('*')
-                    .in('medicao_id', medicaoIds);
+                    .in('medicao_id', medicaoIds)
+                    .in('servico_id', servicoIds);
 
                 if (!servMedError) {
                     servicosMedidos = servMedidos || [];
                 }
             }
+
             console.log('📋 Serviços já medidos:', servicosMedidos);
 
-            // 7. Combinar todos os dados COM DEBUG DETALHADO
-            console.log('📋 Passo 7: Combinando dados...');
-            const servicosCompletos = itensPropostas.map(itemProposta => {
-                const servico = servicos.find(s => s.id === itemProposta.servico_id);
-                
-                if (!servico) {
-                    console.log(`❌ Serviço não encontrado para ID: ${itemProposta.servico_id}`);
-                    return null;
-                }
-
+            // 6. Combinar TODOS os dados
+            console.log('📋 Passo 5: Combinando dados...');
+            const servicosCompletos = servicos.map(servico => {
                 console.log(`🔧 Processando serviço: ${servico.codigo} - ${servico.descricao}`);
 
-                // Calcular valor unitário: mão de obra + material
-                const precoMaoObra = parseFloat(itemProposta.preco_mao_obra || 0);
-                const precoMaterial = parseFloat(itemProposta.preco_material || 0);
-                const valorUnitario = precoMaoObra + precoMaterial;
-                console.log(`💰 Valor unitário: ${precoMaoObra} + ${precoMaterial} = ${valorUnitario}`);
+                // Buscar valores da proposta (se existir)
+                const itemProposta = itensPropostas.find(ip => ip.servico_id === servico.id);
                 
-                // Total contratado: quantidade * valor unitário
-                const quantidadeContratada = parseFloat(itemProposta.quantidade || 0);
-                const totalContratado = quantidadeContratada * valorUnitario;
-                console.log(`📊 Total contratado: ${quantidadeContratada} × ${valorUnitario} = ${totalContratado}`);
+                // Calcular valor unitário
+                let valorUnitario = 0;
+                let quantidadeContratada = 0;
+                let totalContratado = 0;
 
-                // Calcular quantidade produzida
-                let quantidadeProduzida = 0;
-                if (producoes) {
-                    producoes.forEach(producao => {
-                        const quantidades = producao.quantidades_servicos || {};
-                        if (quantidades[servico.id]) {
-                            const qtd = parseFloat(quantidades[servico.id]);
-                            quantidadeProduzida += qtd;
-                            console.log(`🏗️ Produção encontrada: +${qtd} (total: ${quantidadeProduzida})`);
-                        }
-                    });
+                if (itemProposta) {
+                    const precoMaoObra = parseFloat(itemProposta.preco_mao_obra || 0);
+                    const precoMaterial = parseFloat(itemProposta.preco_material || 0);
+                    valorUnitario = precoMaoObra + precoMaterial;
+                    quantidadeContratada = parseFloat(itemProposta.quantidade || 0);
+                    totalContratado = quantidadeContratada * valorUnitario;
+                    console.log(`💰 Valores da proposta: ${precoMaoObra} + ${precoMaterial} = ${valorUnitario}`);
+                } else {
+                    console.log(`⚠️ Serviço ${servico.codigo} não encontrado nas propostas - usando valores padrão`);
                 }
-                console.log(`🏗️ Quantidade total produzida: ${quantidadeProduzida}`);
+
+                // Quantidade produzida (da produção diária)
+                const quantidadeProduzida = quantidadesPorServico[servico.id] || 0;
+                console.log(`🏗️ Quantidade produzida: ${quantidadeProduzida}`);
 
                 // Calcular quantidade já medida
                 let quantidadeJaMedida = 0;
                 servicosMedidos.forEach(sm => {
                     if (sm.servico_id === servico.id) {
-                        const qtd = parseFloat(sm.quantidade_medida || 0);
-                        quantidadeJaMedida += qtd;
-                        console.log(`📏 Medição encontrada: +${qtd} (total: ${quantidadeJaMedida})`);
+                        quantidadeJaMedida += parseFloat(sm.quantidade_medida || 0);
                     }
                 });
-                console.log(`📏 Quantidade total já medida: ${quantidadeJaMedida}`);
+                console.log(`📏 Quantidade já medida: ${quantidadeJaMedida}`);
 
                 // Calcular quantidade disponível
                 const quantidadeDisponivel = Math.max(0, quantidadeProduzida - quantidadeJaMedida);
-                console.log(`✅ Quantidade disponível: ${quantidadeProduzida} - ${quantidadeJaMedida} = ${quantidadeDisponivel}`);
+                console.log(`✅ Quantidade disponível: ${quantidadeDisponivel}`);
 
-                const servicoCompleto = {
+                return {
                     servico_id: servico.id,
                     servico_codigo: servico.codigo,
                     servico_descricao: servico.descricao,
@@ -361,15 +364,9 @@ class MedicoesManager {
                     quantidade_ja_medida: quantidadeJaMedida,
                     quantidade_disponivel: quantidadeDisponivel
                 };
+            });
 
-                // MOSTRAR TODOS OS SERVIÇOS, MESMO SEM QUANTIDADE DISPONÍVEL
-                console.log(`🎯 Serviço ${servico.codigo}: ${quantidadeDisponivel > 0 ? 'DISPONÍVEL' : 'SEM QUANTIDADE DISPONÍVEL'}`);
-                
-                return servicoCompleto;
-            }).filter(s => s !== null); // Só remove serviços que não foram encontrados
-
-            console.log('📋 Serviços processados:', servicosCompletos.length);
-            console.log('📋 Serviços com quantidade disponível:', servicosCompletos.filter(s => s.quantidade_disponivel > 0).length);
+            console.log('🎉 SUCESSO! Serviços processados:', servicosCompletos.length);
             
             // DEBUG TEMPORÁRIO - INÍCIO
             console.log('🔍 DEBUG - Dados dos serviços com valores corretos:');
@@ -581,7 +578,7 @@ class MedicoesManager {
     }
 
     // ========================================
-    // RENDERIZAÇÃO - MOSTRA TODOS OS SERVIÇOS
+    // RENDERIZAÇÃO - TODOS OS SERVIÇOS
     // ========================================
 
     renderMedicoes() {
@@ -691,7 +688,7 @@ class MedicoesManager {
             return;
         }
 
-        // MOSTRAR TODOS OS SERVIÇOS - COM INDICAÇÃO DE STATUS
+        // MOSTRAR TODOS OS SERVIÇOS
         container.innerHTML = `
             <table class="table" style="width: 100%; margin-top: 1rem;">
                 <thead>
@@ -706,11 +703,10 @@ class MedicoesManager {
                 <tbody>
                     ${this.servicosObra.map(servico => {
                         const disponivel = servico.quantidade_disponivel > 0;
-                        const corLinha = disponivel ? 'rgba(173, 216, 230, 0.2)' : 'rgba(255, 255, 255, 0.05)';
-                        const statusTexto = disponivel ? '' : '<div style="color: #ff6b6b; font-size: 0.8rem; margin-top: 0.25rem;">⚠️ Sem quantidade disponível</div>';
+                        const temProposta = servico.valor_unitario_contratado > 0;
                         
                         return `
-                        <tr style="border-bottom: 1px solid ${corLinha}; ${!disponivel ? 'opacity: 0.6;' : ''}">
+                        <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.2);">
                             <td style="padding: 1rem;">
                                 <div style="color: #add8e6; font-weight: 600; margin-bottom: 0.25rem;">
                                     ${servico.servico_codigo}
@@ -719,17 +715,25 @@ class MedicoesManager {
                                     ${servico.servico_descricao}
                                 </div>
                                 <div style="color: #87ceeb; font-size: 0.8rem; margin-top: 0.25rem;">
-                                    Valor unitário: ${this.formatarMoeda(servico.valor_unitario_contratado || 0)}
+                                    ${temProposta ? 
+                                        `Valor unitário: ${this.formatarMoeda(servico.valor_unitario_contratado)}` : 
+                                        '⚠️ Sem valor na proposta'
+                                    }
                                 </div>
-                                ${statusTexto}
                             </td>
                             <td style="padding: 1rem; text-align: center;">
+                                ${temProposta ? `
                                 <div style="color: #add8e6; font-weight: 600;">
                                     ${servico.quantidade_contratada || 0} ${servico.unidade || ''}
                                 </div>
                                 <div style="color: #87ceeb; font-size: 0.8rem;">
                                     ${this.formatarMoeda(servico.total_contratado || 0)}
                                 </div>
+                                ` : `
+                                <div style="color: #ff6b6b; font-size: 0.8rem;">
+                                    Não contratado
+                                </div>
+                                `}
                             </td>
                             <td style="padding: 1rem; text-align: center;">
                                 <div style="color: #ffd700; font-weight: 600;">
