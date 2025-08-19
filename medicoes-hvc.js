@@ -1,5 +1,5 @@
 // Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO SIMPLIFICADA - Sem JOINs complexos para evitar erros de relacionamento
+// VERSÃO CORRIGIDA - IDs corretos e verificações de segurança
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -87,6 +87,18 @@ class MedicoesManager {
         if (searchObras) {
             searchObras.addEventListener('input', (e) => this.filtrarObras(e.target.value));
         }
+    }
+
+    // ========================================
+    // UTILITÁRIO PARA VERIFICAR ELEMENTOS
+    // ========================================
+    
+    getElement(id) {
+        const element = document.getElementById(id);
+        if (!element) {
+            console.warn(`Elemento com ID '${id}' não encontrado`);
+        }
+        return element;
     }
 
     // ========================================
@@ -251,15 +263,23 @@ class MedicoesManager {
     }
 
     // ========================================
-    // MODAIS
+    // MODAIS - COM VERIFICAÇÕES DE SEGURANÇA
     // ========================================
 
     abrirModalNovaMedicao() {
         console.log('Abrindo modal de nova medição...');
         
-        // Limpar formulário
-        document.getElementById('data-medicao').value = new Date().toISOString().split('T')[0];
-        document.getElementById('observacoes-medicao').value = '';
+        // Verificar e limpar formulário
+        const dataMedicao = this.getElement('data-medicao');
+        const observacoes = this.getElement('observacoes-medicao');
+        
+        if (dataMedicao) {
+            dataMedicao.value = new Date().toISOString().split('T')[0];
+        }
+        
+        if (observacoes) {
+            observacoes.value = '';
+        }
         
         // Resetar seleções
         this.obraSelecionada = null;
@@ -267,32 +287,52 @@ class MedicoesManager {
         this.valorTotalCalculado = 0;
         
         // Resetar interface
-        const obraContainer = document.getElementById('obra-selecionada-container');
-        obraContainer.innerHTML = `
-            <button type="button" class="btn-secondary" onclick="abrirModalObras()">
-                <i class="fas fa-building"></i>
-                Selecionar Obra
-            </button>
-        `;
+        const obraContainer = this.getElement('obra-selecionada-container');
+        if (obraContainer) {
+            obraContainer.innerHTML = `
+                <button type="button" class="btn-secondary" onclick="abrirModalObras()">
+                    <i class="fas fa-building"></i>
+                    Selecionar Obra
+                </button>
+            `;
+        }
         
         // Esconder container de serviços
-        document.getElementById('servicos-container').style.display = 'none';
+        const servicosContainer = this.getElement('servicos-container');
+        if (servicosContainer) {
+            servicosContainer.style.display = 'none';
+        }
         
-        // Mostrar modal
-        document.getElementById('modal-nova-medicao').style.display = 'block';
+        // Mostrar modal - USANDO ID CORRETO
+        const modal = this.getElement('modal-medicao');
+        if (modal) {
+            modal.style.display = 'block';
+            console.log('✅ Modal aberto com sucesso');
+        } else {
+            console.error('❌ Modal não encontrado - ID: modal-medicao');
+        }
     }
 
     fecharModalMedicao() {
-        document.getElementById('modal-nova-medicao').style.display = 'none';
+        const modal = this.getElement('modal-medicao');
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     abrirModalObras() {
         this.renderObrasModal();
-        document.getElementById('modal-obras').style.display = 'block';
+        const modal = this.getElement('modal-obras');
+        if (modal) {
+            modal.style.display = 'block';
+        }
     }
 
     fecharModalObras() {
-        document.getElementById('modal-obras').style.display = 'none';
+        const modal = this.getElement('modal-obras');
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     abrirModalValor() {
@@ -300,16 +340,34 @@ class MedicoesManager {
         this.calcularValorTotal();
         
         // Atualizar interface
-        document.getElementById('valor-calculado').textContent = this.formatarMoeda(this.valorTotalCalculado);
-        document.getElementById('valor-ajustado').value = this.valorTotalCalculado.toFixed(2);
-        document.getElementById('motivo-ajuste').value = '';
+        const valorCalculado = this.getElement('valor-calculado');
+        const valorAjustado = this.getElement('valor-ajustado');
+        const motivoAjuste = this.getElement('motivo-ajuste');
+        
+        if (valorCalculado) {
+            valorCalculado.textContent = this.formatarMoeda(this.valorTotalCalculado);
+        }
+        
+        if (valorAjustado) {
+            valorAjustado.value = this.valorTotalCalculado.toFixed(2);
+        }
+        
+        if (motivoAjuste) {
+            motivoAjuste.value = '';
+        }
         
         // Mostrar modal
-        document.getElementById('modal-confirmar-valor').style.display = 'block';
+        const modal = this.getElement('modal-confirmar-valor');
+        if (modal) {
+            modal.style.display = 'block';
+        }
     }
 
     fecharModalValor() {
-        document.getElementById('modal-confirmar-valor').style.display = 'none';
+        const modal = this.getElement('modal-confirmar-valor');
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     // ========================================
@@ -330,21 +388,23 @@ class MedicoesManager {
             this.obraSelecionada = obra;
             
             // Atualizar interface
-            const obraContainer = document.getElementById('obra-selecionada-container');
-            obraContainer.innerHTML = `
-                <div class="obra-selecionada">
-                    <div class="obra-info">
-                        <div>
-                            <div class="obra-nome">${obra.numero_obra}</div>
-                            <div class="obra-cliente">${obra.clientes_hvc.nome}</div>
+            const obraContainer = this.getElement('obra-selecionada-container');
+            if (obraContainer) {
+                obraContainer.innerHTML = `
+                    <div class="obra-selecionada">
+                        <div class="obra-info">
+                            <div>
+                                <div class="obra-nome">${obra.numero_obra}</div>
+                                <div class="obra-cliente">${obra.clientes_hvc.nome}</div>
+                            </div>
+                            <button type="button" class="btn-secondary" onclick="abrirModalObras()">
+                                <i class="fas fa-edit"></i>
+                                Alterar
+                            </button>
                         </div>
-                        <button type="button" class="btn-secondary" onclick="abrirModalObras()">
-                            <i class="fas fa-edit"></i>
-                            Alterar
-                        </button>
                     </div>
-                </div>
-            `;
+                `;
+            }
             
             // Carregar serviços da obra
             this.showLoading();
@@ -363,7 +423,10 @@ class MedicoesManager {
             await this.renderServicos();
             
             // Mostrar container de serviços
-            document.getElementById('servicos-container').style.display = 'block';
+            const servicosContainer = this.getElement('servicos-container');
+            if (servicosContainer) {
+                servicosContainer.style.display = 'block';
+            }
             
             // Fechar modal de obras
             this.fecharModalObras();
@@ -382,7 +445,7 @@ class MedicoesManager {
     // ========================================
 
     renderMedicoes() {
-        const tbody = document.getElementById('medicoes-list');
+        const tbody = this.getElement('medicoes-list');
         if (!tbody) return;
 
         if (this.medicoes.length === 0) {
@@ -424,7 +487,7 @@ class MedicoesManager {
     }
 
     renderObrasModal() {
-        const container = document.getElementById('obras-list');
+        const container = this.getElement('obras-list');
         if (!container) return;
 
         if (this.obras.length === 0) {
@@ -469,9 +532,9 @@ class MedicoesManager {
         console.log('🖼️ DEBUG - Iniciando renderização dos serviços:');
         console.log('📦 this.servicosObra existe?', !!this.servicosObra);
         console.log('📊 Quantidade para renderizar:', this.servicosObra?.length || 0);
-        console.log('🎯 Elemento servicos-list encontrado?', !!document.getElementById('servicos-list'));
+        console.log('🎯 Elemento servicos-list encontrado?', !!this.getElement('servicos-list'));
         
-        const servicosContainer = document.getElementById('servicos-list');
+        const servicosContainer = this.getElement('servicos-list');
         if (servicosContainer) {
             console.log('✅ Container de serviços encontrado');
             console.log('📍 Conteúdo atual do container:', servicosContainer.innerHTML);
@@ -480,7 +543,7 @@ class MedicoesManager {
         }
         // DEBUG TEMPORÁRIO - FIM
 
-        const container = document.getElementById('servicos-list');
+        const container = this.getElement('servicos-list');
         if (!container) {
             console.log('❌ ERRO: Container servicos-list não encontrado no DOM');
             return;
@@ -549,7 +612,7 @@ class MedicoesManager {
         this.valorTotalCalculado = 0;
         
         this.servicosObra.forEach(servico => {
-            const input = document.getElementById(`medicao-${servico.servico_id}`);
+            const input = this.getElement(`medicao-${servico.servico_id}`);
             if (input && input.value) {
                 const quantidade = parseFloat(input.value);
                 if (quantidade > 0) {
@@ -571,7 +634,7 @@ class MedicoesManager {
     // ========================================
 
     populateObrasFilter() {
-        const select = document.getElementById('filtro-obra');
+        const select = this.getElement('filtro-obra');
         if (!select) return;
         
         select.innerHTML = '<option value="">Todas as obras</option>';
@@ -581,7 +644,6 @@ class MedicoesManager {
     }
 
     aplicarFiltros() {
-        // Implementar filtros se necessário
         console.log('Aplicando filtros...');
     }
 
@@ -599,7 +661,7 @@ class MedicoesManager {
     }
 
     renderObrasModalFiltradas(obras) {
-        const container = document.getElementById('obras-list');
+        const container = this.getElement('obras-list');
         if (!container) return;
 
         if (obras.length === 0) {
