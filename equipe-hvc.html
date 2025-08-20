@@ -1167,13 +1167,24 @@
     }
 
     // ===== FORMATAÇÃO DE WHATSAPP CORRIGIDA =====
-    function formatWhatsAppDisplay(phone) {
-      // Formatação para exibição no campo (visual)
-      return phone.replace(/\D/g, '')
-                  .replace(/(\d{2})(\d)/, '($1) $2')
-                  .replace(/(\d{5})(\d)/, '$1-$2')
-                  .replace(/(-\d{4})\d+?$/, '$1');
-    }
+                function formatWhatsAppDisplay(phone) {
+              // 1. Remove tudo que não for dígito, exceto o '+' inicial.
+              let numbers = phone.replace(/[^\d+]/g, '');
+            
+              // 2. Garante que o '+' só exista no começo.
+              if (numbers.startsWith('+')) {
+                numbers = '+' + numbers.substring(1).replace(/\+/g, '');
+              } else {
+                numbers = numbers.replace(/\+/g, '');
+              }
+            
+              // 3. Limita o tamanho para o formato +DDI+DDD+NUMERO (ex: +5581999999999 -> 14 caracteres)
+              if (numbers.length > 14) {
+                numbers = numbers.substring(0, 14);
+              }
+              
+              return numbers;
+            }
 
     function formatWhatsAppForDatabase(phone) {
       // Formatação para salvar no banco (apenas números com +55)
