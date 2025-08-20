@@ -44,7 +44,7 @@
 
     .hvc-title {
       color: #ffffff;
-      text-shadow: 0 0 10px #ffffff, 0 0 20px #c0c0c0;
+      /* REMOVIDO: text-shadow: 0 0 10px #ffffff, 0 0 20px #c0c0c0; */
       font-size: 2rem;
       margin-bottom: 1.5rem;
       text-align: center;
@@ -81,7 +81,7 @@
       color: #ffffff;
       font-size: 0.9rem;
       font-weight: bold;
-      text-shadow: 0 0 5px #ffffff;
+      /* REMOVIDO: text-shadow: 0 0 5px #ffffff; */
     }
 
     .hvc-input, .hvc-select {
@@ -115,7 +115,7 @@
       font-weight: bold;
       cursor: pointer;
       transition: all 0.3s ease;
-      text-shadow: 0 0 5px #ffffff;
+      /* REMOVIDO: text-shadow: 0 0 5px #ffffff; */
       box-shadow: 0 4px 15px rgba(0, 0, 128, 0.3);
     }
 
@@ -141,13 +141,21 @@
       background: linear-gradient(145deg, #DC143C, #8B0000);
     }
 
+    /* TABELA COM COLUNAS REDIMENSIONÁVEIS */
+    .table-container {
+      overflow-x: auto;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+    }
+
     .hvc-table {
       width: 100%;
-      border-collapse: collapse;
+      border-collapse: separate;
+      border-spacing: 0;
       background: rgba(25, 25, 112, 0.2);
       border-radius: 12px;
       overflow: hidden;
-      box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+      table-layout: fixed; /* Necessário para redimensionamento */
     }
 
     .hvc-table th {
@@ -156,14 +164,43 @@
       padding: 1rem;
       text-align: left;
       font-weight: bold;
-      text-shadow: 0 0 5px #ffffff;
+      /* REMOVIDO: text-shadow: 0 0 5px #ffffff; */
       border-bottom: 2px solid rgba(255, 255, 255, 0.3);
+      position: relative;
+      user-select: none;
+    }
+
+    /* Colunas com larguras iniciais definidas */
+    .hvc-table th:nth-child(1) { width: 25%; min-width: 150px; } /* Nome */
+    .hvc-table th:nth-child(2) { width: 25%; min-width: 150px; } /* Documento */
+    .hvc-table th:nth-child(3) { width: 25%; min-width: 150px; } /* Responsáveis */
+    .hvc-table th:nth-child(4) { width: 25%; min-width: 120px; } /* Ações */
+
+    /* Divisor redimensionável entre colunas */
+    .hvc-table th:not(:last-child)::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 4px;
+      height: 100%;
+      background: rgba(255, 255, 255, 0.3);
+      cursor: col-resize;
+      user-select: none;
+      transition: background-color 0.2s;
+    }
+
+    .hvc-table th:not(:last-child):hover::after {
+      background: rgba(255, 255, 255, 0.6);
     }
 
     .hvc-table td {
       padding: 1rem;
       border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       transition: background-color 0.3s ease;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
 
     .hvc-table tr:hover {
@@ -227,7 +264,7 @@
     }
 
     .hvc-modal-close:hover {
-      text-shadow: 0 0 15px #ffffff;
+      /* REMOVIDO: text-shadow: 0 0 15px #ffffff; */
       transform: scale(1.1);
     }
 
@@ -260,6 +297,22 @@
       pointer-events: none;
     }
 
+    /* Indicador visual de redimensionamento */
+    .resizing {
+      cursor: col-resize !important;
+    }
+
+    .resize-line {
+      position: absolute;
+      top: 0;
+      width: 2px;
+      height: 100%;
+      background: #ffffff;
+      opacity: 0.8;
+      z-index: 1000;
+      pointer-events: none;
+    }
+
     @media (max-width: 768px) {
       #main-content-clientes-hvc {
         margin-left: 60px !important;
@@ -267,6 +320,15 @@
       
       .hvc-form, .hvc-filters {
         grid-template-columns: 1fr;
+      }
+      
+      /* Em mobile, desabilitar redimensionamento e usar layout responsivo */
+      .hvc-table {
+        table-layout: auto;
+      }
+      
+      .hvc-table th::after {
+        display: none;
       }
       
       .hvc-table, .hvc-table thead, .hvc-table tbody, .hvc-table th, .hvc-table td, .hvc-table tr {
@@ -290,6 +352,9 @@
         border: none;
         position: relative;
         padding-left: 50%;
+        white-space: normal;
+        text-overflow: initial;
+        overflow: visible;
       }
       
       .hvc-table td:before {
@@ -353,19 +418,22 @@
       <div class="results-counter" id="results-counter">
         Carregando clientes...
       </div>
-      <table id="clientes-table" class="hvc-table">
-        <thead>
-          <tr>
-            <th>Nome</th>
-            <th>Documento</th>
-            <th>Responsáveis</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td colspan="4" style="text-align: center;">Carregando clientes...</td></tr>
-        </tbody>
-      </table>
+      
+      <div class="table-container">
+        <table id="clientes-table" class="hvc-table">
+          <thead>
+            <tr>
+              <th data-column="0">Nome</th>
+              <th data-column="1">Documento</th>
+              <th data-column="2">Responsáveis</th>
+              <th data-column="3">Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" style="text-align: center;">Carregando clientes...</td></tr>
+          </tbody>
+        </table>
+      </div>
     </div>
   </main>
 
