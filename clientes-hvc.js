@@ -1,4 +1,4 @@
-// clientes-hvc.js - Gerenciamento de Clientes HVC
+// clientes-hvc.js - Gerenciamento de Clientes HVC com Filtros
 import { supabase } from "./supabase.js";
 
 // Elementos DOM
@@ -7,6 +7,13 @@ const clienteNomeInput = document.getElementById("cliente-nome");
 const clienteDocumentoInput = document.getElementById("cliente-documento");
 const documentoTipoSpan = document.getElementById("documento-tipo");
 const clientesTableBody = document.querySelector("#clientes-table tbody");
+
+// Elementos de filtro
+const filterNomeInput = document.getElementById("filter-nome");
+const filterDocumentoInput = document.getElementById("filter-documento");
+const filterResponsaveisSelect = document.getElementById("filter-responsaveis");
+const clearFiltersBtn = document.getElementById("clear-filters");
+const resultsCounter = document.getElementById("results-counter");
 
 // Modal de responsáveis
 const responsaveisModal = document.getElementById("responsaveis-modal");
@@ -21,6 +28,7 @@ const responsaveisList = document.getElementById("responsaveis-list");
 // Variáveis globais
 let currentClienteId = null;
 let clientes = [];
+let clientesFiltrados = [];
 
 // Verificação de acesso
 async function checkAccess() {
@@ -122,6 +130,76 @@ clienteDocumentoInput.addEventListener('input', (e) => {
     e.target.value = formatted;
 });
 
+// FUNÇÕES DE FILTRO
+
+// Aplicar todos os filtros
+function applyFilters() {
+    const nomeFilter = filterNomeInput.value.toLowerCase().trim();
+    const documentoFilter = filterDocumentoInput.value.toLowerCase().trim();
+    const responsaveisFilter = filterResponsaveisSelect.value;
+    
+    clientesFiltrados = clientes.filter(cliente => {
+        // Filtro por nome
+        const nomeMatch = !nomeFilter || cliente.nome.toLowerCase().includes(nomeFilter);
+        
+        // Filtro por documento
+        const documentoMatch = !documentoFilter || 
+            (cliente.documento && cliente.documento.toLowerCase().includes(documentoFilter));
+        
+        // Filtro por responsáveis
+        let responsaveisMatch = true;
+        if (responsaveisFilter) {
+            const numResponsaveis = cliente.responsaveis_cliente_hvc?.length || 0;
+            
+            if (responsaveisFilter === '0') {
+                responsaveisMatch = numResponsaveis === 0;
+            } else if (responsaveisFilter === '1') {
+                responsaveisMatch = numResponsaveis === 1;
+            } else if (responsaveisFilter === '2') {
+                responsaveisMatch = numResponsaveis === 2;
+            } else if (responsaveisFilter === '3') {
+                responsaveisMatch = numResponsaveis === 3;
+            } else if (responsaveisFilter === '4+') {
+                responsaveisMatch = numResponsaveis >= 4;
+            }
+        }
+        
+        return nomeMatch && documentoMatch && responsaveisMatch;
+    });
+    
+    renderClientes();
+    updateResultsCounter();
+}
+
+// Atualizar contador de resultados
+function updateResultsCounter() {
+    const total = clientes.length;
+    const filtered = clientesFiltrados.length;
+    
+    if (total === filtered) {
+        resultsCounter.textContent = `Mostrando ${total} cliente(s)`;
+    } else {
+        resultsCounter.textContent = `Mostrando ${filtered} de ${total} cliente(s)`;
+    }
+}
+
+// Limpar todos os filtros
+function clearFilters() {
+    filterNomeInput.value = '';
+    filterDocumentoInput.value = '';
+    filterResponsaveisSelect.value = '';
+    
+    clientesFiltrados = [...clientes];
+    renderClientes();
+    updateResultsCounter();
+}
+
+// Event listeners para filtros
+filterNomeInput.addEventListener('input', applyFilters);
+filterDocumentoInput.addEventListener('input', applyFilters);
+filterResponsaveisSelect.addEventListener('change', applyFilters);
+clearFiltersBtn.addEventListener('click', clearFilters);
+
 // Carregar clientes
 async function loadClientes() {
     try {
@@ -141,7 +219,9 @@ async function loadClientes() {
         if (error) throw error;
 
         clientes = data || [];
+        clientesFiltrados = [...clientes];
         renderClientes();
+        updateResultsCounter();
     } catch (error) {
         console.error('Erro ao carregar clientes:', error);
         alert('Erro ao carregar clientes. Verifique o console.');
@@ -150,12 +230,16 @@ async function loadClientes() {
 
 // Renderizar tabela de clientes
 function renderClientes() {
-    if (clientes.length === 0) {
-        clientesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum cliente cadastrado</td></tr>';
+    if (clientesFiltrados.length === 0) {
+        if (clientes.length === 0) {
+            clientesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum cliente cadastrado</td></tr>';
+        } else {
+            clientesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum cliente encontrado com os filtros aplicados</td></tr>';
+        }
         return;
     }
 
-    clientesTableBody.innerHTML = clientes.map(cliente => `
+    clientesTableBody.innerHTML = clientesFiltrados.map(cliente => `
         <tr>
             <td data-label="Nome">
                 <input type="text" value="${cliente.nome}" 
@@ -182,7 +266,6 @@ function renderClientes() {
         </tr>
     `).join('');
 }
-
 
 // Adicionar cliente
 addClienteForm.addEventListener('submit', async (e) => {
@@ -282,6 +365,9 @@ window.updateCliente = async (clienteId, field, value) => {
         if (cliente) {
             cliente[field] = value.trim();
         }
+        
+        // Reaplicar filtros
+        applyFilters();
     } catch (error) {
         console.error('Erro ao atualizar cliente:', error);
         alert('Erro ao atualizar cliente.');
