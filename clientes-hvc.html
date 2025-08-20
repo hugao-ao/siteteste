@@ -58,6 +58,32 @@
       margin-bottom: 2rem;
     }
 
+    /* Estilos específicos para filtros */
+    .hvc-filters {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      align-items: end;
+      margin-bottom: 1.5rem;
+      padding: 1.5rem;
+      background: rgba(0, 0, 128, 0.2);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .filter-label {
+      color: #ffffff;
+      font-size: 0.9rem;
+      font-weight: bold;
+      text-shadow: 0 0 5px #ffffff;
+    }
+
     .hvc-input, .hvc-select {
       width: 100%;
       padding: 0.8rem;
@@ -97,6 +123,14 @@
       background: linear-gradient(145deg, #191970, #000080);
       box-shadow: 0 0 20px rgba(255, 255, 255, 0.3);
       transform: translateY(-2px);
+    }
+
+    .hvc-btn-secondary {
+      background: linear-gradient(145deg, #4B0082, #663399);
+    }
+
+    .hvc-btn-secondary:hover {
+      background: linear-gradient(145deg, #663399, #4B0082);
     }
 
     .hvc-btn-danger {
@@ -148,6 +182,14 @@
     .hvc-table input:focus {
       border-color: #ffffff;
       box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+    }
+
+    /* Contador de resultados */
+    .results-counter {
+      color: #c0c0c0;
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+      text-align: right;
     }
 
     /* Modal HVC */
@@ -223,7 +265,7 @@
         margin-left: 60px !important;
       }
       
-      .hvc-form {
+      .hvc-form, .hvc-filters {
         grid-template-columns: 1fr;
       }
       
@@ -284,11 +326,48 @@
       </form>
     </div>
 
+    <!-- Seção de Filtros -->
+    <div class="hvc-container">
+      <h2 class="hvc-title">
+        <i class="fas fa-filter"></i> Filtros
+      </h2>
+      <div class="hvc-filters">
+        <div class="filter-group">
+          <label class="filter-label">Filtrar por Nome:</label>
+          <input type="text" id="filter-nome" class="hvc-input" placeholder="Digite o nome do cliente..." />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Filtrar por Documento:</label>
+          <input type="text" id="filter-documento" class="hvc-input" placeholder="Digite CPF ou CNPJ..." />
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">Responsáveis:</label>
+          <select id="filter-responsaveis" class="hvc-select">
+            <option value="">Todos</option>
+            <option value="0">Sem responsáveis</option>
+            <option value="1">1 responsável</option>
+            <option value="2">2 responsáveis</option>
+            <option value="3">3 responsáveis</option>
+            <option value="4+">4 ou mais responsáveis</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <label class="filter-label">&nbsp;</label>
+          <button type="button" id="clear-filters" class="hvc-btn hvc-btn-secondary">
+            <i class="fas fa-times"></i> Limpar Filtros
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Tabela de Clientes -->
     <div class="hvc-container">
       <h2 class="hvc-title">
         <i class="fas fa-list"></i> Lista de Clientes
       </h2>
+      <div class="results-counter" id="results-counter">
+        Carregando clientes...
+      </div>
       <table id="clientes-table" class="hvc-table">
         <thead>
           <tr>
