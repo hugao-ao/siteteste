@@ -1,4 +1,4 @@
-// clientes-hvc.js - Gerenciamento de Clientes HVC com Filtros Simplificados
+// clientes-hvc.js - Gerenciamento de Clientes HVC com Filtros e Colunas Redimensionáveis
 import { supabase } from "./supabase.js";
 
 // Elementos DOM
@@ -7,6 +7,7 @@ const clienteNomeInput = document.getElementById("cliente-nome");
 const clienteDocumentoInput = document.getElementById("cliente-documento");
 const documentoTipoSpan = document.getElementById("documento-tipo");
 const clientesTableBody = document.querySelector("#clientes-table tbody");
+const clientesTable = document.getElementById("clientes-table");
 
 // Elementos de filtro
 const filterNomeInput = document.getElementById("filter-nome");
@@ -29,6 +30,12 @@ let currentClienteId = null;
 let clientes = [];
 let clientesFiltrados = [];
 
+// Variáveis para redimensionamento de colunas
+let isResizing = false;
+let currentColumn = null;
+let startX = 0;
+let startWidth = 0;
+
 // Verificação de acesso
 async function checkAccess() {
     const userLevel = sessionStorage.getItem("nivel");
@@ -40,6 +47,84 @@ async function checkAccess() {
         return false;
     }
     return true;
+}
+
+// FUNCIONALIDADE DE REDIMENSIONAMENTO DE COLUNAS
+
+function setupColumnResizing() {
+    if (!clientesTable) return;
+    
+    const headers = clientesTable.querySelectorAll('th');
+    
+    headers.forEach((header, index) => {
+        // Não adicionar redimensionamento na última coluna
+        if (index === headers.length - 1) return;
+        
+        const resizer = header.querySelector('::after') || header;
+        
+        header.addEventListener('mousedown', (e) => {
+            // Verificar se o clique foi na área de redimensionamento (últimos 10px da direita)
+            const rect = header.getBoundingClientRect();
+            const isResizeArea = e.clientX > rect.right - 10;
+            
+            if (isResizeArea) {
+                e.preventDefault();
+                startColumnResize(e, header, index);
+            }
+        });
+    });
+    
+    // Event listeners globais para redimensionamento
+    document.addEventListener('mousemove', handleColumnResize);
+    document.addEventListener('mouseup', stopColumnResize);
+}
+
+function startColumnResize(e, column, columnIndex) {
+    isResizing = true;
+    currentColumn = column;
+    startX = e.clientX;
+    startWidth = column.offsetWidth;
+    
+    document.body.style.cursor = 'col-resize';
+    document.body.classList.add('resizing');
+    
+    // Criar linha visual de redimensionamento
+    const resizeLine = document.createElement('div');
+    resizeLine.className = 'resize-line';
+    resizeLine.style.left = e.clientX + 'px';
+    resizeLine.id = 'resize-line';
+    document.body.appendChild(resizeLine);
+}
+
+function handleColumnResize(e) {
+    if (!isResizing || !currentColumn) return;
+    
+    const diff = e.clientX - startX;
+    const newWidth = Math.max(100, startWidth + diff); // Largura mínima de 100px
+    
+    currentColumn.style.width = newWidth + 'px';
+    
+    // Atualizar linha visual
+    const resizeLine = document.getElementById('resize-line');
+    if (resizeLine) {
+        resizeLine.style.left = e.clientX + 'px';
+    }
+}
+
+function stopColumnResize() {
+    if (!isResizing) return;
+    
+    isResizing = false;
+    currentColumn = null;
+    
+    document.body.style.cursor = '';
+    document.body.classList.remove('resizing');
+    
+    // Remover linha visual
+    const resizeLine = document.getElementById('resize-line');
+    if (resizeLine) {
+        resizeLine.remove();
+    }
 }
 
 // Formatação de documento
@@ -123,7 +208,7 @@ function validateCNPJ(cnpj) {
     return result === parseInt(digits.charAt(1));
 }
 
-// FUNÇÕES DE FILTRO - VERSÃO SIMPLIFICADA
+// FUNÇÕES DE FILTRO
 
 // Aplicar filtros (apenas nome e documento)
 function applyFilters() {
@@ -580,7 +665,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (await checkAccess()) {
         await loadClientes();
-        setupFilterListeners(); // Configurar listeners após carregar clientes
+        setupFilterListeners(); // Configurar listeners de filtro
+        setupColumnResizing(); // Configurar redimensionamento de colunas
         console.log('Aplicação iniciada com sucesso'); // Debug
     }
 });
