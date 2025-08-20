@@ -760,27 +760,31 @@
         </div>
       </div>
 
-      <!-- Filtros Integrantes -->
-      <div class="filter-controls">
-        <div class="filter-group">
-          <label>Buscar por Nome:</label>
-          <input type="text" id="filtro-nome-integrante" class="form-input" placeholder="Digite o nome do integrante" onkeyup="filtrarIntegrantes()">
-        </div>
-        <div class="filter-group">
-          <label>Função:</label>
-          <select id="filtro-funcao-integrante" class="form-select" onchange="filtrarIntegrantes()">
-            <option value="">Todas</option>
-          </select>
-        </div>
-        <div class="filter-group">
-          <label>Status:</label>
-          <select id="filtro-status-integrante" class="form-select" onchange="filtrarIntegrantes()">
-            <option value="">Todos</option>
-            <option value="ativo">Ativo</option>
-            <option value="inativo">Inativo</option>
-          </select>
-        </div>
-      </div>
+            <!-- Filtros Integrantes -->
+            <div class="filter-controls">
+              <div class="filter-group">
+                <label>Buscar por Nome:</label>
+                <input type="text" id="filtro-nome-integrante" class="form-input" placeholder="Digite o nome do integrante" onkeyup="filtrarIntegrantes()">
+              </div>
+              <div class="filter-group">
+                <label>Buscar por CPF:</label>
+                <input type="text" id="filtro-cpf-integrante" class="form-input" placeholder="Digite o CPF" onkeyup="filtrarIntegrantes()" maxlength="14">
+              </div>
+              <div class="filter-group">
+                <label>Função:</label>
+                <select id="filtro-funcao-integrante" class="form-select" onchange="filtrarIntegrantes()">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="filter-group">
+                <label>Status:</label>
+                <select id="filtro-status-integrante" class="form-select" onchange="filtrarIntegrantes()">
+                  <option value="">Todos</option>
+                  <option value="ativo">Ativo</option>
+                  <option value="inativo">Inativo</option>
+                </select>
+              </div>
+            </div>
 
       <!-- Tabela Integrantes -->
       <div class="table-container">
