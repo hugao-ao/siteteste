@@ -1,4 +1,4 @@
-// clientes-hvc.js - Gerenciamento de Clientes HVC com Filtros
+// clientes-hvc.js - Gerenciamento de Clientes HVC com Filtros Simplificados
 import { supabase } from "./supabase.js";
 
 // Elementos DOM
@@ -11,7 +11,6 @@ const clientesTableBody = document.querySelector("#clientes-table tbody");
 // Elementos de filtro
 const filterNomeInput = document.getElementById("filter-nome");
 const filterDocumentoInput = document.getElementById("filter-documento");
-const filterResponsaveisSelect = document.getElementById("filter-responsaveis");
 const clearFiltersBtn = document.getElementById("clear-filters");
 const resultsCounter = document.getElementById("results-counter");
 
@@ -50,11 +49,11 @@ function formatDocument(value) {
     
     if (numbers.length <= 11) {
         // CPF: 000.000.000-00
-        documentoTipoSpan.textContent = 'CPF';
+        if (documentoTipoSpan) documentoTipoSpan.textContent = 'CPF';
         return numbers.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
     } else {
         // CNPJ: 00.000.000/0000-00
-        documentoTipoSpan.textContent = 'CNPJ';
+        if (documentoTipoSpan) documentoTipoSpan.textContent = 'CNPJ';
         return numbers.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
     }
 }
@@ -124,19 +123,21 @@ function validateCNPJ(cnpj) {
     return result === parseInt(digits.charAt(1));
 }
 
-// Formatação em tempo real do documento
-clienteDocumentoInput.addEventListener('input', (e) => {
-    const formatted = formatDocument(e.target.value);
-    e.target.value = formatted;
-});
+// FUNÇÕES DE FILTRO - VERSÃO SIMPLIFICADA
 
-// FUNÇÕES DE FILTRO
-
-// Aplicar todos os filtros
+// Aplicar filtros (apenas nome e documento)
 function applyFilters() {
+    console.log('Aplicando filtros...'); // Debug
+    
+    if (!filterNomeInput || !filterDocumentoInput) {
+        console.error('Elementos de filtro não encontrados');
+        return;
+    }
+    
     const nomeFilter = filterNomeInput.value.toLowerCase().trim();
     const documentoFilter = filterDocumentoInput.value.toLowerCase().trim();
-    const responsaveisFilter = filterResponsaveisSelect.value;
+    
+    console.log('Filtros:', { nomeFilter, documentoFilter }); // Debug
     
     clientesFiltrados = clientes.filter(cliente => {
         // Filtro por nome
@@ -146,33 +147,18 @@ function applyFilters() {
         const documentoMatch = !documentoFilter || 
             (cliente.documento && cliente.documento.toLowerCase().includes(documentoFilter));
         
-        // Filtro por responsáveis
-        let responsaveisMatch = true;
-        if (responsaveisFilter) {
-            const numResponsaveis = cliente.responsaveis_cliente_hvc?.length || 0;
-            
-            if (responsaveisFilter === '0') {
-                responsaveisMatch = numResponsaveis === 0;
-            } else if (responsaveisFilter === '1') {
-                responsaveisMatch = numResponsaveis === 1;
-            } else if (responsaveisFilter === '2') {
-                responsaveisMatch = numResponsaveis === 2;
-            } else if (responsaveisFilter === '3') {
-                responsaveisMatch = numResponsaveis === 3;
-            } else if (responsaveisFilter === '4+') {
-                responsaveisMatch = numResponsaveis >= 4;
-            }
-        }
-        
-        return nomeMatch && documentoMatch && responsaveisMatch;
+        return nomeMatch && documentoMatch;
     });
     
+    console.log('Clientes filtrados:', clientesFiltrados.length); // Debug
     renderClientes();
     updateResultsCounter();
 }
 
 // Atualizar contador de resultados
 function updateResultsCounter() {
+    if (!resultsCounter) return;
+    
     const total = clientes.length;
     const filtered = clientesFiltrados.length;
     
@@ -185,24 +171,49 @@ function updateResultsCounter() {
 
 // Limpar todos os filtros
 function clearFilters() {
-    filterNomeInput.value = '';
-    filterDocumentoInput.value = '';
-    filterResponsaveisSelect.value = '';
+    console.log('Limpando filtros...'); // Debug
+    
+    if (filterNomeInput) filterNomeInput.value = '';
+    if (filterDocumentoInput) filterDocumentoInput.value = '';
     
     clientesFiltrados = [...clientes];
     renderClientes();
     updateResultsCounter();
 }
 
-// Event listeners para filtros
-filterNomeInput.addEventListener('input', applyFilters);
-filterDocumentoInput.addEventListener('input', applyFilters);
-filterResponsaveisSelect.addEventListener('change', applyFilters);
-clearFiltersBtn.addEventListener('click', clearFilters);
+// Configurar event listeners para filtros
+function setupFilterListeners() {
+    console.log('Configurando listeners de filtro...'); // Debug
+    
+    if (filterNomeInput) {
+        filterNomeInput.addEventListener('input', applyFilters);
+        console.log('Listener nome configurado'); // Debug
+    }
+    
+    if (filterDocumentoInput) {
+        filterDocumentoInput.addEventListener('input', applyFilters);
+        console.log('Listener documento configurado'); // Debug
+    }
+    
+    if (clearFiltersBtn) {
+        clearFiltersBtn.addEventListener('click', clearFilters);
+        console.log('Listener limpar configurado'); // Debug
+    }
+}
+
+// Formatação em tempo real do documento
+if (clienteDocumentoInput) {
+    clienteDocumentoInput.addEventListener('input', (e) => {
+        const formatted = formatDocument(e.target.value);
+        e.target.value = formatted;
+    });
+}
 
 // Carregar clientes
 async function loadClientes() {
     try {
+        console.log('Carregando clientes...'); // Debug
+        
         const { data, error } = await supabase
             .from('clientes_hvc')
             .select(`
@@ -220,6 +231,9 @@ async function loadClientes() {
 
         clientes = data || [];
         clientesFiltrados = [...clientes];
+        
+        console.log('Clientes carregados:', clientes.length); // Debug
+        
         renderClientes();
         updateResultsCounter();
     } catch (error) {
@@ -230,6 +244,11 @@ async function loadClientes() {
 
 // Renderizar tabela de clientes
 function renderClientes() {
+    if (!clientesTableBody) {
+        console.error('Elemento tbody não encontrado');
+        return;
+    }
+    
     if (clientesFiltrados.length === 0) {
         if (clientes.length === 0) {
             clientesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Nenhum cliente cadastrado</td></tr>';
@@ -268,73 +287,75 @@ function renderClientes() {
 }
 
 // Adicionar cliente
-addClienteForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const nome = clienteNomeInput.value.trim();
-    const documento = clienteDocumentoInput.value.trim();
-    
-    // Validação: apenas nome é obrigatório
-    if (!nome) {
-        alert('Por favor, preencha o nome do cliente.');
-        return;
-    }
-    
-    // Se documento foi preenchido, validar
-    if (documento && !validateDocument(documento)) {
-        alert('Documento inválido. Verifique o CPF ou CNPJ ou deixe em branco.');
-        return;
-    }
-    
-    // Verificar se cliente já existe (por nome ou documento se preenchido)
-    const clienteExistente = clientes.find(c => 
-        c.nome.toLowerCase() === nome.toLowerCase() || 
-        (documento && c.documento === documento)
-    );
-    
-    if (clienteExistente) {
-        if (clienteExistente.nome.toLowerCase() === nome.toLowerCase()) {
-            alert('Já existe um cliente com este nome.');
-        } else {
-            alert('Já existe um cliente com este documento.');
-        }
-        return;
-    }
-    
-    try {
-        // Determinar tipo de documento se preenchido
-        let tipoDocumento = null;
-        if (documento) {
-            const numbers = documento.replace(/\D/g, '');
-            tipoDocumento = numbers.length === 11 ? 'CPF' : 'CNPJ';
+if (addClienteForm) {
+    addClienteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const nome = clienteNomeInput.value.trim();
+        const documento = clienteDocumentoInput.value.trim();
+        
+        // Validação: apenas nome é obrigatório
+        if (!nome) {
+            alert('Por favor, preencha o nome do cliente.');
+            return;
         }
         
-        const { data, error } = await supabase
-            .from('clientes_hvc')
-            .insert([{
-                nome,
-                documento: documento || null,
-                tipo_documento: tipoDocumento
-            }])
-            .select();
+        // Se documento foi preenchido, validar
+        if (documento && !validateDocument(documento)) {
+            alert('Documento inválido. Verifique o CPF ou CNPJ ou deixe em branco.');
+            return;
+        }
+        
+        // Verificar se cliente já existe (por nome ou documento se preenchido)
+        const clienteExistente = clientes.find(c => 
+            c.nome.toLowerCase() === nome.toLowerCase() || 
+            (documento && c.documento === documento)
+        );
+        
+        if (clienteExistente) {
+            if (clienteExistente.nome.toLowerCase() === nome.toLowerCase()) {
+                alert('Já existe um cliente com este nome.');
+            } else {
+                alert('Já existe um cliente com este documento.');
+            }
+            return;
+        }
+        
+        try {
+            // Determinar tipo de documento se preenchido
+            let tipoDocumento = null;
+            if (documento) {
+                const numbers = documento.replace(/\D/g, '');
+                tipoDocumento = numbers.length === 11 ? 'CPF' : 'CNPJ';
+            }
+            
+            const { data, error } = await supabase
+                .from('clientes_hvc')
+                .insert([{
+                    nome,
+                    documento: documento || null,
+                    tipo_documento: tipoDocumento
+                }])
+                .select();
 
-        if (error) throw error;
+            if (error) throw error;
 
-        alert('Cliente adicionado com sucesso!');
-        
-        // Limpar formulário
-        clienteNomeInput.value = '';
-        clienteDocumentoInput.value = '';
-        documentoTipoSpan.textContent = 'CPF';
-        
-        // Recarregar lista
-        await loadClientes();
-        
-    } catch (error) {
-        console.error('Erro ao adicionar cliente:', error);
-        alert('Erro ao adicionar cliente: ' + error.message);
-    }
-});
+            alert('Cliente adicionado com sucesso!');
+            
+            // Limpar formulário
+            clienteNomeInput.value = '';
+            clienteDocumentoInput.value = '';
+            if (documentoTipoSpan) documentoTipoSpan.textContent = 'CPF';
+            
+            // Recarregar lista
+            await loadClientes();
+            
+        } catch (error) {
+            console.error('Erro ao adicionar cliente:', error);
+            alert('Erro ao adicionar cliente: ' + error.message);
+        }
+    });
+}
 
 // Atualizar cliente
 window.updateCliente = async (clienteId, field, value) => {
@@ -400,19 +421,21 @@ window.deleteCliente = async (clienteId) => {
 // Modal de responsáveis
 window.openResponsaveisModal = (clienteId, clienteNome) => {
     currentClienteId = clienteId;
-    clienteNomeModal.textContent = clienteNome;
-    responsaveisModal.style.display = 'block';
+    if (clienteNomeModal) clienteNomeModal.textContent = clienteNome;
+    if (responsaveisModal) responsaveisModal.style.display = 'block';
     loadResponsaveis();
 };
 
-modalCloseResponsaveis.addEventListener('click', () => {
-    responsaveisModal.style.display = 'none';
-    currentClienteId = null;
-});
+if (modalCloseResponsaveis) {
+    modalCloseResponsaveis.addEventListener('click', () => {
+        if (responsaveisModal) responsaveisModal.style.display = 'none';
+        currentClienteId = null;
+    });
+}
 
 window.addEventListener('click', (e) => {
     if (e.target === responsaveisModal) {
-        responsaveisModal.style.display = 'none';
+        if (responsaveisModal) responsaveisModal.style.display = 'none';
         currentClienteId = null;
     }
 });
@@ -439,6 +462,8 @@ async function loadResponsaveis() {
 
 // Renderizar responsáveis
 function renderResponsaveis(responsaveis) {
+    if (!responsaveisList) return;
+    
     if (responsaveis.length === 0) {
         responsaveisList.innerHTML = '<p style="text-align: center; color: #c0c0c0;">Nenhum responsável cadastrado</p>';
         return;
@@ -463,45 +488,47 @@ function renderResponsaveis(responsaveis) {
 }
 
 // Adicionar responsável
-addResponsavelForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    if (!currentClienteId) return;
-    
-    const nome = responsavelNomeInput.value.trim();
-    const whatsapp = responsavelWhatsappInput.value.trim();
-    const email = responsavelEmailInput.value.trim();
-    
-    if (!nome) {
-        alert('O nome do responsável é obrigatório.');
-        return;
-    }
-    
-    try {
-        const { error } = await supabase
-            .from('responsaveis_cliente_hvc')
-            .insert([{
-                cliente_id: currentClienteId,
-                nome,
-                whatsapp: whatsapp || null,
-                email: email || null
-            }]);
-
-        if (error) throw error;
-
-        // Limpar formulário
-        addResponsavelForm.reset();
+if (addResponsavelForm) {
+    addResponsavelForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        // Recarregar responsáveis
-        await loadResponsaveis();
+        if (!currentClienteId) return;
         
-        // Atualizar contador na tabela principal
-        await loadClientes();
-    } catch (error) {
-        console.error('Erro ao adicionar responsável:', error);
-        alert('Erro ao adicionar responsável.');
-    }
-});
+        const nome = responsavelNomeInput.value.trim();
+        const whatsapp = responsavelWhatsappInput.value.trim();
+        const email = responsavelEmailInput.value.trim();
+        
+        if (!nome) {
+            alert('O nome do responsável é obrigatório.');
+            return;
+        }
+        
+        try {
+            const { error } = await supabase
+                .from('responsaveis_cliente_hvc')
+                .insert([{
+                    cliente_id: currentClienteId,
+                    nome,
+                    whatsapp: whatsapp || null,
+                    email: email || null
+                }]);
+
+            if (error) throw error;
+
+            // Limpar formulário
+            addResponsavelForm.reset();
+            
+            // Recarregar responsáveis
+            await loadResponsaveis();
+            
+            // Atualizar contador na tabela principal
+            await loadClientes();
+        } catch (error) {
+            console.error('Erro ao adicionar responsável:', error);
+            alert('Erro ao adicionar responsável.');
+        }
+    });
+}
 
 // Atualizar responsável
 window.updateResponsavel = async (responsavelId, field, value) => {
@@ -549,8 +576,12 @@ window.deleteResponsavel = async (responsavelId) => {
 
 // Inicialização
 document.addEventListener('DOMContentLoaded', async () => {
+    console.log('DOM carregado, iniciando aplicação...'); // Debug
+    
     if (await checkAccess()) {
         await loadClientes();
+        setupFilterListeners(); // Configurar listeners após carregar clientes
+        console.log('Aplicação iniciada com sucesso'); // Debug
     }
 });
 
