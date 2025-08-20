@@ -61,7 +61,7 @@
     /* Estilos específicos para filtros */
     .hvc-filters {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      grid-template-columns: 1fr 1fr auto;
       gap: 1rem;
       align-items: end;
       margin-bottom: 1.5rem;
@@ -326,11 +326,13 @@
       </form>
     </div>
 
-    <!-- Seção de Filtros -->
+    <!-- Tabela de Clientes com Filtros -->
     <div class="hvc-container">
       <h2 class="hvc-title">
-        <i class="fas fa-filter"></i> Filtros
+        <i class="fas fa-list"></i> Lista de Clientes
       </h2>
+      
+      <!-- Filtros dentro do mesmo bloco -->
       <div class="hvc-filters">
         <div class="filter-group">
           <label class="filter-label">Filtrar por Nome:</label>
@@ -341,30 +343,13 @@
           <input type="text" id="filter-documento" class="hvc-input" placeholder="Digite CPF ou CNPJ..." />
         </div>
         <div class="filter-group">
-          <label class="filter-label">Responsáveis:</label>
-          <select id="filter-responsaveis" class="hvc-select">
-            <option value="">Todos</option>
-            <option value="0">Sem responsáveis</option>
-            <option value="1">1 responsável</option>
-            <option value="2">2 responsáveis</option>
-            <option value="3">3 responsáveis</option>
-            <option value="4+">4 ou mais responsáveis</option>
-          </select>
-        </div>
-        <div class="filter-group">
           <label class="filter-label">&nbsp;</label>
           <button type="button" id="clear-filters" class="hvc-btn hvc-btn-secondary">
             <i class="fas fa-times"></i> Limpar Filtros
           </button>
         </div>
       </div>
-    </div>
 
-    <!-- Tabela de Clientes -->
-    <div class="hvc-container">
-      <h2 class="hvc-title">
-        <i class="fas fa-list"></i> Lista de Clientes
-      </h2>
       <div class="results-counter" id="results-counter">
         Carregando clientes...
       </div>
