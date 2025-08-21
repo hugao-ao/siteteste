@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Fluxo de Caixa Usuário HVC</title>
+    <title>Fluxo de Caixa HVC - Usuário</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
@@ -18,7 +18,7 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
-        #main-content-fluxo-caixa-hvc {
+        #main-content-fluxo-caixa-hvc-user {
             flex-grow: 1;
             padding: 1rem;
             transition: margin-left 0.3s ease;
@@ -27,7 +27,7 @@
             overflow-y: auto;
         }
 
-        #main-content-fluxo-caixa-hvc.sidebar-collapsed {
+        #main-content-fluxo-caixa-hvc-user.sidebar-collapsed {
             margin-left: 60px;
         }
 
@@ -345,14 +345,6 @@
             transform: translateY(-1px);
         }
 
-        .action-btn.edit:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .action-btn.delete:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
         .last-update {
             font-size: 0.6rem;
             color: rgba(255, 255, 255, 0.6);
@@ -501,7 +493,7 @@
 </head>
 <body>
     <!-- Sidebar será injetada aqui pelo sidebar.js -->
-    <main id="main-content-fluxo-caixa-hvc">
+    <main id="main-content-fluxo-caixa-hvc-user">
         <div class="hvc-container">
             <h1 class="hvc-title">
                 <i class="fas fa-wallet"></i> Fluxo de Caixa - Agenda e Pagamentos
@@ -523,14 +515,14 @@
                     </button>
                 </div>
                 <div class="calendar-grid" id="calendarGrid">
-                    <!-- Cabeçalhos dos dias da semana -->
-                    <div class="calendar-day-header">Dom</div>
+                    <!-- Cabeçalhos dos dias da semana - CORRIGIDO PARA COMEÇAR NA SEGUNDA -->
                     <div class="calendar-day-header">Seg</div>
                     <div class="calendar-day-header">Ter</div>
                     <div class="calendar-day-header">Qua</div>
                     <div class="calendar-day-header">Qui</div>
                     <div class="calendar-day-header">Sex</div>
                     <div class="calendar-day-header">Sáb</div>
+                    <div class="calendar-day-header">Dom</div>
                     <!-- Dias serão gerados dinamicamente -->
                 </div>
             </div>
@@ -654,7 +646,7 @@
     <script type="module" src="fluxo-caixa-hvc.js"></script>
     <script type="module">
         import { injectSidebar } from './sidebar.js';
-        injectSidebar("main-content-fluxo-caixa-hvc");
+        injectSidebar("main-content-fluxo-caixa-hvc-user");
     </script>
     
     <script>
@@ -664,11 +656,11 @@
         let editingItemId = null;
         let agendaItems = [];
 
-        // Inicialização
+        // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
-            initializeCalendar();
-            loadAgendaItems();
             setupEventListeners();
+            loadAgendaItems();
+            renderCalendar();
         });
 
         // Configurar event listeners
@@ -717,12 +709,7 @@
             });
         }
 
-        // Inicializar calendário
-        function initializeCalendar() {
-            renderCalendar();
-        }
-
-        // Renderizar calendário
+        // Renderizar calendário - CORRIGIDO PARA COMEÇAR NA SEGUNDA
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -740,11 +727,14 @@
             grid.innerHTML = '';
             headers.forEach(header => grid.appendChild(header));
 
-            // Primeiro dia do mês e último dia do mês anterior
+            // Primeiro dia do mês
             const firstDay = new Date(year, month, 1);
-            const lastDay = new Date(year, month + 1, 0);
             const startDate = new Date(firstDay);
-            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            // CORREÇÃO: Ajustar para começar na segunda-feira (1) em vez de domingo (0)
+            let dayOfWeek = firstDay.getDay();
+            dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Converter domingo (0) para 6, outros -1
+            startDate.setDate(startDate.getDate() - dayOfWeek);
 
             // Gerar 42 dias (6 semanas)
             for (let i = 0; i < 42; i++) {
@@ -786,7 +776,7 @@
                     const eventDiv = document.createElement('div');
                     eventDiv.className = `calendar-event ${event.tipo}`;
                     eventDiv.textContent = event.titulo;
-                    eventDiv.title = `${event.titulo} - ${event.hora || 'Sem horário'}`;
+                    eventDiv.title = `${event.titulo} - ${event.hora_evento || 'Sem horário'}`;
                     dayDiv.appendChild(eventDiv);
                 });
                 
@@ -846,6 +836,21 @@
                         status: 'pendente',
                         prioridade: 'media',
                         criado_por: 'admin',
+                        atualizado_por: null,
+                        atualizado_em: null
+                    },
+                    {
+                        id: 3,
+                        titulo: 'Entrega de Projeto',
+                        descricao: 'Entrega final do projeto residencial',
+                        tipo: 'compromisso',
+                        categoria: 'Entrega',
+                        data_evento: '2025-08-28',
+                        hora_evento: '16:00',
+                        valor: null,
+                        status: 'pendente',
+                        prioridade: 'alta',
+                        criado_por: 'user1',
                         atualizado_por: null,
                         atualizado_em: null
                     }
@@ -1048,6 +1053,7 @@
                 item.status = newStatus;
                 item.atualizado_por = currentUser;
                 item.atualizado_em = new Date().toLocaleString('pt-BR');
+                
                 renderItemsList();
                 renderCalendar();
                 
@@ -1062,6 +1068,7 @@
                 const index = agendaItems.findIndex(i => i.id === id);
                 if (index !== -1) {
                     agendaItems.splice(index, 1);
+                    
                     renderItemsList();
                     renderCalendar();
                     
