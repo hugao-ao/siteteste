@@ -2440,13 +2440,7 @@ function filtrarIntegrantes() {
   const filtroFuncao = document.getElementById('filtro-funcao-integrante').value;
   const filtroStatus = document.getElementById('filtro-status-integrante').value;
   
-  // DEBUG TEMPORÁRIO - ADICIONE ESTAS LINHAS
-  console.log('=== DEBUG FILTRO ===');
-  console.log('Filtro CPF digitado:', filtroCpf);
-  console.log('Filtro CPF original:', document.getElementById('filtro-cpf-integrante').value);
-  
   const linhas = document.querySelectorAll('#tabela-integrantes tbody tr');
-  console.log('Quantidade de linhas encontradas:', linhas.length);
   
   linhas.forEach((linha, index) => {
     if (linha.querySelector('.empty-state')) return;
@@ -2456,12 +2450,7 @@ function filtrarIntegrantes() {
     const nomeCompleto = linha.cells[0].textContent.trim();
     const status = linha.cells[4].textContent.toLowerCase().trim();
     const integrante = integrantesData.find(i => i.nome === nomeCompleto);
-    
-    // DEBUG TEMPORÁRIO - ADICIONE ESTAS LINHAS
-    if (index === 0) { // Só mostra debug da primeira linha
-      console.log('Primeira linha - CPF na tabela:', cpf);
-      console.log('Primeira linha - CPF original:', linha.cells[1].textContent);
-    }
+  
     
     const matchNome = nome.includes(filtroNome);
     const matchCpf = !filtroCpf || cpf.includes(filtroCpf);
