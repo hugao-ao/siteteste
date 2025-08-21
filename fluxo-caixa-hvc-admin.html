@@ -81,15 +81,15 @@
             box-shadow: 0 4px 16px rgba(255, 255, 255, 0.2);
         }
 
-        /* Layout em duas colunas - ESTÉTICA ORIGINAL */
+        /* Layout REDIMENSIONÁVEL em duas colunas */
         .content-layout {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
+            display: flex;
             gap: 1rem;
             height: calc(100vh - 200px);
+            position: relative;
         }
 
-        /* Calendário - ESTÉTICA ORIGINAL */
+        /* Calendário REDIMENSIONÁVEL */
         .calendar-container {
             background: rgba(25, 25, 112, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -97,6 +97,54 @@
             padding: 1rem;
             box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
             backdrop-filter: blur(10px);
+            /* REDIMENSIONÁVEL */
+            resize: horizontal;
+            overflow: auto;
+            min-width: 300px;
+            max-width: 70%;
+            width: 50%;
+        }
+
+        /* Lista REDIMENSIONÁVEL */
+        .list-container {
+            background: rgba(25, 25, 112, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            /* REDIMENSIONÁVEL */
+            resize: horizontal;
+            overflow: auto;
+            min-width: 300px;
+            flex: 1;
+        }
+
+        /* DIVISOR REDIMENSIONÁVEL */
+        .resize-handle {
+            width: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: col-resize;
+            border-radius: 5px;
+            transition: background 0.3s;
+            position: relative;
+        }
+
+        .resize-handle:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .resize-handle::before {
+            content: '⋮⋮';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 1.2rem;
+            line-height: 0.5;
         }
 
         .calendar-header {
@@ -212,18 +260,6 @@
             right: 2px;
             top: 0;
             font-size: 0.5rem;
-        }
-
-        /* Lista de itens - ESTÉTICA ORIGINAL */
-        .list-container {
-            background: rgba(25, 25, 112, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 12px;
-            padding: 1rem;
-            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
-            backdrop-filter: blur(10px);
-            display: flex;
-            flex-direction: column;
         }
 
         .list-header {
@@ -612,8 +648,18 @@
         /* Responsividade */
         @media (max-width: 768px) {
             .content-layout {
-                grid-template-columns: 1fr;
+                flex-direction: column;
                 height: auto;
+            }
+            
+            .calendar-container, .list-container {
+                resize: none;
+                width: 100%;
+                max-width: 100%;
+            }
+            
+            .resize-handle {
+                display: none;
             }
             
             .calendar-day {
@@ -660,8 +706,8 @@
         </div>
 
         <div class="content-layout">
-            <!-- Calendário à esquerda -->
-            <div class="calendar-container">
+            <!-- Calendário à esquerda - REDIMENSIONÁVEL -->
+            <div class="calendar-container" id="calendarContainer">
                 <div class="calendar-header">
                     <button class="calendar-nav" id="prevMonth">
                         <i class="fas fa-chevron-left"></i>
@@ -686,8 +732,11 @@
                 </div>
             </div>
 
-            <!-- Lista de compromissos e pagamentos à direita -->
-            <div class="list-container">
+            <!-- Divisor redimensionável -->
+            <div class="resize-handle" id="resizeHandle"></div>
+
+            <!-- Lista de compromissos e pagamentos à direita - REDIMENSIONÁVEL -->
+            <div class="list-container" id="listContainer">
                 <div class="list-header">
                     <div class="list-title">Compromissos e Pagamentos</div>
                     <button class="add-btn" id="addItemBtn">
@@ -860,10 +909,52 @@
         document.addEventListener('DOMContentLoaded', function() {
             setupEventListeners();
             setupCurrencyMask();
-            setupRecurrenceToggle(); // CONFIGURAR TOGGLE DE RECORRÊNCIA
+            setupRecurrenceToggle();
+            setupResizeHandles(); // CONFIGURAR REDIMENSIONAMENTO
             loadAgendaItems();
             renderCalendar();
         });
+
+        // CONFIGURAR REDIMENSIONAMENTO DOS QUADROS
+        function setupResizeHandles() {
+            const resizeHandle = document.getElementById('resizeHandle');
+            const calendarContainer = document.getElementById('calendarContainer');
+            const listContainer = document.getElementById('listContainer');
+            const contentLayout = document.querySelector('.content-layout');
+            
+            let isResizing = false;
+            
+            resizeHandle.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                document.addEventListener('mousemove', handleResize);
+                document.addEventListener('mouseup', stopResize);
+                e.preventDefault();
+            });
+            
+            function handleResize(e) {
+                if (!isResizing) return;
+                
+                const containerRect = contentLayout.getBoundingClientRect();
+                const mouseX = e.clientX - containerRect.left;
+                const containerWidth = containerRect.width;
+                
+                // Calcular porcentagens
+                const calendarPercent = (mouseX / containerWidth) * 100;
+                const listPercent = 100 - calendarPercent;
+                
+                // Limites mínimos e máximos
+                if (calendarPercent >= 20 && calendarPercent <= 80) {
+                    calendarContainer.style.width = calendarPercent + '%';
+                    listContainer.style.width = listPercent + '%';
+                }
+            }
+            
+            function stopResize() {
+                isResizing = false;
+                document.removeEventListener('mousemove', handleResize);
+                document.removeEventListener('mouseup', stopResize);
+            }
+        }
 
         // CONFIGURAR TOGGLE DE RECORRÊNCIA
         function setupRecurrenceToggle() {
@@ -961,9 +1052,9 @@
             }
         }
 
-        // CALCULAR PRÓXIMA DATA DE RECORRÊNCIA
+        // CALCULAR PRÓXIMA DATA DE RECORRÊNCIA - CORRIGIDO
         function calculateNextRecurrenceDate(baseDate, numero, unidade) {
-            const date = new Date(baseDate);
+            const date = new Date(baseDate + 'T00:00:00'); // CORRIGIR TIMEZONE
             
             switch (unidade) {
                 case 'dias':
@@ -996,14 +1087,16 @@
             return date;
         }
 
-        // GERAR EVENTOS RECORRENTES
+        // GERAR EVENTOS RECORRENTES - CORRIGIDO
         async function generateRecurrentEvents(baseItem) {
             if (!baseItem.recorrencia_ativa) return [];
             
+            console.log('Gerando eventos recorrentes para:', baseItem);
+            
             const events = [];
-            const startDate = new Date(baseItem.data_evento);
-            const endDate = baseItem.recorrencia_fim ? new Date(baseItem.recorrencia_fim) : null;
-            const maxEvents = 100; // Limite de segurança
+            const startDate = baseItem.data_evento; // String no formato YYYY-MM-DD
+            const endDate = baseItem.recorrencia_fim;
+            const maxEvents = 50; // Reduzir limite para debug
             
             let currentDate = calculateNextRecurrenceDate(
                 startDate, 
@@ -1013,38 +1106,61 @@
             
             let eventCount = 0;
             
+            console.log('Data inicial:', startDate);
+            console.log('Primeira recorrência calculada:', currentDate.toISOString().split('T')[0]);
+            
             while (eventCount < maxEvents) {
-                // Se há data fim e já passou, parar
-                if (endDate && currentDate > endDate) break;
+                const currentDateStr = currentDate.toISOString().split('T')[0];
                 
-                // Se a data é muito no futuro (2 anos), parar
-                const twoYearsFromNow = new Date();
-                twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
-                if (currentDate > twoYearsFromNow) break;
+                // Se há data fim e já passou, parar
+                if (endDate && currentDateStr > endDate) {
+                    console.log('Data fim atingida:', endDate);
+                    break;
+                }
+                
+                // Se a data é muito no futuro (1 ano), parar
+                const oneYearFromNow = new Date();
+                oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+                if (currentDate > oneYearFromNow) {
+                    console.log('Limite de 1 ano atingido');
+                    break;
+                }
                 
                 // Gerar horário para pagamentos recorrentes
                 let horaEvento = baseItem.hora_evento;
                 if (baseItem.tipo === 'pagamento' && !horaEvento) {
-                    horaEvento = await generateNextPaymentTime(currentDate.toISOString().split('T')[0]);
+                    horaEvento = await generateNextPaymentTime(currentDateStr);
                 }
                 
                 const newEvent = {
-                    ...baseItem,
-                    id: undefined, // Será gerado pelo banco
-                    data_evento: currentDate.toISOString().split('T')[0],
+                    titulo: baseItem.titulo,
+                    tipo: baseItem.tipo,
+                    categoria: baseItem.categoria,
+                    data_evento: currentDateStr,
                     hora_evento: horaEvento,
+                    valor: baseItem.valor,
+                    status: baseItem.status,
+                    prioridade: baseItem.prioridade,
+                    descricao: baseItem.descricao,
+                    observacoes: baseItem.observacoes,
                     evento_pai_id: baseItem.id,
                     eh_recorrente: true,
                     recorrencia_ativa: false, // Eventos filhos não geram mais recorrências
+                    recorrencia_numero: null,
+                    recorrencia_unidade: null,
+                    recorrencia_fim: null,
+                    criado_por: baseItem.criado_por,
                     criado_em: new Date().toISOString(),
+                    atualizado_por: baseItem.atualizado_por,
                     atualizado_em: new Date().toISOString()
                 };
                 
                 events.push(newEvent);
+                console.log(`Evento ${eventCount + 1} gerado:`, currentDateStr);
                 
                 // Calcular próxima data
                 currentDate = calculateNextRecurrenceDate(
-                    currentDate, 
+                    currentDateStr, 
                     baseItem.recorrencia_numero, 
                     baseItem.recorrencia_unidade
                 );
@@ -1052,6 +1168,7 @@
                 eventCount++;
             }
             
+            console.log(`Total de eventos gerados: ${events.length}`);
             return events;
         }
 
@@ -1430,7 +1547,7 @@
             document.getElementById('itemModal').style.display = 'block';
         }
 
-        // SALVAR ITEM NO SUPABASE - COM RECORRÊNCIA
+        // SALVAR ITEM NO SUPABASE - COM RECORRÊNCIA CORRIGIDA
         async function saveItem(event) {
             event.preventDefault();
             
@@ -1498,10 +1615,12 @@
                 // GERAR EVENTOS RECORRENTES SE NECESSÁRIO
                 if (!editingItemId && formData.recorrencia_ativa) {
                     const savedItem = result.data[0];
+                    console.log('Item salvo para recorrência:', savedItem);
+                    
                     const recurrentEvents = await generateRecurrentEvents(savedItem);
                     
                     if (recurrentEvents.length > 0) {
-                        console.log('Gerando eventos recorrentes:', recurrentEvents.length);
+                        console.log('Inserindo eventos recorrentes:', recurrentEvents);
                         
                         const { error: recurrenceError } = await supabase
                             .from('agenda_hvc')
