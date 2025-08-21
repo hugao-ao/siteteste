@@ -764,5 +764,69 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// ========================================
+// FUNÇÕES DE FILTRO
+// ========================================
+
+function filtrarIntegrantes() {
+    const filtroNome = document.getElementById('filtro-nome-integrante')?.value.toLowerCase() || '';
+    const filtroCpf = document.getElementById('filtro-cpf-integrante')?.value.toLowerCase() || '';
+    const filtroFuncao = document.getElementById('filtro-funcao-integrante')?.value || '';
+    const filtroStatus = document.getElementById('filtro-status-integrante')?.value || '';
+    
+    const linhas = document.querySelectorAll('#tabela-integrantes tbody tr');
+    
+    linhas.forEach(linha => {
+        // Pular linha de estado vazio
+        if (linha.querySelector('.empty-state')) return;
+        
+        const nome = linha.cells[0]?.textContent.toLowerCase() || '';
+        const cpf = linha.cells[1]?.textContent.toLowerCase() || '';
+        const funcaoTexto = linha.cells[3]?.textContent.toLowerCase() || '';
+        const statusTexto = linha.cells[4]?.textContent.toLowerCase() || '';
+        
+        // Encontrar integrante correspondente para verificar função
+        const nomeCompleto = linha.cells[0]?.textContent.trim() || '';
+        const integrante = integrantesData.find(i => i.nome === nomeCompleto);
+        
+        // Aplicar filtros
+        const matchNome = !filtroNome || nome.includes(filtroNome);
+        const matchCpf = !filtroCpf || cpf.includes(filtroCpf);
+        const matchFuncao = !filtroFuncao || (integrante && integrante.funcao_id === filtroFuncao);
+        const matchStatus = !filtroStatus || statusTexto.includes(filtroStatus);
+        
+        // Mostrar/ocultar linha
+        linha.style.display = matchNome && matchCpf && matchFuncao && matchStatus ? '' : 'none';
+    });
+}
+
+function filtrarEquipes() {
+    const filtroNumero = document.getElementById('filtro-numero-equipe')?.value.toLowerCase() || '';
+    const filtroStatus = document.getElementById('filtro-status-equipe')?.value || '';
+    
+    const linhas = document.querySelectorAll('#tabela-equipes tbody tr');
+    
+    linhas.forEach(linha => {
+        // Pular linha de estado vazio
+        if (linha.querySelector('.empty-state')) return;
+        
+        const numero = linha.cells[0]?.textContent.toLowerCase() || '';
+        const statusTexto = linha.cells[2]?.textContent.toLowerCase() || '';
+        
+        // Aplicar filtros
+        const matchNumero = !filtroNumero || numero.includes(filtroNumero);
+        const matchStatus = !filtroStatus || statusTexto.includes(filtroStatus);
+        
+        // Mostrar/ocultar linha
+        linha.style.display = matchNumero && matchStatus ? '' : 'none';
+    });
+}
+
+// Tornar funções de filtro disponíveis globalmente
+window.filtrarIntegrantes = filtrarIntegrantes;
+window.filtrarEquipes = filtrarEquipes;
+
+
+
 console.log('📦 Sistema de equipes HVC carregado!');
 
