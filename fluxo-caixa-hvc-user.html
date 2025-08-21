@@ -52,7 +52,7 @@
             gap: 10px;
         }
 
-        /* Layout em duas colunas */
+        /* Layout em duas colunas - ESTÉTICA ORIGINAL */
         .content-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -60,7 +60,7 @@
             height: calc(100vh - 200px);
         }
 
-        /* Calendário - Paleta HVC */
+        /* Calendário - ESTÉTICA ORIGINAL */
         .calendar-container {
             background: rgba(25, 25, 112, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -175,7 +175,7 @@
             color: #000080;
         }
 
-        /* Lista de itens - Paleta HVC */
+        /* Lista de itens - ESTÉTICA ORIGINAL */
         .list-container {
             background: rgba(25, 25, 112, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -473,6 +473,23 @@
             transform: translateY(-1px);
         }
 
+        /* Loading e Error */
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .error {
+            text-align: center;
+            padding: 2rem;
+            color: #ff6b6b;
+            background: rgba(255, 107, 107, 0.1);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+            border-radius: 8px;
+            margin: 1rem 0;
+        }
+
         /* Responsividade */
         @media (max-width: 768px) {
             .content-layout {
@@ -501,7 +518,7 @@
         </div>
 
         <div class="content-layout">
-            <!-- Calendário -->
+            <!-- Calendário à esquerda -->
             <div class="calendar-container">
                 <div class="calendar-header">
                     <button class="calendar-nav" id="prevMonth">
@@ -515,7 +532,7 @@
                     </button>
                 </div>
                 <div class="calendar-grid" id="calendarGrid">
-                    <!-- Cabeçalhos dos dias da semana - CORRIGIDO PARA COMEÇAR NA SEGUNDA -->
+                    <!-- Cabeçalhos dos dias da semana - COMEÇAR NA SEGUNDA -->
                     <div class="calendar-day-header">Seg</div>
                     <div class="calendar-day-header">Ter</div>
                     <div class="calendar-day-header">Qua</div>
@@ -527,7 +544,7 @@
                 </div>
             </div>
 
-            <!-- Lista de itens -->
+            <!-- Lista de compromissos e pagamentos à direita -->
             <div class="list-container">
                 <div class="list-header">
                     <div class="list-title">Compromissos e Pagamentos</div>
@@ -555,7 +572,7 @@
                 </div>
 
                 <div class="items-list" id="itemsList">
-                    <!-- Itens serão carregados dinamicamente -->
+                    <div class="loading">Carregando itens...</div>
                 </div>
             </div>
         </div>
@@ -649,7 +666,10 @@
         injectSidebar("main-content-fluxo-caixa-hvc-user");
     </script>
     
-    <script>
+    <script type="module">
+        // Importar cliente Supabase - INTEGRAÇÃO REAL
+        import { supabase } from './supabase.js';
+        
         // Variáveis globais
         let currentDate = new Date();
         let currentUser = sessionStorage.getItem('usuario') || 'user';
@@ -659,7 +679,7 @@
         // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
             setupEventListeners();
-            loadAgendaItems();
+            loadAgendaItems(); // CARREGAMENTO REAL DO SUPABASE
             renderCalendar();
         });
 
@@ -709,7 +729,7 @@
             });
         }
 
-        // Renderizar calendário - CORRIGIDO PARA COMEÇAR NA SEGUNDA
+        // Renderizar calendário - semana começa na segunda
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -731,9 +751,9 @@
             const firstDay = new Date(year, month, 1);
             const startDate = new Date(firstDay);
             
-            // CORREÇÃO: Ajustar para começar na segunda-feira (1) em vez de domingo (0)
+            // Ajustar para começar na segunda-feira
             let dayOfWeek = firstDay.getDay();
-            dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Converter domingo (0) para 6, outros -1
+            dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             startDate.setDate(startDate.getDate() - dayOfWeek);
 
             // Gerar 42 dias (6 semanas)
@@ -751,24 +771,20 @@
             const dayDiv = document.createElement('div');
             dayDiv.className = 'calendar-day';
             
-            // Verificar se é do mês atual
             if (date.getMonth() !== currentMonth) {
                 dayDiv.classList.add('other-month');
             }
             
-            // Verificar se é hoje
             const today = new Date();
             if (date.toDateString() === today.toDateString()) {
                 dayDiv.classList.add('today');
             }
             
-            // Número do dia
             const dayNumber = document.createElement('div');
             dayNumber.className = 'calendar-day-number';
             dayNumber.textContent = date.getDate();
             dayDiv.appendChild(dayNumber);
             
-            // Eventos do dia
             const dayEvents = getEventsForDate(date);
             if (dayEvents.length > 0) {
                 dayDiv.classList.add('has-events');
@@ -788,7 +804,6 @@
                 }
             }
             
-            // Click no dia
             dayDiv.addEventListener('click', () => {
                 const dateStr = date.toISOString().split('T')[0];
                 document.getElementById('dateFilter').value = dateStr;
@@ -804,63 +819,37 @@
             return agendaItems.filter(item => item.data_evento === dateStr);
         }
 
-        // Carregar itens da agenda
+        // CARREGAR ITENS DO SUPABASE - INTEGRAÇÃO REAL
         async function loadAgendaItems() {
             try {
-                // Simulação de dados - substituir pela chamada real ao Supabase
-                agendaItems = [
-                    {
-                        id: 1,
-                        titulo: 'Reunião com Cliente ABC',
-                        descricao: 'Discussão sobre novo projeto',
-                        tipo: 'compromisso',
-                        categoria: 'Reunião',
-                        data_evento: '2025-08-25',
-                        hora_evento: '14:00',
-                        valor: null,
-                        status: 'confirmado',
-                        prioridade: 'alta',
-                        criado_por: 'admin',
-                        atualizado_por: 'admin',
-                        atualizado_em: '2025-08-21 10:00:00'
-                    },
-                    {
-                        id: 2,
-                        titulo: 'Pagamento Fornecedor XYZ',
-                        descricao: 'Pagamento de materiais',
-                        tipo: 'pagamento',
-                        categoria: 'Fornecedor',
-                        data_evento: '2025-08-26',
-                        hora_evento: '10:00',
-                        valor: 5000.00,
-                        status: 'pendente',
-                        prioridade: 'media',
-                        criado_por: 'admin',
-                        atualizado_por: null,
-                        atualizado_em: null
-                    },
-                    {
-                        id: 3,
-                        titulo: 'Entrega de Projeto',
-                        descricao: 'Entrega final do projeto residencial',
-                        tipo: 'compromisso',
-                        categoria: 'Entrega',
-                        data_evento: '2025-08-28',
-                        hora_evento: '16:00',
-                        valor: null,
-                        status: 'pendente',
-                        prioridade: 'alta',
-                        criado_por: 'user1',
-                        atualizado_por: null,
-                        atualizado_em: null
-                    }
-                ];
+                console.log('Carregando itens do Supabase...');
+                
+                const { data, error } = await supabase
+                    .from('agenda_hvc')
+                    .select('*')
+                    .order('data_evento', { ascending: true });
+
+                if (error) {
+                    console.error('Erro ao carregar itens:', error);
+                    showError('Erro ao carregar itens da agenda: ' + error.message);
+                    return;
+                }
+
+                console.log('Itens carregados:', data);
+                agendaItems = data || [];
                 
                 renderItemsList();
                 renderCalendar();
             } catch (error) {
                 console.error('Erro ao carregar itens:', error);
+                showError('Erro ao conectar com o banco de dados');
             }
+        }
+
+        // Mostrar erro
+        function showError(message) {
+            const container = document.getElementById('itemsList');
+            container.innerHTML = `<div class="error">${message}</div>`;
         }
 
         // Renderizar lista de itens
@@ -929,7 +918,7 @@
                 </div>
                 ${item.atualizado_por ? `
                     <div class="last-update">
-                        Última atualização: ${item.atualizado_em} por ${item.atualizado_por}
+                        Última atualização: ${new Date(item.atualizado_em).toLocaleString('pt-BR')} por ${item.atualizado_por}
                     </div>
                 ` : ''}
             `;
@@ -957,7 +946,6 @@
                 return matchSearch && matchType && matchStatus && matchDate;
             });
             
-            // Temporariamente substituir agendaItems pelos filtrados
             const originalItems = agendaItems;
             agendaItems = filtered;
             renderItemsList();
@@ -974,14 +962,13 @@
         }
 
         // Editar item
-        function editItem(id) {
+        window.editItem = function(id) {
             const item = agendaItems.find(i => i.id === id);
             if (!item) return;
             
             editingItemId = id;
             document.getElementById('modalTitle').textContent = 'Editar Item';
             
-            // Preencher formulário
             document.getElementById('itemTitulo').value = item.titulo;
             document.getElementById('itemTipo').value = item.tipo;
             document.getElementById('itemCategoria').value = item.categoria || '';
@@ -993,7 +980,6 @@
             document.getElementById('itemDescricao').value = item.descricao || '';
             document.getElementById('itemObservacoes').value = item.observacoes || '';
             
-            // Mostrar campo valor se for pagamento
             if (item.tipo === 'pagamento') {
                 document.getElementById('valorGroup').style.display = 'block';
                 document.getElementById('itemValor').required = true;
@@ -1002,8 +988,8 @@
             document.getElementById('itemModal').style.display = 'block';
         }
 
-        // Salvar item
-        function saveItem(event) {
+        // SALVAR ITEM NO SUPABASE - INTEGRAÇÃO REAL
+        async function saveItem(event) {
             event.preventDefault();
             
             const formData = {
@@ -1018,63 +1004,99 @@
                 descricao: document.getElementById('itemDescricao').value,
                 observacoes: document.getElementById('itemObservacoes').value,
                 atualizado_por: currentUser,
-                atualizado_em: new Date().toLocaleString('pt-BR')
+                atualizado_em: new Date().toISOString()
             };
             
-            if (editingItemId) {
-                // Atualizar item existente
-                const index = agendaItems.findIndex(i => i.id === editingItemId);
-                if (index !== -1) {
-                    agendaItems[index] = { ...agendaItems[index], ...formData };
+            try {
+                let result;
+                
+                if (editingItemId) {
+                    console.log('Atualizando item:', editingItemId, formData);
+                    result = await supabase
+                        .from('agenda_hvc')
+                        .update(formData)
+                        .eq('id', editingItemId);
+                } else {
+                    console.log('Adicionando novo item:', formData);
+                    formData.criado_por = currentUser;
+                    formData.criado_em = new Date().toISOString();
+                    
+                    result = await supabase
+                        .from('agenda_hvc')
+                        .insert([formData]);
                 }
-            } else {
-                // Adicionar novo item
-                const newItem = {
-                    id: Date.now(), // ID temporário
-                    ...formData,
-                    criado_por: currentUser,
-                    criado_em: new Date().toLocaleString('pt-BR')
-                };
-                agendaItems.push(newItem);
-            }
-            
-            renderItemsList();
-            renderCalendar();
-            closeModal();
-            
-            // Aqui você adicionaria a chamada para salvar no Supabase
-            console.log('Item salvo:', formData);
-        }
-
-        // Atualizar status
-        function updateStatus(id, newStatus) {
-            const item = agendaItems.find(i => i.id === id);
-            if (item) {
-                item.status = newStatus;
-                item.atualizado_por = currentUser;
-                item.atualizado_em = new Date().toLocaleString('pt-BR');
                 
-                renderItemsList();
-                renderCalendar();
+                if (result.error) {
+                    console.error('Erro ao salvar item:', result.error);
+                    alert('Erro ao salvar item: ' + result.error.message);
+                    return;
+                }
                 
-                // Aqui você adicionaria a chamada para atualizar no Supabase
-                console.log('Status atualizado:', { id, status: newStatus, user: currentUser });
+                console.log('Item salvo com sucesso');
+                closeModal();
+                await loadAgendaItems(); // Recarregar do Supabase
+                
+            } catch (error) {
+                console.error('Erro ao salvar item:', error);
+                alert('Erro ao salvar item: ' + error.message);
             }
         }
 
-        // Excluir item
-        function deleteItem(id) {
-            if (confirm('Tem certeza que deseja excluir este item?')) {
-                const index = agendaItems.findIndex(i => i.id === id);
-                if (index !== -1) {
-                    agendaItems.splice(index, 1);
-                    
-                    renderItemsList();
-                    renderCalendar();
-                    
-                    // Aqui você adicionaria a chamada para excluir do Supabase
-                    console.log('Item excluído:', id);
+        // ATUALIZAR STATUS NO SUPABASE - INTEGRAÇÃO REAL
+        window.updateStatus = async function(id, newStatus) {
+            try {
+                console.log('Atualizando status:', id, newStatus);
+                
+                const { error } = await supabase
+                    .from('agenda_hvc')
+                    .update({
+                        status: newStatus,
+                        atualizado_por: currentUser,
+                        atualizado_em: new Date().toISOString()
+                    })
+                    .eq('id', id);
+                
+                if (error) {
+                    console.error('Erro ao atualizar status:', error);
+                    alert('Erro ao atualizar status: ' + error.message);
+                    return;
                 }
+                
+                console.log('Status atualizado com sucesso');
+                await loadAgendaItems(); // Recarregar do Supabase
+                
+            } catch (error) {
+                console.error('Erro ao atualizar status:', error);
+                alert('Erro ao atualizar status: ' + error.message);
+            }
+        }
+
+        // EXCLUIR ITEM DO SUPABASE - INTEGRAÇÃO REAL
+        window.deleteItem = async function(id) {
+            if (!confirm('Tem certeza que deseja excluir este item?')) {
+                return;
+            }
+            
+            try {
+                console.log('Excluindo item:', id);
+                
+                const { error } = await supabase
+                    .from('agenda_hvc')
+                    .delete()
+                    .eq('id', id);
+                
+                if (error) {
+                    console.error('Erro ao excluir item:', error);
+                    alert('Erro ao excluir item: ' + error.message);
+                    return;
+                }
+                
+                console.log('Item excluído com sucesso');
+                await loadAgendaItems(); // Recarregar do Supabase
+                
+            } catch (error) {
+                console.error('Erro ao excluir item:', error);
+                alert('Erro ao excluir item: ' + error.message);
             }
         }
 
@@ -1083,11 +1105,6 @@
             document.getElementById('itemModal').style.display = 'none';
             editingItemId = null;
         }
-
-        // Tornar funções globais para uso nos event handlers inline
-        window.editItem = editItem;
-        window.deleteItem = deleteItem;
-        window.updateStatus = updateStatus;
     </script>
 </body>
 </html>
