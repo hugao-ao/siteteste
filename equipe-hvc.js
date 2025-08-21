@@ -675,35 +675,29 @@ async function salvarNovaFuncao() {
 // ========================================
 
 function filtrarIntegrantes() {
-    const filtroNome = document.getElementById('filtro-nome-integrante')?.value.toLowerCase() || '';
-    const filtroCpf = document.getElementById('filtro-cpf-integrante')?.value.toLowerCase() || '';
-    const filtroFuncao = document.getElementById('filtro-funcao-integrante')?.value || '';
-    const filtroStatus = document.getElementById('filtro-status-integrante')?.value || '';
+  const filtroNome = document.getElementById('filtro-nome-integrante').value.toLowerCase();
+  const filtroCpf = document.getElementById('filtro-cpf-integrante').value.toLowerCase().replace(/\D/g, '');
+  const filtroFuncao = document.getElementById('filtro-funcao-integrante').value;
+  const filtroStatus = document.getElementById('filtro-status-integrante').value;
+  
+  const linhas = document.querySelectorAll('#tabela-integrantes tbody tr');
+  
+  linhas.forEach(linha => {
+    if (linha.querySelector('.empty-state')) return;
     
-    const linhas = document.querySelectorAll('#tabela-integrantes tbody tr');
+    const nome = linha.cells[0].textContent.toLowerCase();
+    const cpf = linha.cells[1].textContent.toLowerCase().replace(/\D/g, '');
+    const nomeCompleto = linha.cells[0].textContent.trim();
+    const status = linha.cells[4].textContent.toLowerCase().trim();
+    const integrante = integrantesData.find(i => i.nome === nomeCompleto);
     
-    linhas.forEach(linha => {
-        // Pular linha de estado vazio
-        if (linha.querySelector('.empty-state')) return;
-        
-        const nome = linha.cells[0]?.textContent.toLowerCase() || '';
-        const cpf = linha.cells[1]?.textContent.toLowerCase() || '';
-        const funcaoTexto = linha.cells[3]?.textContent.toLowerCase() || '';
-        const statusTexto = linha.cells[4]?.textContent.toLowerCase() || '';
-        
-        // Encontrar integrante correspondente para verificar função
-        const nomeCompleto = linha.cells[0]?.textContent.trim() || '';
-        const integrante = integrantesData.find(i => i.nome === nomeCompleto);
-        
-        // Aplicar filtros
-        const matchNome = !filtroNome || nome.includes(filtroNome);
-        const matchCpf = !filtroCpf || cpf.includes(filtroCpf);
-        const matchFuncao = !filtroFuncao || (integrante && integrante.funcao_id === filtroFuncao);
-        const matchStatus = !filtroStatus || statusTexto.includes(filtroStatus);
-        
-        // Mostrar/ocultar linha
-        linha.style.display = matchNome && matchCpf && matchFuncao && matchStatus ? '' : 'none';
-    });
+    const matchNome = nome.includes(filtroNome);
+    const matchCpf = !filtroCpf || cpf.includes(filtroCpf);
+    const matchFuncao = !filtroFuncao || (integrante && integrante.funcao_id === filtroFuncao);
+    const matchStatus = !filtroStatus || status.includes(filtroStatus);
+    
+    linha.style.display = matchNome && matchCpf && matchFuncao && matchStatus ? '' : 'none';
+  });
 }
 
 function filtrarEquipes() {
