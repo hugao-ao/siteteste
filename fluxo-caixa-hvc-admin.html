@@ -192,6 +192,7 @@
             text-overflow: ellipsis;
             white-space: nowrap;
             font-weight: bold;
+            position: relative;
         }
 
         .calendar-event.pagamento {
@@ -202,6 +203,15 @@
         .calendar-event.compromisso {
             background: rgba(255, 255, 255, 0.7);
             color: #000080;
+        }
+
+        /* INDICADOR DE RECORRÊNCIA */
+        .calendar-event.recorrente::after {
+            content: '🔄';
+            position: absolute;
+            right: 2px;
+            top: 0;
+            font-size: 0.5rem;
         }
 
         /* Lista de itens - ESTÉTICA ORIGINAL */
@@ -286,12 +296,23 @@
             padding: 0.8rem;
             margin-bottom: 0.5rem;
             transition: all 0.3s;
+            position: relative;
         }
 
         .item-card:hover {
             background: rgba(255, 255, 255, 0.15);
             transform: translateY(-2px);
             box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1);
+        }
+
+        /* INDICADOR DE RECORRÊNCIA NO CARD */
+        .item-card.recorrente::before {
+            content: '🔄';
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            font-size: 1rem;
+            opacity: 0.7;
         }
 
         .item-header {
@@ -380,6 +401,16 @@
             margin-top: 0.3rem;
         }
 
+        /* INFORMAÇÕES DE RECORRÊNCIA */
+        .recurrence-info {
+            font-size: 0.7rem;
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(255, 255, 255, 0.1);
+            padding: 0.3rem;
+            border-radius: 3px;
+            margin-top: 0.3rem;
+        }
+
         /* Modal - CORRIGIDO PARA SER REDIMENSIONÁVEL */
         .modal {
             display: none;
@@ -398,7 +429,7 @@
             padding: 2rem;
             border-radius: 12px;
             width: 90%;
-            max-width: 600px;
+            max-width: 700px;
             min-width: 400px;
             max-height: 90vh;
             border: 1px solid rgba(255, 255, 255, 0.2);
@@ -490,6 +521,38 @@
             text-align: right;
         }
 
+        /* CAMPOS DE RECORRÊNCIA */
+        .recurrence-group {
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .recurrence-header {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .recurrence-checkbox {
+            width: auto;
+            margin-right: 0.5rem;
+        }
+
+        .recurrence-fields {
+            display: none;
+            grid-template-columns: 1fr 2fr 1fr;
+            gap: 0.5rem;
+            align-items: end;
+        }
+
+        .recurrence-fields.active {
+            display: grid;
+        }
+
         .form-actions {
             display: flex;
             gap: 1rem;
@@ -572,6 +635,11 @@
                 width: 95%;
                 margin: 5% auto;
                 min-width: 300px;
+            }
+
+            .recurrence-fields {
+                grid-template-columns: 1fr;
+                gap: 1rem;
             }
         }
     </style>
@@ -697,6 +765,40 @@
                         <input type="text" class="form-input" id="itemValor" placeholder="0,00">
                     </div>
                 </div>
+
+                <!-- CAMPOS DE RECORRÊNCIA -->
+                <div class="recurrence-group">
+                    <div class="recurrence-header">
+                        <input type="checkbox" class="recurrence-checkbox" id="recorrenciaAtiva">
+                        <label class="form-label" for="recorrenciaAtiva">
+                            <i class="fas fa-redo"></i> Repetir este item
+                        </label>
+                    </div>
+                    
+                    <div class="recurrence-fields" id="recurrenceFields">
+                        <div class="form-group">
+                            <label class="form-label" for="recorrenciaNumero">A cada</label>
+                            <input type="number" class="form-input" id="recorrenciaNumero" min="1" max="365" value="1">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="recorrenciaUnidade">Período</label>
+                            <select class="form-select" id="recorrenciaUnidade">
+                                <option value="dias">Dias</option>
+                                <option value="dias_uteis">Dias úteis</option>
+                                <option value="semanas">Semanas</option>
+                                <option value="quinzenas">Quinzenas</option>
+                                <option value="meses">Meses</option>
+                                <option value="anos">Anos</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label class="form-label" for="recorrenciaFim">Até (opcional)</label>
+                            <input type="date" class="form-input" id="recorrenciaFim">
+                        </div>
+                    </div>
+                </div>
                 
                 <div class="form-group">
                     <label class="form-label" for="itemStatus">Status</label>
@@ -757,10 +859,25 @@
         // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
             setupEventListeners();
-            setupCurrencyMask(); // CONFIGURAR MÁSCARA DE MOEDA
-            loadAgendaItems(); // CARREGAMENTO REAL DO SUPABASE
+            setupCurrencyMask();
+            setupRecurrenceToggle(); // CONFIGURAR TOGGLE DE RECORRÊNCIA
+            loadAgendaItems();
             renderCalendar();
         });
+
+        // CONFIGURAR TOGGLE DE RECORRÊNCIA
+        function setupRecurrenceToggle() {
+            const checkbox = document.getElementById('recorrenciaAtiva');
+            const fields = document.getElementById('recurrenceFields');
+            
+            checkbox.addEventListener('change', function() {
+                if (this.checked) {
+                    fields.classList.add('active');
+                } else {
+                    fields.classList.remove('active');
+                }
+            });
+        }
 
         // CONFIGURAR MÁSCARA DE MOEDA BRASILEIRA
         function setupCurrencyMask() {
@@ -768,17 +885,10 @@
             
             valorInput.addEventListener('input', function(e) {
                 let value = e.target.value;
-                
-                // Remove tudo que não é dígito
                 value = value.replace(/\D/g, '');
-                
-                // Converte para centavos
                 value = (parseInt(value) / 100).toFixed(2);
-                
-                // Formata como moeda brasileira
                 value = value.replace('.', ',');
                 value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-                
                 e.target.value = value;
             });
 
@@ -798,19 +908,13 @@
         // CONVERTER VALOR FORMATADO PARA NÚMERO
         function parseFormattedCurrency(formattedValue) {
             if (!formattedValue || formattedValue === '0,00') return null;
-            
-            // Remove pontos e substitui vírgula por ponto
-            const numericValue = formattedValue
-                .replace(/\./g, '')
-                .replace(',', '.');
-            
+            const numericValue = formattedValue.replace(/\./g, '').replace(',', '.');
             return parseFloat(numericValue);
         }
 
         // FORMATAR NÚMERO PARA MOEDA BRASILEIRA
         function formatCurrency(value) {
             if (!value) return '0,00';
-            
             return new Intl.NumberFormat('pt-BR', {
                 minimumFractionDigits: 2,
                 maximumFractionDigits: 2
@@ -820,7 +924,6 @@
         // GERAR HORÁRIO AUTOMÁTICO PARA PAGAMENTOS
         async function generateNextPaymentTime(date) {
             try {
-                // Buscar pagamentos existentes na mesma data
                 const { data, error } = await supabase
                     .from('agenda_hvc')
                     .select('hora_evento')
@@ -832,14 +935,13 @@
 
                 if (error) {
                     console.error('Erro ao buscar horários:', error);
-                    return '09:00'; // Horário padrão
+                    return '09:00';
                 }
 
                 if (!data || data.length === 0) {
-                    return '09:00'; // Primeiro pagamento do dia
+                    return '09:00';
                 }
 
-                // Pegar o último horário e adicionar 1 minuto
                 const lastTime = data[0].hora_evento;
                 const [hours, minutes] = lastTime.split(':').map(Number);
                 
@@ -851,14 +953,106 @@
                     newHours += 1;
                 }
                 
-                // Formatar com zero à esquerda
                 const formattedTime = `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
-                
                 return formattedTime;
             } catch (error) {
                 console.error('Erro ao gerar horário:', error);
-                return '09:00'; // Horário padrão em caso de erro
+                return '09:00';
             }
+        }
+
+        // CALCULAR PRÓXIMA DATA DE RECORRÊNCIA
+        function calculateNextRecurrenceDate(baseDate, numero, unidade) {
+            const date = new Date(baseDate);
+            
+            switch (unidade) {
+                case 'dias':
+                    date.setDate(date.getDate() + numero);
+                    break;
+                case 'dias_uteis':
+                    let addedDays = 0;
+                    while (addedDays < numero) {
+                        date.setDate(date.getDate() + 1);
+                        // Se não for sábado (6) nem domingo (0)
+                        if (date.getDay() !== 0 && date.getDay() !== 6) {
+                            addedDays++;
+                        }
+                    }
+                    break;
+                case 'semanas':
+                    date.setDate(date.getDate() + (numero * 7));
+                    break;
+                case 'quinzenas':
+                    date.setDate(date.getDate() + (numero * 15));
+                    break;
+                case 'meses':
+                    date.setMonth(date.getMonth() + numero);
+                    break;
+                case 'anos':
+                    date.setFullYear(date.getFullYear() + numero);
+                    break;
+            }
+            
+            return date;
+        }
+
+        // GERAR EVENTOS RECORRENTES
+        async function generateRecurrentEvents(baseItem) {
+            if (!baseItem.recorrencia_ativa) return [];
+            
+            const events = [];
+            const startDate = new Date(baseItem.data_evento);
+            const endDate = baseItem.recorrencia_fim ? new Date(baseItem.recorrencia_fim) : null;
+            const maxEvents = 100; // Limite de segurança
+            
+            let currentDate = calculateNextRecurrenceDate(
+                startDate, 
+                baseItem.recorrencia_numero, 
+                baseItem.recorrencia_unidade
+            );
+            
+            let eventCount = 0;
+            
+            while (eventCount < maxEvents) {
+                // Se há data fim e já passou, parar
+                if (endDate && currentDate > endDate) break;
+                
+                // Se a data é muito no futuro (2 anos), parar
+                const twoYearsFromNow = new Date();
+                twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
+                if (currentDate > twoYearsFromNow) break;
+                
+                // Gerar horário para pagamentos recorrentes
+                let horaEvento = baseItem.hora_evento;
+                if (baseItem.tipo === 'pagamento' && !horaEvento) {
+                    horaEvento = await generateNextPaymentTime(currentDate.toISOString().split('T')[0]);
+                }
+                
+                const newEvent = {
+                    ...baseItem,
+                    id: undefined, // Será gerado pelo banco
+                    data_evento: currentDate.toISOString().split('T')[0],
+                    hora_evento: horaEvento,
+                    evento_pai_id: baseItem.id,
+                    eh_recorrente: true,
+                    recorrencia_ativa: false, // Eventos filhos não geram mais recorrências
+                    criado_em: new Date().toISOString(),
+                    atualizado_em: new Date().toISOString()
+                };
+                
+                events.push(newEvent);
+                
+                // Calcular próxima data
+                currentDate = calculateNextRecurrenceDate(
+                    currentDate, 
+                    baseItem.recorrencia_numero, 
+                    baseItem.recorrencia_unidade
+                );
+                
+                eventCount++;
+            }
+            
+            return events;
         }
 
         // Configurar event listeners
@@ -897,19 +1091,16 @@
                 const valorGroup = document.getElementById('valorGroup');
                 
                 if (this.value === 'compromisso') {
-                    // COMPROMISSO: mostrar hora, ocultar valor
                     horaGroup.style.display = 'block';
                     valorGroup.style.display = 'none';
                     document.getElementById('itemHora').required = false;
                     document.getElementById('itemValor').required = false;
                 } else if (this.value === 'pagamento') {
-                    // PAGAMENTO: ocultar hora, mostrar valor
                     horaGroup.style.display = 'none';
                     valorGroup.style.display = 'block';
                     document.getElementById('itemHora').required = false;
                     document.getElementById('itemValor').required = true;
                 } else {
-                    // NENHUM SELECIONADO: ocultar ambos
                     horaGroup.style.display = 'none';
                     valorGroup.style.display = 'none';
                     document.getElementById('itemHora').required = false;
@@ -931,29 +1122,24 @@
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
             
-            // Atualizar título
             const monthNames = [
                 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
                 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
             ];
             document.getElementById('calendarTitle').textContent = `${monthNames[month]} ${year}`;
 
-            // Limpar grid (manter cabeçalhos)
             const grid = document.getElementById('calendarGrid');
             const headers = grid.querySelectorAll('.calendar-day-header');
             grid.innerHTML = '';
             headers.forEach(header => grid.appendChild(header));
 
-            // Primeiro dia do mês
             const firstDay = new Date(year, month, 1);
             const startDate = new Date(firstDay);
             
-            // Ajustar para começar na segunda-feira
             let dayOfWeek = firstDay.getDay();
             dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
             startDate.setDate(startDate.getDate() - dayOfWeek);
 
-            // Gerar 42 dias (6 semanas)
             for (let i = 0; i < 42; i++) {
                 const date = new Date(startDate);
                 date.setDate(startDate.getDate() + i);
@@ -988,8 +1174,14 @@
                 dayEvents.slice(0, 3).forEach(event => {
                     const eventDiv = document.createElement('div');
                     eventDiv.className = `calendar-event ${event.tipo}`;
+                    
+                    // ADICIONAR CLASSE RECORRENTE
+                    if (event.eh_recorrente || event.recorrencia_ativa) {
+                        eventDiv.classList.add('recorrente');
+                    }
+                    
                     eventDiv.textContent = event.titulo;
-                    eventDiv.title = `${event.titulo} - ${event.hora_evento || 'Sem horário'}`;
+                    eventDiv.title = `${event.titulo} - ${event.hora_evento || 'Sem horário'}${event.eh_recorrente ? ' (Recorrente)' : ''}`;
                     dayDiv.appendChild(eventDiv);
                 });
                 
@@ -1070,6 +1262,11 @@
             const itemDiv = document.createElement('div');
             itemDiv.className = 'item-card';
             
+            // ADICIONAR CLASSE RECORRENTE
+            if (item.eh_recorrente || item.recorrencia_ativa) {
+                itemDiv.classList.add('recorrente');
+            }
+            
             const formatDate = (dateStr) => {
                 const date = new Date(dateStr + 'T00:00:00');
                 return date.toLocaleDateString('pt-BR');
@@ -1080,6 +1277,33 @@
                     style: 'currency',
                     currency: 'BRL'
                 }).format(value);
+            };
+
+            // FORMATAR INFORMAÇÕES DE RECORRÊNCIA
+            const getRecurrenceInfo = (item) => {
+                if (!item.recorrencia_ativa && !item.eh_recorrente) return '';
+                
+                if (item.eh_recorrente) {
+                    return '<div class="recurrence-info"><i class="fas fa-redo"></i> Evento recorrente</div>';
+                }
+                
+                if (item.recorrencia_ativa) {
+                    const unidadeTexto = {
+                        'dias': 'dias',
+                        'dias_uteis': 'dias úteis',
+                        'semanas': 'semanas',
+                        'quinzenas': 'quinzenas',
+                        'meses': 'meses',
+                        'anos': 'anos'
+                    };
+                    
+                    const texto = `Repete a cada ${item.recorrencia_numero} ${unidadeTexto[item.recorrencia_unidade] || item.recorrencia_unidade}`;
+                    const fimTexto = item.recorrencia_fim ? ` até ${formatDate(item.recorrencia_fim)}` : '';
+                    
+                    return `<div class="recurrence-info"><i class="fas fa-redo"></i> ${texto}${fimTexto}</div>`;
+                }
+                
+                return '';
             };
             
             itemDiv.innerHTML = `
@@ -1113,6 +1337,7 @@
                         <option value="vencido" ${item.status === 'vencido' ? 'selected' : ''}>Vencido</option>
                     </select>
                 </div>
+                ${getRecurrenceInfo(item)}
                 ${item.atualizado_por ? `
                     <div class="last-update">
                         Última atualização: ${new Date(item.atualizado_em).toLocaleString('pt-BR')} por ${item.atualizado_por}
@@ -1157,6 +1382,7 @@
             document.getElementById('horaGroup').style.display = 'none';
             document.getElementById('valorGroup').style.display = 'none';
             document.getElementById('itemValor').value = '0,00';
+            document.getElementById('recurrenceFields').classList.remove('active');
             document.getElementById('itemModal').style.display = 'block';
         }
 
@@ -1179,6 +1405,16 @@
             document.getElementById('itemDescricao').value = item.descricao || '';
             document.getElementById('itemObservacoes').value = item.observacoes || '';
             
+            // CAMPOS DE RECORRÊNCIA
+            document.getElementById('recorrenciaAtiva').checked = item.recorrencia_ativa || false;
+            document.getElementById('recorrenciaNumero').value = item.recorrencia_numero || 1;
+            document.getElementById('recorrenciaUnidade').value = item.recorrencia_unidade || 'dias';
+            document.getElementById('recorrenciaFim').value = item.recorrencia_fim || '';
+            
+            if (item.recorrencia_ativa) {
+                document.getElementById('recurrenceFields').classList.add('active');
+            }
+            
             // Mostrar campos corretos baseado no tipo
             const horaGroup = document.getElementById('horaGroup');
             const valorGroup = document.getElementById('valorGroup');
@@ -1194,7 +1430,7 @@
             document.getElementById('itemModal').style.display = 'block';
         }
 
-        // SALVAR ITEM NO SUPABASE - INTEGRAÇÃO REAL COM CORREÇÕES
+        // SALVAR ITEM NO SUPABASE - COM RECORRÊNCIA
         async function saveItem(event) {
             event.preventDefault();
             
@@ -1204,11 +1440,9 @@
             let horaEvento = null;
             
             if (tipo === 'compromisso') {
-                // COMPROMISSO: usar hora do campo (pode ser vazia)
                 const horaValue = document.getElementById('itemHora').value;
                 horaEvento = horaValue && horaValue.trim() !== '' ? horaValue : null;
             } else if (tipo === 'pagamento') {
-                // PAGAMENTO: gerar horário automático
                 horaEvento = await generateNextPaymentTime(dataEvento);
             }
             
@@ -1223,6 +1457,11 @@
                 prioridade: document.getElementById('itemPrioridade').value,
                 descricao: document.getElementById('itemDescricao').value,
                 observacoes: document.getElementById('itemObservacoes').value,
+                // CAMPOS DE RECORRÊNCIA
+                recorrencia_ativa: document.getElementById('recorrenciaAtiva').checked,
+                recorrencia_numero: document.getElementById('recorrenciaAtiva').checked ? parseInt(document.getElementById('recorrenciaNumero').value) : null,
+                recorrencia_unidade: document.getElementById('recorrenciaAtiva').checked ? document.getElementById('recorrenciaUnidade').value : null,
+                recorrencia_fim: document.getElementById('recorrenciaAtiva').checked && document.getElementById('recorrenciaFim').value ? document.getElementById('recorrenciaFim').value : null,
                 atualizado_por: currentUser,
                 atualizado_em: new Date().toISOString()
             };
@@ -1235,7 +1474,8 @@
                     result = await supabase
                         .from('agenda_hvc')
                         .update(formData)
-                        .eq('id', editingItemId);
+                        .eq('id', editingItemId)
+                        .select();
                 } else {
                     console.log('Adicionando novo item:', formData);
                     formData.criado_por = currentUser;
@@ -1243,7 +1483,8 @@
                     
                     result = await supabase
                         .from('agenda_hvc')
-                        .insert([formData]);
+                        .insert([formData])
+                        .select();
                 }
                 
                 if (result.error) {
@@ -1253,8 +1494,30 @@
                 }
                 
                 console.log('Item salvo com sucesso');
+                
+                // GERAR EVENTOS RECORRENTES SE NECESSÁRIO
+                if (!editingItemId && formData.recorrencia_ativa) {
+                    const savedItem = result.data[0];
+                    const recurrentEvents = await generateRecurrentEvents(savedItem);
+                    
+                    if (recurrentEvents.length > 0) {
+                        console.log('Gerando eventos recorrentes:', recurrentEvents.length);
+                        
+                        const { error: recurrenceError } = await supabase
+                            .from('agenda_hvc')
+                            .insert(recurrentEvents);
+                        
+                        if (recurrenceError) {
+                            console.error('Erro ao gerar eventos recorrentes:', recurrenceError);
+                            alert('Item salvo, mas houve erro ao gerar recorrências: ' + recurrenceError.message);
+                        } else {
+                            console.log('Eventos recorrentes gerados com sucesso');
+                        }
+                    }
+                }
+                
                 closeModal();
-                await loadAgendaItems(); // Recarregar do Supabase
+                await loadAgendaItems();
                 
             } catch (error) {
                 console.error('Erro ao salvar item:', error);
@@ -1283,7 +1546,7 @@
                 }
                 
                 console.log('Status atualizado com sucesso');
-                await loadAgendaItems(); // Recarregar do Supabase
+                await loadAgendaItems();
                 
             } catch (error) {
                 console.error('Erro ao atualizar status:', error);
@@ -1291,32 +1554,72 @@
             }
         }
 
-        // EXCLUIR ITEM DO SUPABASE - INTEGRAÇÃO REAL
+        // EXCLUIR ITEM DO SUPABASE - COM OPÇÃO DE EXCLUIR RECORRÊNCIAS
         window.deleteItem = async function(id) {
-            if (!confirm('Tem certeza que deseja excluir este item?')) {
-                return;
-            }
+            const item = agendaItems.find(i => i.id === id);
+            if (!item) return;
             
-            try {
-                console.log('Excluindo item:', id);
+            let confirmMessage = 'Tem certeza que deseja excluir este item?';
+            
+            // Se é um item com recorrência ativa, perguntar sobre eventos futuros
+            if (item.recorrencia_ativa) {
+                confirmMessage += '\n\nEste item tem recorrência ativa. Deseja também excluir todos os eventos futuros gerados por esta recorrência?';
                 
-                const { error } = await supabase
-                    .from('agenda_hvc')
-                    .delete()
-                    .eq('id', id);
-                
-                if (error) {
-                    console.error('Erro ao excluir item:', error);
-                    alert('Erro ao excluir item: ' + error.message);
-                    return;
+                if (confirm(confirmMessage)) {
+                    try {
+                        // Excluir eventos filhos primeiro
+                        const { error: childrenError } = await supabase
+                            .from('agenda_hvc')
+                            .delete()
+                            .eq('evento_pai_id', id);
+                        
+                        if (childrenError) {
+                            console.error('Erro ao excluir eventos recorrentes:', childrenError);
+                        }
+                        
+                        // Depois excluir o item principal
+                        const { error } = await supabase
+                            .from('agenda_hvc')
+                            .delete()
+                            .eq('id', id);
+                        
+                        if (error) {
+                            console.error('Erro ao excluir item:', error);
+                            alert('Erro ao excluir item: ' + error.message);
+                            return;
+                        }
+                        
+                        console.log('Item e recorrências excluídos com sucesso');
+                        await loadAgendaItems();
+                        
+                    } catch (error) {
+                        console.error('Erro ao excluir item:', error);
+                        alert('Erro ao excluir item: ' + error.message);
+                    }
                 }
-                
-                console.log('Item excluído com sucesso');
-                await loadAgendaItems(); // Recarregar do Supabase
-                
-            } catch (error) {
-                console.error('Erro ao excluir item:', error);
-                alert('Erro ao excluir item: ' + error.message);
+            } else {
+                // Item normal, excluir apenas ele
+                if (confirm(confirmMessage)) {
+                    try {
+                        const { error } = await supabase
+                            .from('agenda_hvc')
+                            .delete()
+                            .eq('id', id);
+                        
+                        if (error) {
+                            console.error('Erro ao excluir item:', error);
+                            alert('Erro ao excluir item: ' + error.message);
+                            return;
+                        }
+                        
+                        console.log('Item excluído com sucesso');
+                        await loadAgendaItems();
+                        
+                    } catch (error) {
+                        console.error('Erro ao excluir item:', error);
+                        alert('Erro ao excluir item: ' + error.message);
+                    }
+                }
             }
         }
 
