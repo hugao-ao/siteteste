@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard Administrador HVC</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <style>
+        /* Tema específico HVC - Elegante e sofisticado */
+        body {
+            display: flex;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #000080, #800080);
+            color: #e0e0e0;
+        }
+
+        #main-content-dashboard-hvc {
+            flex-grow: 1;
+            padding: 2rem;
+            transition: margin-left 0.3s ease;
+            background: linear-gradient(135deg, #000080, #800080);
+            color: #e0e0e0;
+        }
+
+        #main-content-dashboard-hvc.sidebar-collapsed {
+            margin-left: 60px;
+        }
+
+        .hvc-container {
+            background: rgba(25, 25, 112, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .hvc-title {
+            color: #ffffff;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .development-message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 60vh;
+            text-align: center;
+        }
+
+        .message-content {
+            max-width: 600px;
+        }
+
+        .message-content h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .message-content p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            line-height: 1.6;
+            color: #e0e0e0;
+        }
+
+        .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.8;
+            color: #ffffff;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar será injetada aqui pelo sidebar.js -->
+    <main id="main-content-dashboard-hvc">
+        <div class="hvc-container">
+            <h1 class="hvc-title">
+                <i class="fas fa-user-tie"></i> Dashboard Administrador HVC
+            </h1>
+
+            <div class="development-message">
+                <div class="message-content">
+                    <div class="icon">🚧</div>
+                    <h1 class="hvc-title">Dashboard do Administrador em Desenvolvimento</h1>
+                    <p>Esta página está sendo desenvolvida especialmente para administradores do sistema HVC. Em breve você terá acesso a todas as funcionalidades administrativas avançadas.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script type="module" src="supabase.js"></script>
+    <script type="module" src="dashboard-hvc.js"></script>
+    <script type="module">
+        import { injectSidebar } from './sidebar.js';
+        injectSidebar("main-content-dashboard-hvc");
+    </script>
+</body>
+</html>
+
