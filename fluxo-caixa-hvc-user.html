@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Fluxo de Caixa HVC - Usuário</title>
+    <title>Fluxo de Caixa HVC - Agenda e Pagamentos</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
@@ -351,7 +351,7 @@
             margin-top: 0.3rem;
         }
 
-        /* Modal - Paleta HVC */
+        /* Modal - CORRIGIDO PARA SER REDIMENSIONÁVEL */
         .modal {
             display: none;
             position: fixed;
@@ -365,14 +365,20 @@
 
         .modal-content {
             background: linear-gradient(135deg, #000080, #800080);
-            margin: 5% auto;
+            margin: 2% auto;
             padding: 2rem;
             border-radius: 12px;
             width: 90%;
-            max-width: 500px;
+            max-width: 600px;
+            min-width: 400px;
+            max-height: 90vh;
             border: 1px solid rgba(255, 255, 255, 0.2);
             box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
             backdrop-filter: blur(10px);
+            /* PERMITIR REDIMENSIONAMENTO */
+            resize: both;
+            overflow: auto;
+            position: relative;
         }
 
         .modal-header {
@@ -432,6 +438,27 @@
         .form-textarea {
             resize: vertical;
             min-height: 80px;
+        }
+
+        /* CAMPO VALOR COM FORMATAÇÃO DE MOEDA */
+        .currency-input {
+            position: relative;
+        }
+
+        .currency-input::before {
+            content: 'R$';
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: bold;
+            z-index: 1;
+        }
+
+        .currency-input input {
+            padding-left: 35px;
+            text-align: right;
         }
 
         .form-actions {
@@ -505,6 +532,12 @@
             .filters {
                 flex-direction: column;
             }
+
+            .modal-content {
+                width: 95%;
+                margin: 5% auto;
+                min-width: 300px;
+            }
         }
     </style>
 </head>
@@ -513,7 +546,7 @@
     <main id="main-content-fluxo-caixa-hvc-user">
         <div class="hvc-container">
             <h1 class="hvc-title">
-                <i class="fas fa-wallet"></i> Fluxo de Caixa - Agenda e Pagamentos
+                <i class="fas fa-chart-line"></i> Fluxo de Caixa - Agenda e Pagamentos
             </h1>
         </div>
 
@@ -610,14 +643,18 @@
                     <input type="date" class="form-input" id="itemData" required>
                 </div>
                 
-                <div class="form-group">
+                <!-- CAMPO HORA SÓ PARA COMPROMISSOS -->
+                <div class="form-group" id="horaGroup" style="display: none;">
                     <label class="form-label" for="itemHora">Hora</label>
                     <input type="time" class="form-input" id="itemHora">
                 </div>
                 
+                <!-- CAMPO VALOR SÓ PARA PAGAMENTOS -->
                 <div class="form-group" id="valorGroup" style="display: none;">
                     <label class="form-label" for="itemValor">Valor (R$)</label>
-                    <input type="number" class="form-input" id="itemValor" step="0.01" placeholder="0,00">
+                    <div class="currency-input">
+                        <input type="text" class="form-input" id="itemValor" placeholder="0,00">
+                    </div>
                 </div>
                 
                 <div class="form-group">
@@ -679,9 +716,109 @@
         // Inicializar quando a página carregar
         document.addEventListener('DOMContentLoaded', function() {
             setupEventListeners();
+            setupCurrencyMask(); // CONFIGURAR MÁSCARA DE MOEDA
             loadAgendaItems(); // CARREGAMENTO REAL DO SUPABASE
             renderCalendar();
         });
+
+        // CONFIGURAR MÁSCARA DE MOEDA BRASILEIRA
+        function setupCurrencyMask() {
+            const valorInput = document.getElementById('itemValor');
+            
+            valorInput.addEventListener('input', function(e) {
+                let value = e.target.value;
+                
+                // Remove tudo que não é dígito
+                value = value.replace(/\D/g, '');
+                
+                // Converte para centavos
+                value = (parseInt(value) / 100).toFixed(2);
+                
+                // Formata como moeda brasileira
+                value = value.replace('.', ',');
+                value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+                
+                e.target.value = value;
+            });
+
+            valorInput.addEventListener('focus', function(e) {
+                if (e.target.value === '' || e.target.value === '0,00') {
+                    e.target.value = '';
+                }
+            });
+
+            valorInput.addEventListener('blur', function(e) {
+                if (e.target.value === '') {
+                    e.target.value = '0,00';
+                }
+            });
+        }
+
+        // CONVERTER VALOR FORMATADO PARA NÚMERO
+        function parseFormattedCurrency(formattedValue) {
+            if (!formattedValue || formattedValue === '0,00') return null;
+            
+            // Remove pontos e substitui vírgula por ponto
+            const numericValue = formattedValue
+                .replace(/\./g, '')
+                .replace(',', '.');
+            
+            return parseFloat(numericValue);
+        }
+
+        // FORMATAR NÚMERO PARA MOEDA BRASILEIRA
+        function formatCurrency(value) {
+            if (!value) return '0,00';
+            
+            return new Intl.NumberFormat('pt-BR', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+
+        // GERAR HORÁRIO AUTOMÁTICO PARA PAGAMENTOS
+        async function generateNextPaymentTime(date) {
+            try {
+                // Buscar pagamentos existentes na mesma data
+                const { data, error } = await supabase
+                    .from('agenda_hvc')
+                    .select('hora_evento')
+                    .eq('data_evento', date)
+                    .eq('tipo', 'pagamento')
+                    .not('hora_evento', 'is', null)
+                    .order('hora_evento', { ascending: false })
+                    .limit(1);
+
+                if (error) {
+                    console.error('Erro ao buscar horários:', error);
+                    return '09:00'; // Horário padrão
+                }
+
+                if (!data || data.length === 0) {
+                    return '09:00'; // Primeiro pagamento do dia
+                }
+
+                // Pegar o último horário e adicionar 1 minuto
+                const lastTime = data[0].hora_evento;
+                const [hours, minutes] = lastTime.split(':').map(Number);
+                
+                let newMinutes = minutes + 1;
+                let newHours = hours;
+                
+                if (newMinutes >= 60) {
+                    newMinutes = 0;
+                    newHours += 1;
+                }
+                
+                // Formatar com zero à esquerda
+                const formattedTime = `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
+                
+                return formattedTime;
+            } catch (error) {
+                console.error('Erro ao gerar horário:', error);
+                return '09:00'; // Horário padrão em caso de erro
+            }
+        }
 
         // Configurar event listeners
         function setupEventListeners() {
@@ -708,14 +845,28 @@
             document.getElementById('statusFilter').addEventListener('change', filterItems);
             document.getElementById('dateFilter').addEventListener('change', filterItems);
 
-            // Tipo de item (mostrar/ocultar campo valor)
+            // TIPO DE ITEM - MOSTRAR/OCULTAR CAMPOS CORRETOS
             document.getElementById('itemTipo').addEventListener('change', function() {
+                const horaGroup = document.getElementById('horaGroup');
                 const valorGroup = document.getElementById('valorGroup');
-                if (this.value === 'pagamento') {
+                
+                if (this.value === 'compromisso') {
+                    // COMPROMISSO: mostrar hora, ocultar valor
+                    horaGroup.style.display = 'block';
+                    valorGroup.style.display = 'none';
+                    document.getElementById('itemHora').required = false;
+                    document.getElementById('itemValor').required = false;
+                } else if (this.value === 'pagamento') {
+                    // PAGAMENTO: ocultar hora, mostrar valor
+                    horaGroup.style.display = 'none';
                     valorGroup.style.display = 'block';
+                    document.getElementById('itemHora').required = false;
                     document.getElementById('itemValor').required = true;
                 } else {
+                    // NENHUM SELECIONADO: ocultar ambos
+                    horaGroup.style.display = 'none';
                     valorGroup.style.display = 'none';
+                    document.getElementById('itemHora').required = false;
                     document.getElementById('itemValor').required = false;
                 }
             });
@@ -878,7 +1029,7 @@
                 return date.toLocaleDateString('pt-BR');
             };
             
-            const formatCurrency = (value) => {
+            const formatCurrencyDisplay = (value) => {
                 return new Intl.NumberFormat('pt-BR', {
                     style: 'currency',
                     currency: 'BRL'
@@ -903,7 +1054,7 @@
                 <div class="item-details">
                     <div><strong>Data:</strong> ${formatDate(item.data_evento)} ${item.hora_evento ? 'às ' + item.hora_evento : ''}</div>
                     ${item.categoria ? `<div><strong>Categoria:</strong> ${item.categoria}</div>` : ''}
-                    ${item.valor ? `<div><strong>Valor:</strong> ${formatCurrency(item.valor)}</div>` : ''}
+                    ${item.valor ? `<div><strong>Valor:</strong> ${formatCurrencyDisplay(item.valor)}</div>` : ''}
                     ${item.descricao ? `<div><strong>Descrição:</strong> ${item.descricao}</div>` : ''}
                 </div>
                 <div class="item-status">
@@ -957,7 +1108,9 @@
             editingItemId = null;
             document.getElementById('modalTitle').textContent = 'Adicionar Item';
             document.getElementById('itemForm').reset();
+            document.getElementById('horaGroup').style.display = 'none';
             document.getElementById('valorGroup').style.display = 'none';
+            document.getElementById('itemValor').value = '0,00';
             document.getElementById('itemModal').style.display = 'block';
         }
 
@@ -974,31 +1127,52 @@
             document.getElementById('itemCategoria').value = item.categoria || '';
             document.getElementById('itemData').value = item.data_evento;
             document.getElementById('itemHora').value = item.hora_evento || '';
-            document.getElementById('itemValor').value = item.valor || '';
+            document.getElementById('itemValor').value = item.valor ? formatCurrency(item.valor) : '0,00';
             document.getElementById('itemStatus').value = item.status;
             document.getElementById('itemPrioridade').value = item.prioridade;
             document.getElementById('itemDescricao').value = item.descricao || '';
             document.getElementById('itemObservacoes').value = item.observacoes || '';
             
-            if (item.tipo === 'pagamento') {
-                document.getElementById('valorGroup').style.display = 'block';
-                document.getElementById('itemValor').required = true;
+            // Mostrar campos corretos baseado no tipo
+            const horaGroup = document.getElementById('horaGroup');
+            const valorGroup = document.getElementById('valorGroup');
+            
+            if (item.tipo === 'compromisso') {
+                horaGroup.style.display = 'block';
+                valorGroup.style.display = 'none';
+            } else if (item.tipo === 'pagamento') {
+                horaGroup.style.display = 'none';
+                valorGroup.style.display = 'block';
             }
             
             document.getElementById('itemModal').style.display = 'block';
         }
 
-        // SALVAR ITEM NO SUPABASE - INTEGRAÇÃO REAL
+        // SALVAR ITEM NO SUPABASE - INTEGRAÇÃO REAL COM CORREÇÕES
         async function saveItem(event) {
             event.preventDefault();
             
+            const tipo = document.getElementById('itemTipo').value;
+            const dataEvento = document.getElementById('itemData').value;
+            
+            let horaEvento = null;
+            
+            if (tipo === 'compromisso') {
+                // COMPROMISSO: usar hora do campo (pode ser vazia)
+                const horaValue = document.getElementById('itemHora').value;
+                horaEvento = horaValue && horaValue.trim() !== '' ? horaValue : null;
+            } else if (tipo === 'pagamento') {
+                // PAGAMENTO: gerar horário automático
+                horaEvento = await generateNextPaymentTime(dataEvento);
+            }
+            
             const formData = {
                 titulo: document.getElementById('itemTitulo').value,
-                tipo: document.getElementById('itemTipo').value,
+                tipo: tipo,
                 categoria: document.getElementById('itemCategoria').value,
-                data_evento: document.getElementById('itemData').value,
-                hora_evento: document.getElementById('itemHora').value,
-                valor: document.getElementById('itemValor').value ? parseFloat(document.getElementById('itemValor').value) : null,
+                data_evento: dataEvento,
+                hora_evento: horaEvento,
+                valor: tipo === 'pagamento' ? parseFormattedCurrency(document.getElementById('itemValor').value) : null,
                 status: document.getElementById('itemStatus').value,
                 prioridade: document.getElementById('itemPrioridade').value,
                 descricao: document.getElementById('itemDescricao').value,
