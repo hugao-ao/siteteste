@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard HVC</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="sidebar.css">
+    <style>
+        .development-message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            text-align: center;
+            font-family: 'Arial', sans-serif;
+            margin: 20px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+            color: white;
+        }
+        .admin-version {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .user-version {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+        .message-content {
+            padding: 40px;
+            max-width: 600px;
+        }
+        .message-content h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        .message-content p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.8;
+        }
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+            <h3>HVC System</h3>
+            <button id="closeSidebar" class="close-btn">&times;</button>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="index.html">🏠 Início</a>
+            <a href="dashboard-hvc.html" class="active">📊 Dashboard</a>
+            <a href="fluxo-caixa-hvc.html">💰 Fluxo de Caixa</a>
+            <a href="clientes-hvc.html">👥 Clientes</a>
+            <a href="obras-hvc.html">🏗️ Obras</a>
+            <a href="medicoes-hvc.html">📏 Medições</a>
+            <a href="propostas-hvc.html">📋 Propostas</a>
+            <a href="equipe-hvc.html">👷 Equipe</a>
+            <a href="servicos-hvc.html">🔧 Serviços</a>
+        </nav>
+    </div>
+
+    <!-- Overlay -->
+    <div id="overlay" class="overlay"></div>
+
+    <!-- Main Content -->
+    <div id="main-content" class="main-content">
+        <!-- Header -->
+        <header class="header">
+            <button id="menuToggle" class="menu-toggle">☰</button>
+            <h1 id="page-title">Dashboard HVC</h1>
+            <div class="user-info">
+                <span id="user-name">Usuário</span>
+                <button onclick="logout()">Sair</button>
+            </div>
+        </header>
+
+        <!-- Versão do Administrador -->
+        <div id="admin-content" class="development-message admin-version hidden">
+            <div class="message-content">
+                <div class="icon">🚧</div>
+                <h1>Dashboard do Administrador em Desenvolvimento</h1>
+                <p>Esta página está sendo desenvolvida especialmente para administradores do sistema HVC. Em breve você terá acesso a todas as funcionalidades administrativas avançadas.</p>
+            </div>
+        </div>
+
+        <!-- Versão do Usuário -->
+        <div id="user-content" class="development-message user-version hidden">
+            <div class="message-content">
+                <div class="icon">🚧</div>
+                <h1>Dashboard do Usuário em Desenvolvimento</h1>
+                <p>Esta página está sendo desenvolvida especialmente para usuários do sistema HVC. Em breve você terá acesso a todas as funcionalidades essenciais para o seu trabalho diário.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="sidebar.js"></script>
+    <script src="auth-middleware.js"></script>
+    <script>
+        // Verificar nível do usuário e mostrar conteúdo apropriado
+        document.addEventListener('DOMContentLoaded', function() {
+            const userLevel = sessionStorage.getItem('nivel');
+            const userProject = sessionStorage.getItem('project');
+            
+            // Verificar se o usuário está logado e no projeto HVC
+            if (!userLevel || userProject !== 'Hvc') {
+                alert('Acesso negado. Faça login para acessar o sistema.');
+                window.location.href = 'index.html';
+                return;
+            }
+            
+            // Mostrar conteúdo baseado no nível do usuário
+            const adminContent = document.getElementById('admin-content');
+            const userContent = document.getElementById('user-content');
+            const pageTitle = document.getElementById('page-title');
+            const userName = document.getElementById('user-name');
+            
+            if (userLevel === 'admin') {
+                adminContent.classList.remove('hidden');
+                userContent.classList.add('hidden');
+                pageTitle.textContent = 'Dashboard do Administrador';
+                userName.textContent = 'Administrador';
+            } else {
+                adminContent.classList.add('hidden');
+                userContent.classList.remove('hidden');
+                pageTitle.textContent = 'Dashboard do Usuário';
+                userName.textContent = 'Usuário';
+            }
+        });
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
+
