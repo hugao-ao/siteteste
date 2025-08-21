@@ -2,85 +2,156 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard HVC - Redirecionando...</title>
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Dashboard HVC</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
+        /* Tema específico HVC - Elegante e sofisticado */
         body {
-            font-family: Arial, sans-serif;
+            display: flex;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #000080, #800080);
+            color: #e0e0e0;
+        }
+
+        #main-content-dashboard-hvc {
+            flex-grow: 1;
+            padding: 2rem;
+            transition: margin-left 0.3s ease;
+            background: linear-gradient(135deg, #000080, #800080);
+            color: #e0e0e0;
+        }
+
+        #main-content-dashboard-hvc.sidebar-collapsed {
+            margin-left: 60px;
+        }
+
+        .hvc-container {
+            background: rgba(25, 25, 112, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .hvc-title {
+            color: #ffffff;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+        }
+
+        .development-message {
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-            margin: 0;
-            background: linear-gradient(135deg, #000080, #800080);
-            color: white;
-        }
-        .loading {
+            min-height: 60vh;
             text-align: center;
         }
-        .spinner {
-            border: 4px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top: 4px solid white;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 20px;
+
+        .message-content {
+            max-width: 600px;
         }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+
+        .message-content h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .message-content p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            line-height: 1.6;
+            color: #e0e0e0;
+        }
+
+        .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.8;
+            color: #ffffff;
+        }
+
+        /* Ocultar conteúdo por padrão */
+        .admin-content, .user-content {
+            display: none;
         }
     </style>
 </head>
 <body>
-    <div class="loading">
-        <div class="spinner"></div>
-        <h2>Redirecionando para o Dashboard...</h2>
-        <p>Aguarde um momento...</p>
-    </div>
+    <!-- Sidebar será injetada aqui pelo sidebar.js -->
+    <main id="main-content-dashboard-hvc">
+        <!-- Conteúdo para Administrador -->
+        <div class="admin-content">
+            <div class="hvc-container">
+                <h1 class="hvc-title">
+                    <i class="fas fa-user-tie"></i> Dashboard Administrador HVC
+                </h1>
 
-    <script src="auth-middleware.js"></script>
-    <script>
-        // Aguardar um pouco para garantir que o auth-middleware carregou
+                <div class="development-message">
+                    <div class="message-content">
+                        <div class="icon">🚧</div>
+                        <h1 class="hvc-title">Dashboard do Administrador em Desenvolvimento</h1>
+                        <p>Esta página está sendo desenvolvida especialmente para administradores do sistema HVC. Em breve você terá acesso a todas as funcionalidades administrativas avançadas.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo para Usuário -->
+        <div class="user-content">
+            <div class="hvc-container">
+                <h1 class="hvc-title">
+                    <i class="fas fa-user"></i> Dashboard Usuário HVC
+                </h1>
+
+                <div class="development-message">
+                    <div class="message-content">
+                        <div class="icon">🚧</div>
+                        <h1 class="hvc-title">Dashboard do Usuário em Desenvolvimento</h1>
+                        <p>Esta página está sendo desenvolvida especialmente para usuários do sistema HVC. Em breve você terá acesso a todas as funcionalidades essenciais para o seu trabalho diário.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script type="module" src="supabase.js"></script>
+    <script type="module" src="dashboard-hvc.js"></script>
+    <script type="module">
+        import { injectSidebar } from './sidebar.js';
+        injectSidebar("main-content-dashboard-hvc");
+        
+        // Aguardar um pouco para garantir que tudo carregou
         setTimeout(function() {
             try {
-                // Verificar se existe a função de verificação de autenticação
+                // Verificar nível do usuário
                 const userLevel = sessionStorage.getItem('nivel');
-                const userProject = sessionStorage.getItem('project');
                 
-                console.log('Nível do usuário:', userLevel);
-                console.log('Projeto:', userProject);
+                console.log('Dashboard - Nível do usuário:', userLevel);
                 
-                // Se não há informações de sessão, redirecionar para login
-                if (!userLevel) {
-                    console.log('Sem nível de usuário, redirecionando para index');
-                    window.location.href = 'index.html';
-                    return;
-                }
-                
-                // Se não é projeto HVC, redirecionar para index
-                if (userProject !== 'Hvc') {
-                    console.log('Não é projeto HVC, redirecionando para index');
-                    window.location.href = 'index.html';
-                    return;
-                }
-                
-                // Redirecionar baseado no nível do usuário
+                // Mostrar conteúdo baseado no nível
                 if (userLevel === 'admin') {
-                    console.log('Redirecionando para dashboard admin');
-                    window.location.href = 'dashboard-hvc-admin.html';
+                    document.querySelector('.admin-content').style.display = 'block';
+                    console.log('Mostrando dashboard do administrador');
                 } else {
-                    console.log('Redirecionando para dashboard user');
-                    window.location.href = 'dashboard-hvc-user.html';
+                    document.querySelector('.user-content').style.display = 'block';
+                    console.log('Mostrando dashboard do usuário');
                 }
                 
             } catch (error) {
-                console.error('Erro no redirecionamento:', error);
-                // Em caso de erro, redirecionar para index
-                window.location.href = 'index.html';
+                console.error('Erro ao verificar nível:', error);
+                // Em caso de erro, mostrar conteúdo de usuário
+                document.querySelector('.user-content').style.display = 'block';
             }
-        }, 1000); // Aguardar 1 segundo
+        }, 500);
     </script>
 </body>
 </html>
