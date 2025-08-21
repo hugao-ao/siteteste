@@ -12,7 +12,7 @@
             align-items: center;
             height: 100vh;
             margin: 0;
-            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            background: linear-gradient(135deg, #000080, #800080);
             color: white;
         }
         .loading {
@@ -40,26 +40,47 @@
         <p>Aguarde um momento...</p>
     </div>
 
+    <script src="auth-middleware.js"></script>
     <script>
-        // Redirecionar imediatamente baseado no nível do usuário
-        document.addEventListener('DOMContentLoaded', function() {
-            const userLevel = sessionStorage.getItem('nivel');
-            const userProject = sessionStorage.getItem('project');
-            
-            // Verificar se o usuário está logado e no projeto HVC
-            if (!userLevel || userProject !== 'Hvc') {
-                alert('Acesso negado. Faça login para acessar o sistema.');
+        // Aguardar um pouco para garantir que o auth-middleware carregou
+        setTimeout(function() {
+            try {
+                // Verificar se existe a função de verificação de autenticação
+                const userLevel = sessionStorage.getItem('nivel');
+                const userProject = sessionStorage.getItem('project');
+                
+                console.log('Nível do usuário:', userLevel);
+                console.log('Projeto:', userProject);
+                
+                // Se não há informações de sessão, redirecionar para login
+                if (!userLevel) {
+                    console.log('Sem nível de usuário, redirecionando para index');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Se não é projeto HVC, redirecionar para index
+                if (userProject !== 'Hvc') {
+                    console.log('Não é projeto HVC, redirecionando para index');
+                    window.location.href = 'index.html';
+                    return;
+                }
+                
+                // Redirecionar baseado no nível do usuário
+                if (userLevel === 'admin') {
+                    console.log('Redirecionando para fluxo de caixa admin');
+                    window.location.href = 'fluxo-caixa-hvc-admin.html';
+                } else {
+                    console.log('Redirecionando para fluxo de caixa user');
+                    window.location.href = 'fluxo-caixa-hvc-user.html';
+                }
+                
+            } catch (error) {
+                console.error('Erro no redirecionamento:', error);
+                // Em caso de erro, redirecionar para index
                 window.location.href = 'index.html';
-                return;
             }
-            
-            // Redirecionar baseado no nível do usuário
-            if (userLevel === 'admin') {
-                window.location.href = 'fluxo-caixa-hvc-admin.html';
-            } else {
-                window.location.href = 'fluxo-caixa-hvc-user.html';
-            }
-        });
+        }, 1000); // Aguardar 1 segundo
     </script>
 </body>
 </html>
