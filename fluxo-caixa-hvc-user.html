@@ -8,21 +8,23 @@
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
-        /* Tema específico HVC - Elegante e sofisticado */
+        /* Tema específico HVC - Paleta original */
         body {
             display: flex;
             margin: 0;
             min-height: 100vh;
             background: linear-gradient(135deg, #000080, #800080);
             color: #e0e0e0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
 
         #main-content-fluxo-caixa-hvc {
             flex-grow: 1;
-            padding: 2rem;
+            padding: 1rem;
             transition: margin-left 0.3s ease;
             background: linear-gradient(135deg, #000080, #800080);
             color: #e0e0e0;
+            overflow-y: auto;
         }
 
         #main-content-fluxo-caixa-hvc.sidebar-collapsed {
@@ -33,49 +35,467 @@
             background: rgba(25, 25, 112, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 12px;
-            padding: 2rem;
-            margin-bottom: 2rem;
+            padding: 1.5rem;
+            margin-bottom: 1rem;
             box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
             backdrop-filter: blur(10px);
         }
 
         .hvc-title {
             color: #ffffff;
-            font-size: 2rem;
-            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
             text-align: center;
-        }
-
-        .development-message {
             display: flex;
-            justify-content: center;
             align-items: center;
-            min-height: 60vh;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        /* Layout em duas colunas */
+        .content-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            height: calc(100vh - 200px);
+        }
+
+        /* Calendário - Paleta HVC */
+        .calendar-container {
+            background: rgba(25, 25, 112, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+        }
+
+        .calendar-nav {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+            padding: 0.5rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .calendar-nav:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .calendar-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .calendar-day-header {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 0.5rem;
             text-align: center;
-        }
-
-        .message-content {
-            max-width: 600px;
-        }
-
-        .message-content h1 {
-            font-size: 2.5em;
-            margin-bottom: 20px;
+            font-weight: bold;
+            font-size: 0.8rem;
             color: #ffffff;
         }
 
-        .message-content p {
-            font-size: 1.2em;
+        .calendar-day {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 0.3rem;
+            min-height: 60px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .calendar-day:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-1px);
+        }
+
+        .calendar-day.other-month {
+            opacity: 0.3;
+        }
+
+        .calendar-day.today {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.3);
+        }
+
+        .calendar-day.has-events {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .calendar-day-number {
+            font-size: 0.8rem;
+            margin-bottom: 0.2rem;
+            color: #ffffff;
+        }
+
+        .calendar-event {
+            background: rgba(255, 255, 255, 0.8);
+            color: #000080;
+            font-size: 0.6rem;
+            padding: 1px 3px;
+            border-radius: 3px;
+            margin-bottom: 1px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-weight: bold;
+        }
+
+        .calendar-event.pagamento {
+            background: rgba(255, 255, 255, 0.9);
+            color: #800080;
+        }
+
+        .calendar-event.compromisso {
+            background: rgba(255, 255, 255, 0.7);
+            color: #000080;
+        }
+
+        /* Lista de itens - Paleta HVC */
+        .list-container {
+            background: rgba(25, 25, 112, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+        }
+
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .list-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #ffffff;
+        }
+
+        .add-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-weight: bold;
+        }
+
+        .add-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .filters {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-input, .filter-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 0.3rem;
+            border-radius: 5px;
+            font-size: 0.8rem;
+        }
+
+        .filter-input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .filter-select option {
+            background: #000080;
+            color: #ffffff;
+        }
+
+        .items-list {
+            flex-grow: 1;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+
+        .item-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 0.8rem;
+            margin-bottom: 0.5rem;
+            transition: all 0.3s;
+        }
+
+        .item-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .item-title {
+            font-weight: bold;
+            color: #ffffff;
+            margin-bottom: 0.2rem;
+        }
+
+        .item-type {
+            font-size: 0.7rem;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+            text-transform: uppercase;
+            font-weight: bold;
+        }
+
+        .item-type.compromisso {
+            background: rgba(255, 255, 255, 0.8);
+            color: #000080;
+        }
+
+        .item-type.pagamento {
+            background: rgba(255, 255, 255, 0.9);
+            color: #800080;
+        }
+
+        .item-details {
+            font-size: 0.8rem;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
             opacity: 0.9;
-            line-height: 1.6;
-            color: #e0e0e0;
         }
 
-        .icon {
-            font-size: 4em;
-            margin-bottom: 20px;
-            opacity: 0.8;
+        .item-status {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .status-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             color: #ffffff;
+            padding: 0.2rem;
+            border-radius: 3px;
+            font-size: 0.7rem;
+        }
+
+        .status-select option {
+            background: #000080;
+            color: #ffffff;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 0.3rem 0.6rem;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 0.7rem;
+            transition: all 0.3s;
+        }
+
+        .action-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .action-btn.edit:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .action-btn.delete:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .last-update {
+            font-size: 0.6rem;
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 0.3rem;
+        }
+
+        /* Modal - Paleta HVC */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #000080, #800080);
+            margin: 5% auto;
+            padding: 2rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+            backdrop-filter: blur(10px);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-title {
+            color: #ffffff;
+            font-size: 1.3rem;
+        }
+
+        .close {
+            color: #ffffff;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: opacity 0.3s;
+        }
+
+        .close:hover {
+            opacity: 0.7;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            color: #ffffff;
+            margin-bottom: 0.3rem;
+            font-size: 0.9rem;
+        }
+
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 0.5rem;
+            border-radius: 5px;
+            font-size: 0.9rem;
+            box-sizing: border-box;
+        }
+
+        .form-input::placeholder, .form-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-select option {
+            background: #000080;
+            color: #ffffff;
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 1rem;
+            justify-content: flex-end;
+            margin-top: 1.5rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+
+        .btn-primary {
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .content-layout {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            
+            .calendar-day {
+                min-height: 40px;
+                font-size: 0.7rem;
+            }
+            
+            .filters {
+                flex-direction: column;
+            }
         }
     </style>
 </head>
@@ -84,18 +504,150 @@
     <main id="main-content-fluxo-caixa-hvc">
         <div class="hvc-container">
             <h1 class="hvc-title">
-                <i class="fas fa-wallet"></i> Fluxo de Caixa Usuário HVC
+                <i class="fas fa-wallet"></i> Fluxo de Caixa - Agenda e Pagamentos
             </h1>
+        </div>
 
-            <div class="development-message">
-                <div class="message-content">
-                    <div class="icon">🚧</div>
-                    <h1 class="hvc-title">Fluxo de Caixa do Usuário em Desenvolvimento</h1>
-                    <p>Esta página está sendo desenvolvida especialmente para usuários acompanharem o fluxo de caixa do sistema HVC. Em breve você terá acesso a consultas financeiras, relatórios e informações essenciais para o seu trabalho.</p>
+        <div class="content-layout">
+            <!-- Calendário -->
+            <div class="calendar-container">
+                <div class="calendar-header">
+                    <button class="calendar-nav" id="prevMonth">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <div class="calendar-title" id="calendarTitle">
+                        Agosto 2025
+                    </div>
+                    <button class="calendar-nav" id="nextMonth">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- Cabeçalhos dos dias da semana -->
+                    <div class="calendar-day-header">Dom</div>
+                    <div class="calendar-day-header">Seg</div>
+                    <div class="calendar-day-header">Ter</div>
+                    <div class="calendar-day-header">Qua</div>
+                    <div class="calendar-day-header">Qui</div>
+                    <div class="calendar-day-header">Sex</div>
+                    <div class="calendar-day-header">Sáb</div>
+                    <!-- Dias serão gerados dinamicamente -->
+                </div>
+            </div>
+
+            <!-- Lista de itens -->
+            <div class="list-container">
+                <div class="list-header">
+                    <div class="list-title">Compromissos e Pagamentos</div>
+                    <button class="add-btn" id="addItemBtn">
+                        <i class="fas fa-plus"></i> Adicionar
+                    </button>
+                </div>
+
+                <div class="filters">
+                    <input type="text" class="filter-input" id="searchFilter" placeholder="Buscar...">
+                    <select class="filter-select" id="typeFilter">
+                        <option value="">Todos os tipos</option>
+                        <option value="compromisso">Compromissos</option>
+                        <option value="pagamento">Pagamentos</option>
+                    </select>
+                    <select class="filter-select" id="statusFilter">
+                        <option value="">Todos os status</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="confirmado">Confirmado</option>
+                        <option value="pago">Pago</option>
+                        <option value="cancelado">Cancelado</option>
+                        <option value="vencido">Vencido</option>
+                    </select>
+                    <input type="date" class="filter-input" id="dateFilter">
+                </div>
+
+                <div class="items-list" id="itemsList">
+                    <!-- Itens serão carregados dinamicamente -->
                 </div>
             </div>
         </div>
     </main>
+
+    <!-- Modal para adicionar/editar item -->
+    <div id="itemModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Adicionar Item</h2>
+                <span class="close" id="closeModal">&times;</span>
+            </div>
+            <form id="itemForm">
+                <div class="form-group">
+                    <label class="form-label" for="itemTitulo">Título *</label>
+                    <input type="text" class="form-input" id="itemTitulo" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="itemTipo">Tipo *</label>
+                    <select class="form-select" id="itemTipo" required>
+                        <option value="">Selecione...</option>
+                        <option value="compromisso">Compromisso</option>
+                        <option value="pagamento">Pagamento</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="itemCategoria">Categoria</label>
+                    <input type="text" class="form-input" id="itemCategoria" placeholder="Ex: Reunião, Fornecedor, Salário...">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="itemData">Data *</label>
+                    <input type="date" class="form-input" id="itemData" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="itemHora">Hora</label>
+                    <input type="time" class="form-input" id="itemHora">
+                </div>
+                
+                <div class="form-group" id="valorGroup" style="display: none;">
+                    <label class="form-label" for="itemValor">Valor (R$)</label>
+                    <input type="number" class="form-input" id="itemValor" step="0.01" placeholder="0,00">
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="itemStatus">Status</label>
+                    <select class="form-select" id="itemStatus">
+                        <option value="pendente">Pendente</option>
+                        <option value="confirmado">Confirmado</option>
+                        <option value="pago">Pago</option>
+                        <option value="cancelado">Cancelado</option>
+                        <option value="vencido">Vencido</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="itemPrioridade">Prioridade</label>
+                    <select class="form-select" id="itemPrioridade">
+                        <option value="baixa">Baixa</option>
+                        <option value="media">Média</option>
+                        <option value="alta">Alta</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="itemDescricao">Descrição</label>
+                    <textarea class="form-textarea" id="itemDescricao" placeholder="Detalhes adicionais..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label" for="itemObservacoes">Observações</label>
+                    <textarea class="form-textarea" id="itemObservacoes" placeholder="Observações internas..."></textarea>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Cancelar</button>
+                    <button type="submit" class="btn btn-primary" id="saveBtn">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <!-- Scripts -->
     <script type="module" src="supabase.js"></script>
@@ -103,6 +655,432 @@
     <script type="module">
         import { injectSidebar } from './sidebar.js';
         injectSidebar("main-content-fluxo-caixa-hvc");
+    </script>
+    
+    <script>
+        // Variáveis globais
+        let currentDate = new Date();
+        let currentUser = sessionStorage.getItem('usuario') || 'user';
+        let editingItemId = null;
+        let agendaItems = [];
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCalendar();
+            loadAgendaItems();
+            setupEventListeners();
+        });
+
+        // Configurar event listeners
+        function setupEventListeners() {
+            // Navegação do calendário
+            document.getElementById('prevMonth').addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() - 1);
+                renderCalendar();
+            });
+
+            document.getElementById('nextMonth').addEventListener('click', () => {
+                currentDate.setMonth(currentDate.getMonth() + 1);
+                renderCalendar();
+            });
+
+            // Modal
+            document.getElementById('addItemBtn').addEventListener('click', openAddModal);
+            document.getElementById('closeModal').addEventListener('click', closeModal);
+            document.getElementById('cancelBtn').addEventListener('click', closeModal);
+            document.getElementById('itemForm').addEventListener('submit', saveItem);
+
+            // Filtros
+            document.getElementById('searchFilter').addEventListener('input', filterItems);
+            document.getElementById('typeFilter').addEventListener('change', filterItems);
+            document.getElementById('statusFilter').addEventListener('change', filterItems);
+            document.getElementById('dateFilter').addEventListener('change', filterItems);
+
+            // Tipo de item (mostrar/ocultar campo valor)
+            document.getElementById('itemTipo').addEventListener('change', function() {
+                const valorGroup = document.getElementById('valorGroup');
+                if (this.value === 'pagamento') {
+                    valorGroup.style.display = 'block';
+                    document.getElementById('itemValor').required = true;
+                } else {
+                    valorGroup.style.display = 'none';
+                    document.getElementById('itemValor').required = false;
+                }
+            });
+
+            // Fechar modal clicando fora
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('itemModal');
+                if (event.target === modal) {
+                    closeModal();
+                }
+            });
+        }
+
+        // Inicializar calendário
+        function initializeCalendar() {
+            renderCalendar();
+        }
+
+        // Renderizar calendário
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            
+            // Atualizar título
+            const monthNames = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            document.getElementById('calendarTitle').textContent = `${monthNames[month]} ${year}`;
+
+            // Limpar grid (manter cabeçalhos)
+            const grid = document.getElementById('calendarGrid');
+            const headers = grid.querySelectorAll('.calendar-day-header');
+            grid.innerHTML = '';
+            headers.forEach(header => grid.appendChild(header));
+
+            // Primeiro dia do mês e último dia do mês anterior
+            const firstDay = new Date(year, month, 1);
+            const lastDay = new Date(year, month + 1, 0);
+            const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
+
+            // Gerar 42 dias (6 semanas)
+            for (let i = 0; i < 42; i++) {
+                const date = new Date(startDate);
+                date.setDate(startDate.getDate() + i);
+                
+                const dayElement = createDayElement(date, month);
+                grid.appendChild(dayElement);
+            }
+        }
+
+        // Criar elemento do dia
+        function createDayElement(date, currentMonth) {
+            const dayDiv = document.createElement('div');
+            dayDiv.className = 'calendar-day';
+            
+            // Verificar se é do mês atual
+            if (date.getMonth() !== currentMonth) {
+                dayDiv.classList.add('other-month');
+            }
+            
+            // Verificar se é hoje
+            const today = new Date();
+            if (date.toDateString() === today.toDateString()) {
+                dayDiv.classList.add('today');
+            }
+            
+            // Número do dia
+            const dayNumber = document.createElement('div');
+            dayNumber.className = 'calendar-day-number';
+            dayNumber.textContent = date.getDate();
+            dayDiv.appendChild(dayNumber);
+            
+            // Eventos do dia
+            const dayEvents = getEventsForDate(date);
+            if (dayEvents.length > 0) {
+                dayDiv.classList.add('has-events');
+                dayEvents.slice(0, 3).forEach(event => {
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = `calendar-event ${event.tipo}`;
+                    eventDiv.textContent = event.titulo;
+                    eventDiv.title = `${event.titulo} - ${event.hora || 'Sem horário'}`;
+                    dayDiv.appendChild(eventDiv);
+                });
+                
+                if (dayEvents.length > 3) {
+                    const moreDiv = document.createElement('div');
+                    moreDiv.className = 'calendar-event';
+                    moreDiv.textContent = `+${dayEvents.length - 3} mais`;
+                    dayDiv.appendChild(moreDiv);
+                }
+            }
+            
+            // Click no dia
+            dayDiv.addEventListener('click', () => {
+                const dateStr = date.toISOString().split('T')[0];
+                document.getElementById('dateFilter').value = dateStr;
+                filterItems();
+            });
+            
+            return dayDiv;
+        }
+
+        // Obter eventos para uma data específica
+        function getEventsForDate(date) {
+            const dateStr = date.toISOString().split('T')[0];
+            return agendaItems.filter(item => item.data_evento === dateStr);
+        }
+
+        // Carregar itens da agenda
+        async function loadAgendaItems() {
+            try {
+                // Simulação de dados - substituir pela chamada real ao Supabase
+                agendaItems = [
+                    {
+                        id: 1,
+                        titulo: 'Reunião com Cliente ABC',
+                        descricao: 'Discussão sobre novo projeto',
+                        tipo: 'compromisso',
+                        categoria: 'Reunião',
+                        data_evento: '2025-08-25',
+                        hora_evento: '14:00',
+                        valor: null,
+                        status: 'confirmado',
+                        prioridade: 'alta',
+                        criado_por: 'admin',
+                        atualizado_por: 'admin',
+                        atualizado_em: '2025-08-21 10:00:00'
+                    },
+                    {
+                        id: 2,
+                        titulo: 'Pagamento Fornecedor XYZ',
+                        descricao: 'Pagamento de materiais',
+                        tipo: 'pagamento',
+                        categoria: 'Fornecedor',
+                        data_evento: '2025-08-26',
+                        hora_evento: '10:00',
+                        valor: 5000.00,
+                        status: 'pendente',
+                        prioridade: 'media',
+                        criado_por: 'admin',
+                        atualizado_por: null,
+                        atualizado_em: null
+                    }
+                ];
+                
+                renderItemsList();
+                renderCalendar();
+            } catch (error) {
+                console.error('Erro ao carregar itens:', error);
+            }
+        }
+
+        // Renderizar lista de itens
+        function renderItemsList() {
+            const container = document.getElementById('itemsList');
+            container.innerHTML = '';
+            
+            if (agendaItems.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: rgba(255,255,255,0.6);">Nenhum item encontrado</div>';
+                return;
+            }
+            
+            agendaItems.forEach(item => {
+                const itemDiv = createItemElement(item);
+                container.appendChild(itemDiv);
+            });
+        }
+
+        // Criar elemento do item
+        function createItemElement(item) {
+            const itemDiv = document.createElement('div');
+            itemDiv.className = 'item-card';
+            
+            const formatDate = (dateStr) => {
+                const date = new Date(dateStr + 'T00:00:00');
+                return date.toLocaleDateString('pt-BR');
+            };
+            
+            const formatCurrency = (value) => {
+                return new Intl.NumberFormat('pt-BR', {
+                    style: 'currency',
+                    currency: 'BRL'
+                }).format(value);
+            };
+            
+            itemDiv.innerHTML = `
+                <div class="item-header">
+                    <div>
+                        <div class="item-title">${item.titulo}</div>
+                        <div class="item-type ${item.tipo}">${item.tipo}</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="action-btn edit" onclick="editItem(${item.id})">
+                            <i class="fas fa-edit"></i> Editar
+                        </button>
+                        <button class="action-btn delete" onclick="deleteItem(${item.id})">
+                            <i class="fas fa-trash"></i> Excluir
+                        </button>
+                    </div>
+                </div>
+                <div class="item-details">
+                    <div><strong>Data:</strong> ${formatDate(item.data_evento)} ${item.hora_evento ? 'às ' + item.hora_evento : ''}</div>
+                    ${item.categoria ? `<div><strong>Categoria:</strong> ${item.categoria}</div>` : ''}
+                    ${item.valor ? `<div><strong>Valor:</strong> ${formatCurrency(item.valor)}</div>` : ''}
+                    ${item.descricao ? `<div><strong>Descrição:</strong> ${item.descricao}</div>` : ''}
+                </div>
+                <div class="item-status">
+                    <label>Status:</label>
+                    <select class="status-select" onchange="updateStatus(${item.id}, this.value)">
+                        <option value="pendente" ${item.status === 'pendente' ? 'selected' : ''}>Pendente</option>
+                        <option value="confirmado" ${item.status === 'confirmado' ? 'selected' : ''}>Confirmado</option>
+                        <option value="pago" ${item.status === 'pago' ? 'selected' : ''}>Pago</option>
+                        <option value="cancelado" ${item.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
+                        <option value="vencido" ${item.status === 'vencido' ? 'selected' : ''}>Vencido</option>
+                    </select>
+                </div>
+                ${item.atualizado_por ? `
+                    <div class="last-update">
+                        Última atualização: ${item.atualizado_em} por ${item.atualizado_por}
+                    </div>
+                ` : ''}
+            `;
+            
+            return itemDiv;
+        }
+
+        // Filtrar itens
+        function filterItems() {
+            const search = document.getElementById('searchFilter').value.toLowerCase();
+            const type = document.getElementById('typeFilter').value;
+            const status = document.getElementById('statusFilter').value;
+            const date = document.getElementById('dateFilter').value;
+            
+            const filtered = agendaItems.filter(item => {
+                const matchSearch = !search || 
+                    item.titulo.toLowerCase().includes(search) ||
+                    (item.descricao && item.descricao.toLowerCase().includes(search)) ||
+                    (item.categoria && item.categoria.toLowerCase().includes(search));
+                
+                const matchType = !type || item.tipo === type;
+                const matchStatus = !status || item.status === status;
+                const matchDate = !date || item.data_evento === date;
+                
+                return matchSearch && matchType && matchStatus && matchDate;
+            });
+            
+            // Temporariamente substituir agendaItems pelos filtrados
+            const originalItems = agendaItems;
+            agendaItems = filtered;
+            renderItemsList();
+            agendaItems = originalItems;
+        }
+
+        // Abrir modal para adicionar
+        function openAddModal() {
+            editingItemId = null;
+            document.getElementById('modalTitle').textContent = 'Adicionar Item';
+            document.getElementById('itemForm').reset();
+            document.getElementById('valorGroup').style.display = 'none';
+            document.getElementById('itemModal').style.display = 'block';
+        }
+
+        // Editar item
+        function editItem(id) {
+            const item = agendaItems.find(i => i.id === id);
+            if (!item) return;
+            
+            editingItemId = id;
+            document.getElementById('modalTitle').textContent = 'Editar Item';
+            
+            // Preencher formulário
+            document.getElementById('itemTitulo').value = item.titulo;
+            document.getElementById('itemTipo').value = item.tipo;
+            document.getElementById('itemCategoria').value = item.categoria || '';
+            document.getElementById('itemData').value = item.data_evento;
+            document.getElementById('itemHora').value = item.hora_evento || '';
+            document.getElementById('itemValor').value = item.valor || '';
+            document.getElementById('itemStatus').value = item.status;
+            document.getElementById('itemPrioridade').value = item.prioridade;
+            document.getElementById('itemDescricao').value = item.descricao || '';
+            document.getElementById('itemObservacoes').value = item.observacoes || '';
+            
+            // Mostrar campo valor se for pagamento
+            if (item.tipo === 'pagamento') {
+                document.getElementById('valorGroup').style.display = 'block';
+                document.getElementById('itemValor').required = true;
+            }
+            
+            document.getElementById('itemModal').style.display = 'block';
+        }
+
+        // Salvar item
+        function saveItem(event) {
+            event.preventDefault();
+            
+            const formData = {
+                titulo: document.getElementById('itemTitulo').value,
+                tipo: document.getElementById('itemTipo').value,
+                categoria: document.getElementById('itemCategoria').value,
+                data_evento: document.getElementById('itemData').value,
+                hora_evento: document.getElementById('itemHora').value,
+                valor: document.getElementById('itemValor').value ? parseFloat(document.getElementById('itemValor').value) : null,
+                status: document.getElementById('itemStatus').value,
+                prioridade: document.getElementById('itemPrioridade').value,
+                descricao: document.getElementById('itemDescricao').value,
+                observacoes: document.getElementById('itemObservacoes').value,
+                atualizado_por: currentUser,
+                atualizado_em: new Date().toLocaleString('pt-BR')
+            };
+            
+            if (editingItemId) {
+                // Atualizar item existente
+                const index = agendaItems.findIndex(i => i.id === editingItemId);
+                if (index !== -1) {
+                    agendaItems[index] = { ...agendaItems[index], ...formData };
+                }
+            } else {
+                // Adicionar novo item
+                const newItem = {
+                    id: Date.now(), // ID temporário
+                    ...formData,
+                    criado_por: currentUser,
+                    criado_em: new Date().toLocaleString('pt-BR')
+                };
+                agendaItems.push(newItem);
+            }
+            
+            renderItemsList();
+            renderCalendar();
+            closeModal();
+            
+            // Aqui você adicionaria a chamada para salvar no Supabase
+            console.log('Item salvo:', formData);
+        }
+
+        // Atualizar status
+        function updateStatus(id, newStatus) {
+            const item = agendaItems.find(i => i.id === id);
+            if (item) {
+                item.status = newStatus;
+                item.atualizado_por = currentUser;
+                item.atualizado_em = new Date().toLocaleString('pt-BR');
+                renderItemsList();
+                renderCalendar();
+                
+                // Aqui você adicionaria a chamada para atualizar no Supabase
+                console.log('Status atualizado:', { id, status: newStatus, user: currentUser });
+            }
+        }
+
+        // Excluir item
+        function deleteItem(id) {
+            if (confirm('Tem certeza que deseja excluir este item?')) {
+                const index = agendaItems.findIndex(i => i.id === id);
+                if (index !== -1) {
+                    agendaItems.splice(index, 1);
+                    renderItemsList();
+                    renderCalendar();
+                    
+                    // Aqui você adicionaria a chamada para excluir do Supabase
+                    console.log('Item excluído:', id);
+                }
+            }
+        }
+
+        // Fechar modal
+        function closeModal() {
+            document.getElementById('itemModal').style.display = 'none';
+            editingItemId = null;
+        }
+
+        // Tornar funções globais para uso nos event handlers inline
+        window.editItem = editItem;
+        window.deleteItem = deleteItem;
+        window.updateStatus = updateStatus;
     </script>
 </body>
 </html>
