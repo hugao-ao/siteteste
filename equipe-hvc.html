@@ -2457,35 +2457,39 @@
       });
     }
 
-    // ===== CONFIGURAÇÃO DE EVENTOS =====
-    function configurarEventos() {
-      // Formatação automática de CPF e WhatsApp
-      document.addEventListener('input', function(e) {
-        if (e.target.id === 'integrante-cpf') {
-          e.target.value = formatCPF(e.target.value);
-        }
-        if (e.target.id === 'integrante-whatsapp') {
-          e.target.value = formatWhatsAppDisplay(e.target.value);
-        }
-      });
+            // ===== CONFIGURAÇÃO DE EVENTOS =====
+          function configurarEventos() {
+            // Formatação automática de CPF e WhatsApp
+            document.addEventListener('input', function(e) {
+              if (e.target.id === 'integrante-cpf') {
+                e.target.value = formatCPF(e.target.value);
+              }
+              if (e.target.id === 'filtro-cpf-integrante') {
+                e.target.value = formatCPF(e.target.value);
+              }
+              if (e.target.id === 'integrante-whatsapp') {
+                e.target.value = formatWhatsAppDisplay(e.target.value);
+              }
+            });
+          
+            // Fechar modais com ESC
+            document.addEventListener('keydown', function(e) {
+              if (e.key === 'Escape') {
+                const modalsAbertos = document.querySelectorAll('.modal.show');
+                modalsAbertos.forEach(modal => {
+                  modal.classList.remove('show');
+                });
+              }
+            });
+          
+            // Fechar modais clicando fora
+            document.addEventListener('click', function(e) {
+              if (e.target.classList.contains('modal')) {
+                e.target.classList.remove('show');
+              }
+            });
+          }
 
-      // Fechar modais com ESC
-      document.addEventListener('keydown', function(e) {
-        if (e.key === 'Escape') {
-          const modalsAbertos = document.querySelectorAll('.modal.show');
-          modalsAbertos.forEach(modal => {
-            modal.classList.remove('show');
-          });
-        }
-      });
-
-      // Fechar modais clicando fora
-      document.addEventListener('click', function(e) {
-        if (e.target.classList.contains('modal')) {
-          e.target.classList.remove('show');
-        }
-      });
-    }
 
     console.log('✅ Sistema de Equipes HVC carregado com sucesso!');
   </script>
