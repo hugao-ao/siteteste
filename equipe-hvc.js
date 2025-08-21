@@ -609,9 +609,9 @@ function limparFormularioIntegrante() {
 
 function configurarEventos() {
     // Formatação automática de CPF
-    const cpfInput = document.getElementById('cpf-integrante');
-    if (cpfInput) {
-        cpfInput.addEventListener('input', function(e) {
+        const cpfFiltroInput = document.getElementById('filtro-cpf-integrante');
+    if (cpfFiltroInput) {
+        cpfFiltroInput.addEventListener('input', function(e) {
             e.target.value = formatCPF(e.target.value);
         });
     }
