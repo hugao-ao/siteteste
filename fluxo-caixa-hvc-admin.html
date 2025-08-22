@@ -241,8 +241,8 @@
 
         .calendar-day {
             background: rgba(255, 255, 255, 0.05);
-            min-height: 120px;
-            max-height: 120px;
+            min-height: 140px;
+            max-height: 140px;
             padding: 8px;
             position: relative;
             transition: all 0.3s ease;
@@ -251,6 +251,8 @@
             flex: 1;
             min-width: 0;
             overflow: hidden;
+            display: flex;
+            flex-direction: column;
         }
 
         .calendar-day:hover {
@@ -271,6 +273,19 @@
             font-weight: 500;
             margin-bottom: 5px;
             font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .day-total {
+            background: rgba(255, 193, 7, 0.8);
+            color: #000;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            margin-bottom: 3px;
+            text-align: center;
+            flex-shrink: 0;
         }
 
         .day-events {
@@ -278,7 +293,8 @@
             flex-direction: column;
             gap: 2px;
             overflow: hidden;
-            height: calc(100% - 20px);
+            flex: 1;
+            min-height: 0;
         }
 
         .event-item {
@@ -366,6 +382,52 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             animation: modalSlideIn 0.3s ease;
+        }
+
+        /* Valor Total no Modal */
+        .event-total-section {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .event-total-title {
+            color: #ffc107;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .event-total-value {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+        }
+
+        .event-values-list {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .event-values-list h4 {
+            color: #ffc107;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .value-item {
+            background: rgba(255, 193, 7, 0.3);
+            color: #fff;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin: 5px 0;
+            font-family: monospace;
+            font-size: 13px;
         }
 
         /* Modal */
@@ -509,8 +571,8 @@
             }
             
             .calendar-day {
-                min-height: 80px;
-                max-height: 80px;
+                min-height: 100px;
+                max-height: 100px;
                 padding: 4px;
             }
             
@@ -532,6 +594,10 @@
 
             .event-item {
                 font-size: 9px;
+            }
+
+            .day-total {
+                font-size: 8px;
             }
         }
     </style>
@@ -678,6 +744,62 @@
         const connectionStatus = document.getElementById('connectionStatus');
         const calendarSection = document.getElementById('calendarSection');
         const filterSection = document.getElementById('filterSection');
+
+        // =================================================================
+        // SISTEMA DE DETECÇÃO E SOMA DE VALORES
+        // =================================================================
+        function extractMoneyValues(text) {
+            if (!text) return [];
+            
+            // Regex para detectar valores no formato R$ 1.234,56
+            const moneyRegex = /R\$\s*([\d.]+,\d{2})/gi;
+            const matches = text.match(moneyRegex) || [];
+            
+            return matches.map(match => {
+                // Extrair apenas o valor numérico
+                const valueStr = match.replace(/R\$\s*/, '');
+                // Converter para número (remover pontos dos milhares, trocar vírgula por ponto)
+                const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
+                return {
+                    original: match,
+                    value: numericValue
+                };
+            });
+        }
+
+        function calculateEventTotal(event) {
+            const description = event.description || '';
+            const summary = event.summary || '';
+            const fullText = `${summary} ${description}`;
+            
+            const values = extractMoneyValues(fullText);
+            const total = values.reduce((sum, item) => sum + item.value, 0);
+            
+            return {
+                total: total,
+                values: values,
+                count: values.length
+            };
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        function calculateDayTotal(date) {
+            const eventsForDay = getEventsForDay(date);
+            let dayTotal = 0;
+            
+            eventsForDay.forEach(event => {
+                const eventCalc = calculateEventTotal(event);
+                dayTotal += eventCalc.total;
+            });
+            
+            return dayTotal;
+        }
 
         // =================================================================
         // PERSISTÊNCIA DE LOGIN MELHORADA
@@ -1089,6 +1211,15 @@
                 dayNumber.textContent = cellDate.getDate();
                 dayDiv.appendChild(dayNumber);
                 
+                // NOVO: Total do dia
+                const dayTotal = calculateDayTotal(cellDate);
+                if (dayTotal > 0) {
+                    const totalDiv = document.createElement('div');
+                    totalDiv.className = 'day-total';
+                    totalDiv.textContent = formatCurrency(dayTotal);
+                    dayDiv.appendChild(totalDiv);
+                }
+                
                 // Events for this day
                 const dayEvents = document.createElement('div');
                 dayEvents.className = 'day-events';
@@ -1124,6 +1255,9 @@
             const start = new Date(event.start.dateTime || event.start.date);
             const end = new Date(event.end.dateTime || event.end.date);
             
+            // NOVO: Calcular valores do evento
+            const eventCalc = calculateEventTotal(event);
+            
             let detailsHTML = `
                 <p><strong><i class="fas fa-calendar"></i> Data:</strong> ${start.toLocaleDateString('pt-BR')}</p>
                 <p><strong><i class="fas fa-clock"></i> Horário:</strong> ${event.start.dateTime ? 
@@ -1133,6 +1267,35 @@
                 ${event.location ? `<p><strong><i class="fas fa-map-marker-alt"></i> Local:</strong> ${event.location}</p>` : ''}
                 <p><strong><i class="fas fa-tag"></i> Tipo:</strong> ${getEventType(event).toUpperCase()}</p>
             `;
+            
+            // NOVO: Seção de valores encontrados
+            if (eventCalc.count > 0) {
+                detailsHTML += `
+                    <div class="event-total-section">
+                        <div class="event-total-title">
+                            <i class="fas fa-calculator"></i> TOTAL DE PAGAMENTOS
+                        </div>
+                        <div class="event-total-value">
+                            ${formatCurrency(eventCalc.total)}
+                        </div>
+                    </div>
+                `;
+                
+                if (eventCalc.values.length > 1) {
+                    detailsHTML += `
+                        <div class="event-values-list">
+                            <h4><i class="fas fa-list"></i> Valores Encontrados (${eventCalc.count}):</h4>
+                    `;
+                    eventCalc.values.forEach((item, index) => {
+                        detailsHTML += `
+                            <div class="value-item">
+                                ${index + 1}. ${item.original} = ${formatCurrency(item.value)}
+                            </div>
+                        `;
+                    });
+                    detailsHTML += '</div>';
+                }
+            }
             
             // CORREÇÃO: Buscar anexos do evento
             try {
