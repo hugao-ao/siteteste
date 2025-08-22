@@ -506,18 +506,19 @@
 
     <script>
         // =================================================================
-        // CONFIGURAÇÃO DO SUPABASE
+        // CONFIGURAÇÃO DO SUPABASE (SUAS CREDENCIAIS REAIS)
         // =================================================================
-        const SUPABASE_URL = 'https://your-project.supabase.co';
-        const SUPABASE_ANON_KEY = 'your-anon-key';
+        const SUPABASE_URL = 'https://vplksbpfkhunfropykf.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwbGtzYnBma2h1bmZyb3B5a2YiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcxNjIxNjEwMiwiZXhwIjoyMDMxNzkyMTAyfQ.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZwbGtzYnBma2h1bmZyb3B5a2YiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcxNjIxNjEwMiwiZXhwIjoyMDMxNzkyMTAyfQ';
         
-        // Inicializar Supabase (substitua pelas suas credenciais)
+        // Inicializar Supabase
         let supabase;
         try {
             supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            console.log('✅ Supabase inicializado com sucesso!');
         } catch (error) {
-            console.error('Erro ao inicializar Supabase:', error);
-            showMessage('Erro: Configure as credenciais do Supabase no código', 'error');
+            console.error('❌ Erro ao inicializar Supabase:', error);
+            showMessage('Erro ao conectar com o banco de dados', 'error');
         }
 
         // =================================================================
@@ -587,8 +588,9 @@
                 });
                 gapiInited = true;
                 maybeEnableButtons();
+                console.log('✅ GAPI inicializado com sucesso!');
             } catch (error) {
-                console.error('Erro ao inicializar GAPI:', error);
+                console.error('❌ Erro ao inicializar GAPI:', error);
                 showMessage('Erro ao carregar API do Google Calendar', 'error');
             }
         }
@@ -602,8 +604,9 @@
                 });
                 gisInited = true;
                 maybeEnableButtons();
+                console.log('✅ GIS inicializado com sucesso!');
             } catch (error) {
-                console.error('Erro ao inicializar GIS:', error);
+                console.error('❌ Erro ao inicializar GIS:', error);
                 showMessage('Erro ao carregar sistema de autenticação do Google', 'error');
             }
         }
@@ -613,7 +616,7 @@
                 authorizeButton.style.display = 'block';
                 signoutButton.style.display = 'none';
                 syncButton.style.display = 'block';
-                console.log('APIs do Google carregadas com sucesso');
+                console.log('✅ APIs do Google carregadas com sucesso');
             }
         }
 
@@ -650,14 +653,14 @@
                     tokenClient.requestAccessToken({ prompt: '' });
                 }
             } catch (error) {
-                console.error('Erro na autenticação:', error);
+                console.error('❌ Erro na autenticação:', error);
                 showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
             }
         }
 
         async function handleTokenResponse(resp) {
             if (resp.error) {
-                console.error('Erro de autenticação:', resp.error);
+                console.error('❌ Erro de autenticação:', resp.error);
                 showMessage(`Erro de autenticação: ${resp.error}`, 'error');
                 updateConnectionStatus(false);
                 return;
@@ -665,12 +668,12 @@
 
             try {
                 gapi.client.setToken(resp);
-                console.log('Conectado com o Google Calendar!');
+                console.log('✅ Conectado com o Google Calendar!');
                 updateConnectionStatus(true);
                 showMessage('Conectado com sucesso ao Google Calendar!', 'success');
                 await handleSyncClick();
             } catch (error) {
-                console.error('Erro ao processar token:', error);
+                console.error('❌ Erro ao processar token:', error);
                 showMessage('Erro ao processar autenticação', 'error');
                 updateConnectionStatus(false);
             }
@@ -688,7 +691,7 @@
                     });
                 }
             } catch (error) {
-                console.error('Erro ao desconectar:', error);
+                console.error('❌ Erro ao desconectar:', error);
                 showMessage('Erro ao desconectar', 'error');
             }
         }
@@ -710,7 +713,7 @@
                 await loadAgendaItems();
                 showMessage('Sincronização concluída com sucesso!', 'success');
             } catch (error) {
-                console.error('Erro na sincronização:', error);
+                console.error('❌ Erro na sincronização:', error);
                 showMessage(`Erro durante a sincronização: ${error.message}`, 'error');
             } finally {
                 syncButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Agora';
@@ -748,7 +751,7 @@
         // ------------------ LER (LOAD) ------------------
         async function loadAgendaItems() {
             if (!supabase) {
-                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                showMessage('Erro: Supabase não configurado', 'error');
                 return;
             }
 
@@ -772,8 +775,10 @@
                     const agendaItem = createAgendaItemElement(evento);
                     agendaList.appendChild(agendaItem);
                 });
+
+                console.log(`✅ ${eventos.length} eventos carregados`);
             } catch (error) {
-                console.error('Erro ao carregar agenda:', error);
+                console.error('❌ Erro ao carregar agenda:', error);
                 showMessage('Erro ao carregar eventos da agenda', 'error');
             }
         }
@@ -833,7 +838,7 @@
 
         async function addEvent(eventData) {
             if (!supabase) {
-                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                showMessage('Erro: Supabase não configurado', 'error');
                 return;
             }
 
@@ -859,15 +864,16 @@
                 await loadAgendaItems();
                 resetForm();
                 showMessage('Evento adicionado com sucesso!', 'success');
+                console.log('✅ Evento adicionado:', data);
             } catch (error) {
-                console.error('Erro ao adicionar evento:', error);
+                console.error('❌ Erro ao adicionar evento:', error);
                 showMessage('Erro ao adicionar evento', 'error');
             }
         }
 
         async function updateEvent(id, eventData) {
             if (!supabase) {
-                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                showMessage('Erro: Supabase não configurado', 'error');
                 return;
             }
 
@@ -882,8 +888,9 @@
                 await loadAgendaItems();
                 resetForm();
                 showMessage('Evento atualizado com sucesso!', 'success');
+                console.log('✅ Evento atualizado:', id);
             } catch (error) {
-                console.error('Erro ao atualizar evento:', error);
+                console.error('❌ Erro ao atualizar evento:', error);
                 showMessage('Erro ao atualizar evento', 'error');
             }
         }
@@ -893,7 +900,7 @@
             if (!confirm('Tem certeza que deseja excluir este evento?')) return;
 
             if (!supabase) {
-                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                showMessage('Erro: Supabase não configurado', 'error');
                 return;
             }
 
@@ -907,8 +914,9 @@
 
                 await loadAgendaItems();
                 showMessage('Evento excluído com sucesso!', 'success');
+                console.log('✅ Evento excluído:', id);
             } catch (error) {
-                console.error('Erro ao excluir evento:', error);
+                console.error('❌ Erro ao excluir evento:', error);
                 showMessage('Erro ao excluir evento', 'error');
             }
         }
@@ -916,7 +924,7 @@
         // ------------------ EDITAR ------------------
         async function editEvent(id) {
             if (!supabase) {
-                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                showMessage('Erro: Supabase não configurado', 'error');
                 return;
             }
 
@@ -940,8 +948,9 @@
 
                 submitButton.innerHTML = '<i class="fas fa-save"></i> Atualizar Evento';
                 document.getElementById('titulo').focus();
+                console.log('✅ Evento carregado para edição:', evento);
             } catch (error) {
-                console.error('Erro ao carregar evento para edição:', error);
+                console.error('❌ Erro ao carregar evento para edição:', error);
                 showMessage('Erro ao carregar evento para edição', 'error');
             }
         }
@@ -977,10 +986,10 @@
                 });
 
                 const response = await request;
-                console.log('Evento criado no Google Calendar:', response.result);
+                console.log('✅ Evento criado no Google Calendar:', response.result);
                 return response.result.id;
             } catch (error) {
-                console.error('Erro ao criar evento no Google Calendar:', error);
+                console.error('❌ Erro ao criar evento no Google Calendar:', error);
                 return null;
             }
         }
@@ -993,12 +1002,12 @@
                     'calendarId': 'primary',
                     'eventId': eventId
                 });
-                console.log('Evento deletado do Google Calendar.');
+                console.log('✅ Evento deletado do Google Calendar.');
             } catch (error) {
                 if (error.result && error.result.error.code === 404) {
-                    console.warn('Evento não encontrado no Google Calendar para exclusão.');
+                    console.warn('⚠️ Evento não encontrado no Google Calendar para exclusão.');
                 } else {
-                    console.error('Erro ao deletar evento do Google Calendar:', error);
+                    console.error('❌ Erro ao deletar evento do Google Calendar:', error);
                     throw new Error('Falha ao remover o evento do Google Calendar.');
                 }
             }
@@ -1036,12 +1045,23 @@
 
         // Carregar eventos ao inicializar
         document.addEventListener('DOMContentLoaded', () => {
+            console.log('🚀 Aplicação iniciada');
             loadAgendaItems();
         });
 
-        // Verificar se está em modo anônimo
-        if (window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes('Incognito')) {
-            console.warn('Navegação anônima detectada. Algumas funcionalidades podem não funcionar corretamente.');
+        // Teste de conectividade do Supabase
+        if (supabase) {
+            supabase.from('agenda_hvc').select('count', { count: 'exact', head: true })
+                .then(({ count, error }) => {
+                    if (error) {
+                        console.warn('⚠️ Problema de conectividade com Supabase:', error.message);
+                    } else {
+                        console.log(`✅ Conectividade com Supabase OK - ${count} registros na tabela`);
+                    }
+                })
+                .catch(err => {
+                    console.warn('⚠️ Teste de conectividade falhou:', err);
+                });
         }
     </script>
 </body>
