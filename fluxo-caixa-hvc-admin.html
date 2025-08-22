@@ -222,6 +222,7 @@
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
             overflow: hidden;
+            width: 100%;
         }
 
         .calendar-day-header {
@@ -231,6 +232,7 @@
             text-align: center;
             font-weight: 500;
             font-size: 14px;
+            width: 100%;
         }
 
         .calendar-day {
@@ -239,6 +241,8 @@
             padding: 8px;
             position: relative;
             transition: all 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
         }
 
         .calendar-day:hover {
@@ -291,6 +295,10 @@
 
         .event-item.hvc {
             background: linear-gradient(135deg, #9c27b0, #673ab7);
+        }
+
+        .event-item.pg {
+            background: linear-gradient(135deg, #34a853, #2e7d32);
         }
 
         /* Filter Section */
@@ -472,6 +480,11 @@
                 right: auto;
                 margin-bottom: 20px;
             }
+
+            .calendar-header {
+                flex-direction: column;
+                gap: 15px;
+            }
         }
     </style>
 </head>
@@ -521,7 +534,7 @@
                 <div id="filterSection" class="filter-section" style="display: none;">
                     <div class="filter-info">
                         <i class="fas fa-filter"></i>
-                        <span>Filtro Ativo: Mostrando apenas eventos com "PAGAMENTO", "PAGAMENTOS" ou "HVC"</span>
+                        <span>Filtro Ativo: Mostrando apenas eventos com "PAGAMENTO", "PAGAMENTOS", "HVC" ou "PG"</span>
                     </div>
                     <div id="filterStats" class="filter-stats"></div>
                 </div>
@@ -815,7 +828,7 @@
         // EVENT FILTERING
         // =================================================================
         function filterEvents(events) {
-            const keywords = ['pagamento', 'pagamentos', 'hvc'];
+            const keywords = ['pagamento', 'pagamentos', 'hvc', 'pg'];
             
             return events.filter(event => {
                 const title = (event.summary || '').toLowerCase();
@@ -830,7 +843,10 @@
         function getEventType(event) {
             const title = (event.summary || '').toLowerCase();
             
-            if (title.includes('pagamento')) {
+            // Verificar PG primeiro (mais específico)
+            if (title.includes('pg')) {
+                return 'pg';
+            } else if (title.includes('pagamento')) {
                 return 'pagamento';
             } else if (title.includes('hvc')) {
                 return 'hvc';
@@ -877,7 +893,7 @@
             statsElement.innerHTML = `
                 Total de eventos: ${total} | 
                 Eventos filtrados: ${filtered} | 
-                Palavras-chave: "PAGAMENTO", "PAGAMENTOS", "HVC"
+                Palavras-chave: "PAGAMENTO", "PAGAMENTOS", "HVC", "PG"
             `;
         }
 
@@ -898,8 +914,8 @@
             // Clear grid
             calendarGrid.innerHTML = '';
             
-            // Add day headers
-            const dayHeaders = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            // Add day headers - COMEÇANDO NA SEGUNDA-FEIRA
+            const dayHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
             dayHeaders.forEach(day => {
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'calendar-day-header';
@@ -911,7 +927,11 @@
             const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
             const startDate = new Date(firstDay);
-            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            // Ajustar para começar na segunda-feira (1 = segunda, 0 = domingo)
+            const dayOfWeek = firstDay.getDay();
+            const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            startDate.setDate(startDate.getDate() - daysToSubtract);
             
             // Generate calendar days
             const today = new Date();
