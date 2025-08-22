@@ -223,6 +223,7 @@
             border-radius: 8px;
             overflow: hidden;
             width: 100%;
+            table-layout: fixed;
         }
 
         .calendar-day-header {
@@ -234,16 +235,22 @@
             font-size: 14px;
             width: 100%;
             box-sizing: border-box;
+            flex: 1;
+            min-width: 0;
         }
 
         .calendar-day {
             background: rgba(255, 255, 255, 0.05);
             min-height: 120px;
+            max-height: 120px;
             padding: 8px;
             position: relative;
             transition: all 0.3s ease;
             width: 100%;
             box-sizing: border-box;
+            flex: 1;
+            min-width: 0;
+            overflow: hidden;
         }
 
         .calendar-day:hover {
@@ -263,12 +270,15 @@
             color: white;
             font-weight: 500;
             margin-bottom: 5px;
+            font-size: 12px;
         }
 
         .day-events {
             display: flex;
             flex-direction: column;
             gap: 2px;
+            overflow: hidden;
+            height: calc(100% - 20px);
         }
 
         .event-item {
@@ -276,18 +286,24 @@
             color: white;
             padding: 2px 6px;
             border-radius: 4px;
-            font-size: 11px;
+            font-size: 10px;
             cursor: pointer;
             transition: all 0.3s ease;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
+            width: 100%;
+            box-sizing: border-box;
+            min-width: 0;
+            flex-shrink: 0;
         }
 
         .event-item:hover {
-            transform: scale(1.05);
+            transform: scale(1.02);
             z-index: 10;
             position: relative;
+            white-space: normal;
+            word-wrap: break-word;
         }
 
         .event-item.pagamento {
@@ -494,6 +510,7 @@
             
             .calendar-day {
                 min-height: 80px;
+                max-height: 80px;
                 padding: 4px;
             }
             
@@ -511,6 +528,10 @@
             .calendar-header {
                 flex-direction: column;
                 gap: 15px;
+            }
+
+            .event-item {
+                font-size: 9px;
             }
         }
     </style>
@@ -659,46 +680,53 @@
         const filterSection = document.getElementById('filterSection');
 
         // =================================================================
-        // PERSISTÊNCIA DE LOGIN
+        // PERSISTÊNCIA DE LOGIN MELHORADA
         // =================================================================
-        function saveTokenToStorage(token) {
+        function saveConnectionState() {
             try {
-                localStorage.setItem('google_calendar_token', JSON.stringify(token));
-                localStorage.setItem('google_calendar_token_timestamp', Date.now().toString());
-                console.log('✅ Token salvo no localStorage');
+                const connectionData = {
+                    connected: isGoogleConnected,
+                    timestamp: Date.now(),
+                    clientId: CLIENT_ID
+                };
+                localStorage.setItem('google_calendar_connection', JSON.stringify(connectionData));
+                sessionStorage.setItem('google_calendar_session', 'active');
+                console.log('✅ Estado de conexão salvo');
             } catch (error) {
-                console.error('❌ Erro ao salvar token:', error);
+                console.error('❌ Erro ao salvar estado:', error);
             }
         }
 
-        function getTokenFromStorage() {
+        function getConnectionState() {
             try {
-                const token = localStorage.getItem('google_calendar_token');
-                const timestamp = localStorage.getItem('google_calendar_token_timestamp');
+                const connectionData = localStorage.getItem('google_calendar_connection');
+                const sessionData = sessionStorage.getItem('google_calendar_session');
                 
-                if (!token || !timestamp) return null;
+                if (!connectionData || !sessionData) return null;
                 
-                // Verificar se o token não expirou (1 hora = 3600000ms)
-                const tokenAge = Date.now() - parseInt(timestamp);
-                if (tokenAge > 3600000) {
-                    clearTokenFromStorage();
+                const data = JSON.parse(connectionData);
+                
+                // Verificar se não passou muito tempo (24 horas)
+                const timeElapsed = Date.now() - data.timestamp;
+                if (timeElapsed > 24 * 60 * 60 * 1000) {
+                    clearConnectionState();
                     return null;
                 }
                 
-                return JSON.parse(token);
+                return data;
             } catch (error) {
-                console.error('❌ Erro ao recuperar token:', error);
+                console.error('❌ Erro ao recuperar estado:', error);
                 return null;
             }
         }
 
-        function clearTokenFromStorage() {
+        function clearConnectionState() {
             try {
-                localStorage.removeItem('google_calendar_token');
-                localStorage.removeItem('google_calendar_token_timestamp');
-                console.log('✅ Token removido do localStorage');
+                localStorage.removeItem('google_calendar_connection');
+                sessionStorage.removeItem('google_calendar_session');
+                console.log('✅ Estado de conexão removido');
             } catch (error) {
-                console.error('❌ Erro ao remover token:', error);
+                console.error('❌ Erro ao remover estado:', error);
             }
         }
 
@@ -779,7 +807,7 @@
                 maybeEnableButtons();
                 console.log('✅ GAPI inicializado com sucesso!');
                 
-                // Tentar restaurar sessão salva
+                // Tentar restaurar sessão
                 await tryRestoreSession();
             } catch (error) {
                 console.error('❌ Erro ao inicializar GAPI:', error);
@@ -812,26 +840,14 @@
         }
 
         async function tryRestoreSession() {
-            const savedToken = getTokenFromStorage();
-            if (savedToken && gapiInited) {
+            const savedState = getConnectionState();
+            if (savedState && savedState.connected && gapiInited && gisInited) {
                 try {
-                    gapi.client.setToken(savedToken);
-                    
-                    // Testar se o token ainda é válido
-                    const response = await gapi.client.calendar.calendarList.list();
-                    
-                    isGoogleConnected = true;
-                    updateConnectionStatus(true);
-                    showMessage('Sessão restaurada automaticamente!', 'success');
-                    console.log('✅ Sessão restaurada do localStorage');
-                    
-                    // Carregar eventos
-                    await loadFilteredEvents();
+                    // Tentar uma nova autenticação silenciosa
+                    tokenClient.requestAccessToken({ prompt: '' });
                 } catch (error) {
-                    console.log('❌ Token salvo inválido, removendo...');
-                    clearTokenFromStorage();
-                    gapi.client.setToken('');
-                    updateConnectionStatus(false);
+                    console.log('❌ Não foi possível restaurar sessão automaticamente');
+                    clearConnectionState();
                 }
             }
         }
@@ -846,11 +862,7 @@
             }
 
             try {
-                if (gapi.client.getToken() === null) {
-                    tokenClient.requestAccessToken({ prompt: 'consent' });
-                } else {
-                    tokenClient.requestAccessToken({ prompt: '' });
-                }
+                tokenClient.requestAccessToken({ prompt: 'consent' });
             } catch (error) {
                 console.error('❌ Erro na autenticação:', error);
                 showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
@@ -867,11 +879,11 @@
 
             try {
                 gapi.client.setToken(resp);
-                
-                // Salvar token no localStorage
-                saveTokenToStorage(resp);
-                
                 isGoogleConnected = true;
+                
+                // Salvar estado de conexão
+                saveConnectionState();
+                
                 console.log('✅ Conectado com o Google Calendar!');
                 updateConnectionStatus(true);
                 showMessage('Conectado com sucesso ao Google Calendar!', 'success');
@@ -891,13 +903,20 @@
                 if (token !== null) {
                     google.accounts.oauth2.revoke(token.access_token, () => {
                         gapi.client.setToken('');
-                        clearTokenFromStorage();
+                        clearConnectionState();
                         isGoogleConnected = false;
                         updateConnectionStatus(false);
                         calendarSection.style.display = 'none';
                         filterSection.style.display = 'none';
                         showMessage('Desconectado do Google Calendar', 'success');
                     });
+                } else {
+                    clearConnectionState();
+                    isGoogleConnected = false;
+                    updateConnectionStatus(false);
+                    calendarSection.style.display = 'none';
+                    filterSection.style.display = 'none';
+                    showMessage('Desconectado do Google Calendar', 'success');
                 }
             } catch (error) {
                 console.error('❌ Erro ao desconectar:', error);
@@ -989,6 +1008,13 @@
             } catch (error) {
                 console.error('❌ Erro ao carregar eventos:', error);
                 showMessage('Erro ao carregar eventos', 'error');
+                
+                // Se erro de autenticação, limpar estado
+                if (error.status === 401 || error.status === 403) {
+                    clearConnectionState();
+                    isGoogleConnected = false;
+                    updateConnectionStatus(false);
+                }
             }
         }
 
