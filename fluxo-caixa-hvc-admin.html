@@ -233,6 +233,7 @@
             font-weight: 500;
             font-size: 14px;
             width: 100%;
+            box-sizing: border-box;
         }
 
         .calendar-day {
@@ -254,8 +255,8 @@
         }
 
         .calendar-day.today {
-            background: rgba(66, 133, 244, 0.2);
-            border: 2px solid #4285f4;
+            background: rgba(66, 133, 244, 0.2) !important;
+            border: 2px solid #4285f4 !important;
         }
 
         .day-number {
@@ -339,11 +340,13 @@
 
         .event-modal-content {
             background: linear-gradient(135deg, #000080, #800080);
-            margin: 10% auto;
+            margin: 5% auto;
             padding: 30px;
             border-radius: 20px;
             width: 90%;
-            max-width: 500px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             animation: modalSlideIn 0.3s ease;
@@ -413,6 +416,30 @@
             color: #e0e0e0;
             line-height: 1.6;
             margin-bottom: 15px;
+        }
+
+        .modal-body ul {
+            color: #e0e0e0;
+            margin-left: 20px;
+        }
+
+        .modal-body li {
+            margin-bottom: 8px;
+        }
+
+        .attachment-link {
+            color: #4285f4;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-right: 15px;
+            margin-bottom: 5px;
+        }
+
+        .attachment-link:hover {
+            color: #34a853;
+            text-decoration: underline;
         }
 
         /* Messages */
@@ -632,6 +659,50 @@
         const filterSection = document.getElementById('filterSection');
 
         // =================================================================
+        // PERSISTÊNCIA DE LOGIN
+        // =================================================================
+        function saveTokenToStorage(token) {
+            try {
+                localStorage.setItem('google_calendar_token', JSON.stringify(token));
+                localStorage.setItem('google_calendar_token_timestamp', Date.now().toString());
+                console.log('✅ Token salvo no localStorage');
+            } catch (error) {
+                console.error('❌ Erro ao salvar token:', error);
+            }
+        }
+
+        function getTokenFromStorage() {
+            try {
+                const token = localStorage.getItem('google_calendar_token');
+                const timestamp = localStorage.getItem('google_calendar_token_timestamp');
+                
+                if (!token || !timestamp) return null;
+                
+                // Verificar se o token não expirou (1 hora = 3600000ms)
+                const tokenAge = Date.now() - parseInt(timestamp);
+                if (tokenAge > 3600000) {
+                    clearTokenFromStorage();
+                    return null;
+                }
+                
+                return JSON.parse(token);
+            } catch (error) {
+                console.error('❌ Erro ao recuperar token:', error);
+                return null;
+            }
+        }
+
+        function clearTokenFromStorage() {
+            try {
+                localStorage.removeItem('google_calendar_token');
+                localStorage.removeItem('google_calendar_token_timestamp');
+                console.log('✅ Token removido do localStorage');
+            } catch (error) {
+                console.error('❌ Erro ao remover token:', error);
+            }
+        }
+
+        // =================================================================
         // MODAL FUNCTIONS
         // =================================================================
         function openModal() {
@@ -707,6 +778,9 @@
                 gapiInited = true;
                 maybeEnableButtons();
                 console.log('✅ GAPI inicializado com sucesso!');
+                
+                // Tentar restaurar sessão salva
+                await tryRestoreSession();
             } catch (error) {
                 console.error('❌ Erro ao inicializar GAPI:', error);
                 showMessage('Erro ao carregar API do Google Calendar', 'error');
@@ -734,6 +808,31 @@
                 authorizeButton.style.display = 'block';
                 console.log('✅ APIs do Google carregadas com sucesso');
                 showMessage('APIs do Google carregadas com sucesso!', 'success');
+            }
+        }
+
+        async function tryRestoreSession() {
+            const savedToken = getTokenFromStorage();
+            if (savedToken && gapiInited) {
+                try {
+                    gapi.client.setToken(savedToken);
+                    
+                    // Testar se o token ainda é válido
+                    const response = await gapi.client.calendar.calendarList.list();
+                    
+                    isGoogleConnected = true;
+                    updateConnectionStatus(true);
+                    showMessage('Sessão restaurada automaticamente!', 'success');
+                    console.log('✅ Sessão restaurada do localStorage');
+                    
+                    // Carregar eventos
+                    await loadFilteredEvents();
+                } catch (error) {
+                    console.log('❌ Token salvo inválido, removendo...');
+                    clearTokenFromStorage();
+                    gapi.client.setToken('');
+                    updateConnectionStatus(false);
+                }
             }
         }
 
@@ -768,6 +867,10 @@
 
             try {
                 gapi.client.setToken(resp);
+                
+                // Salvar token no localStorage
+                saveTokenToStorage(resp);
+                
                 isGoogleConnected = true;
                 console.log('✅ Conectado com o Google Calendar!');
                 updateConnectionStatus(true);
@@ -788,6 +891,7 @@
                 if (token !== null) {
                     google.accounts.oauth2.revoke(token.access_token, () => {
                         gapi.client.setToken('');
+                        clearTokenFromStorage();
                         isGoogleConnected = false;
                         updateConnectionStatus(false);
                         calendarSection.style.display = 'none';
@@ -935,6 +1039,8 @@
             
             // Generate calendar days
             const today = new Date();
+            const todayString = today.toDateString();
+            
             for (let i = 0; i < 42; i++) {
                 const cellDate = new Date(startDate);
                 cellDate.setDate(startDate.getDate() + i);
@@ -946,7 +1052,8 @@
                     dayDiv.classList.add('other-month');
                 }
                 
-                if (cellDate.toDateString() === today.toDateString()) {
+                // CORREÇÃO: Comparação precisa para o dia de hoje
+                if (cellDate.toDateString() === todayString) {
                     dayDiv.classList.add('today');
                 }
                 
@@ -981,7 +1088,7 @@
             });
         }
 
-        function showEventDetails(event) {
+        async function showEventDetails(event) {
             const modal = document.getElementById('eventModal');
             const title = document.getElementById('eventModalTitle');
             const body = document.getElementById('eventModalBody');
@@ -991,7 +1098,7 @@
             const start = new Date(event.start.dateTime || event.start.date);
             const end = new Date(event.end.dateTime || event.end.date);
             
-            body.innerHTML = `
+            let detailsHTML = `
                 <p><strong><i class="fas fa-calendar"></i> Data:</strong> ${start.toLocaleDateString('pt-BR')}</p>
                 <p><strong><i class="fas fa-clock"></i> Horário:</strong> ${event.start.dateTime ? 
                     `${start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 
@@ -1001,6 +1108,46 @@
                 <p><strong><i class="fas fa-tag"></i> Tipo:</strong> ${getEventType(event).toUpperCase()}</p>
             `;
             
+            // CORREÇÃO: Buscar anexos do evento
+            try {
+                if (event.attachments && event.attachments.length > 0) {
+                    detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
+                    event.attachments.forEach(attachment => {
+                        detailsHTML += `
+                            <a href="${attachment.fileUrl}" target="_blank" class="attachment-link">
+                                <i class="fas fa-file"></i> ${attachment.title || 'Anexo'}
+                            </a>
+                        `;
+                    });
+                    detailsHTML += '</div>';
+                } else {
+                    // Tentar buscar anexos via API se não estiverem no evento
+                    try {
+                        const fullEvent = await gapi.client.calendar.events.get({
+                            calendarId: 'primary',
+                            eventId: event.id
+                        });
+                        
+                        if (fullEvent.result.attachments && fullEvent.result.attachments.length > 0) {
+                            detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
+                            fullEvent.result.attachments.forEach(attachment => {
+                                detailsHTML += `
+                                    <a href="${attachment.fileUrl}" target="_blank" class="attachment-link">
+                                        <i class="fas fa-file"></i> ${attachment.title || 'Anexo'}
+                                    </a>
+                                `;
+                            });
+                            detailsHTML += '</div>';
+                        }
+                    } catch (attachmentError) {
+                        console.log('Não foi possível carregar anexos:', attachmentError);
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao processar anexos:', error);
+            }
+            
+            body.innerHTML = detailsHTML;
             modal.style.display = 'block';
         }
 
