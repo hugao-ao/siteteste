@@ -3,161 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluxo de Caixa HVC - Administrador</title>
+    <title>Fluxo de Caixa HVC - Agenda e Pagamentos</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
     <!-- Google APIs -->
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
     
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* Tema específico HVC - Elegante e sofisticado */
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #000080, #800080);
+            display: flex;
+            margin: 0;
             min-height: 100vh;
+            background: linear-gradient(135deg, #000080, #800080);
             color: #e0e0e0;
-            display: flex;
         }
 
-        /* ===== SIDEBAR ===== */
-        .sidebar {
-            width: 250px;
-            background: rgba(25, 25, 112, 0.3);
-            backdrop-filter: blur(10px);
-            border-right: 1px solid rgba(255, 255, 255, 0.2);
-            position: fixed;
-            height: 100vh;
-            left: 0;
-            top: 0;
-            transition: all 0.3s ease;
-            z-index: 1000;
-        }
-
-        .sidebar.collapsed {
-            width: 60px;
-        }
-
-        .sidebar-header {
-            padding: 20px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .sidebar.collapsed .sidebar-header {
-            padding: 20px 10px;
-            justify-content: center;
-        }
-
-        .sidebar-logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #ffffff;
-        }
-
-        .sidebar.collapsed .sidebar-logo {
-            display: none;
-        }
-
-        .sidebar-toggle {
-            background: none;
-            border: none;
-            color: #ffffff;
-            font-size: 1.2rem;
-            cursor: pointer;
-            padding: 5px;
-            border-radius: 4px;
-            transition: background 0.3s ease;
-        }
-
-        .sidebar-toggle:hover {
-            background: rgba(255, 255, 255, 0.1);
-        }
-
-        .sidebar-menu {
-            list-style: none;
-            padding: 20px 0;
-        }
-
-        .sidebar-menu li {
-            margin: 5px 0;
-        }
-
-        .sidebar-menu a {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 12px 20px;
-            color: #e0e0e0;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            border-left: 3px solid transparent;
-        }
-
-        .sidebar.collapsed .sidebar-menu a {
-            padding: 12px 18px;
-            justify-content: center;
-        }
-
-        .sidebar-menu a:hover,
-        .sidebar-menu a.active {
-            background: rgba(255, 255, 255, 0.1);
-            border-left-color: #4285f4;
-            color: #ffffff;
-        }
-
-        .sidebar-menu i {
-            font-size: 1.1rem;
-            width: 20px;
-            text-align: center;
-        }
-
-        .sidebar.collapsed .sidebar-menu span {
-            display: none;
-        }
-
-        /* ===== MAIN CONTENT ===== */
-        .main-content {
-            flex: 1;
-            margin-left: 250px;
-            padding: 20px;
+        #main-content-fluxo-caixa-hvc {
+            flex-grow: 1;
+            padding: 2rem;
             transition: margin-left 0.3s ease;
-            position: relative;
+            background: linear-gradient(135deg, #000080, #800080);
         }
 
-        .main-content.sidebar-collapsed {
+        #main-content-fluxo-caixa-hvc.sidebar-collapsed {
             margin-left: 60px;
         }
 
-        /* ===== HEADER ===== */
-        .header {
+        .hvc-container {
             background: rgba(25, 25, 112, 0.3);
-            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 20px;
-            margin-bottom: 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+            backdrop-filter: blur(10px);
         }
 
-        .header h1 {
+        .hvc-title {
             color: #ffffff;
             font-size: 2rem;
-            font-weight: 300;
+            margin-bottom: 1.5rem;
+            text-align: center;
         }
 
-        /* ===== OPENFINANCE BUTTON ===== */
+        .development-message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 60vh;
+            text-align: center;
+        }
+
+        .message-content {
+            max-width: 600px;
+        }
+
+        .message-content h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+            color: #ffffff;
+        }
+
+        .message-content p {
+            font-size: 1.2em;
+            opacity: 0.9;
+            line-height: 1.6;
+            color: #e0e0e0;
+        }
+
+        .icon {
+            font-size: 4em;
+            margin-bottom: 20px;
+            opacity: 0.8;
+            color: #ffffff;
+        }
+
+        /* OpenFinance Button - Canto Superior Direito */
         .openfinance-btn {
             position: fixed;
             top: 20px;
@@ -183,7 +107,7 @@
             box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
         }
 
-        /* ===== GOOGLE CALENDAR SECTION ===== */
+        /* Google Calendar Section */
         .google-section {
             background: rgba(25, 25, 112, 0.3);
             backdrop-filter: blur(10px);
@@ -280,7 +204,89 @@
             transform: none !important;
         }
 
-        /* ===== MODAL ===== */
+        /* Event Management Section */
+        .event-section {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .event-form {
+            display: grid;
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            color: #ffffff;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group textarea,
+        .form-group select {
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .events-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+        }
+
+        .event-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .event-info h4 {
+            color: #ffffff;
+            margin: 0 0 5px 0;
+        }
+
+        .event-info p {
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0;
+            font-size: 14px;
+        }
+
+        .event-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .btn-small {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+
+        /* Modal */
         .modal {
             display: none;
             position: fixed;
@@ -346,7 +352,7 @@
             margin-bottom: 15px;
         }
 
-        /* ===== MESSAGES ===== */
+        /* Messages */
         .message {
             padding: 15px 20px;
             border-radius: 10px;
@@ -375,7 +381,7 @@
             color: #ffc107;
         }
 
-        /* ===== LOADING SPINNER ===== */
+        /* Loading Spinner */
         .spinner {
             width: 16px;
             height: 16px;
@@ -390,27 +396,14 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* ===== RESPONSIVE ===== */
+        /* Responsive */
         @media (max-width: 768px) {
-            .sidebar {
-                width: 100%;
-                transform: translateX(-100%);
-            }
-
-            .sidebar.show {
-                transform: translateX(0);
-            }
-
-            .main-content {
-                margin-left: 0;
-            }
-
-            .main-content.sidebar-collapsed {
-                margin-left: 0;
-            }
-
             .google-controls {
                 flex-direction: column;
+            }
+
+            .event-form {
+                grid-template-columns: 1fr;
             }
 
             .openfinance-btn {
@@ -429,83 +422,96 @@
         OpenFinance
     </button>
 
-    <!-- Sidebar -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-header">
-            <button class="sidebar-toggle" onclick="toggleSidebar()">
-                <i class="fas fa-bars"></i>
-            </button>
-            <div class="sidebar-logo">HVC Admin</div>
-        </div>
-        <ul class="sidebar-menu">
-            <li>
-                <a href="#" class="active">
-                    <i class="fas fa-calendar-alt"></i>
-                    <span>Fluxo de Caixa</span>
-                </a>
-            </li>
-            <li>
-                <a href="#">
-                    <i class="fas fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
-                </a>
-            </li>
-            <li>
-                <a href="#">
-                    <i class="fas fa-users"></i>
-                    <span>Clientes</span>
-                </a>
-            </li>
-            <li>
-                <a href="#">
-                    <i class="fas fa-chart-bar"></i>
-                    <span>Relatórios</span>
-                </a>
-            </li>
-            <li>
-                <a href="#">
-                    <i class="fas fa-cog"></i>
-                    <span>Configurações</span>
-                </a>
-            </li>
-        </ul>
-    </div>
+    <!-- Sidebar será injetada aqui pelo sidebar.js -->
+    
+    <main id="main-content-fluxo-caixa-hvc">
+        <div class="hvc-container">
+            <h1 class="hvc-title">
+                <i class="fas fa-calendar-alt"></i> Fluxo de Caixa - Agenda e Pagamentos
+            </h1>
 
-    <!-- Main Content -->
-    <div class="main-content" id="mainContent">
-        <!-- Header -->
-        <div class="header">
-            <h1><i class="fas fa-calendar-alt"></i> Fluxo de Caixa - Administrador</h1>
-        </div>
+            <!-- Messages Container -->
+            <div id="messagesContainer"></div>
 
-        <!-- Messages Container -->
-        <div id="messagesContainer"></div>
+            <!-- Google Calendar Section -->
+            <div class="google-section">
+                <h2><i class="fab fa-google"></i> Integração Google Calendar</h2>
+                
+                <div id="connectionStatus" class="status-indicator status-disconnected">
+                    <i class="fas fa-times-circle"></i>
+                    <span>Desconectado do Google Calendar</span>
+                </div>
 
-        <!-- Google Calendar Section -->
-        <div class="google-section">
-            <h2><i class="fab fa-google"></i> Integração Google Calendar</h2>
-            
-            <div id="connectionStatus" class="status-indicator status-disconnected">
-                <i class="fas fa-times-circle"></i>
-                <span>Desconectado do Google Calendar</span>
+                <div class="google-controls">
+                    <button id="authorizeButton" class="btn btn-primary">
+                        <i class="fab fa-google"></i>
+                        Conectar com Google Calendar
+                    </button>
+                    <button id="signoutButton" class="btn btn-danger" style="display: none;">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Desconectar
+                    </button>
+                    <button id="syncButton" class="btn btn-secondary" disabled>
+                        <i class="fas fa-sync-alt"></i>
+                        Sincronizar Agora
+                    </button>
+                </div>
             </div>
 
-            <div class="google-controls">
-                <button id="authorizeButton" class="btn btn-primary">
-                    <i class="fab fa-google"></i>
-                    Conectar com Google Calendar
-                </button>
-                <button id="signoutButton" class="btn btn-danger" style="display: none;">
-                    <i class="fas fa-sign-out-alt"></i>
-                    Desconectar
-                </button>
-                <button id="syncButton" class="btn btn-secondary" disabled>
-                    <i class="fas fa-sync-alt"></i>
-                    Sincronizar Agora
-                </button>
+            <!-- Event Management Section -->
+            <div class="event-section">
+                <h2><i class="fas fa-calendar-plus"></i> Gerenciar Eventos</h2>
+                
+                <div class="event-form">
+                    <div class="form-group">
+                        <label for="eventTitle">Título do Evento</label>
+                        <input type="text" id="eventTitle" placeholder="Digite o título do evento">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="eventDescription">Descrição</label>
+                        <textarea id="eventDescription" rows="3" placeholder="Descrição do evento (opcional)"></textarea>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                        <div class="form-group">
+                            <label for="eventDate">Data</label>
+                            <input type="date" id="eventDate">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="eventTime">Horário</label>
+                            <input type="time" id="eventTime">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="eventType">Tipo de Evento</label>
+                        <select id="eventType">
+                            <option value="pagamento">Pagamento</option>
+                            <option value="recebimento">Recebimento</option>
+                            <option value="reuniao">Reunião</option>
+                            <option value="lembrete">Lembrete</option>
+                        </select>
+                    </div>
+                    
+                    <button id="createEventButton" class="btn btn-primary" disabled>
+                        <i class="fas fa-plus"></i>
+                        Criar Evento
+                    </button>
+                </div>
+
+                <h3 style="color: #ffffff; margin-top: 30px; margin-bottom: 15px;">
+                    <i class="fas fa-list"></i> Próximos Eventos
+                </h3>
+                <div id="eventsList" class="events-list">
+                    <p style="text-align: center; color: rgba(255, 255, 255, 0.6);">
+                        Conecte-se ao Google Calendar para ver seus eventos
+                    </p>
+                </div>
             </div>
         </div>
-    </div>
+    </main>
 
     <!-- OpenFinance Modal -->
     <div id="openfinanceModal" class="modal">
@@ -529,9 +535,17 @@
         </div>
     </div>
 
+    <!-- Scripts -->
+    <script type="module" src="supabase.js"></script>
+    <script type="module" src="dashboard-hvc.js"></script>
+    <script type="module">
+        import { injectSidebar } from './sidebar.js';
+        injectSidebar("main-content-fluxo-caixa-hvc");
+    </script>
+
     <script>
         // =================================================================
-        // CONFIGURAÇÕES GOOGLE CALENDAR
+        // CONFIGURAÇÕES GOOGLE CALENDAR API
         // =================================================================
         const CLIENT_ID = '314578730498-ghktlnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
@@ -541,23 +555,15 @@
         let gapiInited = false;
         let gisInited = false;
         let isGoogleConnected = false;
+        let userCalendars = [];
 
         // Elementos DOM
         const authorizeButton = document.getElementById('authorizeButton');
         const signoutButton = document.getElementById('signoutButton');
         const syncButton = document.getElementById('syncButton');
         const connectionStatus = document.getElementById('connectionStatus');
-
-        // =================================================================
-        // SIDEBAR FUNCTIONS
-        // =================================================================
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const mainContent = document.getElementById('mainContent');
-            
-            sidebar.classList.toggle('collapsed');
-            mainContent.classList.toggle('sidebar-collapsed');
-        }
+        const createEventButton = document.getElementById('createEventButton');
+        const eventsList = document.getElementById('eventsList');
 
         // =================================================================
         // MODAL FUNCTIONS
@@ -693,8 +699,9 @@
                 updateConnectionStatus(true);
                 showMessage('Conectado com sucesso ao Google Calendar!', 'success');
                 
-                // Testar a conexão listando calendários
-                await testGoogleConnection();
+                // Carregar calendários e eventos
+                await loadUserCalendars();
+                await loadUpcomingEvents();
             } catch (error) {
                 console.error('❌ Erro ao processar token:', error);
                 showMessage('Erro ao processar autenticação', 'error');
@@ -710,6 +717,7 @@
                         gapi.client.setToken('');
                         isGoogleConnected = false;
                         updateConnectionStatus(false);
+                        clearEventsList();
                         showMessage('Desconectado do Google Calendar', 'success');
                     });
                 }
@@ -729,27 +737,187 @@
                 authorizeButton.style.display = 'none';
                 signoutButton.style.display = 'block';
                 syncButton.disabled = false;
+                createEventButton.disabled = false;
             } else {
                 connectionStatus.className = 'status-indicator status-disconnected';
                 connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Desconectado do Google Calendar</span>';
                 authorizeButton.style.display = 'block';
                 signoutButton.style.display = 'none';
                 syncButton.disabled = true;
+                createEventButton.disabled = true;
             }
         }
 
         // =================================================================
         // GOOGLE CALENDAR OPERATIONS
         // =================================================================
-        async function testGoogleConnection() {
+        async function loadUserCalendars() {
             try {
                 const response = await gapi.client.calendar.calendarList.list();
-                console.log('✅ Teste de conexão bem-sucedido:', response.result);
-                showMessage(`Acesso confirmado! ${response.result.items.length} calendários encontrados.`, 'success');
+                userCalendars = response.result.items || [];
+                console.log('✅ Calendários carregados:', userCalendars.length);
+                showMessage(`${userCalendars.length} calendários encontrados`, 'success');
             } catch (error) {
-                console.error('❌ Erro no teste de conexão:', error);
-                showMessage('Erro ao testar conexão com Google Calendar', 'error');
+                console.error('❌ Erro ao carregar calendários:', error);
+                showMessage('Erro ao carregar calendários', 'error');
             }
+        }
+
+        async function loadUpcomingEvents() {
+            try {
+                const now = new Date();
+                const timeMin = now.toISOString();
+                const timeMax = new Date(now.getTime() + (30 * 24 * 60 * 60 * 1000)).toISOString(); // 30 dias
+
+                const response = await gapi.client.calendar.events.list({
+                    calendarId: 'primary',
+                    timeMin: timeMin,
+                    timeMax: timeMax,
+                    showDeleted: false,
+                    singleEvents: true,
+                    maxResults: 10,
+                    orderBy: 'startTime'
+                });
+
+                const events = response.result.items || [];
+                displayEvents(events);
+                console.log('✅ Eventos carregados:', events.length);
+            } catch (error) {
+                console.error('❌ Erro ao carregar eventos:', error);
+                showMessage('Erro ao carregar eventos', 'error');
+            }
+        }
+
+        function displayEvents(events) {
+            const eventsList = document.getElementById('eventsList');
+            
+            if (events.length === 0) {
+                eventsList.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.6);">Nenhum evento encontrado nos próximos 30 dias</p>';
+                return;
+            }
+
+            eventsList.innerHTML = events.map(event => {
+                const start = event.start.dateTime || event.start.date;
+                const startDate = new Date(start);
+                const formattedDate = startDate.toLocaleDateString('pt-BR');
+                const formattedTime = event.start.dateTime ? startDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : 'Dia inteiro';
+
+                return `
+                    <div class="event-item">
+                        <div class="event-info">
+                            <h4>${event.summary || 'Sem título'}</h4>
+                            <p><i class="fas fa-calendar"></i> ${formattedDate} - <i class="fas fa-clock"></i> ${formattedTime}</p>
+                            ${event.description ? `<p><i class="fas fa-info-circle"></i> ${event.description}</p>` : ''}
+                        </div>
+                        <div class="event-actions">
+                            <button class="btn btn-danger btn-small" onclick="deleteEvent('${event.id}')">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function clearEventsList() {
+            eventsList.innerHTML = '<p style="text-align: center; color: rgba(255, 255, 255, 0.6);">Conecte-se ao Google Calendar para ver seus eventos</p>';
+        }
+
+        async function createEvent() {
+            if (!isGoogleConnected) {
+                showMessage('Conecte-se ao Google Calendar primeiro', 'error');
+                return;
+            }
+
+            const title = document.getElementById('eventTitle').value;
+            const description = document.getElementById('eventDescription').value;
+            const date = document.getElementById('eventDate').value;
+            const time = document.getElementById('eventTime').value;
+            const type = document.getElementById('eventType').value;
+
+            if (!title || !date || !time) {
+                showMessage('Preencha todos os campos obrigatórios', 'error');
+                return;
+            }
+
+            try {
+                createEventButton.innerHTML = '<div class="spinner"></div> Criando...';
+                createEventButton.disabled = true;
+
+                const startDateTime = new Date(`${date}T${time}`);
+                const endDateTime = new Date(startDateTime.getTime() + (60 * 60 * 1000)); // 1 hora depois
+
+                const event = {
+                    summary: title,
+                    description: description || `Evento do tipo: ${type}`,
+                    start: {
+                        dateTime: startDateTime.toISOString(),
+                        timeZone: 'America/Sao_Paulo'
+                    },
+                    end: {
+                        dateTime: endDateTime.toISOString(),
+                        timeZone: 'America/Sao_Paulo'
+                    },
+                    colorId: getEventColor(type)
+                };
+
+                const response = await gapi.client.calendar.events.insert({
+                    calendarId: 'primary',
+                    resource: event
+                });
+
+                console.log('✅ Evento criado:', response.result);
+                showMessage('Evento criado com sucesso!', 'success');
+                
+                // Limpar formulário
+                document.getElementById('eventTitle').value = '';
+                document.getElementById('eventDescription').value = '';
+                document.getElementById('eventDate').value = '';
+                document.getElementById('eventTime').value = '';
+                
+                // Recarregar eventos
+                await loadUpcomingEvents();
+
+            } catch (error) {
+                console.error('❌ Erro ao criar evento:', error);
+                showMessage('Erro ao criar evento', 'error');
+            } finally {
+                createEventButton.innerHTML = '<i class="fas fa-plus"></i> Criar Evento';
+                if (isGoogleConnected) createEventButton.disabled = false;
+            }
+        }
+
+        async function deleteEvent(eventId) {
+            if (!confirm('Tem certeza que deseja excluir este evento?')) {
+                return;
+            }
+
+            try {
+                await gapi.client.calendar.events.delete({
+                    calendarId: 'primary',
+                    eventId: eventId
+                });
+
+                console.log('✅ Evento excluído:', eventId);
+                showMessage('Evento excluído com sucesso!', 'success');
+                
+                // Recarregar eventos
+                await loadUpcomingEvents();
+
+            } catch (error) {
+                console.error('❌ Erro ao excluir evento:', error);
+                showMessage('Erro ao excluir evento', 'error');
+            }
+        }
+
+        function getEventColor(type) {
+            const colors = {
+                'pagamento': '11', // Vermelho
+                'recebimento': '10', // Verde
+                'reuniao': '9', // Azul
+                'lembrete': '5' // Amarelo
+            };
+            return colors[type] || '1';
         }
 
         async function handleSyncClick() {
@@ -762,9 +930,7 @@
             syncButton.disabled = true;
 
             try {
-                // Simular sincronização (aqui você adicionaria a lógica real)
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                
+                await loadUpcomingEvents();
                 showMessage('Sincronização concluída com sucesso!', 'success');
                 console.log('✅ Sincronização concluída');
             } catch (error) {
@@ -782,6 +948,7 @@
         authorizeButton.addEventListener('click', handleAuthClick);
         signoutButton.addEventListener('click', handleSignoutClick);
         syncButton.addEventListener('click', handleSyncClick);
+        createEventButton.addEventListener('click', createEvent);
 
         // =================================================================
         // INITIALIZATION
@@ -789,21 +956,29 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Aplicação iniciada');
             showMessage('Sistema iniciado com sucesso!', 'success');
+            
+            // Definir data padrão como hoje
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('eventDate').value = today;
+            
+            // Definir horário padrão
+            const now = new Date();
+            const currentTime = now.toTimeString().slice(0, 5);
+            document.getElementById('eventTime').value = currentTime;
         });
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Ctrl + B para toggle sidebar
-            if (e.ctrlKey && e.key === 'b') {
-                e.preventDefault();
-                toggleSidebar();
-            }
-            
             // Esc para fechar modal
             if (e.key === 'Escape') {
                 closeModal();
             }
         });
+
+        // Tornar funções globais para uso nos botões
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.deleteEvent = deleteEvent;
     </script>
 </body>
 </html>
