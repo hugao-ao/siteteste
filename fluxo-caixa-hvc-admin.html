@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Fluxo de Caixa - Administrador</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         * {
             margin: 0;
@@ -17,17 +21,19 @@
             background: linear-gradient(135deg, #000080, #800080);
             min-height: 100vh;
             color: white;
-        }
-
-        .container {
             display: flex;
-            min-height: 100vh;
         }
 
-        .main-content {
+        #main-content-fluxo-caixa-hvc {
             flex: 1;
             padding: 20px;
-            margin-left: 250px;
+            transition: margin-left 0.3s ease;
+            background: linear-gradient(135deg, #000080, #800080);
+            color: #e0e0e0;
+        }
+
+        #main-content-fluxo-caixa-hvc.sidebar-collapsed {
+            margin-left: 60px;
         }
 
         .header {
@@ -49,308 +55,256 @@
             font-weight: 300;
         }
 
-        .openfinance-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            padding: 12px 24px;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            backdrop-filter: blur(10px);
-        }
-
-        .openfinance-btn:hover {
-            background: rgba(255, 255, 255, 0.3);
-            transform: translateY(-2px);
-        }
-
-        .content-wrapper {
-            display: flex;
-            gap: 20px;
-            height: calc(100vh - 200px);
-        }
-
-        .calendar-section {
-            flex: 1;
+        .google-calendar-section {
             background: rgba(25, 25, 112, 0.3);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 15px;
             padding: 20px;
+            margin-bottom: 20px;
             box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
-            resize: horizontal;
-            overflow: auto;
-            min-width: 300px;
-            max-width: 80%;
         }
 
-        .list-section {
-            flex: 1;
-            background: rgba(25, 25, 112, 0.3);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
-            resize: horizontal;
-            overflow: auto;
-            min-width: 300px;
-            max-width: 80%;
-        }
-
-        .section-title {
+        .google-calendar-section h2 {
             color: #ffffff;
             font-size: 1.5rem;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-
-        .calendar {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 20px;
-        }
-
-        .calendar-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
             margin-bottom: 15px;
-        }
-
-        .calendar-nav {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
-            color: white;
-            padding: 8px 12px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .calendar-nav:hover {
-            background: rgba(255, 255, 255, 0.3);
-        }
-
-        .calendar-month {
-            font-size: 1.2rem;
-            font-weight: bold;
-        }
-
-        .calendar-grid {
-            display: grid;
-            grid-template-columns: repeat(7, 1fr);
-            gap: 2px;
-        }
-
-        .calendar-day-header {
-            text-align: center;
-            font-weight: bold;
-            padding: 8px;
-            background: rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
-            font-size: 0.9rem;
-        }
-
-        .calendar-day {
-            text-align: center;
-            padding: 8px;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            min-height: 40px;
             display: flex;
-            flex-direction: column;
-            justify-content: center;
             align-items: center;
-            position: relative;
-        }
-
-        .calendar-day:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .calendar-day.other-month {
-            opacity: 0.3;
-        }
-
-        .calendar-day.today {
-            background: rgba(255, 255, 255, 0.3);
-            font-weight: bold;
-        }
-
-        .calendar-day.selected {
-            background: rgba(255, 255, 255, 0.4);
-            font-weight: bold;
-        }
-
-        .calendar-day.has-events {
-            background: rgba(0, 255, 0, 0.2);
-        }
-
-        .event-indicator {
-            position: absolute;
-            bottom: 2px;
-            right: 2px;
-            width: 6px;
-            height: 6px;
-            border-radius: 50%;
-            background: #00ff00;
-        }
-
-        .filters {
-            display: flex;
             gap: 10px;
+        }
+
+        .calendar-controls {
+            display: flex;
+            gap: 15px;
             margin-bottom: 20px;
             flex-wrap: wrap;
         }
 
-        .filter-input {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+        .btn {
+            padding: 12px 24px;
+            border: none;
             border-radius: 8px;
-            padding: 10px;
-            color: white;
-            flex: 1;
-            min-width: 150px;
-        }
-
-        .filter-input::placeholder {
-            color: rgba(255, 255, 255, 0.7);
-        }
-
-        .filter-select {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            padding: 10px;
-            color: white;
-            min-width: 120px;
-        }
-
-        .filter-select option {
-            background: #000080;
-            color: white;
-        }
-
-        .add-btn {
-            background: rgba(0, 255, 0, 0.3);
-            border: 1px solid rgba(0, 255, 0, 0.5);
-            border-radius: 8px;
-            padding: 10px 20px;
-            color: white;
             cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
             transition: all 0.3s ease;
-            white-space: nowrap;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .add-btn:hover {
-            background: rgba(0, 255, 0, 0.4);
+        .btn-primary {
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            color: white;
+        }
+
+        .btn-primary:hover {
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
         }
 
-        .items-list {
-            max-height: calc(100% - 120px);
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ea4335, #d33b2c);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .status-connected {
+            background: rgba(52, 168, 83, 0.2);
+            border: 1px solid rgba(52, 168, 83, 0.4);
+            color: #34a853;
+        }
+
+        .status-disconnected {
+            background: rgba(234, 67, 53, 0.2);
+            border: 1px solid rgba(234, 67, 53, 0.4);
+            color: #ea4335;
+        }
+
+        .agenda-container {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+        }
+
+        .agenda-container h2 {
+            color: #ffffff;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #e0e0e0;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .agenda-list {
+            max-height: 400px;
             overflow-y: auto;
+            margin-top: 20px;
         }
 
-        .item-card {
+        .agenda-item {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
+            border-radius: 8px;
             padding: 15px;
             margin-bottom: 10px;
-            transition: all 0.3s ease;
-        }
-
-        .item-card:hover {
-            background: rgba(255, 255, 255, 0.15);
-            transform: translateY(-2px);
-        }
-
-        .item-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
         }
 
-        .item-title {
-            font-weight: bold;
-            font-size: 1.1rem;
+        .agenda-item-info h4 {
+            color: #ffffff;
+            margin-bottom: 5px;
         }
 
-        .item-type {
-            padding: 4px 8px;
-            border-radius: 15px;
-            font-size: 0.8rem;
-            font-weight: bold;
+        .agenda-item-info p {
+            color: #e0e0e0;
+            font-size: 14px;
+            margin: 2px 0;
         }
 
-        .item-type.compromisso {
-            background: rgba(0, 123, 255, 0.3);
-            color: #87ceeb;
-        }
-
-        .item-type.pagamento {
-            background: rgba(255, 193, 7, 0.3);
-            color: #ffd700;
-        }
-
-        .item-details {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .item-detail {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
-
-        .item-actions {
+        .agenda-item-actions {
             display: flex;
-            gap: 10px;
-            justify-content: flex-end;
+            gap: 8px;
         }
 
-        .btn {
+        .btn-small {
             padding: 6px 12px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            transition: all 0.3s ease;
+            font-size: 12px;
         }
 
-        .btn-edit {
-            background: rgba(0, 123, 255, 0.3);
-            color: white;
+        .sync-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
         }
 
-        .btn-edit:hover {
-            background: rgba(0, 123, 255, 0.5);
+        .sync-status.synced {
+            background: rgba(52, 168, 83, 0.2);
+            color: #34a853;
         }
 
-        .btn-delete {
-            background: rgba(220, 53, 69, 0.3);
-            color: white;
+        .sync-status.pending {
+            background: rgba(255, 193, 7, 0.2);
+            color: #ffc107;
         }
 
-        .btn-delete:hover {
-            background: rgba(220, 53, 69, 0.5);
+        .sync-status.error {
+            background: rgba(234, 67, 53, 0.2);
+            color: #ea4335;
         }
 
-        .btn-status {
-            background: rgba(40, 167, 69, 0.3);
-            color: white;
+        .loading {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
         }
 
-        .btn-status:hover {
-            background: rgba(40, 167, 69, 0.5);
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .openfinance-section {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+        }
+
+        .openfinance-section h2 {
+            color: #ffffff;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
         }
 
         .modal {
@@ -361,605 +315,485 @@
             top: 0;
             width: 100%;
             height: 100%;
-            background-color: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(5px);
+            background-color: rgba(0, 0, 0, 0.5);
         }
 
         .modal-content {
             background: linear-gradient(135deg, #000080, #800080);
-            margin: 5% auto;
-            padding: 30px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin: 15% auto;
+            padding: 20px;
             border-radius: 15px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
-            overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-            resize: both;
-            min-width: 400px;
-            min-height: 300px;
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .modal-title {
-            color: white;
-            font-size: 1.5rem;
-            font-weight: 300;
+            width: 80%;
+            max-width: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
 
         .close {
-            color: white;
+            color: #aaa;
+            float: right;
             font-size: 28px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease;
         }
 
         .close:hover {
-            opacity: 0.7;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label {
-            display: block;
-            margin-bottom: 8px;
-            color: white;
-            font-weight: 500;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .form-input:focus {
-            outline: none;
-            border-color: rgba(255, 255, 255, 0.6);
-            background: rgba(255, 255, 255, 0.15);
-        }
-
-        .form-input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .form-select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 1rem;
-        }
-
-        .form-select option {
-            background: #000080;
             color: white;
         }
 
-        .form-textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 1rem;
-            min-height: 100px;
-            resize: vertical;
-        }
-
-        .form-textarea::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .form-row {
-            display: flex;
-            gap: 15px;
-        }
-
-        .form-col {
-            flex: 1;
-        }
-
-        .checkbox-group {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .checkbox-group input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: #ffffff;
-        }
-
-        .recurrence-fields {
-            display: none;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 15px;
-            margin-top: 10px;
-        }
-
-        .recurrence-fields.show {
-            display: block;
-        }
-
-        .modal-actions {
-            display: flex;
-            gap: 15px;
-            justify-content: flex-end;
-            margin-top: 30px;
-            padding-top: 20px;
-            border-top: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-primary {
-            background: rgba(0, 123, 255, 0.3);
-            border: 1px solid rgba(0, 123, 255, 0.5);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary:hover {
-            background: rgba(0, 123, 255, 0.5);
-            transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-            background: rgba(108, 117, 125, 0.3);
-            border: 1px solid rgba(108, 117, 125, 0.5);
-            color: white;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-        }
-
-        .btn-secondary:hover {
-            background: rgba(108, 117, 125, 0.5);
-        }
-
-        .status-badge {
-            padding: 4px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            font-weight: bold;
-        }
-
-        .status-pendente {
-            background: rgba(255, 193, 7, 0.3);
-            color: #ffd700;
-        }
-
-        .status-concluido {
-            background: rgba(40, 167, 69, 0.3);
-            color: #90ee90;
-        }
-
-        .status-cancelado {
-            background: rgba(220, 53, 69, 0.3);
-            color: #ff6b6b;
-        }
-
-        .recurrence-indicator {
-            color: #00ff00;
-            font-weight: bold;
-            margin-left: 5px;
-        }
-
-        /* Responsividade */
         @media (max-width: 768px) {
-            .main-content {
-                margin-left: 0;
-                padding: 10px;
-            }
-
-            .content-wrapper {
-                flex-direction: column;
-                height: auto;
-            }
-
-            .calendar-section,
-            .list-section {
-                resize: none;
-                max-width: none;
-            }
-
-            .filters {
-                flex-direction: column;
-            }
-
-            .filter-input,
-            .filter-select {
-                min-width: auto;
-            }
-
             .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .calendar-controls {
                 flex-direction: column;
             }
-
-            .modal-content {
-                width: 95%;
-                margin: 2% auto;
-                padding: 20px;
-                resize: none;
+            
+            .agenda-item {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div id="sidebar-container"></div>
-        
-        <div class="main-content" id="main-content-fluxo-caixa-hvc">
-            <div class="header">
-                <h1>Fluxo de Caixa - Administrador</h1>
-                <button class="openfinance-btn" onclick="openOpenFinanceModal()">
-                    🏦 OpenFinance
+    <div id="main-content-fluxo-caixa-hvc">
+        <div class="header">
+            <h1><i class="fas fa-calendar-alt"></i> Fluxo de Caixa - Administrador</h1>
+        </div>
+
+        <!-- Seção Google Calendar -->
+        <div class="google-calendar-section">
+            <h2><i class="fab fa-google"></i> Integração Google Calendar</h2>
+            
+            <div id="connection-status" class="status-indicator status-disconnected">
+                <i class="fas fa-times-circle"></i>
+                <span>Desconectado do Google Calendar</span>
+            </div>
+
+            <div class="calendar-controls">
+                <button id="authorize_button" class="btn btn-primary" style="display: none;">
+                    <i class="fab fa-google"></i>
+                    Conectar com Google Calendar
+                </button>
+                <button id="signout_button" class="btn btn-danger" style="display: none;">
+                    <i class="fas fa-sign-out-alt"></i>
+                    Desconectar
+                </button>
+                <button id="sync_button" class="btn btn-secondary" style="display: none;" disabled>
+                    <i class="fas fa-sync-alt"></i>
+                    Sincronizar Agora
                 </button>
             </div>
-
-            <div class="content-wrapper">
-                <div class="calendar-section">
-                    <h2 class="section-title">📅 Calendário</h2>
-                    <div class="calendar">
-                        <div class="calendar-header">
-                            <button class="calendar-nav" onclick="previousMonth()">‹</button>
-                            <div class="calendar-month" id="calendar-month"></div>
-                            <button class="calendar-nav" onclick="nextMonth()">›</button>
-                        </div>
-                        <div class="calendar-grid" id="calendar-grid"></div>
-                    </div>
-                </div>
-
-                <div class="list-section">
-                    <h2 class="section-title">📋 Compromissos e Pagamentos</h2>
-                    
-                    <div class="filters">
-                        <input type="text" class="filter-input" id="search-input" placeholder="Buscar por título ou descrição...">
-                        <select class="filter-select" id="type-filter">
-                            <option value="">Todos os tipos</option>
-                            <option value="compromisso">Compromissos</option>
-                            <option value="pagamento">Pagamentos</option>
-                        </select>
-                        <select class="filter-select" id="status-filter">
-                            <option value="">Todos os status</option>
-                            <option value="pendente">Pendente</option>
-                            <option value="concluido">Concluído</option>
-                            <option value="cancelado">Cancelado</option>
-                        </select>
-                        <input type="date" class="filter-input" id="date-filter">
-                        <button class="add-btn" onclick="openModal()">➕ Adicionar</button>
-                    </div>
-
-                    <div class="items-list" id="items-list"></div>
-                </div>
-            </div>
         </div>
-    </div>
 
-    <!-- Modal para adicionar/editar itens -->
-    <div id="item-modal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title" id="modal-title">Adicionar Item</h2>
-                <span class="close" onclick="closeModal()">&times;</span>
-            </div>
+        <!-- Seção Agenda -->
+        <div class="agenda-container">
+            <h2><i class="fas fa-calendar-plus"></i> Gerenciar Agenda</h2>
             
-            <form id="item-form">
-                <div class="form-group">
-                    <label class="form-label" for="item-title">Título *</label>
-                    <input type="text" class="form-input" id="item-title" required>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="item-type">Tipo *</label>
-                    <select class="form-select" id="item-type" required onchange="toggleTimeField()">
-                        <option value="">Selecione o tipo</option>
-                        <option value="compromisso">Compromisso</option>
-                        <option value="pagamento">Pagamento</option>
-                    </select>
+            <form id="agenda-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="titulo">Título do Evento</label>
+                        <input type="text" id="titulo" name="titulo" placeholder="Ex: Reunião com cliente" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="tipo">Tipo</label>
+                        <select id="tipo" name="tipo" required>
+                            <option value="">Selecione o tipo</option>
+                            <option value="receita">Receita</option>
+                            <option value="despesa">Despesa</option>
+                            <option value="reuniao">Reunião</option>
+                            <option value="compromisso">Compromisso</option>
+                        </select>
+                    </div>
                 </div>
 
                 <div class="form-row">
-                    <div class="form-col">
-                        <label class="form-label" for="item-date">Data *</label>
-                        <input type="date" class="form-input" id="item-date" required>
-                    </div>
-                    <div class="form-col" id="time-field">
-                        <label class="form-label" for="item-time">Horário</label>
-                        <input type="time" class="form-input" id="item-time">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="item-value">Valor (R$)</label>
-                    <input type="text" class="form-input" id="item-value" placeholder="R$ 0,00">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="item-description">Descrição</label>
-                    <textarea class="form-textarea" id="item-description" placeholder="Detalhes sobre o item..."></textarea>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label" for="item-status">Status</label>
-                    <select class="form-select" id="item-status">
-                        <option value="pendente">Pendente</option>
-                        <option value="concluido">Concluído</option>
-                        <option value="cancelado">Cancelado</option>
-                    </select>
-                </div>
-
-                <!-- Campos de recorrência -->
-                <div class="checkbox-group">
-                    <input type="checkbox" id="is-recurrent" onchange="toggleRecurrenceFields()">
-                    <label for="is-recurrent">Repetir este item</label>
-                </div>
-
-                <div id="recurrence-fields" class="recurrence-fields">
-                    <div class="form-row">
-                        <div class="form-col">
-                            <label class="form-label" for="recurrence-interval">A cada</label>
-                            <input type="number" class="form-input" id="recurrence-interval" min="1" value="1">
-                        </div>
-                        <div class="form-col">
-                            <label class="form-label" for="recurrence-unit">Período</label>
-                            <select class="form-select" id="recurrence-unit">
-                                <option value="days">Dias</option>
-                                <option value="weekdays">Dias úteis</option>
-                                <option value="weeks">Semanas</option>
-                                <option value="biweeks">Quinzenas</option>
-                                <option value="months">Meses</option>
-                                <option value="years">Anos</option>
-                            </select>
-                        </div>
+                    <div class="form-group">
+                        <label for="data">Data</label>
+                        <input type="date" id="data" name="data" required>
                     </div>
                     <div class="form-group">
-                        <label class="form-label" for="recurrence-end">Data fim (opcional)</label>
-                        <input type="date" class="form-input" id="recurrence-end">
+                        <label for="hora">Hora</label>
+                        <input type="time" id="hora" name="hora" required>
                     </div>
                 </div>
 
-                <div class="modal-actions">
-                    <button type="button" class="btn-secondary" onclick="closeModal()">Cancelar</button>
-                    <button type="submit" class="btn-primary">Salvar</button>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="valor">Valor (R$)</label>
+                        <input type="number" id="valor" name="valor" step="0.01" placeholder="0,00">
+                    </div>
+                    <div class="form-group">
+                        <label for="categoria">Categoria</label>
+                        <select id="categoria" name="categoria">
+                            <option value="">Selecione a categoria</option>
+                            <option value="vendas">Vendas</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="operacional">Operacional</option>
+                            <option value="financeiro">Financeiro</option>
+                            <option value="pessoal">Pessoal</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="descricao">Descrição</label>
+                    <textarea id="descricao" name="descricao" rows="3" placeholder="Detalhes do evento..."></textarea>
+                </div>
+
+                <div class="calendar-controls">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Adicionar Evento
+                    </button>
+                    <button type="button" id="clear-form" class="btn btn-secondary">
+                        <i class="fas fa-eraser"></i>
+                        Limpar Formulário
+                    </button>
                 </div>
             </form>
+
+            <div class="agenda-list" id="agenda-list">
+                <!-- Eventos serão carregados aqui -->
+            </div>
+        </div>
+
+        <!-- Seção OpenFinance -->
+        <div class="openfinance-section">
+            <h2><i class="fas fa-university"></i> Integração OpenFinance</h2>
+            <p style="color: #e0e0e0; margin-bottom: 15px;">
+                Conecte suas contas bancárias para importação automática de transações.
+            </p>
+            <button id="openfinance-btn" class="btn btn-secondary">
+                <i class="fas fa-cog"></i>
+                Configurar OpenFinance (Em Desenvolvimento)
+            </button>
         </div>
     </div>
 
-    <!-- Scripts -->
+    <!-- Modal OpenFinance -->
+    <div id="openfinance-modal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2><i class="fas fa-university"></i> OpenFinance</h2>
+            <p>Esta funcionalidade está em desenvolvimento e estará disponível em breve.</p>
+            <p>Permitirá a integração automática com suas contas bancárias para importação de transações.</p>
+        </div>
+    </div>
+
     <script src="supabase.js"></script>
     <script src="sidebar.js"></script>
     <script>
-        // Variáveis globais
-        let currentDate = new Date();
-        let selectedDate = null;
-        let agendaItems = [];
-        let editingItemId = null;
+        // Configurações do Google Calendar API
+        const CLIENT_ID = '314578730498-ghktlnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Iniciando aplicação...');
-            
-            // Injetar sidebar
-            if (typeof injectSidebar === 'function') {
-                injectSidebar();
-            } else {
-                console.warn('⚠️ Função injectSidebar não encontrada');
-            }
-            
-            // Carregar dados
-            loadAgendaItems();
-            renderCalendar();
-            setupEventListeners();
-            
-            console.log('✅ Aplicação inicializada com sucesso');
-        });
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let isGoogleConnected = false;
 
-        // Função para calcular datas de recorrência
-        function calculateRecurrenceDates(startDate, endDate, interval, unit) {
-            const dates = [];
-            const start = new Date(startDate);
-            const end = endDate ? new Date(endDate) : new Date(start.getFullYear(), 11, 31); // 31/12 do ano atual
-            
-            let currentEventDate = new Date(start);
-            
-            console.log(`📊 Calculando recorrência: {inicio: "${startDate}", fim: "${endDate || start.getFullYear() + '-12-31'}"}`);
-            
-            // Adicionar primeira data (original)
-            dates.push(new Date(currentEventDate));
-            
-            // Gerar datas futuras
-            while (currentEventDate < end && dates.length < 100) { // Limite de segurança
-                switch (unit) {
-                    case 'days':
-                        currentEventDate.setDate(currentEventDate.getDate() + interval);
-                        break;
-                    case 'weekdays':
-                        do {
-                            currentEventDate.setDate(currentEventDate.getDate() + 1);
-                        } while (currentEventDate.getDay() === 0 || currentEventDate.getDay() === 6); // Pular fins de semana
-                        for (let i = 1; i < interval; i++) {
-                            do {
-                                currentEventDate.setDate(currentEventDate.getDate() + 1);
-                            } while (currentEventDate.getDay() === 0 || currentEventDate.getDay() === 6);
-                        }
-                        break;
-                    case 'weeks':
-                        currentEventDate.setDate(currentEventDate.getDate() + (interval * 7));
-                        break;
-                    case 'biweeks':
-                        currentEventDate.setDate(currentEventDate.getDate() + (interval * 14));
-                        break;
-                    case 'months':
-                        currentEventDate.setMonth(currentEventDate.getMonth() + interval);
-                        break;
-                    case 'years':
-                        currentEventDate.setFullYear(currentEventDate.getFullYear() + interval);
-                        break;
-                }
-                
-                if (currentEventDate <= end) {
-                    dates.push(new Date(currentEventDate));
-                }
-            }
-            
-            const dateStrings = dates.slice(1).map(date => date.toISOString().split('T')[0]); // Remover primeira data (original)
-            console.log(`📅 Datas calculadas (${dateStrings.length}): [${dateStrings.slice(0, 5).join(', ')}${dateStrings.length > 5 ? ', ...' : ''}]`);
-            
-            return dateStrings;
+        // Elementos do DOM
+        const authorizeButton = document.getElementById('authorize_button');
+        const signoutButton = document.getElementById('signout_button');
+        const syncButton = document.getElementById('sync_button');
+        const connectionStatus = document.getElementById('connection-status');
+
+        // Funções de callback para carregamento das bibliotecas GAPI e GIS
+        function gapiLoaded() {
+            gapi.load('client', initializeGapiClient);
         }
 
-        // Carregar itens da agenda
+        async function initializeGapiClient() {
+            await gapi.client.init({
+                discoveryDocs: [DISCOVERY_DOC],
+            });
+            gapiInited = true;
+            maybeEnableButtons();
+        }
+
+        function gisLoaded() {
+            tokenClient = google.accounts.oauth2.initTokenClient({
+                client_id: CLIENT_ID,
+                scope: SCOPES,
+                callback: '', // Será preenchido dinamicamente
+            });
+            gisInited = true;
+            maybeEnableButtons();
+        }
+
+        // Habilita os botões quando as bibliotecas são carregadas
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                authorizeButton.style.display = 'block';
+                signoutButton.style.display = 'block';
+                syncButton.style.display = 'block';
+            }
+        }
+
+        // Atualiza o status da conexão
+        function updateConnectionStatus(connected) {
+            isGoogleConnected = connected;
+            if (connected) {
+                connectionStatus.className = 'status-indicator status-connected';
+                connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Calendar</span>';
+                syncButton.disabled = false;
+            } else {
+                connectionStatus.className = 'status-indicator status-disconnected';
+                connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Desconectado do Google Calendar</span>';
+                syncButton.disabled = true;
+            }
+        }
+
+        // Lida com o clique no botão de autorização
+        function handleAuthClick() {
+            tokenClient.callback = async (resp) => {
+                if (resp.error) {
+                    console.error('Erro de autenticação:', resp.error);
+                    alert('Erro ao conectar com o Google Calendar. Verifique o console para mais detalhes.');
+                    return;
+                }
+                console.log('Conectado com o Google Calendar!');
+                updateConnectionStatus(true);
+                await loadAgendaItems();
+            };
+
+            if (gapi.client.getToken() === null) {
+                tokenClient.requestAccessToken({prompt: 'consent'});
+            } else {
+                tokenClient.requestAccessToken({prompt: ''});
+            }
+        }
+
+        // Lida com o clique no botão de desconexão
+        function handleSignoutClick() {
+            const token = gapi.client.getToken();
+            if (token !== null) {
+                google.accounts.oauth2.revoke(token.access_token);
+                gapi.client.setToken('');
+                updateConnectionStatus(false);
+                console.log('Desconectado do Google Calendar.');
+            }
+        }
+
+        // Sincronização manual
+        async function handleSyncClick() {
+            if (!isGoogleConnected) {
+                alert('Conecte-se ao Google Calendar primeiro.');
+                return;
+            }
+
+            syncButton.innerHTML = '<div class="spinner"></div> Sincronizando...';
+            syncButton.disabled = true;
+
+            try {
+                await syncWithGoogleCalendar();
+                await loadAgendaItems();
+                alert('Sincronização concluída com sucesso!');
+            } catch (error) {
+                console.error('Erro na sincronização:', error);
+                alert('Erro durante a sincronização. Verifique o console.');
+            } finally {
+                syncButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Agora';
+                syncButton.disabled = false;
+            }
+        }
+
+        // Adicionar event listeners
+        authorizeButton.addEventListener('click', handleAuthClick);
+        signoutButton.addEventListener('click', handleSignoutClick);
+        syncButton.addEventListener('click', handleSyncClick);
+
+        // Função para criar evento no Google Calendar
+        async function createGoogleCalendarEvent(eventData) {
+            if (!isGoogleConnected) return null;
+
+            try {
+                const event = {
+                    'summary': eventData.titulo,
+                    'description': eventData.descricao || '',
+                    'start': {
+                        'dateTime': `${eventData.data}T${eventData.hora}:00`,
+                        'timeZone': 'America/Sao_Paulo'
+                    },
+                    'end': {
+                        'dateTime': `${eventData.data}T${eventData.hora}:00`,
+                        'timeZone': 'America/Sao_Paulo'
+                    }
+                };
+
+                const request = gapi.client.calendar.events.insert({
+                    'calendarId': 'primary',
+                    'resource': event
+                });
+
+                const response = await request;
+                return response.result.id;
+            } catch (error) {
+                console.error('Erro ao criar evento no Google Calendar:', error);
+                return null;
+            }
+        }
+
+        // Função para sincronizar com Google Calendar
+        async function syncWithGoogleCalendar() {
+            if (!isGoogleConnected) return;
+
+            try {
+                // Buscar eventos do Supabase que não estão sincronizados
+                const { data: localEvents, error } = await supabase
+                    .from('agenda_hvc')
+                    .select('*')
+                    .is('google_calendar_id', null);
+
+                if (error) throw error;
+
+                // Sincronizar cada evento local com o Google Calendar
+                for (const event of localEvents) {
+                    const googleEventId = await createGoogleCalendarEvent(event);
+                    if (googleEventId) {
+                        // Atualizar o evento local com o ID do Google Calendar
+                        await supabase
+                            .from('agenda_hvc')
+                            .update({ google_calendar_id: googleEventId })
+                            .eq('id', event.id);
+                    }
+                }
+
+                console.log('Sincronização concluída');
+            } catch (error) {
+                console.error('Erro na sincronização:', error);
+                throw error;
+            }
+        }
+
+        // Função para carregar eventos da agenda
         async function loadAgendaItems() {
             try {
-                console.log('📥 Carregando itens da agenda...');
-                
-                const { data, error } = await supabase
+                const { data: eventos, error } = await supabase
                     .from('agenda_hvc')
                     .select('*')
                     .order('data', { ascending: true });
 
-                if (error) {
-                    console.error('❌ Erro ao carregar itens:', error);
-                    throw error;
-                }
+                if (error) throw error;
 
-                agendaItems = data || [];
-                console.log(`✅ ${agendaItems.length} itens carregados`);
-                
-                renderCalendar();
-                renderItemsList();
+                const agendaList = document.getElementById('agenda-list');
+                agendaList.innerHTML = '';
+
+                eventos.forEach(evento => {
+                    const agendaItem = createAgendaItemElement(evento);
+                    agendaList.appendChild(agendaItem);
+                });
             } catch (error) {
-                console.error('❌ Erro ao carregar agenda:', error);
-                alert('Erro ao carregar dados da agenda');
+                console.error('Erro ao carregar agenda:', error);
             }
         }
 
-        // Salvar item
-        async function saveItem(formData) {
+        // Função para criar elemento de item da agenda
+        function createAgendaItemElement(evento) {
+            const div = document.createElement('div');
+            div.className = 'agenda-item';
+            
+            const syncStatus = evento.google_calendar_id ? 'synced' : 'pending';
+            const syncIcon = evento.google_calendar_id ? 'fa-check' : 'fa-clock';
+            const syncText = evento.google_calendar_id ? 'Sincronizado' : 'Pendente';
+
+            div.innerHTML = `
+                <div class="agenda-item-info">
+                    <h4>${evento.titulo}</h4>
+                    <p><i class="fas fa-calendar"></i> ${formatDate(evento.data)} às ${evento.hora}</p>
+                    <p><i class="fas fa-tag"></i> ${evento.tipo} ${evento.valor ? `- R$ ${parseFloat(evento.valor).toFixed(2)}` : ''}</p>
+                    <div class="sync-status ${syncStatus}">
+                        <i class="fas ${syncIcon}"></i>
+                        ${syncText}
+                    </div>
+                </div>
+                <div class="agenda-item-actions">
+                    <button class="btn btn-secondary btn-small" onclick="editEvent(${evento.id})">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-danger btn-small" onclick="deleteEvent(${evento.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `;
+            
+            return div;
+        }
+
+        // Função para formatar data
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        // Função para adicionar evento
+        async function addEvent(eventData) {
             try {
-                console.log('💾 Salvando item...', formData);
+                // Adicionar ao Supabase
+                const { data, error } = await supabase
+                    .from('agenda_hvc')
+                    .insert([eventData])
+                    .select();
 
-                if (editingItemId) {
-                    // Atualizar item existente
-                    const { data, error } = await supabase
-                        .from('agenda_hvc')
-                        .update(formData)
-                        .eq('id', editingItemId)
-                        .select();
+                if (error) throw error;
 
-                    if (error) throw error;
-                    console.log('✅ Item atualizado com sucesso');
-                } else {
-                    // Criar novo item
-                    const { data, error } = await supabase
-                        .from('agenda_hvc')
-                        .insert([formData])
-                        .select();
-
-                    if (error) throw error;
-                    console.log('✅ Item criado com sucesso');
-
-                    // Verificar se tem recorrência
-                    if (formData.is_recurrent && formData.recurrence_interval && formData.recurrence_unit) {
-                        console.log('🔄 Item com recorrência salvo');
-                        
-                        // Calcular datas de recorrência
-                        const recurrenceDates = calculateRecurrenceDates(
-                            formData.data,
-                            formData.recurrence_end,
-                            parseInt(formData.recurrence_interval),
-                            formData.recurrence_unit
-                        );
-
-                        if (recurrenceDates.length > 0) {
-                            // Criar eventos recorrentes
-                            const recurrentEvents = recurrenceDates.map((date, index) => {
-                                let eventTime = formData.hora;
-                                
-                                // Para pagamentos, gerar horários sequenciais
-                                if (formData.tipo === 'pagamento' && !eventTime) {
-                                    const baseHour = 9; // 09:00
-                                    const minutes = index + 1; // +1 minuto para cada evento
-                                    const totalMinutes = baseHour * 60 + minutes;
-                                    const hours = Math.floor(totalMinutes / 60);
-                                    const mins = totalMinutes % 60;
-                                    eventTime = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-                                }
-
-                                return {
-                                    ...formData,
-                                    data: date,
-                                    hora: eventTime,
-                                    id: undefined // Remover ID para criar novos registros
-                                };
-                            });
-
-                            console.log(`💾 Inserindo ${recurrentEvents.length} eventos recorrentes no Supabase...`);
-                            
-                            const { data: recurrentData, error: recurrentError } = await supabase
-                                .from('agenda_hvc')
-                                .insert(recurrentEvents)
-                                .select();
-
-                            if (recurrentError) {
-                                console.error('❌ Erro ao inserir eventos recorrentes:', recurrentError);
-                                throw recurrentError;
-                            }
-
-                            console.log(`✅ ${recurrentData.length} eventos recorrentes inseridos com sucesso!`);
-                        }
+                // Se conectado ao Google Calendar, criar evento lá também
+                if (isGoogleConnected) {
+                    const googleEventId = await createGoogleCalendarEvent(eventData);
+                    if (googleEventId) {
+                        // Atualizar com o ID do Google Calendar
+                        await supabase
+                            .from('agenda_hvc')
+                            .update({ google_calendar_id: googleEventId })
+                            .eq('id', data[0].id);
                     }
                 }
 
-                // Recarregar dados
                 await loadAgendaItems();
-                closeModal();
-                
+                document.getElementById('agenda-form').reset();
+                alert('Evento adicionado com sucesso!');
             } catch (error) {
-                console.error('❌ Erro ao salvar item:', error);
-                alert('Erro ao salvar item: ' + error.message);
+                console.error('Erro ao adicionar evento:', error);
+                alert('Erro ao adicionar evento. Verifique o console.');
             }
         }
 
-        // Excluir item
-        async function deleteItem(id) {
-            if (!confirm('Tem certeza que deseja excluir este item?')) {
-                return;
-            }
+        // Event listeners para o formulário
+        document.getElementById('agenda-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const eventData = {
+                titulo: formData.get('titulo'),
+                tipo: formData.get('tipo'),
+                data: formData.get('data'),
+                hora: formData.get('hora'),
+                valor: formData.get('valor') || null,
+                categoria: formData.get('categoria') || null,
+                descricao: formData.get('descricao') || null
+            };
+
+            await addEvent(eventData);
+        });
+
+        document.getElementById('clear-form').addEventListener('click', () => {
+            document.getElementById('agenda-form').reset();
+        });
+
+        // Funções para editar e deletar eventos (placeholder)
+        function editEvent(id) {
+            alert('Funcionalidade de edição em desenvolvimento');
+        }
+
+        async function deleteEvent(id) {
+            if (!confirm('Tem certeza que deseja excluir este evento?')) return;
 
             try {
-                console.log('🗑️ Excluindo item:', id);
-
                 const { error } = await supabase
                     .from('agenda_hvc')
                     .delete()
@@ -967,434 +801,36 @@
 
                 if (error) throw error;
 
-                console.log('✅ Item excluído com sucesso');
                 await loadAgendaItems();
+                alert('Evento excluído com sucesso!');
             } catch (error) {
-                console.error('❌ Erro ao excluir item:', error);
-                alert('Erro ao excluir item');
+                console.error('Erro ao excluir evento:', error);
+                alert('Erro ao excluir evento.');
             }
         }
 
-        // Atualizar status
-        async function updateStatus(id, newStatus) {
-            try {
-                console.log('🔄 Atualizando status:', id, newStatus);
+        // Modal OpenFinance
+        const modal = document.getElementById('openfinance-modal');
+        const btn = document.getElementById('openfinance-btn');
+        const span = document.getElementsByClassName('close')[0];
 
-                const updateData = {
-                    status: newStatus,
-                    ultima_alteracao: new Date().toISOString(),
-                    alterado_por: sessionStorage.getItem('nome') || 'Usuário'
-                };
-
-                const { error } = await supabase
-                    .from('agenda_hvc')
-                    .update(updateData)
-                    .eq('id', id);
-
-                if (error) throw error;
-
-                console.log('✅ Status atualizado com sucesso');
-                await loadAgendaItems();
-            } catch (error) {
-                console.error('❌ Erro ao atualizar status:', error);
-                alert('Erro ao atualizar status');
-            }
-        }
-
-        // Renderizar calendário
-        function renderCalendar() {
-            const year = currentDate.getFullYear();
-            const month = currentDate.getMonth();
-            
-            // Atualizar título do mês
-            const monthNames = [
-                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-            ];
-            document.getElementById('calendar-month').textContent = `${monthNames[month]} ${year}`;
-            
-            // Limpar grid
-            const grid = document.getElementById('calendar-grid');
-            grid.innerHTML = '';
-            
-            // Cabeçalhos dos dias (começando na segunda-feira)
-            const dayHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
-            dayHeaders.forEach(day => {
-                const dayHeader = document.createElement('div');
-                dayHeader.className = 'calendar-day-header';
-                dayHeader.textContent = day;
-                grid.appendChild(dayHeader);
-            });
-            
-            // Primeiro dia do mês
-            const firstDay = new Date(year, month, 1);
-            let dayOfWeek = firstDay.getDay();
-            dayOfWeek = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Ajustar para começar na segunda-feira
-            
-            // Último dia do mês
-            const lastDay = new Date(year, month + 1, 0);
-            
-            // Dias do mês anterior
-            const prevMonth = new Date(year, month, 0);
-            for (let i = dayOfWeek - 1; i >= 0; i--) {
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day other-month';
-                dayElement.textContent = prevMonth.getDate() - i;
-                grid.appendChild(dayElement);
-            }
-            
-            // Dias do mês atual
-            const today = new Date();
-            for (let day = 1; day <= lastDay.getDate(); day++) {
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day';
-                dayElement.textContent = day;
-                
-                const currentDayDate = new Date(year, month, day);
-                const dateString = currentDayDate.toISOString().split('T')[0];
-                
-                // Verificar se é hoje
-                if (currentDayDate.toDateString() === today.toDateString()) {
-                    dayElement.classList.add('today');
-                }
-                
-                // Verificar se tem eventos
-                const hasEvents = agendaItems.some(item => item.data === dateString);
-                if (hasEvents) {
-                    dayElement.classList.add('has-events');
-                    const indicator = document.createElement('div');
-                    indicator.className = 'event-indicator';
-                    dayElement.appendChild(indicator);
-                }
-                
-                // Adicionar evento de clique
-                dayElement.addEventListener('click', () => {
-                    // Remover seleção anterior
-                    document.querySelectorAll('.calendar-day.selected').forEach(el => {
-                        el.classList.remove('selected');
-                    });
-                    
-                    // Adicionar nova seleção
-                    dayElement.classList.add('selected');
-                    selectedDate = dateString;
-                    
-                    // Filtrar lista por data
-                    document.getElementById('date-filter').value = dateString;
-                    filterItems();
-                });
-                
-                grid.appendChild(dayElement);
-            }
-            
-            // Dias do próximo mês
-            const remainingCells = 42 - (dayOfWeek + lastDay.getDate());
-            for (let day = 1; day <= remainingCells; day++) {
-                const dayElement = document.createElement('div');
-                dayElement.className = 'calendar-day other-month';
-                dayElement.textContent = day;
-                grid.appendChild(dayElement);
-            }
-        }
-
-        // Renderizar lista de itens
-        function renderItemsList() {
-            const container = document.getElementById('items-list');
-            container.innerHTML = '';
-            
-            if (agendaItems.length === 0) {
-                container.innerHTML = '<p style="text-align: center; opacity: 0.7;">Nenhum item encontrado</p>';
-                return;
-            }
-            
-            agendaItems.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'item-card';
-                
-                const recurrenceIndicator = item.is_recurrent ? ' <span class="recurrence-indicator">🔄</span>' : '';
-                
-                card.innerHTML = `
-                    <div class="item-header">
-                        <div class="item-title">${item.titulo}${recurrenceIndicator}</div>
-                        <div class="item-type ${item.tipo}">${item.tipo}</div>
-                    </div>
-                    <div class="item-details">
-                        <div class="item-detail"><strong>Data:</strong> ${formatDate(item.data)}</div>
-                        ${item.hora ? `<div class="item-detail"><strong>Horário:</strong> ${item.hora}</div>` : ''}
-                        ${item.valor ? `<div class="item-detail"><strong>Valor:</strong> ${formatCurrency(item.valor)}</div>` : ''}
-                        <div class="item-detail"><strong>Status:</strong> <span class="status-badge status-${item.status}">${item.status}</span></div>
-                    </div>
-                    ${item.descricao ? `<div class="item-detail" style="margin-top: 10px;"><strong>Descrição:</strong> ${item.descricao}</div>` : ''}
-                    ${item.alterado_por ? `<div class="item-detail" style="margin-top: 10px; font-size: 0.8rem; opacity: 0.8;"><strong>Última alteração:</strong> ${item.alterado_por} em ${formatDateTime(item.ultima_alteracao)}</div>` : ''}
-                    <div class="item-actions">
-                        <button class="btn btn-status" onclick="cycleStatus(${item.id}, '${item.status}')">Alterar Status</button>
-                        <button class="btn btn-edit" onclick="editItem(${item.id})">Editar</button>
-                        <button class="btn btn-delete" onclick="deleteItem(${item.id})">Excluir</button>
-                    </div>
-                `;
-                
-                container.appendChild(card);
-            });
-        }
-
-        // Filtrar itens
-        function filterItems() {
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const typeFilter = document.getElementById('type-filter').value;
-            const statusFilter = document.getElementById('status-filter').value;
-            const dateFilter = document.getElementById('date-filter').value;
-            
-            let filteredItems = agendaItems.filter(item => {
-                const matchesSearch = !searchTerm || 
-                    item.titulo.toLowerCase().includes(searchTerm) ||
-                    (item.descricao && item.descricao.toLowerCase().includes(searchTerm));
-                
-                const matchesType = !typeFilter || item.tipo === typeFilter;
-                const matchesStatus = !statusFilter || item.status === statusFilter;
-                const matchesDate = !dateFilter || item.data === dateFilter;
-                
-                return matchesSearch && matchesType && matchesStatus && matchesDate;
-            });
-            
-            // Temporariamente substituir agendaItems para renderização
-            const originalItems = agendaItems;
-            agendaItems = filteredItems;
-            renderItemsList();
-            agendaItems = originalItems;
-        }
-
-        // Configurar event listeners
-        function setupEventListeners() {
-            // Filtros
-            document.getElementById('search-input').addEventListener('input', filterItems);
-            document.getElementById('type-filter').addEventListener('change', filterItems);
-            document.getElementById('status-filter').addEventListener('change', filterItems);
-            document.getElementById('date-filter').addEventListener('change', filterItems);
-            
-            // Formulário
-            document.getElementById('item-form').addEventListener('submit', handleFormSubmit);
-            
-            // Formatação de moeda
-            document.getElementById('item-value').addEventListener('input', formatCurrencyInput);
-            document.getElementById('item-value').addEventListener('focus', function() {
-                if (this.value === 'R$ 0,00') {
-                    this.value = '';
-                }
-            });
-            document.getElementById('item-value').addEventListener('blur', function() {
-                if (this.value === '') {
-                    this.value = 'R$ 0,00';
-                }
-            });
-        }
-
-        // Navegação do calendário
-        function previousMonth() {
-            currentDate.setMonth(currentDate.getMonth() - 1);
-            renderCalendar();
-        }
-
-        function nextMonth() {
-            currentDate.setMonth(currentDate.getMonth() + 1);
-            renderCalendar();
-        }
-
-        // Modal
-        function openModal(itemId = null) {
-            editingItemId = itemId;
-            const modal = document.getElementById('item-modal');
-            const title = document.getElementById('modal-title');
-            
-            if (itemId) {
-                title.textContent = 'Editar Item';
-                const item = agendaItems.find(i => i.id === itemId);
-                if (item) {
-                    fillForm(item);
-                }
-            } else {
-                title.textContent = 'Adicionar Item';
-                resetForm();
-                
-                // Se há uma data selecionada, usar como padrão
-                if (selectedDate) {
-                    document.getElementById('item-date').value = selectedDate;
-                }
-            }
-            
+        btn.onclick = function() {
             modal.style.display = 'block';
         }
 
-        function closeModal() {
-            document.getElementById('item-modal').style.display = 'none';
-            resetForm();
-            editingItemId = null;
+        span.onclick = function() {
+            modal.style.display = 'none';
         }
 
-        function resetForm() {
-            document.getElementById('item-form').reset();
-            document.getElementById('item-value').value = 'R$ 0,00';
-            document.getElementById('recurrence-fields').classList.remove('show');
-            document.getElementById('is-recurrent').checked = false;
-            toggleTimeField();
-        }
-
-        function fillForm(item) {
-            document.getElementById('item-title').value = item.titulo || '';
-            document.getElementById('item-type').value = item.tipo || '';
-            document.getElementById('item-date').value = item.data || '';
-            document.getElementById('item-time').value = item.hora || '';
-            document.getElementById('item-value').value = item.valor ? formatCurrency(item.valor) : 'R$ 0,00';
-            document.getElementById('item-description').value = item.descricao || '';
-            document.getElementById('item-status').value = item.status || 'pendente';
-            
-            // Recorrência
-            document.getElementById('is-recurrent').checked = item.is_recurrent || false;
-            document.getElementById('recurrence-interval').value = item.recurrence_interval || 1;
-            document.getElementById('recurrence-unit').value = item.recurrence_unit || 'weeks';
-            document.getElementById('recurrence-end').value = item.recurrence_end || '';
-            
-            toggleTimeField();
-            toggleRecurrenceFields();
-        }
-
-        function toggleTimeField() {
-            const type = document.getElementById('item-type').value;
-            const timeField = document.getElementById('time-field');
-            
-            if (type === 'pagamento') {
-                timeField.style.display = 'none';
-                document.getElementById('item-time').value = '';
-            } else {
-                timeField.style.display = 'block';
+        window.onclick = function(event) {
+            if (event.target == modal) {
+                modal.style.display = 'none';
             }
         }
 
-        function toggleRecurrenceFields() {
-            const isRecurrent = document.getElementById('is-recurrent').checked;
-            const fields = document.getElementById('recurrence-fields');
-            
-            if (isRecurrent) {
-                fields.classList.add('show');
-            } else {
-                fields.classList.remove('show');
-            }
-        }
-
-        async function handleFormSubmit(event) {
-            event.preventDefault();
-            
-            const formData = {
-                titulo: document.getElementById('item-title').value,
-                tipo: document.getElementById('item-type').value,
-                data: document.getElementById('item-date').value,
-                hora: document.getElementById('item-time').value || null,
-                valor: parseCurrency(document.getElementById('item-value').value),
-                descricao: document.getElementById('item-description').value || null,
-                status: document.getElementById('item-status').value,
-                is_recurrent: document.getElementById('is-recurrent').checked,
-                recurrence_interval: document.getElementById('is-recurrent').checked ? parseInt(document.getElementById('recurrence-interval').value) : null,
-                recurrence_unit: document.getElementById('is-recurrent').checked ? document.getElementById('recurrence-unit').value : null,
-                recurrence_end: document.getElementById('is-recurrent').checked ? document.getElementById('recurrence-end').value || null : null,
-                ultima_alteracao: new Date().toISOString(),
-                alterado_por: sessionStorage.getItem('nome') || 'Usuário'
-            };
-            
-            // Para pagamentos, gerar horário automático se não especificado
-            if (formData.tipo === 'pagamento' && !formData.hora) {
-                const sameDate = agendaItems.filter(item => 
-                    item.data === formData.data && 
-                    item.tipo === 'pagamento' && 
-                    item.id !== editingItemId
-                );
-                
-                const baseHour = 9; // 09:00
-                const minutes = sameDate.length;
-                const totalMinutes = baseHour * 60 + minutes;
-                const hours = Math.floor(totalMinutes / 60);
-                const mins = totalMinutes % 60;
-                formData.hora = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
-            }
-            
-            await saveItem(formData);
-        }
-
-        // Editar item
-        function editItem(id) {
-            openModal(id);
-        }
-
-        // Alternar status
-        function cycleStatus(id, currentStatus) {
-            const statusCycle = {
-                'pendente': 'concluido',
-                'concluido': 'cancelado',
-                'cancelado': 'pendente'
-            };
-            
-            const newStatus = statusCycle[currentStatus] || 'pendente';
-            updateStatus(id, newStatus);
-        }
-
-        // Formatação
-        function formatDate(dateString) {
-            if (!dateString) return '';
-            const date = new Date(dateString + 'T00:00:00');
-            return date.toLocaleDateString('pt-BR');
-        }
-
-        function formatDateTime(dateTimeString) {
-            if (!dateTimeString) return '';
-            const date = new Date(dateTimeString);
-            return date.toLocaleString('pt-BR');
-        }
-
-        function formatCurrency(value) {
-            if (!value) return 'R$ 0,00';
-            const number = typeof value === 'string' ? parseFloat(value) : value;
-            return number.toLocaleString('pt-BR', {
-                style: 'currency',
-                currency: 'BRL'
-            });
-        }
-
-        function formatCurrencyInput(event) {
-            let value = event.target.value;
-            
-            // Remove tudo que não é número
-            value = value.replace(/\D/g, '');
-            
-            // Converte para centavos
-            value = (parseInt(value) / 100).toFixed(2);
-            
-            // Formata como moeda
-            value = value.replace('.', ',');
-            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-            
-            event.target.value = 'R$ ' + value;
-        }
-
-        function parseCurrency(value) {
-            if (!value) return 0;
-            return parseFloat(value.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-        }
-
-        // OpenFinance (placeholder)
-        function openOpenFinanceModal() {
-            alert('Funcionalidade OpenFinance será implementada em breve!');
-        }
-
-        // Event listeners para fechar modal
-        window.addEventListener('click', function(event) {
-            const modal = document.getElementById('item-modal');
-            if (event.target === modal) {
-                closeModal();
-            }
-        });
-
-        // Atalhos de teclado
-        document.addEventListener('keydown', function(event) {
-            if (event.key === 'Escape') {
-                closeModal();
-            }
+        // Carregar eventos ao inicializar
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAgendaItems();
         });
     </script>
 </body>
