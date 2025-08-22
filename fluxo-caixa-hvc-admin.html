@@ -1012,43 +1012,32 @@
             }).format(value);
         }
 
-        // GERAR HORÁRIO AUTOMÁTICO PARA PAGAMENTOS
-        async function generateNextPaymentTime(date) {
+        // GERAR PRÓXIMO HORÁRIO PARA PAGAMENTO - CORRIGIDA
+        async function generateNextPaymentTime(dataEvento) {
             try {
-                const { data, error } = await supabase
+                // Buscar pagamentos existentes na mesma data
+                const { data: existingPayments, error } = await supabase
                     .from('agenda_hvc')
                     .select('hora_evento')
-                    .eq('data_evento', date)
+                    .eq('data_evento', dataEvento)
                     .eq('tipo', 'pagamento')
-                    .not('hora_evento', 'is', null)
-                    .order('hora_evento', { ascending: false })
-                    .limit(1);
-
+                    .not('hora_evento', 'is', null);
+                
                 if (error) {
-                    console.error('Erro ao buscar horários:', error);
-                    return '09:00';
-                }
-
-                if (!data || data.length === 0) {
-                    return '09:00';
-                }
-
-                const lastTime = data[0].hora_evento;
-                const [hours, minutes] = lastTime.split(':').map(Number);
-                
-                let newMinutes = minutes + 1;
-                let newHours = hours;
-                
-                if (newMinutes >= 60) {
-                    newMinutes = 0;
-                    newHours += 1;
+                    console.error('Erro ao buscar pagamentos existentes:', error);
+                    return '09:00'; // Fallback
                 }
                 
-                const formattedTime = `${String(newHours).padStart(2, '0')}:${String(newMinutes).padStart(2, '0')}`;
-                return formattedTime;
+                const count = existingPayments ? existingPayments.length : 0;
+                const baseHour = 9; // Começar às 9:00
+                const minutes = count % 60;
+                const hours = baseHour + Math.floor(count / 60);
+                
+                return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                
             } catch (error) {
                 console.error('Erro ao gerar horário:', error);
-                return '09:00';
+                return '09:00'; // Fallback
             }
         }
 
@@ -1631,6 +1620,103 @@
                             alert('Item salvo, mas houve erro ao gerar recorrências: ' + recurrenceError.message);
                         } else {
                             console.log('Eventos recorrentes gerados com sucesso');
+
+                                
+                                                    // FUNÇÃO PARA GERAR EVENTOS RECORRENTES - CORRIGIDA
+                                                    async function generateRecurrentEvents(baseItem) {
+                                                        const events = [];
+                                                        const baseDate = new Date(baseItem.data_evento + 'T00:00:00');
+                                                        const interval = parseInt(baseItem.recorrencia_numero) || 1;
+                                                        const unit = baseItem.recorrencia_unidade;
+                                                        const endDate = baseItem.recorrencia_fim ? new Date(baseItem.recorrencia_fim + 'T23:59:59') : null;
+                                                        
+                                                        // Limite de segurança: máximo 100 eventos ou 2 anos
+                                                        const maxEvents = 100;
+                                                        const maxDate = new Date();
+                                                        maxDate.setFullYear(maxDate.getFullYear() + 2);
+                                                        
+                                                        let currentEventDate = new Date(baseDate);
+                                                        let eventCount = 0;
+                                                        
+                                                        console.log('🔄 Gerando recorrências:', {
+                                                            baseDate: baseDate.toISOString(),
+                                                            interval,
+                                                            unit,
+                                                            endDate: endDate?.toISOString()
+                                                        });
+                                                        
+                                                        while (eventCount < maxEvents) {
+                                                            // Calcular próxima data baseada na unidade
+                                                            switch (unit) {
+                                                                case 'dias':
+                                                                    currentEventDate.setDate(currentEventDate.getDate() + interval);
+                                                                    break;
+                                                                case 'dias úteis':
+                                                                    let daysAdded = 0;
+                                                                    while (daysAdded < interval) {
+                                                                        currentEventDate.setDate(currentEventDate.getDate() + 1);
+                                                                        // Segunda = 1, Terça = 2, ..., Sexta = 5
+                                                                        if (currentEventDate.getDay() >= 1 && currentEventDate.getDay() <= 5) {
+                                                                            daysAdded++;
+                                                                        }
+                                                                    }
+                                                                    break;
+                                                                case 'semanas':
+                                                                    currentEventDate.setDate(currentEventDate.getDate() + (interval * 7));
+                                                                    break;
+                                                                case 'quinzenas':
+                                                                    currentEventDate.setDate(currentEventDate.getDate() + (interval * 14));
+                                                                    break;
+                                                                case 'meses':
+                                                                    currentEventDate.setMonth(currentEventDate.getMonth() + interval);
+                                                                    break;
+                                                                case 'anos':
+                                                                    currentEventDate.setFullYear(currentEventDate.getFullYear() + interval);
+                                                                    break;
+                                                            }
+                                                            
+                                                            // Verificar se passou dos limites
+                                                            if (endDate && currentEventDate > endDate) break;
+                                                            if (currentEventDate > maxDate) break;
+                                                            
+                                                            // Gerar horário para pagamentos (sequencial)
+                                                            let eventTime = baseItem.hora_evento;
+                                                            if (baseItem.tipo === 'pagamento') {
+                                                                eventTime = await generateNextPaymentTime(currentEventDate.toISOString().split('T')[0]);
+                                                            }
+                                                            
+                                                            // Criar evento recorrente
+                                                            const recurrentEvent = {
+                                                                titulo: baseItem.titulo,
+                                                                tipo: baseItem.tipo,
+                                                                categoria: baseItem.categoria,
+                                                                data_evento: currentEventDate.toISOString().split('T')[0],
+                                                                hora_evento: eventTime,
+                                                                valor: baseItem.valor,
+                                                                status: baseItem.status,
+                                                                prioridade: baseItem.prioridade,
+                                                                descricao: baseItem.descricao,
+                                                                observacoes: baseItem.observacoes,
+                                                                recorrencia_ativa: false, // Eventos gerados não são recorrentes
+                                                                recorrencia_numero: null,
+                                                                recorrencia_unidade: null,
+                                                                recorrencia_fim: null,
+                                                                evento_pai_id: baseItem.id, // Referência ao evento pai
+                                                                criado_por: baseItem.criado_por,
+                                                                criado_em: new Date().toISOString(),
+                                                                atualizado_por: baseItem.atualizado_por,
+                                                                atualizado_em: new Date().toISOString()
+                                                            };
+                                                            
+                                                            events.push(recurrentEvent);
+                                                            eventCount++;
+                                                        }
+                                                        
+                                                        console.log(`✅ Gerados ${events.length} eventos recorrentes`);
+                                                        return events;
+                                                    }
+                                            
+                                                                        
                         }
                     }
                 }
