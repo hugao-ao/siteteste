@@ -7,10 +7,6 @@
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
-    <!-- Google APIs -->
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    
     <style>
         /* Tema específico HVC - Elegante e sofisticado */
         body {
@@ -223,7 +219,6 @@
             border-radius: 8px;
             overflow: hidden;
             width: 100%;
-            table-layout: fixed;
         }
 
         .calendar-day-header {
@@ -235,8 +230,6 @@
             font-size: 14px;
             width: 100%;
             box-sizing: border-box;
-            flex: 1;
-            min-width: 0;
         }
 
         .calendar-day {
@@ -248,8 +241,6 @@
             transition: all 0.3s ease;
             width: 100%;
             box-sizing: border-box;
-            flex: 1;
-            min-width: 0;
             overflow: hidden;
             display: flex;
             flex-direction: column;
@@ -601,131 +592,13 @@
             }
         }
     </style>
-</head>
-<body>
-    <!-- OpenFinance Button -->
-    <button class="openfinance-btn" onclick="openModal()">
-        <i class="fas fa-university"></i>
-        OpenFinance
-    </button>
-
-    <!-- Sidebar será injetada aqui pelo sidebar.js -->
-    
-    <main id="main-content-fluxo-caixa-hvc">
-        <div class="hvc-container">
-            <h1 class="hvc-title">
-                <i class="fas fa-calendar-alt"></i> Fluxo de Caixa - Agenda e Pagamentos
-            </h1>
-
-            <!-- Messages Container -->
-            <div id="messagesContainer"></div>
-
-            <!-- Google Calendar Section -->
-            <div class="google-section">
-                <h2><i class="fab fa-google"></i> Integração Google Calendar</h2>
-                
-                <div id="connectionStatus" class="status-indicator status-disconnected">
-                    <i class="fas fa-times-circle"></i>
-                    <span>Desconectado do Google Calendar</span>
-                </div>
-
-                <div class="google-controls">
-                    <button id="authorizeButton" class="btn btn-primary">
-                        <i class="fab fa-google"></i>
-                        Conectar com Google Calendar
-                    </button>
-                    <button id="signoutButton" class="btn btn-danger" style="display: none;">
-                        <i class="fas fa-sign-out-alt"></i>
-                        Desconectar
-                    </button>
-                    <button id="syncButton" class="btn btn-secondary" disabled>
-                        <i class="fas fa-sync-alt"></i>
-                        Sincronizar Agora
-                    </button>
-                </div>
-
-                <!-- Filter Info -->
-                <div id="filterSection" class="filter-section" style="display: none;">
-                    <div class="filter-info">
-                        <i class="fas fa-filter"></i>
-                        <span>Filtro Ativo: Mostrando apenas eventos com "PAGAMENTO", "PAGAMENTOS", "HVC" ou "PG"</span>
-                    </div>
-                    <div id="filterStats" class="filter-stats"></div>
-                </div>
-            </div>
-
-            <!-- Calendar View -->
-            <div id="calendarSection" class="calendar-section" style="display: none;">
-                <div class="calendar-header">
-                    <h2><i class="fas fa-calendar"></i> Calendário de Pagamentos HVC</h2>
-                    <div class="calendar-nav">
-                        <button onclick="previousMonth()">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <span id="calendarTitle" class="calendar-title"></span>
-                        <button onclick="nextMonth()">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button onclick="goToToday()" class="btn-primary">
-                            Hoje
-                        </button>
-                    </div>
-                </div>
-
-                <div class="calendar-grid" id="calendarGrid">
-                    <!-- Calendar will be generated here -->
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- OpenFinance Modal -->
-    <div id="openfinanceModal" class="modal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-university"></i> OpenFinance</h2>
-                <span class="close" onclick="closeModal()">&times;</span>
-            </div>
-            <div class="modal-body">
-                <p><strong>🚧 Funcionalidade em Desenvolvimento</strong></p>
-                <p>A integração com OpenFinance está sendo desenvolvida e estará disponível em breve.</p>
-                <p>Esta funcionalidade permitirá:</p>
-                <ul style="margin-left: 20px; color: #e0e0e0;">
-                    <li>Conexão automática com suas contas bancárias</li>
-                    <li>Importação automática de transações</li>
-                    <li>Sincronização em tempo real</li>
-                    <li>Categorização inteligente de gastos</li>
-                </ul>
-                <p style="margin-top: 15px;"><em>Aguarde as próximas atualizações!</em></p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Event Details Modal -->
-    <div id="eventModal" class="event-modal">
-        <div class="event-modal-content">
-            <div class="modal-header">
-                <h2 id="eventModalTitle">Detalhes do Evento</h2>
-                <span class="close" onclick="closeEventModal()">&times;</span>
-            </div>
-            <div class="modal-body" id="eventModalBody">
-                <!-- Event details will be populated here -->
-            </div>
-        </div>
-    </div>
-
-    <!-- Scripts -->
-    <script type="module" src="supabase.js"></script>
-    <script type="module" src="dashboard-hvc.js"></script>
-    <script type="module">
-        import { injectSidebar } from './sidebar.js';
-        injectSidebar("main-content-fluxo-caixa-hvc");
-    </script>
 
     <script>
         // =================================================================
-        // CONFIGURAÇÕES GOOGLE CALENDAR API
+        // DEFINIR FUNÇÕES GLOBAIS ANTES DOS SCRIPTS DO GOOGLE
         // =================================================================
+        
+        // Configurações
         const CLIENT_ID = '314578730498-ghkttnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
@@ -737,13 +610,56 @@
         let filteredEvents = [];
         let currentDate = new Date();
 
-        // Elementos DOM
-        const authorizeButton = document.getElementById('authorizeButton');
-        const signoutButton = document.getElementById('signoutButton');
-        const syncButton = document.getElementById('syncButton');
-        const connectionStatus = document.getElementById('connectionStatus');
-        const calendarSection = document.getElementById('calendarSection');
-        const filterSection = document.getElementById('filterSection');
+        // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
+        window.gapiLoaded = function() {
+            console.log('🔄 Carregando GAPI...');
+            gapi.load('client', initializeGapiClient);
+        }
+
+        window.gisLoaded = function() {
+            console.log('🔄 Carregando GIS...');
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: handleTokenResponse,
+                });
+                gisInited = true;
+                maybeEnableButtons();
+                console.log('✅ GIS inicializado com sucesso!');
+            } catch (error) {
+                console.error('❌ Erro ao inicializar GIS:', error);
+                showMessage('Erro ao carregar sistema de autenticação do Google', 'error');
+            }
+        }
+
+        async function initializeGapiClient() {
+            try {
+                await gapi.client.init({
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                gapiInited = true;
+                maybeEnableButtons();
+                console.log('✅ GAPI inicializado com sucesso!');
+                
+                // Tentar restaurar sessão
+                await tryRestoreSession();
+            } catch (error) {
+                console.error('❌ Erro ao inicializar GAPI:', error);
+                showMessage('Erro ao carregar API do Google Calendar', 'error');
+            }
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                const authorizeButton = document.getElementById('authorizeButton');
+                if (authorizeButton) {
+                    authorizeButton.style.display = 'block';
+                    console.log('✅ APIs do Google carregadas com sucesso');
+                    showMessage('APIs do Google carregadas com sucesso!', 'success');
+                }
+            }
+        }
 
         // =================================================================
         // SISTEMA DE DETECÇÃO E SOMA DE VALORES
@@ -802,7 +718,7 @@
         }
 
         // =================================================================
-        // PERSISTÊNCIA DE LOGIN MELHORADA
+        // PERSISTÊNCIA DE LOGIN
         // =================================================================
         function saveConnectionState() {
             try {
@@ -852,6 +768,19 @@
             }
         }
 
+        async function tryRestoreSession() {
+            const savedState = getConnectionState();
+            if (savedState && savedState.connected && gapiInited && gisInited) {
+                try {
+                    // Tentar uma nova autenticação silenciosa
+                    tokenClient.requestAccessToken({ prompt: '' });
+                } catch (error) {
+                    console.log('❌ Não foi possível restaurar sessão automaticamente');
+                    clearConnectionState();
+                }
+            }
+        }
+
         // =================================================================
         // MODAL FUNCTIONS
         // =================================================================
@@ -867,23 +796,13 @@
             document.getElementById('eventModal').style.display = 'none';
         }
 
-        // Fechar modal clicando fora
-        window.onclick = function(event) {
-            const modal = document.getElementById('openfinanceModal');
-            const eventModal = document.getElementById('eventModal');
-            if (event.target == modal) {
-                closeModal();
-            }
-            if (event.target == eventModal) {
-                closeEventModal();
-            }
-        }
-
         // =================================================================
         // MESSAGE SYSTEM
         // =================================================================
         function showMessage(message, type = 'info') {
             const container = document.getElementById('messagesContainer');
+            if (!container) return;
+            
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
             
@@ -910,67 +829,6 @@
                 case 'error': return 'fa-exclamation-triangle';
                 case 'warning': return 'fa-exclamation-circle';
                 default: return 'fa-info-circle';
-            }
-        }
-
-        // =================================================================
-        // GOOGLE API INITIALIZATION
-        // =================================================================
-        function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
-        }
-
-        async function initializeGapiClient() {
-            try {
-                await gapi.client.init({
-                    discoveryDocs: [DISCOVERY_DOC],
-                });
-                gapiInited = true;
-                maybeEnableButtons();
-                console.log('✅ GAPI inicializado com sucesso!');
-                
-                // Tentar restaurar sessão
-                await tryRestoreSession();
-            } catch (error) {
-                console.error('❌ Erro ao inicializar GAPI:', error);
-                showMessage('Erro ao carregar API do Google Calendar', 'error');
-            }
-        }
-
-        function gisLoaded() {
-            try {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID,
-                    scope: SCOPES,
-                    callback: handleTokenResponse,
-                });
-                gisInited = true;
-                maybeEnableButtons();
-                console.log('✅ GIS inicializado com sucesso!');
-            } catch (error) {
-                console.error('❌ Erro ao inicializar GIS:', error);
-                showMessage('Erro ao carregar sistema de autenticação do Google', 'error');
-            }
-        }
-
-        function maybeEnableButtons() {
-            if (gapiInited && gisInited) {
-                authorizeButton.style.display = 'block';
-                console.log('✅ APIs do Google carregadas com sucesso');
-                showMessage('APIs do Google carregadas com sucesso!', 'success');
-            }
-        }
-
-        async function tryRestoreSession() {
-            const savedState = getConnectionState();
-            if (savedState && savedState.connected && gapiInited && gisInited) {
-                try {
-                    // Tentar uma nova autenticação silenciosa
-                    tokenClient.requestAccessToken({ prompt: '' });
-                } catch (error) {
-                    console.log('❌ Não foi possível restaurar sessão automaticamente');
-                    clearConnectionState();
-                }
             }
         }
 
@@ -1028,16 +886,16 @@
                         clearConnectionState();
                         isGoogleConnected = false;
                         updateConnectionStatus(false);
-                        calendarSection.style.display = 'none';
-                        filterSection.style.display = 'none';
+                        document.getElementById('calendarSection').style.display = 'none';
+                        document.getElementById('filterSection').style.display = 'none';
                         showMessage('Desconectado do Google Calendar', 'success');
                     });
                 } else {
                     clearConnectionState();
                     isGoogleConnected = false;
                     updateConnectionStatus(false);
-                    calendarSection.style.display = 'none';
-                    filterSection.style.display = 'none';
+                    document.getElementById('calendarSection').style.display = 'none';
+                    document.getElementById('filterSection').style.display = 'none';
                     showMessage('Desconectado do Google Calendar', 'success');
                 }
             } catch (error) {
@@ -1050,6 +908,13 @@
         // CONNECTION STATUS
         // =================================================================
         function updateConnectionStatus(connected) {
+            const connectionStatus = document.getElementById('connectionStatus');
+            const authorizeButton = document.getElementById('authorizeButton');
+            const signoutButton = document.getElementById('signoutButton');
+            const syncButton = document.getElementById('syncButton');
+            const calendarSection = document.getElementById('calendarSection');
+            const filterSection = document.getElementById('filterSection');
+            
             if (connected) {
                 connectionStatus.className = 'status-indicator status-connected';
                 connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Calendar</span>';
@@ -1142,11 +1007,13 @@
 
         function updateFilterStats(total, filtered) {
             const statsElement = document.getElementById('filterStats');
-            statsElement.innerHTML = `
-                Total de eventos: ${total} | 
-                Eventos filtrados: ${filtered} | 
-                Palavras-chave: "PAGAMENTO", "PAGAMENTOS", "HVC", "PG"
-            `;
+            if (statsElement) {
+                statsElement.innerHTML = `
+                    Total de eventos: ${total} | 
+                    Eventos filtrados: ${filtered} | 
+                    Palavras-chave: "PAGAMENTO", "PAGAMENTOS", "HVC", "PG"
+                `;
+            }
         }
 
         // =================================================================
@@ -1155,6 +1022,8 @@
         function renderCalendar() {
             const calendarGrid = document.getElementById('calendarGrid');
             const calendarTitle = document.getElementById('calendarTitle');
+            
+            if (!calendarGrid || !calendarTitle) return;
             
             // Update title
             const monthNames = [
@@ -1211,7 +1080,7 @@
                 dayNumber.textContent = cellDate.getDate();
                 dayDiv.appendChild(dayNumber);
                 
-                // NOVO: Total do dia
+                // Total do dia
                 const dayTotal = calculateDayTotal(cellDate);
                 if (dayTotal > 0) {
                     const totalDiv = document.createElement('div');
@@ -1250,12 +1119,14 @@
             const title = document.getElementById('eventModalTitle');
             const body = document.getElementById('eventModalBody');
             
+            if (!modal || !title || !body) return;
+            
             title.textContent = event.summary || 'Sem título';
             
             const start = new Date(event.start.dateTime || event.start.date);
             const end = new Date(event.end.dateTime || event.end.date);
             
-            // NOVO: Calcular valores do evento
+            // Calcular valores do evento
             const eventCalc = calculateEventTotal(event);
             
             let detailsHTML = `
@@ -1268,7 +1139,7 @@
                 <p><strong><i class="fas fa-tag"></i> Tipo:</strong> ${getEventType(event).toUpperCase()}</p>
             `;
             
-            // NOVO: Seção de valores encontrados
+            // Seção de valores encontrados
             if (eventCalc.count > 0) {
                 detailsHTML += `
                     <div class="event-total-section">
@@ -1297,7 +1168,7 @@
                 }
             }
             
-            // CORREÇÃO: Buscar anexos do evento
+            // Buscar anexos do evento
             try {
                 if (event.attachments && event.attachments.length > 0) {
                     detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
@@ -1364,6 +1235,7 @@
                 return;
             }
 
+            const syncButton = document.getElementById('syncButton');
             syncButton.innerHTML = '<div class="spinner"></div> Sincronizando...';
             syncButton.disabled = true;
 
@@ -1381,11 +1253,17 @@
         }
 
         // =================================================================
-        // EVENT LISTENERS
+        // TORNAR FUNÇÕES GLOBAIS
         // =================================================================
-        authorizeButton.addEventListener('click', handleAuthClick);
-        signoutButton.addEventListener('click', handleSignoutClick);
-        syncButton.addEventListener('click', handleSyncClick);
+        window.openModal = openModal;
+        window.closeModal = closeModal;
+        window.closeEventModal = closeEventModal;
+        window.previousMonth = previousMonth;
+        window.nextMonth = nextMonth;
+        window.goToToday = goToToday;
+        window.handleAuthClick = handleAuthClick;
+        window.handleSignoutClick = handleSignoutClick;
+        window.handleSyncClick = handleSyncClick;
 
         // =================================================================
         // INITIALIZATION
@@ -1393,35 +1271,172 @@
         document.addEventListener('DOMContentLoaded', () => {
             console.log('🚀 Aplicação iniciada');
             showMessage('Sistema iniciado com sucesso!', 'success');
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => {
-            // Esc para fechar modal
-            if (e.key === 'Escape') {
-                closeModal();
-                closeEventModal();
+            
+            // Event listeners
+            const authorizeButton = document.getElementById('authorizeButton');
+            const signoutButton = document.getElementById('signoutButton');
+            const syncButton = document.getElementById('syncButton');
+            
+            if (authorizeButton) authorizeButton.addEventListener('click', handleAuthClick);
+            if (signoutButton) signoutButton.addEventListener('click', handleSignoutClick);
+            if (syncButton) syncButton.addEventListener('click', handleSyncClick);
+            
+            // Fechar modal clicando fora
+            window.onclick = function(event) {
+                const modal = document.getElementById('openfinanceModal');
+                const eventModal = document.getElementById('eventModal');
+                if (event.target == modal) {
+                    closeModal();
+                }
+                if (event.target == eventModal) {
+                    closeEventModal();
+                }
             }
             
-            // Setas para navegar no calendário
-            if (e.key === 'ArrowLeft' && e.ctrlKey) {
-                e.preventDefault();
-                previousMonth();
-            }
-            if (e.key === 'ArrowRight' && e.ctrlKey) {
-                e.preventDefault();
-                nextMonth();
-            }
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                // Esc para fechar modal
+                if (e.key === 'Escape') {
+                    closeModal();
+                    closeEventModal();
+                }
+                
+                // Setas para navegar no calendário
+                if (e.key === 'ArrowLeft' && e.ctrlKey) {
+                    e.preventDefault();
+                    previousMonth();
+                }
+                if (e.key === 'ArrowRight' && e.ctrlKey) {
+                    e.preventDefault();
+                    nextMonth();
+                }
+            });
         });
-
-        // Tornar funções globais para uso nos botões
-        window.openModal = openModal;
-        window.closeModal = closeModal;
-        window.closeEventModal = closeEventModal;
-        window.previousMonth = previousMonth;
-        window.nextMonth = nextMonth;
-        window.goToToday = goToToday;
     </script>
+</head>
+<body>
+    <!-- OpenFinance Button -->
+    <button class="openfinance-btn" onclick="openModal()">
+        <i class="fas fa-university"></i>
+        OpenFinance
+    </button>
+
+    <!-- Sidebar será injetada aqui pelo sidebar.js -->
+    
+    <main id="main-content-fluxo-caixa-hvc">
+        <div class="hvc-container">
+            <h1 class="hvc-title">
+                <i class="fas fa-calendar-alt"></i> Fluxo de Caixa - Agenda e Pagamentos
+            </h1>
+
+            <!-- Messages Container -->
+            <div id="messagesContainer"></div>
+
+            <!-- Google Calendar Section -->
+            <div class="google-section">
+                <h2><i class="fab fa-google"></i> Integração Google Calendar</h2>
+                
+                <div id="connectionStatus" class="status-indicator status-disconnected">
+                    <i class="fas fa-times-circle"></i>
+                    <span>Desconectado do Google Calendar</span>
+                </div>
+
+                <div class="google-controls">
+                    <button id="authorizeButton" class="btn btn-primary" style="display: none;">
+                        <i class="fab fa-google"></i>
+                        Conectar com Google Calendar
+                    </button>
+                    <button id="signoutButton" class="btn btn-danger" style="display: none;">
+                        <i class="fas fa-sign-out-alt"></i>
+                        Desconectar
+                    </button>
+                    <button id="syncButton" class="btn btn-secondary" disabled>
+                        <i class="fas fa-sync-alt"></i>
+                        Sincronizar Agora
+                    </button>
+                </div>
+
+                <!-- Filter Info -->
+                <div id="filterSection" class="filter-section" style="display: none;">
+                    <div class="filter-info">
+                        <i class="fas fa-filter"></i>
+                        <span>Filtro Ativo: Mostrando apenas eventos com "PAGAMENTO", "PAGAMENTOS", "HVC" ou "PG"</span>
+                    </div>
+                    <div id="filterStats" class="filter-stats"></div>
+                </div>
+            </div>
+
+            <!-- Calendar View -->
+            <div id="calendarSection" class="calendar-section" style="display: none;">
+                <div class="calendar-header">
+                    <h2><i class="fas fa-calendar"></i> Calendário de Pagamentos HVC</h2>
+                    <div class="calendar-nav">
+                        <button onclick="previousMonth()">
+                            <i class="fas fa-chevron-left"></i>
+                        </button>
+                        <span id="calendarTitle" class="calendar-title"></span>
+                        <button onclick="nextMonth()">
+                            <i class="fas fa-chevron-right"></i>
+                        </button>
+                        <button onclick="goToToday()" class="btn-primary">
+                            Hoje
+                        </button>
+                    </div>
+                </div>
+
+                <div class="calendar-grid" id="calendarGrid">
+                    <!-- Calendar will be generated here -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- OpenFinance Modal -->
+    <div id="openfinanceModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-university"></i> OpenFinance</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p><strong>🚧 Funcionalidade em Desenvolvimento</strong></p>
+                <p>A integração com OpenFinance está sendo desenvolvida e estará disponível em breve.</p>
+                <p>Esta funcionalidade permitirá:</p>
+                <ul style="margin-left: 20px; color: #e0e0e0;">
+                    <li>Conexão automática com suas contas bancárias</li>
+                    <li>Importação automática de transações</li>
+                    <li>Sincronização em tempo real</li>
+                    <li>Categorização inteligente de gastos</li>
+                </ul>
+                <p style="margin-top: 15px;"><em>Aguarde as próximas atualizações!</em></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="eventModal" class="event-modal">
+        <div class="event-modal-content">
+            <div class="modal-header">
+                <h2 id="eventModalTitle">Detalhes do Evento</h2>
+                <span class="close" onclick="closeEventModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="eventModalBody">
+                <!-- Event details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="supabase.js"></script>
+    <script type="module" src="dashboard-hvc.js"></script>
+    <script type="module">
+        import { injectSidebar } from './sidebar.js';
+        injectSidebar("main-content-fluxo-caixa-hvc");
+    </script>
+
+    <!-- Google APIs - Carregar DEPOIS das funções estarem definidas -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
 
