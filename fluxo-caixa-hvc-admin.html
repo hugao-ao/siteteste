@@ -7,7 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
-    <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     <style>
         * {
@@ -340,6 +339,26 @@
             color: white;
         }
 
+        .error-message {
+            background: rgba(234, 67, 53, 0.2);
+            border: 1px solid rgba(234, 67, 53, 0.4);
+            color: #ea4335;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .success-message {
+            background: rgba(52, 168, 83, 0.2);
+            border: 1px solid rgba(52, 168, 83, 0.4);
+            color: #34a853;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
         @media (max-width: 768px) {
             .form-row {
                 grid-template-columns: 1fr;
@@ -373,7 +392,7 @@
             </div>
 
             <div class="calendar-controls">
-                <button id="authorize_button" class="btn btn-primary" style="display: none;">
+                <button id="authorize_button" class="btn btn-primary">
                     <i class="fab fa-google"></i>
                     Conectar com Google Calendar
                 </button>
@@ -381,7 +400,7 @@
                     <i class="fas fa-sign-out-alt"></i>
                     Desconectar
                 </button>
-                <button id="sync_button" class="btn btn-secondary" style="display: none;" disabled>
+                <button id="sync_button" class="btn btn-secondary" disabled>
                     <i class="fas fa-sync-alt"></i>
                     Sincronizar Agora
                 </button>
@@ -393,6 +412,7 @@
             <h2><i class="fas fa-calendar-plus"></i> Gerenciar Agenda</h2>
             
             <form id="agenda-form">
+                <input type="hidden" id="evento-id" name="evento-id">
                 <div class="form-row">
                     <div class="form-group">
                         <label for="titulo">Título do Evento</label>
@@ -445,7 +465,7 @@
                 </div>
 
                 <div class="calendar-controls">
-                    <button type="submit" class="btn btn-primary">
+                    <button type="submit" class="btn btn-primary" id="submit-button">
                         <i class="fas fa-plus"></i>
                         Adicionar Evento
                     </button>
@@ -484,10 +504,25 @@
         </div>
     </div>
 
-    <script src="supabase.js"></script>
-    <script src="sidebar.js"></script>
     <script>
-        // Configurações do Google Calendar API
+        // =================================================================
+        // CONFIGURAÇÃO DO SUPABASE
+        // =================================================================
+        const SUPABASE_URL = 'https://your-project.supabase.co';
+        const SUPABASE_ANON_KEY = 'your-anon-key';
+        
+        // Inicializar Supabase (substitua pelas suas credenciais)
+        let supabase;
+        try {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        } catch (error) {
+            console.error('Erro ao inicializar Supabase:', error);
+            showMessage('Erro: Configure as credenciais do Supabase no código', 'error');
+        }
+
+        // =================================================================
+        // CONFIGURAÇÕES E VARIÁVEIS GLOBAIS DO GOOGLE
+        // =================================================================
         const CLIENT_ID = '314578730498-ghktlnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
@@ -502,88 +537,168 @@
         const signoutButton = document.getElementById('signout_button');
         const syncButton = document.getElementById('sync_button');
         const connectionStatus = document.getElementById('connection-status');
+        const agendaForm = document.getElementById('agenda-form');
+        const clearFormButton = document.getElementById('clear-form');
+        const submitButton = document.getElementById('submit-button');
 
-        // Funções de callback para carregamento das bibliotecas GAPI e GIS
+        // =================================================================
+        // FUNÇÕES DE UTILIDADE
+        // =================================================================
+        function showMessage(message, type = 'info') {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = type === 'error' ? 'error-message' : 'success-message';
+            messageDiv.innerHTML = `<i class="fas ${type === 'error' ? 'fa-exclamation-triangle' : 'fa-check-circle'}"></i> ${message}`;
+            
+            const container = document.querySelector('.google-calendar-section');
+            const existingMessage = container.querySelector('.error-message, .success-message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            container.insertBefore(messageDiv, container.firstChild);
+            
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString + 'T00:00:00');
+            return date.toLocaleDateString('pt-BR');
+        }
+
+        function resetForm() {
+            agendaForm.reset();
+            document.getElementById('evento-id').value = '';
+            submitButton.innerHTML = '<i class="fas fa-plus"></i> Adicionar Evento';
+        }
+
+        // =================================================================
+        // INICIALIZAÇÃO DAS APIS GOOGLE
+        // =================================================================
         function gapiLoaded() {
             gapi.load('client', initializeGapiClient);
         }
 
         async function initializeGapiClient() {
-            await gapi.client.init({
-                discoveryDocs: [DISCOVERY_DOC],
-            });
-            gapiInited = true;
-            maybeEnableButtons();
-        }
-
-        function gisLoaded() {
-            tokenClient = google.accounts.oauth2.initTokenClient({
-                client_id: CLIENT_ID,
-                scope: SCOPES,
-                callback: '', // Será preenchido dinamicamente
-            });
-            gisInited = true;
-            maybeEnableButtons();
-        }
-
-        // Habilita os botões quando as bibliotecas são carregadas
-        function maybeEnableButtons() {
-            if (gapiInited && gisInited) {
-                authorizeButton.style.display = 'block';
-                signoutButton.style.display = 'block';
-                syncButton.style.display = 'block';
+            try {
+                await gapi.client.init({
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                gapiInited = true;
+                maybeEnableButtons();
+            } catch (error) {
+                console.error('Erro ao inicializar GAPI:', error);
+                showMessage('Erro ao carregar API do Google Calendar', 'error');
             }
         }
 
-        // Atualiza o status da conexão
+        function gisLoaded() {
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: handleTokenResponse,
+                });
+                gisInited = true;
+                maybeEnableButtons();
+            } catch (error) {
+                console.error('Erro ao inicializar GIS:', error);
+                showMessage('Erro ao carregar sistema de autenticação do Google', 'error');
+            }
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                authorizeButton.style.display = 'block';
+                signoutButton.style.display = 'none';
+                syncButton.style.display = 'block';
+                console.log('APIs do Google carregadas com sucesso');
+            }
+        }
+
+        // =================================================================
+        // AUTENTICAÇÃO E STATUS
+        // =================================================================
         function updateConnectionStatus(connected) {
             isGoogleConnected = connected;
             if (connected) {
                 connectionStatus.className = 'status-indicator status-connected';
                 connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Calendar</span>';
+                authorizeButton.style.display = 'none';
+                signoutButton.style.display = 'block';
                 syncButton.disabled = false;
             } else {
                 connectionStatus.className = 'status-indicator status-disconnected';
                 connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Desconectado do Google Calendar</span>';
+                authorizeButton.style.display = 'block';
+                signoutButton.style.display = 'none';
                 syncButton.disabled = true;
             }
         }
 
-        // Lida com o clique no botão de autorização
         function handleAuthClick() {
-            tokenClient.callback = async (resp) => {
-                if (resp.error) {
-                    console.error('Erro de autenticação:', resp.error);
-                    alert('Erro ao conectar com o Google Calendar. Verifique o console para mais detalhes.');
-                    return;
+            if (!gapiInited || !gisInited) {
+                showMessage('APIs do Google ainda não foram carregadas. Aguarde...', 'error');
+                return;
+            }
+
+            try {
+                if (gapi.client.getToken() === null) {
+                    tokenClient.requestAccessToken({ prompt: 'consent' });
+                } else {
+                    tokenClient.requestAccessToken({ prompt: '' });
                 }
+            } catch (error) {
+                console.error('Erro na autenticação:', error);
+                showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
+            }
+        }
+
+        async function handleTokenResponse(resp) {
+            if (resp.error) {
+                console.error('Erro de autenticação:', resp.error);
+                showMessage(`Erro de autenticação: ${resp.error}`, 'error');
+                updateConnectionStatus(false);
+                return;
+            }
+
+            try {
+                gapi.client.setToken(resp);
                 console.log('Conectado com o Google Calendar!');
                 updateConnectionStatus(true);
-                await loadAgendaItems();
-            };
-
-            if (gapi.client.getToken() === null) {
-                tokenClient.requestAccessToken({prompt: 'consent'});
-            } else {
-                tokenClient.requestAccessToken({prompt: ''});
-            }
-        }
-
-        // Lida com o clique no botão de desconexão
-        function handleSignoutClick() {
-            const token = gapi.client.getToken();
-            if (token !== null) {
-                google.accounts.oauth2.revoke(token.access_token);
-                gapi.client.setToken('');
+                showMessage('Conectado com sucesso ao Google Calendar!', 'success');
+                await handleSyncClick();
+            } catch (error) {
+                console.error('Erro ao processar token:', error);
+                showMessage('Erro ao processar autenticação', 'error');
                 updateConnectionStatus(false);
-                console.log('Desconectado do Google Calendar.');
             }
         }
 
-        // Sincronização manual
+        function handleSignoutClick() {
+            try {
+                const token = gapi.client.getToken();
+                if (token !== null) {
+                    google.accounts.oauth2.revoke(token.access_token, () => {
+                        gapi.client.setToken('');
+                        updateConnectionStatus(false);
+                        showMessage('Desconectado do Google Calendar', 'success');
+                        loadAgendaItems();
+                    });
+                }
+            } catch (error) {
+                console.error('Erro ao desconectar:', error);
+                showMessage('Erro ao desconectar', 'error');
+            }
+        }
+
+        // =================================================================
+        // SINCRONIZAÇÃO COM GOOGLE CALENDAR
+        // =================================================================
         async function handleSyncClick() {
             if (!isGoogleConnected) {
-                alert('Conecte-se ao Google Calendar primeiro.');
+                showMessage('Conecte-se ao Google Calendar primeiro', 'error');
                 return;
             }
 
@@ -593,86 +708,50 @@
             try {
                 await syncWithGoogleCalendar();
                 await loadAgendaItems();
-                alert('Sincronização concluída com sucesso!');
+                showMessage('Sincronização concluída com sucesso!', 'success');
             } catch (error) {
                 console.error('Erro na sincronização:', error);
-                alert('Erro durante a sincronização. Verifique o console.');
+                showMessage(`Erro durante a sincronização: ${error.message}`, 'error');
             } finally {
                 syncButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Agora';
-                syncButton.disabled = false;
+                if (isGoogleConnected) syncButton.disabled = false;
             }
         }
 
-        // Adicionar event listeners
-        authorizeButton.addEventListener('click', handleAuthClick);
-        signoutButton.addEventListener('click', handleSignoutClick);
-        syncButton.addEventListener('click', handleSyncClick);
-
-        // Função para criar evento no Google Calendar
-        async function createGoogleCalendarEvent(eventData) {
-            if (!isGoogleConnected) return null;
-
-            try {
-                const event = {
-                    'summary': eventData.titulo,
-                    'description': eventData.descricao || '',
-                    'start': {
-                        'dateTime': `${eventData.data}T${eventData.hora}:00`,
-                        'timeZone': 'America/Sao_Paulo'
-                    },
-                    'end': {
-                        'dateTime': `${eventData.data}T${eventData.hora}:00`,
-                        'timeZone': 'America/Sao_Paulo'
-                    }
-                };
-
-                const request = gapi.client.calendar.events.insert({
-                    'calendarId': 'primary',
-                    'resource': event
-                });
-
-                const response = await request;
-                return response.result.id;
-            } catch (error) {
-                console.error('Erro ao criar evento no Google Calendar:', error);
-                return null;
-            }
-        }
-
-        // Função para sincronizar com Google Calendar
         async function syncWithGoogleCalendar() {
-            if (!isGoogleConnected) return;
+            if (!supabase) {
+                throw new Error('Supabase não configurado');
+            }
 
-            try {
-                // Buscar eventos do Supabase que não estão sincronizados
-                const { data: localEvents, error } = await supabase
-                    .from('agenda_hvc')
-                    .select('*')
-                    .is('google_calendar_id', null);
+            const { data: localEvents, error } = await supabase
+                .from('agenda_hvc')
+                .select('*')
+                .is('google_calendar_id', null);
 
-                if (error) throw error;
+            if (error) throw error;
 
-                // Sincronizar cada evento local com o Google Calendar
-                for (const event of localEvents) {
-                    const googleEventId = await createGoogleCalendarEvent(event);
-                    if (googleEventId) {
-                        // Atualizar o evento local com o ID do Google Calendar
-                        await supabase
-                            .from('agenda_hvc')
-                            .update({ google_calendar_id: googleEventId })
-                            .eq('id', event.id);
-                    }
+            for (const event of localEvents) {
+                const googleEventId = await createGoogleCalendarEvent(event);
+                if (googleEventId) {
+                    await supabase
+                        .from('agenda_hvc')
+                        .update({ google_calendar_id: googleEventId })
+                        .eq('id', event.id);
                 }
-
-                console.log('Sincronização concluída');
-            } catch (error) {
-                console.error('Erro na sincronização:', error);
-                throw error;
             }
         }
 
-        // Função para carregar eventos da agenda
+        // =================================================================
+        // OPERAÇÕES CRUD (Criar, Ler, Atualizar, Deletar)
+        // =================================================================
+
+        // ------------------ LER (LOAD) ------------------
         async function loadAgendaItems() {
+            if (!supabase) {
+                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                return;
+            }
+
             try {
                 const { data: eventos, error } = await supabase
                     .from('agenda_hvc')
@@ -683,6 +762,11 @@
 
                 const agendaList = document.getElementById('agenda-list');
                 agendaList.innerHTML = '';
+                
+                if (eventos.length === 0) {
+                    agendaList.innerHTML = '<p style="text-align: center; color: #e0e0e0; padding: 20px;">Nenhum evento encontrado</p>';
+                    return;
+                }
 
                 eventos.forEach(evento => {
                     const agendaItem = createAgendaItemElement(evento);
@@ -690,10 +774,10 @@
                 });
             } catch (error) {
                 console.error('Erro ao carregar agenda:', error);
+                showMessage('Erro ao carregar eventos da agenda', 'error');
             }
         }
 
-        // Função para criar elemento de item da agenda
         function createAgendaItemElement(evento) {
             const div = document.createElement('div');
             div.className = 'agenda-item';
@@ -713,61 +797,23 @@
                     </div>
                 </div>
                 <div class="agenda-item-actions">
-                    <button class="btn btn-secondary btn-small" onclick="editEvent(${evento.id})">
+                    <button class="btn btn-secondary btn-small" onclick="editEvent('${evento.id}')">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn btn-danger btn-small" onclick="deleteEvent(${evento.id})">
+                    <button class="btn btn-danger btn-small" onclick="deleteEvent('${evento.id}', '${evento.google_calendar_id || ''}')">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
             `;
-            
             return div;
         }
 
-        // Função para formatar data
-        function formatDate(dateString) {
-            const date = new Date(dateString + 'T00:00:00');
-            return date.toLocaleDateString('pt-BR');
-        }
-
-        // Função para adicionar evento
-        async function addEvent(eventData) {
-            try {
-                // Adicionar ao Supabase
-                const { data, error } = await supabase
-                    .from('agenda_hvc')
-                    .insert([eventData])
-                    .select();
-
-                if (error) throw error;
-
-                // Se conectado ao Google Calendar, criar evento lá também
-                if (isGoogleConnected) {
-                    const googleEventId = await createGoogleCalendarEvent(eventData);
-                    if (googleEventId) {
-                        // Atualizar com o ID do Google Calendar
-                        await supabase
-                            .from('agenda_hvc')
-                            .update({ google_calendar_id: googleEventId })
-                            .eq('id', data[0].id);
-                    }
-                }
-
-                await loadAgendaItems();
-                document.getElementById('agenda-form').reset();
-                alert('Evento adicionado com sucesso!');
-            } catch (error) {
-                console.error('Erro ao adicionar evento:', error);
-                alert('Erro ao adicionar evento. Verifique o console.');
-            }
-        }
-
-        // Event listeners para o formulário
-        document.getElementById('agenda-form').addEventListener('submit', async (e) => {
+        // ------------------ CRIAR / ATUALIZAR ------------------
+        agendaForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const formData = new FormData(e.target);
+            const eventId = formData.get('evento-id');
             const eventData = {
                 titulo: formData.get('titulo'),
                 tipo: formData.get('tipo'),
@@ -778,36 +824,196 @@
                 descricao: formData.get('descricao') || null
             };
 
-            await addEvent(eventData);
+            if (eventId) {
+                await updateEvent(eventId, eventData);
+            } else {
+                await addEvent(eventData);
+            }
         });
 
-        document.getElementById('clear-form').addEventListener('click', () => {
-            document.getElementById('agenda-form').reset();
-        });
+        async function addEvent(eventData) {
+            if (!supabase) {
+                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                return;
+            }
 
-        // Funções para editar e deletar eventos (placeholder)
-        function editEvent(id) {
-            alert('Funcionalidade de edição em desenvolvimento');
+            try {
+                const { data, error } = await supabase
+                    .from('agenda_hvc')
+                    .insert([eventData])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                if (isGoogleConnected) {
+                    const googleEventId = await createGoogleCalendarEvent(data);
+                    if (googleEventId) {
+                        await supabase
+                            .from('agenda_hvc')
+                            .update({ google_calendar_id: googleEventId })
+                            .eq('id', data.id);
+                    }
+                }
+
+                await loadAgendaItems();
+                resetForm();
+                showMessage('Evento adicionado com sucesso!', 'success');
+            } catch (error) {
+                console.error('Erro ao adicionar evento:', error);
+                showMessage('Erro ao adicionar evento', 'error');
+            }
         }
 
-        async function deleteEvent(id) {
-            if (!confirm('Tem certeza que deseja excluir este evento?')) return;
+        async function updateEvent(id, eventData) {
+            if (!supabase) {
+                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                return;
+            }
 
             try {
                 const { error } = await supabase
                     .from('agenda_hvc')
-                    .delete()
+                    .update(eventData)
                     .eq('id', id);
 
                 if (error) throw error;
 
                 await loadAgendaItems();
-                alert('Evento excluído com sucesso!');
+                resetForm();
+                showMessage('Evento atualizado com sucesso!', 'success');
             } catch (error) {
-                console.error('Erro ao excluir evento:', error);
-                alert('Erro ao excluir evento.');
+                console.error('Erro ao atualizar evento:', error);
+                showMessage('Erro ao atualizar evento', 'error');
             }
         }
+
+        // ------------------ DELETAR ------------------
+        async function deleteEvent(id, googleCalendarId) {
+            if (!confirm('Tem certeza que deseja excluir este evento?')) return;
+
+            if (!supabase) {
+                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                return;
+            }
+
+            try {
+                if (isGoogleConnected && googleCalendarId && googleCalendarId !== 'null') {
+                    await deleteGoogleCalendarEvent(googleCalendarId);
+                }
+
+                const { error } = await supabase.from('agenda_hvc').delete().eq('id', id);
+                if (error) throw error;
+
+                await loadAgendaItems();
+                showMessage('Evento excluído com sucesso!', 'success');
+            } catch (error) {
+                console.error('Erro ao excluir evento:', error);
+                showMessage('Erro ao excluir evento', 'error');
+            }
+        }
+
+        // ------------------ EDITAR ------------------
+        async function editEvent(id) {
+            if (!supabase) {
+                showMessage('Configure as credenciais do Supabase primeiro', 'error');
+                return;
+            }
+
+            try {
+                const { data: evento, error } = await supabase
+                    .from('agenda_hvc')
+                    .select('*')
+                    .eq('id', id)
+                    .single();
+
+                if (error) throw error;
+
+                document.getElementById('evento-id').value = evento.id;
+                document.getElementById('titulo').value = evento.titulo;
+                document.getElementById('tipo').value = evento.tipo;
+                document.getElementById('data').value = evento.data;
+                document.getElementById('hora').value = evento.hora;
+                document.getElementById('valor').value = evento.valor || '';
+                document.getElementById('categoria').value = evento.categoria || '';
+                document.getElementById('descricao').value = evento.descricao || '';
+
+                submitButton.innerHTML = '<i class="fas fa-save"></i> Atualizar Evento';
+                document.getElementById('titulo').focus();
+            } catch (error) {
+                console.error('Erro ao carregar evento para edição:', error);
+                showMessage('Erro ao carregar evento para edição', 'error');
+            }
+        }
+
+        // =================================================================
+        // FUNÇÕES AUXILIARES DO GOOGLE CALENDAR
+        // =================================================================
+        async function createGoogleCalendarEvent(eventData) {
+            if (!isGoogleConnected) return null;
+            
+            try {
+                const startDateTime = `${eventData.data}T${eventData.hora}:00`;
+                const endTime = new Date(`${eventData.data}T${eventData.hora}:00`);
+                endTime.setHours(endTime.getHours() + 1);
+                const endDateTime = endTime.toISOString().slice(0, 19);
+
+                const event = {
+                    'summary': eventData.titulo,
+                    'description': `Tipo: ${eventData.tipo}\nCategoria: ${eventData.categoria || 'N/A'}\nValor: R$ ${eventData.valor || 'N/A'}\n\n${eventData.descricao || ''}`,
+                    'start': { 
+                        'dateTime': startDateTime, 
+                        'timeZone': 'America/Sao_Paulo' 
+                    },
+                    'end': { 
+                        'dateTime': endDateTime, 
+                        'timeZone': 'America/Sao_Paulo' 
+                    }
+                };
+
+                const request = gapi.client.calendar.events.insert({
+                    'calendarId': 'primary',
+                    'resource': event
+                });
+
+                const response = await request;
+                console.log('Evento criado no Google Calendar:', response.result);
+                return response.result.id;
+            } catch (error) {
+                console.error('Erro ao criar evento no Google Calendar:', error);
+                return null;
+            }
+        }
+
+        async function deleteGoogleCalendarEvent(eventId) {
+            if (!isGoogleConnected) return;
+            
+            try {
+                await gapi.client.calendar.events.delete({
+                    'calendarId': 'primary',
+                    'eventId': eventId
+                });
+                console.log('Evento deletado do Google Calendar.');
+            } catch (error) {
+                if (error.result && error.result.error.code === 404) {
+                    console.warn('Evento não encontrado no Google Calendar para exclusão.');
+                } else {
+                    console.error('Erro ao deletar evento do Google Calendar:', error);
+                    throw new Error('Falha ao remover o evento do Google Calendar.');
+                }
+            }
+        }
+
+        // =================================================================
+        // EVENT LISTENERS E INICIALIZAÇÃO
+        // =================================================================
+        authorizeButton.addEventListener('click', handleAuthClick);
+        signoutButton.addEventListener('click', handleSignoutClick);
+        syncButton.addEventListener('click', handleSyncClick);
+
+        clearFormButton.addEventListener('click', () => {
+            resetForm();
+        });
 
         // Modal OpenFinance
         const modal = document.getElementById('openfinance-modal');
@@ -832,6 +1038,11 @@
         document.addEventListener('DOMContentLoaded', () => {
             loadAgendaItems();
         });
+
+        // Verificar se está em modo anônimo
+        if (window.navigator && window.navigator.userAgent && window.navigator.userAgent.includes('Incognito')) {
+            console.warn('Navegação anônima detectada. Algumas funcionalidades podem não funcionar corretamente.');
+        }
     </script>
 </body>
 </html>
