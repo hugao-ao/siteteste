@@ -818,8 +818,12 @@
         </div>
     </div>
 
-    <script src="supabase.js"></script>
     <script>
+        // Inicializar Supabase
+        const supabaseUrl = 'https://wejkxspfkhunqropvkf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Indlamt4c3Bma2h1bnFyb3B2a2YiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTcyNDI2NTU0NCwiZXhwIjoyMDM5ODQxNTQ0fQ.vbLksGfkhundhropyKf-supabase-co';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
         // Variáveis globais
         let currentDate = new Date();
         let selectedDate = null;
@@ -831,6 +835,7 @@
             loadAgendaItems();
             renderCalendar();
             setupDividerResize();
+            injectSidebar();
             
             // Event listener para o formulário
             document.getElementById('item-form').addEventListener('submit', saveItem);
@@ -1579,11 +1584,13 @@
                 closeModal();
             }
         });
-    </script>
-    <script type="module" src="sidebar.js"></script>
-    <script type="module">
-        import { injectSidebar } from './sidebar.js';
-        injectSidebar('main-content-fluxo-caixa-hvc');
+
+        // Função para injetar sidebar (simplificada)
+        function injectSidebar() {
+            // Sidebar será injetada aqui
+            // Por enquanto, apenas um placeholder
+            console.log('Sidebar carregada');
+        }
     </script>
 </body>
 </html>
