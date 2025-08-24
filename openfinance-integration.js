@@ -1,8 +1,14 @@
-// openfinance-integration.js
+// openfinance-integration.js - VERSÃO COM MODAL REDIMENSIONÁVEL
 
 // Instância global do Pluggy Manager
 let pluggyManager = null;
 let selectedConnectorId = null;
+
+// Variáveis globais para redimensionamento do modal
+let isResizing = false;
+let isDragging = false;
+let currentResizer = null;
+let startX, startY, startWidth, startHeight, startLeft, startTop;
 
 // =================================================================
 // INICIALIZAÇÃO
@@ -36,6 +42,9 @@ function initializeOpenFinance() {
     // Event listeners
     setupEventListeners();
     
+    // Inicializar modal redimensionável
+    initResizableModal();
+    
     console.log('✅ Open Finance inicializado!');
 }
 
@@ -60,6 +69,361 @@ function setupEventListeners() {
     if (credentialsForm) {
         credentialsForm.addEventListener('submit', handleCredentialsSubmit);
     }
+    
+    // Campo de filtro de bancos
+    const bankFilter = document.getElementById('bankFilter');
+    if (bankFilter) {
+        bankFilter.addEventListener('input', filterBanks);
+    }
+}
+
+// =================================================================
+// MODAL REDIMENSIONÁVEL
+// =================================================================
+function initResizableModal() {
+    // Aguardar o modal aparecer
+    const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+                const modal = document.getElementById('openfinance-modal');
+                if (modal && modal.style.display !== 'none' && !modal.querySelector('.resizer')) {
+                    makeModalResizable();
+                    addResizeStyles();
+                }
+            }
+        });
+    });
+    
+    const modal = document.getElementById('openfinance-modal');
+    if (modal) {
+        observer.observe(modal, { attributes: true });
+    }
+}
+
+function makeModalResizable() {
+    const modal = document.getElementById('openfinance-modal');
+    if (!modal) return;
+
+    // Adicionar handles de redimensionamento
+    const resizers = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
+    
+    resizers.forEach(direction => {
+        const resizer = document.createElement('div');
+        resizer.className = `resizer resizer-${direction}`;
+        resizer.style.cssText = `
+            position: absolute;
+            background: transparent;
+            z-index: 1000;
+        `;
+        
+        // Posicionamento dos handles
+        switch(direction) {
+            case 'nw':
+                resizer.style.cssText += 'top: -5px; left: -5px; width: 10px; height: 10px; cursor: nw-resize;';
+                break;
+            case 'ne':
+                resizer.style.cssText += 'top: -5px; right: -5px; width: 10px; height: 10px; cursor: ne-resize;';
+                break;
+            case 'sw':
+                resizer.style.cssText += 'bottom: -5px; left: -5px; width: 10px; height: 10px; cursor: sw-resize;';
+                break;
+            case 'se':
+                resizer.style.cssText += 'bottom: -5px; right: -5px; width: 10px; height: 10px; cursor: se-resize;';
+                break;
+            case 'n':
+                resizer.style.cssText += 'top: -5px; left: 10px; right: 10px; height: 10px; cursor: n-resize;';
+                break;
+            case 's':
+                resizer.style.cssText += 'bottom: -5px; left: 10px; right: 10px; height: 10px; cursor: s-resize;';
+                break;
+            case 'e':
+                resizer.style.cssText += 'right: -5px; top: 10px; bottom: 10px; width: 10px; cursor: e-resize;';
+                break;
+            case 'w':
+                resizer.style.cssText += 'left: -5px; top: 10px; bottom: 10px; width: 10px; cursor: w-resize;';
+                break;
+        }
+        
+        modal.appendChild(resizer);
+        
+        // Event listeners para redimensionamento
+        resizer.addEventListener('mousedown', initResize);
+    });
+
+    // Tornar o cabeçalho arrastável
+    const header = modal.querySelector('h2');
+    if (header) {
+        header.style.cursor = 'move';
+        header.addEventListener('mousedown', initDrag);
+        header.addEventListener('dblclick', toggleMaximize);
+    }
+
+    // Aplicar estilos iniciais ao modal
+    modal.style.position = 'fixed';
+    modal.style.top = '5%';
+    modal.style.left = '50%';
+    modal.style.transform = 'translateX(-50%)';
+    modal.style.width = '900px';
+    modal.style.height = '700px';
+    modal.style.minWidth = '500px';
+    modal.style.minHeight = '400px';
+    modal.style.maxWidth = '95vw';
+    modal.style.maxHeight = '95vh';
+    modal.style.resize = 'none';
+    modal.style.overflow = 'hidden';
+}
+
+function addResizeStyles() {
+    if (document.getElementById('resize-styles')) return;
+    
+    const style = document.createElement('style');
+    style.id = 'resize-styles';
+    style.textContent = `
+        .resizer {
+            position: absolute;
+            z-index: 1000;
+        }
+        
+        .resizer:hover {
+            background: rgba(255, 255, 255, 0.3) !important;
+        }
+        
+        #openfinance-modal {
+            border: 2px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        #openfinance-modal h2 {
+            user-select: none;
+            padding: 15px 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            margin: 0;
+        }
+        
+        #openfinance-modal .modal-content {
+            height: calc(100% - 60px);
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        /* Melhorar scroll */
+        #openfinance-modal .modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #openfinance-modal .modal-content::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        #openfinance-modal .modal-content::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        #openfinance-modal .modal-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Filtro de bancos */
+        #bankFilter {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            font-size: 14px;
+        }
+        
+        #bankFilter::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        /* Grid de bancos com scroll */
+        #banksList {
+            max-height: 400px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            padding: 10px;
+        }
+        
+        .bank-item {
+            transition: all 0.3s ease;
+        }
+        
+        .bank-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+// Iniciar redimensionamento
+function initResize(e) {
+    isResizing = true;
+    currentResizer = e.target;
+    startX = e.clientX;
+    startY = e.clientY;
+    
+    const modal = document.getElementById('openfinance-modal');
+    const rect = modal.getBoundingClientRect();
+    startWidth = rect.width;
+    startHeight = rect.height;
+    startLeft = rect.left;
+    startTop = rect.top;
+    
+    document.addEventListener('mousemove', doResize);
+    document.addEventListener('mouseup', stopResize);
+    e.preventDefault();
+}
+
+// Executar redimensionamento
+function doResize(e) {
+    if (!isResizing) return;
+    
+    const modal = document.getElementById('openfinance-modal');
+    const direction = currentResizer.className.split('-')[1];
+    
+    const deltaX = e.clientX - startX;
+    const deltaY = e.clientY - startY;
+    
+    let newWidth = startWidth;
+    let newHeight = startHeight;
+    let newLeft = startLeft;
+    let newTop = startTop;
+    
+    // Calcular novas dimensões baseado na direção
+    if (direction.includes('e')) {
+        newWidth = startWidth + deltaX;
+    }
+    if (direction.includes('w')) {
+        newWidth = startWidth - deltaX;
+        newLeft = startLeft + deltaX;
+    }
+    if (direction.includes('s')) {
+        newHeight = startHeight + deltaY;
+    }
+    if (direction.includes('n')) {
+        newHeight = startHeight - deltaY;
+        newTop = startTop + deltaY;
+    }
+    
+    // Aplicar limites mínimos e máximos
+    newWidth = Math.max(500, Math.min(window.innerWidth * 0.95, newWidth));
+    newHeight = Math.max(400, Math.min(window.innerHeight * 0.95, newHeight));
+    
+    // Aplicar novas dimensões
+    modal.style.width = newWidth + 'px';
+    modal.style.height = newHeight + 'px';
+    
+    if (direction.includes('w') || direction.includes('n')) {
+        modal.style.left = newLeft + 'px';
+        modal.style.top = newTop + 'px';
+        modal.style.transform = 'none';
+    }
+}
+
+// Parar redimensionamento
+function stopResize() {
+    isResizing = false;
+    currentResizer = null;
+    document.removeEventListener('mousemove', doResize);
+    document.removeEventListener('mouseup', stopResize);
+}
+
+// Iniciar arrastar
+function initDrag(e) {
+    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
+    
+    isDragging = true;
+    const modal = document.getElementById('openfinance-modal');
+    const rect = modal.getBoundingClientRect();
+    
+    startX = e.clientX - rect.left;
+    startY = e.clientY - rect.top;
+    
+    document.addEventListener('mousemove', doDrag);
+    document.addEventListener('mouseup', stopDrag);
+    e.preventDefault();
+}
+
+// Executar arrastar
+function doDrag(e) {
+    if (!isDragging) return;
+    
+    const modal = document.getElementById('openfinance-modal');
+    const newLeft = e.clientX - startX;
+    const newTop = e.clientY - startY;
+    
+    // Limitar dentro da viewport
+    const maxLeft = window.innerWidth - modal.offsetWidth;
+    const maxTop = window.innerHeight - modal.offsetHeight;
+    
+    modal.style.left = Math.max(0, Math.min(maxLeft, newLeft)) + 'px';
+    modal.style.top = Math.max(0, Math.min(maxTop, newTop)) + 'px';
+    modal.style.transform = 'none';
+}
+
+// Parar arrastar
+function stopDrag() {
+    isDragging = false;
+    document.removeEventListener('mousemove', doDrag);
+    document.removeEventListener('mouseup', stopDrag);
+}
+
+// Alternar maximizar/restaurar
+function toggleMaximize() {
+    const modal = document.getElementById('openfinance-modal');
+    
+    if (modal.dataset.maximized === 'true') {
+        // Restaurar
+        modal.style.width = modal.dataset.originalWidth || '900px';
+        modal.style.height = modal.dataset.originalHeight || '700px';
+        modal.style.left = modal.dataset.originalLeft || '50%';
+        modal.style.top = modal.dataset.originalTop || '5%';
+        modal.style.transform = modal.dataset.originalTransform || 'translateX(-50%)';
+        modal.dataset.maximized = 'false';
+    } else {
+        // Maximizar
+        modal.dataset.originalWidth = modal.style.width;
+        modal.dataset.originalHeight = modal.style.height;
+        modal.dataset.originalLeft = modal.style.left;
+        modal.dataset.originalTop = modal.style.top;
+        modal.dataset.originalTransform = modal.style.transform;
+        
+        modal.style.width = '95vw';
+        modal.style.height = '95vh';
+        modal.style.left = '2.5vw';
+        modal.style.top = '2.5vh';
+        modal.style.transform = 'none';
+        modal.dataset.maximized = 'true';
+    }
+}
+
+// =================================================================
+// FILTRO DE BANCOS
+// =================================================================
+function filterBanks() {
+    const filter = document.getElementById('bankFilter');
+    const banksList = document.getElementById('banksList');
+    
+    if (!filter || !banksList) return;
+    
+    const searchTerm = filter.value.toLowerCase();
+    const bankItems = banksList.querySelectorAll('.bank-item');
+    
+    bankItems.forEach(item => {
+        const bankName = item.querySelector('.bank-name').textContent.toLowerCase();
+        if (bankName.includes(searchTerm)) {
+            item.style.display = 'block';
+        } else {
+            item.style.display = 'none';
+        }
+    });
 }
 
 // =================================================================
@@ -112,8 +476,47 @@ async function handleConnectPluggy() {
     }
 }
 
+function updatePluggyStatus(connected) {
+    const statusElement = document.getElementById('pluggyStatus');
+    const connectBtn = document.getElementById('connectPluggyBtn');
+    const refreshBtn = document.getElementById('refreshConnectionsBtn');
+    
+    if (!statusElement) {
+        console.error('❌ Elemento pluggyStatus não encontrado!');
+        return;
+    }
+    
+    if (connected) {
+        statusElement.className = 'status-indicator status-connected';
+        statusElement.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Open Finance</span>';
+        
+        if (connectBtn) connectBtn.style.display = 'none';
+        if (refreshBtn) refreshBtn.style.display = 'block';
+        
+        // Mostrar seções
+        const banksSection = document.getElementById('banksSection');
+        const connectionsSection = document.getElementById('connectionsSection');
+        if (banksSection) banksSection.style.display = 'block';
+        if (connectionsSection) connectionsSection.style.display = 'block';
+        
+    } else {
+        statusElement.className = 'status-indicator status-disconnected';
+        statusElement.innerHTML = '<i class="fas fa-times-circle"></i><span>Não conectado ao Open Finance</span>';
+        
+        if (connectBtn) connectBtn.style.display = 'block';
+        if (refreshBtn) refreshBtn.style.display = 'none';
+        
+        // Esconder seções
+        const sections = ['banksSection', 'connectionsSection', 'accountsSection', 'transactionsSection'];
+        sections.forEach(sectionId => {
+            const section = document.getElementById(sectionId);
+            if (section) section.style.display = 'none';
+        });
+    }
+}
+
 // =================================================================
-// CARREGAR BANCOS DISPONÍVEIS
+// BANCOS DISPONÍVEIS
 // =================================================================
 async function loadAvailableBanks() {
     try {
@@ -121,105 +524,50 @@ async function loadAvailableBanks() {
         
         const connectors = await pluggyManager.getConnectors();
         const banksList = document.getElementById('banksList');
-        const banksSection = document.getElementById('banksSection');
         
-        if (!banksList || !banksSection) {
-            console.error('❌ Elementos da seção de bancos não encontrados!');
+        if (!banksList) {
+            console.error('❌ Elemento banksList não encontrado!');
             return;
         }
         
-        banksSection.style.display = 'block';
+        // Adicionar campo de filtro se não existir
+        let filterInput = document.getElementById('bankFilter');
+        if (!filterInput) {
+            filterInput = document.createElement('input');
+            filterInput.id = 'bankFilter';
+            filterInput.type = 'text';
+            filterInput.placeholder = '🔍 Buscar banco...';
+            filterInput.addEventListener('input', filterBanks);
+            banksList.parentNode.insertBefore(filterInput, banksList);
+        }
         
-        // ===== NOVA FUNCIONALIDADE: FILTRO DE BUSCA =====
-        const filterContainer = document.createElement('div');
-        filterContainer.className = 'mb-3';
-        filterContainer.innerHTML = `
-            <div class="input-group">
-                <span class="input-group-text" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;">
-                    🔍
-                </span>
-                <input type="text" id="bank-filter" class="form-control" 
-                       placeholder="Buscar banco..." 
-                       onkeyup="filterBanks()"
-                       style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white;">
-            </div>
-        `;
-        
-        // Limpar e adicionar filtro
         banksList.innerHTML = '';
-        banksList.appendChild(filterContainer);
         
-        // ===== NOVA FUNCIONALIDADE: CONTAINER COM SCROLL =====
-        const banksContainer = document.createElement('div');
-        banksContainer.id = 'banks-container';
-        banksContainer.style.cssText = `
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 10px;
-            padding: 15px;
-            background: rgba(255,255,255,0.05);
-        `;
+        // Filtrar apenas bancos (não cartões de crédito, etc.)
+        const banks = connectors.filter(connector => 
+            connector.type === 'PERSONAL_BANK' || connector.type === 'BUSINESS_BANK'
+        );
         
-        // Grid de bancos
-        const banksGrid = document.createElement('div');
-        banksGrid.className = 'banks-grid';
-        banksGrid.style.cssText = `
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-        `;
-        
-        connectors.forEach(connector => {
+        banks.forEach(bank => {
             const bankDiv = document.createElement('div');
             bankDiv.className = 'bank-item';
-            bankDiv.setAttribute('data-bank-name', connector.name.toLowerCase());
-            bankDiv.onclick = () => selectBank(connector);
-            
-            // Estilo melhorado com hover
-            bankDiv.style.cssText = `
-                background: rgba(255,255,255,0.1);
-                border: 2px solid transparent;
-                border-radius: 10px;
-                padding: 15px;
-                text-align: center;
-                cursor: pointer;
-                transition: all 0.3s ease;
-            `;
+            bankDiv.onclick = () => selectBank(bank);
             
             bankDiv.innerHTML = `
-                <div style="width: 60px; height: 60px; margin: 0 auto 15px; background: white; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <img src="${connector.imageUrl || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjNjY2Ii8+Cjwvc3ZnPgo='}" 
-                         alt="${connector.name}" 
-                         style="max-width: 50px; max-height: 50px; object-fit: contain;"
-                         onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTEyIDJMMTMuMDkgOC4yNkwyMCA5TDEzLjA5IDE1Ljc0TDEyIDIyTDEwLjkxIDE1Ljc0TDQgOUwxMC45MSA4LjI2TDEyIDJaIiBmaWxsPSIjNjY2Ii8+Cjwvc3ZnPgo='">
+                <div class="bank-logo">
+                    ${bank.imageUrl ? 
+                        `<img src="${bank.imageUrl}" alt="${bank.name}" style="width: 100%; height: 100%; object-fit: contain;">` :
+                        `<i class="fas fa-university"></i>`
+                    }
                 </div>
-                <h4 style="margin: 0; color: white; font-size: 14px; font-weight: 500;">${connector.name}</h4>
-                <p style="margin: 5px 0 0; color: rgba(255,255,255,0.6); font-size: 12px;">${connector.type || 'Banco'}</p>
+                <div class="bank-name">${bank.name}</div>
+                <div class="bank-type">${bank.type === 'BUSINESS_BANK' ? 'EMPRESAS' : 'PESSOAL'}</div>
             `;
             
-            // Hover effects
-            bankDiv.addEventListener('mouseenter', function() {
-                this.style.background = 'rgba(255,255,255,0.2)';
-                this.style.borderColor = '#4CAF50';
-                this.style.transform = 'translateY(-2px)';
-            });
-            
-            bankDiv.addEventListener('mouseleave', function() {
-                if (!this.classList.contains('selected')) {
-                    this.style.background = 'rgba(255,255,255,0.1)';
-                    this.style.borderColor = 'transparent';
-                    this.style.transform = 'translateY(0)';
-                }
-            });
-            
-            banksGrid.appendChild(bankDiv);
+            banksList.appendChild(bankDiv);
         });
         
-        banksContainer.appendChild(banksGrid);
-        banksList.appendChild(banksContainer);
-        
-        console.log(`✅ ${connectors.length} bancos carregados`);
+        console.log(`✅ ${banks.length} bancos carregados`);
         
     } catch (error) {
         console.error('❌ Erro ao carregar bancos:', error);
@@ -227,42 +575,14 @@ async function loadAvailableBanks() {
     }
 }
 
-// ===== NOVA FUNCIONALIDADE: FILTRO DE BANCOS =====
-function filterBanks() {
-    const filter = document.getElementById('bank-filter');
-    const bankItems = document.querySelectorAll('.bank-item');
-    
-    if (!filter) return;
-    
-    const searchTerm = filter.value.toLowerCase();
-    
-    bankItems.forEach(item => {
-        const bankName = item.getAttribute('data-bank-name');
-        if (bankName && bankName.includes(searchTerm)) {
-            item.style.display = 'block';
-        } else {
-            item.style.display = 'none';
-        }
-    });
-}
-
-// =================================================================
-// SELEÇÃO DE BANCO
-// =================================================================
 function selectBank(connector) {
     // Remover seleção anterior
     document.querySelectorAll('.bank-item').forEach(item => {
         item.classList.remove('selected');
-        item.style.background = 'rgba(255,255,255,0.1)';
-        item.style.borderColor = 'transparent';
-        item.style.transform = 'translateY(0)';
     });
     
     // Selecionar banco atual
     event.currentTarget.classList.add('selected');
-    event.currentTarget.style.background = 'rgba(76, 175, 80, 0.2)';
-    event.currentTarget.style.borderColor = '#4CAF50';
-    
     selectedConnectorId = connector.id;
     
     // Mostrar formulário de credenciais
@@ -288,9 +608,6 @@ function cancelConnection() {
     // Remover seleções
     document.querySelectorAll('.bank-item').forEach(item => {
         item.classList.remove('selected');
-        item.style.background = 'rgba(255,255,255,0.1)';
-        item.style.borderColor = 'transparent';
-        item.style.transform = 'translateY(0)';
     });
 }
 
@@ -457,12 +774,15 @@ async function loadAccountsForConnection(connectionId) {
                             ${account.type} • ${account.subtype || 'Conta Corrente'}
                         </p>
                         <p style="margin: 5px 0; color: rgba(255,255,255,0.6);">
-                            Saldo: ${pluggyManager.formatCurrency(account.balance)}
+                            Número: ${account.number || 'N/A'}
                         </p>
+                        <div class="account-balance">
+                            Saldo: ${pluggyManager.formatCurrency(account.balance)}
+                        </div>
                     </div>
                     <div>
                         <button onclick="loadTransactionsForAccount('${account.id}')" class="btn btn-primary">
-                            <i class="fas fa-list"></i> Ver Transações
+                            <i class="fas fa-exchange-alt"></i> Ver Transações
                         </button>
                     </div>
                 </div>
@@ -486,11 +806,16 @@ async function loadTransactionsForAccount(accountId) {
     try {
         console.log(`🔄 Carregando transações para conta ${accountId}...`);
         
-        // Últimos 30 dias
-        const to = new Date().toISOString().split('T')[0];
-        const from = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+        // Buscar transações dos últimos 30 dias
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         
-        const transactions = await pluggyManager.getTransactions(accountId, from, to);
+        const transactions = await pluggyManager.getTransactions(accountId, {
+            from: thirtyDaysAgo.toISOString().split('T')[0],
+            to: new Date().toISOString().split('T')[0],
+            pageSize: 50
+        });
+        
         const transactionsList = document.getElementById('transactionsList');
         const transactionsSection = document.getElementById('transactionsSection');
         
@@ -509,28 +834,30 @@ async function loadTransactionsForAccount(accountId) {
             transactionDiv.className = 'transaction-item';
             
             const isDebit = transaction.amount < 0;
-            const amountClass = isDebit ? 'text-danger' : 'text-success';
-            const amountIcon = isDebit ? '↓' : '↑';
+            const amountClass = isDebit ? 'amount-debit' : 'amount-credit';
+            const icon = isDebit ? 'fas fa-arrow-down' : 'fas fa-arrow-up';
             
             transactionDiv.innerHTML = `
                 <div style="display: flex; justify-content: space-between; align-items: center;">
                     <div style="flex: 1;">
-                        <h5 style="margin: 0; color: white;">${transaction.description}</h5>
+                        <h4 style="margin: 0; color: white;">
+                            <i class="${icon}" style="margin-right: 8px;"></i>
+                            ${transaction.description}
+                        </h4>
                         <p style="margin: 5px 0; color: rgba(255,255,255,0.8);">
                             ${pluggyManager.formatDate(transaction.date)}
                         </p>
                         <p style="margin: 5px 0; color: rgba(255,255,255,0.6);">
-                            ${transaction.category || 'Sem categoria'}
+                            Categoria: ${transaction.category || 'Não categorizada'}
                         </p>
                     </div>
                     <div style="text-align: right;">
-                        <span class="${amountClass}" style="font-size: 18px; font-weight: bold;">
-                            ${amountIcon} ${pluggyManager.formatCurrency(Math.abs(transaction.amount))}
-                        </span>
+                        <div class="transaction-amount ${amountClass}">
+                            ${pluggyManager.formatCurrency(transaction.amount)}
+                        </div>
                         ${isDebit ? `
-                            <br>
                             <button onclick="syncTransactionToCalendar('${transaction.id}', '${JSON.stringify(transaction).replace(/"/g, '&quot;')}')" 
-                                    class="btn btn-sm btn-outline-success mt-2">
+                                    class="btn btn-sm btn-secondary" style="margin-top: 5px;">
                                 <i class="fas fa-calendar-plus"></i> Adicionar ao Calendário
                             </button>
                         ` : ''}
@@ -547,52 +874,6 @@ async function loadTransactionsForAccount(accountId) {
         console.error('❌ Erro ao carregar transações:', error);
         showMessage('Erro ao carregar transações', 'error');
     }
-}
-
-// =================================================================
-// UTILITÁRIOS
-// =================================================================
-function updatePluggyStatus(connected) {
-    const statusElement = document.getElementById('pluggyStatus');
-    if (statusElement) {
-        if (connected) {
-            statusElement.innerHTML = '<span style="color: #4CAF50;">✅ Conectado ao Open Finance</span>';
-            statusElement.className = 'alert alert-success';
-        } else {
-            statusElement.innerHTML = '<span style="color: #f44336;">❌ Não conectado ao Open Finance</span>';
-            statusElement.className = 'alert alert-danger';
-        }
-    }
-}
-
-function showMessage(message, type = 'info') {
-    // Implementar sistema de mensagens
-    console.log(`${type.toUpperCase()}: ${message}`);
-    
-    // Criar toast ou alert
-    const alertDiv = document.createElement('div');
-    alertDiv.className = `alert alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'}`;
-    alertDiv.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        z-index: 9999;
-        min-width: 300px;
-        animation: slideIn 0.3s ease;
-    `;
-    alertDiv.innerHTML = `
-        <strong>${type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️'}</strong> ${message}
-        <button type="button" class="btn-close" onclick="this.parentElement.remove()"></button>
-    `;
-    
-    document.body.appendChild(alertDiv);
-    
-    // Auto remove após 5 segundos
-    setTimeout(() => {
-        if (alertDiv.parentElement) {
-            alertDiv.remove();
-        }
-    }, 5000);
 }
 
 // =================================================================
@@ -684,7 +965,9 @@ window.loadAccountsForConnection = loadAccountsForConnection;
 window.loadTransactionsForAccount = loadTransactionsForAccount;
 window.syncTransactionToCalendar = syncTransactionToCalendar;
 window.disconnectBank = disconnectBank;
-window.filterBanks = filterBanks; // NOVA FUNÇÃO
+window.filterBanks = filterBanks;
+window.makeModalResizable = makeModalResizable;
+window.toggleMaximize = toggleMaximize;
 
 // =================================================================
 // INICIALIZAÇÃO AUTOMÁTICA
@@ -709,5 +992,5 @@ window.addEventListener('load', () => {
     }, 1000);
 });
 
-console.log('✅ openfinance-integration.js carregado!');
+console.log('✅ openfinance-integration.js com modal redimensionável carregado!');
 
