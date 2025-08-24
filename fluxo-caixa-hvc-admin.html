@@ -1291,9 +1291,6 @@
                 const eventDate = parseEventDate(event);
                 const eventDateString = getCalendarDateString(eventDate);
                 
-                // Debug para verificar as datas
-                console.log(`Comparando: ${eventDateString} === ${targetDateString} para evento "${event.summary}"`);
-                
                 return eventDateString === targetDateString;
             });
         }
