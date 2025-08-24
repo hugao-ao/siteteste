@@ -1,19 +1,28 @@
-// pluggy-manager-simplificado.js
-// Versão baseada na demo oficial do Pluggy
+// pluggy-debug.js
+// Versão com debug detalhado para identificar o problema
 
 class PluggyManager {
     constructor(config) {
         this.config = config;
         this.accessToken = null;
         this.tokenExpiry = null;
+        console.log('🔧 PluggyManager inicializado com config:', config);
     }
 
-    // =================================================================
-    // AUTENTICAÇÃO
-    // =================================================================
     async authenticate() {
         try {
-            console.log('🔄 Autenticando com Pluggy...');
+            console.log('🔄 Iniciando autenticação...');
+            console.log('📋 Client ID:', this.config.clientId);
+            console.log('📋 Client Secret:', this.config.clientSecret ? '***OCULTO***' : 'NÃO DEFINIDO');
+            console.log('📋 Base URL:', this.config.baseURL);
+            
+            const requestBody = {
+                clientId: this.config.clientId,
+                clientSecret: this.config.clientSecret
+            };
+            
+            console.log('📤 Enviando requisição de autenticação...');
+            console.log('📤 Body:', JSON.stringify(requestBody, null, 2));
             
             const response = await fetch(`${this.config.baseURL}/auth`, {
                 method: 'POST',
@@ -21,26 +30,42 @@ class PluggyManager {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'
                 },
-                body: JSON.stringify({
-                    clientId: this.config.clientId,
-                    clientSecret: this.config.clientSecret
-                })
+                body: JSON.stringify(requestBody)
             });
 
+            console.log('📥 Resposta recebida:');
+            console.log('📥 Status:', response.status);
+            console.log('📥 Status Text:', response.statusText);
+            console.log('📥 Headers:', Object.fromEntries(response.headers.entries()));
+
+            const responseText = await response.text();
+            console.log('📥 Response Text:', responseText);
+
             if (!response.ok) {
-                const errorText = await response.text();
-                console.error('❌ Erro na autenticação:', response.status, errorText);
-                throw new Error(`Erro de autenticação: ${response.status} - ${errorText}`);
+                console.error('❌ Resposta não OK:', response.status, responseText);
+                throw new Error(`Erro de autenticação: ${response.status} - ${responseText}`);
             }
 
-            const data = await response.json();
+            let data;
+            try {
+                data = JSON.parse(responseText);
+                console.log('📥 Response JSON:', JSON.stringify(data, null, 2));
+            } catch (parseError) {
+                console.error('❌ Erro ao fazer parse do JSON:', parseError);
+                console.error('❌ Response text:', responseText);
+                throw new Error('Resposta não é um JSON válido');
+            }
             
             if (!data.accessToken) {
+                console.error('❌ Token não encontrado na resposta:', data);
                 throw new Error('Token de acesso não recebido');
             }
 
             this.accessToken = data.accessToken;
             this.tokenExpiry = Date.now() + (data.expiresIn * 1000);
+            
+            console.log('✅ Token recebido:', this.accessToken.substring(0, 20) + '...');
+            console.log('✅ Expira em:', new Date(this.tokenExpiry));
             
             // Salvar no localStorage
             localStorage.setItem('pluggy_token', this.accessToken);
@@ -51,37 +76,93 @@ class PluggyManager {
             
         } catch (error) {
             console.error('❌ Erro na autenticação:', error);
+            console.error('❌ Stack trace:', error.stack);
             throw error;
         }
     }
 
+    // Teste manual de conectividade
+    async testConnectivity() {
+        try {
+            console.log('🧪 Testando conectividade básica...');
+            
+            const response = await fetch(this.config.baseURL, {
+                method: 'GET',
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+            
+            console.log('🧪 Teste de conectividade:');
+            console.log('🧪 Status:', response.status);
+            console.log('🧪 Headers:', Object.fromEntries(response.headers.entries()));
+            
+            const text = await response.text();
+            console.log('🧪 Response:', text);
+            
+            return response.ok;
+        } catch (error) {
+            console.error('❌ Erro no teste de conectividade:', error);
+            return false;
+        }
+    }
+
+    // Teste das credenciais
+    async testCredentials() {
+        console.log('🧪 Testando credenciais...');
+        console.log('🧪 Client ID válido?', !!this.config.clientId);
+        console.log('🧪 Client Secret válido?', !!this.config.clientSecret);
+        console.log('🧪 Base URL válida?', !!this.config.baseURL);
+        
+        if (!this.config.clientId || !this.config.clientSecret) {
+            console.error('❌ Credenciais não configuradas!');
+            return false;
+        }
+        
+        return true;
+    }
+
     // Verificar se o token ainda é válido
     isTokenValid() {
-        return this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry;
+        const valid = this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry;
+        console.log('🔍 Token válido?', valid);
+        if (this.tokenExpiry) {
+            console.log('🔍 Token expira em:', new Date(this.tokenExpiry));
+        }
+        return valid;
     }
 
     // Restaurar token do localStorage
     restoreToken() {
+        console.log('🔄 Tentando restaurar token...');
         const token = localStorage.getItem('pluggy_token');
         const expiry = localStorage.getItem('pluggy_token_expiry');
+        
+        console.log('🔍 Token salvo?', !!token);
+        console.log('🔍 Expiry salvo?', !!expiry);
         
         if (token && expiry && Date.now() < parseInt(expiry)) {
             this.accessToken = token;
             this.tokenExpiry = parseInt(expiry);
             console.log('✅ Token restaurado do localStorage');
+            console.log('✅ Expira em:', new Date(this.tokenExpiry));
             return true;
         }
         
         // Limpar tokens expirados
         localStorage.removeItem('pluggy_token');
         localStorage.removeItem('pluggy_token_expiry');
+        console.log('🗑️ Tokens expirados removidos');
         return false;
     }
 
     // Fazer requisição autenticada
     async makeAuthenticatedRequest(endpoint, options = {}) {
+        console.log(`🔄 Fazendo requisição para: ${endpoint}`);
+        
         // Verificar se precisa autenticar
         if (!this.isTokenValid()) {
+            console.log('🔄 Token inválido, autenticando...');
             await this.authenticate();
         }
 
@@ -96,9 +177,14 @@ class PluggyManager {
             ...options
         };
 
-        console.log(`🔄 Fazendo requisição para: ${url}`);
+        console.log(`📤 Requisição para: ${url}`);
+        console.log(`📤 Headers:`, requestOptions.headers);
         
         const response = await fetch(url, requestOptions);
+        
+        console.log(`📥 Resposta de ${endpoint}:`);
+        console.log(`📥 Status:`, response.status);
+        console.log(`📥 Headers:`, Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -112,121 +198,38 @@ class PluggyManager {
                 requestOptions.headers['Authorization'] = `Bearer ${this.accessToken}`;
                 const retryResponse = await fetch(url, requestOptions);
                 if (!retryResponse.ok) {
-                    throw new Error(`Erro após reautenticação: ${retryResponse.status}`);
+                    const retryError = await retryResponse.text();
+                    console.error('❌ Erro após reautenticação:', retryResponse.status, retryError);
+                    throw new Error(`Erro após reautenticação: ${retryResponse.status} - ${retryError}`);
                 }
-                return await retryResponse.json();
+                const retryData = await retryResponse.json();
+                console.log('✅ Sucesso após reautenticação:', retryData);
+                return retryData;
             }
             
             throw new Error(`Erro ${response.status}: ${errorText}`);
         }
 
-        return await response.json();
+        const data = await response.json();
+        console.log(`✅ Dados recebidos de ${endpoint}:`, data);
+        return data;
     }
 
-    // =================================================================
-    // CONECTORES (BANCOS)
-    // =================================================================
+    // Conectores (Bancos)
     async getConnectors() {
         try {
             console.log('🔄 Buscando conectores...');
             const data = await this.makeAuthenticatedRequest('/connectors');
-            console.log(`✅ ${data.results?.length || data.length || 0} conectores encontrados`);
-            return data.results || data;
+            const connectors = data.results || data;
+            console.log(`✅ ${connectors.length} conectores encontrados`);
+            return connectors;
         } catch (error) {
             console.error('❌ Erro ao buscar conectores:', error);
             throw error;
         }
     }
 
-    // =================================================================
-    // CONEXÕES
-    // =================================================================
-    async getConnections() {
-        try {
-            console.log('🔄 Buscando conexões...');
-            const data = await this.makeAuthenticatedRequest('/connections');
-            console.log(`✅ ${data.results?.length || data.length || 0} conexões encontradas`);
-            return data.results || data;
-        } catch (error) {
-            console.error('❌ Erro ao buscar conexões:', error);
-            throw error;
-        }
-    }
-
-    async createConnection(connectorId, credentials) {
-        try {
-            console.log(`🔄 Criando conexão para conector ${connectorId}...`);
-            
-            const data = await this.makeAuthenticatedRequest('/connections', {
-                method: 'POST',
-                body: JSON.stringify({
-                    connectorId: connectorId,
-                    credentials: credentials
-                })
-            });
-            
-            console.log('✅ Conexão criada com sucesso!');
-            return data;
-        } catch (error) {
-            console.error('❌ Erro ao criar conexão:', error);
-            throw error;
-        }
-    }
-
-    async disconnect(connectionId) {
-        try {
-            console.log(`🔄 Desconectando ${connectionId}...`);
-            
-            await this.makeAuthenticatedRequest(`/connections/${connectionId}`, {
-                method: 'DELETE'
-            });
-            
-            console.log('✅ Desconectado com sucesso!');
-        } catch (error) {
-            console.error('❌ Erro ao desconectar:', error);
-            throw error;
-        }
-    }
-
-    // =================================================================
-    // CONTAS
-    // =================================================================
-    async getAccounts(connectionId) {
-        try {
-            console.log(`🔄 Buscando contas para conexão ${connectionId}...`);
-            const data = await this.makeAuthenticatedRequest(`/accounts?connectionId=${connectionId}`);
-            console.log(`✅ ${data.results?.length || data.length || 0} contas encontradas`);
-            return data.results || data;
-        } catch (error) {
-            console.error('❌ Erro ao buscar contas:', error);
-            throw error;
-        }
-    }
-
-    // =================================================================
-    // TRANSAÇÕES
-    // =================================================================
-    async getTransactions(accountId, options = {}) {
-        try {
-            console.log(`🔄 Buscando transações para conta ${accountId}...`);
-            
-            const params = new URLSearchParams({
-                accountId: accountId,
-                ...options
-            });
-            
-            const data = await this.makeAuthenticatedRequest(`/transactions?${params}`);
-            console.log(`✅ ${data.results?.length || data.length || 0} transações encontradas`);
-            return data.results || data;
-        } catch (error) {
-            console.error('❌ Erro ao buscar transações:', error);
-            throw error;
-        }
-    }
-
-    // =================================================================
-    // UTILITÁRIOS
-    // =================================================================
+    // Utilitários
     formatCurrency(value) {
         return new Intl.NumberFormat('pt-BR', {
             style: 'currency',
@@ -244,10 +247,49 @@ class PluggyManager {
         localStorage.removeItem('pluggy_token_expiry');
         this.accessToken = null;
         this.tokenExpiry = null;
+        console.log('🗑️ Dados salvos limpos');
+    }
+
+    // Diagnóstico completo
+    async runDiagnostics() {
+        console.log('🔍 === DIAGNÓSTICO COMPLETO ===');
+        
+        console.log('1. Testando credenciais...');
+        const credentialsOk = await this.testCredentials();
+        
+        console.log('2. Testando conectividade...');
+        const connectivityOk = await this.testConnectivity();
+        
+        console.log('3. Testando autenticação...');
+        try {
+            await this.authenticate();
+            console.log('✅ Autenticação OK');
+        } catch (error) {
+            console.error('❌ Autenticação falhou:', error);
+        }
+        
+        console.log('🔍 === FIM DO DIAGNÓSTICO ===');
+        
+        return {
+            credentials: credentialsOk,
+            connectivity: connectivityOk,
+            authentication: !!this.accessToken
+        };
     }
 }
 
 // Tornar disponível globalmente
 window.PluggyManager = PluggyManager;
-console.log('✅ PluggyManager Simplificado carregado!');
+
+// Função de diagnóstico global
+window.runPluggyDiagnostics = async function() {
+    if (window.pluggyManager) {
+        return await window.pluggyManager.runDiagnostics();
+    } else {
+        console.error('❌ PluggyManager não inicializado');
+        return null;
+    }
+};
+
+console.log('✅ PluggyManager Debug carregado!');
 
