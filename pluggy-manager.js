@@ -1,10 +1,10 @@
-// pluggy-debug.js
-// Versão com debug detalhado para identificar o problema
+// pluggy-manager-corrigido.js
+// Versão corrigida que usa "apiKey" em vez de "accessToken"
 
 class PluggyManager {
     constructor(config) {
         this.config = config;
-        this.accessToken = null;
+        this.apiKey = null;
         this.tokenExpiry = null;
         console.log('🔧 PluggyManager inicializado com config:', config);
     }
@@ -12,9 +12,6 @@ class PluggyManager {
     async authenticate() {
         try {
             console.log('🔄 Iniciando autenticação...');
-            console.log('📋 Client ID:', this.config.clientId);
-            console.log('📋 Client Secret:', this.config.clientSecret ? '***OCULTO***' : 'NÃO DEFINIDO');
-            console.log('📋 Base URL:', this.config.baseURL);
             
             const requestBody = {
                 clientId: this.config.clientId,
@@ -22,7 +19,6 @@ class PluggyManager {
             };
             
             console.log('📤 Enviando requisição de autenticação...');
-            console.log('📤 Body:', JSON.stringify(requestBody, null, 2));
             
             const response = await fetch(`${this.config.baseURL}/auth`, {
                 method: 'POST',
@@ -33,126 +29,66 @@ class PluggyManager {
                 body: JSON.stringify(requestBody)
             });
 
-            console.log('📥 Resposta recebida:');
             console.log('📥 Status:', response.status);
-            console.log('📥 Status Text:', response.statusText);
-            console.log('📥 Headers:', Object.fromEntries(response.headers.entries()));
-
-            const responseText = await response.text();
-            console.log('📥 Response Text:', responseText);
 
             if (!response.ok) {
-                console.error('❌ Resposta não OK:', response.status, responseText);
-                throw new Error(`Erro de autenticação: ${response.status} - ${responseText}`);
+                const errorText = await response.text();
+                console.error('❌ Erro de autenticação:', response.status, errorText);
+                throw new Error(`Erro de autenticação: ${response.status} - ${errorText}`);
             }
 
-            let data;
-            try {
-                data = JSON.parse(responseText);
-                console.log('📥 Response JSON:', JSON.stringify(data, null, 2));
-            } catch (parseError) {
-                console.error('❌ Erro ao fazer parse do JSON:', parseError);
-                console.error('❌ Response text:', responseText);
-                throw new Error('Resposta não é um JSON válido');
-            }
+            const data = await response.json();
+            console.log('📥 Response completa:', data);
             
-            if (!data.accessToken) {
-                console.error('❌ Token não encontrado na resposta:', data);
-                throw new Error('Token de acesso não recebido');
+            // CORREÇÃO: Usar "apiKey" em vez de "accessToken"
+            if (!data.apiKey) {
+                console.error('❌ apiKey não encontrado na resposta:', data);
+                throw new Error('API Key não recebido');
             }
 
-            this.accessToken = data.accessToken;
-            this.tokenExpiry = Date.now() + (data.expiresIn * 1000);
+            this.apiKey = data.apiKey;
+            // Definir expiração para 1 hora se não especificado
+            this.tokenExpiry = Date.now() + (60 * 60 * 1000);
             
-            console.log('✅ Token recebido:', this.accessToken.substring(0, 20) + '...');
-            console.log('✅ Expira em:', new Date(this.tokenExpiry));
+            console.log('✅ API Key recebido:', this.apiKey.substring(0, 20) + '...');
             
             // Salvar no localStorage
-            localStorage.setItem('pluggy_token', this.accessToken);
+            localStorage.setItem('pluggy_api_key', this.apiKey);
             localStorage.setItem('pluggy_token_expiry', this.tokenExpiry.toString());
             
             console.log('✅ Autenticado com sucesso!');
-            return this.accessToken;
+            return this.apiKey;
             
         } catch (error) {
             console.error('❌ Erro na autenticação:', error);
-            console.error('❌ Stack trace:', error.stack);
             throw error;
         }
     }
 
-    // Teste manual de conectividade
-    async testConnectivity() {
-        try {
-            console.log('🧪 Testando conectividade básica...');
-            
-            const response = await fetch(this.config.baseURL, {
-                method: 'GET',
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
-            
-            console.log('🧪 Teste de conectividade:');
-            console.log('🧪 Status:', response.status);
-            console.log('🧪 Headers:', Object.fromEntries(response.headers.entries()));
-            
-            const text = await response.text();
-            console.log('🧪 Response:', text);
-            
-            return response.ok;
-        } catch (error) {
-            console.error('❌ Erro no teste de conectividade:', error);
-            return false;
-        }
-    }
-
-    // Teste das credenciais
-    async testCredentials() {
-        console.log('🧪 Testando credenciais...');
-        console.log('🧪 Client ID válido?', !!this.config.clientId);
-        console.log('🧪 Client Secret válido?', !!this.config.clientSecret);
-        console.log('🧪 Base URL válida?', !!this.config.baseURL);
-        
-        if (!this.config.clientId || !this.config.clientSecret) {
-            console.error('❌ Credenciais não configuradas!');
-            return false;
-        }
-        
-        return true;
-    }
-
     // Verificar se o token ainda é válido
     isTokenValid() {
-        const valid = this.accessToken && this.tokenExpiry && Date.now() < this.tokenExpiry;
-        console.log('🔍 Token válido?', valid);
-        if (this.tokenExpiry) {
-            console.log('🔍 Token expira em:', new Date(this.tokenExpiry));
-        }
+        const valid = this.apiKey && this.tokenExpiry && Date.now() < this.tokenExpiry;
+        console.log('🔍 API Key válido?', valid);
         return valid;
     }
 
     // Restaurar token do localStorage
     restoreToken() {
-        console.log('🔄 Tentando restaurar token...');
-        const token = localStorage.getItem('pluggy_token');
+        console.log('🔄 Tentando restaurar API Key...');
+        const apiKey = localStorage.getItem('pluggy_api_key');
         const expiry = localStorage.getItem('pluggy_token_expiry');
         
-        console.log('🔍 Token salvo?', !!token);
-        console.log('🔍 Expiry salvo?', !!expiry);
-        
-        if (token && expiry && Date.now() < parseInt(expiry)) {
-            this.accessToken = token;
+        if (apiKey && expiry && Date.now() < parseInt(expiry)) {
+            this.apiKey = apiKey;
             this.tokenExpiry = parseInt(expiry);
-            console.log('✅ Token restaurado do localStorage');
-            console.log('✅ Expira em:', new Date(this.tokenExpiry));
+            console.log('✅ API Key restaurado do localStorage');
             return true;
         }
         
         // Limpar tokens expirados
-        localStorage.removeItem('pluggy_token');
+        localStorage.removeItem('pluggy_api_key');
         localStorage.removeItem('pluggy_token_expiry');
-        console.log('🗑️ Tokens expirados removidos');
+        console.log('🗑️ API Key expirado removido');
         return false;
     }
 
@@ -162,14 +98,14 @@ class PluggyManager {
         
         // Verificar se precisa autenticar
         if (!this.isTokenValid()) {
-            console.log('🔄 Token inválido, autenticando...');
+            console.log('🔄 API Key inválido, autenticando...');
             await this.authenticate();
         }
 
         const url = `${this.config.baseURL}${endpoint}`;
         const requestOptions = {
             headers: {
-                'Authorization': `Bearer ${this.accessToken}`,
+                'X-API-KEY': this.apiKey, // CORREÇÃO: Usar X-API-KEY em vez de Authorization
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
                 ...options.headers
@@ -184,18 +120,17 @@ class PluggyManager {
         
         console.log(`📥 Resposta de ${endpoint}:`);
         console.log(`📥 Status:`, response.status);
-        console.log(`📥 Headers:`, Object.fromEntries(response.headers.entries()));
         
         if (!response.ok) {
             const errorText = await response.text();
             console.error(`❌ Erro na requisição ${endpoint}:`, response.status, errorText);
             
-            // Se token expirou, tentar reautenticar
-            if (response.status === 401) {
-                console.log('🔄 Token expirado, reautenticando...');
+            // Se API Key expirou, tentar reautenticar
+            if (response.status === 401 || response.status === 403) {
+                console.log('🔄 API Key expirado, reautenticando...');
                 await this.authenticate();
-                // Tentar novamente com novo token
-                requestOptions.headers['Authorization'] = `Bearer ${this.accessToken}`;
+                // Tentar novamente com novo API Key
+                requestOptions.headers['X-API-KEY'] = this.apiKey;
                 const retryResponse = await fetch(url, requestOptions);
                 if (!retryResponse.ok) {
                     const retryError = await retryResponse.text();
@@ -229,6 +164,76 @@ class PluggyManager {
         }
     }
 
+    // Criar conexão com banco
+    async createConnection(connectorId, credentials) {
+        try {
+            console.log('🔄 Criando conexão...', { connectorId, credentials });
+            
+            const requestBody = {
+                connectorId: connectorId,
+                credentials: credentials
+            };
+            
+            const data = await this.makeAuthenticatedRequest('/connections', {
+                method: 'POST',
+                body: JSON.stringify(requestBody)
+            });
+            
+            console.log('✅ Conexão criada:', data);
+            return data;
+        } catch (error) {
+            console.error('❌ Erro ao criar conexão:', error);
+            throw error;
+        }
+    }
+
+    // Listar conexões
+    async getConnections() {
+        try {
+            console.log('🔄 Buscando conexões...');
+            const data = await this.makeAuthenticatedRequest('/connections');
+            const connections = data.results || data;
+            console.log(`✅ ${connections.length} conexões encontradas`);
+            return connections;
+        } catch (error) {
+            console.error('❌ Erro ao buscar conexões:', error);
+            throw error;
+        }
+    }
+
+    // Buscar contas de uma conexão
+    async getAccounts(connectionId) {
+        try {
+            console.log('🔄 Buscando contas...', connectionId);
+            const data = await this.makeAuthenticatedRequest(`/accounts?connectionId=${connectionId}`);
+            const accounts = data.results || data;
+            console.log(`✅ ${accounts.length} contas encontradas`);
+            return accounts;
+        } catch (error) {
+            console.error('❌ Erro ao buscar contas:', error);
+            throw error;
+        }
+    }
+
+    // Buscar transações de uma conta
+    async getTransactions(accountId, from = null, to = null) {
+        try {
+            console.log('🔄 Buscando transações...', accountId);
+            
+            let endpoint = `/transactions?accountId=${accountId}`;
+            if (from) endpoint += `&from=${from}`;
+            if (to) endpoint += `&to=${to}`;
+            
+            const data = await this.makeAuthenticatedRequest(endpoint);
+            const transactions = data.results || data;
+            console.log(`✅ ${transactions.length} transações encontradas`);
+            return transactions;
+        } catch (error) {
+            console.error('❌ Erro ao buscar transações:', error);
+            throw error;
+        }
+    }
+
     // Utilitários
     formatCurrency(value) {
         return new Intl.NumberFormat('pt-BR', {
@@ -243,9 +248,9 @@ class PluggyManager {
 
     // Limpar dados salvos
     clearSavedData() {
-        localStorage.removeItem('pluggy_token');
+        localStorage.removeItem('pluggy_api_key');
         localStorage.removeItem('pluggy_token_expiry');
-        this.accessToken = null;
+        this.apiKey = null;
         this.tokenExpiry = null;
         console.log('🗑️ Dados salvos limpos');
     }
@@ -254,27 +259,33 @@ class PluggyManager {
     async runDiagnostics() {
         console.log('🔍 === DIAGNÓSTICO COMPLETO ===');
         
-        console.log('1. Testando credenciais...');
-        const credentialsOk = await this.testCredentials();
-        
-        console.log('2. Testando conectividade...');
-        const connectivityOk = await this.testConnectivity();
-        
-        console.log('3. Testando autenticação...');
         try {
+            console.log('1. Testando autenticação...');
             await this.authenticate();
             console.log('✅ Autenticação OK');
+            
+            console.log('2. Testando conectores...');
+            const connectors = await this.getConnectors();
+            console.log(`✅ ${connectors.length} conectores encontrados`);
+            
+            console.log('3. Testando conexões...');
+            const connections = await this.getConnections();
+            console.log(`✅ ${connections.length} conexões encontradas`);
+            
+            console.log('🔍 === DIAGNÓSTICO CONCLUÍDO COM SUCESSO ===');
+            
+            return {
+                authentication: true,
+                connectors: connectors.length,
+                connections: connections.length
+            };
         } catch (error) {
-            console.error('❌ Autenticação falhou:', error);
+            console.error('❌ Erro no diagnóstico:', error);
+            return {
+                authentication: false,
+                error: error.message
+            };
         }
-        
-        console.log('🔍 === FIM DO DIAGNÓSTICO ===');
-        
-        return {
-            credentials: credentialsOk,
-            connectivity: connectivityOk,
-            authentication: !!this.accessToken
-        };
     }
 }
 
@@ -291,5 +302,5 @@ window.runPluggyDiagnostics = async function() {
     }
 };
 
-console.log('✅ PluggyManager Debug carregado!');
+console.log('✅ PluggyManager Corrigido carregado!');
 
