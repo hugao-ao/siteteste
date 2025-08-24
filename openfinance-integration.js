@@ -1,14 +1,8 @@
-// openfinance-integration.js - VERSÃO COM MODAL REDIMENSIONÁVEL
+// openfinance-integration.js - VERSÃO COM MODAL FIXO E SCROLL
 
 // Instância global do Pluggy Manager
 let pluggyManager = null;
 let selectedConnectorId = null;
-
-// Variáveis globais para redimensionamento do modal
-let isResizing = false;
-let isDragging = false;
-let currentResizer = null;
-let startX, startY, startWidth, startHeight, startLeft, startTop;
 
 // =================================================================
 // INICIALIZAÇÃO
@@ -42,8 +36,8 @@ function initializeOpenFinance() {
     // Event listeners
     setupEventListeners();
     
-    // Inicializar modal redimensionável
-    initResizableModal();
+    // Inicializar modal com dimensões fixas
+    initFixedModal();
     
     console.log('✅ Open Finance inicializado!');
 }
@@ -78,17 +72,17 @@ function setupEventListeners() {
 }
 
 // =================================================================
-// MODAL REDIMENSIONÁVEL
+// MODAL COM DIMENSÕES FIXAS E SCROLL
 // =================================================================
-function initResizableModal() {
+function initFixedModal() {
     // Aguardar o modal aparecer
     const observer = new MutationObserver((mutations) => {
         mutations.forEach((mutation) => {
             if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
                 const modal = document.getElementById('openfinance-modal');
-                if (modal && modal.style.display !== 'none' && !modal.querySelector('.resizer')) {
-                    makeModalResizable();
-                    addResizeStyles();
+                if (modal && modal.style.display !== 'none' && !modal.classList.contains('fixed-modal-initialized')) {
+                    setupFixedModal();
+                    addFixedModalStyles();
                 }
             }
         });
@@ -100,96 +94,37 @@ function initResizableModal() {
     }
 }
 
-function makeModalResizable() {
+function setupFixedModal() {
     const modal = document.getElementById('openfinance-modal');
     if (!modal) return;
 
-    // Adicionar handles de redimensionamento
-    const resizers = ['nw', 'ne', 'sw', 'se', 'n', 's', 'e', 'w'];
-    
-    resizers.forEach(direction => {
-        const resizer = document.createElement('div');
-        resizer.className = `resizer resizer-${direction}`;
-        resizer.style.cssText = `
-            position: absolute;
-            background: transparent;
-            z-index: 1000;
-        `;
-        
-        // Posicionamento dos handles
-        switch(direction) {
-            case 'nw':
-                resizer.style.cssText += 'top: -5px; left: -5px; width: 10px; height: 10px; cursor: nw-resize;';
-                break;
-            case 'ne':
-                resizer.style.cssText += 'top: -5px; right: -5px; width: 10px; height: 10px; cursor: ne-resize;';
-                break;
-            case 'sw':
-                resizer.style.cssText += 'bottom: -5px; left: -5px; width: 10px; height: 10px; cursor: sw-resize;';
-                break;
-            case 'se':
-                resizer.style.cssText += 'bottom: -5px; right: -5px; width: 10px; height: 10px; cursor: se-resize;';
-                break;
-            case 'n':
-                resizer.style.cssText += 'top: -5px; left: 10px; right: 10px; height: 10px; cursor: n-resize;';
-                break;
-            case 's':
-                resizer.style.cssText += 'bottom: -5px; left: 10px; right: 10px; height: 10px; cursor: s-resize;';
-                break;
-            case 'e':
-                resizer.style.cssText += 'right: -5px; top: 10px; bottom: 10px; width: 10px; cursor: e-resize;';
-                break;
-            case 'w':
-                resizer.style.cssText += 'left: -5px; top: 10px; bottom: 10px; width: 10px; cursor: w-resize;';
-                break;
-        }
-        
-        modal.appendChild(resizer);
-        
-        // Event listeners para redimensionamento
-        resizer.addEventListener('mousedown', initResize);
-    });
-
-    // Tornar o cabeçalho arrastável
-    const header = modal.querySelector('h2');
-    if (header) {
-        header.style.cursor = 'move';
-        header.addEventListener('mousedown', initDrag);
-        header.addEventListener('dblclick', toggleMaximize);
-    }
-
-    // Aplicar estilos iniciais ao modal
+    // Aplicar estilos de modal fixo
     modal.style.position = 'fixed';
-    modal.style.top = '5%';
+    modal.style.top = '50%';
     modal.style.left = '50%';
-    modal.style.transform = 'translateX(-50%)';
-    modal.style.width = '900px';
-    modal.style.height = '700px';
-    modal.style.minWidth = '500px';
-    modal.style.minHeight = '400px';
-    modal.style.maxWidth = '95vw';
-    modal.style.maxHeight = '95vh';
-    modal.style.resize = 'none';
+    modal.style.transform = 'translate(-50%, -50%)';
+    modal.style.width = '800px';
+    modal.style.height = '600px';
+    modal.style.maxWidth = '90vw';
+    modal.style.maxHeight = '90vh';
     modal.style.overflow = 'hidden';
+    modal.style.resize = 'none';
+    
+    // Marcar como inicializado
+    modal.classList.add('fixed-modal-initialized');
 }
 
-function addResizeStyles() {
-    if (document.getElementById('resize-styles')) return;
+function addFixedModalStyles() {
+    if (document.getElementById('fixed-modal-styles')) return;
     
     const style = document.createElement('style');
-    style.id = 'resize-styles';
+    style.id = 'fixed-modal-styles';
     style.textContent = `
-        .resizer {
-            position: absolute;
-            z-index: 1000;
-        }
-        
-        .resizer:hover {
-            background: rgba(255, 255, 255, 0.3) !important;
-        }
-        
+        /* Modal com dimensões fixas */
         #openfinance-modal {
             border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
         
         #openfinance-modal h2 {
@@ -197,211 +132,282 @@ function addResizeStyles() {
             padding: 15px 20px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             margin: 0;
+            background: rgba(25, 25, 112, 0.3);
+            border-radius: 13px 13px 0 0;
         }
         
+        /* Área de conteúdo com scroll */
         #openfinance-modal .modal-content {
             height: calc(100% - 60px);
             overflow-y: auto;
             padding: 20px;
+            background: linear-gradient(135deg, #000080, #800080);
         }
         
-        /* Melhorar scroll */
+        /* Scroll customizado */
         #openfinance-modal .modal-content::-webkit-scrollbar {
-            width: 8px;
+            width: 12px;
         }
         
         #openfinance-modal .modal-content::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.1);
-            border-radius: 4px;
+            border-radius: 6px;
+            margin: 5px;
         }
         
         #openfinance-modal .modal-content::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.3);
-            border-radius: 4px;
+            border-radius: 6px;
+            border: 2px solid transparent;
+            background-clip: content-box;
         }
         
         #openfinance-modal .modal-content::-webkit-scrollbar-thumb:hover {
             background: rgba(255, 255, 255, 0.5);
+            background-clip: content-box;
         }
         
         /* Filtro de bancos */
         #bankFilter {
             width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
             border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 5px;
+            border-radius: 8px;
             background: rgba(255, 255, 255, 0.1);
             color: white;
             font-size: 14px;
+            backdrop-filter: blur(10px);
         }
         
         #bankFilter::placeholder {
             color: rgba(255, 255, 255, 0.6);
         }
         
-        /* Grid de bancos com scroll */
-        #banksList {
-            max-height: 400px;
-            overflow-y: auto;
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 15px;
-            padding: 10px;
+        #bankFilter:focus {
+            outline: none;
+            border-color: rgba(255, 255, 255, 0.5);
+            box-shadow: 0 0 10px rgba(255, 255, 255, 0.2);
         }
         
+        /* Grid de bancos com scroll interno */
+        #banksList {
+            max-height: 350px;
+            overflow-y: auto;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+            gap: 15px;
+            padding: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+        
+        /* Scroll do grid de bancos */
+        #banksList::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        #banksList::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        #banksList::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        #banksList::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Cards dos bancos */
         .bank-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
             transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            min-height: 120px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         .bank-item:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.4);
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .bank-item.selected {
+            border-color: #4285f4;
+            background: rgba(66, 133, 244, 0.2);
+            box-shadow: 0 0 20px rgba(66, 133, 244, 0.3);
+        }
+        
+        .bank-logo {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+        }
+        
+        .bank-logo i {
+            font-size: 20px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .bank-name {
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+            margin-bottom: 5px;
+            line-height: 1.2;
+        }
+        
+        .bank-type {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        /* Seções do modal */
+        .openfinance-section {
+            margin-bottom: 25px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .openfinance-section h3 {
+            margin: 0 0 15px 0;
+            color: white;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Status indicators */
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 15px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .status-connected {
+            background: rgba(52, 168, 83, 0.2);
+            border: 1px solid rgba(52, 168, 83, 0.4);
+            color: #34a853;
+        }
+        
+        .status-disconnected {
+            background: rgba(234, 67, 53, 0.2);
+            border: 1px solid rgba(234, 67, 53, 0.4);
+            color: #ea4335;
+        }
+        
+        /* Botões */
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            color: white;
+        }
+        
+        .btn-primary:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+        }
+        
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #ea4335, #d33b2c);
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        
+        /* Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsivo */
+        @media (max-width: 768px) {
+            #openfinance-modal {
+                width: 95vw !important;
+                height: 90vh !important;
+                margin: 0;
+            }
+            
+            #banksList {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 10px;
+            }
+            
+            .bank-item {
+                min-height: 100px;
+                padding: 10px;
+            }
         }
     `;
     document.head.appendChild(style);
-}
-
-// Iniciar redimensionamento
-function initResize(e) {
-    isResizing = true;
-    currentResizer = e.target;
-    startX = e.clientX;
-    startY = e.clientY;
-    
-    const modal = document.getElementById('openfinance-modal');
-    const rect = modal.getBoundingClientRect();
-    startWidth = rect.width;
-    startHeight = rect.height;
-    startLeft = rect.left;
-    startTop = rect.top;
-    
-    document.addEventListener('mousemove', doResize);
-    document.addEventListener('mouseup', stopResize);
-    e.preventDefault();
-}
-
-// Executar redimensionamento
-function doResize(e) {
-    if (!isResizing) return;
-    
-    const modal = document.getElementById('openfinance-modal');
-    const direction = currentResizer.className.split('-')[1];
-    
-    const deltaX = e.clientX - startX;
-    const deltaY = e.clientY - startY;
-    
-    let newWidth = startWidth;
-    let newHeight = startHeight;
-    let newLeft = startLeft;
-    let newTop = startTop;
-    
-    // Calcular novas dimensões baseado na direção
-    if (direction.includes('e')) {
-        newWidth = startWidth + deltaX;
-    }
-    if (direction.includes('w')) {
-        newWidth = startWidth - deltaX;
-        newLeft = startLeft + deltaX;
-    }
-    if (direction.includes('s')) {
-        newHeight = startHeight + deltaY;
-    }
-    if (direction.includes('n')) {
-        newHeight = startHeight - deltaY;
-        newTop = startTop + deltaY;
-    }
-    
-    // Aplicar limites mínimos e máximos
-    newWidth = Math.max(500, Math.min(window.innerWidth * 0.95, newWidth));
-    newHeight = Math.max(400, Math.min(window.innerHeight * 0.95, newHeight));
-    
-    // Aplicar novas dimensões
-    modal.style.width = newWidth + 'px';
-    modal.style.height = newHeight + 'px';
-    
-    if (direction.includes('w') || direction.includes('n')) {
-        modal.style.left = newLeft + 'px';
-        modal.style.top = newTop + 'px';
-        modal.style.transform = 'none';
-    }
-}
-
-// Parar redimensionamento
-function stopResize() {
-    isResizing = false;
-    currentResizer = null;
-    document.removeEventListener('mousemove', doResize);
-    document.removeEventListener('mouseup', stopResize);
-}
-
-// Iniciar arrastar
-function initDrag(e) {
-    if (e.target.tagName === 'BUTTON' || e.target.closest('button')) return;
-    
-    isDragging = true;
-    const modal = document.getElementById('openfinance-modal');
-    const rect = modal.getBoundingClientRect();
-    
-    startX = e.clientX - rect.left;
-    startY = e.clientY - rect.top;
-    
-    document.addEventListener('mousemove', doDrag);
-    document.addEventListener('mouseup', stopDrag);
-    e.preventDefault();
-}
-
-// Executar arrastar
-function doDrag(e) {
-    if (!isDragging) return;
-    
-    const modal = document.getElementById('openfinance-modal');
-    const newLeft = e.clientX - startX;
-    const newTop = e.clientY - startY;
-    
-    // Limitar dentro da viewport
-    const maxLeft = window.innerWidth - modal.offsetWidth;
-    const maxTop = window.innerHeight - modal.offsetHeight;
-    
-    modal.style.left = Math.max(0, Math.min(maxLeft, newLeft)) + 'px';
-    modal.style.top = Math.max(0, Math.min(maxTop, newTop)) + 'px';
-    modal.style.transform = 'none';
-}
-
-// Parar arrastar
-function stopDrag() {
-    isDragging = false;
-    document.removeEventListener('mousemove', doDrag);
-    document.removeEventListener('mouseup', stopDrag);
-}
-
-// Alternar maximizar/restaurar
-function toggleMaximize() {
-    const modal = document.getElementById('openfinance-modal');
-    
-    if (modal.dataset.maximized === 'true') {
-        // Restaurar
-        modal.style.width = modal.dataset.originalWidth || '900px';
-        modal.style.height = modal.dataset.originalHeight || '700px';
-        modal.style.left = modal.dataset.originalLeft || '50%';
-        modal.style.top = modal.dataset.originalTop || '5%';
-        modal.style.transform = modal.dataset.originalTransform || 'translateX(-50%)';
-        modal.dataset.maximized = 'false';
-    } else {
-        // Maximizar
-        modal.dataset.originalWidth = modal.style.width;
-        modal.dataset.originalHeight = modal.style.height;
-        modal.dataset.originalLeft = modal.style.left;
-        modal.dataset.originalTop = modal.style.top;
-        modal.dataset.originalTransform = modal.style.transform;
-        
-        modal.style.width = '95vw';
-        modal.style.height = '95vh';
-        modal.style.left = '2.5vw';
-        modal.style.top = '2.5vh';
-        modal.style.transform = 'none';
-        modal.dataset.maximized = 'true';
-    }
 }
 
 // =================================================================
@@ -419,7 +425,7 @@ function filterBanks() {
     bankItems.forEach(item => {
         const bankName = item.querySelector('.bank-name').textContent.toLowerCase();
         if (bankName.includes(searchTerm)) {
-            item.style.display = 'block';
+            item.style.display = 'flex';
         } else {
             item.style.display = 'none';
         }
@@ -496,6 +502,7 @@ function updatePluggyStatus(connected) {
         // Mostrar seções
         const banksSection = document.getElementById('banksSection');
         const connectionsSection = document.getElementById('connectionsSection');
+        
         if (banksSection) banksSection.style.display = 'block';
         if (connectionsSection) connectionsSection.style.display = 'block';
         
@@ -913,9 +920,9 @@ async function syncTransactionToCalendar(transactionId, transactionData) {
         
         showMessage('Transação adicionada ao Google Calendar!', 'success');
         
-        // Recarregar eventos do calendário
-        if (typeof loadFilteredEvents === 'function') {
-            await loadFilteredEvents();
+        // Recarregar calendário se estiver visível
+        if (typeof loadCalendar === 'function') {
+            loadCalendar();
         }
         
     } catch (error) {
@@ -933,64 +940,140 @@ async function disconnectBank(connectionId) {
     }
     
     try {
-        await pluggyManager.disconnect(connectionId);
+        await pluggyManager.deleteConnection(connectionId);
         showMessage('Banco desconectado com sucesso!', 'success');
         
         // Recarregar conexões
         await loadExistingConnections();
         
-        // Esconder seções se não houver mais conexões
-        const connections = await pluggyManager.getConnections();
-        if (connections.length === 0) {
-            const accountsSection = document.getElementById('accountsSection');
-            const transactionsSection = document.getElementById('transactionsSection');
-            if (accountsSection) accountsSection.style.display = 'none';
-            if (transactionsSection) transactionsSection.style.display = 'none';
-        }
+        // Esconder seções de contas e transações
+        const accountsSection = document.getElementById('accountsSection');
+        const transactionsSection = document.getElementById('transactionsSection');
+        
+        if (accountsSection) accountsSection.style.display = 'none';
+        if (transactionsSection) transactionsSection.style.display = 'none';
         
     } catch (error) {
-        console.error('❌ Erro ao desconectar:', error);
+        console.error('❌ Erro ao desconectar banco:', error);
         showMessage('Erro ao desconectar banco', 'error');
     }
 }
 
 // =================================================================
-// TORNAR FUNÇÕES GLOBAIS
+// SISTEMA DE MENSAGENS
 // =================================================================
-window.initializeOpenFinance = initializeOpenFinance;
-window.handleConnectPluggy = handleConnectPluggy;
-window.selectBank = selectBank;
-window.cancelConnection = cancelConnection;
-window.loadAccountsForConnection = loadAccountsForConnection;
-window.loadTransactionsForAccount = loadTransactionsForAccount;
-window.syncTransactionToCalendar = syncTransactionToCalendar;
-window.disconnectBank = disconnectBank;
-window.filterBanks = filterBanks;
-window.makeModalResizable = makeModalResizable;
-window.toggleMaximize = toggleMaximize;
+function showMessage(message, type = 'info') {
+    // Remover mensagem anterior se existir
+    const existingMessage = document.querySelector('.openfinance-message');
+    if (existingMessage) {
+        existingMessage.remove();
+    }
+    
+    // Criar nova mensagem
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `openfinance-message message-${type}`;
+    
+    const icon = type === 'success' ? 'fas fa-check-circle' : 
+                 type === 'error' ? 'fas fa-exclamation-circle' : 
+                 type === 'warning' ? 'fas fa-exclamation-triangle' : 
+                 'fas fa-info-circle';
+    
+    messageDiv.innerHTML = `
+        <i class="${icon}"></i>
+        <span>${message}</span>
+        <button onclick="this.parentElement.remove()" style="background: none; border: none; color: inherit; cursor: pointer; margin-left: 10px;">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    
+    // Adicionar estilos se não existirem
+    if (!document.getElementById('message-styles')) {
+        const style = document.createElement('style');
+        style.id = 'message-styles';
+        style.textContent = `
+            .openfinance-message {
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 15px 20px;
+                border-radius: 8px;
+                color: white;
+                font-size: 14px;
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                max-width: 400px;
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+                animation: slideIn 0.3s ease;
+            }
+            
+            .message-success {
+                background: linear-gradient(135deg, #34a853, #2d8f47);
+                border: 1px solid rgba(52, 168, 83, 0.5);
+            }
+            
+            .message-error {
+                background: linear-gradient(135deg, #ea4335, #d33b2c);
+                border: 1px solid rgba(234, 67, 53, 0.5);
+            }
+            
+            .message-warning {
+                background: linear-gradient(135deg, #fbbc04, #f9ab00);
+                border: 1px solid rgba(251, 188, 4, 0.5);
+                color: #333;
+            }
+            
+            .message-info {
+                background: linear-gradient(135deg, #4285f4, #3367d6);
+                border: 1px solid rgba(66, 133, 244, 0.5);
+            }
+            
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    // Adicionar ao DOM
+    document.body.appendChild(messageDiv);
+    
+    // Remover automaticamente após 5 segundos
+    setTimeout(() => {
+        if (messageDiv.parentElement) {
+            messageDiv.remove();
+        }
+    }, 5000);
+}
 
 // =================================================================
 // INICIALIZAÇÃO AUTOMÁTICA
 // =================================================================
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('🔄 DOM carregado, aguardando outros scripts...');
-    // Aguardar um pouco para garantir que outros scripts carregaram
-    setTimeout(() => {
-        console.log('🚀 Inicializando Open Finance...');
-        initializeOpenFinance();
-    }, 2000);
-});
+// Inicializar quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeOpenFinance);
+} else {
+    initializeOpenFinance();
+}
 
-// Também tentar inicializar quando a página carregar completamente
-window.addEventListener('load', () => {
-    console.log('🔄 Página carregada completamente');
-    setTimeout(() => {
-        if (!pluggyManager) {
-            console.log('🚀 Tentando inicializar Open Finance novamente...');
-            initializeOpenFinance();
-        }
-    }, 1000);
-});
-
-console.log('✅ openfinance-integration.js com modal redimensionável carregado!');
+// Tornar funções disponíveis globalmente
+window.initializeOpenFinance = initializeOpenFinance;
+window.handleConnectPluggy = handleConnectPluggy;
+window.filterBanks = filterBanks;
+window.selectBank = selectBank;
+window.cancelConnection = cancelConnection;
+window.handleCredentialsSubmit = handleCredentialsSubmit;
+window.loadAccountsForConnection = loadAccountsForConnection;
+window.loadTransactionsForAccount = loadTransactionsForAccount;
+window.syncTransactionToCalendar = syncTransactionToCalendar;
+window.disconnectBank = disconnectBank;
+window.showMessage = showMessage;
 
