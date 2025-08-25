@@ -9,7 +9,7 @@ const PLUGGY_CONFIG = {
     // Você precisa copiar manualmente do dashboard do Pluggy
     // Acesse: https://dashboard.pluggy.ai/applications
     // Clique no campo "Client Secret" e copie o valor real
-    clientSecret: 'SEU_CLIENT_SECRET_AQUI', // SUBSTITUA pelo valor real do dashboard
+    clientSecret: '60a0b3fb-f039-4909-93ee-ddd5ade654af', // SUBSTITUA pelo valor real do dashboard
     
     // URLs da API Pluggy
     baseUrl: 'https://api.pluggy.ai',
