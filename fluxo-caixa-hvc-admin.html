@@ -17,26 +17,22 @@
             color: #e0e0e0;
         }
 
-        /* ✅ CORREÇÃO: Layout responsivo para sidebar */
+        /* Layout responsivo para sidebar */
         #main-content-fluxo-caixa-hvc {
             flex-grow: 1;
             padding: 2rem;
             transition: margin-left 0.3s ease;
             background: linear-gradient(135deg, #000080, #800080);
-            /* ✅ NOVO: Margem padrão para sidebar expandida (assumindo 250px de largura) */
             margin-left: 250px;
-            /* ✅ NOVO: Largura calculada dinamicamente */
             width: calc(100vw - 250px);
             box-sizing: border-box;
         }
 
-        /* ✅ CORREÇÃO: Quando sidebar está minimizada */
         #main-content-fluxo-caixa-hvc.sidebar-collapsed {
             margin-left: 60px;
             width: calc(100vw - 60px);
         }
 
-        /* ✅ NOVO: Para telas pequenas, remover margem da sidebar */
         @media (max-width: 768px) {
             #main-content-fluxo-caixa-hvc {
                 margin-left: 0;
@@ -57,7 +53,6 @@
             margin-bottom: 2rem;
             box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
             backdrop-filter: blur(10px);
-            /* ✅ NOVO: Garantir que não ultrapasse a largura disponível */
             max-width: 100%;
             box-sizing: border-box;
         }
@@ -67,8 +62,181 @@
             font-size: 2rem;
             margin-bottom: 1.5rem;
             text-align: center;
-            /* ✅ NOVO: Responsivo para títulos */
             word-wrap: break-word;
+        }
+
+        /* ✅ NOVO: Seção de Resumo Mensal */
+        .monthly-summary {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .monthly-summary h3 {
+            color: #ffc107;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .monthly-total {
+            color: #ffffff;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .monthly-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            color: #ffc107;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* ✅ NOVO: Lista de Pagamentos */
+        .payments-list-section {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .payments-list-section h3 {
+            color: #ffffff;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .payments-list {
+            max-height: 400px;
+            overflow-y: auto;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .payments-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .payments-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .payments-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .payment-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .payment-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .payment-name {
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 1.1rem;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .payment-value {
+            color: #ffc107;
+            font-weight: bold;
+            font-size: 1.2rem;
+            background: rgba(255, 193, 7, 0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .payment-details {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .payment-date {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .payment-type {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(66, 133, 244, 0.3);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .payment-type.pagamento {
+            background: rgba(234, 67, 53, 0.3);
+        }
+
+        .payment-type.hvc {
+            background: rgba(156, 39, 176, 0.3);
+        }
+
+        .payment-type.pg {
+            background: rgba(52, 168, 83, 0.3);
         }
 
         /* Google Calendar Section */
@@ -79,7 +247,6 @@
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 30px;
-            /* ✅ NOVO: Garantir responsividade */
             max-width: 100%;
             box-sizing: border-box;
         }
@@ -91,7 +258,6 @@
             display: flex;
             align-items: center;
             gap: 12px;
-            /* ✅ NOVO: Responsivo para títulos */
             flex-wrap: wrap;
         }
 
@@ -104,7 +270,6 @@
             margin-bottom: 25px;
             font-size: 16px;
             font-weight: 500;
-            /* ✅ NOVO: Responsivo */
             flex-wrap: wrap;
         }
 
@@ -124,7 +289,6 @@
             display: flex;
             gap: 15px;
             flex-wrap: wrap;
-            /* ✅ NOVO: Melhor alinhamento em telas pequenas */
             justify-content: flex-start;
         }
 
@@ -139,7 +303,6 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            /* ✅ NOVO: Evitar quebra de texto */
             white-space: nowrap;
         }
 
@@ -187,10 +350,9 @@
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 30px;
-            /* ✅ NOVO: Garantir responsividade */
             max-width: 100%;
             box-sizing: border-box;
-            overflow-x: auto; /* Permitir scroll horizontal se necessário */
+            overflow-x: auto;
         }
 
         .calendar-header {
@@ -198,7 +360,6 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 30px;
-            /* ✅ NOVO: Responsivo */
             flex-wrap: wrap;
             gap: 15px;
         }
@@ -207,7 +368,6 @@
             display: flex;
             align-items: center;
             gap: 20px;
-            /* ✅ NOVO: Responsivo */
             flex-wrap: wrap;
         }
 
@@ -219,7 +379,6 @@
             border-radius: 6px;
             cursor: pointer;
             transition: all 0.3s ease;
-            /* ✅ NOVO: Evitar quebra de texto */
             white-space: nowrap;
         }
 
@@ -231,12 +390,10 @@
             color: #ffffff;
             font-size: 1.5rem;
             font-weight: 500;
-            /* ✅ NOVO: Responsivo */
             text-align: center;
             min-width: 200px;
         }
 
-        /* ✅ CORREÇÃO: Grid do calendário responsivo */
         .calendar-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -245,7 +402,6 @@
             border-radius: 8px;
             overflow: hidden;
             width: 100%;
-            /* ✅ NOVO: Largura mínima para evitar compressão excessiva */
             min-width: 700px;
         }
 
@@ -258,7 +414,6 @@
             font-size: 14px;
             width: 100%;
             box-sizing: border-box;
-            /* ✅ NOVO: Largura mínima */
             min-width: 100px;
         }
 
@@ -274,7 +429,6 @@
             overflow: hidden;
             display: flex;
             flex-direction: column;
-            /* ✅ NOVO: Largura mínima */
             min-width: 100px;
         }
 
@@ -309,7 +463,6 @@
             margin-bottom: 3px;
             text-align: center;
             flex-shrink: 0;
-            /* ✅ NOVO: Quebra de linha para valores longos */
             word-wrap: break-word;
             line-height: 1.1;
         }
@@ -367,7 +520,6 @@
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
-            /* ✅ NOVO: Responsivo */
             max-width: 100%;
             box-sizing: border-box;
         }
@@ -378,7 +530,6 @@
             align-items: center;
             gap: 10px;
             font-weight: 500;
-            /* ✅ NOVO: Responsivo */
             flex-wrap: wrap;
         }
 
@@ -386,7 +537,6 @@
             margin-top: 10px;
             color: rgba(255, 255, 255, 0.8);
             font-size: 14px;
-            /* ✅ NOVO: Quebra de linha em telas pequenas */
             word-wrap: break-word;
         }
 
@@ -415,11 +565,9 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             animation: modalSlideIn 0.3s ease;
-            /* ✅ NOVO: Responsivo */
             box-sizing: border-box;
         }
 
-        /* Valor Total no Modal */
         .event-total-section {
             background: rgba(255, 193, 7, 0.2);
             border: 2px solid #ffc107;
@@ -440,7 +588,6 @@
             color: #ffffff;
             font-size: 24px;
             font-weight: bold;
-            /* ✅ NOVO: Responsivo */
             word-wrap: break-word;
         }
 
@@ -465,7 +612,6 @@
             margin: 5px 0;
             font-family: monospace;
             font-size: 13px;
-            /* ✅ NOVO: Quebra de linha para valores longos */
             word-wrap: break-word;
         }
 
@@ -492,7 +638,6 @@
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             animation: modalSlideIn 0.3s ease;
-            /* ✅ NOVO: Responsivo */
             box-sizing: border-box;
         }
 
@@ -512,7 +657,6 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 20px;
-            /* ✅ NOVO: Responsivo */
             flex-wrap: wrap;
             gap: 10px;
         }
@@ -520,7 +664,6 @@
         .modal-header h2 {
             color: #ffffff;
             font-size: 1.5rem;
-            /* ✅ NOVO: Responsivo */
             word-wrap: break-word;
             flex: 1;
         }
@@ -531,7 +674,6 @@
             font-weight: bold;
             cursor: pointer;
             transition: color 0.3s ease;
-            /* ✅ NOVO: Garantir que não seja muito pequeno */
             min-width: 30px;
             text-align: center;
         }
@@ -544,7 +686,6 @@
             color: #e0e0e0;
             line-height: 1.6;
             margin-bottom: 15px;
-            /* ✅ NOVO: Quebra de linha */
             word-wrap: break-word;
         }
 
@@ -555,7 +696,6 @@
 
         .modal-body li {
             margin-bottom: 8px;
-            /* ✅ NOVO: Quebra de linha */
             word-wrap: break-word;
         }
 
@@ -567,7 +707,6 @@
             gap: 5px;
             margin-right: 15px;
             margin-bottom: 5px;
-            /* ✅ NOVO: Quebra de linha */
             word-wrap: break-word;
         }
 
@@ -585,7 +724,6 @@
             display: flex;
             align-items: center;
             gap: 10px;
-            /* ✅ NOVO: Responsivo */
             flex-wrap: wrap;
             max-width: 100%;
             box-sizing: border-box;
@@ -624,7 +762,7 @@
             100% { transform: rotate(360deg); }
         }
         
-        /* ✅ MELHORADO: Responsive para telas pequenas */
+        /* Responsive */
         @media (max-width: 1200px) {
             .calendar-grid {
                 min-width: 600px;
@@ -651,7 +789,9 @@
             .hvc-container,
             .google-section,
             .calendar-section,
-            .filter-section {
+            .filter-section,
+            .monthly-summary,
+            .payments-list-section {
                 padding: 20px;
             }
             
@@ -707,6 +847,23 @@
                 padding: 20px;
                 width: 95%;
             }
+
+            .monthly-total {
+                font-size: 2rem;
+            }
+
+            .monthly-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .payment-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .payment-name {
+                min-width: auto;
+            }
         }
 
         @media (max-width: 480px) {
@@ -728,6 +885,10 @@
             .event-item {
                 font-size: 8px;
                 padding: 1px 3px;
+            }
+
+            .monthly-stats {
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -801,25 +962,48 @@
         }
 
         // =================================================================
-        // SISTEMA DE DETECÇÃO E SOMA DE VALORES
+        // ✅ NOVO: SISTEMA DE EXTRAÇÃO MELHORADO DE VALORES E NOMES
         // =================================================================
-        function extractMoneyValues(text) {
+        function extractPaymentInfo(text) {
             if (!text) return [];
             
-            // Regex para detectar valores no formato R$ 1.234,56
-            const moneyRegex = /R\$\s*([\d.]+,\d{2})/gi;
-            const matches = text.match(moneyRegex) || [];
+            // Regex para detectar padrões como "Nome do pagamento - R$ 1.234,56"
+            const paymentRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})/gi;
+            const matches = [];
+            let match;
             
-            return matches.map(match => {
-                // Extrair apenas o valor numérico
-                const valueStr = match.replace(/R\$\s*/, '');
-                // Converter para número (remover pontos dos milhares, trocar vírgula por ponto)
+            while ((match = paymentRegex.exec(text)) !== null) {
+                const paymentName = match[1].trim();
+                const valueStr = match[2];
                 const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
-                return {
-                    original: match,
-                    value: numericValue
-                };
-            });
+                
+                matches.push({
+                    name: paymentName,
+                    original: `${paymentName} - R$ ${valueStr}`,
+                    value: numericValue,
+                    formattedValue: `R$ ${valueStr}`
+                });
+            }
+            
+            // Fallback: se não encontrar o padrão com "-", usar o método antigo
+            if (matches.length === 0) {
+                const moneyRegex = /R\$\s*([\d.]+,\d{2})/gi;
+                const moneyMatches = text.match(moneyRegex) || [];
+                
+                moneyMatches.forEach(match => {
+                    const valueStr = match.replace(/R\$\s*/, '');
+                    const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
+                    
+                    matches.push({
+                        name: 'Pagamento',
+                        original: match,
+                        value: numericValue,
+                        formattedValue: match
+                    });
+                });
+            }
+            
+            return matches;
         }
 
         function calculateEventTotal(event) {
@@ -827,13 +1011,13 @@
             const summary = event.summary || '';
             const fullText = `${summary} ${description}`;
             
-            const values = extractMoneyValues(fullText);
-            const total = values.reduce((sum, item) => sum + item.value, 0);
+            const payments = extractPaymentInfo(fullText);
+            const total = payments.reduce((sum, item) => sum + item.value, 0);
             
             return {
                 total: total,
-                values: values,
-                count: values.length
+                payments: payments,
+                count: payments.length
             };
         }
 
@@ -854,6 +1038,126 @@
             });
             
             return dayTotal;
+        }
+
+        // =================================================================
+        // ✅ NOVO: CÁLCULOS MENSAIS
+        // =================================================================
+        function calculateMonthlyTotals() {
+            const currentMonth = currentDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+            
+            let monthlyTotal = 0;
+            let totalEvents = 0;
+            let totalPayments = 0;
+            const paymentsList = [];
+            
+            filteredEvents.forEach(event => {
+                const eventDate = parseEventDate(event);
+                
+                if (eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear) {
+                    const eventCalc = calculateEventTotal(event);
+                    monthlyTotal += eventCalc.total;
+                    totalEvents++;
+                    totalPayments += eventCalc.count;
+                    
+                    // Adicionar pagamentos à lista
+                    eventCalc.payments.forEach(payment => {
+                        paymentsList.push({
+                            ...payment,
+                            eventTitle: event.summary || 'Sem título',
+                            eventDate: eventDate,
+                            eventType: getEventType(event),
+                            eventId: event.id
+                        });
+                    });
+                }
+            });
+            
+            // Ordenar pagamentos por valor (maior para menor)
+            paymentsList.sort((a, b) => b.value - a.value);
+            
+            return {
+                total: monthlyTotal,
+                events: totalEvents,
+                payments: totalPayments,
+                paymentsList: paymentsList
+            };
+        }
+
+        function updateMonthlySummary() {
+            const monthlyData = calculateMonthlyTotals();
+            
+            // Atualizar total mensal
+            const monthlyTotalElement = document.getElementById('monthlyTotal');
+            if (monthlyTotalElement) {
+                monthlyTotalElement.textContent = formatCurrency(monthlyData.total);
+            }
+            
+            // Atualizar estatísticas
+            const totalEventsElement = document.getElementById('totalEvents');
+            const totalPaymentsElement = document.getElementById('totalPayments');
+            const avgPaymentElement = document.getElementById('avgPayment');
+            
+            if (totalEventsElement) {
+                totalEventsElement.textContent = monthlyData.events;
+            }
+            
+            if (totalPaymentsElement) {
+                totalPaymentsElement.textContent = monthlyData.payments;
+            }
+            
+            if (avgPaymentElement) {
+                const avgValue = monthlyData.payments > 0 ? monthlyData.total / monthlyData.payments : 0;
+                avgPaymentElement.textContent = formatCurrency(avgValue);
+            }
+            
+            // Atualizar lista de pagamentos
+            updatePaymentsList(monthlyData.paymentsList);
+        }
+
+        function updatePaymentsList(paymentsList) {
+            const paymentsListElement = document.getElementById('paymentsList');
+            if (!paymentsListElement) return;
+            
+            if (paymentsList.length === 0) {
+                paymentsListElement.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.6);">
+                        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 15px;"></i>
+                        <p>Nenhum pagamento encontrado para este mês</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            paymentsListElement.innerHTML = paymentsList.map(payment => `
+                <div class="payment-item" onclick="showPaymentEvent('${payment.eventId}')">
+                    <div class="payment-header">
+                        <div class="payment-name">${payment.name}</div>
+                        <div class="payment-value">${payment.formattedValue}</div>
+                    </div>
+                    <div class="payment-details">
+                        <div class="payment-date">
+                            <i class="fas fa-calendar"></i>
+                            ${payment.eventDate.toLocaleDateString('pt-BR')}
+                        </div>
+                        <div class="payment-type ${payment.eventType}">
+                            <i class="fas fa-tag"></i>
+                            ${payment.eventType.toUpperCase()}
+                        </div>
+                        <div style="color: rgba(255, 255, 255, 0.6);">
+                            ${payment.eventTitle}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showPaymentEvent(eventId) {
+            const event = filteredEvents.find(e => e.id === eventId);
+            if (event) {
+                showEventDetails(event);
+            }
         }
 
         // =================================================================
@@ -1056,6 +1360,8 @@
                     updateConnectionStatus(false);
                     document.getElementById('calendarSection').style.display = 'none';
                     document.getElementById('filterSection').style.display = 'none';
+                    document.getElementById('monthlySummarySection').style.display = 'none';
+                    document.getElementById('paymentsListSection').style.display = 'none';
                     showMessage('Desconectado do Google Calendar', 'success');
                 }
             } catch (error) {
@@ -1074,6 +1380,8 @@
             const syncButton = document.getElementById('syncButton');
             const calendarSection = document.getElementById('calendarSection');
             const filterSection = document.getElementById('filterSection');
+            const monthlySummarySection = document.getElementById('monthlySummarySection');
+            const paymentsListSection = document.getElementById('paymentsListSection');
             
             if (connected) {
                 connectionStatus.className = 'status-indicator status-connected';
@@ -1083,6 +1391,8 @@
                 syncButton.disabled = false;
                 calendarSection.style.display = 'block';
                 filterSection.style.display = 'block';
+                monthlySummarySection.style.display = 'block';
+                paymentsListSection.style.display = 'block';
             } else {
                 connectionStatus.className = 'status-indicator status-disconnected';
                 connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Desconectado do Google Calendar</span>';
@@ -1091,6 +1401,8 @@
                 syncButton.disabled = true;
                 calendarSection.style.display = 'none';
                 filterSection.style.display = 'none';
+                monthlySummarySection.style.display = 'none';
+                paymentsListSection.style.display = 'none';
             }
         }
 
@@ -1149,6 +1461,7 @@
                 console.log(`✅ Eventos carregados: ${allEvents.length} total, ${filteredEvents.length} filtrados`);
                 
                 updateFilterStats(allEvents.length, filteredEvents.length);
+                updateMonthlySummary(); // ✅ NOVO: Atualizar resumo mensal
                 renderCalendar();
                 
                 showMessage(`${filteredEvents.length} eventos de pagamento/HVC encontrados`, 'success');
@@ -1265,6 +1578,9 @@
                 dayDiv.appendChild(dayEvents);
                 calendarGrid.appendChild(dayDiv);
             }
+            
+            // ✅ NOVO: Atualizar resumo mensal após renderizar calendário
+            updateMonthlySummary();
         }
 
         // CORREÇÃO: Função principal para comparar datas dos eventos
@@ -1318,15 +1634,15 @@
                     </div>
                 `;
                 
-                if (eventCalc.values.length > 1) {
+                if (eventCalc.payments.length > 0) {
                     detailsHTML += `
                         <div class="event-values-list">
-                            <h4><i class="fas fa-list"></i> Valores Encontrados (${eventCalc.count}):</h4>
+                            <h4><i class="fas fa-list"></i> Pagamentos Encontrados (${eventCalc.count}):</h4>
                     `;
-                    eventCalc.values.forEach((item, index) => {
+                    eventCalc.payments.forEach((payment, index) => {
                         detailsHTML += `
                             <div class="value-item">
-                                ${index + 1}. ${item.original} = ${formatCurrency(item.value)}
+                                ${index + 1}. <strong>${payment.name}</strong> - ${payment.formattedValue}
                             </div>
                         `;
                     });
@@ -1476,6 +1792,35 @@
                 <button id="syncButton" onclick="handleSyncClick()" class="btn btn-secondary" disabled>
                     <i class="fas fa-sync-alt"></i> Sincronizar
                 </button>
+            </div>
+        </div>
+
+        <!-- ✅ NOVO: Resumo Mensal -->
+        <div id="monthlySummarySection" class="monthly-summary" style="display: none;">
+            <h3><i class="fas fa-chart-pie"></i> Resumo do Mês</h3>
+            <div id="monthlyTotal" class="monthly-total">R$ 0,00</div>
+            
+            <div class="monthly-stats">
+                <div class="stat-item">
+                    <div id="totalEvents" class="stat-value">0</div>
+                    <div class="stat-label">Eventos</div>
+                </div>
+                <div class="stat-item">
+                    <div id="totalPayments" class="stat-value">0</div>
+                    <div class="stat-label">Pagamentos</div>
+                </div>
+                <div class="stat-item">
+                    <div id="avgPayment" class="stat-value">R$ 0,00</div>
+                    <div class="stat-label">Valor Médio</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ NOVO: Lista de Pagamentos -->
+        <div id="paymentsListSection" class="payments-list-section" style="display: none;">
+            <h3><i class="fas fa-list-alt"></i> Lista de Pagamentos do Mês</h3>
+            <div id="paymentsList" class="payments-list">
+                <!-- Pagamentos serão listados aqui -->
             </div>
         </div>
 
