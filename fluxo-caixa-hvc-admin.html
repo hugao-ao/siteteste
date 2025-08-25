@@ -45,32 +45,6 @@
             text-align: center;
         }
 
-        /* OpenFinance Button - Canto Superior Direito */
-        .openfinance-btn {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: linear-gradient(135deg, #4285f4, #34a853);
-            color: white;
-            border: none;
-            border-radius: 50px;
-            padding: 12px 20px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            z-index: 1001;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 15px rgba(66, 133, 244, 0.3);
-        }
-
-        .openfinance-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(66, 133, 244, 0.4);
-        }
-
         /* Google Calendar Section */
         .google-section {
             background: rgba(25, 25, 112, 0.3);
@@ -598,12 +572,6 @@
             color: #333;
         }
 
-        .bank-name {
-            color: white;
-            font-weight: 500;
-            font-size: 14px;
-        }
-
         .form-group {
             margin-bottom: 20px;
         }
@@ -635,22 +603,6 @@
             gap: 10px;
             justify-content: flex-end;
             margin-top: 20px;
-        }
-
-        .connection-item, .account-item, .transaction-item {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-        }
-
-        .connection-status {
-            display: inline-block;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 12px;
-            font-weight: 500;
         }
 
         .status-connected {
@@ -702,13 +654,6 @@
             
             .google-controls {
                 flex-direction: column;
-            }
-
-            .openfinance-btn {
-                position: relative;
-                top: auto;
-                right: auto;
-                margin-bottom: 20px;
             }
 
             .calendar-header {
@@ -950,23 +895,7 @@
         // =================================================================
         // MODAL FUNCTIONS
         // =================================================================
-              function openModal() {
-            document.getElementById('openfinanceModal').style.display = 'block';
-            
-            // Se ainda não conectou ao Pluggy, tentar conectar automaticamente
-            if (typeof pluggyManager !== 'undefined' && pluggyManager && !pluggyManager.isAuthenticated) {
-                // Aguardar um pouco e tentar conectar
-                setTimeout(() => {
-                    if (pluggyManager && !pluggyManager.isAuthenticated) {
-                        handleConnectPluggy();
-                    }
-                }, 500);
-            }
-        }
 
-        function closeModal() {
-            document.getElementById('openfinanceModal').style.display = 'none';
-        }
 
         function closeEventModal() {
             document.getElementById('eventModal').style.display = 'none';
@@ -1463,17 +1392,6 @@
             if (signoutButton) signoutButton.addEventListener('click', handleSignoutClick);
             if (syncButton) syncButton.addEventListener('click', handleSyncClick);
             
-            // Fechar modal clicando fora
-            window.onclick = function(event) {
-                const modal = document.getElementById('openfinanceModal');
-                const eventModal = document.getElementById('eventModal');
-                if (event.target == modal) {
-                    closeModal();
-                }
-                if (event.target == eventModal) {
-                    closeEventModal();
-                }
-            }
             
             // Keyboard shortcuts
             document.addEventListener('keydown', (e) => {
@@ -1497,11 +1415,6 @@
     </script>
 </head>
 <body>
-    <!-- OpenFinance Button -->
-    <button class="openfinance-btn" onclick="openModal()">
-        <i class="fas fa-university"></i>
-        OpenFinance
-    </button>
 
     <!-- Sidebar será injetada aqui pelo sidebar.js -->
     
@@ -1573,89 +1486,6 @@
         </div>
     </main>
 
-                            <!-- OpenFinance Modal ATUALIZADO -->
-                            <div id="openfinanceModal" class="modal">
-                                <div class="modal-content" style="max-width: 800px;">
-                                    <div class="modal-header">
-                                        <h2><i class="fas fa-university"></i> Open Finance - Conectar Bancos</h2>
-                                        <span class="close" onclick="closeModal()">&times;</span>
-                                    </div>
-                                    <div class="modal-body">
-                                        
-                                        <!-- Status de Conexão -->
-                                        <div id="pluggyStatus" class="status-indicator status-disconnected">
-                                            <i class="fas fa-times-circle"></i>
-                                            <span>Não conectado ao Open Finance</span>
-                                        </div>
-                            
-                                        <!-- Controles Principais -->
-                                        <div class="google-controls" style="margin-bottom: 20px;">
-                                            <button id="connectPluggyBtn" class="btn btn-primary">
-                                                <i class="fas fa-plug"></i> Conectar Open Finance
-                                            </button>
-                                            <button id="refreshConnectionsBtn" class="btn btn-secondary" style="display: none;">
-                                                <i class="fas fa-sync-alt"></i> Atualizar Conexões
-                                            </button>
-                                        </div>
-                            
-                                        <!-- Seção: Bancos Disponíveis -->
-                                        <div id="banksSection" style="display: none;">
-                                            <h3><i class="fas fa-building"></i> Bancos Disponíveis</h3>
-                                            <div id="banksList" class="banks-grid">
-                                                <!-- Bancos serão listados aqui -->
-                                            </div>
-                                        </div>
-                            
-                                        <!-- Seção: Formulário de Credenciais -->
-                                        <div id="credentialsSection" style="display: none;">
-                                            <h3><i class="fas fa-key"></i> Conectar com <span id="selectedBankName"></span></h3>
-                                            <form id="credentialsForm">
-                                                <div class="form-group">
-                                                    <label for="bankUsername">CPF/CNPJ ou Usuário:</label>
-                                                    <input type="text" id="bankUsername" required>
-                                                </div>
-                                                <div class="form-group">
-                                                    <label for="bankPassword">Senha:</label>
-                                                    <input type="password" id="bankPassword" required>
-                                                </div>
-                                                <div class="form-actions">
-                                                    <button type="button" onclick="cancelConnection()" class="btn btn-secondary">
-                                                        Cancelar
-                                                    </button>
-                                                    <button type="submit" class="btn btn-primary">
-                                                        <i class="fas fa-link"></i> Conectar
-                                                    </button>
-                                                </div>
-                                            </form>
-                                        </div>
-                            
-                                        <!-- Seção: Conexões Ativas -->
-                                        <div id="connectionsSection" style="display: none;">
-                                            <h3><i class="fas fa-link"></i> Conexões Ativas</h3>
-                                            <div id="connectionsList">
-                                                <!-- Conexões serão listadas aqui -->
-                                            </div>
-                                        </div>
-                            
-                                        <!-- Seção: Contas Bancárias -->
-                                        <div id="accountsSection" style="display: none;">
-                                            <h3><i class="fas fa-credit-card"></i> Contas Bancárias</h3>
-                                            <div id="accountsList">
-                                                <!-- Contas serão listadas aqui -->
-                                            </div>
-                                        </div>
-                            
-                                        <!-- Seção: Transações Recentes -->
-                                        <div id="transactionsSection" style="display: none;">
-                                            <h3><i class="fas fa-exchange-alt"></i> Transações Recentes</h3>
-                                            <div id="transactionsList">
-                                                <!-- Transações serão listadas aqui -->
-                                            </div>
-                                        </div>
-                            
-                                    </div>
-                                </div>
-                            </div>
 
     <!-- Event Details Modal -->
     <div id="eventModal" class="event-modal">
@@ -1677,11 +1507,6 @@
         import { injectSidebar } from './sidebar.js';
         injectSidebar("main-content-fluxo-caixa-hvc");
     </script>
-
-    <!-- Scripts Open Finance -->
-    <script src="pluggy-config.js"></script>
-    <script src="pluggy-manager.js"></script>
-    <script src="openfinance-integration.js"></script>
     
     <!-- Google APIs - Carregar DEPOIS das funções estarem definidas -->
     <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
