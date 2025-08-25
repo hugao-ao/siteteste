@@ -1,67 +1,64 @@
-// pluggy-config-CORRIGIDO.js
-// Configuração corrigida para resolver problemas de API
+// Configuração do Pluggy para HVC
+// Credenciais extraídas do dashboard oficial
 
 const PLUGGY_CONFIG = {
-    // CORREÇÃO: Credenciais atualizadas (substitua pelas suas credenciais válidas)
-    clientId: 'seu-client-id-aqui',
-    clientSecret: 'seu-client-secret-aqui',
+    // Credenciais da aplicação HVC no Pluggy
+    clientId: 'a567493e-159e-4ce2-aaaa-c6cf34a76cd1',
     
-    // CORREÇÃO: URLs da API corrigidas
-    baseURL: 'https://api.pluggy.ai',
-    authURL: 'https://api.pluggy.ai/auth',
+    // IMPORTANTE: O Client Secret não pode ser extraído automaticamente por segurança
+    // Você precisa copiar manualmente do dashboard do Pluggy
+    // Acesse: https://dashboard.pluggy.ai/applications
+    // Clique no campo "Client Secret" e copie o valor real
+    clientSecret: 'SEU_CLIENT_SECRET_AQUI', // SUBSTITUA pelo valor real do dashboard
     
-    // CORREÇÃO: Configurações para resolver CORS
+    // URLs da API Pluggy
+    baseUrl: 'https://api.pluggy.ai',
+    
+    // Configurações de requisição
+    headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+        'X-API-KEY': '', // Será preenchido dinamicamente
+    },
+    
+    // Configurações de timeout
     timeout: 30000, // 30 segundos
-    sandbox: true, // true para testes, false para produção
+    
+    // Configurações de retry
+    maxRetries: 3,
+    retryDelay: 1000, // 1 segundo
+    
+    // Configurações de debug
+    debug: true,
     
     // Endpoints principais
     endpoints: {
         auth: '/auth',
-        connectors: '/connectors',
         connections: '/connections',
         accounts: '/accounts',
-        transactions: '/transactions'
+        transactions: '/transactions',
+        connectors: '/connectors'
     }
 };
 
-// CORREÇÃO: Validação de configuração
+// Função para validar configuração
 function validatePluggyConfig() {
-    const errors = [];
-    
-    if (!PLUGGY_CONFIG.clientId || PLUGGY_CONFIG.clientId === 'seu-client-id-aqui') {
-        errors.push('❌ clientId não configurado');
+    if (!PLUGGY_CONFIG.clientId) {
+        throw new Error('Client ID não configurado');
     }
     
-    if (!PLUGGY_CONFIG.clientSecret || PLUGGY_CONFIG.clientSecret === 'seu-client-secret-aqui') {
-        errors.push('❌ clientSecret não configurado');
+    if (!PLUGGY_CONFIG.clientSecret || PLUGGY_CONFIG.clientSecret === 'SEU_CLIENT_SECRET_AQUI') {
+        throw new Error('Client Secret não configurado. Acesse https://dashboard.pluggy.ai/applications e copie o valor real.');
     }
     
-    if (!PLUGGY_CONFIG.baseURL) {
-        errors.push('❌ baseURL não configurado');
-    }
-    
-    if (errors.length > 0) {
-        console.error('🚨 ERROS DE CONFIGURAÇÃO PLUGGY:');
-        errors.forEach(error => console.error(error));
-        console.error('');
-        console.error('📋 COMO CORRIGIR:');
-        console.error('1. Acesse https://dashboard.pluggy.ai/');
-        console.error('2. Faça login na sua conta');
-        console.error('3. Vá em "API Keys" ou "Configurações"');
-        console.error('4. Copie seu Client ID e Client Secret');
-        console.error('5. Substitua os valores em pluggy-config.js');
-        console.error('');
-        return false;
-    }
-    
-    console.log('✅ Configuração Pluggy válida');
     return true;
 }
 
-// Validar configuração ao carregar
-validatePluggyConfig();
-
-// Tornar disponível globalmente
-window.PLUGGY_CONFIG = PLUGGY_CONFIG;
-window.validatePluggyConfig = validatePluggyConfig;
+// Exportar configuração
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = { PLUGGY_CONFIG, validatePluggyConfig };
+} else {
+    window.PLUGGY_CONFIG = PLUGGY_CONFIG;
+    window.validatePluggyConfig = validatePluggyConfig;
+}
 
