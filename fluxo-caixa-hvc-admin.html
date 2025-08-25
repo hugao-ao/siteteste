@@ -528,117 +528,6 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
-
-/*REFERENTE AO OPEN FINANCE INICIO*/
-
-                /* Open Finance Styles */
-        .banks-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-            gap: 15px;
-            margin: 20px 0;
-        }
-
-        .bank-item {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        .bank-item:hover {
-            background: rgba(255, 255, 255, 0.2);
-            transform: translateY(-2px);
-        }
-
-        .bank-item.selected {
-            border-color: #4285f4;
-            background: rgba(66, 133, 244, 0.2);
-        }
-
-        .bank-logo {
-            width: 60px;
-            height: 60px;
-            margin: 0 auto 10px;
-            background: white;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            color: #333;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            display: block;
-            color: white;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-
-        .form-group input {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 6px;
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-
-        .form-group input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .form-actions {
-            display: flex;
-            gap: 10px;
-            justify-content: flex-end;
-            margin-top: 20px;
-        }
-
-        .status-connected {
-            background: rgba(52, 168, 83, 0.3);
-            color: #34a853;
-        }
-
-        .status-error {
-            background: rgba(234, 67, 53, 0.3);
-            color: #ea4335;
-        }
-
-        .status-updating {
-            background: rgba(255, 193, 7, 0.3);
-            color: #ffc107;
-        }
-
-        .account-balance {
-            font-size: 18px;
-            font-weight: bold;
-            color: #34a853;
-        }
-
-        .transaction-amount {
-            font-weight: bold;
-        }
-
-        .transaction-amount.positive {
-            color: #34a853;
-        }
-
-        .transaction-amount.negative {
-            color: #ea4335;
-        }
-        
-/*REFERENTE AO OPEN FINANCE FIM*/
         
         /* Responsive */
         @media (max-width: 768px) {
@@ -895,8 +784,6 @@
         // =================================================================
         // MODAL FUNCTIONS
         // =================================================================
-
-
         function closeEventModal() {
             document.getElementById('eventModal').style.display = 'none';
         }
@@ -986,18 +873,14 @@
             try {
                 const token = gapi.client.getToken();
                 if (token !== null) {
-                    google.accounts.oauth2.revoke(token.access_token, () => {
-                        gapi.client.setToken('');
-                        clearConnectionState();
-                        isGoogleConnected = false;
-                        updateConnectionStatus(false);
-                        document.getElementById('calendarSection').style.display = 'none';
-                        document.getElementById('filterSection').style.display = 'none';
-                        showMessage('Desconectado do Google Calendar', 'success');
-                    });
-                } else {
-                    clearConnectionState();
+                    google.accounts.oauth2.revoke(token.access_token);
+                    gapi.client.setToken('');
                     isGoogleConnected = false;
+                    
+                    // Limpar estado de conexão
+                    clearConnectionState();
+                    
+                    console.log('✅ Desconectado do Google Calendar');
                     updateConnectionStatus(false);
                     document.getElementById('calendarSection').style.display = 'none';
                     document.getElementById('filterSection').style.display = 'none';
@@ -1353,139 +1236,110 @@
             try {
                 await loadFilteredEvents();
                 showMessage('Sincronização concluída com sucesso!', 'success');
-                console.log('✅ Sincronização concluída');
             } catch (error) {
                 console.error('❌ Erro na sincronização:', error);
-                showMessage(`Erro durante a sincronização: ${error.message}`, 'error');
+                showMessage('Erro durante a sincronização', 'error');
             } finally {
-                syncButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Agora';
-                if (isGoogleConnected) syncButton.disabled = false;
+                syncButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar';
+                syncButton.disabled = false;
             }
         }
 
         // =================================================================
-        // TORNAR FUNÇÕES GLOBAIS
+        // WINDOW CLICK HANDLER
         // =================================================================
-        window.openModal = openModal;
-        window.closeModal = closeModal;
-        window.closeEventModal = closeEventModal;
-        window.previousMonth = previousMonth;
-        window.nextMonth = nextMonth;
-        window.goToToday = goToToday;
-        window.handleAuthClick = handleAuthClick;
-        window.handleSignoutClick = handleSignoutClick;
-        window.handleSyncClick = handleSyncClick;
+        window.onclick = function(event) {
+            const eventModal = document.getElementById('eventModal');
+            if (event.target === eventModal) {
+                eventModal.style.display = 'none';
+            }
+        }
 
         // =================================================================
-        // INITIALIZATION
+        // INICIALIZAÇÃO
         // =================================================================
-        document.addEventListener('DOMContentLoaded', () => {
-            console.log('🚀 Aplicação iniciada');
-            showMessage('Sistema iniciado com sucesso!', 'success');
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Sistema de Fluxo de Caixa HVC inicializado');
             
-            // Event listeners
-            const authorizeButton = document.getElementById('authorizeButton');
-            const signoutButton = document.getElementById('signoutButton');
-            const syncButton = document.getElementById('syncButton');
+            // Inicializar estado de conexão
+            updateConnectionStatus(false);
             
-            if (authorizeButton) authorizeButton.addEventListener('click', handleAuthClick);
-            if (signoutButton) signoutButton.addEventListener('click', handleSignoutClick);
-            if (syncButton) syncButton.addEventListener('click', handleSyncClick);
-            
-            
-            // Keyboard shortcuts
-            document.addEventListener('keydown', (e) => {
-                // Esc para fechar modal
-                if (e.key === 'Escape') {
-                    closeModal();
-                    closeEventModal();
-                }
-                
-                // Setas para navegar no calendário
-                if (e.key === 'ArrowLeft' && e.ctrlKey) {
-                    e.preventDefault();
-                    previousMonth();
-                }
-                if (e.key === 'ArrowRight' && e.ctrlKey) {
-                    e.preventDefault();
-                    nextMonth();
-                }
-            });
+            // Renderizar calendário inicial (vazio)
+            renderCalendar();
         });
     </script>
 </head>
-<body>
 
-    <!-- Sidebar será injetada aqui pelo sidebar.js -->
-    
-    <main id="main-content-fluxo-caixa-hvc">
+<body>
+    <div id="main-content-fluxo-caixa-hvc">
+        <!-- Messages Container -->
+        <div id="messagesContainer"></div>
+
+        <!-- Header -->
         <div class="hvc-container">
             <h1 class="hvc-title">
-                <i class="fas fa-calendar-alt"></i> Fluxo de Caixa - Agenda e Pagamentos
+                <i class="fas fa-chart-line"></i>
+                Fluxo de Caixa HVC - Agenda e Pagamentos
             </h1>
+        </div>
 
-            <!-- Messages Container -->
-            <div id="messagesContainer"></div>
-
-            <!-- Google Calendar Section -->
-            <div class="google-section">
-                <h2><i class="fab fa-google"></i> Integração Google Calendar</h2>
-                
-                <div id="connectionStatus" class="status-indicator status-disconnected">
-                    <i class="fas fa-times-circle"></i>
-                    <span>Desconectado do Google Calendar</span>
-                </div>
-
-                <div class="google-controls">
-                    <button id="authorizeButton" class="btn btn-primary" style="display: none;">
-                        <i class="fab fa-google"></i>
-                        Conectar com Google Calendar
-                    </button>
-                    <button id="signoutButton" class="btn btn-danger" style="display: none;">
-                        <i class="fas fa-sign-out-alt"></i>
-                        Desconectar
-                    </button>
-                    <button id="syncButton" class="btn btn-secondary" disabled>
-                        <i class="fas fa-sync-alt"></i>
-                        Sincronizar Agora
-                    </button>
-                </div>
-
-                <!-- Filter Info -->
-                <div id="filterSection" class="filter-section" style="display: none;">
-                    <div class="filter-info">
-                        <i class="fas fa-filter"></i>
-                        <span>Filtro Ativo: Mostrando apenas eventos com "PAGAMENTO", "PAGAMENTOS", "HVC" ou "PG"</span>
-                    </div>
-                    <div id="filterStats" class="filter-stats"></div>
-                </div>
+        <!-- Google Calendar Integration -->
+        <div class="google-section">
+            <h2><i class="fab fa-google"></i> Google Calendar</h2>
+            
+            <!-- Connection Status -->
+            <div id="connectionStatus" class="status-indicator status-disconnected">
+                <i class="fas fa-times-circle"></i>
+                <span>Desconectado do Google Calendar</span>
             </div>
 
-            <!-- Calendar View -->
-            <div id="calendarSection" class="calendar-section" style="display: none;">
-                <div class="calendar-header">
-                    <h2><i class="fas fa-calendar"></i> Calendário de Pagamentos HVC</h2>
-                    <div class="calendar-nav">
-                        <button onclick="previousMonth()">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <span id="calendarTitle" class="calendar-title"></span>
-                        <button onclick="nextMonth()">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button onclick="goToToday()" class="btn-primary">
-                            Hoje
-                        </button>
-                    </div>
-                </div>
-
-                <div class="calendar-grid" id="calendarGrid">
-                    <!-- Calendar will be generated here -->
-                </div>
+            <!-- Controls -->
+            <div class="google-controls">
+                <button id="authorizeButton" onclick="handleAuthClick()" class="btn btn-primary" style="display: none;">
+                    <i class="fas fa-sign-in-alt"></i> Conectar ao Google
+                </button>
+                <button id="signoutButton" onclick="handleSignoutClick()" class="btn btn-danger" style="display: none;">
+                    <i class="fas fa-sign-out-alt"></i> Desconectar
+                </button>
+                <button id="syncButton" onclick="handleSyncClick()" class="btn btn-secondary" disabled>
+                    <i class="fas fa-sync-alt"></i> Sincronizar
+                </button>
             </div>
         </div>
-    </main>
 
+        <!-- Filter Information -->
+        <div id="filterSection" class="filter-section" style="display: none;">
+            <div class="filter-info">
+                <i class="fas fa-filter"></i>
+                <span>Filtro Ativo: Eventos com palavras-chave relacionadas a pagamentos</span>
+            </div>
+            <div class="filter-stats" id="filterStats">
+                <!-- Stats will be populated here -->
+            </div>
+        </div>
+
+        <!-- Calendar View -->
+        <div id="calendarSection" class="calendar-section" style="display: none;">
+            <div class="calendar-header">
+                <div class="calendar-nav">
+                    <button onclick="previousMonth()">
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    <button onclick="goToToday()">
+                        <i class="fas fa-calendar-day"></i> Hoje
+                    </button>
+                    <button onclick="nextMonth()">
+                        Próximo <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <h3 id="calendarTitle" class="calendar-title">Carregando...</h3>
+            </div>
+            
+            <div id="calendarGrid" class="calendar-grid">
+                <!-- Calendar will be rendered here -->
+            </div>
+        </div>
+    </div>
 
     <!-- Event Details Modal -->
     <div id="eventModal" class="event-modal">
