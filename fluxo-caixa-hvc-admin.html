@@ -1,0 +1,2706 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxo de Caixa HVC - Agenda e Pagamentos</title>
+    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    
+    <style>
+        /* Tema específico HVC - Elegante e sofisticado */
+        body {
+            display: flex;
+            margin: 0;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #000080, #800080);
+            color: #e0e0e0;
+        }
+
+        /* Layout responsivo para sidebar */
+        #main-content-fluxo-caixa-hvc {
+            flex-grow: 1;
+            padding: 2rem;
+            transition: margin-left 0.3s ease;
+            background: linear-gradient(135deg, #000080, #800080);
+            margin-left: 250px;
+            width: calc(100vw - 250px);
+            box-sizing: border-box;
+        }
+
+        #main-content-fluxo-caixa-hvc.sidebar-collapsed {
+            margin-left: 60px;
+            width: calc(100vw - 60px);
+        }
+
+        @media (max-width: 768px) {
+            #main-content-fluxo-caixa-hvc {
+                margin-left: 0;
+                width: 100vw;
+            }
+            
+            #main-content-fluxo-caixa-hvc.sidebar-collapsed {
+                margin-left: 0;
+                width: 100vw;
+            }
+        }
+
+        .hvc-container {
+            background: rgba(25, 25, 112, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 8px 32px rgba(0, 0, 128, 0.3);
+            backdrop-filter: blur(10px);
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .hvc-title {
+            color: #ffffff;
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            text-align: center;
+            word-wrap: break-word;
+        }
+
+        /* Seção de Resumo Mensal */
+        .monthly-summary {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .monthly-summary h3 {
+            color: #ffc107;
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .monthly-total {
+            color: #ffffff;
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .monthly-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+        }
+
+        .stat-value {
+            color: #ffc107;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .stat-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            margin-top: 5px;
+        }
+
+        /* ✅ NOVO: Estatísticas por Status com Montantes */
+        .status-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .status-stat-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            border: 2px solid transparent;
+        }
+
+        .status-stat-item.pg {
+            border-color: #34a853;
+            background: rgba(52, 168, 83, 0.2);
+        }
+
+        .status-stat-item.pendente {
+            border-color: #ea4335;
+            background: rgba(234, 67, 53, 0.2);
+        }
+
+        .status-stat-item.recalculado {
+            border-color: #4285f4;
+            background: rgba(66, 133, 244, 0.2);
+        }
+
+        .status-stat-value {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .status-stat-amount {
+            color: #ffc107;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .status-stat-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
+        /* Lista de Pagamentos */
+        .payments-list-section {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .payments-list-section h3 {
+            color: #ffffff;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* ✅ NOVO: Filtros de Pagamentos */
+        .payments-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .filter-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: #4285f4;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .filter-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .filter-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .filter-select option {
+            background: #1a1a2e;
+            color: #ffffff;
+        }
+
+        .clear-filters-btn {
+            background: rgba(234, 67, 53, 0.3);
+            border: 1px solid #ea4335;
+            border-radius: 6px;
+            padding: 8px 16px;
+            color: #ea4335;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            align-self: flex-end;
+        }
+
+        .clear-filters-btn:hover {
+            background: rgba(234, 67, 53, 0.5);
+            color: #ffffff;
+        }
+
+        .payments-list {
+            max-height: 500px;
+            overflow-y: auto;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .payments-list::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .payments-list::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+
+        .payments-list::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+
+        .payment-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .payment-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+            transform: translateX(5px);
+        }
+
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .payment-name {
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 1.1rem;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .payment-value {
+            color: #ffc107;
+            font-weight: bold;
+            font-size: 1.2rem;
+            background: rgba(255, 193, 7, 0.2);
+            padding: 5px 10px;
+            border-radius: 5px;
+        }
+
+        .payment-details {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .payment-date {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .payment-status {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .payment-status.pg {
+            background: rgba(52, 168, 83, 0.3);
+            color: #34a853;
+        }
+
+        .payment-status.pendente {
+            background: rgba(234, 67, 53, 0.3);
+            color: #ea4335;
+        }
+
+        .payment-status.recalculado {
+            background: rgba(66, 133, 244, 0.3);
+            color: #4285f4;
+        }
+
+        .payment-type {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(66, 133, 244, 0.3);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .payment-type.pagamento {
+            background: rgba(234, 67, 53, 0.3);
+        }
+
+        .payment-type.hvc {
+            background: rgba(156, 39, 176, 0.3);
+        }
+
+        .no-payments {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .no-payments i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
+        }
+
+        /* Google Calendar Section */
+        .google-section {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .google-section h2 {
+            color: #ffffff;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            font-size: 16px;
+            font-weight: 500;
+            flex-wrap: wrap;
+        }
+
+        .status-disconnected {
+            background: rgba(234, 67, 53, 0.2);
+            border: 1px solid rgba(234, 67, 53, 0.4);
+            color: #ea4335;
+        }
+
+        .status-connected {
+            background: rgba(52, 168, 83, 0.2);
+            border: 1px solid rgba(52, 168, 83, 0.4);
+            color: #34a853;
+        }
+
+        .google-controls {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ea4335, #d33b2c);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Calendar View */
+        .calendar-section {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-x: auto;
+        }
+
+        .calendar-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .calendar-nav {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .calendar-nav button {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .calendar-nav button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .calendar-title {
+            color: #ffffff;
+            font-size: 1.5rem;
+            font-weight: 500;
+            text-align: center;
+            min-width: 200px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            overflow: hidden;
+            width: 100%;
+            min-width: 700px;
+        }
+
+        .calendar-day-header {
+            background: rgba(66, 133, 244, 0.3);
+            color: white;
+            padding: 15px 5px;
+            text-align: center;
+            font-weight: 500;
+            font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+            min-width: 100px;
+        }
+
+        .calendar-day {
+            background: rgba(255, 255, 255, 0.05);
+            min-height: 140px;
+            max-height: 140px;
+            padding: 8px;
+            position: relative;
+            transition: all 0.3s ease;
+            width: 100%;
+            box-sizing: border-box;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            min-width: 100px;
+        }
+
+        .calendar-day:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .calendar-day.other-month {
+            opacity: 0.3;
+        }
+
+        .calendar-day.today {
+            background: rgba(66, 133, 244, 0.2) !important;
+            border: 2px solid #4285f4 !important;
+        }
+
+        .day-number {
+            color: white;
+            font-weight: 500;
+            margin-bottom: 5px;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+
+        .day-total {
+            background: rgba(255, 193, 7, 0.8);
+            color: #000;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            margin-bottom: 3px;
+            text-align: center;
+            flex-shrink: 0;
+            word-wrap: break-word;
+            line-height: 1.1;
+        }
+
+        .day-events {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+            flex: 1;
+            min-height: 0;
+        }
+
+        .event-item {
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            width: 100%;
+            box-sizing: border-box;
+            min-width: 0;
+            flex-shrink: 0;
+        }
+
+        .event-item:hover {
+            transform: scale(1.02);
+            z-index: 10;
+            position: relative;
+            white-space: normal;
+            word-wrap: break-word;
+        }
+
+        .event-item.completed {
+            background: linear-gradient(135deg, #34a853, #2e7d32);
+        }
+
+        .event-item.overdue {
+            background: linear-gradient(135deg, #ea4335, #d33b2c);
+        }
+
+        .event-item.upcoming {
+            background: linear-gradient(135deg, #4285f4, #1976d2);
+        }
+
+        /* Filter Section */
+        .filter-section {
+            background: rgba(52, 168, 83, 0.2);
+            border: 1px solid rgba(52, 168, 83, 0.4);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .filter-info {
+            color: #34a853;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 500;
+            flex-wrap: wrap;
+        }
+
+        .filter-stats {
+            margin-top: 10px;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+            word-wrap: break-word;
+        }
+
+        /* Event Details Modal */
+        .event-modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .event-modal-content {
+            background: linear-gradient(135deg, #000080, #800080);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            animation: modalSlideIn 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        .event-total-section {
+            background: rgba(255, 193, 7, 0.2);
+            border: 2px solid #ffc107;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            text-align: center;
+        }
+
+        .event-total-title {
+            color: #ffc107;
+            font-size: 16px;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .event-total-value {
+            color: #ffffff;
+            font-size: 24px;
+            font-weight: bold;
+            word-wrap: break-word;
+        }
+
+        .event-values-list {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+
+        .event-values-list h4 {
+            color: #ffc107;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+
+        .value-item {
+            background: rgba(255, 193, 7, 0.3);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 5px;
+            margin: 8px 0;
+            font-family: monospace;
+            font-size: 13px;
+            word-wrap: break-word;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .value-item-status {
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+        }
+
+        .value-item-status.pg {
+            background: rgba(52, 168, 83, 0.8);
+            color: white;
+        }
+
+        .value-item-status.pendente {
+            background: rgba(234, 67, 53, 0.8);
+            color: white;
+        }
+
+        .value-item-status.recalculado {
+            background: rgba(66, 133, 244, 0.8);
+            color: white;
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(5px);
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #000080, #800080);
+            margin: 10% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            animation: modalSlideIn 0.3s ease;
+            box-sizing: border-box;
+        }
+
+        @keyframes modalSlideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-50px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .modal-header h2 {
+            color: #ffffff;
+            font-size: 1.5rem;
+            word-wrap: break-word;
+            flex: 1;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            min-width: 30px;
+            text-align: center;
+        }
+
+        .close:hover {
+            color: white;
+        }
+
+        .modal-body p {
+            color: #e0e0e0;
+            line-height: 1.6;
+            margin-bottom: 15px;
+            word-wrap: break-word;
+        }
+
+        .modal-body ul {
+            color: #e0e0e0;
+            margin-left: 20px;
+        }
+
+        .modal-body li {
+            margin-bottom: 8px;
+            word-wrap: break-word;
+        }
+
+        .attachment-link {
+            color: #4285f4;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            margin-right: 15px;
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+
+        .attachment-link:hover {
+            color: #34a853;
+            text-decoration: underline;
+        }
+
+        /* Messages */
+        .message {
+            padding: 15px 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .message.success {
+            background: rgba(52, 168, 83, 0.2);
+            border: 1px solid rgba(52, 168, 83, 0.4);
+            color: #34a853;
+        }
+
+        .message.error {
+            background: rgba(234, 67, 53, 0.2);
+            border: 1px solid rgba(234, 67, 53, 0.4);
+            color: #ea4335;
+        }
+
+        .message.warning {
+            background: rgba(255, 193, 7, 0.2);
+            border: 1px solid rgba(255, 193, 7, 0.4);
+            color: #ffc107;
+        }
+
+        /* Loading Spinner */
+        .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top: 2px solid #ffffff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .calendar-grid {
+                min-width: 600px;
+            }
+            
+            .calendar-day {
+                min-height: 120px;
+                max-height: 120px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            #main-content-fluxo-caixa-hvc {
+                padding: 1rem;
+                margin-left: 0;
+                width: 100vw;
+            }
+            
+            #main-content-fluxo-caixa-hvc.sidebar-collapsed {
+                margin-left: 0;
+                width: 100vw;
+            }
+            
+            .hvc-container,
+            .google-section,
+            .calendar-section,
+            .filter-section,
+            .monthly-summary,
+            .payments-list-section {
+                padding: 20px;
+            }
+            
+            .hvc-title {
+                font-size: 1.5rem;
+            }
+            
+            .google-section h2 {
+                font-size: 1.4rem;
+            }
+            
+            .calendar-grid {
+                font-size: 12px;
+                min-width: 500px;
+            }
+            
+            .calendar-day {
+                min-height: 100px;
+                max-height: 100px;
+                padding: 4px;
+            }
+            
+            .google-controls {
+                flex-direction: column;
+            }
+
+            .calendar-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .event-item {
+                font-size: 9px;
+            }
+
+            .day-total {
+                font-size: 8px;
+            }
+            
+            .calendar-title {
+                font-size: 1.2rem;
+                min-width: auto;
+            }
+            
+            .event-modal-content {
+                margin: 2% auto;
+                padding: 20px;
+                width: 95%;
+            }
+            
+            .modal-content {
+                margin: 5% auto;
+                padding: 20px;
+                width: 95%;
+            }
+
+            .monthly-total {
+                font-size: 2rem;
+            }
+
+            .monthly-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .payment-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .payment-name {
+                min-width: auto;
+            }
+
+            .payments-filters {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .calendar-grid {
+                min-width: 350px;
+            }
+            
+            .calendar-day {
+                min-height: 80px;
+                max-height: 80px;
+                padding: 2px;
+            }
+            
+            .day-total {
+                font-size: 7px;
+                padding: 1px 2px;
+            }
+            
+            .event-item {
+                font-size: 8px;
+                padding: 1px 3px;
+            }
+
+            .monthly-stats {
+                grid-template-columns: 1fr;
+            }
+
+            .status-stats {
+                grid-template-columns: 1fr;
+            }
+        }
+
+                        /* ✅ NOVO: Estilos para edição de eventos */
+                .edit-description-section {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin: 15px 0;
+                }
+                
+                .edit-description-textarea {
+                    width: 100%;
+                    min-height: 120px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 6px;
+                    padding: 10px;
+                    color: #ffffff;
+                    font-size: 14px;
+                    font-family: inherit;
+                    resize: vertical;
+                    box-sizing: border-box;
+                }
+                
+                .edit-description-textarea:focus {
+                    outline: none;
+                    border-color: #4285f4;
+                    background: rgba(255, 255, 255, 0.15);
+                }
+                
+                .edit-description-textarea::placeholder {
+                    color: rgba(255, 255, 255, 0.5);
+                }
+                
+                .edit-buttons {
+                    display: flex;
+                    gap: 10px;
+                    margin-top: 10px;
+                    flex-wrap: wrap;
+                }
+                
+                .btn-edit {
+                    background: rgba(66, 133, 244, 0.3);
+                    border: 1px solid #4285f4;
+                    color: #4285f4;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                }
+                
+                .btn-edit:hover {
+                    background: rgba(66, 133, 244, 0.5);
+                    color: #ffffff;
+                }
+                
+                .btn-save {
+                    background: rgba(52, 168, 83, 0.3);
+                    border: 1px solid #34a853;
+                    color: #34a853;
+                }
+                
+                .btn-save:hover {
+                    background: rgba(52, 168, 83, 0.5);
+                    color: #ffffff;
+                }
+                
+                .btn-cancel {
+                    background: rgba(234, 67, 53, 0.3);
+                    border: 1px solid #ea4335;
+                    color: #ea4335;
+                }
+                
+                .btn-cancel:hover {
+                    background: rgba(234, 67, 53, 0.5);
+                    color: #ffffff;
+                }
+                
+                .btn-edit:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                .edit-loading {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    color: rgba(255, 255, 255, 0.7);
+                    font-size: 14px;
+                }
+
+
+
+    </style>
+
+    <script>
+        // =================================================================
+        // DEFINIR FUNÇÕES GLOBAIS ANTES DOS SCRIPTS DO GOOGLE
+        // =================================================================
+        
+        // Configurações
+        const CLIENT_ID = '314578730498-ghkttnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
+        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
+        const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
+
+        let tokenClient;
+        let gapiInited = false;
+        let gisInited = false;
+        let isGoogleConnected = false;
+        let filteredEvents = [];
+        let currentDate = new Date();
+        let allPaymentsList = []; // ✅ NOVO: Lista completa de pagamentos
+        let filteredPaymentsList = []; // ✅ NOVO: Lista filtrada
+        let currentEditingEvent = null;
+        let isEditingDescription = false;
+        let originalDescription = '';
+
+        // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
+        window.gapiLoaded = function() {
+            console.log('🔄 Carregando GAPI...');
+            gapi.load('client', initializeGapiClient);
+        }
+
+        window.gisLoaded = function() {
+            console.log('🔄 Carregando GIS...');
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: handleTokenResponse,
+                });
+                gisInited = true;
+                maybeEnableButtons();
+                console.log('✅ GIS inicializado com sucesso!');
+            } catch (error) {
+                console.error('❌ Erro ao inicializar GIS:', error);
+                showMessage('Erro ao carregar sistema de autenticação do Google', 'error');
+            }
+        }
+
+        async function initializeGapiClient() {
+            try {
+                await gapi.client.init({
+                    discoveryDocs: [DISCOVERY_DOC],
+                });
+                gapiInited = true;
+                maybeEnableButtons();
+                console.log('✅ GAPI inicializado com sucesso!');
+                
+                // Tentar restaurar sessão
+                await tryRestoreSession();
+            } catch (error) {
+                console.error('❌ Erro ao inicializar GAPI:', error);
+                showMessage('Erro ao carregar API do Google Calendar', 'error');
+            }
+        }
+
+        function maybeEnableButtons() {
+            if (gapiInited && gisInited) {
+                const authorizeButton = document.getElementById('authorizeButton');
+                if (authorizeButton) {
+                    authorizeButton.style.display = 'block';
+                    console.log('✅ APIs do Google carregadas com sucesso');
+                    showMessage('APIs do Google carregadas com sucesso!', 'success');
+                }
+            }
+        }
+
+        // =================================================================
+        // ✅ SISTEMA DE EXTRAÇÃO COM STATUS MELHORADO
+        // =================================================================
+        function extractPaymentInfo(text) {
+            if (!text) return [];
+            
+            // Regex para detectar padrões como "Nome do pagamento - R$ 1.234,56 (STATUS)"
+            const paymentRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?/gi;
+            const matches = [];
+            let match;
+            
+            while ((match = paymentRegex.exec(text)) !== null) {
+                const paymentName = match[1].trim();
+                const valueStr = match[2];
+                const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
+                const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
+                
+                // Determinar status baseado no texto entre parênteses
+                let status = 'PENDENTE'; // Status padrão
+                
+                if (statusText) {
+                    const statusLower = statusText.toLowerCase();
+                    if (statusLower.includes('pg')) {
+                        status = 'PG';
+                    } else if (statusLower.includes('recalculado')) {
+                        status = 'RECALCULADO';
+                    }
+                }
+                
+                matches.push({
+                    name: paymentName,
+                    original: `${paymentName} - R$ ${valueStr}${match[3] ? ' ' + match[3] : ''}`,
+                    value: numericValue,
+                    formattedValue: `R$ ${valueStr}`,
+                    status: status,
+                    statusText: statusText
+                });
+            }
+            
+            // Fallback: se não encontrar o padrão com "-", usar o método antigo
+            if (matches.length === 0) {
+                const moneyRegex = /R\$\s*([\d.]+,\d{2})/gi;
+                const moneyMatches = text.match(moneyRegex) || [];
+                
+                moneyMatches.forEach(match => {
+                    const valueStr = match.replace(/R\$\s*/, '');
+                    const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
+                    
+                    matches.push({
+                        name: 'Pagamento',
+                        original: match,
+                        value: numericValue,
+                        formattedValue: match,
+                        status: 'PENDENTE',
+                        statusText: ''
+                    });
+                });
+            }
+            
+            return matches;
+        }
+
+        function calculateEventTotal(event) {
+            const description = event.description || '';
+            const summary = event.summary || '';
+            const fullText = `${summary} ${description}`;
+            
+            const payments = extractPaymentInfo(fullText);
+            
+            // Só contar PG e PENDENTE para o total
+            const countablePayments = payments.filter(p => p.status === 'PG' || p.status === 'PENDENTE');
+            const total = countablePayments.reduce((sum, item) => sum + item.value, 0);
+            
+            return {
+                total: total,
+                payments: payments,
+                countablePayments: countablePayments,
+                count: payments.length,
+                countableCount: countablePayments.length
+            };
+        }
+
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        function calculateDayTotal(date) {
+            const eventsForDay = getEventsForDay(date);
+            let dayTotal = 0;
+            
+            eventsForDay.forEach(event => {
+                const eventCalc = calculateEventTotal(event);
+                dayTotal += eventCalc.total; // Já considera apenas PG e PENDENTE
+            });
+            
+            return dayTotal;
+        }
+
+        // =================================================================
+        // ✅ CÁLCULOS MENSAIS COM MONTANTES POR STATUS
+        // =================================================================
+        function calculateMonthlyTotals() {
+            const currentMonth = currentDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+            
+            let monthlyTotal = 0;
+            let totalEvents = 0;
+            let totalPayments = 0;
+            
+            // ✅ NOVO: Contadores e montantes por status
+            let totalPG = 0;
+            let totalPendente = 0;
+            let totalRecalculado = 0;
+            let amountPG = 0;
+            let amountPendente = 0;
+            let amountRecalculado = 0;
+            
+            const paymentsList = [];
+            
+            filteredEvents.forEach(event => {
+                const eventDate = parseEventDate(event);
+                
+                if (eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear) {
+                    const eventCalc = calculateEventTotal(event);
+                    monthlyTotal += eventCalc.total; // Já considera apenas PG e PENDENTE
+                    totalEvents++;
+                    totalPayments += eventCalc.count;
+                    
+                    // Contar por status e somar montantes
+                    eventCalc.payments.forEach(payment => {
+                        if (payment.status === 'PG') {
+                            totalPG++;
+                            amountPG += payment.value;
+                        } else if (payment.status === 'PENDENTE') {
+                            totalPendente++;
+                            amountPendente += payment.value;
+                        } else if (payment.status === 'RECALCULADO') {
+                            totalRecalculado++;
+                            amountRecalculado += payment.value;
+                        }
+                        
+                        // Adicionar pagamentos à lista
+                        paymentsList.push({
+                            ...payment,
+                            eventTitle: event.summary || 'Sem título',
+                            eventDate: eventDate,
+                            eventType: getEventType(event),
+                            eventId: event.id
+                        });
+                    });
+                }
+            });
+            
+            // ✅ NOVO: Ordenar pagamentos por data (mais recente primeiro)
+            paymentsList.sort((a, b) => b.eventDate - a.eventDate);
+            
+            return {
+                total: monthlyTotal,
+                events: totalEvents,
+                payments: totalPayments,
+                totalPG: totalPG,
+                totalPendente: totalPendente,
+                totalRecalculado: totalRecalculado,
+                amountPG: amountPG,
+                amountPendente: amountPendente,
+                amountRecalculado: amountRecalculado,
+                paymentsList: paymentsList
+            };
+        }
+
+        function updateMonthlySummary() {
+            const monthlyData = calculateMonthlyTotals();
+            
+            // Atualizar total mensal
+            const monthlyTotalElement = document.getElementById('monthlyTotal');
+            if (monthlyTotalElement) {
+                monthlyTotalElement.textContent = formatCurrency(monthlyData.total);
+            }
+            
+            // Atualizar estatísticas gerais
+            const totalEventsElement = document.getElementById('totalEvents');
+            const totalPaymentsElement = document.getElementById('totalPayments');
+            const avgPaymentElement = document.getElementById('avgPayment');
+            
+            if (totalEventsElement) {
+                totalEventsElement.textContent = monthlyData.events;
+            }
+            
+            if (totalPaymentsElement) {
+                totalPaymentsElement.textContent = monthlyData.payments;
+            }
+            
+                if (avgPaymentElement) {
+                    // ✅ NOVO: Calcular valor médio por dia do mês
+                    const currentMonth = currentDate.getMonth();
+                    const currentYear = currentDate.getFullYear();
+                    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                    const avgValue = monthlyData.total > 0 ? monthlyData.total / daysInMonth : 0;
+                    avgPaymentElement.textContent = formatCurrency(avgValue);
+                }
+
+            
+            // ✅ NOVO: Atualizar estatísticas por status com montantes
+            const totalPGElement = document.getElementById('totalPG');
+            const totalPendenteElement = document.getElementById('totalPendente');
+            const totalRecalculadoElement = document.getElementById('totalRecalculado');
+            const amountPGElement = document.getElementById('amountPG');
+            const amountPendenteElement = document.getElementById('amountPendente');
+            const amountRecalculadoElement = document.getElementById('amountRecalculado');
+            
+            if (totalPGElement) {
+                totalPGElement.textContent = monthlyData.totalPG;
+            }
+            
+            if (totalPendenteElement) {
+                totalPendenteElement.textContent = monthlyData.totalPendente;
+            }
+            
+            if (totalRecalculadoElement) {
+                totalRecalculadoElement.textContent = monthlyData.totalRecalculado;
+            }
+            
+            if (amountPGElement) {
+                amountPGElement.textContent = formatCurrency(monthlyData.amountPG);
+            }
+            
+            if (amountPendenteElement) {
+                amountPendenteElement.textContent = formatCurrency(monthlyData.amountPendente);
+            }
+            
+            if (amountRecalculadoElement) {
+                amountRecalculadoElement.textContent = formatCurrency(monthlyData.amountRecalculado);
+            }
+            
+            // ✅ NOVO: Atualizar lista de pagamentos com filtros
+            allPaymentsList = monthlyData.paymentsList;
+            filteredPaymentsList = [...allPaymentsList];
+            updatePaymentsList();
+        }
+
+        // =================================================================
+        // ✅ NOVO: SISTEMA DE FILTROS DE PAGAMENTOS
+        // =================================================================
+        function initializePaymentFilters() {
+            const nameFilter = document.getElementById('nameFilter');
+            const dateFilter = document.getElementById('dateFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const clearFiltersBtn = document.getElementById('clearFilters');
+            
+            if (nameFilter) {
+                nameFilter.addEventListener('input', applyFilters);
+            }
+            
+            if (dateFilter) {
+                dateFilter.addEventListener('change', applyFilters);
+            }
+            
+            if (statusFilter) {
+                statusFilter.addEventListener('change', applyFilters);
+            }
+            
+            if (clearFiltersBtn) {
+                clearFiltersBtn.addEventListener('click', clearFilters);
+            }
+        }
+
+        function applyFilters() {
+            const nameFilter = document.getElementById('nameFilter')?.value.toLowerCase() || '';
+            const dateFilter = document.getElementById('dateFilter')?.value || '';
+            const statusFilter = document.getElementById('statusFilter')?.value || '';
+            
+            filteredPaymentsList = allPaymentsList.filter(payment => {
+                // Filtro por nome
+                const nameMatch = !nameFilter || 
+                    payment.name.toLowerCase().includes(nameFilter) ||
+                    payment.eventTitle.toLowerCase().includes(nameFilter);
+                
+                // Filtro por data
+                const dateMatch = !dateFilter || 
+                    payment.eventDate.toISOString().split('T')[0] === dateFilter;
+                
+                // Filtro por status
+                const statusMatch = !statusFilter || 
+                    payment.status === statusFilter;
+                
+                return nameMatch && dateMatch && statusMatch;
+            });
+            
+            updatePaymentsList();
+        }
+
+        function clearFilters() {
+            const nameFilter = document.getElementById('nameFilter');
+            const dateFilter = document.getElementById('dateFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            
+            if (nameFilter) nameFilter.value = '';
+            if (dateFilter) dateFilter.value = '';
+            if (statusFilter) statusFilter.value = '';
+            
+            filteredPaymentsList = [...allPaymentsList];
+            updatePaymentsList();
+        }
+
+        function updatePaymentsList() {
+            const paymentsListElement = document.getElementById('paymentsList');
+            if (!paymentsListElement) return;
+            
+            if (filteredPaymentsList.length === 0) {
+                paymentsListElement.innerHTML = `
+                    <div class="no-payments">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhum pagamento encontrado</p>
+                        ${allPaymentsList.length > 0 ? '<p style="font-size: 0.9rem;">Tente ajustar os filtros</p>' : ''}
+                    </div>
+                `;
+                return;
+            }
+            
+            paymentsListElement.innerHTML = filteredPaymentsList.map(payment => `
+                <div class="payment-item" onclick="showPaymentEvent('${payment.eventId}')">
+                    <div class="payment-header">
+                        <div class="payment-name">${payment.name}</div>
+                        <div class="payment-value">${payment.formattedValue}</div>
+                    </div>
+                    <div class="payment-details">
+                        <div class="payment-date">
+                            <i class="fas fa-calendar"></i>
+                            ${payment.eventDate.toLocaleDateString('pt-BR')}
+                        </div>
+                        <div class="payment-status ${payment.status.toLowerCase()}">
+                            <i class="fas fa-tag"></i>
+                            ${payment.status}
+                        </div>
+                        <div style="color: rgba(255, 255, 255, 0.6);">
+                            ${payment.eventTitle}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function showPaymentEvent(eventId) {
+            const event = filteredEvents.find(e => e.id === eventId);
+            if (event) {
+                showEventDetails(event);
+            }
+        }
+
+        // =================================================================
+        // LÓGICA DE CORES BASEADA EM STATUS E DATA
+        // =================================================================
+        function getEventColorClass(event) {
+            const eventCalc = calculateEventTotal(event);
+            const eventDate = parseEventDate(event);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            eventDate.setHours(0, 0, 0, 0);
+            
+            // Verificar se todos os pagamentos estão com PG ou RECALCULADO
+            const allCompleted = eventCalc.payments.length > 0 && 
+                eventCalc.payments.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
+            
+            if (allCompleted) {
+                return 'completed'; // Verde
+            } else if (eventDate < today) {
+                return 'overdue'; // Vermelho (data anterior)
+            } else {
+                return 'upcoming'; // Azul (data posterior)
+            }
+        }
+
+        // =================================================================
+        // CORREÇÃO DE FUSO HORÁRIO - FUNÇÃO PRINCIPAL
+        // =================================================================
+        function parseEventDate(event) {
+            let eventDate;
+            
+            if (event.start.date) {
+                // Evento de dia inteiro - usar apenas a data sem conversão de fuso
+                eventDate = new Date(event.start.date + 'T00:00:00');
+            } else if (event.start.dateTime) {
+                // Evento com horário específico - converter para data local
+                eventDate = new Date(event.start.dateTime);
+            } else {
+                // Fallback
+                eventDate = new Date();
+            }
+            
+            return eventDate;
+        }
+
+        function getDateString(date) {
+            // Retorna string no formato YYYY-MM-DD para comparação
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+
+        function getCalendarDateString(date) {
+            // Para datas do calendário, usar a data local sem conversão
+            return getDateString(date);
+        }
+
+        // =================================================================
+        // PERSISTÊNCIA DE LOGIN
+        // =================================================================
+        function saveConnectionState() {
+            try {
+                const connectionData = {
+                    connected: isGoogleConnected,
+                    timestamp: Date.now(),
+                    clientId: CLIENT_ID
+                };
+                localStorage.setItem('google_calendar_connection', JSON.stringify(connectionData));
+                sessionStorage.setItem('google_calendar_session', 'active');
+                console.log('✅ Estado de conexão salvo');
+            } catch (error) {
+                console.error('❌ Erro ao salvar estado:', error);
+            }
+        }
+
+        function getConnectionState() {
+            try {
+                const connectionData = localStorage.getItem('google_calendar_connection');
+                const sessionData = sessionStorage.getItem('google_calendar_session');
+                
+                if (!connectionData || !sessionData) return null;
+                
+                const data = JSON.parse(connectionData);
+                
+                // Verificar se não passou muito tempo (24 horas)
+                const timeElapsed = Date.now() - data.timestamp;
+                if (timeElapsed > 24 * 60 * 60 * 1000) {
+                    clearConnectionState();
+                    return null;
+                }
+                
+                return data;
+            } catch (error) {
+                console.error('❌ Erro ao recuperar estado:', error);
+                return null;
+            }
+        }
+
+        function clearConnectionState() {
+            try {
+                localStorage.removeItem('google_calendar_connection');
+                sessionStorage.removeItem('google_calendar_session');
+                console.log('✅ Estado de conexão removido');
+            } catch (error) {
+                console.error('❌ Erro ao remover estado:', error);
+            }
+        }
+
+        async function tryRestoreSession() {
+            const savedState = getConnectionState();
+            if (savedState && savedState.connected && gapiInited && gisInited) {
+                try {
+                    // Tentar uma nova autenticação silenciosa
+                    tokenClient.requestAccessToken({ prompt: '' });
+                } catch (error) {
+                    console.log('❌ Não foi possível restaurar sessão automaticamente');
+                    clearConnectionState();
+                }
+            }
+        }
+
+        // =================================================================
+        // MODAL FUNCTIONS
+        // =================================================================
+        function closeEventModal() {
+            document.getElementById('eventModal').style.display = 'none';
+        }
+
+        // =================================================================
+        // MESSAGE SYSTEM
+        // =================================================================
+        function showMessage(message, type = 'info') {
+            const container = document.getElementById('messagesContainer');
+            if (!container) return;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            
+            const icon = getMessageIcon(type);
+            messageDiv.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
+            
+            // Remove mensagem anterior se existir
+            const existingMessage = container.querySelector('.message');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+            
+            container.appendChild(messageDiv);
+            
+            // Auto-remove após 5 segundos
+            setTimeout(() => {
+                messageDiv.remove();
+            }, 5000);
+        }
+
+        function getMessageIcon(type) {
+            switch (type) {
+                case 'success': return 'fa-check-circle';
+                case 'error': return 'fa-exclamation-triangle';
+                case 'warning': return 'fa-exclamation-circle';
+                default: return 'fa-info-circle';
+            }
+        }
+
+        // =================================================================
+        // GOOGLE AUTHENTICATION
+        // =================================================================
+        function handleAuthClick() {
+            if (!gapiInited || !gisInited) {
+                showMessage('APIs do Google ainda não foram carregadas. Aguarde...', 'error');
+                return;
+            }
+
+            try {
+                tokenClient.requestAccessToken({ prompt: 'consent' });
+            } catch (error) {
+                console.error('❌ Erro na autenticação:', error);
+                showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
+            }
+        }
+
+        async function handleTokenResponse(resp) {
+            if (resp.error) {
+                console.error('❌ Erro de autenticação:', resp.error);
+                showMessage(`Erro de autenticação: ${resp.error}`, 'error');
+                updateConnectionStatus(false);
+                return;
+            }
+
+            try {
+                gapi.client.setToken(resp);
+                isGoogleConnected = true;
+                
+                // Salvar estado de conexão
+                saveConnectionState();
+                
+                console.log('✅ Conectado com o Google Calendar!');
+                updateConnectionStatus(true);
+                showMessage('Conectado com sucesso ao Google Calendar!', 'success');
+                
+                // Carregar eventos filtrados
+                await loadFilteredEvents();
+            } catch (error) {
+                console.error('❌ Erro ao processar token:', error);
+                showMessage('Erro ao processar autenticação', 'error');
+                updateConnectionStatus(false);
+            }
+        }
+
+        function handleSignoutClick() {
+            try {
+                const token = gapi.client.getToken();
+                if (token !== null) {
+                    google.accounts.oauth2.revoke(token.access_token);
+                    gapi.client.setToken('');
+                    isGoogleConnected = false;
+                    
+                    // Limpar estado de conexão
+                    clearConnectionState();
+                    
+                    console.log('✅ Desconectado do Google Calendar');
+                    updateConnectionStatus(false);
+                    document.getElementById('calendarSection').style.display = 'none';
+                    document.getElementById('filterSection').style.display = 'none';
+                    document.getElementById('monthlySummarySection').style.display = 'none';
+                    document.getElementById('paymentsListSection').style.display = 'none';
+                    showMessage('Desconectado do Google Calendar', 'success');
+                }
+            } catch (error) {
+                console.error('❌ Erro ao desconectar:', error);
+                showMessage('Erro ao desconectar', 'error');
+            }
+        }
+
+        // =================================================================
+        // CONNECTION STATUS
+        // =================================================================
+        function updateConnectionStatus(connected) {
+            const connectionStatus = document.getElementById('connectionStatus');
+            const authorizeButton = document.getElementById('authorizeButton');
+            const signoutButton = document.getElementById('signoutButton');
+            const syncButton = document.getElementById('syncButton');
+            const calendarSection = document.getElementById('calendarSection');
+            const filterSection = document.getElementById('filterSection');
+            const monthlySummarySection = document.getElementById('monthlySummarySection');
+            const paymentsListSection = document.getElementById('paymentsListSection');
+            
+            if (connected) {
+                connectionStatus.className = 'status-indicator status-connected';
+                connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Calendar</span>';
+                authorizeButton.style.display = 'none';
+                signoutButton.style.display = 'block';
+                syncButton.disabled = false;
+                calendarSection.style.display = 'block';
+                filterSection.style.display = 'block';
+                monthlySummarySection.style.display = 'block';
+                paymentsListSection.style.display = 'block';
+            } else {
+                connectionStatus.className = 'status-indicator status-disconnected';
+                connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Desconectado do Google Calendar</span>';
+                authorizeButton.style.display = 'block';
+                signoutButton.style.display = 'none';
+                syncButton.disabled = true;
+                calendarSection.style.display = 'none';
+                filterSection.style.display = 'none';
+                monthlySummarySection.style.display = 'none';
+                paymentsListSection.style.display = 'none';
+            }
+        }
+
+        // =================================================================
+        // EVENT FILTERING
+        // =================================================================
+        function filterEvents(events) {
+            const keywords = ['pagamento', 'pagamentos', 'hvc'];
+            
+            return events.filter(event => {
+                const title = (event.summary || '').toLowerCase();
+                const description = (event.description || '').toLowerCase();
+                
+                return keywords.some(keyword => 
+                    title.includes(keyword) || description.includes(keyword)
+                );
+            });
+        }
+
+        function getEventType(event) {
+            const title = (event.summary || '').toLowerCase();
+            
+            if (title.includes('pagamento')) {
+                return 'pagamento';
+            } else if (title.includes('hvc')) {
+                return 'hvc';
+            }
+            return 'default';
+        }
+
+        // =================================================================
+        // GOOGLE CALENDAR OPERATIONS
+        // =================================================================
+        async function loadFilteredEvents() {
+            try {
+                const now = new Date();
+                const startOfYear = new Date(now.getFullYear(), 0, 1);
+                const endOfYear = new Date(now.getFullYear(), 11, 31);
+
+                const response = await gapi.client.calendar.events.list({
+                    calendarId: 'primary',
+                    timeMin: startOfYear.toISOString(),
+                    timeMax: endOfYear.toISOString(),
+                    showDeleted: false,
+                    singleEvents: true,
+                    maxResults: 250,
+                    orderBy: 'startTime'
+                });
+
+                const allEvents = response.result.items || [];
+                filteredEvents = filterEvents(allEvents);
+                
+                console.log(`✅ Eventos carregados: ${allEvents.length} total, ${filteredEvents.length} filtrados`);
+                
+                updateFilterStats(allEvents.length, filteredEvents.length);
+                updateMonthlySummary(); // Atualizar resumo mensal
+                renderCalendar();
+                
+                showMessage(`${filteredEvents.length} eventos de pagamento/HVC encontrados`, 'success');
+            } catch (error) {
+                console.error('❌ Erro ao carregar eventos:', error);
+                showMessage('Erro ao carregar eventos', 'error');
+                
+                // Se erro de autenticação, limpar estado
+                if (error.status === 401 || error.status === 403) {
+                    clearConnectionState();
+                    isGoogleConnected = false;
+                    updateConnectionStatus(false);
+                }
+            }
+        }
+
+        function updateFilterStats(total, filtered) {
+            const statsElement = document.getElementById('filterStats');
+            if (statsElement) {
+                statsElement.innerHTML = `
+                    Total de eventos: ${total} | 
+                    Eventos filtrados: ${filtered} | 
+                    Palavras-chave: "PAGAMENTO", "PAGAMENTOS", "HVC"
+                `;
+            }
+        }
+
+        // =================================================================
+        // CALENDAR RENDERING
+        // =================================================================
+        function renderCalendar() {
+            const calendarGrid = document.getElementById('calendarGrid');
+            const calendarTitle = document.getElementById('calendarTitle');
+            
+            if (!calendarGrid || !calendarTitle) return;
+            
+            // Update title
+            const monthNames = [
+                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            calendarTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            
+            // Clear grid
+            calendarGrid.innerHTML = '';
+            
+            // Add day headers - COMEÇANDO NA SEGUNDA-FEIRA
+            const dayHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+            dayHeaders.forEach(day => {
+                const headerDiv = document.createElement('div');
+                headerDiv.className = 'calendar-day-header';
+                headerDiv.textContent = day;
+                calendarGrid.appendChild(headerDiv);
+            });
+            
+            // Get first day of month and number of days
+            const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+            const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+            const startDate = new Date(firstDay);
+            
+            // Ajustar para começar na segunda-feira (1 = segunda, 0 = domingo)
+            const dayOfWeek = firstDay.getDay();
+            const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+            startDate.setDate(startDate.getDate() - daysToSubtract);
+            
+            // Generate calendar days
+            const today = new Date();
+            const todayString = getCalendarDateString(today);
+            
+            for (let i = 0; i < 42; i++) {
+                const cellDate = new Date(startDate);
+                cellDate.setDate(startDate.getDate() + i);
+                
+                const dayDiv = document.createElement('div');
+                dayDiv.className = 'calendar-day';
+                
+                if (cellDate.getMonth() !== currentDate.getMonth()) {
+                    dayDiv.classList.add('other-month');
+                }
+                
+                // CORREÇÃO: Comparação precisa para o dia de hoje usando strings de data
+                if (getCalendarDateString(cellDate) === todayString) {
+                    dayDiv.classList.add('today');
+                }
+                
+                // Day number
+                const dayNumber = document.createElement('div');
+                dayNumber.className = 'day-number';
+                dayNumber.textContent = cellDate.getDate();
+                dayDiv.appendChild(dayNumber);
+                
+                // Total do dia (apenas PG e PENDENTE)
+                const dayTotal = calculateDayTotal(cellDate);
+                if (dayTotal > 0) {
+                    const totalDiv = document.createElement('div');
+                    totalDiv.className = 'day-total';
+                    totalDiv.textContent = formatCurrency(dayTotal);
+                    dayDiv.appendChild(totalDiv);
+                }
+                
+                // Events for this day
+                const dayEvents = document.createElement('div');
+                dayEvents.className = 'day-events';
+                
+                const eventsForDay = getEventsForDay(cellDate);
+                eventsForDay.forEach(event => {
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = `event-item ${getEventColorClass(event)}`;
+                    eventDiv.textContent = event.summary || 'Sem título';
+                    eventDiv.onclick = () => showEventDetails(event);
+                    dayEvents.appendChild(eventDiv);
+                });
+                
+                dayDiv.appendChild(dayEvents);
+                calendarGrid.appendChild(dayDiv);
+            }
+            
+            // Atualizar resumo mensal após renderizar calendário
+            updateMonthlySummary();
+        }
+
+        // CORREÇÃO: Função principal para comparar datas dos eventos
+        function getEventsForDay(date) {
+            const targetDateString = getCalendarDateString(date);
+            
+            return filteredEvents.filter(event => {
+                const eventDate = parseEventDate(event);
+                const eventDateString = getCalendarDateString(eventDate);
+                
+                return eventDateString === targetDateString;
+            });
+        }
+
+        async function showEventDetails(event) {
+            const modal = document.getElementById('eventModal');
+            const title = document.getElementById('eventModalTitle');
+            const body = document.getElementById('eventModalBody');
+            
+            if (!modal || !title || !body) return;
+            
+            title.textContent = event.summary || 'Sem título';
+            
+            const eventDate = parseEventDate(event);
+            const start = eventDate;
+            const end = event.end.dateTime ? new Date(event.end.dateTime) : eventDate;
+            
+            // Calcular valores do evento
+            const eventCalc = calculateEventTotal(event);
+            
+            let detailsHTML = `
+                <p><strong><i class="fas fa-calendar"></i> Data:</strong> ${start.toLocaleDateString('pt-BR')}</p>
+                <p><strong><i class="fas fa-clock"></i> Horário:</strong> ${event.start.dateTime ? 
+                    `${start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 
+                    'Dia inteiro'}</p>
+                                <div id="descriptionSection">
+                                    <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                                    ${event.description ? `
+                                        <div id="descriptionDisplay" class="description-display">${event.description}</div>
+                                    ` : `
+                                        <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                                    `}
+                                    <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
+                                        <i class="fas fa-edit"></i> ${event.description ? 'Editar Descrição' : 'Adicionar Descrição'}
+                                    </button>
+                                </div>
+
+                ${event.location ? `<p><strong><i class="fas fa-map-marker-alt"></i> Local:</strong> ${event.location}</p>` : ''}
+                <p><strong><i class="fas fa-tag"></i> Tipo:</strong> ${getEventType(event).toUpperCase()}</p>
+            `;
+            
+            // Seção de valores encontrados
+            if (eventCalc.count > 0) {
+                detailsHTML += `
+                    <div class="event-total-section">
+                        <div class="event-total-title">
+                            <i class="fas fa-calculator"></i> TOTAL CONTABILIZADO (PG + PENDENTE)
+                        </div>
+                        <div class="event-total-value">
+                            ${formatCurrency(eventCalc.total)}
+                        </div>
+                    </div>
+                `;
+                
+                if (eventCalc.payments.length > 0) {
+                    detailsHTML += `
+                        <div class="event-values-list">
+                            <h4><i class="fas fa-list"></i> Pagamentos Encontrados (${eventCalc.count}):</h4>
+                    `;
+                    eventCalc.payments.forEach((payment, index) => {
+                        detailsHTML += `
+                            <div class="value-item">
+                                <div>
+                                    <strong>${payment.name}</strong> - ${payment.formattedValue}
+                                </div>
+                                <div class="value-item-status ${payment.status.toLowerCase()}">
+                                    ${payment.status}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    detailsHTML += '</div>';
+                }
+            }
+            
+            // Buscar anexos do evento
+            try {
+                if (event.attachments && event.attachments.length > 0) {
+                    detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
+                    event.attachments.forEach(attachment => {
+                        detailsHTML += `
+                            <a href="${attachment.fileUrl}" target="_blank" class="attachment-link">
+                                <i class="fas fa-file"></i> ${attachment.title || 'Anexo'}
+                            </a>
+                        `;
+                    });
+                    detailsHTML += '</div>';
+                } else {
+                    // Tentar buscar anexos via API se não estiverem no evento
+                    try {
+                        const fullEvent = await gapi.client.calendar.events.get({
+                            calendarId: 'primary',
+                            eventId: event.id
+                        });
+                        
+                        if (fullEvent.result.attachments && fullEvent.result.attachments.length > 0) {
+                            detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
+                            fullEvent.result.attachments.forEach(attachment => {
+                                detailsHTML += `
+                                    <a href="${attachment.fileUrl}" target="_blank" class="attachment-link">
+                                        <i class="fas fa-file"></i> ${attachment.title || 'Anexo'}
+                                    </a>
+                                `;
+                            });
+                            detailsHTML += '</div>';
+                        }
+                    } catch (attachmentError) {
+                        console.log('Não foi possível carregar anexos:', attachmentError);
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao processar anexos:', error);
+            }
+            
+            body.innerHTML = detailsHTML;
+            modal.style.display = 'block';
+        }
+
+        // =================================================================
+        // CALENDAR NAVIGATION
+        // =================================================================
+        function previousMonth() {
+            currentDate.setMonth(currentDate.getMonth() - 1);
+            renderCalendar();
+        }
+
+        function nextMonth() {
+            currentDate.setMonth(currentDate.getMonth() + 1);
+            renderCalendar();
+        }
+
+        function goToToday() {
+            currentDate = new Date();
+            renderCalendar();
+        }
+
+        async function handleSyncClick() {
+            if (!isGoogleConnected) {
+                showMessage('Conecte-se ao Google Calendar primeiro', 'error');
+                return;
+            }
+
+            const syncButton = document.getElementById('syncButton');
+            syncButton.innerHTML = '<div class="spinner"></div> Sincronizando...';
+            syncButton.disabled = true;
+
+            try {
+                await loadFilteredEvents();
+                showMessage('Sincronização concluída com sucesso!', 'success');
+            } catch (error) {
+                console.error('❌ Erro na sincronização:', error);
+                showMessage('Erro durante a sincronização', 'error');
+            } finally {
+                syncButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar';
+                syncButton.disabled = false;
+            }
+        }
+
+        // =================================================================
+        // WINDOW CLICK HANDLER
+        // =================================================================
+        window.onclick = function(event) {
+            const eventModal = document.getElementById('eventModal');
+            if (event.target === eventModal) {
+                eventModal.style.display = 'none';
+            }
+        }
+
+
+                    // =================================================================
+                    // ✅ NOVO: SISTEMA COMPLETO DE EDIÇÃO DE DESCRIÇÃO
+                    // =================================================================
+            
+                    /**
+                     * Inicia o modo de edição da descrição do evento
+                     * @param {string} eventId - ID do evento a ser editado
+                     */
+                    function startEditingDescription(eventId) {
+                        console.log('🔄 Iniciando edição da descrição para evento:', eventId);
+                        
+                        // Verificar se já está editando
+                        if (isEditingDescription) {
+                            showMessage('Já existe uma edição em andamento. Finalize a edição atual primeiro.', 'warning');
+                            return;
+                        }
+                        
+                        // Encontrar o evento
+                        const event = filteredEvents.find(e => e.id === eventId);
+                        if (!event) {
+                            console.error('❌ Evento não encontrado:', eventId);
+                            showMessage('Evento não encontrado', 'error');
+                            return;
+                        }
+                        
+                        // Configurar estado de edição
+                        currentEditingEvent = event;
+                        isEditingDescription = true;
+                        originalDescription = event.description || '';
+                        
+                        console.log('✅ Modo de edição ativado para:', event.summary);
+                        
+                        // Obter elemento da seção de descrição
+                        const descriptionSection = document.getElementById('descriptionSection');
+                        if (!descriptionSection) {
+                            console.error('❌ Elemento descriptionSection não encontrado');
+                            showMessage('Erro interno: elemento não encontrado', 'error');
+                            return;
+                        }
+                        
+                        // Gerar HTML do modo de edição
+                        descriptionSection.innerHTML = `
+                            <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                            <div class="edit-description-section">
+                                <textarea 
+                                    id="editDescriptionTextarea" 
+                                    class="edit-description-textarea" 
+                                    placeholder="Digite a descrição do evento...&#10;&#10;Dica: Você pode usar quebras de linha e formatação de texto."
+                                >${originalDescription}</textarea>
+                                
+                                <div class="edit-hint">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Pressione Ctrl+Enter para salvar rapidamente
+                                </div>
+                                
+                                <div class="edit-buttons">
+                                    <button onclick="saveEventDescription()" class="btn-edit btn-save" id="saveDescriptionBtn">
+                                        <i class="fas fa-save"></i> Salvar
+                                    </button>
+                                    <button onclick="cancelEditingDescription()" class="btn-edit btn-cancel" id="cancelDescriptionBtn">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                </div>
+                                
+                                <div id="editLoadingIndicator" class="edit-loading" style="display: none;">
+                                    <div class="spinner"></div>
+                                    <span>Salvando alterações no Google Calendar...</span>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Focar no textarea e posicionar cursor no final
+                        setTimeout(() => {
+                            const textarea = document.getElementById('editDescriptionTextarea');
+                            if (textarea) {
+                                textarea.focus();
+                                // Posicionar cursor no final do texto
+                                const textLength = textarea.value.length;
+                                textarea.setSelectionRange(textLength, textLength);
+                                
+                                console.log('✅ Textarea focado e cursor posicionado');
+                            }
+                        }, 100);
+                    }
+            
+                    /**
+                     * Cancela a edição da descrição e restaura o estado original
+                     */
+                    function cancelEditingDescription() {
+                        console.log('🔄 Cancelando edição da descrição');
+                        
+                        if (!currentEditingEvent) {
+                            console.warn('⚠️ Nenhum evento sendo editado');
+                            return;
+                        }
+                        
+                        // Resetar estado
+                        const event = currentEditingEvent;
+                        isEditingDescription = false;
+                        currentEditingEvent = null;
+                        originalDescription = '';
+                        
+                        // Restaurar visualização original
+                        const descriptionSection = document.getElementById('descriptionSection');
+                        if (!descriptionSection) {
+                            console.error('❌ Elemento descriptionSection não encontrado');
+                            return;
+                        }
+                        
+                        descriptionSection.innerHTML = `
+                            <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                            ${event.description ? `
+                                <div id="descriptionDisplay" class="description-display">${event.description}</div>
+                            ` : `
+                                <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                            `}
+                            <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
+                                <i class="fas fa-edit"></i> ${event.description ? 'Editar Descrição' : 'Adicionar Descrição'}
+                            </button>
+                        `;
+                        
+                        console.log('✅ Edição cancelada e interface restaurada');
+                    }
+            
+                    /**
+                     * Salva a descrição editada no Google Calendar
+                     */
+                    async function saveEventDescription() {
+                        console.log('🔄 Iniciando salvamento da descrição');
+                        
+                        // Validações iniciais
+                        if (!currentEditingEvent || !isEditingDescription) {
+                            console.error('❌ Estado de edição inválido');
+                            showMessage('Erro interno: estado de edição inválido', 'error');
+                            return;
+                        }
+                        
+                        // Obter elementos
+                        const textarea = document.getElementById('editDescriptionTextarea');
+                        const loadingIndicator = document.getElementById('editLoadingIndicator');
+                        const saveBtn = document.getElementById('saveDescriptionBtn');
+                        const cancelBtn = document.getElementById('cancelDescriptionBtn');
+                        
+                        if (!textarea) {
+                            console.error('❌ Textarea não encontrado');
+                            showMessage('Erro interno: campo de texto não encontrado', 'error');
+                            return;
+                        }
+                        
+                        // Obter nova descrição
+                        const newDescription = textarea.value.trim();
+                        const eventId = currentEditingEvent.id;
+                        
+                        console.log('📝 Nova descrição:', newDescription.substring(0, 100) + (newDescription.length > 100 ? '...' : ''));
+                        
+                        // Verificar se houve mudança
+                        if (newDescription === originalDescription) {
+                            console.log('ℹ️ Descrição não foi alterada');
+                            showMessage('Nenhuma alteração foi feita', 'warning');
+                            cancelEditingDescription();
+                            return;
+                        }
+                        
+                        // Mostrar loading e desabilitar botões
+                        if (loadingIndicator) loadingIndicator.style.display = 'flex';
+                        if (saveBtn) saveBtn.disabled = true;
+                        if (cancelBtn) cancelBtn.disabled = true;
+                        
+                        try {
+                            console.log('🔄 Enviando requisição para Google Calendar API...');
+                            
+                            // Chamar API do Google Calendar
+                            const response = await gapi.client.calendar.events.patch({
+                                calendarId: 'primary',
+                                eventId: eventId,
+                                resource: {
+                                    description: newDescription
+                                }
+                            });
+                            
+                            console.log('📡 Resposta da API:', response.status);
+                            
+                            if (response.status === 200) {
+                                console.log('✅ Descrição salva com sucesso no Google Calendar');
+                                
+                                // Atualizar evento local
+                                currentEditingEvent.description = newDescription;
+                                
+                                // Atualizar na lista de eventos filtrados
+                                const eventIndex = filteredEvents.findIndex(e => e.id === eventId);
+                                if (eventIndex !== -1) {
+                                    filteredEvents[eventIndex].description = newDescription;
+                                    console.log('✅ Evento atualizado na lista local');
+                                }
+                                
+                                // Resetar estado de edição
+                                const event = currentEditingEvent;
+                                isEditingDescription = false;
+                                currentEditingEvent = null;
+                                originalDescription = '';
+                                
+                                // Restaurar visualização com nova descrição
+                                const descriptionSection = document.getElementById('descriptionSection');
+                                if (descriptionSection) {
+                                    descriptionSection.innerHTML = `
+                                        <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                                        ${newDescription ? `
+                                            <div id="descriptionDisplay" class="description-display">${newDescription}</div>
+                                        ` : `
+                                            <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                                        `}
+                                        <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
+                                            <i class="fas fa-edit"></i> ${newDescription ? 'Editar Descrição' : 'Adicionar Descrição'}
+                                        </button>
+                                    `;
+                                }
+                                
+                                // Atualizar resumo mensal (caso a descrição tenha valores)
+                                console.log('🔄 Atualizando resumo mensal...');
+                                updateMonthlySummary();
+                                
+                                // Renderizar calendário novamente
+                                console.log('🔄 Renderizando calendário...');
+                                renderCalendar();
+                                
+                                showMessage('Descrição atualizada com sucesso!', 'success');
+                                
+                            } else {
+                                throw new Error(`Resposta inesperada da API: ${response.status}`);
+                            }
+                            
+                        } catch (error) {
+                            console.error('❌ Erro ao salvar descrição:', error);
+                            
+                            let errorMessage = 'Erro ao salvar descrição. ';
+                            
+                            if (error.status === 401) {
+                                errorMessage += 'Sessão expirada. Reconecte-se ao Google Calendar.';
+                            } else if (error.status === 403) {
+                                errorMessage += 'Sem permissão para editar este evento.';
+                            } else if (error.status === 404) {
+                                errorMessage += 'Evento não encontrado no Google Calendar.';
+                            } else {
+                                errorMessage += 'Tente novamente em alguns instantes.';
+                            }
+                            
+                            showMessage(errorMessage, 'error');
+                            
+                            // Reabilitar botões em caso de erro
+                            if (saveBtn) saveBtn.disabled = false;
+                            if (cancelBtn) cancelBtn.disabled = false;
+                            
+                        } finally {
+                            // Esconder loading
+                            if (loadingIndicator) {
+                                loadingIndicator.style.display = 'none';
+                            }
+                            
+                            console.log('🔄 Processo de salvamento finalizado');
+                        }
+                    }
+            
+                    /**
+                     * Manipulador de eventos de teclado para atalhos
+                     */
+                    function handleEditingKeyboard(event) {
+                        if (!isEditingDescription) return;
+                        
+                        // Ctrl+Enter para salvar
+                        if (event.ctrlKey && event.key === 'Enter') {
+                            event.preventDefault();
+                            console.log('⌨️ Atalho Ctrl+Enter detectado');
+                            saveEventDescription();
+                            return;
+                        }
+                        
+                        // Escape para cancelar
+                        if (event.key === 'Escape') {
+                            event.preventDefault();
+                            console.log('⌨️ Atalho Escape detectado');
+                            cancelEditingDescription();
+                            return;
+                        }
+                    }
+            
+                    // Adicionar listener para atalhos de teclado
+                    document.addEventListener('keydown', handleEditingKeyboard);
+
+
+        
+        // =================================================================
+        // INICIALIZAÇÃO
+        // =================================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Sistema de Fluxo de Caixa HVC inicializado');
+            
+            // Inicializar estado de conexão
+            updateConnectionStatus(false);
+            
+            // Renderizar calendário inicial (vazio)
+            renderCalendar();
+            
+            // ✅ NOVO: Inicializar filtros de pagamentos
+            initializePaymentFilters();
+        });
+    </script>
+</head>
+
+<body>
+    <div id="main-content-fluxo-caixa-hvc">
+        <!-- Messages Container -->
+        <div id="messagesContainer"></div>
+
+        <!-- Header -->
+        <div class="hvc-container">
+            <h1 class="hvc-title">
+                <i class="fas fa-chart-line"></i>
+                Fluxo de Caixa HVC - Agenda e Pagamentos
+            </h1>
+        </div>
+
+        <!-- Google Calendar Integration -->
+        <div class="google-section">
+            <h2><i class="fab fa-google"></i> Google Calendar</h2>
+            
+            <!-- Connection Status -->
+            <div id="connectionStatus" class="status-indicator status-disconnected">
+                <i class="fas fa-times-circle"></i>
+                <span>Desconectado do Google Calendar</span>
+            </div>
+
+            <!-- Controls -->
+            <div class="google-controls">
+                <button id="authorizeButton" onclick="handleAuthClick()" class="btn btn-primary" style="display: none;">
+                    <i class="fas fa-sign-in-alt"></i> Conectar ao Google
+                </button>
+                <button id="signoutButton" onclick="handleSignoutClick()" class="btn btn-danger" style="display: none;">
+                    <i class="fas fa-sign-out-alt"></i> Desconectar
+                </button>
+                <button id="syncButton" onclick="handleSyncClick()" class="btn btn-secondary" disabled>
+                    <i class="fas fa-sync-alt"></i> Sincronizar
+                </button>
+            </div>
+        </div>
+
+        <!-- Filter Information -->
+        <div id="filterSection" class="filter-section" style="display: none;">
+            <div class="filter-info">
+                <i class="fas fa-filter"></i>
+                <span>Filtro Ativo: Eventos com palavras-chave relacionadas a pagamentos</span>
+            </div>
+            <div class="filter-stats" id="filterStats">
+                <!-- Stats will be populated here -->
+            </div>
+        </div>
+
+        <!-- Calendar View -->
+        <div id="calendarSection" class="calendar-section" style="display: none;">
+            <div class="calendar-header">
+                <div class="calendar-nav">
+                    <button onclick="previousMonth()">
+                        <i class="fas fa-chevron-left"></i> Anterior
+                    </button>
+                    <button onclick="goToToday()">
+                        <i class="fas fa-calendar-day"></i> Hoje
+                    </button>
+                    <button onclick="nextMonth()">
+                        Próximo <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+                <h3 id="calendarTitle" class="calendar-title">Carregando...</h3>
+            </div>
+            
+            <div id="calendarGrid" class="calendar-grid">
+                <!-- Calendar will be rendered here -->
+            </div>
+        </div>
+
+        <!-- ✅ NOVO: Resumo Mensal com Montantes -->
+        <div id="monthlySummarySection" class="monthly-summary" style="display: none;">
+            <h3><i class="fas fa-chart-pie"></i> Resumo do Mês</h3>
+            <div id="monthlyTotal" class="monthly-total">R$ 0,00</div>
+            
+            <div class="monthly-stats">
+                <div class="stat-item">
+                    <div id="totalEvents" class="stat-value">0</div>
+                    <div class="stat-label">Eventos</div>
+                </div>
+                <div class="stat-item">
+                    <div id="totalPayments" class="stat-value">0</div>
+                    <div class="stat-label">Pagamentos</div>
+                </div>
+                <div class="stat-item">
+                    <div id="avgPayment" class="stat-value">R$ 0,00</div>
+                    <div class="stat-label">Valor Médio</div>
+                </div>
+            </div>
+
+            <!-- ✅ NOVO: Estatísticas por Status com Montantes -->
+            <div class="status-stats">
+                <div class="status-stat-item pg">
+                    <div id="totalPG" class="status-stat-value">0</div>
+                    <div id="amountPG" class="status-stat-amount">R$ 0,00</div>
+                    <div class="status-stat-label">PG</div>
+                </div>
+                <div class="status-stat-item pendente">
+                    <div id="totalPendente" class="status-stat-value">0</div>
+                    <div id="amountPendente" class="status-stat-amount">R$ 0,00</div>
+                    <div class="status-stat-label">Pendente</div>
+                </div>
+                <div class="status-stat-item recalculado">
+                    <div id="totalRecalculado" class="status-stat-value">0</div>
+                    <div id="amountRecalculado" class="status-stat-amount">R$ 0,00</div>
+                    <div class="status-stat-label">Recalculado</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ✅ NOVO: Lista de Pagamentos com Filtros -->
+        <div id="paymentsListSection" class="payments-list-section" style="display: none;">
+            <h3><i class="fas fa-list-alt"></i> Lista de Pagamentos do Mês</h3>
+            
+            <!-- ✅ NOVO: Filtros -->
+            <div class="payments-filters">
+                <div class="filter-group">
+                    <label class="filter-label">Nome do Pagamento</label>
+                    <input type="text" id="nameFilter" class="filter-input" placeholder="Buscar por nome...">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Data</label>
+                    <input type="date" id="dateFilter" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Status</label>
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">Todos os status</option>
+                        <option value="PG">PG</option>
+                        <option value="PENDENTE">Pendente</option>
+                        <option value="RECALCULADO">Recalculado</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button id="clearFilters" class="clear-filters-btn">
+                        <i class="fas fa-times"></i> Limpar Filtros
+                    </button>
+                </div>
+            </div>
+            
+            <div id="paymentsList" class="payments-list">
+                <!-- Pagamentos serão listados aqui -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Event Details Modal -->
+    <div id="eventModal" class="event-modal">
+        <div class="event-modal-content">
+            <div class="modal-header">
+                <h2 id="eventModalTitle">Detalhes do Evento</h2>
+                <span class="close" onclick="closeEventModal()">&times;</span>
+            </div>
+            <div class="modal-body" id="eventModalBody">
+                <!-- Event details will be populated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script type="module" src="supabase.js"></script>
+    <script type="module" src="dashboard-hvc.js"></script>
+    <script type="module">
+        import { injectSidebar } from './sidebar.js';
+        injectSidebar("main-content-fluxo-caixa-hvc");
+    </script>
+    
+    <!-- Google APIs - Carregar DEPOIS das funções estarem definidas -->
+    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
+    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+</body>
+</html>
