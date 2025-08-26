@@ -1325,7 +1325,7 @@
 
     <script>
         // =================================================================
-        // ✅ CORRIGIDO: SISTEMA MULTI-CONTA COM FILTRO CORRIGIDO
+        // ✅ CORRIGIDO: FILTRO RESTRITIVO PARA APENAS PAGAMENTO/PAGAMENTOS/HVC
         // =================================================================
         
         // Configurações
@@ -1333,21 +1333,10 @@
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
 
-        // ✅ CORRIGIDO: Palavras-chave centralizadas para filtro consistente
-        const PAYMENT_KEYWORDS = [
-            'pagamento', 'pagamentos', 'pagar', 'vencimento', 'fatura', 'boleto', 'pix', 
-            'transferencia', 'deposito', 'saque', 'conta', 'banco', 'cartao',
-            'debito', 'credito', 'financeiro', 'dinheiro', 'valor', 'quantia',
-            'prestacao', 'parcela', 'mensalidade', 'anuidade', 'taxa',
-            'tarifa', 'multa', 'juros', 'desconto', 'promocao', 'oferta',
-            'compra', 'venda', 'negocio', 'contrato', 'acordo', 'deal',
-            'investimento', 'aplicacao', 'rendimento', 'lucro', 'prejuizo',
-            'receita', 'despesa', 'gasto', 'custo', 'orcamento', 'planejamento',
-            'R$', 'real', 'reais', 'centavo', 'centavos', '$', 'dolar', 'euro',
-            'hvc', 'cliente', 'fornecedor', 'parceiro', 'colaborador'
-        ];
+        // ✅ CORRIGIDO: Filtro RESTRITIVO - apenas as 3 palavras-chave específicas
+        const PAYMENT_KEYWORDS = ['pagamento', 'pagamentos', 'hvc'];
 
-        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com filtro unificado
+        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com filtro RESTRITIVO
         class AccountManager {
             constructor() {
                 this.accounts = new Map();
@@ -1398,20 +1387,34 @@
             updateAccountEvents(accountId, events) {
                 const account = this.accounts.get(accountId);
                 if (account) {
-                    // ✅ CORRIGIDO: Aplicar filtro consistente ao salvar eventos
-                    const filteredEvents = this.applyPaymentFilter(events);
+                    // ✅ CORRIGIDO: Aplicar filtro RESTRITIVO ao salvar eventos
+                    const filteredEvents = this.applyRestrictivePaymentFilter(events);
                     account.events = filteredEvents;
                     account.lastSync = new Date();
                     this.saveToStorage();
-                    console.log(`📊 Conta ${account.email}: ${events.length} eventos carregados, ${filteredEvents.length} filtrados`);
+                    console.log(`📊 Conta ${account.email}: ${events.length} eventos carregados, ${filteredEvents.length} filtrados (RESTRITIVO)`);
                 }
             }
 
-            // ✅ NOVO: Função centralizada para aplicar filtro de pagamentos
-            applyPaymentFilter(events) {
+            // ✅ NOVO: Função RESTRITIVA para aplicar filtro apenas com as 3 palavras-chave específicas
+            applyRestrictivePaymentFilter(events) {
                 return events.filter(event => {
-                    const searchText = `${event.summary || ''} ${event.description || ''}`.toLowerCase();
-                    return PAYMENT_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
+                    const summary = (event.summary || '').toLowerCase();
+                    const description = (event.description || '').toLowerCase();
+                    const searchText = `${summary} ${description}`;
+                    
+                    // ✅ FILTRO RESTRITIVO: Deve conter EXATAMENTE uma das 3 palavras-chave
+                    const hasKeyword = PAYMENT_KEYWORDS.some(keyword => 
+                        searchText.includes(keyword.toLowerCase())
+                    );
+                    
+                    if (hasKeyword) {
+                        console.log(`✅ Evento APROVADO no filtro: "${event.summary}" (contém palavra-chave)`);
+                    } else {
+                        console.log(`❌ Evento REJEITADO no filtro: "${event.summary}" (não contém palavra-chave)`);
+                    }
+                    
+                    return hasKeyword;
                 });
             }
 
@@ -1439,7 +1442,7 @@
                         });
                     }
                 });
-                console.log(`📊 Total de eventos de todas as contas: ${allEvents.length}`);
+                console.log(`📊 Total de eventos FILTRADOS de todas as contas: ${allEvents.length}`);
                 return allEvents;
             }
 
@@ -1752,7 +1755,7 @@
             }
         }
 
-        // ✅ CORRIGIDO: Sincronização com filtro aplicado corretamente
+        // ✅ CORRIGIDO: Sincronização com filtro RESTRITIVO aplicado corretamente
         async function syncAccountEvents(accountId) {
             const account = accountManager.getAccount(accountId);
             if (!account) return;
@@ -1773,12 +1776,12 @@
 
                 const events = await loadEventsForAccount();
                 
-                // ✅ CORRIGIDO: O filtro agora é aplicado no updateAccountEvents
+                // ✅ CORRIGIDO: O filtro RESTRITIVO agora é aplicado no updateAccountEvents
                 accountManager.updateAccountEvents(accountId, events);
                 accountManager.updateAccountStatus(accountId, 'connected');
                 
                 const filteredCount = account.events.length;
-                console.log(`✅ Eventos sincronizados para ${account.email}: ${events.length} total, ${filteredCount} filtrados`);
+                console.log(`✅ Eventos sincronizados para ${account.email}: ${events.length} total, ${filteredCount} filtrados (RESTRITIVO)`);
                 
                 updateAccountsList();
                 await updateAllData();
@@ -1840,7 +1843,7 @@
             showMessage('Sincronização de todas as contas concluída!', 'success');
         }
 
-        // ✅ CORRIGIDO: Carregamento de eventos SEM filtro (filtro aplicado depois)
+        // ✅ CORRIGIDO: Carregamento de eventos SEM filtro (filtro RESTRITIVO aplicado depois)
         async function loadEventsForAccount() {
             try {
                 const now = new Date();
@@ -1868,7 +1871,7 @@
                 
                 console.log(`📊 Eventos carregados da API: ${events.length}`);
                 
-                // ✅ CORRIGIDO: Retornar TODOS os eventos, filtro será aplicado no AccountManager
+                // ✅ CORRIGIDO: Retornar TODOS os eventos, filtro RESTRITIVO será aplicado no AccountManager
                 return events;
                 
             } catch (error) {
@@ -2243,7 +2246,7 @@
                 Contas conectadas: ${connectedAccounts.length} | 
                 Eventos encontrados: ${totalEvents} | 
                 Período: ${currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} |
-                Filtro: PAGAMENTO, PAGAMENTOS, HVC
+                Filtro RESTRITIVO: APENAS eventos com PAGAMENTO, PAGAMENTOS ou HVC
             `;
         }
 
@@ -2909,7 +2912,7 @@
         // ✅ CORRIGIDO: INICIALIZAÇÃO
         // =================================================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado');
+            console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado (FILTRO RESTRITIVO)');
             
             renderCalendar([]);
             initializePaymentFilters();
@@ -2953,7 +2956,7 @@
         <div id="filterSection" class="filter-section" style="display: none;">
             <div class="filter-info">
                 <i class="fas fa-filter"></i>
-                <span>Filtro Ativo: Eventos com palavras-chave relacionadas a pagamentos</span>
+                <span>Filtro RESTRITIVO Ativo: APENAS eventos com PAGAMENTO, PAGAMENTOS ou HVC</span>
             </div>
             <div class="filter-stats" id="filterStats">
                 <!-- Stats will be populated here -->
