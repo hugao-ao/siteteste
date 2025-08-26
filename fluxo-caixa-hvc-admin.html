@@ -1081,6 +1081,102 @@
                 grid-template-columns: 1fr;
             }
         }
+
+                        /* ✅ NOVO: Estilos para edição de eventos */
+                .edit-description-section {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin: 15px 0;
+                }
+                
+                .edit-description-textarea {
+                    width: 100%;
+                    min-height: 120px;
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    border-radius: 6px;
+                    padding: 10px;
+                    color: #ffffff;
+                    font-size: 14px;
+                    font-family: inherit;
+                    resize: vertical;
+                    box-sizing: border-box;
+                }
+                
+                .edit-description-textarea:focus {
+                    outline: none;
+                    border-color: #4285f4;
+                    background: rgba(255, 255, 255, 0.15);
+                }
+                
+                .edit-description-textarea::placeholder {
+                    color: rgba(255, 255, 255, 0.5);
+                }
+                
+                .edit-buttons {
+                    display: flex;
+                    gap: 10px;
+                    margin-top: 10px;
+                    flex-wrap: wrap;
+                }
+                
+                .btn-edit {
+                    background: rgba(66, 133, 244, 0.3);
+                    border: 1px solid #4285f4;
+                    color: #4285f4;
+                    padding: 8px 16px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 5px;
+                }
+                
+                .btn-edit:hover {
+                    background: rgba(66, 133, 244, 0.5);
+                    color: #ffffff;
+                }
+                
+                .btn-save {
+                    background: rgba(52, 168, 83, 0.3);
+                    border: 1px solid #34a853;
+                    color: #34a853;
+                }
+                
+                .btn-save:hover {
+                    background: rgba(52, 168, 83, 0.5);
+                    color: #ffffff;
+                }
+                
+                .btn-cancel {
+                    background: rgba(234, 67, 53, 0.3);
+                    border: 1px solid #ea4335;
+                    color: #ea4335;
+                }
+                
+                .btn-cancel:hover {
+                    background: rgba(234, 67, 53, 0.5);
+                    color: #ffffff;
+                }
+                
+                .btn-edit:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                }
+                
+                .edit-loading {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    color: rgba(255, 255, 255, 0.7);
+                    font-size: 14px;
+                }
+
+
+
     </style>
 
     <script>
@@ -1101,6 +1197,9 @@
         let currentDate = new Date();
         let allPaymentsList = []; // ✅ NOVO: Lista completa de pagamentos
         let filteredPaymentsList = []; // ✅ NOVO: Lista filtrada
+        let currentEditingEvent = null;
+        let isEditingDescription = false;
+        let originalDescription = '';
 
         // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
         window.gapiLoaded = function() {
@@ -1981,7 +2080,18 @@
                 <p><strong><i class="fas fa-clock"></i> Horário:</strong> ${event.start.dateTime ? 
                     `${start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 
                     'Dia inteiro'}</p>
-                ${event.description ? `<p><strong><i class="fas fa-info-circle"></i> Descrição:</strong> ${event.description}</p>` : ''}
+                                <div id="descriptionSection">
+                                    <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                                    ${event.description ? `
+                                        <div id="descriptionDisplay" class="description-display">${event.description}</div>
+                                    ` : `
+                                        <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                                    `}
+                                    <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
+                                        <i class="fas fa-edit"></i> ${event.description ? 'Editar Descrição' : 'Adicionar Descrição'}
+                                    </button>
+                                </div>
+
                 ${event.location ? `<p><strong><i class="fas fa-map-marker-alt"></i> Local:</strong> ${event.location}</p>` : ''}
                 <p><strong><i class="fas fa-tag"></i> Tipo:</strong> ${getEventType(event).toUpperCase()}</p>
             `;
@@ -2113,6 +2223,297 @@
             }
         }
 
+
+                    // =================================================================
+                    // ✅ NOVO: SISTEMA COMPLETO DE EDIÇÃO DE DESCRIÇÃO
+                    // =================================================================
+            
+                    /**
+                     * Inicia o modo de edição da descrição do evento
+                     * @param {string} eventId - ID do evento a ser editado
+                     */
+                    function startEditingDescription(eventId) {
+                        console.log('🔄 Iniciando edição da descrição para evento:', eventId);
+                        
+                        // Verificar se já está editando
+                        if (isEditingDescription) {
+                            showMessage('Já existe uma edição em andamento. Finalize a edição atual primeiro.', 'warning');
+                            return;
+                        }
+                        
+                        // Encontrar o evento
+                        const event = filteredEvents.find(e => e.id === eventId);
+                        if (!event) {
+                            console.error('❌ Evento não encontrado:', eventId);
+                            showMessage('Evento não encontrado', 'error');
+                            return;
+                        }
+                        
+                        // Configurar estado de edição
+                        currentEditingEvent = event;
+                        isEditingDescription = true;
+                        originalDescription = event.description || '';
+                        
+                        console.log('✅ Modo de edição ativado para:', event.summary);
+                        
+                        // Obter elemento da seção de descrição
+                        const descriptionSection = document.getElementById('descriptionSection');
+                        if (!descriptionSection) {
+                            console.error('❌ Elemento descriptionSection não encontrado');
+                            showMessage('Erro interno: elemento não encontrado', 'error');
+                            return;
+                        }
+                        
+                        // Gerar HTML do modo de edição
+                        descriptionSection.innerHTML = `
+                            <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                            <div class="edit-description-section">
+                                <textarea 
+                                    id="editDescriptionTextarea" 
+                                    class="edit-description-textarea" 
+                                    placeholder="Digite a descrição do evento...&#10;&#10;Dica: Você pode usar quebras de linha e formatação de texto."
+                                >${originalDescription}</textarea>
+                                
+                                <div class="edit-hint">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Pressione Ctrl+Enter para salvar rapidamente
+                                </div>
+                                
+                                <div class="edit-buttons">
+                                    <button onclick="saveEventDescription()" class="btn-edit btn-save" id="saveDescriptionBtn">
+                                        <i class="fas fa-save"></i> Salvar
+                                    </button>
+                                    <button onclick="cancelEditingDescription()" class="btn-edit btn-cancel" id="cancelDescriptionBtn">
+                                        <i class="fas fa-times"></i> Cancelar
+                                    </button>
+                                </div>
+                                
+                                <div id="editLoadingIndicator" class="edit-loading" style="display: none;">
+                                    <div class="spinner"></div>
+                                    <span>Salvando alterações no Google Calendar...</span>
+                                </div>
+                            </div>
+                        `;
+                        
+                        // Focar no textarea e posicionar cursor no final
+                        setTimeout(() => {
+                            const textarea = document.getElementById('editDescriptionTextarea');
+                            if (textarea) {
+                                textarea.focus();
+                                // Posicionar cursor no final do texto
+                                const textLength = textarea.value.length;
+                                textarea.setSelectionRange(textLength, textLength);
+                                
+                                console.log('✅ Textarea focado e cursor posicionado');
+                            }
+                        }, 100);
+                    }
+            
+                    /**
+                     * Cancela a edição da descrição e restaura o estado original
+                     */
+                    function cancelEditingDescription() {
+                        console.log('🔄 Cancelando edição da descrição');
+                        
+                        if (!currentEditingEvent) {
+                            console.warn('⚠️ Nenhum evento sendo editado');
+                            return;
+                        }
+                        
+                        // Resetar estado
+                        const event = currentEditingEvent;
+                        isEditingDescription = false;
+                        currentEditingEvent = null;
+                        originalDescription = '';
+                        
+                        // Restaurar visualização original
+                        const descriptionSection = document.getElementById('descriptionSection');
+                        if (!descriptionSection) {
+                            console.error('❌ Elemento descriptionSection não encontrado');
+                            return;
+                        }
+                        
+                        descriptionSection.innerHTML = `
+                            <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                            ${event.description ? `
+                                <div id="descriptionDisplay" class="description-display">${event.description}</div>
+                            ` : `
+                                <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                            `}
+                            <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
+                                <i class="fas fa-edit"></i> ${event.description ? 'Editar Descrição' : 'Adicionar Descrição'}
+                            </button>
+                        `;
+                        
+                        console.log('✅ Edição cancelada e interface restaurada');
+                    }
+            
+                    /**
+                     * Salva a descrição editada no Google Calendar
+                     */
+                    async function saveEventDescription() {
+                        console.log('🔄 Iniciando salvamento da descrição');
+                        
+                        // Validações iniciais
+                        if (!currentEditingEvent || !isEditingDescription) {
+                            console.error('❌ Estado de edição inválido');
+                            showMessage('Erro interno: estado de edição inválido', 'error');
+                            return;
+                        }
+                        
+                        // Obter elementos
+                        const textarea = document.getElementById('editDescriptionTextarea');
+                        const loadingIndicator = document.getElementById('editLoadingIndicator');
+                        const saveBtn = document.getElementById('saveDescriptionBtn');
+                        const cancelBtn = document.getElementById('cancelDescriptionBtn');
+                        
+                        if (!textarea) {
+                            console.error('❌ Textarea não encontrado');
+                            showMessage('Erro interno: campo de texto não encontrado', 'error');
+                            return;
+                        }
+                        
+                        // Obter nova descrição
+                        const newDescription = textarea.value.trim();
+                        const eventId = currentEditingEvent.id;
+                        
+                        console.log('📝 Nova descrição:', newDescription.substring(0, 100) + (newDescription.length > 100 ? '...' : ''));
+                        
+                        // Verificar se houve mudança
+                        if (newDescription === originalDescription) {
+                            console.log('ℹ️ Descrição não foi alterada');
+                            showMessage('Nenhuma alteração foi feita', 'warning');
+                            cancelEditingDescription();
+                            return;
+                        }
+                        
+                        // Mostrar loading e desabilitar botões
+                        if (loadingIndicator) loadingIndicator.style.display = 'flex';
+                        if (saveBtn) saveBtn.disabled = true;
+                        if (cancelBtn) cancelBtn.disabled = true;
+                        
+                        try {
+                            console.log('🔄 Enviando requisição para Google Calendar API...');
+                            
+                            // Chamar API do Google Calendar
+                            const response = await gapi.client.calendar.events.patch({
+                                calendarId: 'primary',
+                                eventId: eventId,
+                                resource: {
+                                    description: newDescription
+                                }
+                            });
+                            
+                            console.log('📡 Resposta da API:', response.status);
+                            
+                            if (response.status === 200) {
+                                console.log('✅ Descrição salva com sucesso no Google Calendar');
+                                
+                                // Atualizar evento local
+                                currentEditingEvent.description = newDescription;
+                                
+                                // Atualizar na lista de eventos filtrados
+                                const eventIndex = filteredEvents.findIndex(e => e.id === eventId);
+                                if (eventIndex !== -1) {
+                                    filteredEvents[eventIndex].description = newDescription;
+                                    console.log('✅ Evento atualizado na lista local');
+                                }
+                                
+                                // Resetar estado de edição
+                                const event = currentEditingEvent;
+                                isEditingDescription = false;
+                                currentEditingEvent = null;
+                                originalDescription = '';
+                                
+                                // Restaurar visualização com nova descrição
+                                const descriptionSection = document.getElementById('descriptionSection');
+                                if (descriptionSection) {
+                                    descriptionSection.innerHTML = `
+                                        <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                                        ${newDescription ? `
+                                            <div id="descriptionDisplay" class="description-display">${newDescription}</div>
+                                        ` : `
+                                            <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                                        `}
+                                        <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
+                                            <i class="fas fa-edit"></i> ${newDescription ? 'Editar Descrição' : 'Adicionar Descrição'}
+                                        </button>
+                                    `;
+                                }
+                                
+                                // Atualizar resumo mensal (caso a descrição tenha valores)
+                                console.log('🔄 Atualizando resumo mensal...');
+                                updateMonthlySummary();
+                                
+                                // Renderizar calendário novamente
+                                console.log('🔄 Renderizando calendário...');
+                                renderCalendar();
+                                
+                                showMessage('Descrição atualizada com sucesso!', 'success');
+                                
+                            } else {
+                                throw new Error(`Resposta inesperada da API: ${response.status}`);
+                            }
+                            
+                        } catch (error) {
+                            console.error('❌ Erro ao salvar descrição:', error);
+                            
+                            let errorMessage = 'Erro ao salvar descrição. ';
+                            
+                            if (error.status === 401) {
+                                errorMessage += 'Sessão expirada. Reconecte-se ao Google Calendar.';
+                            } else if (error.status === 403) {
+                                errorMessage += 'Sem permissão para editar este evento.';
+                            } else if (error.status === 404) {
+                                errorMessage += 'Evento não encontrado no Google Calendar.';
+                            } else {
+                                errorMessage += 'Tente novamente em alguns instantes.';
+                            }
+                            
+                            showMessage(errorMessage, 'error');
+                            
+                            // Reabilitar botões em caso de erro
+                            if (saveBtn) saveBtn.disabled = false;
+                            if (cancelBtn) cancelBtn.disabled = false;
+                            
+                        } finally {
+                            // Esconder loading
+                            if (loadingIndicator) {
+                                loadingIndicator.style.display = 'none';
+                            }
+                            
+                            console.log('🔄 Processo de salvamento finalizado');
+                        }
+                    }
+            
+                    /**
+                     * Manipulador de eventos de teclado para atalhos
+                     */
+                    function handleEditingKeyboard(event) {
+                        if (!isEditingDescription) return;
+                        
+                        // Ctrl+Enter para salvar
+                        if (event.ctrlKey && event.key === 'Enter') {
+                            event.preventDefault();
+                            console.log('⌨️ Atalho Ctrl+Enter detectado');
+                            saveEventDescription();
+                            return;
+                        }
+                        
+                        // Escape para cancelar
+                        if (event.key === 'Escape') {
+                            event.preventDefault();
+                            console.log('⌨️ Atalho Escape detectado');
+                            cancelEditingDescription();
+                            return;
+                        }
+                    }
+            
+                    // Adicionar listener para atalhos de teclado
+                    document.addEventListener('keydown', handleEditingKeyboard);
+
+
+        
         // =================================================================
         // INICIALIZAÇÃO
         // =================================================================
