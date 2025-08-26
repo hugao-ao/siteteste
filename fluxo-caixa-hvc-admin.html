@@ -161,6 +161,10 @@
             color: #ffc107;
         }
 
+        .account-status.error {
+            color: #ea4335;
+        }
+
         .account-controls {
             display: flex;
             gap: 10px;
@@ -200,6 +204,17 @@
 
         .account-btn.disconnect:hover {
             background: rgba(234, 67, 53, 0.5);
+            color: #ffffff;
+        }
+
+        .account-btn.reconnect {
+            background: rgba(255, 193, 7, 0.3);
+            border: 1px solid #ffc107;
+            color: #ffc107;
+        }
+
+        .account-btn.reconnect:hover {
+            background: rgba(255, 193, 7, 0.5);
             color: #ffffff;
         }
 
@@ -999,6 +1014,12 @@
             color: #ffc107;
         }
 
+        .message.info {
+            background: rgba(66, 133, 244, 0.2);
+            border: 1px solid rgba(66, 133, 244, 0.4);
+            color: #4285f4;
+        }
+
         /* Loading Spinner */
         .spinner {
             width: 16px;
@@ -1304,15 +1325,16 @@
 
     <script>
         // =================================================================
-        // ✅ CORRIGIDO: SISTEMA MULTI-CONTA - CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+        // ✅ CORRIGIDO: SISTEMA MULTI-CONTA COM PERMISSÕES CORRIGIDAS
         // =================================================================
         
         // Configurações
         const CLIENT_ID = '314578730498-ghkttnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
+        // ✅ CORRIGIDO: Escopo mais específico para evitar problemas de permissão
+        const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
 
-        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com correção de bugs
+        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com melhor tratamento de erros
         class AccountManager {
             constructor() {
                 this.accounts = new Map();
@@ -1373,6 +1395,9 @@
                 const account = this.accounts.get(accountId);
                 if (account) {
                     account.syncStatus = status;
+                    if (status === 'error' || status === 'disconnected') {
+                        account.isConnected = false;
+                    }
                     this.saveToStorage();
                 }
             }
@@ -1682,6 +1707,27 @@
             }
         }
 
+        // ✅ CORRIGIDO: Função de reconexão para contas com token expirado
+        async function reconnectAccount(accountId) {
+            const account = accountManager.getAccount(accountId);
+            if (!account) return;
+
+            try {
+                isAuthenticating = true;
+                showMessage(`Reconectando conta ${account.email}...`, 'info');
+                
+                tokenClient.requestAccessToken({ 
+                    prompt: 'select_account',
+                    hint: account.email
+                });
+            } catch (error) {
+                console.error('❌ Erro ao reconectar conta:', error);
+                showMessage('Erro ao tentar reconectar conta', 'error');
+                isAuthenticating = false;
+            }
+        }
+
+        // ✅ CORRIGIDO: Sincronização com melhor tratamento de erros
         async function syncAccountEvents(accountId) {
             const account = accountManager.getAccount(accountId);
             if (!account) return;
@@ -1696,7 +1742,9 @@
 
                 gapi.client.setToken({ access_token: account.token });
 
-                await gapi.client.calendar.calendarList.list({ maxResults: 1 });
+                // ✅ CORRIGIDO: Teste de conectividade antes de carregar eventos
+                console.log('🔄 Testando conectividade da API...');
+                await testApiConnectivity();
 
                 const events = await loadEventsForAccount();
                 
@@ -1708,21 +1756,41 @@
                 updateAccountsList();
                 await updateAllData();
                 
-                showMessage(`Sincronização concluída para ${account.email}`, 'success');
+                showMessage(`Sincronização concluída para ${account.email}: ${events.length} eventos encontrados`, 'success');
                 
             } catch (error) {
                 console.error(`❌ Erro ao sincronizar ${account.email}:`, error);
                 
                 if (error.status === 401 || error.status === 403) {
                     account.isConnected = false;
-                    accountManager.updateAccountStatus(accountId, 'disconnected');
-                    showMessage(`Token expirado para ${account.email}. Reconecte a conta.`, 'warning');
+                    accountManager.updateAccountStatus(accountId, 'error');
+                    showMessage(`Token expirado para ${account.email}. Use o botão "Reconectar".`, 'warning');
                 } else {
                     accountManager.updateAccountStatus(accountId, 'error');
-                    showMessage(`Erro ao sincronizar ${account.email}`, 'error');
+                    showMessage(`Erro ao sincronizar ${account.email}: ${error.message}`, 'error');
                 }
                 
                 updateAccountsList();
+            }
+        }
+
+        // ✅ NOVO: Função para testar conectividade da API
+        async function testApiConnectivity() {
+            try {
+                const response = await gapi.client.calendar.calendarList.list({
+                    maxResults: 1
+                });
+                
+                if (response.status !== 200) {
+                    throw new Error(`API retornou status ${response.status}`);
+                }
+                
+                console.log('✅ Conectividade da API confirmada');
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Erro de conectividade da API:', error);
+                throw error;
             }
         }
 
@@ -1738,16 +1806,21 @@
 
             for (const account of connectedAccounts) {
                 await syncAccountEvents(account.id);
+                // Pequena pausa entre sincronizações para evitar rate limiting
+                await new Promise(resolve => setTimeout(resolve, 500));
             }
 
             showMessage('Sincronização de todas as contas concluída!', 'success');
         }
 
+        // ✅ CORRIGIDO: Carregamento de eventos com melhor tratamento de erros
         async function loadEventsForAccount() {
             try {
                 const now = new Date();
                 const timeMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
                 const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
+
+                console.log('🔄 Carregando eventos do período:', timeMin, 'até', timeMax);
 
                 const response = await gapi.client.calendar.events.list({
                     calendarId: 'primary',
@@ -1759,6 +1832,10 @@
                     orderBy: 'startTime',
                     fields: 'items(id,summary,description,start,end,location,attachments)'
                 });
+
+                if (response.status !== 200) {
+                    throw new Error(`API retornou status ${response.status}: ${response.statusText}`);
+                }
 
                 const events = response.result.items || [];
                 
@@ -1786,7 +1863,14 @@
                 
             } catch (error) {
                 console.error('❌ Erro ao carregar eventos:', error);
-                throw error;
+                
+                if (error.status === 403) {
+                    throw new Error('Acesso negado. Verifique as permissões da conta.');
+                } else if (error.status === 401) {
+                    throw new Error('Token de acesso expirado ou inválido.');
+                } else {
+                    throw new Error(`Erro na API: ${error.message || 'Erro desconhecido'}`);
+                }
             }
         }
 
@@ -1852,6 +1936,27 @@
                     lastSyncText = `• Última sync: ${account.lastSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
                 }
                 
+                // ✅ CORRIGIDO: Botões condicionais baseados no status
+                let actionButtons = '';
+                if (account.isConnected && account.syncStatus !== 'error') {
+                    actionButtons = `
+                        <button onclick="syncAccountEvents('${account.id}')" 
+                                class="account-btn sync" 
+                                ${account.syncStatus === 'syncing' ? 'disabled' : ''}>
+                            <i class="fas fa-sync-alt"></i>
+                            ${account.syncStatus === 'syncing' ? 'Sincronizando...' : 'Sincronizar'}
+                        </button>
+                    `;
+                } else {
+                    actionButtons = `
+                        <button onclick="reconnectAccount('${account.id}')" 
+                                class="account-btn reconnect">
+                            <i class="fas fa-plug"></i>
+                            Reconectar
+                        </button>
+                    `;
+                }
+                
                 return `
                     <div class="account-item" style="border-left-color: ${account.color}">
                         <div class="account-info">
@@ -1868,12 +1973,7 @@
                             </div>
                         </div>
                         <div class="account-controls">
-                            <button onclick="syncAccountEvents('${account.id}')" 
-                                    class="account-btn sync" 
-                                    ${account.syncStatus === 'syncing' ? 'disabled' : ''}>
-                                <i class="fas fa-sync-alt"></i>
-                                ${account.syncStatus === 'syncing' ? 'Sincronizando...' : 'Sincronizar'}
-                            </button>
+                            ${actionButtons}
                             <button onclick="disconnectAccount('${account.id}')" 
                                     class="account-btn disconnect">
                                 <i class="fas fa-unlink"></i>
@@ -1899,7 +1999,7 @@
             switch (status) {
                 case 'connected': return 'Conectado';
                 case 'syncing': return 'Sincronizando';
-                case 'error': return 'Erro na sincronização';
+                case 'error': return 'Erro - Token expirado';
                 case 'disconnected': return 'Desconectado';
                 default: return 'Status desconhecido';
             }
@@ -2353,6 +2453,7 @@
                 case 'success': return 'fa-check-circle';
                 case 'error': return 'fa-exclamation-triangle';
                 case 'warning': return 'fa-exclamation-circle';
+                case 'info': return 'fa-info-circle';
                 default: return 'fa-info-circle';
             }
         }
