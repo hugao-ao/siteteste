@@ -119,10 +119,10 @@
             margin-top: 5px;
         }
 
-        /* ✅ NOVO: Estatísticas por Status */
+        /* ✅ NOVO: Estatísticas por Status com Montantes */
         .status-stats {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
             gap: 15px;
             margin-top: 20px;
         }
@@ -150,6 +150,25 @@
             background: rgba(66, 133, 244, 0.2);
         }
 
+        .status-stat-value {
+            color: #ffffff;
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .status-stat-amount {
+            color: #ffc107;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .status-stat-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.8rem;
+            margin-top: 5px;
+        }
+
         /* Lista de Pagamentos */
         .payments-list-section {
             background: rgba(25, 25, 112, 0.3);
@@ -171,8 +190,81 @@
             gap: 10px;
         }
 
+        /* ✅ NOVO: Filtros de Pagamentos */
+        .payments-filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+
+        .filter-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .filter-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .filter-input {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .filter-input:focus {
+            outline: none;
+            border-color: #4285f4;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .filter-input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .filter-select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .filter-select option {
+            background: #1a1a2e;
+            color: #ffffff;
+        }
+
+        .clear-filters-btn {
+            background: rgba(234, 67, 53, 0.3);
+            border: 1px solid #ea4335;
+            border-radius: 6px;
+            padding: 8px 16px;
+            color: #ea4335;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            align-self: flex-end;
+        }
+
+        .clear-filters-btn:hover {
+            background: rgba(234, 67, 53, 0.5);
+            color: #ffffff;
+        }
+
         .payments-list {
-            max-height: 400px;
+            max-height: 500px;
             overflow-y: auto;
             border-radius: 8px;
             background: rgba(255, 255, 255, 0.05);
@@ -248,7 +340,6 @@
             gap: 5px;
         }
 
-        /* ✅ NOVO: Status com cores específicas */
         .payment-status {
             display: flex;
             align-items: center;
@@ -290,6 +381,18 @@
 
         .payment-type.hvc {
             background: rgba(156, 39, 176, 0.3);
+        }
+
+        .no-payments {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .no-payments i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
         }
 
         /* Google Calendar Section */
@@ -553,7 +656,6 @@
             word-wrap: break-word;
         }
 
-        /* ✅ NOVO: Cores baseadas em status e data */
         .event-item.completed {
             background: linear-gradient(135deg, #34a853, #2e7d32);
         }
@@ -944,6 +1046,10 @@
             .payment-name {
                 min-width: auto;
             }
+
+            .payments-filters {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media (max-width: 480px) {
@@ -970,6 +1076,10 @@
             .monthly-stats {
                 grid-template-columns: 1fr;
             }
+
+            .status-stats {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 
@@ -989,6 +1099,8 @@
         let isGoogleConnected = false;
         let filteredEvents = [];
         let currentDate = new Date();
+        let allPaymentsList = []; // ✅ NOVO: Lista completa de pagamentos
+        let filteredPaymentsList = []; // ✅ NOVO: Lista filtrada
 
         // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
         window.gapiLoaded = function() {
@@ -1042,7 +1154,7 @@
         }
 
         // =================================================================
-        // ✅ NOVO: SISTEMA DE EXTRAÇÃO COM STATUS MELHORADO
+        // ✅ SISTEMA DE EXTRAÇÃO COM STATUS MELHORADO
         // =================================================================
         function extractPaymentInfo(text) {
             if (!text) return [];
@@ -1058,7 +1170,7 @@
                 const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
                 const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
                 
-                // ✅ NOVO: Determinar status baseado no texto entre parênteses
+                // Determinar status baseado no texto entre parênteses
                 let status = 'PENDENTE'; // Status padrão
                 
                 if (statusText) {
@@ -1110,7 +1222,7 @@
             
             const payments = extractPaymentInfo(fullText);
             
-            // ✅ NOVO: Só contar PG e PENDENTE para o total
+            // Só contar PG e PENDENTE para o total
             const countablePayments = payments.filter(p => p.status === 'PG' || p.status === 'PENDENTE');
             const total = countablePayments.reduce((sum, item) => sum + item.value, 0);
             
@@ -1143,7 +1255,7 @@
         }
 
         // =================================================================
-        // ✅ NOVO: CÁLCULOS MENSAIS COM STATUS
+        // ✅ CÁLCULOS MENSAIS COM MONTANTES POR STATUS
         // =================================================================
         function calculateMonthlyTotals() {
             const currentMonth = currentDate.getMonth();
@@ -1152,9 +1264,15 @@
             let monthlyTotal = 0;
             let totalEvents = 0;
             let totalPayments = 0;
+            
+            // ✅ NOVO: Contadores e montantes por status
             let totalPG = 0;
             let totalPendente = 0;
             let totalRecalculado = 0;
+            let amountPG = 0;
+            let amountPendente = 0;
+            let amountRecalculado = 0;
+            
             const paymentsList = [];
             
             filteredEvents.forEach(event => {
@@ -1166,11 +1284,18 @@
                     totalEvents++;
                     totalPayments += eventCalc.count;
                     
-                    // Contar por status
+                    // Contar por status e somar montantes
                     eventCalc.payments.forEach(payment => {
-                        if (payment.status === 'PG') totalPG++;
-                        else if (payment.status === 'PENDENTE') totalPendente++;
-                        else if (payment.status === 'RECALCULADO') totalRecalculado++;
+                        if (payment.status === 'PG') {
+                            totalPG++;
+                            amountPG += payment.value;
+                        } else if (payment.status === 'PENDENTE') {
+                            totalPendente++;
+                            amountPendente += payment.value;
+                        } else if (payment.status === 'RECALCULADO') {
+                            totalRecalculado++;
+                            amountRecalculado += payment.value;
+                        }
                         
                         // Adicionar pagamentos à lista
                         paymentsList.push({
@@ -1184,8 +1309,8 @@
                 }
             });
             
-            // Ordenar pagamentos por valor (maior para menor)
-            paymentsList.sort((a, b) => b.value - a.value);
+            // ✅ NOVO: Ordenar pagamentos por data (mais recente primeiro)
+            paymentsList.sort((a, b) => b.eventDate - a.eventDate);
             
             return {
                 total: monthlyTotal,
@@ -1194,6 +1319,9 @@
                 totalPG: totalPG,
                 totalPendente: totalPendente,
                 totalRecalculado: totalRecalculado,
+                amountPG: amountPG,
+                amountPendente: amountPendente,
+                amountRecalculado: amountRecalculado,
                 paymentsList: paymentsList
             };
         }
@@ -1225,10 +1353,13 @@
                 avgPaymentElement.textContent = formatCurrency(avgValue);
             }
             
-            // ✅ NOVO: Atualizar estatísticas por status
+            // ✅ NOVO: Atualizar estatísticas por status com montantes
             const totalPGElement = document.getElementById('totalPG');
             const totalPendenteElement = document.getElementById('totalPendente');
             const totalRecalculadoElement = document.getElementById('totalRecalculado');
+            const amountPGElement = document.getElementById('amountPG');
+            const amountPendenteElement = document.getElementById('amountPendente');
+            const amountRecalculadoElement = document.getElementById('amountRecalculado');
             
             if (totalPGElement) {
                 totalPGElement.textContent = monthlyData.totalPG;
@@ -1242,25 +1373,104 @@
                 totalRecalculadoElement.textContent = monthlyData.totalRecalculado;
             }
             
-            // Atualizar lista de pagamentos
-            updatePaymentsList(monthlyData.paymentsList);
+            if (amountPGElement) {
+                amountPGElement.textContent = formatCurrency(monthlyData.amountPG);
+            }
+            
+            if (amountPendenteElement) {
+                amountPendenteElement.textContent = formatCurrency(monthlyData.amountPendente);
+            }
+            
+            if (amountRecalculadoElement) {
+                amountRecalculadoElement.textContent = formatCurrency(monthlyData.amountRecalculado);
+            }
+            
+            // ✅ NOVO: Atualizar lista de pagamentos com filtros
+            allPaymentsList = monthlyData.paymentsList;
+            filteredPaymentsList = [...allPaymentsList];
+            updatePaymentsList();
         }
 
-        function updatePaymentsList(paymentsList) {
+        // =================================================================
+        // ✅ NOVO: SISTEMA DE FILTROS DE PAGAMENTOS
+        // =================================================================
+        function initializePaymentFilters() {
+            const nameFilter = document.getElementById('nameFilter');
+            const dateFilter = document.getElementById('dateFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            const clearFiltersBtn = document.getElementById('clearFilters');
+            
+            if (nameFilter) {
+                nameFilter.addEventListener('input', applyFilters);
+            }
+            
+            if (dateFilter) {
+                dateFilter.addEventListener('change', applyFilters);
+            }
+            
+            if (statusFilter) {
+                statusFilter.addEventListener('change', applyFilters);
+            }
+            
+            if (clearFiltersBtn) {
+                clearFiltersBtn.addEventListener('click', clearFilters);
+            }
+        }
+
+        function applyFilters() {
+            const nameFilter = document.getElementById('nameFilter')?.value.toLowerCase() || '';
+            const dateFilter = document.getElementById('dateFilter')?.value || '';
+            const statusFilter = document.getElementById('statusFilter')?.value || '';
+            
+            filteredPaymentsList = allPaymentsList.filter(payment => {
+                // Filtro por nome
+                const nameMatch = !nameFilter || 
+                    payment.name.toLowerCase().includes(nameFilter) ||
+                    payment.eventTitle.toLowerCase().includes(nameFilter);
+                
+                // Filtro por data
+                const dateMatch = !dateFilter || 
+                    payment.eventDate.toISOString().split('T')[0] === dateFilter;
+                
+                // Filtro por status
+                const statusMatch = !statusFilter || 
+                    payment.status === statusFilter;
+                
+                return nameMatch && dateMatch && statusMatch;
+            });
+            
+            updatePaymentsList();
+        }
+
+        function clearFilters() {
+            const nameFilter = document.getElementById('nameFilter');
+            const dateFilter = document.getElementById('dateFilter');
+            const statusFilter = document.getElementById('statusFilter');
+            
+            if (nameFilter) nameFilter.value = '';
+            if (dateFilter) dateFilter.value = '';
+            if (statusFilter) statusFilter.value = '';
+            
+            filteredPaymentsList = [...allPaymentsList];
+            updatePaymentsList();
+        }
+
+        function updatePaymentsList() {
             const paymentsListElement = document.getElementById('paymentsList');
             if (!paymentsListElement) return;
             
-            if (paymentsList.length === 0) {
+            if (filteredPaymentsList.length === 0) {
                 paymentsListElement.innerHTML = `
-                    <div style="text-align: center; padding: 40px; color: rgba(255, 255, 255, 0.6);">
-                        <i class="fas fa-inbox" style="font-size: 3rem; margin-bottom: 15px;"></i>
-                        <p>Nenhum pagamento encontrado para este mês</p>
+                    <div class="no-payments">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhum pagamento encontrado</p>
+                        ${allPaymentsList.length > 0 ? '<p style="font-size: 0.9rem;">Tente ajustar os filtros</p>' : ''}
                     </div>
                 `;
                 return;
             }
             
-            paymentsListElement.innerHTML = paymentsList.map(payment => `
+            paymentsListElement.innerHTML = filteredPaymentsList.map(payment => `
                 <div class="payment-item" onclick="showPaymentEvent('${payment.eventId}')">
                     <div class="payment-header">
                         <div class="payment-name">${payment.name}</div>
@@ -1291,7 +1501,7 @@
         }
 
         // =================================================================
-        // ✅ NOVO: LÓGICA DE CORES BASEADA EM STATUS E DATA
+        // LÓGICA DE CORES BASEADA EM STATUS E DATA
         // =================================================================
         function getEventColorClass(event) {
             const eventCalc = calculateEventTotal(event);
@@ -1575,7 +1785,6 @@
             });
         }
 
-        // ✅ REMOVIDO: Não usar mais PG no título para determinar tipo
         function getEventType(event) {
             const title = (event.summary || '').toLowerCase();
             
@@ -1720,7 +1929,6 @@
                 const eventsForDay = getEventsForDay(cellDate);
                 eventsForDay.forEach(event => {
                     const eventDiv = document.createElement('div');
-                    // ✅ NOVO: Usar nova lógica de cores baseada em status
                     eventDiv.className = `event-item ${getEventColorClass(event)}`;
                     eventDiv.textContent = event.summary || 'Sem título';
                     eventDiv.onclick = () => showEventDetails(event);
@@ -1911,6 +2119,9 @@
             
             // Renderizar calendário inicial (vazio)
             renderCalendar();
+            
+            // ✅ NOVO: Inicializar filtros de pagamentos
+            initializePaymentFilters();
         });
     </script>
 </head>
@@ -1985,7 +2196,7 @@
             </div>
         </div>
 
-        <!-- ✅ NOVO: Resumo Mensal -->
+        <!-- ✅ NOVO: Resumo Mensal com Montantes -->
         <div id="monthlySummarySection" class="monthly-summary" style="display: none;">
             <h3><i class="fas fa-chart-pie"></i> Resumo do Mês</h3>
             <div id="monthlyTotal" class="monthly-total">R$ 0,00</div>
@@ -2005,26 +2216,56 @@
                 </div>
             </div>
 
-            <!-- ✅ NOVO: Estatísticas por Status -->
+            <!-- ✅ NOVO: Estatísticas por Status com Montantes -->
             <div class="status-stats">
                 <div class="status-stat-item pg">
-                    <div id="totalPG" class="stat-value">0</div>
-                    <div class="stat-label">PG</div>
+                    <div id="totalPG" class="status-stat-value">0</div>
+                    <div id="amountPG" class="status-stat-amount">R$ 0,00</div>
+                    <div class="status-stat-label">PG</div>
                 </div>
                 <div class="status-stat-item pendente">
-                    <div id="totalPendente" class="stat-value">0</div>
-                    <div class="stat-label">Pendente</div>
+                    <div id="totalPendente" class="status-stat-value">0</div>
+                    <div id="amountPendente" class="status-stat-amount">R$ 0,00</div>
+                    <div class="status-stat-label">Pendente</div>
                 </div>
                 <div class="status-stat-item recalculado">
-                    <div id="totalRecalculado" class="stat-value">0</div>
-                    <div class="stat-label">Recalculado</div>
+                    <div id="totalRecalculado" class="status-stat-value">0</div>
+                    <div id="amountRecalculado" class="status-stat-amount">R$ 0,00</div>
+                    <div class="status-stat-label">Recalculado</div>
                 </div>
             </div>
         </div>
 
-        <!-- ✅ NOVO: Lista de Pagamentos -->
+        <!-- ✅ NOVO: Lista de Pagamentos com Filtros -->
         <div id="paymentsListSection" class="payments-list-section" style="display: none;">
             <h3><i class="fas fa-list-alt"></i> Lista de Pagamentos do Mês</h3>
+            
+            <!-- ✅ NOVO: Filtros -->
+            <div class="payments-filters">
+                <div class="filter-group">
+                    <label class="filter-label">Nome do Pagamento</label>
+                    <input type="text" id="nameFilter" class="filter-input" placeholder="Buscar por nome...">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Data</label>
+                    <input type="date" id="dateFilter" class="filter-input">
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Status</label>
+                    <select id="statusFilter" class="filter-select">
+                        <option value="">Todos os status</option>
+                        <option value="PG">PG</option>
+                        <option value="PENDENTE">Pendente</option>
+                        <option value="RECALCULADO">Recalculado</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <button id="clearFilters" class="clear-filters-btn">
+                        <i class="fas fa-times"></i> Limpar Filtros
+                    </button>
+                </div>
+            </div>
+            
             <div id="paymentsList" class="payments-list">
                 <!-- Pagamentos serão listados aqui -->
             </div>
