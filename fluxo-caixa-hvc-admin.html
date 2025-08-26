@@ -1325,7 +1325,7 @@
 
     <script>
         // =================================================================
-        // ✅ CORRIGIDO: FILTRO RESTRITIVO PARA APENAS PAGAMENTO/PAGAMENTOS/HVC
+        // ✅ CORRIGIDO: FILTRO APENAS NO TÍTULO + CALENDÁRIO SEGUNDA-FEIRA + SEM LOGS EXCESSIVOS
         // =================================================================
         
         // Configurações
@@ -1336,7 +1336,7 @@
         // ✅ CORRIGIDO: Filtro RESTRITIVO - apenas as 3 palavras-chave específicas
         const PAYMENT_KEYWORDS = ['pagamento', 'pagamentos', 'hvc'];
 
-        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com filtro RESTRITIVO
+        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com filtro APENAS NO TÍTULO
         class AccountManager {
             constructor() {
                 this.accounts = new Map();
@@ -1387,34 +1387,27 @@
             updateAccountEvents(accountId, events) {
                 const account = this.accounts.get(accountId);
                 if (account) {
-                    // ✅ CORRIGIDO: Aplicar filtro RESTRITIVO ao salvar eventos
-                    const filteredEvents = this.applyRestrictivePaymentFilter(events);
+                    // ✅ CORRIGIDO: Aplicar filtro APENAS NO TÍTULO ao salvar eventos
+                    const filteredEvents = this.applyTitleOnlyFilter(events);
                     account.events = filteredEvents;
                     account.lastSync = new Date();
                     this.saveToStorage();
-                    console.log(`📊 Conta ${account.email}: ${events.length} eventos carregados, ${filteredEvents.length} filtrados (RESTRITIVO)`);
+                    console.log(`📊 Conta ${account.email}: ${events.length} eventos carregados, ${filteredEvents.length} filtrados (APENAS TÍTULO)`);
                 }
             }
 
-            // ✅ NOVO: Função RESTRITIVA para aplicar filtro apenas com as 3 palavras-chave específicas
-            applyRestrictivePaymentFilter(events) {
+            // ✅ NOVO: Função que aplica filtro APENAS NO TÍTULO (não na descrição)
+            applyTitleOnlyFilter(events) {
                 return events.filter(event => {
-                    const summary = (event.summary || '').toLowerCase();
-                    const description = (event.description || '').toLowerCase();
-                    const searchText = `${summary} ${description}`;
+                    const title = (event.summary || '').toLowerCase();
                     
-                    // ✅ FILTRO RESTRITIVO: Deve conter EXATAMENTE uma das 3 palavras-chave
-                    const hasKeyword = PAYMENT_KEYWORDS.some(keyword => 
-                        searchText.includes(keyword.toLowerCase())
+                    // ✅ FILTRO APENAS NO TÍTULO: Deve conter uma das 3 palavras-chave no título
+                    const hasKeywordInTitle = PAYMENT_KEYWORDS.some(keyword => 
+                        title.includes(keyword.toLowerCase())
                     );
                     
-                    if (hasKeyword) {
-                        console.log(`✅ Evento APROVADO no filtro: "${event.summary}" (contém palavra-chave)`);
-                    } else {
-                        console.log(`❌ Evento REJEITADO no filtro: "${event.summary}" (não contém palavra-chave)`);
-                    }
-                    
-                    return hasKeyword;
+                    // ✅ REMOVIDO: Logs individuais para não encher o console
+                    return hasKeywordInTitle;
                 });
             }
 
@@ -1755,7 +1748,7 @@
             }
         }
 
-        // ✅ CORRIGIDO: Sincronização com filtro RESTRITIVO aplicado corretamente
+        // ✅ CORRIGIDO: Sincronização com filtro APENAS NO TÍTULO aplicado corretamente
         async function syncAccountEvents(accountId) {
             const account = accountManager.getAccount(accountId);
             if (!account) return;
@@ -1776,12 +1769,12 @@
 
                 const events = await loadEventsForAccount();
                 
-                // ✅ CORRIGIDO: O filtro RESTRITIVO agora é aplicado no updateAccountEvents
+                // ✅ CORRIGIDO: O filtro APENAS NO TÍTULO agora é aplicado no updateAccountEvents
                 accountManager.updateAccountEvents(accountId, events);
                 accountManager.updateAccountStatus(accountId, 'connected');
                 
                 const filteredCount = account.events.length;
-                console.log(`✅ Eventos sincronizados para ${account.email}: ${events.length} total, ${filteredCount} filtrados (RESTRITIVO)`);
+                console.log(`✅ Eventos sincronizados para ${account.email}: ${events.length} total, ${filteredCount} filtrados (APENAS TÍTULO)`);
                 
                 updateAccountsList();
                 await updateAllData();
@@ -1843,7 +1836,7 @@
             showMessage('Sincronização de todas as contas concluída!', 'success');
         }
 
-        // ✅ CORRIGIDO: Carregamento de eventos SEM filtro (filtro RESTRITIVO aplicado depois)
+        // ✅ CORRIGIDO: Carregamento de eventos SEM filtro (filtro APENAS NO TÍTULO aplicado depois)
         async function loadEventsForAccount() {
             try {
                 const now = new Date();
@@ -1871,7 +1864,7 @@
                 
                 console.log(`📊 Eventos carregados da API: ${events.length}`);
                 
-                // ✅ CORRIGIDO: Retornar TODOS os eventos, filtro RESTRITIVO será aplicado no AccountManager
+                // ✅ CORRIGIDO: Retornar TODOS os eventos, filtro APENAS NO TÍTULO será aplicado no AccountManager
                 return events;
                 
             } catch (error) {
@@ -2246,7 +2239,7 @@
                 Contas conectadas: ${connectedAccounts.length} | 
                 Eventos encontrados: ${totalEvents} | 
                 Período: ${currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} |
-                Filtro RESTRITIVO: APENAS eventos com PAGAMENTO, PAGAMENTOS ou HVC
+                Filtro: APENAS eventos com PAGAMENTO, PAGAMENTOS ou HVC no TÍTULO
             `;
         }
 
@@ -2479,7 +2472,7 @@
         }
 
         // =================================================================
-        // ✅ RENDERIZAÇÃO DO CALENDÁRIO MULTI-CONTA
+        // ✅ RENDERIZAÇÃO DO CALENDÁRIO MULTI-CONTA (COMEÇANDO NA SEGUNDA-FEIRA)
         // =================================================================
         function renderCalendar(events = null) {
             if (!events) {
@@ -2498,7 +2491,8 @@
             
             calendarGrid.innerHTML = '';
             
-            const dayHeaders = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+            // ✅ CORRIGIDO: Cabeçalhos começando na segunda-feira
+            const dayHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
             dayHeaders.forEach(day => {
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'calendar-day-header';
@@ -2509,7 +2503,12 @@
             const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
             const startDate = new Date(firstDay);
-            startDate.setDate(startDate.getDate() - firstDay.getDay());
+            
+            // ✅ CORRIGIDO: Calcular início da semana começando na segunda-feira
+            // getDay() retorna 0=domingo, 1=segunda, etc.
+            // Queremos que segunda = 0, então: (getDay() + 6) % 7
+            const firstDayOfWeek = (firstDay.getDay() + 6) % 7;
+            startDate.setDate(startDate.getDate() - firstDayOfWeek);
             
             const today = new Date();
             const todayString = getCalendarDateString(today);
@@ -2912,7 +2911,7 @@
         // ✅ CORRIGIDO: INICIALIZAÇÃO
         // =================================================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado (FILTRO RESTRITIVO)');
+            console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado (CALENDÁRIO SEGUNDA-FEIRA + FILTRO APENAS TÍTULO)');
             
             renderCalendar([]);
             initializePaymentFilters();
@@ -2956,7 +2955,7 @@
         <div id="filterSection" class="filter-section" style="display: none;">
             <div class="filter-info">
                 <i class="fas fa-filter"></i>
-                <span>Filtro RESTRITIVO Ativo: APENAS eventos com PAGAMENTO, PAGAMENTOS ou HVC</span>
+                <span>Filtro Ativo: APENAS eventos com PAGAMENTO, PAGAMENTOS ou HVC no TÍTULO</span>
             </div>
             <div class="filter-stats" id="filterStats">
                 <!-- Stats will be populated here -->
