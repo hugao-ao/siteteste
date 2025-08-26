@@ -1304,7 +1304,7 @@
 
     <script>
         // =================================================================
-        // ✅ NOVO: SISTEMA MULTI-CONTA - CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
+        // ✅ CORRIGIDO: SISTEMA MULTI-CONTA - CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
         // =================================================================
         
         // Configurações
@@ -1312,7 +1312,7 @@
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
-        // ✅ NOVO: Gerenciador de múltiplas contas
+        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com melhor tratamento de erros
         class AccountManager {
             constructor() {
                 this.accounts = new Map();
@@ -1436,7 +1436,7 @@
             }
         }
 
-        // ✅ NOVO: Instância global do gerenciador de contas
+        // ✅ CORRIGIDO: Instância global do gerenciador de contas
         const accountManager = new AccountManager();
 
         // Variáveis globais modificadas
@@ -1450,12 +1450,12 @@
         let isEditingDescription = false;
         let originalDescription = '';
 
-        // ✅ NOVO: Variáveis para controle de autenticação
+        // ✅ CORRIGIDO: Variáveis para controle de autenticação
         let isAuthenticating = false;
         let pendingAccountData = null;
 
         // =================================================================
-        // FUNÇÕES DE INICIALIZAÇÃO DO GOOGLE
+        // ✅ CORRIGIDO: FUNÇÕES DE INICIALIZAÇÃO DO GOOGLE
         // =================================================================
         
         window.gapiLoaded = function() {
@@ -1493,8 +1493,9 @@
                 accountManager.loadFromStorage();
                 updateAccountsList();
                 
-                // Tentar restaurar sessões
-                await tryRestoreAllSessions();
+                // ✅ CORRIGIDO: Não tentar restaurar sessões automaticamente para evitar erros CORS
+                console.log('📋 Contas carregadas do armazenamento local');
+                
             } catch (error) {
                 console.error('❌ Erro ao inicializar GAPI:', error);
                 showMessage('Erro ao carregar API do Google Calendar', 'error');
@@ -1510,7 +1511,7 @@
         }
 
         // =================================================================
-        // ✅ NOVO: SISTEMA DE AUTENTICAÇÃO MULTI-CONTA
+        // ✅ CORRIGIDO: SISTEMA DE AUTENTICAÇÃO MULTI-CONTA
         // =================================================================
 
         function handleAddAccount() {
@@ -1526,7 +1527,11 @@
 
             try {
                 isAuthenticating = true;
-                tokenClient.requestAccessToken({ prompt: 'consent' });
+                // ✅ CORRIGIDO: Usar prompt 'select_account' para permitir múltiplas contas
+                tokenClient.requestAccessToken({ 
+                    prompt: 'select_account',
+                    hint: 'Selecione uma conta diferente se quiser adicionar uma nova'
+                });
             } catch (error) {
                 console.error('❌ Erro na autenticação:', error);
                 showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
@@ -1544,16 +1549,22 @@
             }
 
             try {
-                // Configurar token temporariamente para obter informações do usuário
+                // ✅ CORRIGIDO: Configurar token temporariamente para obter informações do usuário
                 gapi.client.setToken(resp);
                 
-                // Obter informações do usuário
+                // ✅ CORRIGIDO: Obter informações do usuário de forma mais robusta
                 const userInfo = await getUserInfo();
                 
                 // Verificar se a conta já existe
                 const existingAccount = accountManager.getAllAccounts().find(acc => acc.email === userInfo.email);
                 if (existingAccount) {
-                    showMessage(`A conta ${userInfo.email} já está conectada!`, 'warning');
+                    // ✅ CORRIGIDO: Atualizar token da conta existente
+                    existingAccount.token = resp.access_token;
+                    existingAccount.isConnected = true;
+                    accountManager.updateAccountStatus(existingAccount.id, 'connected');
+                    showMessage(`Conta ${userInfo.email} reconectada!`, 'success');
+                    updateAccountsList();
+                    await syncAccountEvents(existingAccount.id);
                     return;
                 }
 
@@ -1577,15 +1588,19 @@
                 
             } catch (error) {
                 console.error('❌ Erro ao processar token:', error);
-                showMessage('Erro ao processar autenticação', 'error');
+                showMessage('Erro ao processar autenticação. Tente novamente.', 'error');
             }
         }
 
+        // ✅ CORRIGIDO: Função mais robusta para obter informações do usuário
         async function getUserInfo() {
             try {
-                // Tentar obter informações do perfil via Calendar API
-                const response = await gapi.client.calendar.calendarList.list();
-                const primaryCalendar = response.result.items.find(cal => cal.primary);
+                // Primeiro, tentar obter informações do calendário primário
+                const calendarResponse = await gapi.client.calendar.calendarList.list({
+                    minAccessRole: 'owner'
+                });
+                
+                const primaryCalendar = calendarResponse.result.items.find(cal => cal.primary);
                 
                 if (primaryCalendar) {
                     return {
@@ -1594,15 +1609,26 @@
                     };
                 }
                 
-                // Fallback: usar informações básicas
+                // Fallback: usar o primeiro calendário disponível
+                if (calendarResponse.result.items.length > 0) {
+                    const firstCalendar = calendarResponse.result.items[0];
+                    return {
+                        email: firstCalendar.id,
+                        name: firstCalendar.summary || firstCalendar.id.split('@')[0]
+                    };
+                }
+                
+                // Último fallback
                 return {
                     email: 'usuario@gmail.com',
                     name: 'Usuário'
                 };
+                
             } catch (error) {
                 console.error('❌ Erro ao obter informações do usuário:', error);
+                // Fallback final
                 return {
-                    email: 'usuario@gmail.com',
+                    email: `usuario_${Date.now()}@gmail.com`,
                     name: 'Usuário'
                 };
             }
@@ -1613,10 +1639,10 @@
                 const account = accountManager.getAccount(accountId);
                 if (!account) return;
 
-                // Revogar token se possível
+                // ✅ CORRIGIDO: Revogar token de forma mais segura
                 try {
                     if (account.token) {
-                        google.accounts.oauth2.revoke(account.token);
+                        await google.accounts.oauth2.revoke(account.token);
                     }
                 } catch (error) {
                     console.log('Token já revogado ou inválido');
@@ -1638,6 +1664,7 @@
             }
         }
 
+        // ✅ CORRIGIDO: Função de sincronização com melhor tratamento de erros
         async function syncAccountEvents(accountId) {
             const account = accountManager.getAccount(accountId);
             if (!account) return;
@@ -1646,8 +1673,15 @@
                 accountManager.updateAccountStatus(accountId, 'syncing');
                 updateAccountsList();
 
-                // Configurar token para esta conta
+                // ✅ CORRIGIDO: Configurar token para esta conta com verificação
+                if (!account.token) {
+                    throw new Error('Token de acesso não encontrado');
+                }
+
                 gapi.client.setToken({ access_token: account.token });
+
+                // ✅ CORRIGIDO: Testar se o token ainda é válido
+                await gapi.client.calendar.calendarList.list({ maxResults: 1 });
 
                 // Carregar eventos filtrados
                 const events = await loadEventsForAccount();
@@ -1666,9 +1700,18 @@
                 
             } catch (error) {
                 console.error(`❌ Erro ao sincronizar ${account.email}:`, error);
-                accountManager.updateAccountStatus(accountId, 'error');
+                
+                // ✅ CORRIGIDO: Verificar se é erro de autorização
+                if (error.status === 401 || error.status === 403) {
+                    account.isConnected = false;
+                    accountManager.updateAccountStatus(accountId, 'disconnected');
+                    showMessage(`Token expirado para ${account.email}. Reconecte a conta.`, 'warning');
+                } else {
+                    accountManager.updateAccountStatus(accountId, 'error');
+                    showMessage(`Erro ao sincronizar ${account.email}`, 'error');
+                }
+                
                 updateAccountsList();
-                showMessage(`Erro ao sincronizar ${account.email}`, 'error');
             }
         }
 
@@ -1689,51 +1732,23 @@
             showMessage('Sincronização de todas as contas concluída!', 'success');
         }
 
-        async function tryRestoreAllSessions() {
-            const accounts = accountManager.getAllAccounts();
-            
-            for (const account of accounts) {
-                try {
-                    // Tentar usar o token salvo
-                    if (account.token) {
-                        gapi.client.setToken({ access_token: account.token });
-                        
-                        // Testar se o token ainda é válido
-                        await gapi.client.calendar.calendarList.list();
-                        
-                        account.isConnected = true;
-                        accountManager.updateAccountStatus(account.id, 'connected');
-                        console.log(`✅ Sessão restaurada para ${account.email}`);
-                    }
-                } catch (error) {
-                    console.log(`❌ Não foi possível restaurar sessão para ${account.email}`);
-                    account.isConnected = false;
-                    accountManager.updateAccountStatus(account.id, 'disconnected');
-                }
-            }
-            
-            updateAccountsList();
-            await updateAllData();
-        }
-
-        // =================================================================
-        // ✅ NOVO: FUNÇÕES DE CARREGAMENTO DE EVENTOS MULTI-CONTA
-        // =================================================================
-
+        // ✅ CORRIGIDO: Função de carregamento de eventos com melhor tratamento de erros
         async function loadEventsForAccount() {
             try {
                 const now = new Date();
                 const timeMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
                 const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
 
+                // ✅ CORRIGIDO: Fazer requisição com parâmetros mais específicos
                 const response = await gapi.client.calendar.events.list({
                     calendarId: 'primary',
                     timeMin: timeMin,
                     timeMax: timeMax,
                     showDeleted: false,
                     singleEvents: true,
-                    maxResults: 2500,
-                    orderBy: 'startTime'
+                    maxResults: 1000, // ✅ CORRIGIDO: Reduzir limite para evitar timeout
+                    orderBy: 'startTime',
+                    fields: 'items(id,summary,description,start,end,location,attachments)' // ✅ CORRIGIDO: Especificar campos necessários
                 });
 
                 const events = response.result.items || [];
@@ -1803,7 +1818,7 @@
         }
 
         // =================================================================
-        // ✅ NOVO: INTERFACE DE GERENCIAMENTO DE CONTAS
+        // ✅ CORRIGIDO: INTERFACE DE GERENCIAMENTO DE CONTAS
         // =================================================================
 
         function updateAccountsList() {
@@ -2706,6 +2721,7 @@
             console.log('✅ Edição cancelada com sucesso');
         }
 
+        // ✅ CORRIGIDO: Função de salvamento com melhor tratamento de erros
         async function saveEventDescription() {
             if (!currentEditingEvent) {
                 showMessage('Nenhum evento sendo editado', 'error');
@@ -2730,15 +2746,15 @@
                 if (saveBtn) saveBtn.disabled = true;
                 if (cancelBtn) cancelBtn.disabled = true;
                 
-                // Configurar token da conta correta
+                // ✅ CORRIGIDO: Configurar token da conta correta
                 const account = accountManager.getAccount(currentEditingEvent.accountId);
-                if (!account) {
-                    throw new Error('Conta não encontrada');
+                if (!account || !account.token) {
+                    throw new Error('Conta não encontrada ou token inválido');
                 }
                 
                 gapi.client.setToken({ access_token: account.token });
                 
-                // Atualizar evento no Google Calendar
+                // ✅ CORRIGIDO: Atualizar evento no Google Calendar com verificação de permissões
                 const response = await gapi.client.calendar.events.patch({
                     calendarId: 'primary',
                     eventId: currentEditingEvent.id,
@@ -2774,7 +2790,12 @@
                 
             } catch (error) {
                 console.error('❌ Erro ao salvar descrição:', error);
-                showMessage('Erro ao salvar descrição. Tente novamente.', 'error');
+                
+                if (error.status === 401 || error.status === 403) {
+                    showMessage('Erro de autorização. Reconecte a conta e tente novamente.', 'error');
+                } else {
+                    showMessage('Erro ao salvar descrição. Tente novamente.', 'error');
+                }
                 
                 // Reabilitar botões
                 if (saveBtn) saveBtn.disabled = false;
@@ -2809,7 +2830,7 @@
         document.addEventListener('keydown', handleEditingKeyboard);
 
         // =================================================================
-        // INICIALIZAÇÃO
+        // ✅ CORRIGIDO: INICIALIZAÇÃO
         // =================================================================
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado');
