@@ -1325,16 +1325,29 @@
 
     <script>
         // =================================================================
-        // ✅ CORRIGIDO: SISTEMA MULTI-CONTA COM PERMISSÕES CORRIGIDAS
+        // ✅ CORRIGIDO: SISTEMA MULTI-CONTA COM FILTRO CORRIGIDO
         // =================================================================
         
         // Configurações
         const CLIENT_ID = '314578730498-ghkttnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-        // ✅ CORRIGIDO: Escopo mais específico para evitar problemas de permissão
         const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
 
-        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com melhor tratamento de erros
+        // ✅ CORRIGIDO: Palavras-chave centralizadas para filtro consistente
+        const PAYMENT_KEYWORDS = [
+            'pagamento', 'pagamentos', 'pagar', 'vencimento', 'fatura', 'boleto', 'pix', 
+            'transferencia', 'deposito', 'saque', 'conta', 'banco', 'cartao',
+            'debito', 'credito', 'financeiro', 'dinheiro', 'valor', 'quantia',
+            'prestacao', 'parcela', 'mensalidade', 'anuidade', 'taxa',
+            'tarifa', 'multa', 'juros', 'desconto', 'promocao', 'oferta',
+            'compra', 'venda', 'negocio', 'contrato', 'acordo', 'deal',
+            'investimento', 'aplicacao', 'rendimento', 'lucro', 'prejuizo',
+            'receita', 'despesa', 'gasto', 'custo', 'orcamento', 'planejamento',
+            'R$', 'real', 'reais', 'centavo', 'centavos', '$', 'dolar', 'euro',
+            'hvc', 'cliente', 'fornecedor', 'parceiro', 'colaborador'
+        ];
+
+        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com filtro unificado
         class AccountManager {
             constructor() {
                 this.accounts = new Map();
@@ -1385,10 +1398,21 @@
             updateAccountEvents(accountId, events) {
                 const account = this.accounts.get(accountId);
                 if (account) {
-                    account.events = events;
+                    // ✅ CORRIGIDO: Aplicar filtro consistente ao salvar eventos
+                    const filteredEvents = this.applyPaymentFilter(events);
+                    account.events = filteredEvents;
                     account.lastSync = new Date();
                     this.saveToStorage();
+                    console.log(`📊 Conta ${account.email}: ${events.length} eventos carregados, ${filteredEvents.length} filtrados`);
                 }
+            }
+
+            // ✅ NOVO: Função centralizada para aplicar filtro de pagamentos
+            applyPaymentFilter(events) {
+                return events.filter(event => {
+                    const searchText = `${event.summary || ''} ${event.description || ''}`.toLowerCase();
+                    return PAYMENT_KEYWORDS.some(keyword => searchText.includes(keyword.toLowerCase()));
+                });
             }
 
             updateAccountStatus(accountId, status) {
@@ -1415,6 +1439,7 @@
                         });
                     }
                 });
+                console.log(`📊 Total de eventos de todas as contas: ${allEvents.length}`);
                 return allEvents;
             }
 
@@ -1727,7 +1752,7 @@
             }
         }
 
-        // ✅ CORRIGIDO: Sincronização com melhor tratamento de erros
+        // ✅ CORRIGIDO: Sincronização com filtro aplicado corretamente
         async function syncAccountEvents(accountId) {
             const account = accountManager.getAccount(accountId);
             if (!account) return;
@@ -1748,15 +1773,17 @@
 
                 const events = await loadEventsForAccount();
                 
+                // ✅ CORRIGIDO: O filtro agora é aplicado no updateAccountEvents
                 accountManager.updateAccountEvents(accountId, events);
                 accountManager.updateAccountStatus(accountId, 'connected');
                 
-                console.log(`✅ Eventos sincronizados para ${account.email}: ${events.length} eventos`);
+                const filteredCount = account.events.length;
+                console.log(`✅ Eventos sincronizados para ${account.email}: ${events.length} total, ${filteredCount} filtrados`);
                 
                 updateAccountsList();
                 await updateAllData();
                 
-                showMessage(`Sincronização concluída para ${account.email}: ${events.length} eventos encontrados`, 'success');
+                showMessage(`Sincronização concluída para ${account.email}: ${filteredCount} eventos filtrados de ${events.length} total`, 'success');
                 
             } catch (error) {
                 console.error(`❌ Erro ao sincronizar ${account.email}:`, error);
@@ -1813,7 +1840,7 @@
             showMessage('Sincronização de todas as contas concluída!', 'success');
         }
 
-        // ✅ CORRIGIDO: Carregamento de eventos com melhor tratamento de erros
+        // ✅ CORRIGIDO: Carregamento de eventos SEM filtro (filtro aplicado depois)
         async function loadEventsForAccount() {
             try {
                 const now = new Date();
@@ -1839,27 +1866,10 @@
 
                 const events = response.result.items || [];
                 
-                const paymentKeywords = [
-                    'pagamento', 'pagar', 'vencimento', 'fatura', 'boleto', 'pix', 
-                    'transferencia', 'deposito', 'saque', 'conta', 'banco', 'cartao',
-                    'debito', 'credito', 'financeiro', 'dinheiro', 'valor', 'quantia',
-                    'prestacao', 'parcela', 'mensalidade', 'anuidade', 'taxa',
-                    'tarifa', 'multa', 'juros', 'desconto', 'promocao', 'oferta',
-                    'compra', 'venda', 'negocio', 'contrato', 'acordo', 'deal',
-                    'investimento', 'aplicacao', 'rendimento', 'lucro', 'prejuizo',
-                    'receita', 'despesa', 'gasto', 'custo', 'orcamento', 'planejamento',
-                    'R$', 'real', 'reais', 'centavo', 'centavos', '$', 'dolar', 'euro',
-                    'hvc', 'cliente', 'fornecedor', 'parceiro', 'colaborador'
-                ];
-
-                const filteredEvents = events.filter(event => {
-                    const searchText = `${event.summary || ''} ${event.description || ''}`.toLowerCase();
-                    return paymentKeywords.some(keyword => searchText.includes(keyword.toLowerCase()));
-                });
-
-                console.log(`📊 Eventos carregados: ${events.length}, Filtrados: ${filteredEvents.length}`);
+                console.log(`📊 Eventos carregados da API: ${events.length}`);
                 
-                return filteredEvents;
+                // ✅ CORRIGIDO: Retornar TODOS os eventos, filtro será aplicado no AccountManager
+                return events;
                 
             } catch (error) {
                 console.error('❌ Erro ao carregar eventos:', error);
@@ -1881,6 +1891,7 @@
                 updateFilterStats(allEvents);
                 updateMonthlySummary(allEvents);
                 renderCalendar(allEvents);
+                updateAccountFilter();
                 
                 const hasConnectedAccounts = accountManager.getConnectedAccounts().length > 0;
                 toggleSections(hasConnectedAccounts);
@@ -1936,6 +1947,10 @@
                     lastSyncText = `• Última sync: ${account.lastSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
                 }
                 
+                // ✅ CORRIGIDO: Mostrar contagem de eventos filtrados
+                const eventCount = account.events ? account.events.length : 0;
+                const eventCountText = eventCount > 0 ? `• ${eventCount} eventos` : '';
+                
                 // ✅ CORRIGIDO: Botões condicionais baseados no status
                 let actionButtons = '';
                 if (account.isConnected && account.syncStatus !== 'error') {
@@ -1969,6 +1984,7 @@
                                     <i class="fas ${statusIcon}"></i>
                                     ${getAccountStatusText(account.syncStatus)}
                                     ${lastSyncText}
+                                    ${eventCountText}
                                 </div>
                             </div>
                         </div>
@@ -2226,7 +2242,8 @@
             filterStatsElement.innerHTML = `
                 Contas conectadas: ${connectedAccounts.length} | 
                 Eventos encontrados: ${totalEvents} | 
-                Período: ${currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+                Período: ${currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} |
+                Filtro: PAGAMENTO, PAGAMENTOS, HVC
             `;
         }
 
