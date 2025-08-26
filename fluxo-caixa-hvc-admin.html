@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluxo de Caixa HVC - Agenda e Pagamentos</title>
+    <title>Fluxo de Caixa HVC - Agenda e Pagamentos (Multi-Conta)</title>
     <link rel="stylesheet" href="style.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
     
@@ -63,6 +63,167 @@
             margin-bottom: 1.5rem;
             text-align: center;
             word-wrap: break-word;
+        }
+
+        /* ✅ NOVO: Estilos para gerenciamento de múltiplas contas */
+        .accounts-section {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .accounts-section h2 {
+            color: #ffffff;
+            font-size: 1.8rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .accounts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .account-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            padding: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .account-item:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .account-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex: 1;
+            min-width: 200px;
+        }
+
+        .account-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .account-details {
+            flex: 1;
+        }
+
+        .account-email {
+            color: #ffffff;
+            font-weight: 500;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .account-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+        }
+
+        .account-status.connected {
+            color: #34a853;
+        }
+
+        .account-status.disconnected {
+            color: #ea4335;
+        }
+
+        .account-status.syncing {
+            color: #ffc107;
+        }
+
+        .account-controls {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .account-btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .account-btn.sync {
+            background: rgba(66, 133, 244, 0.3);
+            border: 1px solid #4285f4;
+            color: #4285f4;
+        }
+
+        .account-btn.sync:hover {
+            background: rgba(66, 133, 244, 0.5);
+            color: #ffffff;
+        }
+
+        .account-btn.disconnect {
+            background: rgba(234, 67, 53, 0.3);
+            border: 1px solid #ea4335;
+            color: #ea4335;
+        }
+
+        .account-btn.disconnect:hover {
+            background: rgba(234, 67, 53, 0.5);
+            color: #ffffff;
+        }
+
+        .account-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .add-account-section {
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            padding-top: 20px;
+            margin-top: 20px;
+        }
+
+        .no-accounts {
+            text-align: center;
+            padding: 40px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .no-accounts i {
+            font-size: 3rem;
+            margin-bottom: 15px;
+            display: block;
         }
 
         /* Seção de Resumo Mensal */
@@ -292,6 +453,7 @@
             margin-bottom: 10px;
             transition: all 0.3s ease;
             cursor: pointer;
+            border-left: 4px solid transparent;
         }
 
         .payment-item:hover {
@@ -365,6 +527,16 @@
             color: #4285f4;
         }
 
+        .payment-account {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
         .payment-type {
             display: flex;
             align-items: center;
@@ -393,109 +565,6 @@
             font-size: 3rem;
             margin-bottom: 15px;
             display: block;
-        }
-
-        /* Google Calendar Section */
-        .google-section {
-            background: rgba(25, 25, 112, 0.3);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 30px;
-            margin-bottom: 30px;
-            max-width: 100%;
-            box-sizing: border-box;
-        }
-
-        .google-section h2 {
-            color: #ffffff;
-            font-size: 1.8rem;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .status-indicator {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 15px 20px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            font-size: 16px;
-            font-weight: 500;
-            flex-wrap: wrap;
-        }
-
-        .status-disconnected {
-            background: rgba(234, 67, 53, 0.2);
-            border: 1px solid rgba(234, 67, 53, 0.4);
-            color: #ea4335;
-        }
-
-        .status-connected {
-            background: rgba(52, 168, 83, 0.2);
-            border: 1px solid rgba(52, 168, 83, 0.4);
-            color: #34a853;
-        }
-
-        .google-controls {
-            display: flex;
-            gap: 15px;
-            flex-wrap: wrap;
-            justify-content: flex-start;
-        }
-
-        .btn {
-            padding: 12px 24px;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            white-space: nowrap;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #4285f4, #34a853);
-            color: white;
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #ea4335, #d33b2c);
-            color: white;
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
-        }
-
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-            transform: none !important;
         }
 
         /* Calendar View */
@@ -646,6 +715,7 @@
             box-sizing: border-box;
             min-width: 0;
             flex-shrink: 0;
+            border-left: 3px solid transparent;
         }
 
         .event-item:hover {
@@ -943,6 +1013,149 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            white-space: nowrap;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+        }
+
+        .btn-danger {
+            background: linear-gradient(135deg, #ea4335, #d33b2c);
+            color: white;
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        /* Estilos para edição de eventos */
+        .edit-description-section {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .edit-description-textarea {
+            width: 100%;
+            min-height: 120px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            color: #ffffff;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            box-sizing: border-box;
+        }
+        
+        .edit-description-textarea:focus {
+            outline: none;
+            border-color: #4285f4;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .edit-description-textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+        
+        .edit-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .btn-edit {
+            background: rgba(66, 133, 244, 0.3);
+            border: 1px solid #4285f4;
+            color: #4285f4;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .btn-edit:hover {
+            background: rgba(66, 133, 244, 0.5);
+            color: #ffffff;
+        }
+        
+        .btn-save {
+            background: rgba(52, 168, 83, 0.3);
+            border: 1px solid #34a853;
+            color: #34a853;
+        }
+        
+        .btn-save:hover {
+            background: rgba(52, 168, 83, 0.5);
+            color: #ffffff;
+        }
+        
+        .btn-cancel {
+            background: rgba(234, 67, 53, 0.3);
+            border: 1px solid #ea4335;
+            color: #ea4335;
+        }
+        
+        .btn-cancel:hover {
+            background: rgba(234, 67, 53, 0.5);
+            color: #ffffff;
+        }
+        
+        .btn-edit:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .edit-loading {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+        }
         
         /* Responsive */
         @media (max-width: 1200px) {
@@ -969,7 +1182,7 @@
             }
             
             .hvc-container,
-            .google-section,
+            .accounts-section,
             .calendar-section,
             .filter-section,
             .monthly-summary,
@@ -981,7 +1194,7 @@
                 font-size: 1.5rem;
             }
             
-            .google-section h2 {
+            .accounts-section h2 {
                 font-size: 1.4rem;
             }
             
@@ -996,10 +1209,6 @@
                 padding: 4px;
             }
             
-            .google-controls {
-                flex-direction: column;
-            }
-
             .calendar-header {
                 flex-direction: column;
                 gap: 15px;
@@ -1050,6 +1259,16 @@
             .payments-filters {
                 grid-template-columns: 1fr;
             }
+
+            .account-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .account-controls {
+                width: 100%;
+                justify-content: flex-start;
+            }
         }
 
         @media (max-width: 480px) {
@@ -1081,107 +1300,11 @@
                 grid-template-columns: 1fr;
             }
         }
-
-                        /* ✅ NOVO: Estilos para edição de eventos */
-                .edit-description-section {
-                    background: rgba(255, 255, 255, 0.1);
-                    border-radius: 8px;
-                    padding: 15px;
-                    margin: 15px 0;
-                }
-                
-                .edit-description-textarea {
-                    width: 100%;
-                    min-height: 120px;
-                    background: rgba(255, 255, 255, 0.1);
-                    border: 1px solid rgba(255, 255, 255, 0.3);
-                    border-radius: 6px;
-                    padding: 10px;
-                    color: #ffffff;
-                    font-size: 14px;
-                    font-family: inherit;
-                    resize: vertical;
-                    box-sizing: border-box;
-                }
-                
-                .edit-description-textarea:focus {
-                    outline: none;
-                    border-color: #4285f4;
-                    background: rgba(255, 255, 255, 0.15);
-                }
-                
-                .edit-description-textarea::placeholder {
-                    color: rgba(255, 255, 255, 0.5);
-                }
-                
-                .edit-buttons {
-                    display: flex;
-                    gap: 10px;
-                    margin-top: 10px;
-                    flex-wrap: wrap;
-                }
-                
-                .btn-edit {
-                    background: rgba(66, 133, 244, 0.3);
-                    border: 1px solid #4285f4;
-                    color: #4285f4;
-                    padding: 8px 16px;
-                    border-radius: 6px;
-                    cursor: pointer;
-                    font-size: 14px;
-                    transition: all 0.3s ease;
-                    display: flex;
-                    align-items: center;
-                    gap: 5px;
-                }
-                
-                .btn-edit:hover {
-                    background: rgba(66, 133, 244, 0.5);
-                    color: #ffffff;
-                }
-                
-                .btn-save {
-                    background: rgba(52, 168, 83, 0.3);
-                    border: 1px solid #34a853;
-                    color: #34a853;
-                }
-                
-                .btn-save:hover {
-                    background: rgba(52, 168, 83, 0.5);
-                    color: #ffffff;
-                }
-                
-                .btn-cancel {
-                    background: rgba(234, 67, 53, 0.3);
-                    border: 1px solid #ea4335;
-                    color: #ea4335;
-                }
-                
-                .btn-cancel:hover {
-                    background: rgba(234, 67, 53, 0.5);
-                    color: #ffffff;
-                }
-                
-                .btn-edit:disabled {
-                    opacity: 0.5;
-                    cursor: not-allowed;
-                }
-                
-                .edit-loading {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    color: rgba(255, 255, 255, 0.7);
-                    font-size: 14px;
-                }
-
-
-
     </style>
 
     <script>
         // =================================================================
-        // DEFINIR FUNÇÕES GLOBAIS ANTES DOS SCRIPTS DO GOOGLE
+        // ✅ CORRIGIDO: SISTEMA MULTI-CONTA - CONFIGURAÇÕES E VARIÁVEIS GLOBAIS
         // =================================================================
         
         // Configurações
@@ -1189,19 +1312,155 @@
         const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
         const SCOPES = 'https://www.googleapis.com/auth/calendar.events';
 
+        // ✅ CORRIGIDO: Gerenciador de múltiplas contas com correção de bugs
+        class AccountManager {
+            constructor() {
+                this.accounts = new Map();
+                this.colors = [
+                    '#4285f4', '#34a853', '#ea4335', '#fbbc04', 
+                    '#9c27b0', '#ff9800', '#795548', '#607d8b',
+                    '#e91e63', '#00bcd4', '#8bc34a', '#ffc107'
+                ];
+                this.colorIndex = 0;
+            }
+
+            addAccount(accountData) {
+                const accountId = this.generateAccountId(accountData.email);
+                const account = {
+                    id: accountId,
+                    email: accountData.email,
+                    displayName: accountData.name || accountData.email.split('@')[0],
+                    isConnected: true,
+                    token: accountData.token,
+                    events: [],
+                    lastSync: new Date(), // ✅ CORRIGIDO: Sempre usar Date object
+                    color: this.getNextColor(),
+                    syncStatus: 'connected'
+                };
+                
+                this.accounts.set(accountId, account);
+                this.saveToStorage();
+                return account;
+            }
+
+            removeAccount(accountId) {
+                this.accounts.delete(accountId);
+                this.saveToStorage();
+            }
+
+            getAccount(accountId) {
+                return this.accounts.get(accountId);
+            }
+
+            getAllAccounts() {
+                return Array.from(this.accounts.values());
+            }
+
+            getConnectedAccounts() {
+                return this.getAllAccounts().filter(account => account.isConnected);
+            }
+
+            updateAccountEvents(accountId, events) {
+                const account = this.accounts.get(accountId);
+                if (account) {
+                    account.events = events;
+                    account.lastSync = new Date(); // ✅ CORRIGIDO: Sempre usar Date object
+                    this.saveToStorage();
+                }
+            }
+
+            updateAccountStatus(accountId, status) {
+                const account = this.accounts.get(accountId);
+                if (account) {
+                    account.syncStatus = status;
+                    this.saveToStorage();
+                }
+            }
+
+            getAllEvents() {
+                const allEvents = [];
+                this.accounts.forEach(account => {
+                    if (account.isConnected && account.events) {
+                        account.events.forEach(event => {
+                            // Adicionar informações da conta ao evento
+                            event.accountId = account.id;
+                            event.accountEmail = account.email;
+                            event.accountColor = account.color;
+                            allEvents.push(event);
+                        });
+                    }
+                });
+                return allEvents;
+            }
+
+            generateAccountId(email) {
+                return 'acc_' + btoa(email).replace(/[^a-zA-Z0-9]/g, '').substring(0, 10);
+            }
+
+            getNextColor() {
+                const color = this.colors[this.colorIndex % this.colors.length];
+                this.colorIndex++;
+                return color;
+            }
+
+            saveToStorage() {
+                try {
+                    const accountsData = {};
+                    this.accounts.forEach((account, id) => {
+                        accountsData[id] = {
+                            ...account,
+                            events: [], // Não salvar eventos no localStorage (muito grande)
+                            lastSync: account.lastSync ? account.lastSync.toISOString() : new Date().toISOString() // ✅ CORRIGIDO: Salvar como string
+                        };
+                    });
+                    localStorage.setItem('hvc_accounts', JSON.stringify(accountsData));
+                } catch (error) {
+                    console.error('❌ Erro ao salvar contas:', error);
+                }
+            }
+
+            loadFromStorage() {
+                try {
+                    const accountsData = localStorage.getItem('hvc_accounts');
+                    if (accountsData) {
+                        const parsed = JSON.parse(accountsData);
+                        Object.entries(parsed).forEach(([id, account]) => {
+                            account.isConnected = false; // Resetar status de conexão
+                            account.events = [];
+                            // ✅ CORRIGIDO: Converter string de volta para Date
+                            account.lastSync = account.lastSync ? new Date(account.lastSync) : new Date();
+                            this.accounts.set(id, account);
+                        });
+                        this.colorIndex = this.accounts.size;
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao carregar contas:', error);
+                }
+            }
+        }
+
+        // ✅ CORRIGIDO: Instância global do gerenciador de contas
+        const accountManager = new AccountManager();
+
+        // Variáveis globais modificadas
         let tokenClient;
         let gapiInited = false;
         let gisInited = false;
-        let isGoogleConnected = false;
-        let filteredEvents = [];
         let currentDate = new Date();
-        let allPaymentsList = []; // ✅ NOVO: Lista completa de pagamentos
-        let filteredPaymentsList = []; // ✅ NOVO: Lista filtrada
+        let allPaymentsList = [];
+        let filteredPaymentsList = [];
         let currentEditingEvent = null;
         let isEditingDescription = false;
         let originalDescription = '';
 
-        // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
+        // ✅ CORRIGIDO: Variáveis para controle de autenticação
+        let isAuthenticating = false;
+        let pendingAccountData = null;
+
+        // =================================================================
+        // ✅ CORRIGIDO: FUNÇÕES DE INICIALIZAÇÃO DO GOOGLE
+        // =================================================================
+        
         window.gapiLoaded = function() {
             console.log('🔄 Carregando GAPI...');
             gapi.load('client', initializeGapiClient);
@@ -1233,8 +1492,12 @@
                 maybeEnableButtons();
                 console.log('✅ GAPI inicializado com sucesso!');
                 
-                // Tentar restaurar sessão
-                await tryRestoreSession();
+                // Carregar contas salvas
+                accountManager.loadFromStorage();
+                updateAccountsList();
+                
+                console.log('📋 Contas carregadas do armazenamento local');
+                
             } catch (error) {
                 console.error('❌ Erro ao inicializar GAPI:', error);
                 showMessage('Erro ao carregar API do Google Calendar', 'error');
@@ -1243,22 +1506,381 @@
 
         function maybeEnableButtons() {
             if (gapiInited && gisInited) {
-                const authorizeButton = document.getElementById('authorizeButton');
-                if (authorizeButton) {
-                    authorizeButton.style.display = 'block';
-                    console.log('✅ APIs do Google carregadas com sucesso');
-                    showMessage('APIs do Google carregadas com sucesso!', 'success');
-                }
+                console.log('✅ APIs do Google carregadas com sucesso');
+                showMessage('APIs do Google carregadas com sucesso!', 'success');
+                updateAccountsList();
             }
         }
 
         // =================================================================
-        // ✅ SISTEMA DE EXTRAÇÃO COM STATUS MELHORADO
+        // ✅ CORRIGIDO: SISTEMA DE AUTENTICAÇÃO MULTI-CONTA
+        // =================================================================
+
+        function handleAddAccount() {
+            if (!gapiInited || !gisInited) {
+                showMessage('APIs do Google ainda não foram carregadas. Aguarde...', 'error');
+                return;
+            }
+
+            if (isAuthenticating) {
+                showMessage('Já existe uma autenticação em andamento. Aguarde...', 'warning');
+                return;
+            }
+
+            try {
+                isAuthenticating = true;
+                tokenClient.requestAccessToken({ 
+                    prompt: 'select_account',
+                    hint: 'Selecione uma conta diferente se quiser adicionar uma nova'
+                });
+            } catch (error) {
+                console.error('❌ Erro na autenticação:', error);
+                showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
+                isAuthenticating = false;
+            }
+        }
+
+        async function handleTokenResponse(resp) {
+            isAuthenticating = false;
+            
+            if (resp.error) {
+                console.error('❌ Erro de autenticação:', resp.error);
+                showMessage(`Erro de autenticação: ${resp.error}`, 'error');
+                return;
+            }
+
+            try {
+                gapi.client.setToken(resp);
+                
+                const userInfo = await getUserInfo();
+                
+                // Verificar se a conta já existe
+                const existingAccount = accountManager.getAllAccounts().find(acc => acc.email === userInfo.email);
+                if (existingAccount) {
+                    existingAccount.token = resp.access_token;
+                    existingAccount.isConnected = true;
+                    accountManager.updateAccountStatus(existingAccount.id, 'connected');
+                    showMessage(`Conta ${userInfo.email} reconectada!`, 'success');
+                    updateAccountsList();
+                    await syncAccountEvents(existingAccount.id);
+                    return;
+                }
+
+                // Adicionar nova conta
+                const accountData = {
+                    email: userInfo.email,
+                    name: userInfo.name,
+                    token: resp.access_token
+                };
+
+                const newAccount = accountManager.addAccount(accountData);
+                console.log('✅ Nova conta adicionada:', newAccount.email);
+                
+                showMessage(`Conta ${newAccount.email} conectada com sucesso!`, 'success');
+                
+                updateAccountsList();
+                await syncAccountEvents(newAccount.id);
+                
+            } catch (error) {
+                console.error('❌ Erro ao processar token:', error);
+                showMessage('Erro ao processar autenticação. Tente novamente.', 'error');
+            }
+        }
+
+        async function getUserInfo() {
+            try {
+                const calendarResponse = await gapi.client.calendar.calendarList.list({
+                    minAccessRole: 'owner'
+                });
+                
+                const primaryCalendar = calendarResponse.result.items.find(cal => cal.primary);
+                
+                if (primaryCalendar) {
+                    return {
+                        email: primaryCalendar.id,
+                        name: primaryCalendar.summary || primaryCalendar.id.split('@')[0]
+                    };
+                }
+                
+                if (calendarResponse.result.items.length > 0) {
+                    const firstCalendar = calendarResponse.result.items[0];
+                    return {
+                        email: firstCalendar.id,
+                        name: firstCalendar.summary || firstCalendar.id.split('@')[0]
+                    };
+                }
+                
+                return {
+                    email: 'usuario@gmail.com',
+                    name: 'Usuário'
+                };
+                
+            } catch (error) {
+                console.error('❌ Erro ao obter informações do usuário:', error);
+                return {
+                    email: `usuario_${Date.now()}@gmail.com`,
+                    name: 'Usuário'
+                };
+            }
+        }
+
+        async function disconnectAccount(accountId) {
+            try {
+                const account = accountManager.getAccount(accountId);
+                if (!account) return;
+
+                try {
+                    if (account.token) {
+                        await google.accounts.oauth2.revoke(account.token);
+                    }
+                } catch (error) {
+                    console.log('Token já revogado ou inválido');
+                }
+
+                accountManager.removeAccount(accountId);
+                
+                console.log('✅ Conta desconectada:', account.email);
+                showMessage(`Conta ${account.email} desconectada`, 'success');
+                
+                updateAccountsList();
+                await updateAllData();
+                
+            } catch (error) {
+                console.error('❌ Erro ao desconectar conta:', error);
+                showMessage('Erro ao desconectar conta', 'error');
+            }
+        }
+
+        async function syncAccountEvents(accountId) {
+            const account = accountManager.getAccount(accountId);
+            if (!account) return;
+
+            try {
+                accountManager.updateAccountStatus(accountId, 'syncing');
+                updateAccountsList();
+
+                if (!account.token) {
+                    throw new Error('Token de acesso não encontrado');
+                }
+
+                gapi.client.setToken({ access_token: account.token });
+
+                await gapi.client.calendar.calendarList.list({ maxResults: 1 });
+
+                const events = await loadEventsForAccount();
+                
+                accountManager.updateAccountEvents(accountId, events);
+                accountManager.updateAccountStatus(accountId, 'connected');
+                
+                console.log(`✅ Eventos sincronizados para ${account.email}: ${events.length} eventos`);
+                
+                updateAccountsList();
+                await updateAllData();
+                
+                showMessage(`Sincronização concluída para ${account.email}`, 'success');
+                
+            } catch (error) {
+                console.error(`❌ Erro ao sincronizar ${account.email}:`, error);
+                
+                if (error.status === 401 || error.status === 403) {
+                    account.isConnected = false;
+                    accountManager.updateAccountStatus(accountId, 'disconnected');
+                    showMessage(`Token expirado para ${account.email}. Reconecte a conta.`, 'warning');
+                } else {
+                    accountManager.updateAccountStatus(accountId, 'error');
+                    showMessage(`Erro ao sincronizar ${account.email}`, 'error');
+                }
+                
+                updateAccountsList();
+            }
+        }
+
+        async function syncAllAccounts() {
+            const connectedAccounts = accountManager.getConnectedAccounts();
+            
+            if (connectedAccounts.length === 0) {
+                showMessage('Nenhuma conta conectada para sincronizar', 'warning');
+                return;
+            }
+
+            showMessage('Sincronizando todas as contas...', 'info');
+
+            for (const account of connectedAccounts) {
+                await syncAccountEvents(account.id);
+            }
+
+            showMessage('Sincronização de todas as contas concluída!', 'success');
+        }
+
+        async function loadEventsForAccount() {
+            try {
+                const now = new Date();
+                const timeMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
+                const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
+
+                const response = await gapi.client.calendar.events.list({
+                    calendarId: 'primary',
+                    timeMin: timeMin,
+                    timeMax: timeMax,
+                    showDeleted: false,
+                    singleEvents: true,
+                    maxResults: 1000,
+                    orderBy: 'startTime',
+                    fields: 'items(id,summary,description,start,end,location,attachments)'
+                });
+
+                const events = response.result.items || [];
+                
+                const paymentKeywords = [
+                    'pagamento', 'pagar', 'vencimento', 'fatura', 'boleto', 'pix', 
+                    'transferencia', 'deposito', 'saque', 'conta', 'banco', 'cartao',
+                    'debito', 'credito', 'financeiro', 'dinheiro', 'valor', 'quantia',
+                    'prestacao', 'parcela', 'mensalidade', 'anuidade', 'taxa',
+                    'tarifa', 'multa', 'juros', 'desconto', 'promocao', 'oferta',
+                    'compra', 'venda', 'negocio', 'contrato', 'acordo', 'deal',
+                    'investimento', 'aplicacao', 'rendimento', 'lucro', 'prejuizo',
+                    'receita', 'despesa', 'gasto', 'custo', 'orcamento', 'planejamento',
+                    'R$', 'real', 'reais', 'centavo', 'centavos', '$', 'dolar', 'euro',
+                    'hvc', 'cliente', 'fornecedor', 'parceiro', 'colaborador'
+                ];
+
+                const filteredEvents = events.filter(event => {
+                    const searchText = `${event.summary || ''} ${event.description || ''}`.toLowerCase();
+                    return paymentKeywords.some(keyword => searchText.includes(keyword.toLowerCase()));
+                });
+
+                console.log(`📊 Eventos carregados: ${events.length}, Filtrados: ${filteredEvents.length}`);
+                
+                return filteredEvents;
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar eventos:', error);
+                throw error;
+            }
+        }
+
+        async function updateAllData() {
+            try {
+                const allEvents = accountManager.getAllEvents();
+                
+                updateFilterStats(allEvents);
+                updateMonthlySummary(allEvents);
+                renderCalendar(allEvents);
+                
+                const hasConnectedAccounts = accountManager.getConnectedAccounts().length > 0;
+                toggleSections(hasConnectedAccounts);
+                
+            } catch (error) {
+                console.error('❌ Erro ao atualizar dados:', error);
+            }
+        }
+
+        function toggleSections(show) {
+            const sections = [
+                'calendarSection',
+                'filterSection', 
+                'monthlySummarySection',
+                'paymentsListSection'
+            ];
+            
+            sections.forEach(sectionId => {
+                const section = document.getElementById(sectionId);
+                if (section) {
+                    section.style.display = show ? 'block' : 'none';
+                }
+            });
+        }
+
+        // =================================================================
+        // ✅ CORRIGIDO: INTERFACE DE GERENCIAMENTO DE CONTAS
+        // =================================================================
+
+        function updateAccountsList() {
+            const accountsListElement = document.getElementById('accountsList');
+            if (!accountsListElement) return;
+
+            const accounts = accountManager.getAllAccounts();
+            
+            if (accounts.length === 0) {
+                accountsListElement.innerHTML = `
+                    <div class="no-accounts">
+                        <i class="fas fa-user-plus"></i>
+                        <p>Nenhuma conta conectada</p>
+                        <p style="font-size: 0.9rem;">Adicione uma conta do Google Calendar para começar</p>
+                    </div>
+                `;
+                return;
+            }
+
+            accountsListElement.innerHTML = accounts.map(account => {
+                const statusIcon = getAccountStatusIcon(account.syncStatus);
+                const statusClass = account.isConnected ? 'connected' : 'disconnected';
+                
+                // ✅ CORRIGIDO: Verificar se lastSync é um objeto Date válido
+                let lastSyncText = '';
+                if (account.lastSync && account.lastSync instanceof Date && !isNaN(account.lastSync)) {
+                    lastSyncText = `• Última sync: ${account.lastSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
+                }
+                
+                return `
+                    <div class="account-item" style="border-left-color: ${account.color}">
+                        <div class="account-info">
+                            <div class="account-avatar" style="background-color: ${account.color}">
+                                ${account.displayName.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="account-details">
+                                <div class="account-email">${account.email}</div>
+                                <div class="account-status ${statusClass}">
+                                    <i class="fas ${statusIcon}"></i>
+                                    ${getAccountStatusText(account.syncStatus)}
+                                    ${lastSyncText}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="account-controls">
+                            <button onclick="syncAccountEvents('${account.id}')" 
+                                    class="account-btn sync" 
+                                    ${account.syncStatus === 'syncing' ? 'disabled' : ''}>
+                                <i class="fas fa-sync-alt"></i>
+                                ${account.syncStatus === 'syncing' ? 'Sincronizando...' : 'Sincronizar'}
+                            </button>
+                            <button onclick="disconnectAccount('${account.id}')" 
+                                    class="account-btn disconnect">
+                                <i class="fas fa-unlink"></i>
+                                Desconectar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function getAccountStatusIcon(status) {
+            switch (status) {
+                case 'connected': return 'fa-check-circle';
+                case 'syncing': return 'fa-sync-alt fa-spin';
+                case 'error': return 'fa-exclamation-triangle';
+                case 'disconnected': return 'fa-times-circle';
+                default: return 'fa-question-circle';
+            }
+        }
+
+        function getAccountStatusText(status) {
+            switch (status) {
+                case 'connected': return 'Conectado';
+                case 'syncing': return 'Sincronizando';
+                case 'error': return 'Erro na sincronização';
+                case 'disconnected': return 'Desconectado';
+                default: return 'Status desconhecido';
+            }
+        }
+
+        // =================================================================
+        // SISTEMA DE EXTRAÇÃO COM STATUS MELHORADO
         // =================================================================
         function extractPaymentInfo(text) {
             if (!text) return [];
             
-            // Regex para detectar padrões como "Nome do pagamento - R$ 1.234,56 (STATUS)"
             const paymentRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?/gi;
             const matches = [];
             let match;
@@ -1269,8 +1891,7 @@
                 const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
                 const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
                 
-                // Determinar status baseado no texto entre parênteses
-                let status = 'PENDENTE'; // Status padrão
+                let status = 'PENDENTE';
                 
                 if (statusText) {
                     const statusLower = statusText.toLowerCase();
@@ -1291,7 +1912,6 @@
                 });
             }
             
-            // Fallback: se não encontrar o padrão com "-", usar o método antigo
             if (matches.length === 0) {
                 const moneyRegex = /R\$\s*([\d.]+,\d{2})/gi;
                 const moneyMatches = text.match(moneyRegex) || [];
@@ -1321,7 +1941,6 @@
             
             const payments = extractPaymentInfo(fullText);
             
-            // Só contar PG e PENDENTE para o total
             const countablePayments = payments.filter(p => p.status === 'PG' || p.status === 'PENDENTE');
             const total = countablePayments.reduce((sum, item) => sum + item.value, 0);
             
@@ -1341,22 +1960,22 @@
             }).format(value);
         }
 
-        function calculateDayTotal(date) {
-            const eventsForDay = getEventsForDay(date);
+        function calculateDayTotal(date, events) {
+            const eventsForDay = getEventsForDay(date, events);
             let dayTotal = 0;
             
             eventsForDay.forEach(event => {
                 const eventCalc = calculateEventTotal(event);
-                dayTotal += eventCalc.total; // Já considera apenas PG e PENDENTE
+                dayTotal += eventCalc.total;
             });
             
             return dayTotal;
         }
 
         // =================================================================
-        // ✅ CÁLCULOS MENSAIS COM MONTANTES POR STATUS
+        // ✅ CÁLCULOS MENSAIS COM MONTANTES POR STATUS (MULTI-CONTA)
         // =================================================================
-        function calculateMonthlyTotals() {
+        function calculateMonthlyTotals(events) {
             const currentMonth = currentDate.getMonth();
             const currentYear = currentDate.getFullYear();
             
@@ -1364,7 +1983,6 @@
             let totalEvents = 0;
             let totalPayments = 0;
             
-            // ✅ NOVO: Contadores e montantes por status
             let totalPG = 0;
             let totalPendente = 0;
             let totalRecalculado = 0;
@@ -1374,16 +1992,15 @@
             
             const paymentsList = [];
             
-            filteredEvents.forEach(event => {
+            events.forEach(event => {
                 const eventDate = parseEventDate(event);
                 
                 if (eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear) {
                     const eventCalc = calculateEventTotal(event);
-                    monthlyTotal += eventCalc.total; // Já considera apenas PG e PENDENTE
+                    monthlyTotal += eventCalc.total;
                     totalEvents++;
                     totalPayments += eventCalc.count;
                     
-                    // Contar por status e somar montantes
                     eventCalc.payments.forEach(payment => {
                         if (payment.status === 'PG') {
                             totalPG++;
@@ -1396,19 +2013,19 @@
                             amountRecalculado += payment.value;
                         }
                         
-                        // Adicionar pagamentos à lista
                         paymentsList.push({
                             ...payment,
                             eventTitle: event.summary || 'Sem título',
                             eventDate: eventDate,
                             eventType: getEventType(event),
-                            eventId: event.id
+                            eventId: event.id,
+                            accountEmail: event.accountEmail || 'Conta desconhecida',
+                            accountColor: event.accountColor || '#4285f4'
                         });
                     });
                 }
             });
             
-            // ✅ NOVO: Ordenar pagamentos por data (mais recente primeiro)
             paymentsList.sort((a, b) => b.eventDate - a.eventDate);
             
             return {
@@ -1425,16 +2042,14 @@
             };
         }
 
-        function updateMonthlySummary() {
-            const monthlyData = calculateMonthlyTotals();
+        function updateMonthlySummary(events) {
+            const monthlyData = calculateMonthlyTotals(events);
             
-            // Atualizar total mensal
             const monthlyTotalElement = document.getElementById('monthlyTotal');
             if (monthlyTotalElement) {
                 monthlyTotalElement.textContent = formatCurrency(monthlyData.total);
             }
             
-            // Atualizar estatísticas gerais
             const totalEventsElement = document.getElementById('totalEvents');
             const totalPaymentsElement = document.getElementById('totalPayments');
             const avgPaymentElement = document.getElementById('avgPayment');
@@ -1447,17 +2062,11 @@
                 totalPaymentsElement.textContent = monthlyData.payments;
             }
             
-                if (avgPaymentElement) {
-                    // ✅ NOVO: Calcular valor médio por dia do mês
-                    const currentMonth = currentDate.getMonth();
-                    const currentYear = currentDate.getFullYear();
-                    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-                    const avgValue = monthlyData.total > 0 ? monthlyData.total / daysInMonth : 0;
-                    avgPaymentElement.textContent = formatCurrency(avgValue);
-                }
-
+            if (avgPaymentElement) {
+                const avgValue = monthlyData.payments > 0 ? monthlyData.total / monthlyData.payments : 0;
+                avgPaymentElement.textContent = formatCurrency(avgValue);
+            }
             
-            // ✅ NOVO: Atualizar estatísticas por status com montantes
             const totalPGElement = document.getElementById('totalPG');
             const totalPendenteElement = document.getElementById('totalPendente');
             const totalRecalculadoElement = document.getElementById('totalRecalculado');
@@ -1465,43 +2074,40 @@
             const amountPendenteElement = document.getElementById('amountPendente');
             const amountRecalculadoElement = document.getElementById('amountRecalculado');
             
-            if (totalPGElement) {
-                totalPGElement.textContent = monthlyData.totalPG;
-            }
+            if (totalPGElement) totalPGElement.textContent = monthlyData.totalPG;
+            if (totalPendenteElement) totalPendenteElement.textContent = monthlyData.totalPendente;
+            if (totalRecalculadoElement) totalRecalculadoElement.textContent = monthlyData.totalRecalculado;
+            if (amountPGElement) amountPGElement.textContent = formatCurrency(monthlyData.amountPG);
+            if (amountPendenteElement) amountPendenteElement.textContent = formatCurrency(monthlyData.amountPendente);
+            if (amountRecalculadoElement) amountRecalculadoElement.textContent = formatCurrency(monthlyData.amountRecalculado);
             
-            if (totalPendenteElement) {
-                totalPendenteElement.textContent = monthlyData.totalPendente;
-            }
-            
-            if (totalRecalculadoElement) {
-                totalRecalculadoElement.textContent = monthlyData.totalRecalculado;
-            }
-            
-            if (amountPGElement) {
-                amountPGElement.textContent = formatCurrency(monthlyData.amountPG);
-            }
-            
-            if (amountPendenteElement) {
-                amountPendenteElement.textContent = formatCurrency(monthlyData.amountPendente);
-            }
-            
-            if (amountRecalculadoElement) {
-                amountRecalculadoElement.textContent = formatCurrency(monthlyData.amountRecalculado);
-            }
-            
-            // ✅ NOVO: Atualizar lista de pagamentos com filtros
             allPaymentsList = monthlyData.paymentsList;
             filteredPaymentsList = [...allPaymentsList];
             updatePaymentsList();
         }
 
+        function updateFilterStats(events) {
+            const filterStatsElement = document.getElementById('filterStats');
+            if (!filterStatsElement) return;
+            
+            const connectedAccounts = accountManager.getConnectedAccounts();
+            const totalEvents = events.length;
+            
+            filterStatsElement.innerHTML = `
+                Contas conectadas: ${connectedAccounts.length} | 
+                Eventos encontrados: ${totalEvents} | 
+                Período: ${currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            `;
+        }
+
         // =================================================================
-        // ✅ NOVO: SISTEMA DE FILTROS DE PAGAMENTOS
+        // FILTROS DE PAGAMENTOS
         // =================================================================
         function initializePaymentFilters() {
             const nameFilter = document.getElementById('nameFilter');
             const dateFilter = document.getElementById('dateFilter');
             const statusFilter = document.getElementById('statusFilter');
+            const accountFilter = document.getElementById('accountFilter');
             const clearFiltersBtn = document.getElementById('clearFilters');
             
             if (nameFilter) {
@@ -1516,31 +2122,50 @@
                 statusFilter.addEventListener('change', applyFilters);
             }
             
+            if (accountFilter) {
+                accountFilter.addEventListener('change', applyFilters);
+            }
+            
             if (clearFiltersBtn) {
                 clearFiltersBtn.addEventListener('click', clearFilters);
             }
+        }
+
+        function updateAccountFilter() {
+            const accountFilter = document.getElementById('accountFilter');
+            if (!accountFilter) return;
+            
+            const accounts = accountManager.getConnectedAccounts();
+            
+            accountFilter.innerHTML = `
+                <option value="">Todas as contas</option>
+                ${accounts.map(account => `
+                    <option value="${account.email}">${account.email}</option>
+                `).join('')}
+            `;
         }
 
         function applyFilters() {
             const nameFilter = document.getElementById('nameFilter')?.value.toLowerCase() || '';
             const dateFilter = document.getElementById('dateFilter')?.value || '';
             const statusFilter = document.getElementById('statusFilter')?.value || '';
+            const accountFilter = document.getElementById('accountFilter')?.value || '';
             
             filteredPaymentsList = allPaymentsList.filter(payment => {
-                // Filtro por nome
                 const nameMatch = !nameFilter || 
                     payment.name.toLowerCase().includes(nameFilter) ||
                     payment.eventTitle.toLowerCase().includes(nameFilter);
                 
-                // Filtro por data
                 const dateMatch = !dateFilter || 
                     payment.eventDate.toISOString().split('T')[0] === dateFilter;
                 
-                // Filtro por status
                 const statusMatch = !statusFilter || 
                     payment.status === statusFilter;
                 
-                return nameMatch && dateMatch && statusMatch;
+                const accountMatch = !accountFilter || 
+                    payment.accountEmail === accountFilter;
+                
+                return nameMatch && dateMatch && statusMatch && accountMatch;
             });
             
             updatePaymentsList();
@@ -1550,10 +2175,12 @@
             const nameFilter = document.getElementById('nameFilter');
             const dateFilter = document.getElementById('dateFilter');
             const statusFilter = document.getElementById('statusFilter');
+            const accountFilter = document.getElementById('accountFilter');
             
             if (nameFilter) nameFilter.value = '';
             if (dateFilter) dateFilter.value = '';
             if (statusFilter) statusFilter.value = '';
+            if (accountFilter) accountFilter.value = '';
             
             filteredPaymentsList = [...allPaymentsList];
             updatePaymentsList();
@@ -1575,7 +2202,7 @@
             }
             
             paymentsListElement.innerHTML = filteredPaymentsList.map(payment => `
-                <div class="payment-item" onclick="showPaymentEvent('${payment.eventId}')">
+                <div class="payment-item" onclick="showPaymentEvent('${payment.eventId}')" style="border-left-color: ${payment.accountColor}">
                     <div class="payment-header">
                         <div class="payment-name">${payment.name}</div>
                         <div class="payment-value">${payment.formattedValue}</div>
@@ -1589,6 +2216,10 @@
                             <i class="fas fa-tag"></i>
                             ${payment.status}
                         </div>
+                        <div class="payment-account">
+                            <i class="fas fa-user" style="color: ${payment.accountColor}"></i>
+                            ${payment.accountEmail}
+                        </div>
                         <div style="color: rgba(255, 255, 255, 0.6);">
                             ${payment.eventTitle}
                         </div>
@@ -1598,7 +2229,8 @@
         }
 
         function showPaymentEvent(eventId) {
-            const event = filteredEvents.find(e => e.id === eventId);
+            const allEvents = accountManager.getAllEvents();
+            const event = allEvents.find(e => e.id === eventId);
             if (event) {
                 showEventDetails(event);
             }
@@ -1614,16 +2246,15 @@
             today.setHours(0, 0, 0, 0);
             eventDate.setHours(0, 0, 0, 0);
             
-            // Verificar se todos os pagamentos estão com PG ou RECALCULADO
             const allCompleted = eventCalc.payments.length > 0 && 
                 eventCalc.payments.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
             
             if (allCompleted) {
-                return 'completed'; // Verde
+                return 'completed';
             } else if (eventDate < today) {
-                return 'overdue'; // Vermelho (data anterior)
+                return 'overdue';
             } else {
-                return 'upcoming'; // Azul (data posterior)
+                return 'upcoming';
             }
         }
 
@@ -1634,13 +2265,10 @@
             let eventDate;
             
             if (event.start.date) {
-                // Evento de dia inteiro - usar apenas a data sem conversão de fuso
                 eventDate = new Date(event.start.date + 'T00:00:00');
             } else if (event.start.dateTime) {
-                // Evento com horário específico - converter para data local
                 eventDate = new Date(event.start.dateTime);
             } else {
-                // Fallback
                 eventDate = new Date();
             }
             
@@ -1648,7 +2276,6 @@
         }
 
         function getDateString(date) {
-            // Retorna string no formato YYYY-MM-DD para comparação
             const year = date.getFullYear();
             const month = String(date.getMonth() + 1).padStart(2, '0');
             const day = String(date.getDate()).padStart(2, '0');
@@ -1656,72 +2283,7 @@
         }
 
         function getCalendarDateString(date) {
-            // Para datas do calendário, usar a data local sem conversão
             return getDateString(date);
-        }
-
-        // =================================================================
-        // PERSISTÊNCIA DE LOGIN
-        // =================================================================
-        function saveConnectionState() {
-            try {
-                const connectionData = {
-                    connected: isGoogleConnected,
-                    timestamp: Date.now(),
-                    clientId: CLIENT_ID
-                };
-                localStorage.setItem('google_calendar_connection', JSON.stringify(connectionData));
-                sessionStorage.setItem('google_calendar_session', 'active');
-                console.log('✅ Estado de conexão salvo');
-            } catch (error) {
-                console.error('❌ Erro ao salvar estado:', error);
-            }
-        }
-
-        function getConnectionState() {
-            try {
-                const connectionData = localStorage.getItem('google_calendar_connection');
-                const sessionData = sessionStorage.getItem('google_calendar_session');
-                
-                if (!connectionData || !sessionData) return null;
-                
-                const data = JSON.parse(connectionData);
-                
-                // Verificar se não passou muito tempo (24 horas)
-                const timeElapsed = Date.now() - data.timestamp;
-                if (timeElapsed > 24 * 60 * 60 * 1000) {
-                    clearConnectionState();
-                    return null;
-                }
-                
-                return data;
-            } catch (error) {
-                console.error('❌ Erro ao recuperar estado:', error);
-                return null;
-            }
-        }
-
-        function clearConnectionState() {
-            try {
-                localStorage.removeItem('google_calendar_connection');
-                sessionStorage.removeItem('google_calendar_session');
-                console.log('✅ Estado de conexão removido');
-            } catch (error) {
-                console.error('❌ Erro ao remover estado:', error);
-            }
-        }
-
-        async function tryRestoreSession() {
-            const savedState = getConnectionState();
-            if (savedState && savedState.connected && gapiInited && gisInited) {
-                try {
-                    // Tentar uma nova autenticação silenciosa
-                    tokenClient.requestAccessToken({ prompt: '' });
-                } catch (error) {
-                    console.log('❌ Não foi possível restaurar sessão automaticamente');
-                    clearConnectionState();
-                }
-            }
         }
 
         // =================================================================
@@ -1744,7 +2306,6 @@
             const icon = getMessageIcon(type);
             messageDiv.innerHTML = `<i class="fas ${icon}"></i> ${message}`;
             
-            // Remove mensagem anterior se existir
             const existingMessage = container.querySelector('.message');
             if (existingMessage) {
                 existingMessage.remove();
@@ -1752,7 +2313,6 @@
             
             container.appendChild(messageDiv);
             
-            // Auto-remove após 5 segundos
             setTimeout(() => {
                 messageDiv.remove();
             }, 5000);
@@ -1768,212 +2328,26 @@
         }
 
         // =================================================================
-        // GOOGLE AUTHENTICATION
+        // ✅ RENDERIZAÇÃO DO CALENDÁRIO MULTI-CONTA
         // =================================================================
-        function handleAuthClick() {
-            if (!gapiInited || !gisInited) {
-                showMessage('APIs do Google ainda não foram carregadas. Aguarde...', 'error');
-                return;
+        function renderCalendar(events = null) {
+            if (!events) {
+                events = accountManager.getAllEvents();
             }
-
-            try {
-                tokenClient.requestAccessToken({ prompt: 'consent' });
-            } catch (error) {
-                console.error('❌ Erro na autenticação:', error);
-                showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
-            }
-        }
-
-        async function handleTokenResponse(resp) {
-            if (resp.error) {
-                console.error('❌ Erro de autenticação:', resp.error);
-                showMessage(`Erro de autenticação: ${resp.error}`, 'error');
-                updateConnectionStatus(false);
-                return;
-            }
-
-            try {
-                gapi.client.setToken(resp);
-                isGoogleConnected = true;
-                
-                // Salvar estado de conexão
-                saveConnectionState();
-                
-                console.log('✅ Conectado com o Google Calendar!');
-                updateConnectionStatus(true);
-                showMessage('Conectado com sucesso ao Google Calendar!', 'success');
-                
-                // Carregar eventos filtrados
-                await loadFilteredEvents();
-            } catch (error) {
-                console.error('❌ Erro ao processar token:', error);
-                showMessage('Erro ao processar autenticação', 'error');
-                updateConnectionStatus(false);
-            }
-        }
-
-        function handleSignoutClick() {
-            try {
-                const token = gapi.client.getToken();
-                if (token !== null) {
-                    google.accounts.oauth2.revoke(token.access_token);
-                    gapi.client.setToken('');
-                    isGoogleConnected = false;
-                    
-                    // Limpar estado de conexão
-                    clearConnectionState();
-                    
-                    console.log('✅ Desconectado do Google Calendar');
-                    updateConnectionStatus(false);
-                    document.getElementById('calendarSection').style.display = 'none';
-                    document.getElementById('filterSection').style.display = 'none';
-                    document.getElementById('monthlySummarySection').style.display = 'none';
-                    document.getElementById('paymentsListSection').style.display = 'none';
-                    showMessage('Desconectado do Google Calendar', 'success');
-                }
-            } catch (error) {
-                console.error('❌ Erro ao desconectar:', error);
-                showMessage('Erro ao desconectar', 'error');
-            }
-        }
-
-        // =================================================================
-        // CONNECTION STATUS
-        // =================================================================
-        function updateConnectionStatus(connected) {
-            const connectionStatus = document.getElementById('connectionStatus');
-            const authorizeButton = document.getElementById('authorizeButton');
-            const signoutButton = document.getElementById('signoutButton');
-            const syncButton = document.getElementById('syncButton');
-            const calendarSection = document.getElementById('calendarSection');
-            const filterSection = document.getElementById('filterSection');
-            const monthlySummarySection = document.getElementById('monthlySummarySection');
-            const paymentsListSection = document.getElementById('paymentsListSection');
             
-            if (connected) {
-                connectionStatus.className = 'status-indicator status-connected';
-                connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Calendar</span>';
-                authorizeButton.style.display = 'none';
-                signoutButton.style.display = 'block';
-                syncButton.disabled = false;
-                calendarSection.style.display = 'block';
-                filterSection.style.display = 'block';
-                monthlySummarySection.style.display = 'block';
-                paymentsListSection.style.display = 'block';
-            } else {
-                connectionStatus.className = 'status-indicator status-disconnected';
-                connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Desconectado do Google Calendar</span>';
-                authorizeButton.style.display = 'block';
-                signoutButton.style.display = 'none';
-                syncButton.disabled = true;
-                calendarSection.style.display = 'none';
-                filterSection.style.display = 'none';
-                monthlySummarySection.style.display = 'none';
-                paymentsListSection.style.display = 'none';
-            }
-        }
-
-        // =================================================================
-        // EVENT FILTERING
-        // =================================================================
-        function filterEvents(events) {
-            const keywords = ['pagamento', 'pagamentos', 'hvc'];
-            
-            return events.filter(event => {
-                const title = (event.summary || '').toLowerCase();
-                const description = (event.description || '').toLowerCase();
-                
-                return keywords.some(keyword => 
-                    title.includes(keyword) || description.includes(keyword)
-                );
-            });
-        }
-
-        function getEventType(event) {
-            const title = (event.summary || '').toLowerCase();
-            
-            if (title.includes('pagamento')) {
-                return 'pagamento';
-            } else if (title.includes('hvc')) {
-                return 'hvc';
-            }
-            return 'default';
-        }
-
-        // =================================================================
-        // GOOGLE CALENDAR OPERATIONS
-        // =================================================================
-        async function loadFilteredEvents() {
-            try {
-                const now = new Date();
-                const startOfYear = new Date(now.getFullYear(), 0, 1);
-                const endOfYear = new Date(now.getFullYear(), 11, 31);
-
-                const response = await gapi.client.calendar.events.list({
-                    calendarId: 'primary',
-                    timeMin: startOfYear.toISOString(),
-                    timeMax: endOfYear.toISOString(),
-                    showDeleted: false,
-                    singleEvents: true,
-                    maxResults: 250,
-                    orderBy: 'startTime'
-                });
-
-                const allEvents = response.result.items || [];
-                filteredEvents = filterEvents(allEvents);
-                
-                console.log(`✅ Eventos carregados: ${allEvents.length} total, ${filteredEvents.length} filtrados`);
-                
-                updateFilterStats(allEvents.length, filteredEvents.length);
-                updateMonthlySummary(); // Atualizar resumo mensal
-                renderCalendar();
-                
-                showMessage(`${filteredEvents.length} eventos de pagamento/HVC encontrados`, 'success');
-            } catch (error) {
-                console.error('❌ Erro ao carregar eventos:', error);
-                showMessage('Erro ao carregar eventos', 'error');
-                
-                // Se erro de autenticação, limpar estado
-                if (error.status === 401 || error.status === 403) {
-                    clearConnectionState();
-                    isGoogleConnected = false;
-                    updateConnectionStatus(false);
-                }
-            }
-        }
-
-        function updateFilterStats(total, filtered) {
-            const statsElement = document.getElementById('filterStats');
-            if (statsElement) {
-                statsElement.innerHTML = `
-                    Total de eventos: ${total} | 
-                    Eventos filtrados: ${filtered} | 
-                    Palavras-chave: "PAGAMENTO", "PAGAMENTOS", "HVC"
-                `;
-            }
-        }
-
-        // =================================================================
-        // CALENDAR RENDERING
-        // =================================================================
-        function renderCalendar() {
             const calendarGrid = document.getElementById('calendarGrid');
             const calendarTitle = document.getElementById('calendarTitle');
             
             if (!calendarGrid || !calendarTitle) return;
             
-            // Update title
-            const monthNames = [
-                'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-                'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-            ];
-            calendarTitle.textContent = `${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`;
+            calendarTitle.textContent = currentDate.toLocaleDateString('pt-BR', { 
+                month: 'long', 
+                year: 'numeric' 
+            });
             
-            // Clear grid
             calendarGrid.innerHTML = '';
             
-            // Add day headers - COMEÇANDO NA SEGUNDA-FEIRA
-            const dayHeaders = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+            const dayHeaders = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
             dayHeaders.forEach(day => {
                 const headerDiv = document.createElement('div');
                 headerDiv.className = 'calendar-day-header';
@@ -1981,17 +2355,11 @@
                 calendarGrid.appendChild(headerDiv);
             });
             
-            // Get first day of month and number of days
             const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
             const lastDay = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
             const startDate = new Date(firstDay);
+            startDate.setDate(startDate.getDate() - firstDay.getDay());
             
-            // Ajustar para começar na segunda-feira (1 = segunda, 0 = domingo)
-            const dayOfWeek = firstDay.getDay();
-            const daysToSubtract = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-            startDate.setDate(startDate.getDate() - daysToSubtract);
-            
-            // Generate calendar days
             const today = new Date();
             const todayString = getCalendarDateString(today);
             
@@ -2006,19 +2374,16 @@
                     dayDiv.classList.add('other-month');
                 }
                 
-                // CORREÇÃO: Comparação precisa para o dia de hoje usando strings de data
                 if (getCalendarDateString(cellDate) === todayString) {
                     dayDiv.classList.add('today');
                 }
                 
-                // Day number
                 const dayNumber = document.createElement('div');
                 dayNumber.className = 'day-number';
                 dayNumber.textContent = cellDate.getDate();
                 dayDiv.appendChild(dayNumber);
                 
-                // Total do dia (apenas PG e PENDENTE)
-                const dayTotal = calculateDayTotal(cellDate);
+                const dayTotal = calculateDayTotal(cellDate, events);
                 if (dayTotal > 0) {
                     const totalDiv = document.createElement('div');
                     totalDiv.className = 'day-total';
@@ -2026,14 +2391,14 @@
                     dayDiv.appendChild(totalDiv);
                 }
                 
-                // Events for this day
                 const dayEvents = document.createElement('div');
                 dayEvents.className = 'day-events';
                 
-                const eventsForDay = getEventsForDay(cellDate);
+                const eventsForDay = getEventsForDay(cellDate, events);
                 eventsForDay.forEach(event => {
                     const eventDiv = document.createElement('div');
                     eventDiv.className = `event-item ${getEventColorClass(event)}`;
+                    eventDiv.style.borderLeftColor = event.accountColor || '#4285f4';
                     eventDiv.textContent = event.summary || 'Sem título';
                     eventDiv.onclick = () => showEventDetails(event);
                     dayEvents.appendChild(eventDiv);
@@ -2042,16 +2407,12 @@
                 dayDiv.appendChild(dayEvents);
                 calendarGrid.appendChild(dayDiv);
             }
-            
-            // Atualizar resumo mensal após renderizar calendário
-            updateMonthlySummary();
         }
 
-        // CORREÇÃO: Função principal para comparar datas dos eventos
-        function getEventsForDay(date) {
+        function getEventsForDay(date, events) {
             const targetDateString = getCalendarDateString(date);
             
-            return filteredEvents.filter(event => {
+            return events.filter(event => {
                 const eventDate = parseEventDate(event);
                 const eventDateString = getCalendarDateString(eventDate);
                 
@@ -2072,7 +2433,6 @@
             const start = eventDate;
             const end = event.end.dateTime ? new Date(event.end.dateTime) : eventDate;
             
-            // Calcular valores do evento
             const eventCalc = calculateEventTotal(event);
             
             let detailsHTML = `
@@ -2080,23 +2440,24 @@
                 <p><strong><i class="fas fa-clock"></i> Horário:</strong> ${event.start.dateTime ? 
                     `${start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 
                     'Dia inteiro'}</p>
-                                <div id="descriptionSection">
-                                    <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
-                                    ${event.description ? `
-                                        <div id="descriptionDisplay" class="description-display">${event.description}</div>
-                                    ` : `
-                                        <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
-                                    `}
-                                    <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
-                                        <i class="fas fa-edit"></i> ${event.description ? 'Editar Descrição' : 'Adicionar Descrição'}
-                                    </button>
-                                </div>
-
+                <p><strong><i class="fas fa-user"></i> Conta:</strong> 
+                    <span style="color: ${event.accountColor || '#4285f4'}">${event.accountEmail || 'Conta desconhecida'}</span>
+                </p>
+                <div id="descriptionSection">
+                    <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                    ${event.description ? `
+                        <div id="descriptionDisplay" class="description-display">${event.description}</div>
+                    ` : `
+                        <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                    `}
+                    <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
+                        <i class="fas fa-edit"></i> ${event.description ? 'Editar Descrição' : 'Adicionar Descrição'}
+                    </button>
+                </div>
                 ${event.location ? `<p><strong><i class="fas fa-map-marker-alt"></i> Local:</strong> ${event.location}</p>` : ''}
                 <p><strong><i class="fas fa-tag"></i> Tipo:</strong> ${getEventType(event).toUpperCase()}</p>
             `;
             
-            // Seção de valores encontrados
             if (eventCalc.count > 0) {
                 detailsHTML += `
                     <div class="event-total-section">
@@ -2130,7 +2491,6 @@
                 }
             }
             
-            // Buscar anexos do evento
             try {
                 if (event.attachments && event.attachments.length > 0) {
                     detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
@@ -2142,28 +2502,6 @@
                         `;
                     });
                     detailsHTML += '</div>';
-                } else {
-                    // Tentar buscar anexos via API se não estiverem no evento
-                    try {
-                        const fullEvent = await gapi.client.calendar.events.get({
-                            calendarId: 'primary',
-                            eventId: event.id
-                        });
-                        
-                        if (fullEvent.result.attachments && fullEvent.result.attachments.length > 0) {
-                            detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
-                            fullEvent.result.attachments.forEach(attachment => {
-                                detailsHTML += `
-                                    <a href="${attachment.fileUrl}" target="_blank" class="attachment-link">
-                                        <i class="fas fa-file"></i> ${attachment.title || 'Anexo'}
-                                    </a>
-                                `;
-                            });
-                            detailsHTML += '</div>';
-                        }
-                    } catch (attachmentError) {
-                        console.log('Não foi possível carregar anexos:', attachmentError);
-                    }
                 }
             } catch (error) {
                 console.error('Erro ao processar anexos:', error);
@@ -2178,39 +2516,36 @@
         // =================================================================
         function previousMonth() {
             currentDate.setMonth(currentDate.getMonth() - 1);
-            renderCalendar();
+            const allEvents = accountManager.getAllEvents();
+            renderCalendar(allEvents);
+            updateMonthlySummary(allEvents);
         }
 
         function nextMonth() {
             currentDate.setMonth(currentDate.getMonth() + 1);
-            renderCalendar();
+            const allEvents = accountManager.getAllEvents();
+            renderCalendar(allEvents);
+            updateMonthlySummary(allEvents);
         }
 
         function goToToday() {
             currentDate = new Date();
-            renderCalendar();
+            const allEvents = accountManager.getAllEvents();
+            renderCalendar(allEvents);
+            updateMonthlySummary(allEvents);
         }
 
-        async function handleSyncClick() {
-            if (!isGoogleConnected) {
-                showMessage('Conecte-se ao Google Calendar primeiro', 'error');
-                return;
-            }
-
-            const syncButton = document.getElementById('syncButton');
-            syncButton.innerHTML = '<div class="spinner"></div> Sincronizando...';
-            syncButton.disabled = true;
-
-            try {
-                await loadFilteredEvents();
-                showMessage('Sincronização concluída com sucesso!', 'success');
-            } catch (error) {
-                console.error('❌ Erro na sincronização:', error);
-                showMessage('Erro durante a sincronização', 'error');
-            } finally {
-                syncButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar';
-                syncButton.disabled = false;
-            }
+        // =================================================================
+        // UTILITY FUNCTIONS
+        // =================================================================
+        function getEventType(event) {
+            const summary = (event.summary || '').toLowerCase();
+            const description = (event.description || '').toLowerCase();
+            const fullText = `${summary} ${description}`;
+            
+            if (fullText.includes('hvc')) return 'hvc';
+            if (fullText.includes('pagamento') || fullText.includes('pagar')) return 'pagamento';
+            return 'evento';
         }
 
         // =================================================================
@@ -2223,311 +2558,214 @@
             }
         }
 
-
-                    // =================================================================
-                    // ✅ NOVO: SISTEMA COMPLETO DE EDIÇÃO DE DESCRIÇÃO
-                    // =================================================================
-            
-                    /**
-                     * Inicia o modo de edição da descrição do evento
-                     * @param {string} eventId - ID do evento a ser editado
-                     */
-                    function startEditingDescription(eventId) {
-                        console.log('🔄 Iniciando edição da descrição para evento:', eventId);
-                        
-                        // Verificar se já está editando
-                        if (isEditingDescription) {
-                            showMessage('Já existe uma edição em andamento. Finalize a edição atual primeiro.', 'warning');
-                            return;
-                        }
-                        
-                        // Encontrar o evento
-                        const event = filteredEvents.find(e => e.id === eventId);
-                        if (!event) {
-                            console.error('❌ Evento não encontrado:', eventId);
-                            showMessage('Evento não encontrado', 'error');
-                            return;
-                        }
-                        
-                        // Configurar estado de edição
-                        currentEditingEvent = event;
-                        isEditingDescription = true;
-                        originalDescription = event.description || '';
-                        
-                        console.log('✅ Modo de edição ativado para:', event.summary);
-                        
-                        // Obter elemento da seção de descrição
-                        const descriptionSection = document.getElementById('descriptionSection');
-                        if (!descriptionSection) {
-                            console.error('❌ Elemento descriptionSection não encontrado');
-                            showMessage('Erro interno: elemento não encontrado', 'error');
-                            return;
-                        }
-                        
-                        // Gerar HTML do modo de edição
-                        descriptionSection.innerHTML = `
-                            <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
-                            <div class="edit-description-section">
-                                <textarea 
-                                    id="editDescriptionTextarea" 
-                                    class="edit-description-textarea" 
-                                    placeholder="Digite a descrição do evento...&#10;&#10;Dica: Você pode usar quebras de linha e formatação de texto."
-                                >${originalDescription}</textarea>
-                                
-                                <div class="edit-hint">
-                                    <i class="fas fa-info-circle"></i> 
-                                    Pressione Ctrl+Enter para salvar rapidamente
-                                </div>
-                                
-                                <div class="edit-buttons">
-                                    <button onclick="saveEventDescription()" class="btn-edit btn-save" id="saveDescriptionBtn">
-                                        <i class="fas fa-save"></i> Salvar
-                                    </button>
-                                    <button onclick="cancelEditingDescription()" class="btn-edit btn-cancel" id="cancelDescriptionBtn">
-                                        <i class="fas fa-times"></i> Cancelar
-                                    </button>
-                                </div>
-                                
-                                <div id="editLoadingIndicator" class="edit-loading" style="display: none;">
-                                    <div class="spinner"></div>
-                                    <span>Salvando alterações no Google Calendar...</span>
-                                </div>
-                            </div>
-                        `;
-                        
-                        // Focar no textarea e posicionar cursor no final
-                        setTimeout(() => {
-                            const textarea = document.getElementById('editDescriptionTextarea');
-                            if (textarea) {
-                                textarea.focus();
-                                // Posicionar cursor no final do texto
-                                const textLength = textarea.value.length;
-                                textarea.setSelectionRange(textLength, textLength);
-                                
-                                console.log('✅ Textarea focado e cursor posicionado');
-                            }
-                        }, 100);
-                    }
-            
-                    /**
-                     * Cancela a edição da descrição e restaura o estado original
-                     */
-                    function cancelEditingDescription() {
-                        console.log('🔄 Cancelando edição da descrição');
-                        
-                        if (!currentEditingEvent) {
-                            console.warn('⚠️ Nenhum evento sendo editado');
-                            return;
-                        }
-                        
-                        // Resetar estado
-                        const event = currentEditingEvent;
-                        isEditingDescription = false;
-                        currentEditingEvent = null;
-                        originalDescription = '';
-                        
-                        // Restaurar visualização original
-                        const descriptionSection = document.getElementById('descriptionSection');
-                        if (!descriptionSection) {
-                            console.error('❌ Elemento descriptionSection não encontrado');
-                            return;
-                        }
-                        
-                        descriptionSection.innerHTML = `
-                            <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
-                            ${event.description ? `
-                                <div id="descriptionDisplay" class="description-display">${event.description}</div>
-                            ` : `
-                                <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
-                            `}
-                            <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
-                                <i class="fas fa-edit"></i> ${event.description ? 'Editar Descrição' : 'Adicionar Descrição'}
-                            </button>
-                        `;
-                        
-                        console.log('✅ Edição cancelada e interface restaurada');
-                    }
-            
-                    /**
-                     * Salva a descrição editada no Google Calendar
-                     */
-                    async function saveEventDescription() {
-                        console.log('🔄 Iniciando salvamento da descrição');
-                        
-                        // Validações iniciais
-                        if (!currentEditingEvent || !isEditingDescription) {
-                            console.error('❌ Estado de edição inválido');
-                            showMessage('Erro interno: estado de edição inválido', 'error');
-                            return;
-                        }
-                        
-                        // Obter elementos
-                        const textarea = document.getElementById('editDescriptionTextarea');
-                        const loadingIndicator = document.getElementById('editLoadingIndicator');
-                        const saveBtn = document.getElementById('saveDescriptionBtn');
-                        const cancelBtn = document.getElementById('cancelDescriptionBtn');
-                        
-                        if (!textarea) {
-                            console.error('❌ Textarea não encontrado');
-                            showMessage('Erro interno: campo de texto não encontrado', 'error');
-                            return;
-                        }
-                        
-                        // Obter nova descrição
-                        const newDescription = textarea.value.trim();
-                        const eventId = currentEditingEvent.id;
-                        
-                        console.log('📝 Nova descrição:', newDescription.substring(0, 100) + (newDescription.length > 100 ? '...' : ''));
-                        
-                        // Verificar se houve mudança
-                        if (newDescription === originalDescription) {
-                            console.log('ℹ️ Descrição não foi alterada');
-                            showMessage('Nenhuma alteração foi feita', 'warning');
-                            cancelEditingDescription();
-                            return;
-                        }
-                        
-                        // Mostrar loading e desabilitar botões
-                        if (loadingIndicator) loadingIndicator.style.display = 'flex';
-                        if (saveBtn) saveBtn.disabled = true;
-                        if (cancelBtn) cancelBtn.disabled = true;
-                        
-                        try {
-                            console.log('🔄 Enviando requisição para Google Calendar API...');
-                            
-                            // Chamar API do Google Calendar
-                            const response = await gapi.client.calendar.events.patch({
-                                calendarId: 'primary',
-                                eventId: eventId,
-                                resource: {
-                                    description: newDescription
-                                }
-                            });
-                            
-                            console.log('📡 Resposta da API:', response.status);
-                            
-                            if (response.status === 200) {
-                                console.log('✅ Descrição salva com sucesso no Google Calendar');
-                                
-                                // Atualizar evento local
-                                currentEditingEvent.description = newDescription;
-                                
-                                // Atualizar na lista de eventos filtrados
-                                const eventIndex = filteredEvents.findIndex(e => e.id === eventId);
-                                if (eventIndex !== -1) {
-                                    filteredEvents[eventIndex].description = newDescription;
-                                    console.log('✅ Evento atualizado na lista local');
-                                }
-                                
-                                // Resetar estado de edição
-                                const event = currentEditingEvent;
-                                isEditingDescription = false;
-                                currentEditingEvent = null;
-                                originalDescription = '';
-                                
-                                // Restaurar visualização com nova descrição
-                                const descriptionSection = document.getElementById('descriptionSection');
-                                if (descriptionSection) {
-                                    descriptionSection.innerHTML = `
-                                        <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
-                                        ${newDescription ? `
-                                            <div id="descriptionDisplay" class="description-display">${newDescription}</div>
-                                        ` : `
-                                            <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
-                                        `}
-                                        <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
-                                            <i class="fas fa-edit"></i> ${newDescription ? 'Editar Descrição' : 'Adicionar Descrição'}
-                                        </button>
-                                    `;
-                                }
-                                
-                                // Atualizar resumo mensal (caso a descrição tenha valores)
-                                console.log('🔄 Atualizando resumo mensal...');
-                                updateMonthlySummary();
-                                
-                                // Renderizar calendário novamente
-                                console.log('🔄 Renderizando calendário...');
-                                renderCalendar();
-                                
-                                showMessage('Descrição atualizada com sucesso!', 'success');
-                                
-                            } else {
-                                throw new Error(`Resposta inesperada da API: ${response.status}`);
-                            }
-                            
-                        } catch (error) {
-                            console.error('❌ Erro ao salvar descrição:', error);
-                            
-                            let errorMessage = 'Erro ao salvar descrição. ';
-                            
-                            if (error.status === 401) {
-                                errorMessage += 'Sessão expirada. Reconecte-se ao Google Calendar.';
-                            } else if (error.status === 403) {
-                                errorMessage += 'Sem permissão para editar este evento.';
-                            } else if (error.status === 404) {
-                                errorMessage += 'Evento não encontrado no Google Calendar.';
-                            } else {
-                                errorMessage += 'Tente novamente em alguns instantes.';
-                            }
-                            
-                            showMessage(errorMessage, 'error');
-                            
-                            // Reabilitar botões em caso de erro
-                            if (saveBtn) saveBtn.disabled = false;
-                            if (cancelBtn) cancelBtn.disabled = false;
-                            
-                        } finally {
-                            // Esconder loading
-                            if (loadingIndicator) {
-                                loadingIndicator.style.display = 'none';
-                            }
-                            
-                            console.log('🔄 Processo de salvamento finalizado');
-                        }
-                    }
-            
-                    /**
-                     * Manipulador de eventos de teclado para atalhos
-                     */
-                    function handleEditingKeyboard(event) {
-                        if (!isEditingDescription) return;
-                        
-                        // Ctrl+Enter para salvar
-                        if (event.ctrlKey && event.key === 'Enter') {
-                            event.preventDefault();
-                            console.log('⌨️ Atalho Ctrl+Enter detectado');
-                            saveEventDescription();
-                            return;
-                        }
-                        
-                        // Escape para cancelar
-                        if (event.key === 'Escape') {
-                            event.preventDefault();
-                            console.log('⌨️ Atalho Escape detectado');
-                            cancelEditingDescription();
-                            return;
-                        }
-                    }
-            
-                    // Adicionar listener para atalhos de teclado
-                    document.addEventListener('keydown', handleEditingKeyboard);
-
-
-        
         // =================================================================
-        // INICIALIZAÇÃO
+        // SISTEMA COMPLETO DE EDIÇÃO DE DESCRIÇÃO
+        // =================================================================
+        
+        function startEditingDescription(eventId) {
+            console.log('🔄 Iniciando edição da descrição para evento:', eventId);
+            
+            if (isEditingDescription) {
+                showMessage('Já existe uma edição em andamento. Finalize a edição atual primeiro.', 'warning');
+                return;
+            }
+            
+            const allEvents = accountManager.getAllEvents();
+            const event = allEvents.find(e => e.id === eventId);
+            if (!event) {
+                console.error('❌ Evento não encontrado:', eventId);
+                showMessage('Evento não encontrado', 'error');
+                return;
+            }
+            
+            currentEditingEvent = event;
+            isEditingDescription = true;
+            originalDescription = event.description || '';
+            
+            console.log('✅ Modo de edição ativado para:', event.summary);
+            
+            const descriptionSection = document.getElementById('descriptionSection');
+            if (!descriptionSection) {
+                console.error('❌ Elemento descriptionSection não encontrado');
+                showMessage('Erro interno: elemento não encontrado', 'error');
+                return;
+            }
+            
+            descriptionSection.innerHTML = `
+                <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                <div class="edit-description-section">
+                    <textarea 
+                        id="editDescriptionTextarea" 
+                        class="edit-description-textarea" 
+                        placeholder="Digite a descrição do evento...&#10;&#10;Dica: Você pode usar quebras de linha e formatação de texto."
+                    >${originalDescription}</textarea>
+                    
+                    <div class="edit-hint">
+                        <i class="fas fa-info-circle"></i> 
+                        Pressione Ctrl+Enter para salvar rapidamente
+                    </div>
+                    
+                    <div class="edit-buttons">
+                        <button onclick="saveEventDescription()" class="btn-edit btn-save" id="saveDescriptionBtn">
+                            <i class="fas fa-save"></i> Salvar
+                        </button>
+                        <button onclick="cancelEditingDescription()" class="btn-edit btn-cancel" id="cancelDescriptionBtn">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                    </div>
+                    
+                    <div id="editLoadingIndicator" class="edit-loading" style="display: none;">
+                        <div class="spinner"></div>
+                        <span>Salvando alterações no Google Calendar...</span>
+                    </div>
+                </div>
+            `;
+            
+            setTimeout(() => {
+                const textarea = document.getElementById('editDescriptionTextarea');
+                if (textarea) {
+                    textarea.focus();
+                    const textLength = textarea.value.length;
+                    textarea.setSelectionRange(textLength, textLength);
+                    console.log('✅ Textarea focado e cursor posicionado');
+                }
+            }, 100);
+        }
+
+        function cancelEditingDescription() {
+            console.log('🔄 Cancelando edição da descrição');
+            
+            if (!currentEditingEvent) {
+                console.warn('⚠️ Nenhum evento sendo editado');
+                return;
+            }
+            
+            const event = currentEditingEvent;
+            isEditingDescription = false;
+            currentEditingEvent = null;
+            originalDescription = '';
+            
+            const descriptionSection = document.getElementById('descriptionSection');
+            if (descriptionSection) {
+                descriptionSection.innerHTML = `
+                    <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                    ${event.description ? `
+                        <div id="descriptionDisplay" class="description-display">${event.description}</div>
+                    ` : `
+                        <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                    `}
+                    <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
+                        <i class="fas fa-edit"></i> ${event.description ? 'Editar Descrição' : 'Adicionar Descrição'}
+                    </button>
+                `;
+            }
+            
+            console.log('✅ Edição cancelada com sucesso');
+        }
+
+        async function saveEventDescription() {
+            if (!currentEditingEvent) {
+                showMessage('Nenhum evento sendo editado', 'error');
+                return;
+            }
+            
+            const textarea = document.getElementById('editDescriptionTextarea');
+            const saveBtn = document.getElementById('saveDescriptionBtn');
+            const cancelBtn = document.getElementById('cancelDescriptionBtn');
+            const loadingIndicator = document.getElementById('editLoadingIndicator');
+            
+            if (!textarea) {
+                showMessage('Erro: campo de texto não encontrado', 'error');
+                return;
+            }
+            
+            const newDescription = textarea.value.trim();
+            
+            try {
+                if (loadingIndicator) loadingIndicator.style.display = 'flex';
+                if (saveBtn) saveBtn.disabled = true;
+                if (cancelBtn) cancelBtn.disabled = true;
+                
+                const account = accountManager.getAccount(currentEditingEvent.accountId);
+                if (!account || !account.token) {
+                    throw new Error('Conta não encontrada ou token inválido');
+                }
+                
+                gapi.client.setToken({ access_token: account.token });
+                
+                const response = await gapi.client.calendar.events.patch({
+                    calendarId: 'primary',
+                    eventId: currentEditingEvent.id,
+                    resource: {
+                        description: newDescription
+                    }
+                });
+                
+                if (response.status === 200) {
+                    currentEditingEvent.description = newDescription;
+                    
+                    const accountEvents = account.events;
+                    const eventIndex = accountEvents.findIndex(e => e.id === currentEditingEvent.id);
+                    if (eventIndex !== -1) {
+                        accountEvents[eventIndex].description = newDescription;
+                        accountManager.updateAccountEvents(account.id, accountEvents);
+                    }
+                    
+                    console.log('✅ Descrição salva com sucesso no Google Calendar');
+                    showMessage('Descrição atualizada com sucesso!', 'success');
+                    
+                    cancelEditingDescription();
+                    await updateAllData();
+                    
+                } else {
+                    throw new Error('Falha ao salvar no Google Calendar');
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar descrição:', error);
+                
+                if (error.status === 401 || error.status === 403) {
+                    showMessage('Erro de autorização. Reconecte a conta e tente novamente.', 'error');
+                } else {
+                    showMessage('Erro ao salvar descrição. Tente novamente.', 'error');
+                }
+                
+                if (saveBtn) saveBtn.disabled = false;
+                if (cancelBtn) cancelBtn.disabled = false;
+            } finally {
+                if (loadingIndicator) loadingIndicator.style.display = 'none';
+            }
+        }
+
+        function handleEditingKeyboard(event) {
+            if (!isEditingDescription) return;
+            
+            if (event.ctrlKey && event.key === 'Enter') {
+                event.preventDefault();
+                console.log('⌨️ Atalho Ctrl+Enter detectado');
+                saveEventDescription();
+                return;
+            }
+            
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                console.log('⌨️ Atalho Escape detectado');
+                cancelEditingDescription();
+                return;
+            }
+        }
+
+        document.addEventListener('keydown', handleEditingKeyboard);
+
+        // =================================================================
+        // ✅ CORRIGIDO: INICIALIZAÇÃO
         // =================================================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Sistema de Fluxo de Caixa HVC inicializado');
+            console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado');
             
-            // Inicializar estado de conexão
-            updateConnectionStatus(false);
-            
-            // Renderizar calendário inicial (vazio)
-            renderCalendar();
-            
-            // ✅ NOVO: Inicializar filtros de pagamentos
+            renderCalendar([]);
             initializePaymentFilters();
+            updateAccountFilter();
         });
     </script>
 </head>
@@ -2541,30 +2779,24 @@
         <div class="hvc-container">
             <h1 class="hvc-title">
                 <i class="fas fa-chart-line"></i>
-                Fluxo de Caixa HVC - Agenda e Pagamentos
+                Fluxo de Caixa HVC - Agenda e Pagamentos (Multi-Conta)
             </h1>
         </div>
 
-        <!-- Google Calendar Integration -->
-        <div class="google-section">
-            <h2><i class="fab fa-google"></i> Google Calendar</h2>
+        <!-- ✅ NOVO: Gerenciamento de Múltiplas Contas -->
+        <div class="accounts-section">
+            <h2><i class="fab fa-google"></i> Contas do Google Calendar</h2>
             
-            <!-- Connection Status -->
-            <div id="connectionStatus" class="status-indicator status-disconnected">
-                <i class="fas fa-times-circle"></i>
-                <span>Desconectado do Google Calendar</span>
+            <div id="accountsList" class="accounts-list">
+                <!-- Lista de contas será renderizada aqui -->
             </div>
 
-            <!-- Controls -->
-            <div class="google-controls">
-                <button id="authorizeButton" onclick="handleAuthClick()" class="btn btn-primary" style="display: none;">
-                    <i class="fas fa-sign-in-alt"></i> Conectar ao Google
+            <div class="add-account-section">
+                <button onclick="handleAddAccount()" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Adicionar Nova Conta
                 </button>
-                <button id="signoutButton" onclick="handleSignoutClick()" class="btn btn-danger" style="display: none;">
-                    <i class="fas fa-sign-out-alt"></i> Desconectar
-                </button>
-                <button id="syncButton" onclick="handleSyncClick()" class="btn btn-secondary" disabled>
-                    <i class="fas fa-sync-alt"></i> Sincronizar
+                <button onclick="syncAllAccounts()" class="btn btn-secondary">
+                    <i class="fas fa-sync-alt"></i> Sincronizar Todas
                 </button>
             </div>
         </div>
@@ -2602,9 +2834,9 @@
             </div>
         </div>
 
-        <!-- ✅ NOVO: Resumo Mensal com Montantes -->
+        <!-- Resumo Mensal com Montantes -->
         <div id="monthlySummarySection" class="monthly-summary" style="display: none;">
-            <h3><i class="fas fa-chart-pie"></i> Resumo do Mês</h3>
+            <h3><i class="fas fa-chart-pie"></i> Resumo do Mês (Todas as Contas)</h3>
             <div id="monthlyTotal" class="monthly-total">R$ 0,00</div>
             
             <div class="monthly-stats">
@@ -2622,7 +2854,7 @@
                 </div>
             </div>
 
-            <!-- ✅ NOVO: Estatísticas por Status com Montantes -->
+            <!-- Estatísticas por Status com Montantes -->
             <div class="status-stats">
                 <div class="status-stat-item pg">
                     <div id="totalPG" class="status-stat-value">0</div>
@@ -2642,11 +2874,11 @@
             </div>
         </div>
 
-        <!-- ✅ NOVO: Lista de Pagamentos com Filtros -->
+        <!-- Lista de Pagamentos com Filtros -->
         <div id="paymentsListSection" class="payments-list-section" style="display: none;">
-            <h3><i class="fas fa-list-alt"></i> Lista de Pagamentos do Mês</h3>
+            <h3><i class="fas fa-list-alt"></i> Lista de Pagamentos do Mês (Todas as Contas)</h3>
             
-            <!-- ✅ NOVO: Filtros -->
+            <!-- Filtros -->
             <div class="payments-filters">
                 <div class="filter-group">
                     <label class="filter-label">Nome do Pagamento</label>
@@ -2663,6 +2895,12 @@
                         <option value="PG">PG</option>
                         <option value="PENDENTE">Pendente</option>
                         <option value="RECALCULADO">Recalculado</option>
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label class="filter-label">Conta</label>
+                    <select id="accountFilter" class="filter-select">
+                        <option value="">Todas as contas</option>
                     </select>
                 </div>
                 <div class="filter-group">
@@ -2704,3 +2942,4 @@
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
+
