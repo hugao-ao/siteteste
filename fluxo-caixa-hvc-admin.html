@@ -1348,10 +1348,15 @@
                 totalPaymentsElement.textContent = monthlyData.payments;
             }
             
-            if (avgPaymentElement) {
-                const avgValue = monthlyData.payments > 0 ? monthlyData.total / (monthlyData.totalPG + monthlyData.totalPendente) : 0;
-                avgPaymentElement.textContent = formatCurrency(avgValue);
-            }
+                if (avgPaymentElement) {
+                    // ✅ NOVO: Calcular valor médio por dia do mês
+                    const currentMonth = currentDate.getMonth();
+                    const currentYear = currentDate.getFullYear();
+                    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                    const avgValue = monthlyData.total > 0 ? monthlyData.total / daysInMonth : 0;
+                    avgPaymentElement.textContent = formatCurrency(avgValue);
+                }
+
             
             // ✅ NOVO: Atualizar estatísticas por status com montantes
             const totalPGElement = document.getElementById('totalPG');
