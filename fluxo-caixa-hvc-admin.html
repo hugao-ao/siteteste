@@ -1262,6 +1262,17 @@
         // ✅ MODIFICADO: Filtro RESTRITIVO - incluindo 'entrada'
         const PAYMENT_KEYWORDS = ['pagamento', 'pagamentos', 'hvc', 'entrada'];
 
+        // Variáveis globais
+        let currentDate = new Date();
+        let allPaymentsList = [];
+        let filteredPaymentsList = [];
+        let filteredPagamentosList = [];
+        let filteredEntradaList = [];
+        let editingEventId = null;
+        let gapi_loaded = false;
+        let gsi_loaded = false;
+        let accountManager;
+
         // ✅ CORRIGIDO: Gerenciador de múltiplas contas com filtro APENAS NO TÍTULO
         class AccountManager {
             constructor() {
@@ -1345,7 +1356,6 @@
                         title.includes(keyword.toLowerCase())
                     );
                     
-                    // ✅ REMOVIDO: Logs individuais para não encher o console
                     return hasKeywordInTitle;
                 });
             }
@@ -1408,24 +1418,11 @@
         }
 
         // Instância global do gerenciador de contas
-        const accountManager = new AccountManager();
-
-        // =================================================================
-        // VARIÁVEIS GLOBAIS
-        // =================================================================
-        let currentDate = new Date();
-        let allPaymentsList = [];
-        let filteredPaymentsList = [];
-        let filteredPagamentosList = [];
-        let filteredEntradaList = [];
-        let editingEventId = null;
+        accountManager = new AccountManager();
 
         // =================================================================
         // INICIALIZAÇÃO DA API GOOGLE
         // =================================================================
-        let gapi_loaded = false;
-        let gsi_loaded = false;
-
         function gapiLoaded() {
             gapi_loaded = true;
             maybeEnableButtons();
@@ -1587,25 +1584,6 @@
             showMessage('Conta desconectada', 'info');
         }
 
-        async function testApiConnectivity() {
-            try {
-                const response = await gapi.client.calendar.calendarList.list({
-                    maxResults: 1
-                });
-                
-                if (response.status !== 200) {
-                    throw new Error(`API retornou status ${response.status}`);
-                }
-                
-                console.log('✅ Conectividade da API confirmada');
-                return true;
-                
-            } catch (error) {
-                console.error('❌ Erro de conectividade da API:', error);
-                throw error;
-            }
-        }
-
         async function syncAllAccounts() {
             const connectedAccounts = accountManager.getConnectedAccounts();
             
@@ -1653,7 +1631,6 @@
                 
                 console.log(`📊 Eventos carregados da API: ${events.length}`);
                 
-                // ✅ CORRIGIDO: Retornar TODOS os eventos, filtro APENAS NO TÍTULO será aplicado no AccountManager
                 return events;
                 
             } catch (error) {
@@ -1703,9 +1680,8 @@
         }
 
         // =================================================================
-        // ✅ CORRIGIDO: INTERFACE DE GERENCIAMENTO DE CONTAS
+        // INTERFACE DE GERENCIAMENTO DE CONTAS
         // =================================================================
-
         function updateAccountsList() {
             const accountsListElement = document.getElementById('accountsList');
             if (!accountsListElement) return;
@@ -1732,11 +1708,9 @@
                     lastSyncText = `• Última sync: ${account.lastSync.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`;
                 }
                 
-                // ✅ CORRIGIDO: Mostrar contagem de eventos filtrados
                 const eventCount = account.events ? account.events.length : 0;
                 const eventCountText = eventCount > 0 ? `• ${eventCount} eventos` : '';
                 
-                // ✅ CORRIGIDO: Botões condicionais baseados no status
                 let actionButtons = '';
                 if (account.isConnected && account.syncStatus !== 'error') {
                     actionButtons = `
@@ -2061,16 +2035,16 @@
             if (pagamentoTotalSepEl) pagamentoTotalSepEl.textContent = formatCurrency(separatedData.pagamento.total);
             if (pagamentoPagoEl) pagamentoPagoEl.textContent = formatCurrency(separatedData.pagamento.pago);
             if (pagamentoPendenteEl) pagamentoPendenteEl.textContent = formatCurrency(separatedData.pagamento.pendente);
-            if (pagamentoEventsEl) pagamentoEventsEl.textContent = separatedData.pagamento.events;
+            if (pagamentoEventsSepEl) pagamentoEventsSepEl.textContent = separatedData.pagamento.events;
             if (pagamentoItemsEl) pagamentoItemsEl.textContent = separatedData.pagamento.items;
             if (pagamentoMediaEl) pagamentoMediaEl.textContent = formatCurrency(separatedData.pagamento.mediaPorDia);
 
             // Atualizar totais de entrada
             const entradaTotalSepEl = document.getElementById('entradaTotal');
-            const entradaEventsEl = document.getElementById('entradaEvents');
+            const entradaEventsSepEl = document.getElementById('entradaEvents');
 
             if (entradaTotalSepEl) entradaTotalSepEl.textContent = formatCurrency(separatedData.entrada.total);
-            if (entradaEventsEl) entradaEventsEl.textContent = separatedData.entrada.events;
+            if (entradaEventsSepEl) entradaEventsSepEl.textContent = separatedData.entrada.events;
 
             // Atualizar listas
             updatePaymentsList('pagamentosList', separatedData.pagamento.list);
@@ -2718,7 +2692,7 @@
         }
 
         // =================================================================
-        // ✅ CORRIGIDO: INICIALIZAÇÃO
+        // INICIALIZAÇÃO
         // =================================================================
         document.addEventListener('DOMContentLoaded', function() {
             console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado (BALANÇO + FILTROS SEPARADOS)');
@@ -2744,7 +2718,7 @@
             </h1>
         </div>
 
-        <!-- ✅ NOVO: Gerenciamento de Múltiplas Contas -->
+        <!-- Gerenciamento de Múltiplas Contas -->
         <div class="accounts-section">
             <h2><i class="fab fa-google"></i> Contas do Google Calendar</h2>
             
@@ -2794,7 +2768,7 @@
             </div>
         </div>
 
-        <!-- ✅ MODIFICADO: Balanço Mensal ENTRADAS vs PAGAMENTOS -->
+        <!-- Balanço Mensal ENTRADAS vs PAGAMENTOS -->
         <div id="monthlySummarySection" class="monthly-summary" style="display: none;">
             <h3><i class="fas fa-balance-scale"></i> Balanço do Mês</h3>
             
@@ -2825,14 +2799,14 @@
             </div>
         </div>
 
-        <!-- ✅ MODIFICADO: Resumos Separados com Filtros -->
+        <!-- Resumos Separados com Filtros -->
         <div id="separatedSummarySection" class="hvc-container" style="display: none;">
             <h2 style="color: #ffffff; text-align: center; margin-bottom: 30px;">
                 <i class="fas fa-chart-pie"></i> Resumos Detalhados
             </h2>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-                <!-- ✅ MODIFICADO: Resumo PAGAMENTOS com detalhes -->
+                <!-- Resumo PAGAMENTOS com detalhes -->
                 <div class="monthly-summary" style="background: rgba(234, 67, 53, 0.2); border-color: #ea4335;">
                     <h3 style="color: #ea4335;"><i class="fas fa-credit-card"></i> PAGAMENTOS</h3>
                     <div id="pagamentoTotal" class="balance-value" style="font-size: 1.8rem;">R$ 0,00</div>
@@ -2861,7 +2835,7 @@
                     </div>
                 </div>
                 
-                <!-- Resumo ENTRADAS (mantido como estava) -->
+                <!-- Resumo ENTRADAS -->
                 <div class="monthly-summary" style="background: rgba(40, 167, 69, 0.2); border-color: #28a745;">
                     <h3 style="color: #28a745;"><i class="fas fa-arrow-down"></i> ENTRADAS</h3>
                     <div id="entradaTotal" class="balance-value" style="font-size: 1.8rem;">R$ 0,00</div>
@@ -2874,7 +2848,7 @@
                 </div>
             </div>
             
-            <!-- ✅ NOVO: Listas Separadas com Filtros -->
+            <!-- Listas Separadas com Filtros -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
                 <!-- Lista PAGAMENTOS com Filtros -->
                 <div class="payments-list-section" style="background: rgba(234, 67, 53, 0.1);">
