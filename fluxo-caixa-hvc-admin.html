@@ -1334,7 +1334,7 @@
         const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email';
 
         // ✅ CORRIGIDO: Filtro RESTRITIVO - apenas as 3 palavras-chave específicas
-        const PAYMENT_KEYWORDS = ['pagamento', 'pagamentos', 'hvc'];
+        const PAYMENT_KEYWORDS = ['pagamento', 'pagamentos', 'hvc', 'entrada'];
 
         // ✅ CORRIGIDO: Gerenciador de múltiplas contas com filtro APENAS NO TÍTULO
         class AccountManager {
@@ -2239,7 +2239,7 @@
                 Contas conectadas: ${connectedAccounts.length} | 
                 Eventos encontrados: ${totalEvents} | 
                 Período: ${currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })} |
-                Filtro: APENAS eventos com PAGAMENTO, PAGAMENTOS ou HVC no TÍTULO
+                Filtro: APENAS eventos com PAGAMENTO, PAGAMENTOS, HVC ou ENTRADA no TÍTULO
             `;
         }
 
@@ -2955,7 +2955,7 @@
         <div id="filterSection" class="filter-section" style="display: none;">
             <div class="filter-info">
                 <i class="fas fa-filter"></i>
-                <span>Filtro Ativo: APENAS eventos com PAGAMENTO, PAGAMENTOS ou HVC no TÍTULO</span>
+                <span>Filtro Ativo: APENAS eventos com PAGAMENTO, PAGAMENTOS, HVC ou ENTRADA no TÍTULO</span>
             </div>
             <div class="filter-stats" id="filterStats">
                 <!-- Stats will be populated here -->
