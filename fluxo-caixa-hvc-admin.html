@@ -1840,9 +1840,25 @@
         }
 
         function calculateEventTotal(event) {
+            const summary = (event.summary || '').toLowerCase();
+            
+            // ✅ MODIFICADO: Análise detalhada APENAS para eventos com "PAGAMENTO" ou "PAGAMENTOS" no título
+            const isPagamentoEvent = summary.includes('pagamento') || summary.includes('pagamentos');
+            
+            if (!isPagamentoEvent) {
+                // Para eventos que NÃO são de pagamento (HVC, ENTRADA, etc.), retornar estrutura vazia
+                return {
+                    total: 0,
+                    payments: [],
+                    countablePayments: [],
+                    count: 0,
+                    countableCount: 0
+                };
+            }
+            
+            // Análise detalhada apenas para eventos de PAGAMENTO
             const description = event.description || '';
-            const summary = event.summary || '';
-            const fullText = `${summary} ${description}`;
+            const fullText = `${event.summary || ''} ${description}`;
             
             const payments = extractPaymentInfo(fullText);
             
