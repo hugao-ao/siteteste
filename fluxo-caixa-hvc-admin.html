@@ -241,7 +241,7 @@
             display: block;
         }
 
-        /* Seção de Resumo Mensal */
+        /* ✅ MODIFICADO: Seção de Balanço Mensal */
         .monthly-summary {
             background: rgba(255, 193, 7, 0.2);
             border: 2px solid #ffc107;
@@ -261,12 +261,47 @@
             gap: 10px;
         }
 
-        .monthly-total {
+        .balance-display {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 20px;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .balance-item {
+            text-align: center;
+        }
+
+        .balance-item.entrada {
+            color: #28a745;
+        }
+
+        .balance-item.pagamento {
+            color: #ea4335;
+        }
+
+        .balance-item.saldo {
             color: #ffffff;
-            font-size: 2.5rem;
+            font-size: 1.2em;
             font-weight: bold;
-            margin-bottom: 10px;
-            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .balance-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        .balance-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+        }
+
+        .vs-separator {
+            color: #ffc107;
+            font-size: 1.5rem;
+            font-weight: bold;
         }
 
         .monthly-stats {
@@ -292,56 +327,6 @@
         .stat-label {
             color: rgba(255, 255, 255, 0.8);
             font-size: 0.9rem;
-            margin-top: 5px;
-        }
-
-        /* ✅ NOVO: Estatísticas por Status com Montantes */
-        .status-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 15px;
-            margin-top: 20px;
-        }
-
-        .status-stat-item {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 15px;
-            text-align: center;
-            border: 2px solid transparent;
-        }
-
-        .status-stat-item.pg {
-            border-color: #34a853;
-            background: rgba(52, 168, 83, 0.2);
-        }
-
-        .status-stat-item.pendente {
-            border-color: #ea4335;
-            background: rgba(234, 67, 53, 0.2);
-        }
-
-        .status-stat-item.recalculado {
-            border-color: #4285f4;
-            background: rgba(66, 133, 244, 0.2);
-        }
-
-        .status-stat-value {
-            color: #ffffff;
-            font-size: 1.1rem;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-
-        .status-stat-amount {
-            color: #ffc107;
-            font-size: 0.9rem;
-            font-weight: bold;
-        }
-
-        .status-stat-label {
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 0.8rem;
             margin-top: 5px;
         }
 
@@ -1194,8 +1179,8 @@
                 font-size: 1.5rem;
             }
 
-            .monthly-total {
-                font-size: 2rem;
+            .balance-value {
+                font-size: 1.5rem;
             }
 
             .account-item {
@@ -1215,8 +1200,13 @@
                 grid-template-columns: repeat(2, 1fr);
             }
 
-            .status-stats {
+            .balance-display {
                 grid-template-columns: 1fr;
+                gap: 15px;
+            }
+
+            .vs-separator {
+                display: none;
             }
 
             .payments-filters {
@@ -1426,6 +1416,8 @@
         let currentDate = new Date();
         let allPaymentsList = [];
         let filteredPaymentsList = [];
+        let filteredPagamentosList = [];
+        let filteredEntradaList = [];
         let editingEventId = null;
 
         // =================================================================
@@ -1699,7 +1691,6 @@
                 'calendarSection',
                 'filterSection', 
                 'monthlySummarySection',
-                'paymentsListSection',
                 'separatedSummarySection'
             ];
             
@@ -1913,87 +1904,60 @@
         }
 
         // =================================================================
-        // ✅ CÁLCULOS MENSAIS COM MONTANTES POR STATUS (MULTI-CONTA)
+        // ✅ MODIFICADO: CÁLCULOS MENSAIS COM BALANÇO ENTRADA vs PAGAMENTO
         // =================================================================
         function calculateMonthlyTotals(events) {
             const currentMonth = currentDate.getMonth();
             const currentYear = currentDate.getFullYear();
             
-            let monthlyTotal = 0;
+            let entradaTotal = 0;
+            let pagamentoTotal = 0;
             let totalEvents = 0;
-            let totalPayments = 0;
-            
-            let totalPG = 0;
-            let totalPendente = 0;
-            let totalRecalculado = 0;
-            let amountPG = 0;
-            let amountPendente = 0;
-            let amountRecalculado = 0;
-            
-            const paymentsList = [];
             
             events.forEach(event => {
                 const eventDate = parseEventDate(event);
                 
                 if (eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear) {
+                    const eventType = getEventType(event);
                     const eventCalc = calculateEventTotal(event);
-                    monthlyTotal += eventCalc.total;
                     totalEvents++;
-                    totalPayments += eventCalc.count;
                     
-                    eventCalc.payments.forEach(payment => {
-                        if (payment.status === 'PG') {
-                            totalPG++;
-                            amountPG += payment.value;
-                        } else if (payment.status === 'PENDENTE') {
-                            totalPendente++;
-                            amountPendente += payment.value;
-                        } else if (payment.status === 'RECALCULADO') {
-                            totalRecalculado++;
-                            amountRecalculado += payment.value;
-                        }
-                        
-                        paymentsList.push({
-                            ...payment,
-                            eventTitle: event.summary || 'Sem título',
-                            eventDate: eventDate,
-                            eventType: getEventType(event),
-                            eventId: event.id,
-                            accountEmail: event.accountEmail || 'Conta desconhecida',
-                            accountColor: event.accountColor || '#4285f4'
-                        });
-                    });
+                    if (eventType === 'entrada') {
+                        entradaTotal += eventCalc.total;
+                    } else {
+                        pagamentoTotal += eventCalc.total;
+                    }
                 }
             });
             
-            paymentsList.sort((a, b) => b.eventDate - a.eventDate);
+            const saldo = entradaTotal - pagamentoTotal;
             
             return {
-                total: monthlyTotal,
-                events: totalEvents,
-                payments: totalPayments,
-                totalPG: totalPG,
-                totalPendente: totalPendente,
-                totalRecalculado: totalRecalculado,
-                amountPG: amountPG,
-                amountPendente: amountPendente,
-                amountRecalculado: amountRecalculado,
-                paymentsList: paymentsList
+                entradaTotal: entradaTotal,
+                pagamentoTotal: pagamentoTotal,
+                saldo: saldo,
+                events: totalEvents
             };
         }
 
-        // ✅ NOVO: Função para calcular totais separados por tipo
+        // ✅ MODIFICADO: Função para calcular totais separados com detalhes de pagamento
         function calculateSeparatedTotals(events) {
             const currentMonth = currentDate.getMonth();
             const currentYear = currentDate.getFullYear();
             
             let pagamentoTotal = 0;
+            let pagamentoPago = 0;
+            let pagamentoPendente = 0;
             let entradaTotal = 0;
             let pagamentoEvents = 0;
             let entradaEvents = 0;
+            let pagamentoItems = 0;
             
             const pagamentosList = [];
             const entradaList = [];
+            
+            // Calcular dias do mês para média
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
             
             events.forEach(event => {
                 const eventDate = parseEventDate(event);
@@ -2020,8 +1984,15 @@
                     } else {
                         pagamentoTotal += eventCalc.total;
                         pagamentoEvents++;
+                        pagamentoItems += eventCalc.payments.length;
                         
                         eventCalc.payments.forEach(payment => {
+                            if (payment.status === 'PG') {
+                                pagamentoPago += payment.value;
+                            } else if (payment.status === 'PENDENTE') {
+                                pagamentoPendente += payment.value;
+                            }
+                            
                             pagamentosList.push({
                                 ...payment,
                                 eventTitle: event.summary || 'Sem título',
@@ -2039,10 +2010,16 @@
             pagamentosList.sort((a, b) => b.eventDate - a.eventDate);
             entradaList.sort((a, b) => b.eventDate - a.eventDate);
             
+            const mediaPorDia = pagamentoItems > 0 ? pagamentoTotal / daysInMonth : 0;
+            
             return {
                 pagamento: {
                     total: pagamentoTotal,
+                    pago: pagamentoPago,
+                    pendente: pagamentoPendente,
                     events: pagamentoEvents,
+                    items: pagamentoItems,
+                    mediaPorDia: mediaPorDia,
                     list: pagamentosList
                 },
                 entrada: {
@@ -2054,74 +2031,57 @@
         }
 
         function updateMonthlySummary(events) {
+            // ✅ MODIFICADO: Atualizar balanço mensal
             const monthlyData = calculateMonthlyTotals(events);
             
-            const monthlyTotalElement = document.getElementById('monthlyTotal');
-            if (monthlyTotalElement) {
-                monthlyTotalElement.textContent = formatCurrency(monthlyData.total);
+            const entradaTotalEl = document.getElementById('entradaTotalBalance');
+            const pagamentoTotalEl = document.getElementById('pagamentoTotalBalance');
+            const saldoEl = document.getElementById('saldoBalance');
+            const totalEventsEl = document.getElementById('totalEvents');
+            
+            if (entradaTotalEl) entradaTotalEl.textContent = formatCurrency(monthlyData.entradaTotal);
+            if (pagamentoTotalEl) pagamentoTotalEl.textContent = formatCurrency(monthlyData.pagamentoTotal);
+            if (saldoEl) {
+                saldoEl.textContent = formatCurrency(monthlyData.saldo);
+                saldoEl.style.color = monthlyData.saldo >= 0 ? '#28a745' : '#ea4335';
             }
+            if (totalEventsEl) totalEventsEl.textContent = monthlyData.events;
             
-            const totalEventsElement = document.getElementById('totalEvents');
-            const totalPaymentsElement = document.getElementById('totalPayments');
-            const avgPaymentElement = document.getElementById('avgPayment');
-            
-            if (totalEventsElement) {
-                totalEventsElement.textContent = monthlyData.events;
-            }
-            
-            if (totalPaymentsElement) {
-                totalPaymentsElement.textContent = monthlyData.payments;
-            }
-            
-            if (avgPaymentElement) {
-                const avgValue = monthlyData.payments > 0 ? monthlyData.total / monthlyData.payments : 0;
-                avgPaymentElement.textContent = formatCurrency(avgValue);
-            }
-            
-            // ✅ NOVO: Atualizar estatísticas por status
-            const totalPGElement = document.getElementById('totalPG');
-            const totalPendenteElement = document.getElementById('totalPendente');
-            const totalRecalculadoElement = document.getElementById('totalRecalculado');
-            const amountPGElement = document.getElementById('amountPG');
-            const amountPendenteElement = document.getElementById('amountPendente');
-            const amountRecalculadoElement = document.getElementById('amountRecalculado');
-            
-            if (totalPGElement) totalPGElement.textContent = monthlyData.totalPG;
-            if (totalPendenteElement) totalPendenteElement.textContent = monthlyData.totalPendente;
-            if (totalRecalculadoElement) totalRecalculadoElement.textContent = monthlyData.totalRecalculado;
-            if (amountPGElement) amountPGElement.textContent = formatCurrency(monthlyData.amountPG);
-            if (amountPendenteElement) amountPendenteElement.textContent = formatCurrency(monthlyData.amountPendente);
-            if (amountRecalculadoElement) amountRecalculadoElement.textContent = formatCurrency(monthlyData.amountRecalculado);
-            
-            // ✅ NOVO: Atualizar lista de pagamentos
-            allPaymentsList = monthlyData.paymentsList;
-            updatePaymentsList('paymentsListContent', allPaymentsList);
-            
-            // Mostrar seção de resumo mensal
-            const monthlySummarySection = document.getElementById('monthlySummarySection');
-            if (monthlySummarySection) {
-                monthlySummarySection.style.display = 'block';
-            }
-
-            // ✅ NOVO: Atualizar resumos separados
+            // ✅ MODIFICADO: Atualizar resumos separados com novos dados
             const separatedData = calculateSeparatedTotals(events);
 
-            // Atualizar totais
+            // Atualizar totais de pagamento
             const pagamentoTotalEl = document.getElementById('pagamentoTotal');
-            const entradaTotalEl = document.getElementById('entradaTotal');
+            const pagamentoPagoEl = document.getElementById('pagamentoPago');
+            const pagamentoPendenteEl = document.getElementById('pagamentoPendente');
             const pagamentoEventsEl = document.getElementById('pagamentoEvents');
-            const entradaEventsEl = document.getElementById('entradaEvents');
+            const pagamentoItemsEl = document.getElementById('pagamentoItems');
+            const pagamentoMediaEl = document.getElementById('pagamentoMedia');
 
             if (pagamentoTotalEl) pagamentoTotalEl.textContent = formatCurrency(separatedData.pagamento.total);
-            if (entradaTotalEl) entradaTotalEl.textContent = formatCurrency(separatedData.entrada.total);
+            if (pagamentoPagoEl) pagamentoPagoEl.textContent = formatCurrency(separatedData.pagamento.pago);
+            if (pagamentoPendenteEl) pagamentoPendenteEl.textContent = formatCurrency(separatedData.pagamento.pendente);
             if (pagamentoEventsEl) pagamentoEventsEl.textContent = separatedData.pagamento.events;
+            if (pagamentoItemsEl) pagamentoItemsEl.textContent = separatedData.pagamento.items;
+            if (pagamentoMediaEl) pagamentoMediaEl.textContent = formatCurrency(separatedData.pagamento.mediaPorDia);
+
+            // Atualizar totais de entrada
+            const entradaTotalSepEl = document.getElementById('entradaTotal');
+            const entradaEventsEl = document.getElementById('entradaEvents');
+
+            if (entradaTotalSepEl) entradaTotalSepEl.textContent = formatCurrency(separatedData.entrada.total);
             if (entradaEventsEl) entradaEventsEl.textContent = separatedData.entrada.events;
 
             // Atualizar listas
             updatePaymentsList('pagamentosList', separatedData.pagamento.list);
             updatePaymentsList('entradaList', separatedData.entrada.list);
 
-            // Mostrar seção separada
+            // Mostrar seções
+            const monthlySummarySection = document.getElementById('monthlySummarySection');
+            if (monthlySummarySection) {
+                monthlySummarySection.style.display = 'block';
+            }
+
             const separatedSummarySection = document.getElementById('separatedSummarySection');
             if (separatedSummarySection) {
                 separatedSummarySection.style.display = 'block';
@@ -2144,29 +2104,44 @@
         }
 
         // =================================================================
-        // FILTROS DE PAGAMENTOS
+        // ✅ NOVO: FILTROS PARA LISTAS SEPARADAS
         // =================================================================
         function initializePaymentFilters() {
-            const nameFilter = document.getElementById('nameFilter');
-            const dateFilter = document.getElementById('dateFilter');
-            const statusFilter = document.getElementById('statusFilter');
-            const accountFilter = document.getElementById('accountFilter');
-            const clearFiltersBtn = document.getElementById('clearFilters');
+            // Filtros para lista de pagamentos
+            const nameFilterPag = document.getElementById('nameFilterPagamentos');
+            const dateFilterPag = document.getElementById('dateFilterPagamentos');
+            const statusFilterPag = document.getElementById('statusFilterPagamentos');
+            const accountFilterPag = document.getElementById('accountFilterPagamentos');
+            const clearFiltersPagBtn = document.getElementById('clearFiltersPagamentos');
             
-            if (nameFilter) nameFilter.addEventListener('input', applyPaymentFilters);
-            if (dateFilter) dateFilter.addEventListener('change', applyPaymentFilters);
-            if (statusFilter) statusFilter.addEventListener('change', applyPaymentFilters);
-            if (accountFilter) accountFilter.addEventListener('change', applyPaymentFilters);
-            if (clearFiltersBtn) clearFiltersBtn.addEventListener('click', clearPaymentFilters);
+            if (nameFilterPag) nameFilterPag.addEventListener('input', () => applyPaymentFilters('pagamentos'));
+            if (dateFilterPag) dateFilterPag.addEventListener('change', () => applyPaymentFilters('pagamentos'));
+            if (statusFilterPag) statusFilterPag.addEventListener('change', () => applyPaymentFilters('pagamentos'));
+            if (accountFilterPag) accountFilterPag.addEventListener('change', () => applyPaymentFilters('pagamentos'));
+            if (clearFiltersPagBtn) clearFiltersPagBtn.addEventListener('click', () => clearPaymentFilters('pagamentos'));
+
+            // Filtros para lista de entradas
+            const nameFilterEnt = document.getElementById('nameFilterEntradas');
+            const dateFilterEnt = document.getElementById('dateFilterEntradas');
+            const accountFilterEnt = document.getElementById('accountFilterEntradas');
+            const clearFiltersEntBtn = document.getElementById('clearFiltersEntradas');
+            
+            if (nameFilterEnt) nameFilterEnt.addEventListener('input', () => applyPaymentFilters('entradas'));
+            if (dateFilterEnt) dateFilterEnt.addEventListener('change', () => applyPaymentFilters('entradas'));
+            if (accountFilterEnt) accountFilterEnt.addEventListener('change', () => applyPaymentFilters('entradas'));
+            if (clearFiltersEntBtn) clearFiltersEntBtn.addEventListener('click', () => clearPaymentFilters('entradas'));
         }
 
-        function applyPaymentFilters() {
-            const nameFilter = document.getElementById('nameFilter')?.value.toLowerCase() || '';
-            const dateFilter = document.getElementById('dateFilter')?.value || '';
-            const statusFilter = document.getElementById('statusFilter')?.value || '';
-            const accountFilter = document.getElementById('accountFilter')?.value || '';
+        function applyPaymentFilters(type) {
+            const nameFilter = document.getElementById(`nameFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`)?.value.toLowerCase() || '';
+            const dateFilter = document.getElementById(`dateFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`)?.value || '';
+            const statusFilter = type === 'pagamentos' ? (document.getElementById('statusFilterPagamentos')?.value || '') : '';
+            const accountFilter = document.getElementById(`accountFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`)?.value || '';
             
-            filteredPaymentsList = allPaymentsList.filter(payment => {
+            const separatedData = calculateSeparatedTotals(accountManager.getAllEvents());
+            const sourceList = type === 'pagamentos' ? separatedData.pagamento.list : separatedData.entrada.list;
+            
+            const filteredList = sourceList.filter(payment => {
                 const nameMatch = !nameFilter || 
                     payment.name.toLowerCase().includes(nameFilter) ||
                     payment.eventTitle.toLowerCase().includes(nameFilter);
@@ -2183,29 +2158,39 @@
                 return nameMatch && dateMatch && statusMatch && accountMatch;
             });
             
-            updatePaymentsList('paymentsListContent', filteredPaymentsList);
+            if (type === 'pagamentos') {
+                filteredPagamentosList = filteredList;
+                updatePaymentsList('pagamentosList', filteredPagamentosList);
+            } else {
+                filteredEntradaList = filteredList;
+                updatePaymentsList('entradaList', filteredEntradaList);
+            }
         }
 
-        function clearPaymentFilters() {
-            document.getElementById('nameFilter').value = '';
-            document.getElementById('dateFilter').value = '';
-            document.getElementById('statusFilter').value = '';
-            document.getElementById('accountFilter').value = '';
+        function clearPaymentFilters(type) {
+            document.getElementById(`nameFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`).value = '';
+            document.getElementById(`dateFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`).value = '';
+            document.getElementById(`accountFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`).value = '';
             
-            filteredPaymentsList = [...allPaymentsList];
-            updatePaymentsList('paymentsListContent', filteredPaymentsList);
+            if (type === 'pagamentos') {
+                document.getElementById('statusFilterPagamentos').value = '';
+            }
+            
+            applyPaymentFilters(type);
         }
 
         function updateAccountFilter() {
-            const accountFilter = document.getElementById('accountFilter');
-            if (!accountFilter) return;
-            
             const accounts = accountManager.getConnectedAccounts();
-            
-            accountFilter.innerHTML = '<option value="">Todas as contas</option>' +
+            const accountOptions = '<option value="">Todas as contas</option>' +
                 accounts.map(account => 
                     `<option value="${account.email}">${account.email}</option>`
                 ).join('');
+            
+            const accountFilterPag = document.getElementById('accountFilterPagamentos');
+            const accountFilterEnt = document.getElementById('accountFilterEntradas');
+            
+            if (accountFilterPag) accountFilterPag.innerHTML = accountOptions;
+            if (accountFilterEnt) accountFilterEnt.innerHTML = accountOptions;
         }
 
         function updatePaymentsList(containerId, paymentsList) {
@@ -2216,7 +2201,7 @@
                 container.innerHTML = `
                     <div class="no-payments">
                         <i class="fas fa-search"></i>
-                        <p>Nenhum pagamento encontrado</p>
+                        <p>Nenhum item encontrado</p>
                     </div>
                 `;
                 return;
@@ -2736,7 +2721,7 @@
         // ✅ CORRIGIDO: INICIALIZAÇÃO
         // =================================================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado (CALENDÁRIO SEGUNDA-FEIRA + FILTRO APENAS TÍTULO + ENTRADA SEPARADA)');
+            console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado (BALANÇO + FILTROS SEPARADOS)');
             
             renderCalendar([]);
             initializePaymentFilters();
@@ -2809,70 +2794,78 @@
             </div>
         </div>
 
-        <!-- ✅ NOVO: Resumo Mensal com Montantes -->
+        <!-- ✅ MODIFICADO: Balanço Mensal ENTRADAS vs PAGAMENTOS -->
         <div id="monthlySummarySection" class="monthly-summary" style="display: none;">
-            <h3><i class="fas fa-chart-pie"></i> Resumo do Mês</h3>
-            <div id="monthlyTotal" class="monthly-total">R$ 0,00</div>
+            <h3><i class="fas fa-balance-scale"></i> Balanço do Mês</h3>
+            
+            <div class="balance-display">
+                <div class="balance-item entrada">
+                    <div id="entradaTotalBalance" class="balance-value">R$ 0,00</div>
+                    <div class="balance-label">ENTRADAS</div>
+                </div>
+                
+                <div class="vs-separator">VS</div>
+                
+                <div class="balance-item pagamento">
+                    <div id="pagamentoTotalBalance" class="balance-value">R$ 0,00</div>
+                    <div class="balance-label">PAGAMENTOS</div>
+                </div>
+            </div>
+            
+            <div class="balance-item saldo">
+                <div id="saldoBalance" class="balance-value">R$ 0,00</div>
+                <div class="balance-label">SALDO</div>
+            </div>
             
             <div class="monthly-stats">
                 <div class="stat-item">
                     <div id="totalEvents" class="stat-value">0</div>
-                    <div class="stat-label">Eventos</div>
-                </div>
-                <div class="stat-item">
-                    <div id="totalPayments" class="stat-value">0</div>
-                    <div class="stat-label">Pagamentos</div>
-                </div>
-                <div class="stat-item">
-                    <div id="avgPayment" class="stat-value">R$ 0,00</div>
-                    <div class="stat-label">Valor Médio</div>
-                </div>
-            </div>
-
-            <!-- ✅ NOVO: Estatísticas por Status com Montantes -->
-            <div class="status-stats">
-                <div class="status-stat-item pg">
-                    <div id="totalPG" class="status-stat-value">0</div>
-                    <div id="amountPG" class="status-stat-amount">R$ 0,00</div>
-                    <div class="status-stat-label">PG</div>
-                </div>
-                <div class="status-stat-item pendente">
-                    <div id="totalPendente" class="status-stat-value">0</div>
-                    <div id="amountPendente" class="status-stat-amount">R$ 0,00</div>
-                    <div class="status-stat-label">Pendente</div>
-                </div>
-                <div class="status-stat-item recalculado">
-                    <div id="totalRecalculado" class="status-stat-value">0</div>
-                    <div id="amountRecalculado" class="status-stat-amount">R$ 0,00</div>
-                    <div class="status-stat-label">Recalculado</div>
+                    <div class="stat-label">Total de Eventos</div>
                 </div>
             </div>
         </div>
 
-        <!-- ✅ NOVO: Resumos Separados por Tipo -->
+        <!-- ✅ MODIFICADO: Resumos Separados com Filtros -->
         <div id="separatedSummarySection" class="hvc-container" style="display: none;">
             <h2 style="color: #ffffff; text-align: center; margin-bottom: 30px;">
-                <i class="fas fa-chart-pie"></i> Resumos Separados
+                <i class="fas fa-chart-pie"></i> Resumos Detalhados
             </h2>
             
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 30px;">
-                <!-- Resumo PAGAMENTOS -->
+                <!-- ✅ MODIFICADO: Resumo PAGAMENTOS com detalhes -->
                 <div class="monthly-summary" style="background: rgba(234, 67, 53, 0.2); border-color: #ea4335;">
                     <h3 style="color: #ea4335;"><i class="fas fa-credit-card"></i> PAGAMENTOS</h3>
-                    <div id="pagamentoTotal" class="monthly-total">R$ 0,00</div>
-                    <div class="monthly-stats">
+                    <div id="pagamentoTotal" class="balance-value" style="font-size: 1.8rem;">R$ 0,00</div>
+                    
+                    <div class="monthly-stats" style="margin-top: 15px;">
+                        <div class="stat-item">
+                            <div id="pagamentoPago" class="stat-value" style="color: #28a745;">R$ 0,00</div>
+                            <div class="stat-label">Pago (PG)</div>
+                        </div>
+                        <div class="stat-item">
+                            <div id="pagamentoPendente" class="stat-value" style="color: #ea4335;">R$ 0,00</div>
+                            <div class="stat-label">Pendente</div>
+                        </div>
                         <div class="stat-item">
                             <div id="pagamentoEvents" class="stat-value">0</div>
                             <div class="stat-label">Eventos</div>
                         </div>
+                        <div class="stat-item">
+                            <div id="pagamentoItems" class="stat-value">0</div>
+                            <div class="stat-label">Itens</div>
+                        </div>
+                        <div class="stat-item">
+                            <div id="pagamentoMedia" class="stat-value">R$ 0,00</div>
+                            <div class="stat-label">Média/Dia</div>
+                        </div>
                     </div>
                 </div>
                 
-                <!-- Resumo ENTRADAS -->
+                <!-- Resumo ENTRADAS (mantido como estava) -->
                 <div class="monthly-summary" style="background: rgba(40, 167, 69, 0.2); border-color: #28a745;">
                     <h3 style="color: #28a745;"><i class="fas fa-arrow-down"></i> ENTRADAS</h3>
-                    <div id="entradaTotal" class="monthly-total">R$ 0,00</div>
-                    <div class="monthly-stats">
+                    <div id="entradaTotal" class="balance-value" style="font-size: 1.8rem;">R$ 0,00</div>
+                    <div class="monthly-stats" style="margin-top: 15px;">
                         <div class="stat-item">
                             <div id="entradaEvents" class="stat-value">0</div>
                             <div class="stat-label">Eventos</div>
@@ -2881,69 +2874,84 @@
                 </div>
             </div>
             
-            <!-- Listas Separadas -->
+            <!-- ✅ NOVO: Listas Separadas com Filtros -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px;">
-                <!-- Lista PAGAMENTOS -->
-                <div class="hvc-container" style="background: rgba(234, 67, 53, 0.1);">
+                <!-- Lista PAGAMENTOS com Filtros -->
+                <div class="payments-list-section" style="background: rgba(234, 67, 53, 0.1);">
                     <h3 style="color: #ea4335; margin-bottom: 20px;">
                         <i class="fas fa-list"></i> Lista de Pagamentos
                     </h3>
+                    
+                    <!-- Filtros para Pagamentos -->
+                    <div class="payments-filters">
+                        <div class="filter-group">
+                            <label class="filter-label">Nome/Evento</label>
+                            <input type="text" id="nameFilterPagamentos" class="filter-input" placeholder="Filtrar...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Data</label>
+                            <input type="date" id="dateFilterPagamentos" class="filter-input">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Status</label>
+                            <select id="statusFilterPagamentos" class="filter-select">
+                                <option value="">Todos</option>
+                                <option value="PG">PG</option>
+                                <option value="PENDENTE">Pendente</option>
+                                <option value="RECALCULADO">Recalculado</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Conta</label>
+                            <select id="accountFilterPagamentos" class="filter-select">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <button id="clearFiltersPagamentos" class="clear-filters-btn">
+                                <i class="fas fa-times"></i> Limpar
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div id="pagamentosList" class="payments-list">
                         <!-- Lista será preenchida via JavaScript -->
                     </div>
                 </div>
                 
-                <!-- Lista ENTRADAS -->
-                <div class="hvc-container" style="background: rgba(40, 167, 69, 0.1);">
+                <!-- Lista ENTRADAS com Filtros -->
+                <div class="payments-list-section" style="background: rgba(40, 167, 69, 0.1);">
                     <h3 style="color: #28a745; margin-bottom: 20px;">
                         <i class="fas fa-list"></i> Lista de Entradas
                     </h3>
+                    
+                    <!-- Filtros para Entradas -->
+                    <div class="payments-filters">
+                        <div class="filter-group">
+                            <label class="filter-label">Nome/Evento</label>
+                            <input type="text" id="nameFilterEntradas" class="filter-input" placeholder="Filtrar...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Data</label>
+                            <input type="date" id="dateFilterEntradas" class="filter-input">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Conta</label>
+                            <select id="accountFilterEntradas" class="filter-select">
+                                <option value="">Todas</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <button id="clearFiltersEntradas" class="clear-filters-btn">
+                                <i class="fas fa-times"></i> Limpar
+                            </button>
+                        </div>
+                    </div>
+                    
                     <div id="entradaList" class="payments-list">
                         <!-- Lista será preenchida via JavaScript -->
                     </div>
                 </div>
-            </div>
-        </div>
-
-        <!-- ✅ NOVO: Lista de Pagamentos com Filtros -->
-        <div id="paymentsListSection" class="payments-list-section" style="display: none;">
-            <h3><i class="fas fa-list"></i> Lista Completa de Pagamentos</h3>
-            
-            <!-- Filtros -->
-            <div class="payments-filters">
-                <div class="filter-group">
-                    <label class="filter-label">Nome/Evento</label>
-                    <input type="text" id="nameFilter" class="filter-input" placeholder="Filtrar por nome ou evento...">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Data</label>
-                    <input type="date" id="dateFilter" class="filter-input">
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Status</label>
-                    <select id="statusFilter" class="filter-select">
-                        <option value="">Todos os status</option>
-                        <option value="PG">PG</option>
-                        <option value="PENDENTE">Pendente</option>
-                        <option value="RECALCULADO">Recalculado</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <label class="filter-label">Conta</label>
-                    <select id="accountFilter" class="filter-select">
-                        <option value="">Todas as contas</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <button id="clearFilters" class="clear-filters-btn">
-                        <i class="fas fa-times"></i> Limpar Filtros
-                    </button>
-                </div>
-            </div>
-            
-            <!-- Lista de Pagamentos -->
-            <div id="paymentsListContent" class="payments-list">
-                <!-- Lista será preenchida via JavaScript -->
             </div>
         </div>
 
