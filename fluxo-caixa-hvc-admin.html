@@ -2051,14 +2051,14 @@
             const separatedData = calculateSeparatedTotals(events);
 
             // Atualizar totais de pagamento
-            const pagamentoTotalEl = document.getElementById('pagamentoTotal');
+            const pagamentoTotalSepEl = document.getElementById('pagamentoTotal');
             const pagamentoPagoEl = document.getElementById('pagamentoPago');
             const pagamentoPendenteEl = document.getElementById('pagamentoPendente');
-            const pagamentoEventsEl = document.getElementById('pagamentoEvents');
+            const pagamentoEventsSepEl = document.getElementById('pagamentoEvents');
             const pagamentoItemsEl = document.getElementById('pagamentoItems');
             const pagamentoMediaEl = document.getElementById('pagamentoMedia');
 
-            if (pagamentoTotalEl) pagamentoTotalEl.textContent = formatCurrency(separatedData.pagamento.total);
+            if (pagamentoTotalSepEl) pagamentoTotalSepEl.textContent = formatCurrency(separatedData.pagamento.total);
             if (pagamentoPagoEl) pagamentoPagoEl.textContent = formatCurrency(separatedData.pagamento.pago);
             if (pagamentoPendenteEl) pagamentoPendenteEl.textContent = formatCurrency(separatedData.pagamento.pendente);
             if (pagamentoEventsEl) pagamentoEventsEl.textContent = separatedData.pagamento.events;
