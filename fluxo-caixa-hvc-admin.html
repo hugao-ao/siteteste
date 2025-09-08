@@ -1295,15 +1295,24 @@
                     const stored = localStorage.getItem('hvc_accounts');
                     if (stored) {
                         const accountsData = JSON.parse(stored);
-                        accountsData.forEach(([id, account]) => {
-                            this.accounts.set(id, {
-                                ...account,
-                                lastSync: account.lastSync ? new Date(account.lastSync) : null
+                        // Verificar se é um array antes de usar forEach
+                        if (Array.isArray(accountsData)) {
+                            accountsData.forEach(([id, account]) => {
+                                this.accounts.set(id, {
+                                    ...account,
+                                    lastSync: account.lastSync ? new Date(account.lastSync) : null
+                                });
                             });
-                        });
+                        } else {
+                            // Se não for array, limpar storage corrompido
+                            console.warn('⚠️ Storage corrompido, limpando...');
+                            localStorage.removeItem('hvc_accounts');
+                        }
                     }
                 } catch (error) {
                     console.error('❌ Erro ao carregar contas do storage:', error);
+                    // Limpar storage em caso de erro
+                    localStorage.removeItem('hvc_accounts');
                 }
             }
 
