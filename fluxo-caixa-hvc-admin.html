@@ -714,6 +714,12 @@
             color: #000 !important;
         }
 
+        /* ✅ NOVO: Estilo para saldo do dia */
+        .saldo-total {
+            font-weight: bold !important;
+            border: 1px solid rgba(255, 255, 255, 0.3) !important;
+        }
+
         /* ✅ NOVO: Estilos para eventos agrupados */
         .event-item.pagamento-group {
             background: rgba(234, 67, 53, 0.8) !important;
@@ -2462,35 +2468,51 @@
             
             const isFuture = eventDate > today;
             
+            console.log(`🎨 getGroupedEventStyle: ${type}, data: ${eventDate.toDateString()}, isFuture: ${isFuture}, eventos: ${events.length}`);
+            
             if (type === 'pagamento') {
                 // Verificar se todos os pagamentos estão PG ou RECALCULADO
                 let allCompleted = true;
                 let hasPayments = false;
+                let totalPayments = 0;
+                let completedPayments = 0;
                 
                 events.forEach(event => {
                     const eventCalc = calculateEventTotal(event);
+                    console.log(`📊 Evento: ${event.summary}, pagamentos: ${eventCalc.payments.length}`);
+                    
                     if (eventCalc.payments.length > 0) {
                         hasPayments = true;
-                        const eventCompleted = eventCalc.payments.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
-                        if (!eventCompleted) {
-                            allCompleted = false;
-                        }
+                        eventCalc.payments.forEach(payment => {
+                            totalPayments++;
+                            console.log(`💰 Pagamento: ${payment.name}, status: ${payment.status}`);
+                            if (payment.status === 'PG' || payment.status === 'RECALCULADO') {
+                                completedPayments++;
+                            } else {
+                                allCompleted = false;
+                            }
+                        });
                     }
                 });
                 
+                console.log(`📈 Total pagamentos: ${totalPayments}, completos: ${completedPayments}, allCompleted: ${allCompleted}`);
+                
                 if (isFuture) {
+                    console.log('🔵 Retornando AZUL (futuro)');
                     return {
                         background: 'rgba(66, 133, 244, 0.8)', // Azul para futuros
                         borderColor: '#4285f4',
                         color: '#000'
                     };
                 } else if (hasPayments && allCompleted) {
+                    console.log('🟢 Retornando VERDE (completo)');
                     return {
                         background: 'rgba(52, 168, 83, 0.8)', // Verde para completos
                         borderColor: '#34a853',
                         color: '#000'
                     };
                 } else {
+                    console.log('🔴 Retornando VERMELHO (pendente)');
                     return {
                         background: 'rgba(234, 67, 53, 0.8)', // Vermelho para pendentes/atrasados
                         borderColor: '#ea4335',
@@ -2501,31 +2523,45 @@
                 // Verificar se todas as entradas estão RC ou ADIADO
                 let allCompleted = true;
                 let hasEntradas = false;
+                let totalEntradas = 0;
+                let completedEntradas = 0;
                 
                 events.forEach(event => {
                     const eventCalc = calculateEventTotal(event);
+                    console.log(`📊 Evento entrada: ${event.summary}, entradas: ${eventCalc.payments.length}`);
+                    
                     if (eventCalc.payments.length > 0) {
                         hasEntradas = true;
-                        const eventCompleted = eventCalc.payments.every(p => p.status === 'RC' || p.status === 'ADIADO');
-                        if (!eventCompleted) {
-                            allCompleted = false;
-                        }
+                        eventCalc.payments.forEach(entrada => {
+                            totalEntradas++;
+                            console.log(`💚 Entrada: ${entrada.name}, status: ${entrada.status}`);
+                            if (entrada.status === 'RC' || entrada.status === 'ADIADO') {
+                                completedEntradas++;
+                            } else {
+                                allCompleted = false;
+                            }
+                        });
                     }
                 });
                 
+                console.log(`📈 Total entradas: ${totalEntradas}, completas: ${completedEntradas}, allCompleted: ${allCompleted}`);
+                
                 if (isFuture) {
+                    console.log('🔵 Retornando AZUL (futuro entrada)');
                     return {
                         background: 'rgba(66, 133, 244, 0.8)', // Azul para futuros
                         borderColor: '#4285f4',
                         color: '#000'
                     };
                 } else if (hasEntradas && allCompleted) {
+                    console.log('🟢 Retornando VERDE ESCURO (entrada completa)');
                     return {
                         background: 'rgba(40, 167, 69, 0.9)', // Verde escuro para completos (RC/ADIADO)
                         borderColor: '#28a745',
                         color: '#000'
                     };
                 } else {
+                    console.log('🟡 Retornando AMARELO (entrada aguardando)');
                     return {
                         background: 'rgba(255, 193, 7, 0.8)', // Amarelo para aguardando
                         borderColor: '#ffc107',
@@ -2535,6 +2571,7 @@
             }
             
             // Fallback
+            console.log('⚪ Retornando CINZA (fallback)');
             return {
                 background: 'rgba(108, 117, 125, 0.8)',
                 borderColor: '#6c757d',
@@ -2608,7 +2645,7 @@
                 dayNumber.textContent = cellDate.getDate();
                 dayDiv.appendChild(dayNumber);
                 
-                // ✅ MODIFICADO: Totais separados do dia
+                // ✅ MODIFICADO: Totais separados do dia + SALDO
                 const dayTotals = calculateDayTotal(cellDate, events);
                 if (dayTotals.total > 0) {
                     const dayTotalsContainer = document.createElement('div');
@@ -2630,6 +2667,27 @@
                         pagamentoTotalDiv.style.background = 'rgba(234, 67, 53, 0.8)';
                         pagamentoTotalDiv.style.color = '#000';
                         dayTotalsContainer.appendChild(pagamentoTotalDiv);
+                    }
+                    
+                    // ✅ NOVO: Saldo do dia (Entradas - Pagamentos)
+                    if (dayTotals.entrada > 0 || dayTotals.pagamento > 0) {
+                        const saldo = dayTotals.entrada - dayTotals.pagamento;
+                        const saldoDiv = document.createElement('div');
+                        saldoDiv.className = 'day-total saldo-total';
+                        saldoDiv.textContent = `S: ${formatCurrency(saldo)}`;
+                        
+                        if (saldo > 0) {
+                            saldoDiv.style.background = 'rgba(40, 167, 69, 0.9)'; // Verde para saldo positivo
+                            saldoDiv.style.color = '#000';
+                        } else if (saldo < 0) {
+                            saldoDiv.style.background = 'rgba(234, 67, 53, 0.9)'; // Vermelho para saldo negativo
+                            saldoDiv.style.color = '#000';
+                        } else {
+                            saldoDiv.style.background = 'rgba(108, 117, 125, 0.8)'; // Cinza para saldo zero
+                            saldoDiv.style.color = '#000';
+                        }
+                        
+                        dayTotalsContainer.appendChild(saldoDiv);
                     }
                     
                     dayDiv.appendChild(dayTotalsContainer);
