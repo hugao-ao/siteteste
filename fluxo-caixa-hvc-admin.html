@@ -2463,92 +2463,84 @@
             const eventDate = new Date(date);
             eventDate.setHours(0, 0, 0, 0);
             
-            const isFuture = eventDate > today;
-            
-            
             if (type === 'pagamento') {
-                // Verificar se todos os pagamentos estão PG ou RECALCULADO
-                let allCompleted = true;
-                let hasPayments = false;
-                let totalPayments = 0;
-                let completedPayments = 0;
+                // Verificar se TODOS os itens de TODOS os eventos estão PG ou RECALCULADO
+                let allItemsCompleted = true;
+                let hasAnyItems = false;
                 
                 events.forEach(event => {
                     const eventCalc = calculateEventTotal(event);
-                    
                     if (eventCalc.payments.length > 0) {
-                        hasPayments = true;
+                        hasAnyItems = true;
                         eventCalc.payments.forEach(payment => {
-                            totalPayments++;
-                            if (payment.status === 'PG' || payment.status === 'RECALCULADO') {
-                                completedPayments++;
-                            } else {
-                                allCompleted = false;
+                            if (payment.status !== 'PG' && payment.status !== 'RECALCULADO') {
+                                allItemsCompleted = false;
                             }
                         });
                     }
                 });
                 
-                
-                if (isFuture) {
+                // NOVA LÓGICA:
+                if (hasAnyItems && allItemsCompleted) {
+                    // VERDE: Todos os itens estão PG ou RECALCULADO
                     return {
-                        background: 'rgba(66, 133, 244, 0.8)', // Azul para futuros
-                        borderColor: '#4285f4',
-                        color: '#000'
-                    };
-                } else if (hasPayments && allCompleted) {
-                    return {
-                        background: 'rgba(52, 168, 83, 0.8)', // Verde para completos
+                        background: 'rgba(52, 168, 83, 0.8)',
                         borderColor: '#34a853',
                         color: '#000'
                     };
-                } else {
+                } else if (hasAnyItems && !allItemsCompleted && eventDate <= today) {
+                    // VERMELHO: Pelo menos um item não está PG/RECALCULADO E data é hoje ou anterior
                     return {
-                        background: 'rgba(234, 67, 53, 0.8)', // Vermelho para pendentes/atrasados
+                        background: 'rgba(234, 67, 53, 0.8)',
                         borderColor: '#ea4335',
                         color: '#000'
                     };
+                } else {
+                    // AZUL: Demais casos (futuro ou sem itens)
+                    return {
+                        background: 'rgba(66, 133, 244, 0.8)',
+                        borderColor: '#4285f4',
+                        color: '#000'
+                    };
                 }
+                
             } else if (type === 'entrada') {
-                // Verificar se todas as entradas estão RC ou ADIADO
-                let allCompleted = true;
-                let hasEntradas = false;
-                let totalEntradas = 0;
-                let completedEntradas = 0;
+                // Verificar se TODAS as entradas de TODOS os eventos estão RC ou ADIADO
+                let allItemsCompleted = true;
+                let hasAnyItems = false;
                 
                 events.forEach(event => {
                     const eventCalc = calculateEventTotal(event);
-                    
                     if (eventCalc.payments.length > 0) {
-                        hasEntradas = true;
+                        hasAnyItems = true;
                         eventCalc.payments.forEach(entrada => {
-                            totalEntradas++;
-                            if (entrada.status === 'RC' || entrada.status === 'ADIADO') {
-                                completedEntradas++;
-                            } else {
-                                allCompleted = false;
+                            if (entrada.status !== 'RC' && entrada.status !== 'ADIADO') {
+                                allItemsCompleted = false;
                             }
                         });
                     }
                 });
                 
-                
-                if (isFuture) {
+                // NOVA LÓGICA ANÁLOGA:
+                if (hasAnyItems && allItemsCompleted) {
+                    // VERDE: Todas as entradas estão RC ou ADIADO
                     return {
-                        background: 'rgba(66, 133, 244, 0.8)', // Azul para futuros
-                        borderColor: '#4285f4',
-                        color: '#000'
-                    };
-                } else if (hasEntradas && allCompleted) {
-                    return {
-                        background: 'rgba(40, 167, 69, 0.9)', // Verde escuro para completos (RC/ADIADO)
+                        background: 'rgba(40, 167, 69, 0.9)',
                         borderColor: '#28a745',
                         color: '#000'
                     };
-                } else {
+                } else if (hasAnyItems && !allItemsCompleted && eventDate <= today) {
+                    // AMARELO: Pelo menos uma entrada não está RC/ADIADO E data é hoje ou anterior
                     return {
-                        background: 'rgba(255, 193, 7, 0.8)', // Amarelo para aguardando
+                        background: 'rgba(255, 193, 7, 0.8)',
                         borderColor: '#ffc107',
+                        color: '#000'
+                    };
+                } else {
+                    // AZUL: Demais casos (futuro ou sem itens)
+                    return {
+                        background: 'rgba(66, 133, 244, 0.8)',
+                        borderColor: '#4285f4',
                         color: '#000'
                     };
                 }
