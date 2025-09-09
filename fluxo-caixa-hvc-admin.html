@@ -1480,7 +1480,6 @@
 
         function maybeEnableButtons() {
             if (gapi_loaded && gsi_loaded) {
-                console.log('✅ APIs do Google carregadas');
             }
         }
 
@@ -1655,7 +1654,6 @@
                 const timeMin = new Date(now.getFullYear(), now.getMonth() - 2, 1).toISOString();
                 const timeMax = new Date(now.getFullYear(), now.getMonth() + 3, 0).toISOString();
 
-                console.log('🔄 Carregando eventos do período:', timeMin, 'até', timeMax);
 
                 const response = await gapi.client.calendar.events.list({
                     calendarId: 'primary',
@@ -1674,7 +1672,6 @@
 
                 const events = response.result.items || [];
                 
-                console.log(`📊 Eventos carregados da API: ${events.length}`);
                 
                 return events;
                 
@@ -2468,7 +2465,6 @@
             
             const isFuture = eventDate > today;
             
-            console.log(`🎨 getGroupedEventStyle: ${type}, data: ${eventDate.toDateString()}, isFuture: ${isFuture}, eventos: ${events.length}`);
             
             if (type === 'pagamento') {
                 // Verificar se todos os pagamentos estão PG ou RECALCULADO
@@ -2479,13 +2475,11 @@
                 
                 events.forEach(event => {
                     const eventCalc = calculateEventTotal(event);
-                    console.log(`📊 Evento: ${event.summary}, pagamentos: ${eventCalc.payments.length}`);
                     
                     if (eventCalc.payments.length > 0) {
                         hasPayments = true;
                         eventCalc.payments.forEach(payment => {
                             totalPayments++;
-                            console.log(`💰 Pagamento: ${payment.name}, status: ${payment.status}`);
                             if (payment.status === 'PG' || payment.status === 'RECALCULADO') {
                                 completedPayments++;
                             } else {
@@ -2495,24 +2489,20 @@
                     }
                 });
                 
-                console.log(`📈 Total pagamentos: ${totalPayments}, completos: ${completedPayments}, allCompleted: ${allCompleted}`);
                 
                 if (isFuture) {
-                    console.log('🔵 Retornando AZUL (futuro)');
                     return {
                         background: 'rgba(66, 133, 244, 0.8)', // Azul para futuros
                         borderColor: '#4285f4',
                         color: '#000'
                     };
                 } else if (hasPayments && allCompleted) {
-                    console.log('🟢 Retornando VERDE (completo)');
                     return {
                         background: 'rgba(52, 168, 83, 0.8)', // Verde para completos
                         borderColor: '#34a853',
                         color: '#000'
                     };
                 } else {
-                    console.log('🔴 Retornando VERMELHO (pendente)');
                     return {
                         background: 'rgba(234, 67, 53, 0.8)', // Vermelho para pendentes/atrasados
                         borderColor: '#ea4335',
@@ -2528,13 +2518,11 @@
                 
                 events.forEach(event => {
                     const eventCalc = calculateEventTotal(event);
-                    console.log(`📊 Evento entrada: ${event.summary}, entradas: ${eventCalc.payments.length}`);
                     
                     if (eventCalc.payments.length > 0) {
                         hasEntradas = true;
                         eventCalc.payments.forEach(entrada => {
                             totalEntradas++;
-                            console.log(`💚 Entrada: ${entrada.name}, status: ${entrada.status}`);
                             if (entrada.status === 'RC' || entrada.status === 'ADIADO') {
                                 completedEntradas++;
                             } else {
@@ -2544,24 +2532,20 @@
                     }
                 });
                 
-                console.log(`📈 Total entradas: ${totalEntradas}, completas: ${completedEntradas}, allCompleted: ${allCompleted}`);
                 
                 if (isFuture) {
-                    console.log('🔵 Retornando AZUL (futuro entrada)');
                     return {
                         background: 'rgba(66, 133, 244, 0.8)', // Azul para futuros
                         borderColor: '#4285f4',
                         color: '#000'
                     };
                 } else if (hasEntradas && allCompleted) {
-                    console.log('🟢 Retornando VERDE ESCURO (entrada completa)');
                     return {
                         background: 'rgba(40, 167, 69, 0.9)', // Verde escuro para completos (RC/ADIADO)
                         borderColor: '#28a745',
                         color: '#000'
                     };
                 } else {
-                    console.log('🟡 Retornando AMARELO (entrada aguardando)');
                     return {
                         background: 'rgba(255, 193, 7, 0.8)', // Amarelo para aguardando
                         borderColor: '#ffc107',
@@ -2571,7 +2555,6 @@
             }
             
             // Fallback
-            console.log('⚪ Retornando CINZA (fallback)');
             return {
                 background: 'rgba(108, 117, 125, 0.8)',
                 borderColor: '#6c757d',
@@ -3217,7 +3200,6 @@
         // INICIALIZAÇÃO
         // =================================================================
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('🚀 Sistema de Fluxo de Caixa HVC Multi-Conta inicializado (BALANÇO + FILTROS SEPARADOS)');
             
             renderCalendar([]);
             initializePaymentFilters();
