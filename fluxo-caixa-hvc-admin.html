@@ -696,6 +696,45 @@
             line-height: 1.1;
         }
 
+        /* ✅ NOVO: Container para totais separados */
+        .day-totals-container {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin-bottom: 3px;
+        }
+
+        .entrada-total {
+            background: rgba(40, 167, 69, 0.8) !important;
+            color: #000 !important;
+        }
+
+        .pagamento-total {
+            background: rgba(234, 67, 53, 0.8) !important;
+            color: #000 !important;
+        }
+
+        /* ✅ NOVO: Estilos para eventos agrupados */
+        .event-item.pagamento-group {
+            background: rgba(234, 67, 53, 0.8) !important;
+            color: #000 !important;
+            border-left: 4px solid #ea4335 !important;
+            font-weight: bold;
+        }
+
+        .event-item.entrada-group {
+            background: rgba(40, 167, 69, 0.8) !important;
+            color: #000 !important;
+            border-left: 4px solid #28a745 !important;
+            font-weight: bold;
+        }
+
+        .event-item.pagamento-group:hover,
+        .event-item.entrada-group:hover {
+            transform: scale(1.05);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+
         .day-events {
             display: flex;
             flex-direction: column;
@@ -1951,14 +1990,48 @@
 
         function calculateDayTotal(date, events) {
             const eventsForDay = getEventsForDay(date, events);
-            let dayTotal = 0;
+            let pagamentoTotal = 0;
+            let entradaTotal = 0;
             
             eventsForDay.forEach(event => {
+                const eventType = getEventType(event);
                 const eventCalc = calculateEventTotal(event);
-                dayTotal += eventCalc.total;
+                
+                if (eventType === 'entrada') {
+                    entradaTotal += eventCalc.total;
+                } else if (eventType === 'pagamento') {
+                    pagamentoTotal += eventCalc.total;
+                }
             });
             
-            return dayTotal;
+            return {
+                pagamento: pagamentoTotal,
+                entrada: entradaTotal,
+                total: pagamentoTotal + entradaTotal
+            };
+        }
+
+        // ✅ NOVO: Função para agrupar eventos por tipo no dia
+        function getGroupedEventsForDay(date, events) {
+            const eventsForDay = getEventsForDay(date, events);
+            const grouped = {
+                pagamento: [],
+                entrada: [],
+                outros: []
+            };
+            
+            eventsForDay.forEach(event => {
+                const eventType = getEventType(event);
+                if (eventType === 'entrada') {
+                    grouped.entrada.push(event);
+                } else if (eventType === 'pagamento') {
+                    grouped.pagamento.push(event);
+                } else {
+                    grouped.outros.push(event);
+                }
+            });
+            
+            return grouped;
         }
 
         // =================================================================
@@ -2446,21 +2519,65 @@
                 dayNumber.textContent = cellDate.getDate();
                 dayDiv.appendChild(dayNumber);
                 
-                // Total do dia
-                const dayTotal = calculateDayTotal(cellDate, events);
-                if (dayTotal > 0) {
-                    const dayTotalDiv = document.createElement('div');
-                    dayTotalDiv.className = 'day-total';
-                    dayTotalDiv.textContent = formatCurrency(dayTotal);
-                    dayDiv.appendChild(dayTotalDiv);
+                // ✅ MODIFICADO: Totais separados do dia
+                const dayTotals = calculateDayTotal(cellDate, events);
+                if (dayTotals.total > 0) {
+                    const dayTotalsContainer = document.createElement('div');
+                    dayTotalsContainer.className = 'day-totals-container';
+                    
+                    if (dayTotals.entrada > 0) {
+                        const entradaTotalDiv = document.createElement('div');
+                        entradaTotalDiv.className = 'day-total entrada-total';
+                        entradaTotalDiv.textContent = `E: ${formatCurrency(dayTotals.entrada)}`;
+                        entradaTotalDiv.style.background = 'rgba(40, 167, 69, 0.8)';
+                        entradaTotalDiv.style.color = '#000';
+                        dayTotalsContainer.appendChild(entradaTotalDiv);
+                    }
+                    
+                    if (dayTotals.pagamento > 0) {
+                        const pagamentoTotalDiv = document.createElement('div');
+                        pagamentoTotalDiv.className = 'day-total pagamento-total';
+                        pagamentoTotalDiv.textContent = `P: ${formatCurrency(dayTotals.pagamento)}`;
+                        pagamentoTotalDiv.style.background = 'rgba(234, 67, 53, 0.8)';
+                        pagamentoTotalDiv.style.color = '#000';
+                        dayTotalsContainer.appendChild(pagamentoTotalDiv);
+                    }
+                    
+                    dayDiv.appendChild(dayTotalsContainer);
                 }
                 
-                // Eventos do dia
+                // ✅ MODIFICADO: Eventos agrupados do dia
                 const dayEvents = document.createElement('div');
                 dayEvents.className = 'day-events';
                 
-                const eventsForDay = getEventsForDay(cellDate, events);
-                eventsForDay.forEach(event => {
+                const groupedEvents = getGroupedEventsForDay(cellDate, events);
+                
+                // Criar "eventão" de PAGAMENTOS se houver eventos de pagamento
+                if (groupedEvents.pagamento.length > 0) {
+                    const pagamentoEventDiv = document.createElement('div');
+                    pagamentoEventDiv.className = 'event-item pagamento-group';
+                    pagamentoEventDiv.style.background = 'rgba(234, 67, 53, 0.8)';
+                    pagamentoEventDiv.style.color = '#000';
+                    pagamentoEventDiv.style.borderLeft = '4px solid #ea4335';
+                    pagamentoEventDiv.textContent = `PAGAMENTOS (${groupedEvents.pagamento.length})`;
+                    pagamentoEventDiv.onclick = () => showGroupedEventDetails('pagamento', groupedEvents.pagamento, cellDate);
+                    dayEvents.appendChild(pagamentoEventDiv);
+                }
+                
+                // Criar "eventão" de ENTRADAS se houver eventos de entrada
+                if (groupedEvents.entrada.length > 0) {
+                    const entradaEventDiv = document.createElement('div');
+                    entradaEventDiv.className = 'event-item entrada-group';
+                    entradaEventDiv.style.background = 'rgba(40, 167, 69, 0.8)';
+                    entradaEventDiv.style.color = '#000';
+                    entradaEventDiv.style.borderLeft = '4px solid #28a745';
+                    entradaEventDiv.textContent = `ENTRADAS (${groupedEvents.entrada.length})`;
+                    entradaEventDiv.onclick = () => showGroupedEventDetails('entrada', groupedEvents.entrada, cellDate);
+                    dayEvents.appendChild(entradaEventDiv);
+                }
+                
+                // Mostrar outros eventos individualmente (HVC, etc.)
+                groupedEvents.outros.forEach(event => {
                     const eventDiv = document.createElement('div');
                     eventDiv.className = `event-item ${getEventColorClass(event)}`;
                     eventDiv.style.borderLeftColor = event.accountColor || '#4285f4';
@@ -2554,6 +2671,129 @@
                     </div>
                 `;
             }
+            
+            body.innerHTML = detailsHTML;
+            modal.style.display = 'block';
+        }
+
+        // ✅ NOVO: Função para mostrar detalhes de eventos agrupados
+        async function showGroupedEventDetails(type, events, date) {
+            const modal = document.getElementById('eventModal');
+            const title = document.getElementById('eventModalTitle');
+            const body = document.getElementById('eventModalBody');
+            
+            if (!modal || !title || !body) return;
+            
+            const typeLabel = type === 'pagamento' ? 'PAGAMENTOS' : 'ENTRADAS';
+            const typeColor = type === 'pagamento' ? '#ea4335' : '#28a745';
+            
+            title.textContent = `${typeLabel} - ${date.toLocaleDateString('pt-BR')}`;
+            
+            let totalGeral = 0;
+            let totalItens = 0;
+            
+            let detailsHTML = `
+                <div style="text-align: center; margin-bottom: 20px; padding: 15px; background: rgba(${type === 'pagamento' ? '234, 67, 53' : '40, 167, 69'}, 0.1); border-radius: 8px; border: 2px solid ${typeColor};">
+                    <h3 style="color: ${typeColor}; margin: 0;">
+                        <i class="fas fa-${type === 'pagamento' ? 'credit-card' : 'plus-circle'}"></i> 
+                        ${typeLabel} DO DIA
+                    </h3>
+                    <p style="margin: 5px 0; color: rgba(255, 255, 255, 0.8);">
+                        ${events.length} evento${events.length > 1 ? 's' : ''} encontrado${events.length > 1 ? 's' : ''}
+                    </p>
+                </div>
+                
+                <div class="grouped-events-list">
+            `;
+            
+            events.forEach((event, index) => {
+                const eventCalc = calculateEventTotal(event);
+                totalGeral += eventCalc.total;
+                totalItens += eventCalc.count;
+                
+                const eventDate = parseEventDate(event);
+                const start = eventDate;
+                const end = event.end.dateTime ? new Date(event.end.dateTime) : eventDate;
+                
+                detailsHTML += `
+                    <div class="grouped-event-item" style="border-left: 4px solid ${typeColor}; margin-bottom: 20px; padding: 15px; background: rgba(255, 255, 255, 0.05); border-radius: 8px;">
+                        <div class="grouped-event-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                            <h4 style="margin: 0; color: ${typeColor};">
+                                <i class="fas fa-calendar-alt"></i> ${event.summary || 'Sem título'}
+                            </h4>
+                            <span style="background: ${typeColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem;">
+                                ${formatCurrency(eventCalc.total)}
+                            </span>
+                        </div>
+                        
+                        <p style="margin: 5px 0; color: rgba(255, 255, 255, 0.7);">
+                            <i class="fas fa-clock"></i> ${event.start.dateTime ? 
+                                `${start.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} - ${end.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}` : 
+                                'Dia inteiro'}
+                        </p>
+                        
+                        <p style="margin: 5px 0; color: rgba(255, 255, 255, 0.7);">
+                            <i class="fas fa-user"></i> <span style="color: ${event.accountColor || '#4285f4'}">${event.accountEmail || 'Conta desconhecida'}</span>
+                        </p>
+                        
+                        ${eventCalc.count > 0 ? `
+                            <div class="event-values-mini" style="margin-top: 10px;">
+                                <strong style="color: ${typeColor};">
+                                    <i class="fas fa-list"></i> ${eventCalc.count} item${eventCalc.count > 1 ? 'ns' : ''}:
+                                </strong>
+                                <div style="margin-top: 5px;">
+                                    ${eventCalc.payments.map(payment => `
+                                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 3px 0; border-bottom: 1px solid rgba(255, 255, 255, 0.1);">
+                                            <span style="color: rgba(255, 255, 255, 0.9);">${payment.name}</span>
+                                            <div>
+                                                <span style="color: white; margin-right: 8px;">${payment.formattedValue}</span>
+                                                <span class="value-item-status ${payment.status.toLowerCase()}" style="font-size: 0.7rem;">${payment.status}</span>
+                                            </div>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        ` : `
+                            <p style="color: rgba(255, 255, 255, 0.5); font-style: italic; margin-top: 10px;">
+                                <i class="fas fa-info-circle"></i> Nenhum valor encontrado
+                            </p>
+                        `}
+                        
+                        <button onclick="showEventDetails(${JSON.stringify(event).replace(/"/g, '&quot;')})" 
+                                class="btn-edit" style="margin-top: 10px; background: ${typeColor};">
+                            <i class="fas fa-eye"></i> Ver Detalhes
+                        </button>
+                    </div>
+                `;
+            });
+            
+            detailsHTML += `
+                </div>
+                
+                <div style="text-align: center; margin-top: 20px; padding: 15px; background: rgba(${type === 'pagamento' ? '234, 67, 53' : '40, 167, 69'}, 0.2); border-radius: 8px;">
+                    <h3 style="color: ${typeColor}; margin: 0 0 10px 0;">
+                        <i class="fas fa-calculator"></i> RESUMO TOTAL
+                    </h3>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: ${typeColor};">
+                                ${formatCurrency(totalGeral)}
+                            </div>
+                            <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
+                                Valor Total
+                            </div>
+                        </div>
+                        <div>
+                            <div style="font-size: 1.5rem; font-weight: bold; color: ${typeColor};">
+                                ${totalItens}
+                            </div>
+                            <div style="color: rgba(255, 255, 255, 0.8); font-size: 0.9rem;">
+                                Total de Itens
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
             
             body.innerHTML = detailsHTML;
             modal.style.display = 'block';
