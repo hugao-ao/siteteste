@@ -1839,14 +1839,72 @@
             return matches;
         }
 
+        // ✅ NOVO: Função específica para extrair informações de ENTRADA
+        function extractEntradaInfo(text) {
+            if (!text) return [];
+            
+            const entradaRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?/gi;
+            const matches = [];
+            let match;
+            
+            while ((match = entradaRegex.exec(text)) !== null) {
+                const entradaName = match[1].trim();
+                const valueStr = match[2];
+                const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
+                const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
+                
+                let status = 'AGUARDANDO'; // Status padrão para entradas
+                
+                if (statusText) {
+                    const statusLower = statusText.toLowerCase();
+                    if (statusLower.includes('rc')) {
+                        status = 'RC';
+                    } else if (statusLower.includes('adiado')) {
+                        status = 'ADIADO';
+                    }
+                }
+                
+                matches.push({
+                    name: entradaName,
+                    original: `${entradaName} - R$ ${valueStr}${match[3] ? ' ' + match[3] : ''}`,
+                    value: numericValue,
+                    formattedValue: `R$ ${valueStr}`,
+                    status: status,
+                    statusText: statusText
+                });
+            }
+            
+            if (matches.length === 0) {
+                const moneyRegex = /R\$\s*([\d.]+,\d{2})/gi;
+                const moneyMatches = text.match(moneyRegex) || [];
+                
+                moneyMatches.forEach(match => {
+                    const valueStr = match.replace(/R\$\s*/, '');
+                    const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
+                    
+                    matches.push({
+                        name: 'Entrada',
+                        original: match,
+                        value: numericValue,
+                        formattedValue: match,
+                        status: 'AGUARDANDO',
+                        statusText: ''
+                    });
+                });
+            }
+            
+            return matches;
+        }
+
         function calculateEventTotal(event) {
             const summary = (event.summary || '').toLowerCase();
             
-            // ✅ MODIFICADO: Análise detalhada APENAS para eventos com "PAGAMENTO" ou "PAGAMENTOS" no título
+            // ✅ MODIFICADO: Análise detalhada para eventos com "PAGAMENTO"/"PAGAMENTOS" ou "ENTRADA"
             const isPagamentoEvent = summary.includes('pagamento') || summary.includes('pagamentos');
+            const isEntradaEvent = summary.includes('entrada');
             
-            if (!isPagamentoEvent) {
-                // Para eventos que NÃO são de pagamento (HVC, ENTRADA, etc.), retornar estrutura vazia
+            if (!isPagamentoEvent && !isEntradaEvent) {
+                // Para eventos que NÃO são de pagamento nem entrada (HVC, etc.), retornar estrutura vazia
                 return {
                     total: 0,
                     payments: [],
@@ -1856,13 +1914,23 @@
                 };
             }
             
-            // Análise detalhada apenas para eventos de PAGAMENTO
+            // Análise detalhada para eventos de PAGAMENTO ou ENTRADA
             const description = event.description || '';
             const fullText = `${event.summary || ''} ${description}`;
             
-            const payments = extractPaymentInfo(fullText);
+            let payments;
+            let countablePayments;
             
-            const countablePayments = payments.filter(p => p.status === 'PG' || p.status === 'PENDENTE');
+            if (isEntradaEvent) {
+                // ✅ NOVO: Usar função específica para ENTRADA
+                payments = extractEntradaInfo(fullText);
+                countablePayments = payments.filter(p => p.status === 'RC' || p.status === 'AGUARDANDO');
+            } else {
+                // Usar função original para PAGAMENTO
+                payments = extractPaymentInfo(fullText);
+                countablePayments = payments.filter(p => p.status === 'PG' || p.status === 'PENDENTE');
+            }
+            
             const total = countablePayments.reduce((sum, item) => sum + item.value, 0);
             
             return {
@@ -1900,8 +1968,11 @@
             const currentMonth = currentDate.getMonth();
             const currentYear = currentDate.getFullYear();
             
-            let entradaTotal = 0;
-            let pagamentoTotal = 0;
+            // ✅ MODIFICADO: Separar totais por status
+            let entradaRC = 0;          // Entradas confirmadas (RC)
+            let entradaAguardando = 0;  // Entradas aguardando
+            let pagamentoPG = 0;        // Pagamentos confirmados (PG)
+            let pagamentoPendente = 0;  // Pagamentos pendentes
             let totalEvents = 0;
             
             events.forEach(event => {
@@ -1913,20 +1984,49 @@
                     totalEvents++;
                     
                     if (eventType === 'entrada') {
-                        entradaTotal += eventCalc.total;
-                    } else {
-                        pagamentoTotal += eventCalc.total;
+                        // ✅ NOVO: Separar entradas por status
+                        eventCalc.payments.forEach(payment => {
+                            if (payment.status === 'RC') {
+                                entradaRC += payment.value;
+                            } else if (payment.status === 'AGUARDANDO') {
+                                entradaAguardando += payment.value;
+                            }
+                        });
+                    } else if (eventType === 'pagamento') {
+                        // ✅ NOVO: Separar pagamentos por status
+                        eventCalc.payments.forEach(payment => {
+                            if (payment.status === 'PG') {
+                                pagamentoPG += payment.value;
+                            } else if (payment.status === 'PENDENTE') {
+                                pagamentoPendente += payment.value;
+                            }
+                        });
                     }
                 }
             });
             
-            const saldo = entradaTotal - pagamentoTotal;
+            // Calcular totais e saldos
+            const entradaTotal = entradaRC + entradaAguardando;
+            const pagamentoTotal = pagamentoPG + pagamentoPendente;
+            const saldoConfirmado = entradaRC - pagamentoPG;      // RC vs PG
+            const saldoPendente = entradaAguardando - pagamentoPendente; // AGUARDANDO vs PENDENTE
+            const saldoTotal = entradaTotal - pagamentoTotal;     // Saldo geral
             
             return {
+                // Totais gerais (compatibilidade)
                 entradaTotal: entradaTotal,
                 pagamentoTotal: pagamentoTotal,
-                saldo: saldo,
-                events: totalEvents
+                saldo: saldoTotal,
+                events: totalEvents,
+                
+                // ✅ NOVO: Detalhamento por status
+                entradaRC: entradaRC,
+                entradaAguardando: entradaAguardando,
+                pagamentoPG: pagamentoPG,
+                pagamentoPendente: pagamentoPendente,
+                saldoConfirmado: saldoConfirmado,
+                saldoPendente: saldoPendente,
+                saldoTotal: saldoTotal
             };
         }
 
@@ -2021,9 +2121,34 @@
         }
 
         function updateMonthlySummary(events) {
-            // ✅ MODIFICADO: Atualizar balanço mensal
+            // ✅ MODIFICADO: Atualizar balanço mensal com saldos detalhados
             const monthlyData = calculateMonthlyTotals(events);
             
+            // ✅ NOVO: Atualizar saldos confirmados (RC vs PG)
+            const entradaRCEl = document.getElementById('entradaRCBalance');
+            const pagamentoPGEl = document.getElementById('pagamentoPGBalance');
+            const saldoConfirmadoEl = document.getElementById('saldoConfirmadoBalance');
+            
+            if (entradaRCEl) entradaRCEl.textContent = formatCurrency(monthlyData.entradaRC);
+            if (pagamentoPGEl) pagamentoPGEl.textContent = formatCurrency(monthlyData.pagamentoPG);
+            if (saldoConfirmadoEl) {
+                saldoConfirmadoEl.textContent = formatCurrency(monthlyData.saldoConfirmado);
+                saldoConfirmadoEl.style.color = monthlyData.saldoConfirmado >= 0 ? '#28a745' : '#ea4335';
+            }
+            
+            // ✅ NOVO: Atualizar saldos pendentes (AGUARDANDO vs PENDENTE)
+            const entradaAguardandoEl = document.getElementById('entradaAguardandoBalance');
+            const pagamentoPendenteEl = document.getElementById('pagamentoPendenteBalance');
+            const saldoPendenteEl = document.getElementById('saldoPendenteBalance');
+            
+            if (entradaAguardandoEl) entradaAguardandoEl.textContent = formatCurrency(monthlyData.entradaAguardando);
+            if (pagamentoPendenteEl) pagamentoPendenteEl.textContent = formatCurrency(monthlyData.pagamentoPendente);
+            if (saldoPendenteEl) {
+                saldoPendenteEl.textContent = formatCurrency(monthlyData.saldoPendente);
+                saldoPendenteEl.style.color = monthlyData.saldoPendente >= 0 ? '#28a745' : '#ea4335';
+            }
+            
+            // ✅ MODIFICADO: Atualizar totais gerais
             const entradaTotalEl = document.getElementById('entradaTotalBalance');
             const pagamentoTotalEl = document.getElementById('pagamentoTotalBalance');
             const saldoEl = document.getElementById('saldoBalance');
@@ -2032,8 +2157,8 @@
             if (entradaTotalEl) entradaTotalEl.textContent = formatCurrency(monthlyData.entradaTotal);
             if (pagamentoTotalEl) pagamentoTotalEl.textContent = formatCurrency(monthlyData.pagamentoTotal);
             if (saldoEl) {
-                saldoEl.textContent = formatCurrency(monthlyData.saldo);
-                saldoEl.style.color = monthlyData.saldo >= 0 ? '#28a745' : '#ea4335';
+                saldoEl.textContent = formatCurrency(monthlyData.saldoTotal);
+                saldoEl.style.color = monthlyData.saldoTotal >= 0 ? '#28a745' : '#ea4335';
             }
             if (totalEventsEl) totalEventsEl.textContent = monthlyData.events;
             
@@ -2043,14 +2168,14 @@
             // Atualizar totais de pagamento
             const pagamentoTotalSepEl = document.getElementById('pagamentoTotal');
             const pagamentoPagoEl = document.getElementById('pagamentoPago');
-            const pagamentoPendenteEl = document.getElementById('pagamentoPendente');
+            const pagamentoPendenteEl2 = document.getElementById('pagamentoPendente');
             const pagamentoEventsSepEl = document.getElementById('pagamentoEvents');
             const pagamentoItemsEl = document.getElementById('pagamentoItems');
             const pagamentoMediaEl = document.getElementById('pagamentoMedia');
 
             if (pagamentoTotalSepEl) pagamentoTotalSepEl.textContent = formatCurrency(separatedData.pagamento.total);
             if (pagamentoPagoEl) pagamentoPagoEl.textContent = formatCurrency(separatedData.pagamento.pago);
-            if (pagamentoPendenteEl) pagamentoPendenteEl.textContent = formatCurrency(separatedData.pagamento.pendente);
+            if (pagamentoPendenteEl2) pagamentoPendenteEl2.textContent = formatCurrency(separatedData.pagamento.pendente);
             if (pagamentoEventsSepEl) pagamentoEventsSepEl.textContent = separatedData.pagamento.events;
             if (pagamentoItemsEl) pagamentoItemsEl.textContent = separatedData.pagamento.items;
             if (pagamentoMediaEl) pagamentoMediaEl.textContent = formatCurrency(separatedData.pagamento.mediaPorDia);
@@ -2113,11 +2238,13 @@
             // Filtros para lista de entradas
             const nameFilterEnt = document.getElementById('nameFilterEntradas');
             const dateFilterEnt = document.getElementById('dateFilterEntradas');
+            const statusFilterEnt = document.getElementById('statusFilterEntradas');
             const accountFilterEnt = document.getElementById('accountFilterEntradas');
             const clearFiltersEntBtn = document.getElementById('clearFiltersEntradas');
             
             if (nameFilterEnt) nameFilterEnt.addEventListener('input', () => applyPaymentFilters('entradas'));
             if (dateFilterEnt) dateFilterEnt.addEventListener('change', () => applyPaymentFilters('entradas'));
+            if (statusFilterEnt) statusFilterEnt.addEventListener('change', () => applyPaymentFilters('entradas'));
             if (accountFilterEnt) accountFilterEnt.addEventListener('change', () => applyPaymentFilters('entradas'));
             if (clearFiltersEntBtn) clearFiltersEntBtn.addEventListener('click', () => clearPaymentFilters('entradas'));
         }
@@ -2125,7 +2252,7 @@
         function applyPaymentFilters(type) {
             const nameFilter = document.getElementById(`nameFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`)?.value.toLowerCase() || '';
             const dateFilter = document.getElementById(`dateFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`)?.value || '';
-            const statusFilter = type === 'pagamentos' ? (document.getElementById('statusFilterPagamentos')?.value || '') : '';
+            const statusFilter = document.getElementById(`statusFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`)?.value || '';
             const accountFilter = document.getElementById(`accountFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`)?.value || '';
             
             const separatedData = calculateSeparatedTotals(accountManager.getAllEvents());
@@ -2136,35 +2263,23 @@
                     payment.name.toLowerCase().includes(nameFilter) ||
                     payment.eventTitle.toLowerCase().includes(nameFilter);
                 
-                const dateMatch = !dateFilter || 
-                    payment.eventDate.toISOString().split('T')[0] === dateFilter;
+                const dateMatch = !dateFilter || payment.date === dateFilter;
                 
-                const statusMatch = !statusFilter || 
-                    payment.status === statusFilter;
+                const statusMatch = !statusFilter || payment.status === statusFilter;
                 
-                const accountMatch = !accountFilter || 
-                    payment.accountEmail === accountFilter;
+                const accountMatch = !accountFilter || payment.account === accountFilter;
                 
                 return nameMatch && dateMatch && statusMatch && accountMatch;
             });
             
-            if (type === 'pagamentos') {
-                filteredPagamentosList = filteredList;
-                updatePaymentsList('pagamentosList', filteredPagamentosList);
-            } else {
-                filteredEntradaList = filteredList;
-                updatePaymentsList('entradaList', filteredEntradaList);
-            }
+            updatePaymentsList(type === 'pagamentos' ? 'pagamentosList' : 'entradaList', filteredList);
         }
 
         function clearPaymentFilters(type) {
             document.getElementById(`nameFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`).value = '';
             document.getElementById(`dateFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`).value = '';
+            document.getElementById(`statusFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`).value = '';
             document.getElementById(`accountFilter${type === 'pagamentos' ? 'Pagamentos' : 'Entradas'}`).value = '';
-            
-            if (type === 'pagamentos') {
-                document.getElementById('statusFilterPagamentos').value = '';
-            }
             
             applyPaymentFilters(type);
         }
@@ -2788,23 +2903,64 @@
         <div id="monthlySummarySection" class="monthly-summary" style="display: none;">
             <h3><i class="fas fa-balance-scale"></i> Balanço do Mês</h3>
             
-            <div class="balance-display">
+            <!-- ✅ NOVO: Saldo Confirmado (RC vs PG) -->
+            <div class="balance-display" style="margin-bottom: 20px; border: 2px solid #28a745; border-radius: 10px; padding: 15px; background: rgba(40, 167, 69, 0.1);">
+                <div class="balance-item entrada">
+                    <div id="entradaRCBalance" class="balance-value" style="color: #28a745;">R$ 0,00</div>
+                    <div class="balance-label">ENTRADAS (RC)</div>
+                </div>
+                
+                <div class="vs-separator">VS</div>
+                
+                <div class="balance-item pagamento">
+                    <div id="pagamentoPGBalance" class="balance-value" style="color: #ea4335;">R$ 0,00</div>
+                    <div class="balance-label">PAGAMENTOS (PG)</div>
+                </div>
+            </div>
+            
+            <div class="balance-item saldo" style="margin-bottom: 20px;">
+                <div id="saldoConfirmadoBalance" class="balance-value">R$ 0,00</div>
+                <div class="balance-label">SALDO CONFIRMADO</div>
+            </div>
+            
+            <!-- ✅ NOVO: Saldo Pendente (AGUARDANDO vs PENDENTE) -->
+            <div class="balance-display" style="margin-bottom: 20px; border: 2px solid #ffc107; border-radius: 10px; padding: 15px; background: rgba(255, 193, 7, 0.1);">
+                <div class="balance-item entrada">
+                    <div id="entradaAguardandoBalance" class="balance-value" style="color: #28a745;">R$ 0,00</div>
+                    <div class="balance-label">ENTRADAS (AGUARDANDO)</div>
+                </div>
+                
+                <div class="vs-separator">VS</div>
+                
+                <div class="balance-item pagamento">
+                    <div id="pagamentoPendenteBalance" class="balance-value" style="color: #ea4335;">R$ 0,00</div>
+                    <div class="balance-label">PAGAMENTOS (PENDENTE)</div>
+                </div>
+            </div>
+            
+            <div class="balance-item saldo" style="margin-bottom: 20px;">
+                <div id="saldoPendenteBalance" class="balance-value">R$ 0,00</div>
+                <div class="balance-label">SALDO PENDENTE</div>
+            </div>
+            
+            <!-- ✅ MODIFICADO: Saldo Total Geral -->
+            <div class="balance-display" style="border: 3px solid #4285f4; border-radius: 10px; padding: 15px; background: rgba(66, 133, 244, 0.1);">
                 <div class="balance-item entrada">
                     <div id="entradaTotalBalance" class="balance-value">R$ 0,00</div>
-                    <div class="balance-label">ENTRADAS</div>
+                    <div class="balance-label">TOTAL ENTRADAS</div>
                 </div>
                 
                 <div class="vs-separator">VS</div>
                 
                 <div class="balance-item pagamento">
                     <div id="pagamentoTotalBalance" class="balance-value">R$ 0,00</div>
-                    <div class="balance-label">PAGAMENTOS</div>
+                    <div class="balance-label">TOTAL PAGAMENTOS</div>
                 </div>
             </div>
             
             <div class="balance-item saldo">
-                <div id="saldoBalance" class="balance-value">R$ 0,00</div>
-                <div class="balance-label">SALDO</div>
+                <div id="saldoBalance" class="balance-value" style="font-size: 2.2rem; font-weight: bold;">R$ 0,00</div>
+                <div class="balance-label" style="font-size: 1.1rem; font-weight: bold;">SALDO TOTAL GERAL</div>
             </div>
             
             <div class="monthly-stats">
@@ -2924,6 +3080,15 @@
                         <div class="filter-group">
                             <label class="filter-label">Data</label>
                             <input type="date" id="dateFilterEntradas" class="filter-input">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Status</label>
+                            <select id="statusFilterEntradas" class="filter-select">
+                                <option value="">Todos</option>
+                                <option value="RC">RC</option>
+                                <option value="AGUARDANDO">Aguardando</option>
+                                <option value="ADIADO">Adiado</option>
+                            </select>
                         </div>
                         <div class="filter-group">
                             <label class="filter-label">Conta</label>
