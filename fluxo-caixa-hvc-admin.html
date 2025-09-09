@@ -722,16 +722,16 @@
 
         /* ✅ NOVO: Estilos para eventos agrupados */
         .event-item.pagamento-group {
-            background: rgba(234, 67, 53, 0.8) !important;
-            color: #000 !important;
-            border-left: 4px solid #ea4335 !important;
+            background: rgba(108, 117, 125, 0.8);
+            color: #000;
+            border-left: 4px solid #6c757d;
             font-weight: bold;
         }
 
         .event-item.entrada-group {
-            background: rgba(40, 167, 69, 0.8) !important;
-            color: #000 !important;
-            border-left: 4px solid #28a745 !important;
+            background: rgba(108, 117, 125, 0.8);
+            color: #000;
+            border-left: 4px solid #6c757d;
             font-weight: bold;
         }
 
@@ -765,6 +765,7 @@
             min-width: 0;
             flex-shrink: 0;
             border-left: 3px solid transparent;
+            background: rgba(108, 117, 125, 0.8);
         }
 
         .event-item:hover {
@@ -773,28 +774,6 @@
             position: relative;
             white-space: normal;
             word-wrap: break-word;
-        }
-
-        .event-item.completed {
-            background: linear-gradient(135deg, #34a853, #2e7d32);
-        }
-
-        .event-item.overdue {
-            background: linear-gradient(135deg, #ea4335, #d33b2c);
-        }
-
-        .event-item.upcoming {
-            background: linear-gradient(135deg, #4285f4, #1976d2);
-        }
-
-        /* ✅ NOVO: Estilo específico para eventos de ENTRADA */
-        .event-item.entrada {
-            background: linear-gradient(135deg, #28a745, #20c997) !important;
-            border-left: 3px solid #28a745 !important;
-        }
-
-        .event-item.entrada:hover {
-            background: linear-gradient(135deg, #20c997, #17a2b8) !important;
         }
 
         /* Filter Section */
@@ -2428,133 +2407,6 @@
         }
 
         // =================================================================
-        // LÓGICA DE CORES BASEADA EM STATUS E DATA
-        // =================================================================
-        function getEventColorClass(event) {
-            const eventType = getEventType(event);
-            
-            // ✅ NOVO: Eventos de ENTRADA sempre em verde
-            if (eventType === 'entrada') {
-                return 'entrada';
-            }
-            
-            const eventCalc = calculateEventTotal(event);
-            const eventDate = parseEventDate(event);
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            eventDate.setHours(0, 0, 0, 0);
-            
-            const allCompleted = eventCalc.payments.length > 0 && 
-                eventCalc.payments.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
-            
-            if (allCompleted) {
-                return 'completed';
-            } else if (eventDate < today) {
-                return 'overdue';
-            } else {
-                return 'upcoming';
-            }
-        }
-
-        // ✅ NOVO: Função para determinar cor e estilo dos eventos agrupados
-        function getGroupedEventStyle(type, events, date) {
-            const today = new Date();
-            today.setHours(0, 0, 0, 0);
-            const eventDate = new Date(date);
-            eventDate.setHours(0, 0, 0, 0);
-            
-            if (type === 'pagamento') {
-                // Verificar se TODOS os itens de TODOS os eventos estão PG ou RECALCULADO
-                let allItemsCompleted = true;
-                let hasAnyItems = false;
-                
-                events.forEach(event => {
-                    const eventCalc = calculateEventTotal(event);
-                    if (eventCalc.payments.length > 0) {
-                        hasAnyItems = true;
-                        eventCalc.payments.forEach(payment => {
-                            if (payment.status !== 'PG' && payment.status !== 'RECALCULADO') {
-                                allItemsCompleted = false;
-                            }
-                        });
-                    }
-                });
-                
-                // NOVA LÓGICA:
-                if (hasAnyItems && allItemsCompleted) {
-                    // VERDE: Todos os itens estão PG ou RECALCULADO
-                    return {
-                        background: 'rgba(52, 168, 83, 0.8)',
-                        borderColor: '#34a853',
-                        color: '#000'
-                    };
-                } else if (hasAnyItems && !allItemsCompleted && eventDate <= today) {
-                    // VERMELHO: Pelo menos um item não está PG/RECALCULADO E data é hoje ou anterior
-                    return {
-                        background: 'rgba(234, 67, 53, 0.8)',
-                        borderColor: '#ea4335',
-                        color: '#000'
-                    };
-                } else {
-                    // AZUL: Demais casos (futuro ou sem itens)
-                    return {
-                        background: 'rgba(66, 133, 244, 0.8)',
-                        borderColor: '#4285f4',
-                        color: '#000'
-                    };
-                }
-                
-            } else if (type === 'entrada') {
-                // Verificar se TODAS as entradas de TODOS os eventos estão RC ou ADIADO
-                let allItemsCompleted = true;
-                let hasAnyItems = false;
-                
-                events.forEach(event => {
-                    const eventCalc = calculateEventTotal(event);
-                    if (eventCalc.payments.length > 0) {
-                        hasAnyItems = true;
-                        eventCalc.payments.forEach(entrada => {
-                            if (entrada.status !== 'RC' && entrada.status !== 'ADIADO') {
-                                allItemsCompleted = false;
-                            }
-                        });
-                    }
-                });
-                
-                // NOVA LÓGICA ANÁLOGA:
-                if (hasAnyItems && allItemsCompleted) {
-                    // VERDE: Todas as entradas estão RC ou ADIADO
-                    return {
-                        background: 'rgba(40, 167, 69, 0.9)',
-                        borderColor: '#28a745',
-                        color: '#000'
-                    };
-                } else if (hasAnyItems && !allItemsCompleted && eventDate <= today) {
-                    // AMARELO: Pelo menos uma entrada não está RC/ADIADO E data é hoje ou anterior
-                    return {
-                        background: 'rgba(255, 193, 7, 0.8)',
-                        borderColor: '#ffc107',
-                        color: '#000'
-                    };
-                } else {
-                    // AZUL: Demais casos (futuro ou sem itens)
-                    return {
-                        background: 'rgba(66, 133, 244, 0.8)',
-                        borderColor: '#4285f4',
-                        color: '#000'
-                    };
-                }
-            }
-            
-            // Fallback
-            return {
-                background: 'rgba(108, 117, 125, 0.8)',
-                borderColor: '#6c757d',
-                color: '#000'
-            };
-        }
-
-        // =================================================================
         // CALENDAR RENDERING
         // =================================================================
         function renderCalendar(events) {
@@ -2677,12 +2529,8 @@
                 // Criar "eventão" de PAGAMENTOS se houver eventos de pagamento
                 if (groupedEvents.pagamento.length > 0) {
                     const pagamentoEventDiv = document.createElement('div');
-                    const pagamentoStyle = getGroupedEventStyle('pagamento', groupedEvents.pagamento, cellDate);
                     
                     pagamentoEventDiv.className = 'event-item pagamento-group';
-                    pagamentoEventDiv.style.background = pagamentoStyle.background;
-                    pagamentoEventDiv.style.color = pagamentoStyle.color;
-                    pagamentoEventDiv.style.borderLeft = `4px solid ${pagamentoStyle.borderColor}`;
                     pagamentoEventDiv.textContent = `PAGAMENTOS (${groupedEvents.pagamento.length})`;
                     pagamentoEventDiv.onclick = () => showGroupedEventDetails('pagamento', groupedEvents.pagamento, cellDate);
                     dayEvents.appendChild(pagamentoEventDiv);
@@ -2691,12 +2539,8 @@
                 // Criar "eventão" de ENTRADAS se houver eventos de entrada
                 if (groupedEvents.entrada.length > 0) {
                     const entradaEventDiv = document.createElement('div');
-                    const entradaStyle = getGroupedEventStyle('entrada', groupedEvents.entrada, cellDate);
                     
                     entradaEventDiv.className = 'event-item entrada-group';
-                    entradaEventDiv.style.background = entradaStyle.background;
-                    entradaEventDiv.style.color = entradaStyle.color;
-                    entradaEventDiv.style.borderLeft = `4px solid ${entradaStyle.borderColor}`;
                     entradaEventDiv.textContent = `ENTRADAS (${groupedEvents.entrada.length})`;
                     entradaEventDiv.onclick = () => showGroupedEventDetails('entrada', groupedEvents.entrada, cellDate);
                     dayEvents.appendChild(entradaEventDiv);
@@ -2705,8 +2549,7 @@
                 // Mostrar outros eventos individualmente (HVC, etc.)
                 groupedEvents.outros.forEach(event => {
                     const eventDiv = document.createElement('div');
-                    eventDiv.className = `event-item ${getEventColorClass(event)}`;
-                    eventDiv.style.borderLeftColor = event.accountColor || '#4285f4';
+                    eventDiv.className = 'event-item';
                     eventDiv.textContent = event.summary || 'Sem título';
                     eventDiv.onclick = () => showEventDetails(event);
                     dayEvents.appendChild(eventDiv);
