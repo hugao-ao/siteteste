@@ -2407,6 +2407,64 @@
         }
 
         // =================================================================
+        // NOVA LÓGICA DE CORES DOS EVENTOS
+        // =================================================================
+        function getEventGroupColor(type, events, date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const eventDate = new Date(date);
+            eventDate.setHours(0, 0, 0, 0);
+            
+            // Verificar se todos os itens estão completos
+            let allItemsCompleted = true;
+            let hasAnyItems = false;
+            
+            events.forEach(event => {
+                const eventCalc = calculateEventTotal(event);
+                if (eventCalc.payments.length > 0) {
+                    hasAnyItems = true;
+                    eventCalc.payments.forEach(item => {
+                        if (type === 'pagamento') {
+                            // Para pagamentos: deve ser PG ou RECALCULADO
+                            if (item.status !== 'PG' && item.status !== 'RECALCULADO') {
+                                allItemsCompleted = false;
+                            }
+                        } else if (type === 'entrada') {
+                            // Para entradas: deve ser RC ou ADIADO
+                            if (item.status !== 'RC' && item.status !== 'ADIADO') {
+                                allItemsCompleted = false;
+                            }
+                        }
+                    });
+                }
+            });
+            
+            // LÓGICA DE CORES:
+            if (hasAnyItems && allItemsCompleted) {
+                // VERDE: Todos os itens estão completos
+                return {
+                    background: 'rgba(52, 168, 83, 0.8)',
+                    borderColor: '#34a853',
+                    color: '#000'
+                };
+            } else if (eventDate >= today) {
+                // AZUL: Eventos futuros (hoje em diante)
+                return {
+                    background: 'rgba(66, 133, 244, 0.8)',
+                    borderColor: '#4285f4',
+                    color: '#000'
+                };
+            } else {
+                // VERMELHO: Eventos passados com pelo menos um item incompleto
+                return {
+                    background: 'rgba(234, 67, 53, 0.8)',
+                    borderColor: '#ea4335',
+                    color: '#000'
+                };
+            }
+        }
+
+        // =================================================================
         // CALENDAR RENDERING
         // =================================================================
         function renderCalendar(events) {
@@ -2482,8 +2540,8 @@
                         const entradaTotalDiv = document.createElement('div');
                         entradaTotalDiv.className = 'day-total entrada-total';
                         entradaTotalDiv.textContent = `E: ${formatCurrency(dayTotals.entrada)}`;
-                        entradaTotalDiv.style.background = 'rgba(40, 167, 69, 0.8)';
-                        entradaTotalDiv.style.color = '#000';
+                        entradaTotalDiv.style.background = 'rgba(128, 0, 128, 0.8)'; // ROXO para entradas
+                        entradaTotalDiv.style.color = '#fff';
                         dayTotalsContainer.appendChild(entradaTotalDiv);
                     }
                     
@@ -2491,8 +2549,8 @@
                         const pagamentoTotalDiv = document.createElement('div');
                         pagamentoTotalDiv.className = 'day-total pagamento-total';
                         pagamentoTotalDiv.textContent = `P: ${formatCurrency(dayTotals.pagamento)}`;
-                        pagamentoTotalDiv.style.background = 'rgba(234, 67, 53, 0.8)';
-                        pagamentoTotalDiv.style.color = '#000';
+                        pagamentoTotalDiv.style.background = 'rgba(139, 69, 19, 0.8)'; // MARROM para pagamentos
+                        pagamentoTotalDiv.style.color = '#fff';
                         dayTotalsContainer.appendChild(pagamentoTotalDiv);
                     }
                     
@@ -2504,10 +2562,10 @@
                         saldoDiv.textContent = `S: ${formatCurrency(saldo)}`;
                         
                         if (saldo > 0) {
-                            saldoDiv.style.background = 'rgba(40, 167, 69, 0.9)'; // Verde para saldo positivo
+                            saldoDiv.style.background = 'rgba(255, 215, 0, 0.9)'; // AMARELO para saldo positivo
                             saldoDiv.style.color = '#000';
                         } else if (saldo < 0) {
-                            saldoDiv.style.background = 'rgba(234, 67, 53, 0.9)'; // Vermelho para saldo negativo
+                            saldoDiv.style.background = 'rgba(255, 165, 0, 0.9)'; // LARANJA para saldo negativo
                             saldoDiv.style.color = '#000';
                         } else {
                             saldoDiv.style.background = 'rgba(108, 117, 125, 0.8)'; // Cinza para saldo zero
@@ -2529,8 +2587,12 @@
                 // Criar "eventão" de PAGAMENTOS se houver eventos de pagamento
                 if (groupedEvents.pagamento.length > 0) {
                     const pagamentoEventDiv = document.createElement('div');
+                    const pagamentoStyle = getEventGroupColor('pagamento', groupedEvents.pagamento, cellDate);
                     
                     pagamentoEventDiv.className = 'event-item pagamento-group';
+                    pagamentoEventDiv.style.background = pagamentoStyle.background;
+                    pagamentoEventDiv.style.color = pagamentoStyle.color;
+                    pagamentoEventDiv.style.borderLeft = `4px solid ${pagamentoStyle.borderColor}`;
                     pagamentoEventDiv.textContent = `PAGAMENTOS (${groupedEvents.pagamento.length})`;
                     pagamentoEventDiv.onclick = () => showGroupedEventDetails('pagamento', groupedEvents.pagamento, cellDate);
                     dayEvents.appendChild(pagamentoEventDiv);
@@ -2539,8 +2601,12 @@
                 // Criar "eventão" de ENTRADAS se houver eventos de entrada
                 if (groupedEvents.entrada.length > 0) {
                     const entradaEventDiv = document.createElement('div');
+                    const entradaStyle = getEventGroupColor('entrada', groupedEvents.entrada, cellDate);
                     
                     entradaEventDiv.className = 'event-item entrada-group';
+                    entradaEventDiv.style.background = entradaStyle.background;
+                    entradaEventDiv.style.color = entradaStyle.color;
+                    entradaEventDiv.style.borderLeft = `4px solid ${entradaStyle.borderColor}`;
                     entradaEventDiv.textContent = `ENTRADAS (${groupedEvents.entrada.length})`;
                     entradaEventDiv.onclick = () => showGroupedEventDetails('entrada', groupedEvents.entrada, cellDate);
                     dayEvents.appendChild(entradaEventDiv);
