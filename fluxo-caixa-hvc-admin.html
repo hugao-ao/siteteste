@@ -2453,6 +2453,95 @@
             }
         }
 
+        // ✅ NOVO: Função para determinar cor e estilo dos eventos agrupados
+        function getGroupedEventStyle(type, events, date) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const eventDate = new Date(date);
+            eventDate.setHours(0, 0, 0, 0);
+            
+            const isFuture = eventDate > today;
+            
+            if (type === 'pagamento') {
+                // Verificar se todos os pagamentos estão PG ou RECALCULADO
+                let allCompleted = true;
+                let hasPayments = false;
+                
+                events.forEach(event => {
+                    const eventCalc = calculateEventTotal(event);
+                    if (eventCalc.payments.length > 0) {
+                        hasPayments = true;
+                        const eventCompleted = eventCalc.payments.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
+                        if (!eventCompleted) {
+                            allCompleted = false;
+                        }
+                    }
+                });
+                
+                if (isFuture) {
+                    return {
+                        background: 'rgba(66, 133, 244, 0.8)', // Azul para futuros
+                        borderColor: '#4285f4',
+                        color: '#000'
+                    };
+                } else if (hasPayments && allCompleted) {
+                    return {
+                        background: 'rgba(52, 168, 83, 0.8)', // Verde para completos
+                        borderColor: '#34a853',
+                        color: '#000'
+                    };
+                } else {
+                    return {
+                        background: 'rgba(234, 67, 53, 0.8)', // Vermelho para pendentes/atrasados
+                        borderColor: '#ea4335',
+                        color: '#000'
+                    };
+                }
+            } else if (type === 'entrada') {
+                // Verificar se todas as entradas estão RC ou ADIADO
+                let allCompleted = true;
+                let hasEntradas = false;
+                
+                events.forEach(event => {
+                    const eventCalc = calculateEventTotal(event);
+                    if (eventCalc.payments.length > 0) {
+                        hasEntradas = true;
+                        const eventCompleted = eventCalc.payments.every(p => p.status === 'RC' || p.status === 'ADIADO');
+                        if (!eventCompleted) {
+                            allCompleted = false;
+                        }
+                    }
+                });
+                
+                if (isFuture) {
+                    return {
+                        background: 'rgba(66, 133, 244, 0.8)', // Azul para futuros
+                        borderColor: '#4285f4',
+                        color: '#000'
+                    };
+                } else if (hasEntradas && allCompleted) {
+                    return {
+                        background: 'rgba(40, 167, 69, 0.9)', // Verde escuro para completos (RC/ADIADO)
+                        borderColor: '#28a745',
+                        color: '#000'
+                    };
+                } else {
+                    return {
+                        background: 'rgba(255, 193, 7, 0.8)', // Amarelo para aguardando
+                        borderColor: '#ffc107',
+                        color: '#000'
+                    };
+                }
+            }
+            
+            // Fallback
+            return {
+                background: 'rgba(108, 117, 125, 0.8)',
+                borderColor: '#6c757d',
+                color: '#000'
+            };
+        }
+
         // =================================================================
         // CALENDAR RENDERING
         // =================================================================
@@ -2555,10 +2644,12 @@
                 // Criar "eventão" de PAGAMENTOS se houver eventos de pagamento
                 if (groupedEvents.pagamento.length > 0) {
                     const pagamentoEventDiv = document.createElement('div');
+                    const pagamentoStyle = getGroupedEventStyle('pagamento', groupedEvents.pagamento, cellDate);
+                    
                     pagamentoEventDiv.className = 'event-item pagamento-group';
-                    pagamentoEventDiv.style.background = 'rgba(234, 67, 53, 0.8)';
-                    pagamentoEventDiv.style.color = '#000';
-                    pagamentoEventDiv.style.borderLeft = '4px solid #ea4335';
+                    pagamentoEventDiv.style.background = pagamentoStyle.background;
+                    pagamentoEventDiv.style.color = pagamentoStyle.color;
+                    pagamentoEventDiv.style.borderLeft = `4px solid ${pagamentoStyle.borderColor}`;
                     pagamentoEventDiv.textContent = `PAGAMENTOS (${groupedEvents.pagamento.length})`;
                     pagamentoEventDiv.onclick = () => showGroupedEventDetails('pagamento', groupedEvents.pagamento, cellDate);
                     dayEvents.appendChild(pagamentoEventDiv);
@@ -2567,10 +2658,12 @@
                 // Criar "eventão" de ENTRADAS se houver eventos de entrada
                 if (groupedEvents.entrada.length > 0) {
                     const entradaEventDiv = document.createElement('div');
+                    const entradaStyle = getGroupedEventStyle('entrada', groupedEvents.entrada, cellDate);
+                    
                     entradaEventDiv.className = 'event-item entrada-group';
-                    entradaEventDiv.style.background = 'rgba(40, 167, 69, 0.8)';
-                    entradaEventDiv.style.color = '#000';
-                    entradaEventDiv.style.borderLeft = '4px solid #28a745';
+                    entradaEventDiv.style.background = entradaStyle.background;
+                    entradaEventDiv.style.color = entradaStyle.color;
+                    entradaEventDiv.style.borderLeft = `4px solid ${entradaStyle.borderColor}`;
                     entradaEventDiv.textContent = `ENTRADAS (${groupedEvents.entrada.length})`;
                     entradaEventDiv.onclick = () => showGroupedEventDetails('entrada', groupedEvents.entrada, cellDate);
                     dayEvents.appendChild(entradaEventDiv);
