@@ -3698,14 +3698,65 @@
                     
                 case 'all':
                     // Editar toda a série
-                    const masterEventId = event.recurringEventId || event.id;
-                    await gapi.client.calendar.events.patch({
+                    console.log('🔄 Editando toda a série de eventos recorrentes');
+                    console.log('📋 Evento atual:', event);
+                    
+                    let masterEventId;
+                    let masterEvent;
+                    
+                    if (event.recurringEventId) {
+                        // É uma instância - buscar o evento principal
+                        masterEventId = event.recurringEventId;
+                        console.log('📌 Evento é uma instância, buscando master ID:', masterEventId);
+                        
+                        try {
+                            const masterResponse = await gapi.client.calendar.events.get({
+                                calendarId: 'primary',
+                                eventId: masterEventId
+                            });
+                            masterEvent = masterResponse.result;
+                            console.log('📋 Evento master encontrado:', masterEvent);
+                        } catch (error) {
+                            console.error('❌ Erro ao buscar evento master:', error);
+                            throw new Error('Não foi possível encontrar o evento principal da série');
+                        }
+                    } else {
+                        // É o evento principal
+                        masterEventId = event.id;
+                        masterEvent = event;
+                        console.log('📌 Evento é o principal, ID:', masterEventId);
+                    }
+                    
+                    console.log('🎯 Atualizando evento master:', masterEventId);
+                    console.log('📝 Nova descrição:', newDescription);
+                    
+                    const updateResult = await gapi.client.calendar.events.patch({
                         calendarId: 'primary',
                         eventId: masterEventId,
                         resource: {
                             description: newDescription
                         }
                     });
+                    
+                    console.log('✅ Resultado da atualização:', updateResult);
+                    
+                    // Verificar se a atualização foi bem-sucedida
+                    if (updateResult.status === 200) {
+                        console.log('✅ Evento master atualizado com sucesso');
+                        
+                        // Aguardar um pouco para que o Google Calendar processe a mudança
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                        
+                        console.log('🔄 Verificando se a atualização foi aplicada...');
+                        const verificationResponse = await gapi.client.calendar.events.get({
+                            calendarId: 'primary',
+                            eventId: masterEventId
+                        });
+                        
+                        console.log('📋 Descrição após atualização:', verificationResponse.result.description);
+                    } else {
+                        throw new Error(`Falha na atualização: status ${updateResult.status}`);
+                    }
                     break;
             }
             
@@ -3966,6 +4017,11 @@
                                 
                                 console.log('🔄 Aplicando edição com escolha:', choice);
                                 await handleRecurringEventEdit(event, choice, newDescription);
+                                
+                                // Forçar sincronização para garantir que as mudanças sejam refletidas
+                                console.log('🔄 Forçando sincronização após edição de evento recorrente...');
+                                await loadFilteredEvents();
+                                console.log('✅ Sincronização concluída');
                                 
                             } else {
                                 // Evento único - edição simples
