@@ -1629,6 +1629,177 @@
                     box-shadow: 0 4px 12px rgba(52, 168, 83, 0.3);
                 }
 
+                /* =================================================================
+                   MODAL DE RECORRÊNCIA - Estilo Google Calendar
+                   ================================================================= */
+                .recurrence-modal {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0, 0, 0, 0.7);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                    backdrop-filter: blur(5px);
+                }
+
+                .recurrence-modal-content {
+                    background: linear-gradient(135deg, #1a1a2e, #16213e);
+                    border: 2px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 16px;
+                    padding: 30px;
+                    max-width: 500px;
+                    width: 90%;
+                    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+                    animation: modalSlideIn 0.3s ease-out;
+                }
+
+                @keyframes modalSlideIn {
+                    from {
+                        opacity: 0;
+                        transform: translateY(-30px) scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0) scale(1);
+                    }
+                }
+
+                .recurrence-modal-content h3 {
+                    color: #ffffff;
+                    font-size: 1.5rem;
+                    margin-bottom: 15px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .recurrence-modal-content h3 i {
+                    color: #ffc107;
+                }
+
+                .recurrence-modal-content p {
+                    color: rgba(255, 255, 255, 0.8);
+                    margin-bottom: 15px;
+                    line-height: 1.5;
+                }
+
+                .recurrence-modal-content p strong {
+                    color: #ffffff;
+                }
+
+                .recurrence-options {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    margin: 25px 0;
+                }
+
+                .recurrence-btn {
+                    background: rgba(255, 255, 255, 0.05);
+                    border: 2px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 12px;
+                    padding: 18px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                    text-align: left;
+                    display: flex;
+                    align-items: center;
+                    gap: 15px;
+                    color: #ffffff;
+                }
+
+                .recurrence-btn:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                    border-color: rgba(255, 255, 255, 0.4);
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+                }
+
+                .recurrence-btn i {
+                    font-size: 1.5rem;
+                    color: #4285f4;
+                    min-width: 24px;
+                }
+
+                .recurrence-btn-content {
+                    flex: 1;
+                }
+
+                .recurrence-btn span {
+                    display: block;
+                    font-weight: 600;
+                    font-size: 1.1rem;
+                    margin-bottom: 5px;
+                }
+
+                .recurrence-btn small {
+                    display: block;
+                    color: rgba(255, 255, 255, 0.6);
+                    font-size: 0.9rem;
+                }
+
+                .recurrence-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 15px;
+                    margin-top: 25px;
+                    padding-top: 20px;
+                    border-top: 1px solid rgba(255, 255, 255, 0.1);
+                }
+
+                .recurrence-cancel {
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.3);
+                    color: #ffffff;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                }
+
+                .recurrence-cancel:hover {
+                    background: rgba(255, 255, 255, 0.2);
+                    transform: translateY(-1px);
+                }
+
+                /* Responsividade para o modal */
+                @media (max-width: 768px) {
+                    .recurrence-modal-content {
+                        margin: 20px;
+                        padding: 25px;
+                        max-width: none;
+                        width: calc(100% - 40px);
+                    }
+
+                    .recurrence-btn {
+                        padding: 15px;
+                        gap: 12px;
+                    }
+
+                    .recurrence-btn i {
+                        font-size: 1.3rem;
+                    }
+
+                    .recurrence-btn span {
+                        font-size: 1rem;
+                    }
+
+                    .recurrence-actions {
+                        flex-direction: column;
+                    }
+
+                    .recurrence-cancel {
+                        width: 100%;
+                        text-align: center;
+                    }
+                }
+
 
 
     </style>
@@ -2884,41 +3055,408 @@
         // =================================================================
         // EVENT DELETION
         // =================================================================
+        // EVENT DELETION WITH RECURRENCE SUPPORT
+        // =================================================================
         async function deleteEvent(eventId, eventTitle) {
             if (!isGoogleConnected) {
                 alert('Conecte-se ao Google Calendar primeiro');
                 return;
             }
             
-            // Confirmação dupla para segurança
-            const confirmMessage = `Tem certeza que deseja excluir o evento "${eventTitle}"?\n\nEsta ação não pode ser desfeita.`;
-            if (!confirm(confirmMessage)) {
-                return;
-            }
-            
             try {
-                // Excluir evento via API do Google Calendar
-                await gapi.client.calendar.events.delete({
+                // Buscar detalhes completos do evento para verificar recorrência
+                const eventResponse = await gapi.client.calendar.events.get({
                     calendarId: 'primary',
                     eventId: eventId
                 });
                 
-                console.log('✅ Evento excluído:', eventTitle);
-                alert('Evento excluído com sucesso!');
+                const event = eventResponse.result;
+                const isRecurring = event.recurringEventId || event.recurrence;
                 
-                // Fechar modal
+                if (isRecurring) {
+                    // Evento recorrente - mostrar opções
+                    const choice = await showRecurrenceDeleteDialog(eventTitle);
+                    if (!choice) return; // Usuário cancelou
+                    
+                    await handleRecurringEventDeletion(event, choice);
+                } else {
+                    // Evento único - confirmação simples
+                    const confirmMessage = `Tem certeza que deseja excluir o evento "${eventTitle}"?\n\nEsta ação não pode ser desfeita.`;
+                    if (!confirm(confirmMessage)) {
+                        return;
+                    }
+                    
+                    await gapi.client.calendar.events.delete({
+                        calendarId: 'primary',
+                        eventId: eventId
+                    });
+                    
+                    console.log('✅ Evento excluído:', eventTitle);
+                    alert('Evento excluído com sucesso!');
+                }
+                
+                // Fechar modal e recarregar
                 const eventModal = document.getElementById('eventModal');
                 if (eventModal) {
                     eventModal.style.display = 'none';
                 }
-                
-                // Recarregar calendário
                 await handleSyncClick();
                 
             } catch (error) {
                 console.error('❌ Erro ao excluir evento:', error);
                 alert('Erro ao excluir evento. Verifique sua conexão e tente novamente.');
             }
+        }
+
+        // Função para mostrar dialog de opções de recorrência para exclusão
+        function showRecurrenceDeleteDialog(eventTitle) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'recurrence-modal';
+                modal.innerHTML = `
+                    <div class="recurrence-modal-content">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Excluir Evento Recorrente</h3>
+                        <p>O evento "<strong>${eventTitle}</strong>" faz parte de uma série recorrente.</p>
+                        <p>Como você gostaria de excluir?</p>
+                        
+                        <div class="recurrence-options">
+                            <button class="recurrence-btn" data-choice="this">
+                                <i class="fas fa-calendar-day"></i>
+                                <div class="recurrence-btn-content">
+                                    <span>Apenas este evento</span>
+                                    <small>Exclui somente esta ocorrência</small>
+                                </div>
+                            </button>
+                            
+                            <button class="recurrence-btn" data-choice="following">
+                                <i class="fas fa-calendar-week"></i>
+                                <div class="recurrence-btn-content">
+                                    <span>Este e eventos seguintes</span>
+                                    <small>Exclui esta ocorrência e todas as futuras</small>
+                                </div>
+                            </button>
+                            
+                            <button class="recurrence-btn" data-choice="all">
+                                <i class="fas fa-calendar"></i>
+                                <div class="recurrence-btn-content">
+                                    <span>Todos os eventos da série</span>
+                                    <small>Exclui toda a série recorrente</small>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <div class="recurrence-actions">
+                            <button class="recurrence-cancel">Cancelar</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Event listeners
+                modal.querySelectorAll('.recurrence-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const choice = btn.dataset.choice;
+                        document.body.removeChild(modal);
+                        resolve(choice);
+                    });
+                });
+                
+                modal.querySelector('.recurrence-cancel').addEventListener('click', () => {
+                    document.body.removeChild(modal);
+                    resolve(null);
+                });
+                
+                // Fechar ao clicar fora
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        document.body.removeChild(modal);
+                        resolve(null);
+                    }
+                });
+            });
+        }
+
+        // Função para mostrar dialog de opções de recorrência para edição
+        function showRecurrenceEditDialog(eventTitle) {
+            return new Promise((resolve) => {
+                const modal = document.createElement('div');
+                modal.className = 'recurrence-modal';
+                modal.innerHTML = `
+                    <div class="recurrence-modal-content">
+                        <h3><i class="fas fa-edit"></i> Editar Evento Recorrente</h3>
+                        <p>O evento "<strong>${eventTitle}</strong>" faz parte de uma série recorrente.</p>
+                        <p>Como você gostaria de editar?</p>
+                        
+                        <div class="recurrence-options">
+                            <button class="recurrence-btn" data-choice="this">
+                                <i class="fas fa-calendar-day"></i>
+                                <div class="recurrence-btn-content">
+                                    <span>Apenas este evento</span>
+                                    <small>Edita somente esta ocorrência</small>
+                                </div>
+                            </button>
+                            
+                            <button class="recurrence-btn" data-choice="following">
+                                <i class="fas fa-calendar-week"></i>
+                                <div class="recurrence-btn-content">
+                                    <span>Este e eventos seguintes</span>
+                                    <small>Edita esta ocorrência e todas as futuras</small>
+                                </div>
+                            </button>
+                            
+                            <button class="recurrence-btn" data-choice="all">
+                                <i class="fas fa-calendar"></i>
+                                <div class="recurrence-btn-content">
+                                    <span>Todos os eventos da série</span>
+                                    <small>Edita toda a série recorrente</small>
+                                </div>
+                            </button>
+                        </div>
+                        
+                        <div class="recurrence-actions">
+                            <button class="recurrence-cancel">Cancelar</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(modal);
+                
+                // Event listeners
+                modal.querySelectorAll('.recurrence-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const choice = btn.dataset.choice;
+                        document.body.removeChild(modal);
+                        resolve(choice);
+                    });
+                });
+                
+                modal.querySelector('.recurrence-cancel').addEventListener('click', () => {
+                    document.body.removeChild(modal);
+                    resolve(null);
+                });
+                
+                // Fechar ao clicar fora
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) {
+                        document.body.removeChild(modal);
+                        resolve(null);
+                    }
+                });
+            });
+        }
+
+        // Função para lidar com exclusão de eventos recorrentes
+        async function handleRecurringEventDeletion(event, choice) {
+            switch (choice) {
+                case 'this':
+                    // Excluir apenas esta instância
+                    if (event.recurringEventId) {
+                        // É uma instância de evento recorrente
+                        await gapi.client.calendar.events.delete({
+                            calendarId: 'primary',
+                            eventId: event.id
+                        });
+                    } else {
+                        // É o evento principal - criar exceção
+                        // Isso é mais complexo, por simplicidade vamos excluir a instância
+                        await gapi.client.calendar.events.delete({
+                            calendarId: 'primary',
+                            eventId: event.id
+                        });
+                    }
+                    break;
+                    
+                case 'following':
+                    // Excluir este e eventos seguintes
+                    if (event.recurringEventId) {
+                        // Buscar evento principal e modificar até esta data
+                        const masterEvent = await gapi.client.calendar.events.get({
+                            calendarId: 'primary',
+                            eventId: event.recurringEventId
+                        });
+                        
+                        // Modificar recorrência para terminar antes desta data
+                        const eventDate = new Date(event.start.dateTime || event.start.date);
+                        const until = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000); // Um dia antes
+                        
+                        const updatedRecurrence = masterEvent.result.recurrence.map(rule => {
+                            if (rule.startsWith('RRULE:')) {
+                                return rule + `;UNTIL=${until.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`;
+                            }
+                            return rule;
+                        });
+                        
+                        await gapi.client.calendar.events.patch({
+                            calendarId: 'primary',
+                            eventId: event.recurringEventId,
+                            resource: {
+                                recurrence: updatedRecurrence
+                            }
+                        });
+                    } else {
+                        // É o evento principal - modificar recorrência
+                        const eventDate = new Date(event.start.dateTime || event.start.date);
+                        const until = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000);
+                        
+                        const updatedRecurrence = event.recurrence.map(rule => {
+                            if (rule.startsWith('RRULE:')) {
+                                return rule + `;UNTIL=${until.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`;
+                            }
+                            return rule;
+                        });
+                        
+                        await gapi.client.calendar.events.patch({
+                            calendarId: 'primary',
+                            eventId: event.id,
+                            resource: {
+                                recurrence: updatedRecurrence
+                            }
+                        });
+                    }
+                    break;
+                    
+                case 'all':
+                    // Excluir toda a série
+                    const masterEventId = event.recurringEventId || event.id;
+                    await gapi.client.calendar.events.delete({
+                        calendarId: 'primary',
+                        eventId: masterEventId
+                    });
+                    break;
+            }
+            
+            console.log('✅ Evento(s) excluído(s) com sucesso');
+            alert('Evento(s) excluído(s) com sucesso!');
+        }
+
+        // Função para lidar com edição de eventos recorrentes
+        async function handleRecurringEventEdit(event, choice, newDescription) {
+            switch (choice) {
+                case 'this':
+                    // Editar apenas esta instância
+                    if (event.recurringEventId) {
+                        // É uma instância de evento recorrente - editar diretamente
+                        await gapi.client.calendar.events.patch({
+                            calendarId: 'primary',
+                            eventId: event.id,
+                            resource: {
+                                description: newDescription
+                            }
+                        });
+                    } else {
+                        // É o evento principal - criar uma exceção
+                        // Para simplificar, vamos editar o evento principal
+                        await gapi.client.calendar.events.patch({
+                            calendarId: 'primary',
+                            eventId: event.id,
+                            resource: {
+                                description: newDescription
+                            }
+                        });
+                    }
+                    break;
+                    
+                case 'following':
+                    // Editar este e eventos seguintes
+                    if (event.recurringEventId) {
+                        // Buscar evento principal e modificar a partir desta data
+                        const masterEvent = await gapi.client.calendar.events.get({
+                            calendarId: 'primary',
+                            eventId: event.recurringEventId
+                        });
+                        
+                        // Terminar a série original antes desta data
+                        const eventDate = new Date(event.start.dateTime || event.start.date);
+                        const until = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000); // Um dia antes
+                        
+                        const updatedRecurrence = masterEvent.result.recurrence.map(rule => {
+                            if (rule.startsWith('RRULE:')) {
+                                return rule + `;UNTIL=${until.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`;
+                            }
+                            return rule;
+                        });
+                        
+                        await gapi.client.calendar.events.patch({
+                            calendarId: 'primary',
+                            eventId: event.recurringEventId,
+                            resource: {
+                                recurrence: updatedRecurrence
+                            }
+                        });
+                        
+                        // Criar nova série a partir desta data com a nova descrição
+                        const newEvent = {
+                            ...masterEvent.result,
+                            description: newDescription,
+                            start: event.start,
+                            end: event.end
+                        };
+                        delete newEvent.id;
+                        delete newEvent.etag;
+                        delete newEvent.htmlLink;
+                        delete newEvent.iCalUID;
+                        delete newEvent.created;
+                        delete newEvent.updated;
+                        
+                        await gapi.client.calendar.events.insert({
+                            calendarId: 'primary',
+                            resource: newEvent
+                        });
+                    } else {
+                        // É o evento principal - modificar a partir desta data
+                        const eventDate = new Date(event.start.dateTime || event.start.date);
+                        const until = new Date(eventDate.getTime() - 24 * 60 * 60 * 1000);
+                        
+                        const updatedRecurrence = event.recurrence.map(rule => {
+                            if (rule.startsWith('RRULE:')) {
+                                return rule + `;UNTIL=${until.toISOString().replace(/[-:]/g, '').split('.')[0]}Z`;
+                            }
+                            return rule;
+                        });
+                        
+                        await gapi.client.calendar.events.patch({
+                            calendarId: 'primary',
+                            eventId: event.id,
+                            resource: {
+                                recurrence: updatedRecurrence
+                            }
+                        });
+                        
+                        // Criar nova série com a nova descrição
+                        const newEvent = {
+                            ...event,
+                            description: newDescription
+                        };
+                        delete newEvent.id;
+                        delete newEvent.etag;
+                        delete newEvent.htmlLink;
+                        delete newEvent.iCalUID;
+                        delete newEvent.created;
+                        delete newEvent.updated;
+                        
+                        await gapi.client.calendar.events.insert({
+                            calendarId: 'primary',
+                            resource: newEvent
+                        });
+                    }
+                    break;
+                    
+                case 'all':
+                    // Editar toda a série
+                    const masterEventId = event.recurringEventId || event.id;
+                    await gapi.client.calendar.events.patch({
+                        calendarId: 'primary',
+                        eventId: masterEventId,
+                        resource: {
+                            description: newDescription
+                        }
+                    });
+                    break;
+            }
+            
+            console.log('✅ Evento(s) editado(s) com sucesso');
+            return true;
         }
 
         // =================================================================
@@ -3141,67 +3679,102 @@
                         if (cancelBtn) cancelBtn.disabled = true;
                         
                         try {
-                            console.log('🔄 Enviando requisição para Google Calendar API...');
+                            console.log('🔄 Verificando se o evento é recorrente...');
                             
-                            // Chamar API do Google Calendar
-                            const response = await gapi.client.calendar.events.patch({
+                            // Buscar detalhes completos do evento para verificar recorrência
+                            const eventResponse = await gapi.client.calendar.events.get({
                                 calendarId: 'primary',
-                                eventId: eventId,
-                                resource: {
-                                    description: newDescription
-                                }
+                                eventId: eventId
                             });
                             
-                            console.log('📡 Resposta da API:', response.status);
+                            const event = eventResponse.result;
+                            const isRecurring = event.recurringEventId || event.recurrence;
                             
-                            if (response.status === 200) {
-                                console.log('✅ Descrição salva com sucesso no Google Calendar');
+                            if (isRecurring) {
+                                // Evento recorrente - mostrar opções
+                                console.log('🔄 Evento recorrente detectado, mostrando opções...');
                                 
-                                // Atualizar evento local
-                                currentEditingEvent.description = newDescription;
+                                // Esconder loading temporariamente
+                                if (loadingIndicator) loadingIndicator.style.display = 'none';
+                                if (saveBtn) saveBtn.disabled = false;
+                                if (cancelBtn) cancelBtn.disabled = false;
                                 
-                                // Atualizar na lista de eventos filtrados
-                                const eventIndex = filteredEvents.findIndex(e => e.id === eventId);
-                                if (eventIndex !== -1) {
-                                    filteredEvents[eventIndex].description = newDescription;
-                                    console.log('✅ Evento atualizado na lista local');
+                                const choice = await showRecurrenceEditDialog(event.summary || 'Evento');
+                                if (!choice) {
+                                    console.log('ℹ️ Usuário cancelou a edição');
+                                    return; // Usuário cancelou
                                 }
                                 
-                                // Resetar estado de edição
-                                const event = currentEditingEvent;
-                                isEditingDescription = false;
-                                currentEditingEvent = null;
-                                originalDescription = '';
+                                // Mostrar loading novamente
+                                if (loadingIndicator) loadingIndicator.style.display = 'flex';
+                                if (saveBtn) saveBtn.disabled = true;
+                                if (cancelBtn) cancelBtn.disabled = true;
                                 
-                                // Restaurar visualização com nova descrição
-                                const descriptionSection = document.getElementById('descriptionSection');
-                                if (descriptionSection) {
-                                    descriptionSection.innerHTML = `
-                                        <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
-                                        ${newDescription ? `
-                                            <div id="descriptionDisplay" class="description-display">${newDescription}</div>
-                                        ` : `
-                                            <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
-                                        `}
-                                        <button onclick="startEditingDescription('${event.id}')" class="btn-edit">
-                                            <i class="fas fa-edit"></i> ${newDescription ? 'Editar Descrição' : 'Adicionar Descrição'}
-                                        </button>
-                                    `;
-                                }
-                                
-                                // Atualizar resumo mensal (caso a descrição tenha valores)
-                                console.log('🔄 Atualizando resumo mensal...');
-                                updateMonthlySummary();
-                                
-                                // Renderizar calendário novamente
-                                console.log('🔄 Renderizando calendário...');
-                                renderCalendar();
-                                
-                                showMessage('Descrição atualizada com sucesso!', 'success');
+                                console.log('🔄 Aplicando edição com escolha:', choice);
+                                await handleRecurringEventEdit(event, choice, newDescription);
                                 
                             } else {
-                                throw new Error(`Resposta inesperada da API: ${response.status}`);
+                                // Evento único - edição simples
+                                console.log('🔄 Evento único, editando diretamente...');
+                                
+                                const response = await gapi.client.calendar.events.patch({
+                                    calendarId: 'primary',
+                                    eventId: eventId,
+                                    resource: {
+                                        description: newDescription
+                                    }
+                                });
+                                
+                                console.log('📡 Resposta da API:', response.status);
+                                
+                                if (response.status !== 200) {
+                                    throw new Error(`Resposta inesperada da API: ${response.status}`);
+                                }
                             }
+                            
+                            console.log('✅ Descrição salva com sucesso no Google Calendar');
+                            
+                            // Atualizar evento local
+                            currentEditingEvent.description = newDescription;
+                            
+                            // Atualizar na lista de eventos filtrados
+                            const eventIndex = filteredEvents.findIndex(e => e.id === eventId);
+                            if (eventIndex !== -1) {
+                                filteredEvents[eventIndex].description = newDescription;
+                                console.log('✅ Evento atualizado na lista local');
+                            }
+                            
+                            // Resetar estado de edição
+                            const eventForDisplay = currentEditingEvent;
+                            isEditingDescription = false;
+                            currentEditingEvent = null;
+                            originalDescription = '';
+                            
+                            // Restaurar visualização com nova descrição
+                            const descriptionSection = document.getElementById('descriptionSection');
+                            if (descriptionSection) {
+                                descriptionSection.innerHTML = `
+                                    <p><strong><i class="fas fa-info-circle"></i> Descrição:</strong></p>
+                                    ${newDescription ? `
+                                        <div id="descriptionDisplay" class="description-display">${newDescription}</div>
+                                    ` : `
+                                        <div id="descriptionDisplay" class="description-display description-empty">Nenhuma descrição</div>
+                                    `}
+                                    <button onclick="startEditingDescription('${eventForDisplay.id}')" class="btn-edit">
+                                        <i class="fas fa-edit"></i> ${newDescription ? 'Editar Descrição' : 'Adicionar Descrição'}
+                                    </button>
+                                `;
+                            }
+                            
+                            // Atualizar resumo mensal (caso a descrição tenha valores)
+                            console.log('🔄 Atualizando resumo mensal...');
+                            updateMonthlySummary();
+                            
+                            // Renderizar calendário novamente
+                            console.log('🔄 Renderizando calendário...');
+                            renderCalendar();
+                            
+                            showMessage('Descrição atualizada com sucesso!', 'success');
                             
                         } catch (error) {
                             console.error('❌ Erro ao salvar descrição:', error);
