@@ -1283,6 +1283,40 @@
             transform: translateY(-2px);
         }
 
+        /* ✅ NOVO: Estilos para ações de eventos */
+        .event-actions {
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: center;
+        }
+
+        .btn-delete {
+            background: linear-gradient(135deg, #ea4335, #d33b2c);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-delete:hover {
+            background: linear-gradient(135deg, #d33b2c, #b71c1c);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
+        }
+
+        .btn-delete:active {
+            transform: translateY(0);
+        }
+
         /* ✅ NOVO: Estilos para edição de eventos */
                 .edit-description-section {
                     background: rgba(255, 255, 255, 0.1);
@@ -2834,8 +2868,57 @@
                 console.error('Erro ao processar anexos:', error);
             }
             
+            // ✅ NOVO: Adicionar botão de excluir evento
+            detailsHTML += `
+                <div class="event-actions">
+                    <button onclick="deleteEvent('${event.id}', '${event.summary}')" class="btn-delete">
+                        <i class="fas fa-trash"></i> Excluir Evento
+                    </button>
+                </div>
+            `;
+            
             body.innerHTML = detailsHTML;
             modal.style.display = 'block';
+        }
+
+        // =================================================================
+        // EVENT DELETION
+        // =================================================================
+        async function deleteEvent(eventId, eventTitle) {
+            if (!isGoogleConnected) {
+                alert('Conecte-se ao Google Calendar primeiro');
+                return;
+            }
+            
+            // Confirmação dupla para segurança
+            const confirmMessage = `Tem certeza que deseja excluir o evento "${eventTitle}"?\n\nEsta ação não pode ser desfeita.`;
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+            
+            try {
+                // Excluir evento via API do Google Calendar
+                await gapi.client.calendar.events.delete({
+                    calendarId: 'primary',
+                    eventId: eventId
+                });
+                
+                console.log('✅ Evento excluído:', eventTitle);
+                alert('Evento excluído com sucesso!');
+                
+                // Fechar modal
+                const eventModal = document.getElementById('eventModal');
+                if (eventModal) {
+                    eventModal.style.display = 'none';
+                }
+                
+                // Recarregar calendário
+                await handleSyncClick();
+                
+            } catch (error) {
+                console.error('❌ Erro ao excluir evento:', error);
+                alert('Erro ao excluir evento. Verifique sua conexão e tente novamente.');
+            }
         }
 
         // =================================================================
