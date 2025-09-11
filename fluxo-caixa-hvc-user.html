@@ -1082,7 +1082,208 @@
             }
         }
 
-                        /* ✅ NOVO: Estilos para edição de eventos */
+        /* ✅ NOVO: Estilos para criação de eventos */
+        .event-creator-section {
+            background: rgba(25, 25, 112, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            backdrop-filter: blur(10px);
+        }
+
+        .payment-items-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .add-item-form {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            color: #ffffff;
+            font-weight: 500;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        .form-group input,
+        .form-group select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            padding: 10px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4285f4;
+            box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.2);
+        }
+
+        .add-item-btn {
+            background: linear-gradient(135deg, #4285f4, #1976d2);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .add-item-btn:hover {
+            background: linear-gradient(135deg, #1976d2, #1565c0);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(66, 133, 244, 0.3);
+        }
+
+        .items-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .item-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            color: #ffffff;
+            font-weight: 500;
+            font-size: 16px;
+            margin-bottom: 5px;
+        }
+
+        .item-details {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .item-value {
+            color: #4285f4;
+            font-weight: 500;
+            font-size: 16px;
+        }
+
+        .remove-item-btn {
+            background: rgba(234, 67, 53, 0.8);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .remove-item-btn:hover {
+            background: rgba(234, 67, 53, 1);
+            transform: scale(1.05);
+        }
+
+        .create-event-form {
+            background: rgba(52, 168, 83, 0.1);
+            border: 1px solid rgba(52, 168, 83, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .create-event-btn {
+            background: linear-gradient(135deg, #34a853, #2e7d32);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .create-event-btn:hover {
+            background: linear-gradient(135deg, #2e7d32, #1b5e20);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(52, 168, 83, 0.3);
+        }
+
+        .cancel-event-btn {
+            background: rgba(108, 117, 125, 0.8);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cancel-event-btn:hover {
+            background: rgba(108, 117, 125, 1);
+            transform: translateY(-2px);
+        }
+
+        /* ✅ NOVO: Estilos para edição de eventos */
                 .edit-description-section {
                     background: rgba(255, 255, 255, 0.1);
                     border-radius: 8px;
@@ -1197,9 +1398,217 @@
         let currentDate = new Date();
         let allPaymentsList = []; // ✅ NOVO: Lista completa de pagamentos
         let filteredPaymentsList = []; // ✅ NOVO: Lista filtrada
+        // ✅ NOVO: Variáveis para criação de eventos
+        let paymentItems = [];
         let currentEditingEvent = null;
         let isEditingDescription = false;
         let originalDescription = '';
+
+        // ✅ NOVO: Funções para gerenciar itens de pagamento
+        function addPaymentItem() {
+            const tipo = document.getElementById('itemTipo').value.trim();
+            const subtipo = document.getElementById('itemSubtipo').value.trim();
+            const categoria = document.getElementById('itemCategoria').value.trim();
+            const nome = document.getElementById('itemNome').value.trim();
+            const valor = parseFloat(document.getElementById('itemValor').value);
+            const status = document.getElementById('itemStatus').value;
+            const detalhe = document.getElementById('itemDetalhe').value.trim();
+
+            // Validação
+            if (!nome) {
+                alert('Nome do item é obrigatório!');
+                return;
+            }
+            if (!valor || valor <= 0) {
+                alert('Valor deve ser maior que zero!');
+                return;
+            }
+
+            // Criar item
+            const item = {
+                id: Date.now(),
+                tipo,
+                subtipo,
+                categoria,
+                nome,
+                valor,
+                status,
+                detalhe
+            };
+
+            paymentItems.push(item);
+            renderPaymentItems();
+            clearItemForm();
+            
+            // Mostrar formulário de evento se houver itens
+            if (paymentItems.length > 0) {
+                document.getElementById('createEventForm').style.display = 'block';
+            }
+        }
+
+        function removePaymentItem(itemId) {
+            paymentItems = paymentItems.filter(item => item.id !== itemId);
+            renderPaymentItems();
+            
+            // Esconder formulário de evento se não houver itens
+            if (paymentItems.length === 0) {
+                document.getElementById('createEventForm').style.display = 'none';
+            }
+        }
+
+        function renderPaymentItems() {
+            const itemsList = document.getElementById('itemsList');
+            
+            if (paymentItems.length === 0) {
+                itemsList.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 20px;">Nenhum item adicionado ainda.</p>';
+                return;
+            }
+
+            itemsList.innerHTML = paymentItems.map(item => `
+                <div class="item-card">
+                    <div class="item-info">
+                        <div class="item-name">${item.nome}</div>
+                        <div class="item-details">
+                            ${item.tipo ? `<span>Tipo: ${item.tipo}</span>` : ''}
+                            ${item.subtipo ? `<span>Subtipo: ${item.subtipo}</span>` : ''}
+                            ${item.categoria ? `<span>Categoria: ${item.categoria}</span>` : ''}
+                            ${item.status ? `<span>Status: ${item.status}</span>` : ''}
+                            ${item.detalhe ? `<span>Detalhe: ${item.detalhe}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="item-value">R$ ${item.valor.toFixed(2).replace('.', ',')}</div>
+                    <button class="remove-item-btn" onclick="removePaymentItem(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function clearItemForm() {
+            document.getElementById('itemTipo').value = '';
+            document.getElementById('itemSubtipo').value = '';
+            document.getElementById('itemCategoria').value = '';
+            document.getElementById('itemNome').value = '';
+            document.getElementById('itemValor').value = '';
+            document.getElementById('itemStatus').value = '';
+            document.getElementById('itemDetalhe').value = '';
+        }
+
+        function generateEventDescription() {
+            return paymentItems.map(item => {
+                const parts = [];
+                if (item.tipo) parts.push(item.tipo);
+                if (item.subtipo) parts.push(item.subtipo);
+                if (item.categoria) parts.push(item.categoria);
+                parts.push(item.nome);
+                parts.push(`R$ ${item.valor.toFixed(2).replace('.', ',')}`);
+                if (item.status) parts.push(`(${item.status})`);
+                if (item.detalhe) parts.push(item.detalhe);
+                
+                return parts.join(' - ');
+            }).join('\n');
+        }
+
+        async function createPaymentEvent() {
+            if (paymentItems.length === 0) {
+                alert('Adicione pelo menos um item de pagamento!');
+                return;
+            }
+
+            const eventDate = document.getElementById('eventDate').value;
+            const eventTime = document.getElementById('eventTime').value;
+            const recurrence = document.getElementById('eventRecurrence').value;
+
+            if (!eventDate) {
+                alert('Data é obrigatória!');
+                return;
+            }
+            if (!recurrence) {
+                alert('Recorrência é obrigatória!');
+                return;
+            }
+
+            try {
+                // Preparar data e hora
+                const startDateTime = new Date(`${eventDate}T${eventTime}:00`);
+                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // 1 hora depois
+
+                // Preparar recorrência
+                let rrule = null;
+                if (recurrence !== 'NONE') {
+                    rrule = [`RRULE:FREQ=${recurrence}`];
+                }
+
+                // Criar evento
+                const event = {
+                    summary: 'PAGAMENTO',
+                    description: generateEventDescription(),
+                    start: {
+                        dateTime: startDateTime.toISOString(),
+                        timeZone: 'America/Sao_Paulo'
+                    },
+                    end: {
+                        dateTime: endDateTime.toISOString(),
+                        timeZone: 'America/Sao_Paulo'
+                    }
+                };
+
+                if (rrule) {
+                    event.recurrence = rrule;
+                }
+
+                const response = await gapi.client.calendar.events.insert({
+                    calendarId: 'primary',
+                    resource: event
+                });
+
+                console.log('✅ Evento criado:', response.result);
+                alert('Evento criado com sucesso!');
+                
+                // Limpar formulário
+                paymentItems = [];
+                renderPaymentItems();
+                document.getElementById('createEventForm').style.display = 'none';
+                document.getElementById('eventDate').value = '';
+                document.getElementById('eventTime').value = '09:00';
+                document.getElementById('eventRecurrence').value = '';
+                
+                // Recarregar calendário
+                loadCalendarEvents();
+                
+            } catch (error) {
+                console.error('❌ Erro ao criar evento:', error);
+                alert('Erro ao criar evento. Verifique sua conexão e tente novamente.');
+            }
+        }
+
+        function cancelEventCreation() {
+            if (paymentItems.length > 0) {
+                if (confirm('Tem certeza que deseja cancelar? Todos os itens serão perdidos.')) {
+                    paymentItems = [];
+                    renderPaymentItems();
+                    document.getElementById('createEventForm').style.display = 'none';
+                }
+            } else {
+                document.getElementById('createEventForm').style.display = 'none';
+            }
+        }
+
+        // ✅ NOVO: Função para alternar seção de criação de eventos
+        function toggleEventCreator() {
+            const eventCreatorSection = document.getElementById('eventCreatorSection');
+            const isVisible = eventCreatorSection.style.display !== 'none';
+            
+            if (isVisible) {
+                eventCreatorSection.style.display = 'none';
+            } else {
+                eventCreatorSection.style.display = 'block';
+                // Inicializar lista vazia se necessário
+                if (paymentItems.length === 0) {
+                    renderPaymentItems();
+                }
+            }
+        }
 
         // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
         window.gapiLoaded = function() {
@@ -1845,6 +2254,7 @@
             const authorizeButton = document.getElementById('authorizeButton');
             const signoutButton = document.getElementById('signoutButton');
             const syncButton = document.getElementById('syncButton');
+            const createEventButton = document.getElementById('createEventButton'); // ✅ NOVO
             const calendarSection = document.getElementById('calendarSection');
             const filterSection = document.getElementById('filterSection');
             const monthlySummarySection = document.getElementById('monthlySummarySection');
@@ -1856,6 +2266,7 @@
                 authorizeButton.style.display = 'none';
                 signoutButton.style.display = 'block';
                 syncButton.disabled = false;
+                createEventButton.style.display = 'block'; // ✅ NOVO: Mostrar botão de criar evento
                 calendarSection.style.display = 'block';
                 filterSection.style.display = 'block';
                 monthlySummarySection.style.display = 'block';
@@ -1866,6 +2277,7 @@
                 authorizeButton.style.display = 'block';
                 signoutButton.style.display = 'none';
                 syncButton.disabled = true;
+                createEventButton.style.display = 'none'; // ✅ NOVO: Esconder botão de criar evento
                 calendarSection.style.display = 'none';
                 filterSection.style.display = 'none';
                 monthlySummarySection.style.display = 'none';
@@ -2566,6 +2978,10 @@
                 <button id="syncButton" onclick="handleSyncClick()" class="btn btn-secondary" disabled>
                     <i class="fas fa-sync-alt"></i> Sincronizar
                 </button>
+                <!-- ✅ NOVO: Botão para criar eventos -->
+                <button id="createEventButton" onclick="toggleEventCreator()" class="btn btn-success" style="display: none;">
+                    <i class="fas fa-plus-circle"></i> Criar Evento
+                </button>
             </div>
         </div>
 
@@ -2577,6 +2993,107 @@
             </div>
             <div class="filter-stats" id="filterStats">
                 <!-- Stats will be populated here -->
+            </div>
+        </div>
+
+        <!-- ✅ NOVO: Seção de Criação de Eventos -->
+        <div id="eventCreatorSection" class="event-creator-section" style="display: none;">
+            <h3><i class="fas fa-plus-circle"></i> Criar Evento de Pagamento</h3>
+            
+            <!-- Lista de Itens de Pagamento -->
+            <div class="payment-items-container">
+                <h4><i class="fas fa-list"></i> Itens de Pagamento</h4>
+                
+                <!-- Formulário para Adicionar Item -->
+                <div class="add-item-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <input type="text" id="itemTipo" placeholder="Ex: Despesa, Investimento...">
+                        </div>
+                        <div class="form-group">
+                            <label>Subtipo</label>
+                            <input type="text" id="itemSubtipo" placeholder="Ex: Fixa, Variável...">
+                        </div>
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <input type="text" id="itemCategoria" placeholder="Ex: Alimentação, Transporte...">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nome do Item *</label>
+                            <input type="text" id="itemNome" placeholder="Nome do item (obrigatório)" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Valor *</label>
+                            <input type="number" id="itemValor" placeholder="0,00" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="itemStatus">
+                                <option value="">Selecionar...</option>
+                                <option value="PG">PG</option>
+                                <option value="PENDENTE">PENDENTE</option>
+                                <option value="RECALCULADO">RECALCULADO</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label>Detalhe</label>
+                            <input type="text" id="itemDetalhe" placeholder="Detalhes adicionais...">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="addItemBtn" class="add-item-btn">
+                        <i class="fas fa-plus"></i> Adicionar Item
+                    </button>
+                </div>
+                
+                <!-- Lista de Itens Adicionados -->
+                <div id="itemsList" class="items-list">
+                    <!-- Itens serão listados aqui -->
+                </div>
+            </div>
+            
+            <!-- Formulário para Criar Evento -->
+            <div class="create-event-form" style="display: none;" id="createEventForm">
+                <h4><i class="fas fa-calendar-plus"></i> Criar Evento no Google Calendar</h4>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Data *</label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário</label>
+                        <input type="time" id="eventTime" value="09:00">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Recorrência *</label>
+                    <select id="eventRecurrence" required>
+                        <option value="">Selecionar recorrência...</option>
+                        <option value="NONE">Não repetir</option>
+                        <option value="DAILY">Diariamente</option>
+                        <option value="WEEKLY">Semanalmente</option>
+                        <option value="MONTHLY">Mensalmente</option>
+                        <option value="YEARLY">Anualmente</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="createEventBtn" class="create-event-btn">
+                        <i class="fas fa-calendar-check"></i> Criar Evento
+                    </button>
+                    <button type="button" id="cancelEventBtn" class="cancel-event-btn">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -2642,6 +3159,107 @@
             </div>
         </div>
 
+        <!-- ✅ NOVO: Criador de Eventos de Pagamento -->
+        <div id="eventCreatorSection" class="event-creator-section" style="display: none;">
+            <h3><i class="fas fa-plus-circle"></i> Criar Evento de Pagamento</h3>
+            
+            <!-- Lista de Itens de Pagamento -->
+            <div class="payment-items-container">
+                <h4><i class="fas fa-list"></i> Itens de Pagamento</h4>
+                
+                <!-- Formulário para Adicionar Item -->
+                <div class="add-item-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <input type="text" id="itemTipo" placeholder="Ex: Despesa, Investimento...">
+                        </div>
+                        <div class="form-group">
+                            <label>Subtipo</label>
+                            <input type="text" id="itemSubtipo" placeholder="Ex: Fixa, Variável...">
+                        </div>
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <input type="text" id="itemCategoria" placeholder="Ex: Alimentação, Transporte...">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nome do Item *</label>
+                            <input type="text" id="itemNome" placeholder="Nome do item (obrigatório)" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Valor *</label>
+                            <input type="number" id="itemValor" placeholder="0,00" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="itemStatus">
+                                <option value="">Selecionar...</option>
+                                <option value="PG">PG</option>
+                                <option value="PENDENTE">PENDENTE</option>
+                                <option value="RECALCULADO">RECALCULADO</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label>Detalhe</label>
+                            <input type="text" id="itemDetalhe" placeholder="Detalhes adicionais...">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="addItemBtn" class="add-item-btn">
+                        <i class="fas fa-plus"></i> Adicionar Item
+                    </button>
+                </div>
+                
+                <!-- Lista de Itens Adicionados -->
+                <div id="itemsList" class="items-list">
+                    <!-- Itens serão listados aqui -->
+                </div>
+            </div>
+            
+            <!-- Formulário para Criar Evento -->
+            <div class="create-event-form" style="display: none;" id="createEventForm">
+                <h4><i class="fas fa-calendar-plus"></i> Criar Evento no Google Calendar</h4>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Data *</label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário</label>
+                        <input type="time" id="eventTime" value="09:00">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Recorrência *</label>
+                    <select id="eventRecurrence" required>
+                        <option value="">Selecionar recorrência...</option>
+                        <option value="NONE">Não repetir</option>
+                        <option value="DAILY">Diariamente</option>
+                        <option value="WEEKLY">Semanalmente</option>
+                        <option value="MONTHLY">Mensalmente</option>
+                        <option value="YEARLY">Anualmente</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="createEventBtn" class="create-event-btn">
+                        <i class="fas fa-calendar-check"></i> Criar Evento
+                    </button>
+                    <button type="button" id="cancelEventBtn" class="cancel-event-btn">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- ✅ NOVO: Lista de Pagamentos com Filtros -->
         <div id="paymentsListSection" class="payments-list-section" style="display: none;">
             <h3><i class="fas fa-list-alt"></i> Lista de Pagamentos do Mês</h3>
@@ -2697,6 +3315,39 @@
     <script type="module">
         import { injectSidebar } from './sidebar.js';
         injectSidebar("main-content-fluxo-caixa-hvc");
+    </script>
+    
+    <!-- ✅ NOVO: Event Listeners para criação de eventos -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Event listeners para criação de eventos
+            const addItemBtn = document.getElementById('addItemBtn');
+            const createEventBtn = document.getElementById('createEventBtn');
+            const cancelEventBtn = document.getElementById('cancelEventBtn');
+            
+            if (addItemBtn) {
+                addItemBtn.addEventListener('click', addPaymentItem);
+            }
+            
+            if (createEventBtn) {
+                createEventBtn.addEventListener('click', createPaymentEvent);
+            }
+            
+            if (cancelEventBtn) {
+                cancelEventBtn.addEventListener('click', cancelEventCreation);
+            }
+            
+            // Permitir Enter para adicionar item
+            const itemForm = document.querySelector('.add-item-form');
+            if (itemForm) {
+                itemForm.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addPaymentItem();
+                    }
+                });
+            }
+        });
     </script>
     
     <!-- Google APIs - Carregar DEPOIS das funções estarem definidas -->
