@@ -2179,7 +2179,7 @@
                 alert('Data é obrigatória!');
                 return;
             }
-            if (!recurrence) {
+            if (!recurrence || recurrence === '') {
                 alert('Recorrência é obrigatória!');
                 return;
             }
@@ -2192,36 +2192,54 @@
                 // Preparar recorrência
                 let rrule = null;
                 if (recurrence !== 'NONE') {
+                    console.log('🔄 Gerando RRULE para:', recurrence, 'Data:', eventDate);
+                    
+                    const date = new Date(eventDate);
+                    const dayOfWeek = date.getDay();
+                    const dayOfMonth = date.getDate();
+                    const month = date.getMonth() + 1;
+                    
+                    // Mapear dias da semana para RRULE
+                    const rruleDays = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+                    const currentDay = rruleDays[dayOfWeek];
+                    
+                    let rruleString = null;
+                    
                     switch (recurrence) {
                         case 'DAILY':
-                            rrule = ['RRULE:FREQ=DAILY'];
+                            rruleString = 'FREQ=DAILY';
                             break;
+                            
                         case 'WEEKLY':
-                            rrule = ['RRULE:FREQ=WEEKLY'];
+                            rruleString = `FREQ=WEEKLY;BYDAY=${currentDay}`;
                             break;
+                            
                         case 'MONTHLY':
-                            rrule = ['RRULE:FREQ=MONTHLY'];
+                            // Calcular qual semana do mês (primeira, segunda, terceira, etc.)
+                            const weekOfMonth = Math.ceil(dayOfMonth / 7);
+                            rruleString = `FREQ=MONTHLY;BYDAY=${weekOfMonth}${currentDay}`;
                             break;
+                            
                         case 'YEARLY':
-                            rrule = ['RRULE:FREQ=YEARLY'];
+                            rruleString = `FREQ=YEARLY;BYMONTH=${month};BYMONTHDAY=${dayOfMonth}`;
                             break;
+                            
                         case 'WEEKDAYS':
-                            rrule = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'];
+                            rruleString = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
                             break;
-                        case 'CUSTOM_WEEKLY_2':
-                            rrule = ['RRULE:FREQ=WEEKLY;INTERVAL=2'];
+                            
+                        case 'CUSTOM_GENERATED':
+                            rruleString = window.customRRule || null;
                             break;
-                        case 'CUSTOM_MONTHLY_2':
-                            rrule = ['RRULE:FREQ=MONTHLY;INTERVAL=2'];
-                            break;
-                        case 'CUSTOM_MONTHLY_3':
-                            rrule = ['RRULE:FREQ=MONTHLY;INTERVAL=3'];
-                            break;
-                        case 'CUSTOM_MONTHLY_6':
-                            rrule = ['RRULE:FREQ=MONTHLY;INTERVAL=6'];
-                            break;
+                            
                         default:
-                            rrule = [`RRULE:FREQ=${recurrence}`];
+                            rruleString = null;
+                    }
+                    
+                    console.log('📝 RRULE gerada:', rruleString);
+                    if (rruleString) {
+                        rrule = [`RRULE:${rruleString}`];
+                        console.log('✅ RRULE final:', rrule);
                     }
                 }
 
