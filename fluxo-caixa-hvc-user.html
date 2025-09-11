@@ -2194,14 +2194,22 @@
                 if (recurrence !== 'NONE') {
                     console.log('🔄 Gerando RRULE para:', recurrence, 'Data:', eventDate);
                     
-                    const date = new Date(eventDate);
+                    // Usar a mesma data base para evitar problemas de fuso horário
+                    // Criar data no fuso horário local para garantir consistência
+                    const [year, month, day] = eventDate.split('-').map(Number);
+                    const date = new Date(year, month - 1, day, 12, 0, 0); // Meio-dia local
                     const dayOfWeek = date.getDay();
                     const dayOfMonth = date.getDate();
-                    const month = date.getMonth() + 1;
+                    const monthNum = date.getMonth() + 1;
+                    
+                    console.log('📅 Data processada:', date.toString());
+                    console.log('📅 Dia da semana:', dayOfWeek, '(0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sab)');
                     
                     // Mapear dias da semana para RRULE
                     const rruleDays = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
                     const currentDay = rruleDays[dayOfWeek];
+                    
+                    console.log('📅 RRULE Day:', currentDay);
                     
                     let rruleString = null;
                     
@@ -2221,7 +2229,7 @@
                             break;
                             
                         case 'YEARLY':
-                            rruleString = `FREQ=YEARLY;BYMONTH=${month};BYMONTHDAY=${dayOfMonth}`;
+                            rruleString = `FREQ=YEARLY;BYMONTH=${monthNum};BYMONTHDAY=${dayOfMonth}`;
                             break;
                             
                         case 'WEEKDAYS':
