@@ -4509,6 +4509,23 @@
                         </div>
                     </div>
                     
+                    <!-- ✅ NOVO: Campo para anexos PDF -->
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-file-pdf"></i> Anexos PDF</label>
+                            <div class="pdf-upload-container">
+                                <input type="file" id="itemPdfs" multiple accept=".pdf" class="pdf-input">
+                                <div class="pdf-upload-info">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Selecione um ou mais arquivos PDF (máx. 10MB cada)</span>
+                                </div>
+                                <div id="pdfPreview" class="pdf-preview-list">
+                                    <!-- PDFs selecionados aparecerão aqui -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <button type="button" id="addItemBtn" class="add-item-btn">
                         <i class="fas fa-plus"></i> Adicionar Item
                     </button>
@@ -4670,6 +4687,23 @@
                         <div class="form-group full-width">
                             <label>Detalhe</label>
                             <input type="text" id="itemDetalhe" placeholder="Detalhes adicionais...">
+                        </div>
+                    </div>
+                    
+                    <!-- ✅ NOVO: Campo para anexos PDF -->
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label><i class="fas fa-file-pdf"></i> Anexos PDF</label>
+                            <div class="pdf-upload-container">
+                                <input type="file" id="itemPdfs" multiple accept=".pdf" class="pdf-input">
+                                <div class="pdf-upload-info">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                    <span>Selecione um ou mais arquivos PDF (máx. 10MB cada)</span>
+                                </div>
+                                <div id="pdfPreview" class="pdf-preview-list">
+                                    <!-- PDFs selecionados aparecerão aqui -->
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
