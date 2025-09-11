@@ -233,17 +233,17 @@
         }
 
         .filter-select {
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(66, 133, 244, 0.8) !important; /* ✅ NOVO: Fundo azul para visibilidade */
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 6px;
             padding: 8px 12px;
-            color: #ffffff;
+            color: #ffffff !important;
             font-size: 0.9rem;
         }
 
         .filter-select option {
-            background: #1a1a2e;
-            color: #ffffff;
+            background: rgba(66, 133, 244, 0.9) !important; /* ✅ NOVO: Fundo azul para opções */
+            color: #ffffff !important;
         }
 
         .clear-filters-btn {
@@ -1376,6 +1376,225 @@
                     font-size: 14px;
                 }
 
+                /* ✅ NOVO: CSS para seção de criação de eventos */
+                .event-creator-section {
+                    background: rgba(25, 25, 112, 0.3);
+                    backdrop-filter: blur(10px);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 15px;
+                    padding: 30px;
+                    margin-bottom: 30px;
+                }
+
+                .event-creator-section h3, .event-creator-section h4 {
+                    color: #ffffff;
+                    margin-bottom: 20px;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .payment-items-container {
+                    margin-bottom: 30px;
+                }
+
+                .add-item-form {
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 10px;
+                    padding: 20px;
+                    margin-bottom: 20px;
+                }
+
+                .form-row {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                    gap: 15px;
+                    margin-bottom: 15px;
+                }
+
+                .form-group {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 5px;
+                }
+
+                .form-group.full-width {
+                    grid-column: 1 / -1;
+                }
+
+                .form-group label {
+                    color: rgba(255, 255, 255, 0.8);
+                    font-size: 0.9rem;
+                    font-weight: 500;
+                }
+
+                .form-group input, .form-group select {
+                    background: rgba(66, 133, 244, 0.8) !important; /* ✅ NOVO: Fundo azul para visibilidade */
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 6px;
+                    padding: 10px 12px;
+                    color: #ffffff !important;
+                    font-size: 0.9rem;
+                }
+
+                .form-group input:focus, .form-group select:focus {
+                    outline: none;
+                    border-color: #4285f4;
+                    background: rgba(66, 133, 244, 0.9) !important;
+                }
+
+                .form-group input::placeholder {
+                    color: rgba(255, 255, 255, 0.7) !important;
+                }
+
+                .form-group select option {
+                    background: rgba(66, 133, 244, 0.9) !important;
+                    color: #ffffff !important;
+                }
+
+                .add-item-btn {
+                    background: rgba(52, 168, 83, 0.3);
+                    border: 1px solid #34a853;
+                    color: #34a853;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .add-item-btn:hover {
+                    background: rgba(52, 168, 83, 0.5);
+                    color: #ffffff;
+                }
+
+                .items-list {
+                    max-height: 300px;
+                    overflow-y: auto;
+                    border-radius: 8px;
+                    background: rgba(255, 255, 255, 0.05);
+                }
+
+                .item-card {
+                    background: rgba(255, 255, 255, 0.1);
+                    border: 1px solid rgba(255, 255, 255, 0.2);
+                    border-radius: 8px;
+                    padding: 15px;
+                    margin-bottom: 10px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    gap: 15px;
+                }
+
+                .item-info {
+                    flex: 1;
+                }
+
+                .item-name {
+                    color: #ffffff;
+                    font-weight: bold;
+                    font-size: 1.1rem;
+                    margin-bottom: 5px;
+                }
+
+                .item-details {
+                    color: rgba(255, 255, 255, 0.7);
+                    font-size: 0.9rem;
+                }
+
+                .item-value {
+                    color: #ffc107;
+                    font-weight: bold;
+                    font-size: 1.2rem;
+                    background: rgba(255, 193, 7, 0.2);
+                    padding: 5px 10px;
+                    border-radius: 5px;
+                }
+
+                .remove-item-btn {
+                    background: rgba(234, 67, 53, 0.3);
+                    border: 1px solid #ea4335;
+                    color: #ea4335;
+                    padding: 8px;
+                    border-radius: 6px;
+                    cursor: pointer;
+                    transition: all 0.3s ease;
+                }
+
+                .remove-item-btn:hover {
+                    background: rgba(234, 67, 53, 0.5);
+                    color: #ffffff;
+                }
+
+                .create-event-form {
+                    background: rgba(255, 255, 255, 0.05);
+                    border-radius: 10px;
+                    padding: 20px;
+                    margin-top: 20px;
+                }
+
+                .form-actions {
+                    display: flex;
+                    gap: 15px;
+                    margin-top: 20px;
+                    flex-wrap: wrap;
+                }
+
+                .create-event-btn {
+                    background: rgba(52, 168, 83, 0.3);
+                    border: 1px solid #34a853;
+                    color: #34a853;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .create-event-btn:hover {
+                    background: rgba(52, 168, 83, 0.5);
+                    color: #ffffff;
+                }
+
+                .cancel-event-btn {
+                    background: rgba(234, 67, 53, 0.3);
+                    border: 1px solid #ea4335;
+                    color: #ea4335;
+                    padding: 12px 24px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-size: 14px;
+                    font-weight: 500;
+                    transition: all 0.3s ease;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .cancel-event-btn:hover {
+                    background: rgba(234, 67, 53, 0.5);
+                    color: #ffffff;
+                }
+
+                .btn-success {
+                    background: linear-gradient(135deg, #34a853, #2e7d32);
+                    color: white;
+                }
+
+                .btn-success:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(52, 168, 83, 0.3);
+                }
+
 
 
     </style>
@@ -1410,7 +1629,11 @@
             const subtipo = document.getElementById('itemSubtipo').value.trim();
             const categoria = document.getElementById('itemCategoria').value.trim();
             const nome = document.getElementById('itemNome').value.trim();
-            const valor = parseFloat(document.getElementById('itemValor').value);
+            
+            // ✅ NOVO: Parsing correto do valor formatado
+            const valorText = document.getElementById('itemValor').value;
+            const valor = parseFloat(valorText.replace(/[^\d,]/g, '').replace(',', '.'));
+            
             const status = document.getElementById('itemStatus').value;
             const detalhe = document.getElementById('itemDetalhe').value.trim();
 
@@ -1536,7 +1759,37 @@
                 // Preparar recorrência
                 let rrule = null;
                 if (recurrence !== 'NONE') {
-                    rrule = [`RRULE:FREQ=${recurrence}`];
+                    switch (recurrence) {
+                        case 'DAILY':
+                            rrule = ['RRULE:FREQ=DAILY'];
+                            break;
+                        case 'WEEKLY':
+                            rrule = ['RRULE:FREQ=WEEKLY'];
+                            break;
+                        case 'MONTHLY':
+                            rrule = ['RRULE:FREQ=MONTHLY'];
+                            break;
+                        case 'YEARLY':
+                            rrule = ['RRULE:FREQ=YEARLY'];
+                            break;
+                        case 'WEEKDAYS':
+                            rrule = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'];
+                            break;
+                        case 'CUSTOM_WEEKLY_2':
+                            rrule = ['RRULE:FREQ=WEEKLY;INTERVAL=2'];
+                            break;
+                        case 'CUSTOM_MONTHLY_2':
+                            rrule = ['RRULE:FREQ=MONTHLY;INTERVAL=2'];
+                            break;
+                        case 'CUSTOM_MONTHLY_3':
+                            rrule = ['RRULE:FREQ=MONTHLY;INTERVAL=3'];
+                            break;
+                        case 'CUSTOM_MONTHLY_6':
+                            rrule = ['RRULE:FREQ=MONTHLY;INTERVAL=6'];
+                            break;
+                        default:
+                            rrule = [`RRULE:FREQ=${recurrence}`];
+                    }
                 }
 
                 // Criar evento
@@ -1574,7 +1827,7 @@
                 document.getElementById('eventRecurrence').value = '';
                 
                 // Recarregar calendário
-                loadCalendarEvents();
+                handleSyncClick();
                 
             } catch (error) {
                 console.error('❌ Erro ao criar evento:', error);
@@ -3028,7 +3281,7 @@
                         </div>
                         <div class="form-group">
                             <label>Valor *</label>
-                            <input type="number" id="itemValor" placeholder="0,00" step="0.01" required>
+                            <input type="text" id="itemValor" placeholder="R$ 0,00" required>
                         </div>
                         <div class="form-group">
                             <label>Status</label>
@@ -3083,6 +3336,11 @@
                         <option value="WEEKLY">Semanalmente</option>
                         <option value="MONTHLY">Mensalmente</option>
                         <option value="YEARLY">Anualmente</option>
+                        <option value="WEEKDAYS">Dias úteis (segunda a sexta)</option>
+                        <option value="CUSTOM_WEEKLY_2">A cada 2 semanas</option>
+                        <option value="CUSTOM_MONTHLY_2">A cada 2 meses</option>
+                        <option value="CUSTOM_MONTHLY_3">A cada 3 meses (trimestral)</option>
+                        <option value="CUSTOM_MONTHLY_6">A cada 6 meses (semestral)</option>
                     </select>
                 </div>
                 
@@ -3191,7 +3449,7 @@
                         </div>
                         <div class="form-group">
                             <label>Valor *</label>
-                            <input type="number" id="itemValor" placeholder="0,00" step="0.01" required>
+                            <input type="text" id="itemValor" placeholder="R$ 0,00" required>
                         </div>
                         <div class="form-group">
                             <label>Status</label>
@@ -3246,6 +3504,11 @@
                         <option value="WEEKLY">Semanalmente</option>
                         <option value="MONTHLY">Mensalmente</option>
                         <option value="YEARLY">Anualmente</option>
+                        <option value="WEEKDAYS">Dias úteis (segunda a sexta)</option>
+                        <option value="CUSTOM_WEEKLY_2">A cada 2 semanas</option>
+                        <option value="CUSTOM_MONTHLY_2">A cada 2 meses</option>
+                        <option value="CUSTOM_MONTHLY_3">A cada 3 meses (trimestral)</option>
+                        <option value="CUSTOM_MONTHLY_6">A cada 6 meses (semestral)</option>
                     </select>
                 </div>
                 
@@ -3335,6 +3598,39 @@
             
             if (cancelEventBtn) {
                 cancelEventBtn.addEventListener('click', cancelEventCreation);
+            }
+            
+            // ✅ NOVO: Formatação automática do campo valor
+            const itemValorInput = document.getElementById('itemValor');
+            if (itemValorInput) {
+                itemValorInput.addEventListener('input', function(e) {
+                    let value = e.target.value.replace(/\D/g, ''); // Remove tudo que não é dígito
+                    
+                    if (value === '') {
+                        e.target.value = '';
+                        return;
+                    }
+                    
+                    // Converte para número e formata
+                    const numValue = parseInt(value) / 100;
+                    e.target.value = formatCurrency(numValue);
+                });
+                
+                // Limpar formatação ao focar para edição
+                itemValorInput.addEventListener('focus', function(e) {
+                    const value = e.target.value.replace(/[^\d,]/g, '').replace(',', '.');
+                    if (value && !isNaN(parseFloat(value))) {
+                        e.target.value = parseFloat(value).toFixed(2).replace('.', ',');
+                    }
+                });
+                
+                // Reformatar ao sair do campo
+                itemValorInput.addEventListener('blur', function(e) {
+                    const value = e.target.value.replace(',', '.');
+                    if (value && !isNaN(parseFloat(value))) {
+                        e.target.value = formatCurrency(parseFloat(value));
+                    }
+                });
             }
             
             // Permitir Enter para adicionar item
