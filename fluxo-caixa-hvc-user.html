@@ -2774,9 +2774,28 @@
 
         async function initializeGapiClient() {
             try {
+                console.log('🔄 Inicializando GAPI client...');
+                console.log('📋 Discovery docs:', DISCOVERY_DOC);
+                
                 await gapi.client.init({
-                    discoveryDocs: [DISCOVERY_DOC],
+                    discoveryDocs: DISCOVERY_DOC,
                 });
+                
+                console.log('✅ GAPI client inicializado');
+                
+                // Verificar se as APIs foram carregadas corretamente
+                if (gapi.client.calendar) {
+                    console.log('✅ Google Calendar API carregada');
+                } else {
+                    console.warn('⚠️ Google Calendar API não foi carregada');
+                }
+                
+                if (gapi.client.drive) {
+                    console.log('✅ Google Drive API carregada');
+                } else {
+                    console.warn('⚠️ Google Drive API não foi carregada');
+                }
+                
                 gapiInited = true;
                 maybeEnableButtons();
                 console.log('✅ GAPI inicializado com sucesso!');
@@ -2785,7 +2804,8 @@
                 await tryRestoreSession();
             } catch (error) {
                 console.error('❌ Erro ao inicializar GAPI:', error);
-                showMessage('Erro ao carregar API do Google Calendar', 'error');
+                console.error('❌ Detalhes do erro:', error.message);
+                showMessage('Erro ao carregar APIs do Google', 'error');
             }
         }
 
