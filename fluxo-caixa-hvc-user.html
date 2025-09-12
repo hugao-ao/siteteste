@@ -2494,6 +2494,11 @@
             try {
                 console.log('📤 Fazendo upload do PDF para Google Drive:', pdfData.name);
                 
+                // Verificar se o usuário está autenticado
+                if (!gapi.client.getToken()) {
+                    throw new Error('Usuário não está autenticado. Faça login primeiro.');
+                }
+                
                 // Converter base64 para blob
                 const byteCharacters = atob(pdfData.base64);
                 const byteNumbers = new Array(byteCharacters.length);
@@ -2515,7 +2520,13 @@
                 form.append('file', blob);
                 
                 // Fazer upload usando fetch (mais simples que gapi para upload de arquivos)
-                const accessToken = gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token;
+                const accessToken = gapi.client.getToken().access_token;
+                
+                if (!accessToken) {
+                    throw new Error('Token de acesso não encontrado. Faça login novamente.');
+                }
+                
+                console.log('🔑 Token obtido, fazendo upload...');
                 
                 const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
                     method: 'POST',
@@ -2525,8 +2536,12 @@
                     body: form
                 });
                 
+                console.log('📡 Resposta do upload:', response.status, response.statusText);
+                
                 if (!response.ok) {
-                    throw new Error(`Upload failed: ${response.status} ${response.statusText}`);
+                    const errorText = await response.text();
+                    console.error('❌ Erro na resposta:', errorText);
+                    throw new Error(`Upload failed: ${response.status} ${response.statusText} - ${errorText}`);
                 }
                 
                 const fileData = await response.json();
