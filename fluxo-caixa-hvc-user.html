@@ -2173,7 +2173,7 @@
         // Configurações
         const CLIENT_ID = '314578730498-ghkttnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
         const DISCOVERY_DOC = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
-        const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file';
+        const SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file';
 
         let tokenClient;
         let gapiInited = false;
@@ -2547,6 +2547,20 @@
                 const fileData = await response.json();
                 console.log('✅ PDF enviado para Google Drive:', fileData);
                 
+                // Tornar o arquivo público para ser acessível
+                try {
+                    await gapi.client.drive.permissions.create({
+                        fileId: fileData.id,
+                        resource: {
+                            role: 'reader',
+                            type: 'anyone'
+                        }
+                    });
+                    console.log('✅ Arquivo tornado público');
+                } catch (permError) {
+                    console.warn('⚠️ Não foi possível tornar o arquivo público:', permError);
+                }
+                
                 // Retornar dados necessários para anexo
                 return {
                     fileId: fileData.id,
@@ -2572,8 +2586,18 @@
                 if (item.status) parts.push(`(${item.status})`);
                 if (item.detalhe) parts.push(item.detalhe);
                 
+                // Adicionar links dos PDFs na descrição
+                if (item.pdfs && item.pdfs.length > 0) {
+                    parts.push('\n📎 ANEXOS:');
+                    item.pdfs.forEach(pdf => {
+                        if (pdf && pdf.fileId) {
+                            parts.push(`• ${pdf.name}: https://drive.google.com/file/d/${pdf.fileId}/view`);
+                        }
+                    });
+                }
+                
                 return parts.join(' - ');
-            }).join('\n');
+            }).join('\n\n');
         }
 
         async function createPaymentEvent() {
@@ -2663,28 +2687,35 @@
                 }
 
                 // Preparar anexos PDF - fazer upload para Google Drive primeiro
-                const attachments = [];
                 console.log('📎 Processando anexos PDF...');
-                
+
                 for (const item of paymentItems) {
                     if (item.pdfs && item.pdfs.length > 0) {
                         console.log(`📎 Item "${item.nome}" tem ${item.pdfs.length} PDF(s)`);
                         
-                        for (const pdf of item.pdfs) {
+                        // Adicionar informações do PDF ao item para incluir na descrição
+                        item.pdfs = await Promise.all(item.pdfs.map(async (pdf) => {
                             try {
                                 console.log(`📤 Fazendo upload: ${pdf.name}`);
                                 const driveFile = await uploadPdfToDrive(pdf, item.nome);
-                                attachments.push(driveFile);
                                 console.log(`✅ Upload concluído: ${driveFile.title}`);
+                                return {
+                                    name: pdf.name,
+                                    fileId: driveFile.fileId,
+                                    fileUrl: driveFile.fileUrl
+                                };
                             } catch (error) {
                                 console.error(`❌ Erro no upload de ${pdf.name}:`, error);
-                                // Continuar com outros arquivos mesmo se um falhar
+                                return null;
                             }
-                        }
+                        }));
+                        
+                        // Remover PDFs que falharam no upload
+                        item.pdfs = item.pdfs.filter(pdf => pdf !== null);
                     }
                 }
 
-                console.log('📎 Total de anexos preparados:', attachments.length);
+                console.log('📎 Processamento de PDFs concluído');
 
                 // Criar evento
                 const event = {
@@ -2700,24 +2731,17 @@
                     }
                 };
 
-                // Adicionar anexos se houver
-                if (attachments.length > 0) {
-                    event.attachments = attachments;
-                    console.log('📎 Anexos adicionados ao evento:', event.attachments);
-                }
-
                 if (rrule) {
                     event.recurrence = rrule;
                 }
 
                 const response = await gapi.client.calendar.events.insert({
                     calendarId: 'primary',
-                    resource: event,
-                    supportsAttachments: true
+                    resource: event
                 });
 
                 console.log('✅ Evento criado:', response.result);
-                alert('Evento criado com sucesso!');
+                alert('Evento criado com sucesso! Os links dos PDFs estão na descrição do evento.');
                 
                 // Limpar formulário
                 paymentItems = [];
