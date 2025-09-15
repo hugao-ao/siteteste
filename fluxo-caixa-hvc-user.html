@@ -3566,23 +3566,55 @@
             const files = Array.from(event.target.files);
             if (files.length === 0 || !currentEventForPdf) return;
             
+            // Mostrar indicador de carregamento
+            const uploadSection = document.querySelector('.attachment-upload-section');
+            const originalHTML = uploadSection.innerHTML;
+            uploadSection.innerHTML = '<p style="color: #007bff;"><i class="fas fa-spinner fa-spin"></i> Fazendo upload...</p>';
+            
+            let successCount = 0;
+            let errorCount = 0;
+            const errors = [];
+            
             for (const file of files) {
                 if (file.type !== 'application/pdf') {
-                    alert(`${file.name}: Apenas arquivos PDF são permitidos`);
+                    errors.push(`${file.name}: Apenas arquivos PDF são permitidos`);
+                    errorCount++;
                     continue;
                 }
                 
                 if (file.size > 10 * 1024 * 1024) {
-                    alert(`${file.name}: Arquivo muito grande (máx. 10MB)`);
+                    errors.push(`${file.name}: Arquivo muito grande (máx. 10MB)`);
+                    errorCount++;
                     continue;
                 }
                 
                 try {
+                    console.log(`📤 Processando: ${file.name}`);
                     await uploadPdfToEvent(file, currentEventForPdf);
+                    successCount++;
+                    console.log(`✅ Sucesso: ${file.name}`);
                 } catch (error) {
-                    console.error('Erro ao fazer upload:', error);
-                    alert(`Erro ao fazer upload de ${file.name}`);
+                    console.error(`❌ Erro em ${file.name}:`, error);
+                    errors.push(`${file.name}: ${error.message}`);
+                    errorCount++;
                 }
+            }
+            
+            // Restaurar interface
+            uploadSection.innerHTML = originalHTML;
+            
+            // Mostrar resultado
+            let message = '';
+            if (successCount > 0) {
+                message += `✅ ${successCount} arquivo(s) anexado(s) com sucesso!`;
+            }
+            if (errorCount > 0) {
+                if (message) message += '\n\n';
+                message += `❌ ${errorCount} erro(s):\n${errors.join('\n')}`;
+            }
+            
+            if (message) {
+                alert(message);
             }
             
             // Limpar input
@@ -3632,6 +3664,35 @@
         
         async function uploadPdfToDrive(pdfData, eventTitle) {
             try {
+                console.log('📤 Iniciando upload para Google Drive:', pdfData.name);
+                
+                // Verificar se o usuário está autenticado
+                const token = gapi.client.getToken();
+                if (!token || !token.access_token) {
+                    console.error('❌ Token não encontrado, solicitando nova autenticação...');
+                    
+                    // Solicitar nova autenticação com escopos corretos
+                    await new Promise((resolve, reject) => {
+                        tokenClient.callback = async (resp) => {
+                            if (resp.error !== undefined) {
+                                reject(resp);
+                            } else {
+                                console.log('✅ Nova autenticação realizada');
+                                resolve(resp);
+                            }
+                        };
+                        tokenClient.requestAccessToken({prompt: 'consent'});
+                    });
+                }
+                
+                // Verificar novamente após autenticação
+                const newToken = gapi.client.getToken();
+                if (!newToken || !newToken.access_token) {
+                    throw new Error('Falha na autenticação. Tente novamente.');
+                }
+                
+                console.log('🔑 Token válido encontrado, prosseguindo com upload...');
+                
                 // Converter base64 para blob
                 const byteCharacters = atob(pdfData.base64);
                 const byteNumbers = new Array(byteCharacters.length);
@@ -3641,10 +3702,12 @@
                 const byteArray = new Uint8Array(byteNumbers);
                 const blob = new Blob([byteArray], { type: 'application/pdf' });
                 
+                console.log('📄 Arquivo preparado:', blob.size, 'bytes');
+                
                 // Metadados do arquivo
                 const metadata = {
                     name: `${eventTitle} - ${pdfData.name}`,
-                    parents: []
+                    parents: [] // Salvar na raiz do Drive
                 };
                 
                 // Criar FormData para upload
@@ -3652,24 +3715,38 @@
                 form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
                 form.append('file', blob);
                 
-                // Fazer upload
-                const accessToken = gapi.client.getToken().access_token;
+                console.log('📤 Enviando para Google Drive...');
+                
+                // Fazer upload usando fetch
                 const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${accessToken}`
+                        'Authorization': `Bearer ${newToken.access_token}`
                     },
                     body: form
                 });
                 
+                console.log('📡 Resposta do Drive:', response.status, response.statusText);
+                
                 if (!response.ok) {
-                    throw new Error(`Upload failed: ${response.status}`);
+                    const errorText = await response.text();
+                    console.error('❌ Erro detalhado:', errorText);
+                    
+                    if (response.status === 403) {
+                        throw new Error('Permissão negada. Você precisa reautenticar com permissões do Google Drive. Clique em "Sincronizar" novamente.');
+                    } else if (response.status === 401) {
+                        throw new Error('Token expirado. Faça login novamente.');
+                    } else {
+                        throw new Error(`Erro no upload: ${response.status} - ${errorText}`);
+                    }
                 }
                 
                 const fileData = await response.json();
+                console.log('✅ Arquivo enviado com sucesso:', fileData.id);
                 
-                // Tornar arquivo público
+                // Tentar tornar arquivo público (opcional)
                 try {
+                    console.log('🔓 Tornando arquivo público...');
                     await gapi.client.drive.permissions.create({
                         fileId: fileData.id,
                         resource: {
@@ -3677,8 +3754,9 @@
                             type: 'anyone'
                         }
                     });
+                    console.log('✅ Arquivo tornado público');
                 } catch (permError) {
-                    console.warn('Não foi possível tornar o arquivo público:', permError);
+                    console.warn('⚠️ Não foi possível tornar o arquivo público (não é crítico):', permError);
                 }
                 
                 return {
@@ -3689,7 +3767,7 @@
                 };
                 
             } catch (error) {
-                console.error('Erro no upload para Drive:', error);
+                console.error('❌ Erro completo no upload:', error);
                 throw error;
             }
         }
