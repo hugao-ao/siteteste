@@ -2370,7 +2370,7 @@
                             ${item.pdfs && item.pdfs.length > 0 ? `<span><i class="fas fa-file-pdf"></i> ${item.pdfs.length} PDF(s) anexado(s)</span>` : ''}
                         </div>
                     </div>
-                    <div class="item-value">R$ ${item.valor.toFixed(2).replace('.', ',')}</div>
+                    <div class="item-value">R$ ${formatCurrency(item.valor)}</div>
                     <button class="remove-item-btn" onclick="removePaymentItem(${item.id})">
                         <i class="fas fa-trash"></i>
                     </button>
@@ -2388,6 +2388,13 @@
             document.getElementById('itemDetalhe').value = '';
         }
 
+        // ✅ NOVO: Função para formatação correta de valores monetários
+        function formatCurrency(value) {
+            return value.toFixed(2)
+                .replace('.', ',')
+                .replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+
         function generateEventDescription() {
             return paymentItems.map(item => {
                 const parts = [];
@@ -2397,7 +2404,7 @@
                 parts.push(item.nome);
                 
                 // Formatar valor com status (sem hífen entre eles)
-                let valorFormatado = `R$ ${item.valor.toFixed(2).replace('.', ',')}`;
+                let valorFormatado = `R$ ${formatCurrency(item.valor)}`;
                 if (item.status) {
                     valorFormatado += ` (${item.status})`;
                 }
