@@ -2395,8 +2395,14 @@
                 if (item.subtipo) parts.push(item.subtipo);
                 if (item.categoria) parts.push(item.categoria);
                 parts.push(item.nome);
-                parts.push(`R$ ${item.valor.toFixed(2).replace('.', ',')}`);
-                if (item.status) parts.push(`(${item.status})`);
+                
+                // Formatar valor com status (sem hífen entre eles)
+                let valorFormatado = `R$ ${item.valor.toFixed(2).replace('.', ',')}`;
+                if (item.status) {
+                    valorFormatado += ` (${item.status})`;
+                }
+                parts.push(valorFormatado);
+                
                 if (item.detalhe) parts.push(item.detalhe);
                 
                 return parts.join(' - ');
