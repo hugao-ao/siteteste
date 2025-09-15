@@ -881,7 +881,6 @@
             word-wrap: break-word;
         }
 
-        .attachment-link {
             color: #4285f4;
             text-decoration: none;
             display: inline-flex;
@@ -892,7 +891,6 @@
             word-wrap: break-word;
         }
 
-        .attachment-link:hover {
             color: #34a853;
             text-decoration: underline;
         }
@@ -2028,8 +2026,6 @@
             }
         }
 
-        /* ✅ NOVO: Estilos para upload de PDF */
-        .pdf-upload-container {
             border: 2px dashed #ddd;
             border-radius: 8px;
             padding: 20px;
@@ -2039,12 +2035,10 @@
             position: relative;
         }
 
-        .pdf-upload-container:hover {
             border-color: #007bff;
             background: #f0f8ff;
         }
 
-        .pdf-input {
             position: absolute;
             top: 0;
             left: 0;
@@ -2054,24 +2048,20 @@
             cursor: pointer;
         }
 
-        .pdf-upload-info {
             pointer-events: none;
             color: #666;
         }
 
-        .pdf-upload-info i {
             font-size: 2em;
             color: #007bff;
             margin-bottom: 10px;
             display: block;
         }
 
-        .pdf-preview-list {
             margin-top: 15px;
             text-align: left;
         }
 
-        .pdf-preview-item {
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -2083,39 +2073,32 @@
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
 
-        .pdf-preview-info {
             display: flex;
             align-items: center;
             flex: 1;
         }
 
-        .pdf-preview-info i {
             color: #dc3545;
             margin-right: 10px;
             font-size: 1.2em;
         }
 
-        .pdf-preview-details {
             flex: 1;
         }
 
-        .pdf-preview-name {
             font-weight: bold;
             color: #333;
             margin-bottom: 2px;
         }
 
-        .pdf-preview-size {
             font-size: 0.9em;
             color: #666;
         }
 
-        .pdf-preview-actions {
             display: flex;
             gap: 5px;
         }
 
-        .pdf-remove-btn {
             background: #dc3545;
             color: white;
             border: none;
@@ -2126,11 +2109,9 @@
             transition: background 0.3s ease;
         }
 
-        .pdf-remove-btn:hover {
             background: #c82333;
         }
 
-        .pdf-view-btn {
             background: #007bff;
             color: white;
             border: none;
@@ -2141,22 +2122,18 @@
             transition: background 0.3s ease;
         }
 
-        .pdf-view-btn:hover {
             background: #0056b3;
         }
 
-        .pdf-upload-container.dragover {
             border-color: #007bff;
             background: #e3f2fd;
         }
 
-        .pdf-upload-error {
             color: #dc3545;
             font-size: 0.9em;
             margin-top: 5px;
         }
 
-        .pdf-upload-success {
             color: #28a745;
             font-size: 0.9em;
             margin-top: 5px;
@@ -2173,7 +2150,7 @@
         // Configurações
         const CLIENT_ID = '314578730498-ghkttnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
         const DISCOVERY_DOC = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
-        const SCOPES = 'https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.file';
+        const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file';
 
         let tokenClient;
         let gapiInited = false;
@@ -2188,9 +2165,6 @@
         let currentEditingEvent = null;
         let isEditingDescription = false;
         let originalDescription = '';
-        // ✅ NOVO: Variáveis para gerenciar PDFs
-        let currentItemPdfs = []; // PDFs do item atual sendo criado
-        let allEventAttachments = []; // Todos os anexos do evento
 
         // ✅ NOVO: Funções para gerenciar itens de pagamento
         function addPaymentItem() {
@@ -2226,8 +2200,6 @@
                 valor,
                 status,
                 detalhe,
-                // ✅ NOVO: Incluir PDFs no item
-                pdfs: [...currentItemPdfs] // Cópia dos PDFs atuais
             };
 
             paymentItems.push(item);
@@ -2268,7 +2240,6 @@
                             ${item.categoria ? `<span>Categoria: ${item.categoria}</span>` : ''}
                             ${item.status ? `<span>Status: ${item.status}</span>` : ''}
                             ${item.detalhe ? `<span>Detalhe: ${item.detalhe}</span>` : ''}
-                            ${item.pdfs && item.pdfs.length > 0 ? `<span><i class="fas fa-file-pdf"></i> ${item.pdfs.length} PDF(s) anexado(s)</span>` : ''}
                         </div>
                     </div>
                     <div class="item-value">R$ ${item.valor.toFixed(2).replace('.', ',')}</div>
@@ -2287,19 +2258,11 @@
             document.getElementById('itemValor').value = '';
             document.getElementById('itemStatus').value = '';
             document.getElementById('itemDetalhe').value = '';
-            // ✅ NOVO: Limpar PDFs
-            clearPdfPreview();
         }
 
-        // ✅ NOVO: Funções para gerenciar PDFs
-        function initializePdfUpload() {
-            const pdfInput = document.getElementById('itemPdfs');
-            const uploadContainer = document.querySelector('.pdf-upload-container');
             
-            if (!pdfInput || !uploadContainer) return;
             
             // Event listener para seleção de arquivos
-            pdfInput.addEventListener('change', handlePdfSelection);
             
             // Event listeners para drag and drop
             uploadContainer.addEventListener('dragover', handleDragOver);
@@ -2307,9 +2270,7 @@
             uploadContainer.addEventListener('drop', handleDrop);
         }
 
-        function handlePdfSelection(event) {
             const files = Array.from(event.target.files);
-            processPdfFiles(files);
         }
 
         function handleDragOver(event) {
@@ -2326,18 +2287,13 @@
             event.preventDefault();
             event.currentTarget.classList.remove('dragover');
             
-            const files = Array.from(event.dataTransfer.files).filter(file => file.type === 'application/pdf');
-            processPdfFiles(files);
         }
 
-        function processPdfFiles(files) {
             const maxSize = 10 * 1024 * 1024; // 10MB
             const validFiles = [];
             const errors = [];
             
             files.forEach(file => {
-                if (file.type !== 'application/pdf') {
-                    errors.push(`${file.name}: Apenas arquivos PDF são permitidos`);
                     return;
                 }
                 
@@ -2347,7 +2303,6 @@
                 }
                 
                 // Verificar se já existe
-                const exists = currentItemPdfs.some(pdf => pdf.name === file.name && pdf.size === file.size);
                 if (exists) {
                     errors.push(`${file.name}: Arquivo já adicionado`);
                     return;
@@ -2358,14 +2313,11 @@
             
             // Mostrar erros se houver
             if (errors.length > 0) {
-                showPdfMessage(errors.join('<br>'), 'error');
             }
             
             // Processar arquivos válidos
             if (validFiles.length > 0) {
                 validFiles.forEach(file => {
-                    convertPdfToBase64(file).then(base64 => {
-                        const pdfData = {
                             name: file.name,
                             size: file.size,
                             type: file.type,
@@ -2373,49 +2325,29 @@
                             id: Date.now() + Math.random()
                         };
                         
-                        currentItemPdfs.push(pdfData);
-                        updatePdfPreview();
-                        showPdfMessage(`${file.name} adicionado com sucesso`, 'success');
                     }).catch(error => {
-                        console.error('Erro ao processar PDF:', error);
-                        showPdfMessage(`Erro ao processar ${file.name}`, 'error');
                     });
                 });
             }
         }
 
-        function convertPdfToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]); // Remove data:application/pdf;base64,
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
         }
 
-        function updatePdfPreview() {
-            const previewContainer = document.getElementById('pdfPreview');
             if (!previewContainer) return;
             
-            if (currentItemPdfs.length === 0) {
                 previewContainer.innerHTML = '';
                 return;
             }
             
-            const html = currentItemPdfs.map(pdf => `
-                <div class="pdf-preview-item" data-pdf-id="${pdf.id}">
-                    <div class="pdf-preview-info">
-                        <i class="fas fa-file-pdf"></i>
-                        <div class="pdf-preview-details">
-                            <div class="pdf-preview-name">${pdf.name}</div>
-                            <div class="pdf-preview-size">${formatFileSize(pdf.size)}</div>
                         </div>
                     </div>
-                    <div class="pdf-preview-actions">
-                        <button class="pdf-view-btn" onclick="viewPdf('${pdf.id}')" title="Visualizar">
                             <i class="fas fa-eye"></i>
                         </button>
-                        <button class="pdf-remove-btn" onclick="removePdf('${pdf.id}')" title="Remover">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -2433,18 +2365,13 @@
             return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
         }
 
-        function viewPdf(pdfId) {
-            const pdf = currentItemPdfs.find(p => p.id == pdfId);
-            if (!pdf) return;
             
             // Criar URL do blob para visualização
-            const byteCharacters = atob(pdf.base64);
             const byteNumbers = new Array(byteCharacters.length);
             for (let i = 0; i < byteCharacters.length; i++) {
                 byteNumbers[i] = byteCharacters.charCodeAt(i);
             }
             const byteArray = new Uint8Array(byteNumbers);
-            const blob = new Blob([byteArray], { type: 'application/pdf' });
             const url = URL.createObjectURL(blob);
             
             // Abrir em nova aba
@@ -2454,33 +2381,20 @@
             setTimeout(() => URL.revokeObjectURL(url), 1000);
         }
 
-        function removePdf(pdfId) {
-            currentItemPdfs = currentItemPdfs.filter(pdf => pdf.id != pdfId);
-            updatePdfPreview();
-            showPdfMessage('Arquivo removido', 'success');
         }
 
-        function clearPdfPreview() {
-            currentItemPdfs = [];
-            updatePdfPreview();
             
             // Limpar input file
-            const pdfInput = document.getElementById('itemPdfs');
-            if (pdfInput) pdfInput.value = '';
         }
 
-        function showPdfMessage(message, type) {
             // Remover mensagens anteriores
-            const existingMessages = document.querySelectorAll('.pdf-upload-error, .pdf-upload-success');
             existingMessages.forEach(msg => msg.remove());
             
             // Criar nova mensagem
             const messageDiv = document.createElement('div');
-            messageDiv.className = type === 'error' ? 'pdf-upload-error' : 'pdf-upload-success';
             messageDiv.innerHTML = message;
             
             // Adicionar após o container de upload
-            const uploadContainer = document.querySelector('.pdf-upload-container');
             if (uploadContainer) {
                 uploadContainer.parentNode.insertBefore(messageDiv, uploadContainer.nextSibling);
                 
@@ -2489,10 +2403,7 @@
             }
         }
 
-        // ✅ NOVO: Função para fazer upload de PDF para Google Drive
-        async function uploadPdfToDrive(pdfData, itemName) {
             try {
-                console.log('📤 Fazendo upload do PDF para Google Drive:', pdfData.name);
                 
                 // Verificar se o usuário está autenticado
                 if (!gapi.client.getToken()) {
@@ -2500,17 +2411,14 @@
                 }
                 
                 // Converter base64 para blob
-                const byteCharacters = atob(pdfData.base64);
                 const byteNumbers = new Array(byteCharacters.length);
                 for (let i = 0; i < byteCharacters.length; i++) {
                     byteNumbers[i] = byteCharacters.charCodeAt(i);
                 }
                 const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'application/pdf' });
                 
                 // Metadados do arquivo
                 const metadata = {
-                    name: `${itemName} - ${pdfData.name}`,
                     parents: [] // Será salvo na raiz do Drive
                 };
                 
@@ -2545,28 +2453,10 @@
                 }
                 
                 const fileData = await response.json();
-                console.log('✅ PDF enviado para Google Drive:', fileData);
                 
-                // Tornar o arquivo público para ser acessível
-                try {
-                    await gapi.client.drive.permissions.create({
-                        fileId: fileData.id,
-                        resource: {
-                            role: 'reader',
-                            type: 'anyone'
-                        }
-                    });
-                    console.log('✅ Arquivo tornado público');
-                } catch (permError) {
-                    console.warn('⚠️ Não foi possível tornar o arquivo público:', permError);
-                }
-                
-                // Retornar dados necessários para anexo
                 return {
                     fileId: fileData.id,
                     fileUrl: `https://drive.google.com/file/d/${fileData.id}/view`,
-                    title: `${itemName} - ${pdfData.name}`,
-                    mimeType: 'application/pdf'
                 };
                 
             } catch (error) {
@@ -2586,18 +2476,8 @@
                 if (item.status) parts.push(`(${item.status})`);
                 if (item.detalhe) parts.push(item.detalhe);
                 
-                // Adicionar links dos PDFs na descrição
-                if (item.pdfs && item.pdfs.length > 0) {
-                    parts.push('\n📎 ANEXOS:');
-                    item.pdfs.forEach(pdf => {
-                        if (pdf && pdf.fileId) {
-                            parts.push(`• ${pdf.name}: https://drive.google.com/file/d/${pdf.fileId}/view`);
-                        }
-                    });
-                }
-                
                 return parts.join(' - ');
-            }).join('\n\n');
+            }).join('\n');
         }
 
         async function createPaymentEvent() {
@@ -2686,36 +2566,18 @@
                     }
                 }
 
-                // Preparar anexos PDF - fazer upload para Google Drive primeiro
-                console.log('📎 Processando anexos PDF...');
-
+                
                 for (const item of paymentItems) {
-                    if (item.pdfs && item.pdfs.length > 0) {
-                        console.log(`📎 Item "${item.nome}" tem ${item.pdfs.length} PDF(s)`);
                         
-                        // Adicionar informações do PDF ao item para incluir na descrição
-                        item.pdfs = await Promise.all(item.pdfs.map(async (pdf) => {
                             try {
-                                console.log(`📤 Fazendo upload: ${pdf.name}`);
-                                const driveFile = await uploadPdfToDrive(pdf, item.nome);
                                 console.log(`✅ Upload concluído: ${driveFile.title}`);
-                                return {
-                                    name: pdf.name,
-                                    fileId: driveFile.fileId,
-                                    fileUrl: driveFile.fileUrl
-                                };
                             } catch (error) {
-                                console.error(`❌ Erro no upload de ${pdf.name}:`, error);
-                                return null;
+                                // Continuar com outros arquivos mesmo se um falhar
                             }
-                        }));
-                        
-                        // Remover PDFs que falharam no upload
-                        item.pdfs = item.pdfs.filter(pdf => pdf !== null);
+                        }
                     }
                 }
 
-                console.log('📎 Processamento de PDFs concluído');
 
                 // Criar evento
                 const event = {
@@ -2731,17 +2593,20 @@
                     }
                 };
 
+                }
+
                 if (rrule) {
                     event.recurrence = rrule;
                 }
 
                 const response = await gapi.client.calendar.events.insert({
                     calendarId: 'primary',
-                    resource: event
+                    resource: event,
+                    supportsAttachments: true
                 });
 
                 console.log('✅ Evento criado:', response.result);
-                alert('Evento criado com sucesso! Os links dos PDFs estão na descrição do evento.');
+                alert('Evento criado com sucesso!');
                 
                 // Limpar formulário
                 paymentItems = [];
@@ -3738,46 +3603,7 @@
                     });
                     detailsHTML += '</div>';
                 }
-            }
-            
-            // Buscar anexos do evento
-            try {
-                if (event.attachments && event.attachments.length > 0) {
-                    detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
-                    event.attachments.forEach(attachment => {
-                        detailsHTML += `
-                            <a href="${attachment.fileUrl}" target="_blank" class="attachment-link">
-                                <i class="fas fa-file"></i> ${attachment.title || 'Anexo'}
-                            </a>
-                        `;
-                    });
-                    detailsHTML += '</div>';
-                } else {
-                    // Tentar buscar anexos via API se não estiverem no evento
-                    try {
-                        const fullEvent = await gapi.client.calendar.events.get({
-                            calendarId: 'primary',
-                            eventId: event.id
-                        });
-                        
-                        if (fullEvent.result.attachments && fullEvent.result.attachments.length > 0) {
-                            detailsHTML += '<p><strong><i class="fas fa-paperclip"></i> Anexos:</strong></p><div style="margin-left: 20px;">';
-                            fullEvent.result.attachments.forEach(attachment => {
-                                detailsHTML += `
-                                    <a href="${attachment.fileUrl}" target="_blank" class="attachment-link">
-                                        <i class="fas fa-file"></i> ${attachment.title || 'Anexo'}
-                                    </a>
-                                `;
-                            });
-                            detailsHTML += '</div>';
-                        }
-                    } catch (attachmentError) {
-                        console.log('Não foi possível carregar anexos:', attachmentError);
-                    }
-                }
-            } catch (error) {
-                console.error('Erro ao processar anexos:', error);
-            }
+              }
             
             // ✅ NOVO: Adicionar botão de excluir evento
             detailsHTML += `
@@ -4995,18 +4821,10 @@
                         </div>
                     </div>
                     
-                    <!-- ✅ NOVO: Campo para anexos PDF -->
                     <div class="form-row">
                         <div class="form-group full-width">
-                            <label><i class="fas fa-file-pdf"></i> Anexos PDF</label>
-                            <div class="pdf-upload-container">
-                                <input type="file" id="itemPdfs" multiple accept=".pdf" class="pdf-input">
-                                <div class="pdf-upload-info">
                                     <i class="fas fa-cloud-upload-alt"></i>
-                                    <span>Selecione um ou mais arquivos PDF (máx. 10MB cada)</span>
                                 </div>
-                                <div id="pdfPreview" class="pdf-preview-list">
-                                    <!-- PDFs selecionados aparecerão aqui -->
                                 </div>
                             </div>
                         </div>
@@ -5176,18 +4994,10 @@
                         </div>
                     </div>
                     
-                    <!-- ✅ NOVO: Campo para anexos PDF -->
                     <div class="form-row">
                         <div class="form-group full-width">
-                            <label><i class="fas fa-file-pdf"></i> Anexos PDF</label>
-                            <div class="pdf-upload-container">
-                                <input type="file" id="itemPdfs" multiple accept=".pdf" class="pdf-input">
-                                <div class="pdf-upload-info">
                                     <i class="fas fa-cloud-upload-alt"></i>
-                                    <span>Selecione um ou mais arquivos PDF (máx. 10MB cada)</span>
                                 </div>
-                                <div id="pdfPreview" class="pdf-preview-list">
-                                    <!-- PDFs selecionados aparecerão aqui -->
                                 </div>
                             </div>
                         </div>
@@ -5387,8 +5197,6 @@
                 cancelEventBtn.addEventListener('click', cancelEventCreation);
             }
             
-            // ✅ NOVO: Inicializar sistema de upload de PDF
-            initializePdfUpload();
             
             // ✅ NOVO: Formatação automática do campo valor
             const itemValorInput = document.getElementById('itemValor');
