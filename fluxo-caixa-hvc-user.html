@@ -3541,7 +3541,7 @@
             
             // Analisar todos os itens de todos os eventos do dia
             events.forEach(event => {
-                const eventCalc = calculateEventValues(event);
+                const eventCalc = calculateEventTotal(event);
                 eventCalc.payments.forEach(payment => {
                     if (payment.status === 'PG') hasPG = true;
                     else if (payment.status === 'PENDENTE') hasPendente = true;
@@ -3575,7 +3575,7 @@
             
             // Processar todos os eventos do dia
             events.forEach((event, index) => {
-                const eventCalc = calculateEventValues(event);
+                const eventCalc = calculateEventTotal(event);
                 totalDay += eventCalc.total;
                 allPayments = allPayments.concat(eventCalc.payments);
                 
