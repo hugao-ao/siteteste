@@ -1045,9 +1045,498 @@
             color: #4285f4;
         }
 
-        .btn-secondary {
+        /* ✅ NOVO: Estilos para criação de eventos */
+        .event-creator-section {
+            background: rgba(25, 25, 112, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 25px;
+            display: none;
+        }
+
+        .event-creator-section h3 {
+            color: #ffffff;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .event-type-selector {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .event-type-option {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #ffffff;
+        }
+
+        .event-type-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .event-type-option.selected {
+            background: rgba(66, 133, 244, 0.3);
+            border-color: #4285f4;
+            color: #4285f4;
+        }
+
+        .event-type-option i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .account-selector {
+            margin-bottom: 20px;
+        }
+
+        .account-selector label {
+            color: #ffffff;
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .account-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .account-selector select option {
+            background: #1a1a2e;
+            color: #ffffff;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            color: #ffffff;
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .payment-items-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .payment-items-section h4 {
+            color: #ffc107;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .payment-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .payment-item-info {
+            flex: 1;
+        }
+
+        .payment-item-name {
+            color: #ffffff;
+            font-weight: 500;
+            margin-bottom: 5px;
+        }
+
+        .payment-item-details {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+        }
+
+        .payment-item-value {
+            color: #ffc107;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-right: 15px;
+        }
+
+        .btn-remove {
+            background: rgba(234, 67, 53, 0.3);
+            border: 1px solid #ea4335;
+            color: #ea4335;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .btn-remove:hover {
+            background: rgba(234, 67, 53, 0.5);
+            color: #ffffff;
+        }
+
+        .add-item-form {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .recurrence-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .recurrence-section h4 {
+            color: #ffc107;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .recurrence-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .recurrence-option {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 10px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .recurrence-option:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .recurrence-option.selected {
+            background: rgba(66, 133, 244, 0.3);
+            border-color: #4285f4;
+            color: #4285f4;
+        }
+
+        .event-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 25px;
+        }
+
+        .btn-success {
+            background: rgba(52, 168, 83, 0.3);
+            border: 1px solid #34a853;
+            color: #34a853;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-success:hover {
+            background: rgba(52, 168, 83, 0.5);
+            color: #ffffff;
+        }
+
+        .btn-cancel {
             background: rgba(156, 39, 176, 0.3);
-            border-color: #9c27b0;
+            border: 1px solid #9c27b0;
+            color: #9c27b0;
+            padding: 12px 25px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-cancel:hover {
+            background: rgba(156, 39, 176, 0.5);
+            color: #ffffff;
+        }
+
+        /* ✅ NOVO: Estilos para upload de PDF */
+        .pdf-upload-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .pdf-upload-section h4 {
+            color: #ffc107;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .pdf-upload-area {
+            border: 2px dashed rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 15px;
+        }
+
+        .pdf-upload-area:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .pdf-upload-area.dragover {
+            border-color: #4285f4;
+            background: rgba(66, 133, 244, 0.1);
+        }
+
+        .pdf-upload-text {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 10px;
+        }
+
+        .pdf-upload-button {
+            background: rgba(66, 133, 244, 0.3);
+            border: 1px solid #4285f4;
+            color: #4285f4;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .pdf-upload-button:hover {
+            background: rgba(66, 133, 244, 0.5);
+            color: #ffffff;
+        }
+
+        .pdf-preview-list {
+            margin-top: 15px;
+        }
+
+        .pdf-preview-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .pdf-preview-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffffff;
+        }
+
+        .pdf-preview-info i {
+            color: #ea4335;
+        }
+
+        .pdf-remove-btn {
+            background: rgba(234, 67, 53, 0.3);
+            border: 1px solid #ea4335;
+            color: #ea4335;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+        }
+
+        .pdf-remove-btn:hover {
+            background: rgba(234, 67, 53, 0.5);
+            color: #ffffff;
+        }
+
+        /* ✅ NOVO: Estilos para seção de anexos no modal */
+        .event-attachments-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .event-attachments-section h4 {
+            margin: 0 0 15px 0;
+            color: #ffc107;
+            font-size: 1.1em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .event-attachments-list {
+            margin-bottom: 15px;
+        }
+
+        .attachment-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .attachment-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #ffffff;
+        }
+
+        .attachment-info i {
+            color: #ea4335;
+        }
+
+        .attachment-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .attachment-btn {
+            padding: 4px 8px;
+            border-radius: 4px;
+            border: 1px solid;
+            cursor: pointer;
+            font-size: 12px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .attachment-btn.view {
+            background: rgba(66, 133, 244, 0.3);
+            border-color: #4285f4;
+            color: #4285f4;
+        }
+
+        .attachment-btn.view:hover {
+            background: rgba(66, 133, 244, 0.5);
+            color: #ffffff;
+        }
+
+        .attachment-btn.remove {
+            background: rgba(234, 67, 53, 0.3);
+            border-color: #ea4335;
+            color: #ea4335;
+        }
+
+        .attachment-btn.remove:hover {
+            background: rgba(234, 67, 53, 0.5);
+            color: #ffffff;
+        }
+
+        .add-attachment-btn {
+            background: rgba(52, 168, 83, 0.3);
+            border: 1px solid #34a853;
+            color: #34a853;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .add-attachment-btn:hover {
+            background: rgba(52, 168, 83, 0.5);
+            color: #ffffff;
+        }
+
+        @media (max-width: 768px) {
+            .event-type-selector {
+                grid-template-columns: 1fr;
+            }
+            
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            
+            .recurrence-options {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            
+            .event-actions {
+                flex-direction: column;
+            }
+        }
             color: #9c27b0;
         }
 
@@ -1267,6 +1756,374 @@
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 8px;
+            }
+        }
+        /* ✅ NOVO: Estilos para criação de eventos */
+        .event-creator-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: none;
+        }
+
+        .event-creator-section h3 {
+            color: #fff;
+            margin-bottom: 20px;
+            font-size: 1.3rem;
+        }
+
+        .event-type-selector {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .event-type-option {
+            flex: 1;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .event-type-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .event-type-option.selected {
+            background: rgba(66, 133, 244, 0.2);
+            border-color: #4285f4;
+            color: #fff;
+        }
+
+        .event-type-option i {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            display: block;
+        }
+
+        .account-selector {
+            margin-bottom: 20px;
+        }
+
+        .account-selector label {
+            display: block;
+            color: #fff;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .account-selector select {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            flex: 1;
+        }
+
+        .form-group label {
+            display: block;
+            color: #fff;
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 14px;
+        }
+
+        .form-group input::placeholder,
+        .form-group textarea::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .payment-items-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .payment-items-section h4 {
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .add-item-form {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .payment-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .payment-item-info {
+            flex: 1;
+        }
+
+        .payment-item-name {
+            color: #fff;
+            font-weight: 500;
+        }
+
+        .payment-item-details {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+        }
+
+        .payment-item-value {
+            color: #4CAF50;
+            font-weight: bold;
+            margin-right: 10px;
+        }
+
+        .btn-remove {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .btn-remove:hover {
+            background: #d32f2f;
+        }
+
+        .recurrence-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+
+        .recurrence-section h4 {
+            color: #fff;
+            margin-bottom: 15px;
+        }
+
+        .recurrence-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .recurrence-option {
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: rgba(255, 255, 255, 0.8);
+            text-align: center;
+            min-width: 80px;
+        }
+
+        .recurrence-option:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .recurrence-option.selected {
+            background: rgba(66, 133, 244, 0.2);
+            border-color: #4285f4;
+            color: #fff;
+        }
+
+        .recurrence-option i {
+            display: block;
+            margin-bottom: 5px;
+        }
+
+        .event-actions {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 25px;
+        }
+
+        .btn-success {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+
+        .btn-success:hover {
+            background: #45a049;
+        }
+
+        .btn-cancel {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s ease;
+        }
+
+        .btn-cancel:hover {
+            background: #d32f2f;
+        }
+
+        /* ✅ NOVO: Estilos para anexos PDF */
+        .event-attachments-section {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .event-attachments-section h4 {
+            color: #fff;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .event-attachments-list {
+            margin-bottom: 15px;
+        }
+
+        .attachment-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 12px;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .attachment-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #fff;
+        }
+
+        .attachment-info i {
+            color: #f44336;
+            font-size: 1.2rem;
+        }
+
+        .attachment-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .attachment-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .attachment-btn.view {
+            background: #4285f4;
+            color: white;
+        }
+
+        .attachment-btn.view:hover {
+            background: #3367d6;
+        }
+
+        .attachment-btn.remove {
+            background: #f44336;
+            color: white;
+        }
+
+        .attachment-btn.remove:hover {
+            background: #d32f2f;
+        }
+
+        .add-attachment-btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 auto;
+        }
+
+        .add-attachment-btn:hover {
+            background: #45a049;
+        }
+
+        /* Responsividade */
+        @media (max-width: 768px) {
+            .event-type-selector {
+                flex-direction: column;
+            }
+            
+            .form-row {
+                flex-direction: column;
+            }
+            
+            .recurrence-options {
+                justify-content: center;
+            }
+            
+            .event-actions {
+                flex-direction: column;
             }
         }
     </style>
@@ -1836,9 +2693,9 @@
                 
                 matches.push({
                     name: paymentName,
-                    original: `${paymentName} - R$ ${valueStr}${match[3] ? ' ' + match[3] : ''}`,
+                    original: `${paymentName} - ${formatCurrency(numericValue)} (${status})`,
                     value: numericValue,
-                    formattedValue: `R$ ${valueStr}`,
+                    formattedValue: formatCurrency(numericValue),
                     status: status,
                     statusText: statusText
                 });
@@ -1854,9 +2711,9 @@
                     
                     matches.push({
                         name: 'Pagamento',
-                        original: match,
+                        original: formatCurrency(numericValue),
                         value: numericValue,
-                        formattedValue: match,
+                        formattedValue: formatCurrency(numericValue),
                         status: 'PENDENTE',
                         statusText: ''
                     });
@@ -1875,7 +2732,13 @@
             let match;
             
             while ((match = entradaRegex.exec(text)) !== null) {
-                const entradaName = match[1].trim();
+                let entradaName = match[1].trim();
+                
+                // Remover "ENTRADA" do início se existir
+                if (entradaName.toLowerCase().startsWith('entrada ')) {
+                    entradaName = entradaName.substring(8).trim(); // Remove "ENTRADA "
+                }
+                
                 const valueStr = match[2];
                 const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
                 const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
@@ -1893,9 +2756,9 @@
                 
                 matches.push({
                     name: entradaName,
-                    original: `${entradaName} - R$ ${valueStr}${match[3] ? ' ' + match[3] : ''}`,
+                    original: `${entradaName} - ${formatCurrency(numericValue)} (${status})`,
                     value: numericValue,
-                    formattedValue: `R$ ${valueStr}`,
+                    formattedValue: formatCurrency(numericValue),
                     status: status,
                     statusText: statusText
                 });
@@ -1911,9 +2774,9 @@
                     
                     matches.push({
                         name: 'Entrada',
-                        original: match,
+                        original: formatCurrency(numericValue),
                         value: numericValue,
-                        formattedValue: match,
+                        formattedValue: formatCurrency(numericValue),
                         status: 'AGUARDANDO',
                         statusText: ''
                     });
@@ -2712,9 +3575,68 @@
                     </div>
                 `;
             }
+
+            // ✅ NOVO: Seção de anexos PDF
+            detailsHTML += `
+                <div class="event-attachments-section">
+                    <h4>
+                        <i class="fas fa-paperclip"></i>
+                        Anexos PDF
+                    </h4>
+                    <div class="event-attachments-list" id="eventAttachmentsList">
+                        ${getEventAttachments(event)}
+                    </div>
+                    <button onclick="handleEventPdfUpload('${event.id}')" class="add-attachment-btn">
+                        <i class="fas fa-plus"></i>
+                        Adicionar PDF
+                    </button>
+                </div>
+            `;
             
             body.innerHTML = detailsHTML;
             modal.style.display = 'block';
+        }
+
+        // ✅ NOVO: Extrair anexos do evento
+        function getEventAttachments(event) {
+            if (!event.description) {
+                return '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 10px;">Nenhum anexo encontrado</p>';
+            }
+            
+            const lines = event.description.split('\n');
+            const attachmentLines = lines.filter(line => line.includes('📎') && line.includes('http'));
+            
+            if (attachmentLines.length === 0) {
+                return '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 10px;">Nenhum anexo encontrado</p>';
+            }
+            
+            return attachmentLines.map(line => {
+                const match = line.match(/📎\s*(.+?):\s*(https?:\/\/[^\s]+)/);
+                if (match) {
+                    const fileName = match[1].trim();
+                    const fileUrl = match[2].trim();
+                    
+                    return `
+                        <div class="attachment-item">
+                            <div class="attachment-info">
+                                <i class="fas fa-file-pdf"></i>
+                                <span>${fileName}</span>
+                            </div>
+                            <div class="attachment-actions">
+                                <a href="${fileUrl}" target="_blank" class="attachment-btn view">
+                                    <i class="fas fa-eye"></i>
+                                    Ver
+                                </a>
+                                <button onclick="removeEventPdf('${event.id}', '${fileName}')" class="attachment-btn remove">
+                                    <i class="fas fa-trash"></i>
+                                    Remover
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                return '';
+            }).join('');
         }
 
         // ✅ NOVO: Função para mostrar detalhes de eventos agrupados
@@ -3113,6 +4035,513 @@
             updateAccountFilter();
             updateAccountsList();
         });
+
+        // =================================================================
+        // ✅ NOVO: FUNÇÕES PARA CRIAÇÃO DE EVENTOS
+        // =================================================================
+
+        let selectedEventType = '';
+        let selectedRecurrence = 'none';
+        let paymentItems = [];
+        let currentItemPdfs = [];
+
+        // Mostrar/ocultar seção de criação de eventos
+        function showEventCreator() {
+            const section = document.getElementById('eventCreatorSection');
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+            
+            if (section.style.display === 'block') {
+                updateAccountSelector();
+                setDefaultDate();
+            }
+        }
+
+        // Atualizar seletor de contas
+        function updateAccountSelector() {
+            const select = document.getElementById('eventAccountSelect');
+            select.innerHTML = '<option value="">Selecione uma conta...</option>';
+            
+            accounts.forEach(account => {
+                const option = document.createElement('option');
+                option.value = account.email;
+                option.textContent = `${account.name} (${account.email})`;
+                select.appendChild(option);
+            });
+        }
+
+        // Definir data padrão como hoje
+        function setDefaultDate() {
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0];
+            document.getElementById('eventDate').value = dateStr;
+        }
+
+        // Selecionar tipo de evento
+        function selectEventType(type) {
+            selectedEventType = type;
+            
+            // Atualizar visual dos botões
+            document.querySelectorAll('.event-type-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            document.querySelector(`[data-type="${type}"]`).classList.add('selected');
+            
+            // Atualizar interface baseada no tipo
+            updateInterfaceForEventType(type);
+            
+            // Mostrar formulário
+            document.getElementById('eventForm').style.display = 'block';
+        }
+
+        // Atualizar interface baseada no tipo de evento
+        function updateInterfaceForEventType(type) {
+            const itemsSectionTitle = document.getElementById('itemsSectionTitle');
+            const itemStatus = document.getElementById('itemStatus');
+            
+            if (type === 'ENTRADA') {
+                itemsSectionTitle.textContent = 'Itens de Entrada';
+                itemStatus.innerHTML = `
+                    <option value="AGUARDANDO">AGUARDANDO</option>
+                    <option value="RC">RC</option>
+                    <option value="ADIADO">ADIADO</option>
+                `;
+            } else {
+                itemsSectionTitle.textContent = 'Itens de Pagamento';
+                itemStatus.innerHTML = `
+                    <option value="PENDENTE">PENDENTE</option>
+                    <option value="PG">PG</option>
+                    <option value="RECALCULADO">RECALCULADO</option>
+                `;
+            }
+        }
+
+        // Adicionar item de pagamento/entrada
+        function addPaymentItem() {
+            const name = document.getElementById('itemName').value.trim();
+            const value = parseFloat(document.getElementById('itemValue').value);
+            const status = document.getElementById('itemStatus').value;
+            
+            if (!name || !value || value <= 0) {
+                alert('Por favor, preencha o nome e valor do item corretamente.');
+                return;
+            }
+            
+            const item = {
+                id: Date.now(),
+                name: name,
+                value: value,
+                status: status
+            };
+            
+            paymentItems.push(item);
+            renderPaymentItems();
+            
+            // Limpar campos
+            document.getElementById('itemName').value = '';
+            document.getElementById('itemValue').value = '';
+        }
+
+        // Renderizar lista de itens
+        function renderPaymentItems() {
+            const container = document.getElementById('paymentItemsList');
+            
+            if (paymentItems.length === 0) {
+                container.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 20px;">Nenhum item adicionado</p>';
+                return;
+            }
+            
+            container.innerHTML = paymentItems.map(item => `
+                <div class="payment-item">
+                    <div class="payment-item-info">
+                        <div class="payment-item-name">${item.name}</div>
+                        <div class="payment-item-details">Status: ${item.status}</div>
+                    </div>
+                    <div class="payment-item-value">${formatCurrency(item.value)}</div>
+                    <button onclick="removePaymentItem(${item.id})" class="btn-remove">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Remover item de pagamento
+        function removePaymentItem(id) {
+            paymentItems = paymentItems.filter(item => item.id !== id);
+            renderPaymentItems();
+        }
+
+        // Selecionar recorrência
+        function selectRecurrence(type) {
+            selectedRecurrence = type;
+            
+            // Atualizar visual dos botões
+            document.querySelectorAll('.recurrence-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            document.querySelector(`[data-recurrence="${type}"]`).classList.add('selected');
+            
+            // Mostrar/ocultar detalhes de recorrência
+            const details = document.getElementById('recurrenceDetails');
+            details.style.display = type === 'none' ? 'none' : 'block';
+        }
+
+        // Gerar descrição do evento
+        function generateEventDescription() {
+            const type = document.getElementById('eventType').value.trim();
+            const subtype = document.getElementById('eventSubtype').value.trim();
+            const category = document.getElementById('eventCategory').value.trim();
+            const name = document.getElementById('eventName').value.trim();
+            const details = document.getElementById('eventDetails').value.trim();
+            
+            let description = [];
+            
+            if (type) description.push(type);
+            if (subtype) description.push(subtype);
+            if (category) description.push(category);
+            if (name) description.push(name);
+            
+            // Adicionar itens com valores
+            if (paymentItems.length > 0) {
+                const itemsText = paymentItems.map(item => 
+                    `${selectedEventType} ${item.name} ${formatCurrency(item.value)} (${item.status})`
+                ).join('\n');
+                description.push(itemsText);
+            }
+            
+            if (details) description.push(details);
+            
+            return description.join(' - ');
+        }
+
+        // Gerar regra de recorrência
+        function generateRecurrenceRule() {
+            if (selectedRecurrence === 'none') return null;
+            
+            const count = parseInt(document.getElementById('recurrenceCount').value) || 12;
+            const interval = parseInt(document.getElementById('recurrenceInterval').value) || 1;
+            
+            const freqMap = {
+                'daily': 'DAILY',
+                'weekly': 'WEEKLY',
+                'monthly': 'MONTHLY',
+                'yearly': 'YEARLY'
+            };
+            
+            const freq = freqMap[selectedRecurrence];
+            return [`RRULE:FREQ=${freq};INTERVAL=${interval};COUNT=${count}`];
+        }
+
+        // Criar evento
+        async function createEvent() {
+            try {
+                // Validações
+                const accountEmail = document.getElementById('eventAccountSelect').value;
+                if (!accountEmail) {
+                    alert('Por favor, selecione uma conta do Google Calendar.');
+                    return;
+                }
+                
+                if (!selectedEventType) {
+                    alert('Por favor, selecione o tipo de evento (PAGAMENTO ou ENTRADA).');
+                    return;
+                }
+                
+                if (paymentItems.length === 0) {
+                    alert('Por favor, adicione pelo menos um item.');
+                    return;
+                }
+                
+                const date = document.getElementById('eventDate').value;
+                const time = document.getElementById('eventTime').value;
+                
+                if (!date || !time) {
+                    alert('Por favor, preencha a data e horário.');
+                    return;
+                }
+                
+                // Encontrar conta
+                const account = accounts.find(acc => acc.email === accountEmail);
+                if (!account) {
+                    alert('Conta não encontrada.');
+                    return;
+                }
+                
+                // Preparar dados do evento
+                const startDateTime = new Date(`${date}T${time}`);
+                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1 hora
+                
+                const eventData = {
+                    summary: `${selectedEventType} - ${document.getElementById('eventName').value.trim()}`,
+                    description: generateEventDescription(),
+                    start: {
+                        dateTime: startDateTime.toISOString(),
+                        timeZone: 'America/Sao_Paulo'
+                    },
+                    end: {
+                        dateTime: endDateTime.toISOString(),
+                        timeZone: 'America/Sao_Paulo'
+                    },
+                    recurrence: generateRecurrenceRule()
+                };
+                
+                // Criar evento no Google Calendar
+                showMessage('Criando evento...', 'info');
+                
+                const response = await gapi.client.calendar.events.insert({
+                    calendarId: account.calendarId || 'primary',
+                    resource: eventData
+                });
+                
+                if (response.status === 200) {
+                    showMessage('Evento criado com sucesso!', 'success');
+                    
+                    // Limpar formulário
+                    cancelEventCreation();
+                    
+                    // Recarregar eventos
+                    await loadEventsForAccount(account);
+                    renderCalendar(allEvents);
+                } else {
+                    throw new Error('Falha ao criar evento');
+                }
+                
+            } catch (error) {
+                console.error('Erro ao criar evento:', error);
+                showMessage('Erro ao criar evento: ' + error.message, 'error');
+            }
+        }
+
+        // Cancelar criação de evento
+        function cancelEventCreation() {
+            // Limpar formulário
+            document.getElementById('eventForm').style.display = 'none';
+            document.getElementById('eventCreatorSection').style.display = 'none';
+            
+            // Resetar variáveis
+            selectedEventType = '';
+            selectedRecurrence = 'none';
+            paymentItems = [];
+            currentItemPdfs = [];
+            
+            // Limpar campos
+            document.querySelectorAll('#eventForm input, #eventForm select, #eventForm textarea').forEach(field => {
+                if (field.type === 'time') {
+                    field.value = '09:00';
+                } else if (field.type === 'number') {
+                    field.value = '';
+                } else if (field.tagName === 'SELECT') {
+                    field.selectedIndex = 0;
+                } else {
+                    field.value = '';
+                }
+            });
+            
+            // Resetar seleções visuais
+            document.querySelectorAll('.event-type-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            
+            document.querySelectorAll('.recurrence-option').forEach(option => {
+                option.classList.remove('selected');
+            });
+            document.querySelector('[data-recurrence="none"]').classList.add('selected');
+            
+            // Limpar lista de itens
+            renderPaymentItems();
+        }
+
+        // =================================================================
+        // ✅ NOVO: FUNÇÕES PARA UPLOAD DE PDF
+        // =================================================================
+
+        // Upload de PDF para Google Drive
+        async function uploadPdfToDrive(file, eventId) {
+            try {
+                const accessToken = gapi.client.getToken().access_token;
+                
+                if (!accessToken) {
+                    throw new Error('Token de acesso não encontrado');
+                }
+                
+                const metadata = {
+                    name: file.name,
+                    parents: ['root']
+                };
+                
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+                form.append('file', file);
+                
+                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: form
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erro no upload: ${response.status} ${response.statusText}`);
+                }
+                
+                const result = await response.json();
+                
+                // Tornar arquivo público
+                await fetch(`https://www.googleapis.com/drive/v3/files/${result.id}/permissions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        role: 'reader',
+                        type: 'anyone'
+                    })
+                });
+                
+                return {
+                    id: result.id,
+                    name: result.name,
+                    webViewLink: `https://drive.google.com/file/d/${result.id}/view`,
+                    webContentLink: `https://drive.google.com/uc?id=${result.id}`
+                };
+                
+            } catch (error) {
+                console.error('Erro no upload do PDF:', error);
+                throw error;
+            }
+        }
+
+        // Gerenciar upload de PDF no modal do evento
+        async function handleEventPdfUpload(eventId) {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.pdf';
+            input.multiple = true;
+            
+            input.onchange = async function(e) {
+                const files = Array.from(e.target.files);
+                
+                if (files.length === 0) return;
+                
+                try {
+                    showMessage('Fazendo upload dos PDFs...', 'info');
+                    
+                    const uploadPromises = files.map(file => uploadPdfToDrive(file, eventId));
+                    const uploadResults = await Promise.all(uploadPromises);
+                    
+                    // Atualizar evento com links dos PDFs
+                    await updateEventWithPdfs(eventId, uploadResults);
+                    
+                    showMessage('PDFs anexados com sucesso!', 'success');
+                    
+                    // Recarregar modal
+                    const event = allEvents.find(e => e.id === eventId);
+                    if (event) {
+                        showEventDetails(event);
+                    }
+                    
+                } catch (error) {
+                    console.error('Erro no upload:', error);
+                    showMessage('Erro ao anexar PDFs: ' + error.message, 'error');
+                }
+            };
+            
+            input.click();
+        }
+
+        // Atualizar evento com PDFs
+        async function updateEventWithPdfs(eventId, pdfResults) {
+            try {
+                const event = allEvents.find(e => e.id === eventId);
+                if (!event) throw new Error('Evento não encontrado');
+                
+                const account = accounts.find(acc => acc.email === event.accountEmail);
+                if (!account) throw new Error('Conta não encontrada');
+                
+                // Obter evento atual
+                const currentEvent = await gapi.client.calendar.events.get({
+                    calendarId: account.calendarId || 'primary',
+                    eventId: eventId
+                });
+                
+                // Adicionar links dos PDFs na descrição
+                let description = currentEvent.result.description || '';
+                
+                const pdfLinks = pdfResults.map(pdf => 
+                    `📎 ${pdf.name}: ${pdf.webViewLink}`
+                ).join('\n');
+                
+                if (description) {
+                    description += '\n\n--- ANEXOS ---\n' + pdfLinks;
+                } else {
+                    description = '--- ANEXOS ---\n' + pdfLinks;
+                }
+                
+                // Atualizar evento
+                await gapi.client.calendar.events.update({
+                    calendarId: account.calendarId || 'primary',
+                    eventId: eventId,
+                    resource: {
+                        ...currentEvent.result,
+                        description: description
+                    }
+                });
+                
+                // Atualizar evento local
+                event.description = description;
+                
+            } catch (error) {
+                console.error('Erro ao atualizar evento:', error);
+                throw error;
+            }
+        }
+
+        // Remover PDF do evento
+        async function removeEventPdf(eventId, pdfName) {
+            try {
+                const event = allEvents.find(e => e.id === eventId);
+                if (!event) throw new Error('Evento não encontrado');
+                
+                const account = accounts.find(acc => acc.email === event.accountEmail);
+                if (!account) throw new Error('Conta não encontrada');
+                
+                // Obter evento atual
+                const currentEvent = await gapi.client.calendar.events.get({
+                    calendarId: account.calendarId || 'primary',
+                    eventId: eventId
+                });
+                
+                let description = currentEvent.result.description || '';
+                
+                // Remover linha do PDF específico
+                const lines = description.split('\n');
+                const filteredLines = lines.filter(line => !line.includes(pdfName));
+                description = filteredLines.join('\n');
+                
+                // Atualizar evento
+                await gapi.client.calendar.events.update({
+                    calendarId: account.calendarId || 'primary',
+                    eventId: eventId,
+                    resource: {
+                        ...currentEvent.result,
+                        description: description
+                    }
+                });
+                
+                // Atualizar evento local
+                event.description = description;
+                
+                showMessage('PDF removido com sucesso!', 'success');
+                
+                // Recarregar modal
+                showEventDetails(event);
+                
+            } catch (error) {
+                console.error('Erro ao remover PDF:', error);
+                showMessage('Erro ao remover PDF: ' + error.message, 'error');
+            }
+        }
     </script>
 </head>
 
@@ -3145,6 +4574,202 @@
                     <i class="fas fa-sync-alt"></i> Sincronizar Todas
                 </button>
             </div>
+        </div>
+
+        <!-- ✅ NOVO: Seção de Criação de Eventos -->
+        <div class="event-creator-section" id="eventCreatorSection">
+            <h3>
+                <i class="fas fa-plus-circle"></i>
+                Criar Novo Evento
+            </h3>
+
+            <!-- Seletor de Tipo de Evento -->
+            <div class="event-type-selector">
+                <div class="event-type-option" data-type="PAGAMENTO" onclick="selectEventType('PAGAMENTO')">
+                    <i class="fas fa-credit-card"></i>
+                    <div><strong>PAGAMENTO</strong></div>
+                    <div style="font-size: 0.8rem; margin-top: 5px;">Despesas e saídas</div>
+                </div>
+                <div class="event-type-option" data-type="ENTRADA" onclick="selectEventType('ENTRADA')">
+                    <i class="fas fa-coins"></i>
+                    <div><strong>ENTRADA</strong></div>
+                    <div style="font-size: 0.8rem; margin-top: 5px;">Receitas e entradas</div>
+                </div>
+            </div>
+
+            <!-- Seletor de Conta -->
+            <div class="account-selector">
+                <label for="eventAccountSelect">
+                    <i class="fas fa-user"></i> Conta do Google Calendar:
+                </label>
+                <select id="eventAccountSelect">
+                    <option value="">Selecione uma conta...</option>
+                </select>
+            </div>
+
+            <!-- Formulário de Evento -->
+            <div id="eventForm" style="display: none;">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="eventDate">
+                            <i class="fas fa-calendar"></i> Data:
+                        </label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventTime">
+                            <i class="fas fa-clock"></i> Horário:
+                        </label>
+                        <input type="time" id="eventTime" value="09:00" required>
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="eventType">
+                            <i class="fas fa-tag"></i> Tipo:
+                        </label>
+                        <input type="text" id="eventType" placeholder="Ex: Fornecedor, Cliente, Funcionário" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="eventSubtype">
+                            <i class="fas fa-tags"></i> Subtipo:
+                        </label>
+                        <input type="text" id="eventSubtype" placeholder="Ex: Material, Serviço, Salário">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="eventCategory">
+                            <i class="fas fa-folder"></i> Categoria:
+                        </label>
+                        <input type="text" id="eventCategory" placeholder="Ex: Construção, Administrativo">
+                    </div>
+                    <div class="form-group">
+                        <label for="eventName">
+                            <i class="fas fa-user"></i> Nome:
+                        </label>
+                        <input type="text" id="eventName" placeholder="Ex: João Silva, Empresa XYZ" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="eventDetails">
+                        <i class="fas fa-info-circle"></i> Detalhes:
+                    </label>
+                    <textarea id="eventDetails" rows="3" placeholder="Informações adicionais sobre o evento..."></textarea>
+                </div>
+
+                <!-- Seção de Itens -->
+                <div class="payment-items-section">
+                    <h4>
+                        <i class="fas fa-list"></i>
+                        <span id="itemsSectionTitle">Itens de Pagamento</span>
+                    </h4>
+
+                    <div class="add-item-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="itemName">Nome do Item:</label>
+                                <input type="text" id="itemName" placeholder="Ex: Material de construção">
+                            </div>
+                            <div class="form-group">
+                                <label for="itemValue">Valor:</label>
+                                <input type="number" id="itemValue" step="0.01" placeholder="0,00">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="itemStatus">Status:</label>
+                                <select id="itemStatus">
+                                    <option value="PENDENTE">PENDENTE</option>
+                                    <option value="PG">PG</option>
+                                    <option value="RECALCULADO">RECALCULADO</option>
+                                </select>
+                            </div>
+                            <div class="form-group" style="display: flex; align-items: end;">
+                                <button type="button" onclick="addPaymentItem()" class="btn btn-primary">
+                                    <i class="fas fa-plus"></i> Adicionar Item
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="paymentItemsList">
+                        <!-- Itens serão adicionados aqui -->
+                    </div>
+                </div>
+
+                <!-- Seção de Recorrência -->
+                <div class="recurrence-section">
+                    <h4>
+                        <i class="fas fa-repeat"></i>
+                        Recorrência
+                    </h4>
+
+                    <div class="recurrence-options">
+                        <div class="recurrence-option selected" data-recurrence="none" onclick="selectRecurrence('none')">
+                            <i class="fas fa-times"></i>
+                            <div>Sem Recorrência</div>
+                        </div>
+                        <div class="recurrence-option" data-recurrence="daily" onclick="selectRecurrence('daily')">
+                            <i class="fas fa-calendar-day"></i>
+                            <div>Diário</div>
+                        </div>
+                        <div class="recurrence-option" data-recurrence="weekly" onclick="selectRecurrence('weekly')">
+                            <i class="fas fa-calendar-week"></i>
+                            <div>Semanal</div>
+                        </div>
+                        <div class="recurrence-option" data-recurrence="monthly" onclick="selectRecurrence('monthly')">
+                            <i class="fas fa-calendar-alt"></i>
+                            <div>Mensal</div>
+                        </div>
+                        <div class="recurrence-option" data-recurrence="yearly" onclick="selectRecurrence('yearly')">
+                            <i class="fas fa-calendar"></i>
+                            <div>Anual</div>
+                        </div>
+                    </div>
+
+                    <div id="recurrenceDetails" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="recurrenceCount">Repetir quantas vezes:</label>
+                                <input type="number" id="recurrenceCount" min="1" max="100" value="12">
+                            </div>
+                            <div class="form-group">
+                                <label for="recurrenceInterval">Intervalo:</label>
+                                <select id="recurrenceInterval">
+                                    <option value="1">A cada 1</option>
+                                    <option value="2">A cada 2</option>
+                                    <option value="3">A cada 3</option>
+                                    <option value="6">A cada 6</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Ações -->
+                <div class="event-actions">
+                    <button type="button" onclick="createEvent()" class="btn-success">
+                        <i class="fas fa-save"></i>
+                        Criar Evento
+                    </button>
+                    <button type="button" onclick="cancelEventCreation()" class="btn-cancel">
+                        <i class="fas fa-times"></i>
+                        Cancelar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Botão para mostrar criação de eventos -->
+        <div style="text-align: center; margin-bottom: 25px;">
+            <button onclick="showEventCreator()" class="btn btn-primary" style="font-size: 16px; padding: 12px 25px;">
+                <i class="fas fa-plus-circle"></i>
+                Criar Novo Evento
+            </button>
         </div>
 
         <!-- Filter Information -->
