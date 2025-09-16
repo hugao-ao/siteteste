@@ -1473,7 +1473,7 @@
         let filteredEntradaList = [];
         let editingEventId = null;
         let gapi_loaded = false;
-        let gis_loaded = false;
+        let gsi_loaded = false;
 
         // ✅ NOVO: Variáveis para criação de eventos (copiadas da página do usuário)
         let paymentItems = [];
@@ -3296,6 +3296,65 @@
         // ✅ NOVO: FUNÇÕES DE CRIAÇÃO DE EVENTOS (copiadas da página do usuário)
         // =================================================================
 
+        // ✅ NOVO: Atualizar opções de status baseado no tipo de evento
+        function updateStatusOptions() {
+            const eventType = document.getElementById('eventType').value;
+            const statusSelect = document.getElementById('itemStatus');
+            
+            // Limpar opções existentes
+            statusSelect.innerHTML = '';
+            
+            if (eventType === 'PAGAMENTO') {
+                // Opções para PAGAMENTO
+                statusSelect.innerHTML = `
+                    <option value="PENDENTE">PENDENTE</option>
+                    <option value="PG">PG</option>
+                    <option value="RECALCULADO">RECALCULADO</option>
+                `;
+            } else if (eventType === 'ENTRADA') {
+                // Opções para ENTRADA
+                statusSelect.innerHTML = `
+                    <option value="AGUARDANDO">AGUARDANDO</option>
+                    <option value="RC">RC</option>
+                    <option value="ADIADO">ADIADO</option>
+                `;
+            }
+        }
+
+        // ✅ NOVO: Carregar calendários disponíveis
+        async function loadAvailableCalendars() {
+            try {
+                const response = await gapi.client.calendar.calendarList.list();
+                const calendars = response.result.items;
+                
+                const calendarSelect = document.getElementById('eventCalendar');
+                calendarSelect.innerHTML = ''; // Limpar opções existentes
+                
+                calendars.forEach(calendar => {
+                    const option = document.createElement('option');
+                    option.value = calendar.id;
+                    option.textContent = calendar.summary;
+                    
+                    // Marcar calendário principal como padrão
+                    if (calendar.primary) {
+                        option.selected = true;
+                        option.textContent += ' (Principal)';
+                    }
+                    
+                    calendarSelect.appendChild(option);
+                });
+                
+                console.log(`${calendars.length} calendários carregados`);
+            } catch (error) {
+                console.error('Erro ao carregar calendários:', error);
+                // Manter opção padrão se houver erro
+                const calendarSelect = document.getElementById('eventCalendar');
+                if (calendarSelect.children.length === 0) {
+                    calendarSelect.innerHTML = '<option value="primary">Calendário Principal</option>';
+                }
+            }
+        }
+
         // Mostrar/ocultar seção de criação de eventos
         function showEventCreator() {
             const section = document.getElementById('eventCreatorSection');
@@ -3307,6 +3366,9 @@
                 paymentItems = [];
                 renderPaymentItems();
                 document.getElementById('createEventForm').style.display = 'none';
+                
+                // ✅ NOVO: Carregar calendários quando abrir a seção
+                loadAvailableCalendars();
             }
         }
 
@@ -3408,13 +3470,15 @@
         // Criar evento de pagamento
         async function createPaymentEvent() {
             if (paymentItems.length === 0) {
-                alert('Adicione pelo menos um item de pagamento!');
+                alert('Adicione pelo menos um item!');
                 return;
             }
 
             const eventDate = document.getElementById('eventDate').value;
             const eventTime = document.getElementById('eventTime').value;
             const recurrence = document.getElementById('eventRecurrence').value;
+            const eventType = document.getElementById('eventType').value; // ✅ NOVO
+            const calendarId = document.getElementById('eventCalendar').value; // ✅ NOVO
 
             if (!eventDate) {
                 alert('Selecione uma data para o evento!');
@@ -3461,9 +3525,9 @@
                     }
                 }
 
-                // Criar evento
+                // ✅ NOVO: Criar evento com tipo selecionado
                 const event = {
-                    summary: 'PAGAMENTO',
+                    summary: eventType, // Usa o tipo selecionado (PAGAMENTO ou ENTRADA)
                     description: description.trim(),
                     start: {
                         dateTime: startDateTime.toISOString(),
@@ -3479,13 +3543,14 @@
                     event.recurrence = recurrenceRule;
                 }
 
+                // ✅ NOVO: Criar evento no calendário selecionado
                 const response = await gapi.client.calendar.events.insert({
-                    calendarId: 'primary',
+                    calendarId: calendarId, // Usa o calendário selecionado
                     resource: event
                 });
 
                 if (response.status === 200) {
-                    alert('Evento criado com sucesso!');
+                    alert(`Evento de ${eventType} criado com sucesso no calendário selecionado!`);
                     
                     // Limpar formulário
                     paymentItems = [];
@@ -3540,6 +3605,14 @@
             const cancelEventBtn = document.getElementById('cancelEventBtn');
             if (cancelEventBtn) {
                 cancelEventBtn.addEventListener('click', cancelEventCreation);
+            }
+            
+            // ✅ NOVO: Event listener para tipo de evento
+            const eventTypeSelect = document.getElementById('eventType');
+            if (eventTypeSelect) {
+                eventTypeSelect.addEventListener('change', updateStatusOptions);
+                // Inicializar com opções padrão
+                updateStatusOptions();
             }
             
             // Permitir Enter para adicionar item
@@ -3664,6 +3737,24 @@
             <!-- Formulário para Criar Evento -->
             <div class="create-event-form" style="display: none;" id="createEventForm">
                 <h4><i class="fas fa-calendar-plus"></i> Criar Evento no Google Calendar</h4>
+                
+                <!-- ✅ NOVO: Seleção de Tipo e Calendário -->
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Tipo de Evento *</label>
+                        <select id="eventType" required>
+                            <option value="PAGAMENTO">PAGAMENTO</option>
+                            <option value="ENTRADA">ENTRADA</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Calendário *</label>
+                        <select id="eventCalendar" required>
+                            <option value="primary">Calendário Principal</option>
+                            <!-- Outros calendários serão carregados dinamicamente -->
+                        </select>
+                    </div>
+                </div>
                 
                 <div class="form-row">
                     <div class="form-group">
