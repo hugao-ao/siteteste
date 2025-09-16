@@ -1812,7 +1812,13 @@
             let match;
             
             while ((match = paymentRegex.exec(text)) !== null) {
-                const paymentName = match[1].trim();
+                let paymentName = match[1].trim();
+                
+                // Remover "PAGAMENTO" do início se existir
+                if (paymentName.toLowerCase().startsWith('pagamento ')) {
+                    paymentName = paymentName.substring(10).trim(); // Remove "PAGAMENTO "
+                }
+                
                 const valueStr = match[2];
                 const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
                 const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
