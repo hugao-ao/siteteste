@@ -1045,498 +1045,9 @@
             color: #4285f4;
         }
 
-        /* ✅ NOVO: Estilos para criação de eventos */
-        .event-creator-section {
-            background: rgba(25, 25, 112, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 15px;
-            padding: 25px;
-            margin-bottom: 25px;
-            display: none;
-        }
-
-        .event-creator-section h3 {
-            color: #ffffff;
-            margin-bottom: 20px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .event-type-selector {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .event-type-option {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 10px;
-            padding: 15px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: #ffffff;
-        }
-
-        .event-type-option:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(255, 255, 255, 0.5);
-        }
-
-        .event-type-option.selected {
-            background: rgba(66, 133, 244, 0.3);
-            border-color: #4285f4;
-            color: #4285f4;
-        }
-
-        .event-type-option i {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .account-selector {
-            margin-bottom: 20px;
-        }
-
-        .account-selector label {
-            color: #ffffff;
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .account-selector select {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
-            font-size: 14px;
-        }
-
-        .account-selector select option {
-            background: #1a1a2e;
-            color: #ffffff;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-group label {
-            color: #ffffff;
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 12px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.1);
-            color: #ffffff;
-            font-size: 14px;
-            box-sizing: border-box;
-        }
-
-        .form-group input::placeholder,
-        .form-group textarea::placeholder {
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .form-row {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-        }
-
-        .payment-items-section {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .payment-items-section h4 {
-            color: #ffc107;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .payment-item {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .payment-item-info {
-            flex: 1;
-        }
-
-        .payment-item-name {
-            color: #ffffff;
-            font-weight: 500;
-            margin-bottom: 5px;
-        }
-
-        .payment-item-details {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 0.9rem;
-        }
-
-        .payment-item-value {
-            color: #ffc107;
-            font-weight: bold;
-            font-size: 1.1rem;
-            margin-right: 15px;
-        }
-
-        .btn-remove {
-            background: rgba(234, 67, 53, 0.3);
-            border: 1px solid #ea4335;
-            color: #ea4335;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s ease;
-        }
-
-        .btn-remove:hover {
-            background: rgba(234, 67, 53, 0.5);
-            color: #ffffff;
-        }
-
-        .add-item-form {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px;
-        }
-
-        .recurrence-section {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .recurrence-section h4 {
-            color: #ffc107;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .recurrence-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .recurrence-option {
-            background: rgba(255, 255, 255, 0.1);
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            padding: 10px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: #ffffff;
-            font-size: 0.9rem;
-        }
-
-        .recurrence-option:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-
-        .recurrence-option.selected {
-            background: rgba(66, 133, 244, 0.3);
-            border-color: #4285f4;
-            color: #4285f4;
-        }
-
-        .event-actions {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            margin-top: 25px;
-        }
-
-        .btn-success {
-            background: rgba(52, 168, 83, 0.3);
-            border: 1px solid #34a853;
-            color: #34a853;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-success:hover {
-            background: rgba(52, 168, 83, 0.5);
-            color: #ffffff;
-        }
-
-        .btn-cancel {
+        .btn-secondary {
             background: rgba(156, 39, 176, 0.3);
-            border: 1px solid #9c27b0;
-            color: #9c27b0;
-            padding: 12px 25px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-cancel:hover {
-            background: rgba(156, 39, 176, 0.5);
-            color: #ffffff;
-        }
-
-        /* ✅ NOVO: Estilos para upload de PDF */
-        .pdf-upload-section {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 20px;
-        }
-
-        .pdf-upload-section h4 {
-            color: #ffc107;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .pdf-upload-area {
-            border: 2px dashed rgba(255, 255, 255, 0.3);
-            border-radius: 8px;
-            padding: 20px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-bottom: 15px;
-        }
-
-        .pdf-upload-area:hover {
-            border-color: rgba(255, 255, 255, 0.5);
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .pdf-upload-area.dragover {
-            border-color: #4285f4;
-            background: rgba(66, 133, 244, 0.1);
-        }
-
-        .pdf-upload-text {
-            color: rgba(255, 255, 255, 0.7);
-            margin-bottom: 10px;
-        }
-
-        .pdf-upload-button {
-            background: rgba(66, 133, 244, 0.3);
-            border: 1px solid #4285f4;
-            color: #4285f4;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-        }
-
-        .pdf-upload-button:hover {
-            background: rgba(66, 133, 244, 0.5);
-            color: #ffffff;
-        }
-
-        .pdf-preview-list {
-            margin-top: 15px;
-        }
-
-        .pdf-preview-item {
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            padding: 10px;
-            margin-bottom: 8px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .pdf-preview-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #ffffff;
-        }
-
-        .pdf-preview-info i {
-            color: #ea4335;
-        }
-
-        .pdf-remove-btn {
-            background: rgba(234, 67, 53, 0.3);
-            border: 1px solid #ea4335;
-            color: #ea4335;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s ease;
-        }
-
-        .pdf-remove-btn:hover {
-            background: rgba(234, 67, 53, 0.5);
-            color: #ffffff;
-        }
-
-        /* ✅ NOVO: Estilos para seção de anexos no modal */
-        .event-attachments-section {
-            margin: 20px 0;
-            padding: 15px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 8px;
-            background: rgba(255, 255, 255, 0.05);
-        }
-
-        .event-attachments-section h4 {
-            margin: 0 0 15px 0;
-            color: #ffc107;
-            font-size: 1.1em;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .event-attachments-list {
-            margin-bottom: 15px;
-        }
-
-        .attachment-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 8px 12px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-
-        .attachment-info {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: #ffffff;
-        }
-
-        .attachment-info i {
-            color: #ea4335;
-        }
-
-        .attachment-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .attachment-btn {
-            padding: 4px 8px;
-            border-radius: 4px;
-            border: 1px solid;
-            cursor: pointer;
-            font-size: 12px;
-            transition: all 0.3s ease;
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .attachment-btn.view {
-            background: rgba(66, 133, 244, 0.3);
-            border-color: #4285f4;
-            color: #4285f4;
-        }
-
-        .attachment-btn.view:hover {
-            background: rgba(66, 133, 244, 0.5);
-            color: #ffffff;
-        }
-
-        .attachment-btn.remove {
-            background: rgba(234, 67, 53, 0.3);
-            border-color: #ea4335;
-            color: #ea4335;
-        }
-
-        .attachment-btn.remove:hover {
-            background: rgba(234, 67, 53, 0.5);
-            color: #ffffff;
-        }
-
-        .add-attachment-btn {
-            background: rgba(52, 168, 83, 0.3);
-            border: 1px solid #34a853;
-            color: #34a853;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .add-attachment-btn:hover {
-            background: rgba(52, 168, 83, 0.5);
-            color: #ffffff;
-        }
-
-        @media (max-width: 768px) {
-            .event-type-selector {
-                grid-template-columns: 1fr;
-            }
-            
-            .form-row {
-                grid-template-columns: 1fr;
-            }
-            
-            .recurrence-options {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            
-            .event-actions {
-                flex-direction: column;
-            }
-        }
+            border-color: #9c27b0;
             color: #9c27b0;
         }
 
@@ -1758,400 +1269,150 @@
                 gap: 8px;
             }
         }
-        /* ✅ NOVO: Estilos para criação de eventos */
+
+        /* ✅ NOVO: CSS para seção de criação de eventos (copiado da página do usuário) */
         .event-creator-section {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            display: none;
-        }
-
-        .event-creator-section h3 {
-            color: #fff;
-            margin-bottom: 20px;
-            font-size: 1.3rem;
-        }
-
-        .event-type-selector {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 20px;
-        }
-
-        .event-type-option {
-            flex: 1;
-            padding: 20px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: rgba(255, 255, 255, 0.8);
-        }
-
-        .event-type-option:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .event-type-option.selected {
-            background: rgba(66, 133, 244, 0.2);
-            border-color: #4285f4;
-            color: #fff;
-        }
-
-        .event-type-option i {
-            font-size: 2rem;
-            margin-bottom: 10px;
-            display: block;
-        }
-
-        .account-selector {
-            margin-bottom: 20px;
-        }
-
-        .account-selector label {
-            display: block;
-            color: #fff;
-            margin-bottom: 8px;
-            font-weight: 500;
-        }
-
-        .account-selector select {
-            width: 100%;
-            padding: 12px;
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 6px;
-            color: #fff;
-            font-size: 14px;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
         }
 
-        .form-row {
-            display: flex;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-
-        .form-group {
-            flex: 1;
-        }
-
-        .form-group label {
-            display: block;
-            color: #fff;
-            margin-bottom: 5px;
-            font-weight: 500;
-        }
-
-        .form-group input,
-        .form-group select,
-        .form-group textarea {
-            width: 100%;
-            padding: 10px;
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 6px;
-            color: #fff;
-            font-size: 14px;
-        }
-
-        .form-group input::placeholder,
-        .form-group textarea::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .payment-items-section {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .payment-items-section h4 {
-            color: #fff;
-            margin-bottom: 15px;
-        }
-
-        .add-item-form {
-            background: rgba(255, 255, 255, 0.05);
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 15px;
-        }
-
-        .payment-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-
-        .payment-item-info {
-            flex: 1;
-        }
-
-        .payment-item-name {
-            color: #fff;
-            font-weight: 500;
-        }
-
-        .payment-item-details {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 0.9rem;
-        }
-
-        .payment-item-value {
-            color: #4CAF50;
-            font-weight: bold;
-            margin-right: 10px;
-        }
-
-        .btn-remove {
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: background 0.3s ease;
-        }
-
-        .btn-remove:hover {
-            background: #d32f2f;
-        }
-
-        .recurrence-section {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-
-        .recurrence-section h4 {
-            color: #fff;
-            margin-bottom: 15px;
-        }
-
-        .recurrence-options {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px;
-            flex-wrap: wrap;
-        }
-
-        .recurrence-option {
-            padding: 12px 15px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 2px solid rgba(255, 255, 255, 0.1);
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            color: rgba(255, 255, 255, 0.8);
-            text-align: center;
-            min-width: 80px;
-        }
-
-        .recurrence-option:hover {
-            background: rgba(255, 255, 255, 0.1);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .recurrence-option.selected {
-            background: rgba(66, 133, 244, 0.2);
-            border-color: #4285f4;
-            color: #fff;
-        }
-
-        .recurrence-option i {
-            display: block;
-            margin-bottom: 5px;
-        }
-
-        .event-actions {
-            display: flex;
-            gap: 15px;
-            justify-content: center;
-            margin-top: 25px;
-        }
-
-        .btn-success {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s ease;
-        }
-
-        .btn-success:hover {
-            background: #45a049;
-        }
-
-        .btn-cancel {
-            background: #f44336;
-            color: white;
-            border: none;
-            padding: 12px 25px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            transition: background 0.3s ease;
-        }
-
-        .btn-cancel:hover {
-            background: #d32f2f;
-        }
-
-        /* ✅ NOVO: Estilos para anexos PDF */
-        .event-attachments-section {
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 20px;
-        }
-
-        .event-attachments-section h4 {
-            color: #fff;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .event-attachments-list {
-            margin-bottom: 15px;
-        }
-
-        .attachment-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            background: rgba(255, 255, 255, 0.05);
-            padding: 12px;
-            border-radius: 6px;
-            margin-bottom: 8px;
-        }
-
-        .attachment-info {
+        .event-creator-section h3, .event-creator-section h4 {
+            color: #ffffff;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
-            color: #fff;
         }
 
-        .attachment-info i {
-            color: #f44336;
-            font-size: 1.2rem;
-        }
-
-        .attachment-actions {
-            display: flex;
-            gap: 8px;
-        }
-
-        .attachment-btn {
-            padding: 6px 12px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            text-decoration: none;
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 5px;
-        }
-
-        .attachment-btn.view {
-            background: #4285f4;
-            color: white;
-        }
-
-        .attachment-btn.view:hover {
-            background: #3367d6;
-        }
-
-        .attachment-btn.remove {
-            background: #f44336;
-            color: white;
-        }
-
-        .attachment-btn.remove:hover {
-            background: #d32f2f;
-        }
-
-        .add-attachment-btn {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 0 auto;
-        }
-
-        .add-attachment-btn:hover {
-            background: #45a049;
-        }
-
-        /* Responsividade */
-        @media (max-width: 768px) {
-            .event-type-selector {
-                flex-direction: column;
-            }
-            
-            .form-row {
-                flex-direction: column;
-            }
-            
-            .recurrence-options {
-                justify-content: center;
-            }
-            
-            .event-actions {
-                flex-direction: column;
-            }
-        }
-
-        /* ✅ NOVO: Estilos para etapas de criação */
-        .creation-step {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .payment-items-container {
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 10px;
             padding: 20px;
             margin-bottom: 20px;
         }
 
-        .creation-step h4 {
-            color: #fff;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 1.1rem;
+        .add-item-form {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
         }
 
-        .step-actions {
-            text-align: center;
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 5px;
+            font-weight: 500;
+        }
+
+        .form-group input, .form-group select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 5px;
+            padding: 10px;
+            color: #ffffff;
+            font-size: 14px;
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .add-item-btn {
+            background: linear-gradient(135deg, #4285f4, #34a853);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .add-item-btn:hover {
+            background: linear-gradient(135deg, #3367d6, #2d8f47);
+            transform: translateY(-2px);
+        }
+
+        .items-list {
             margin-top: 20px;
         }
 
-        .btn-next {
-            background: linear-gradient(135deg, #4285f4, #34a853);
+        .payment-item {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .item-info {
+            flex: 1;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        .item-value {
+            font-weight: bold;
+            color: #4285f4;
+            margin-right: 15px;
+        }
+
+        .remove-item-btn {
+            background: #ea4335;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            transition: background 0.3s ease;
+        }
+
+        .remove-item-btn:hover {
+            background: #d33b2c;
+        }
+
+        .create-event-form {
+            background: rgba(52, 168, 83, 0.1);
+            border: 1px solid rgba(52, 168, 83, 0.3);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .create-event-btn {
+            background: linear-gradient(135deg, #34a853, #4285f4);
             color: white;
             border: none;
             padding: 12px 25px;
@@ -2164,32 +1425,28 @@
             transition: all 0.3s ease;
         }
 
-        .btn-next:hover {
-            background: linear-gradient(135deg, #3367d6, #2d8f47);
+        .create-event-btn:hover {
+            background: linear-gradient(135deg, #2d8f47, #3367d6);
             transform: translateY(-2px);
         }
 
-        .btn-next:disabled {
+        .cancel-event-btn {
             background: rgba(255, 255, 255, 0.1);
-            color: rgba(255, 255, 255, 0.5);
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .event-summary {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            padding: 12px 25px;
             border-radius: 8px;
-            padding: 15px;
-            margin: 20px 0;
-        }
-
-        .event-summary h5 {
-            color: #fff;
-            margin-bottom: 10px;
-            display: flex;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
             align-items: center;
             gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        .cancel-event-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.5);
         }
     </style>
 
@@ -2216,7 +1473,11 @@
         let filteredEntradaList = [];
         let editingEventId = null;
         let gapi_loaded = false;
-        let gsi_loaded = false;
+        let gis_loaded = false;
+
+        // ✅ NOVO: Variáveis para criação de eventos (copiadas da página do usuário)
+        let paymentItems = [];
+        let currentItemPdfs = [];
         let accountManager;
 
         // ✅ CORRIGIDO: Gerenciador de múltiplas contas com filtro APENAS NO TÍTULO
@@ -3640,68 +2901,9 @@
                     </div>
                 `;
             }
-
-            // ✅ NOVO: Seção de anexos PDF
-            detailsHTML += `
-                <div class="event-attachments-section">
-                    <h4>
-                        <i class="fas fa-paperclip"></i>
-                        Anexos PDF
-                    </h4>
-                    <div class="event-attachments-list" id="eventAttachmentsList">
-                        ${getEventAttachments(event)}
-                    </div>
-                    <button onclick="handleEventPdfUpload('${event.id}')" class="add-attachment-btn">
-                        <i class="fas fa-plus"></i>
-                        Adicionar PDF
-                    </button>
-                </div>
-            `;
             
             body.innerHTML = detailsHTML;
             modal.style.display = 'block';
-        }
-
-        // ✅ NOVO: Extrair anexos do evento
-        function getEventAttachments(event) {
-            if (!event.description) {
-                return '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 10px;">Nenhum anexo encontrado</p>';
-            }
-            
-            const lines = event.description.split('\n');
-            const attachmentLines = lines.filter(line => line.includes('📎') && line.includes('http'));
-            
-            if (attachmentLines.length === 0) {
-                return '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 10px;">Nenhum anexo encontrado</p>';
-            }
-            
-            return attachmentLines.map(line => {
-                const match = line.match(/📎\s*(.+?):\s*(https?:\/\/[^\s]+)/);
-                if (match) {
-                    const fileName = match[1].trim();
-                    const fileUrl = match[2].trim();
-                    
-                    return `
-                        <div class="attachment-item">
-                            <div class="attachment-info">
-                                <i class="fas fa-file-pdf"></i>
-                                <span>${fileName}</span>
-                            </div>
-                            <div class="attachment-actions">
-                                <a href="${fileUrl}" target="_blank" class="attachment-btn view">
-                                    <i class="fas fa-eye"></i>
-                                    Ver
-                                </a>
-                                <button onclick="removeEventPdf('${event.id}', '${fileName}')" class="attachment-btn remove">
-                                    <i class="fas fa-trash"></i>
-                                    Remover
-                                </button>
-                            </div>
-                        </div>
-                    `;
-                }
-                return '';
-            }).join('');
         }
 
         // ✅ NOVO: Função para mostrar detalhes de eventos agrupados
@@ -4091,6 +3293,268 @@
         }
 
         // =================================================================
+        // ✅ NOVO: FUNÇÕES DE CRIAÇÃO DE EVENTOS (copiadas da página do usuário)
+        // =================================================================
+
+        // Mostrar/ocultar seção de criação de eventos
+        function showEventCreator() {
+            const section = document.getElementById('eventCreatorSection');
+            section.style.display = section.style.display === 'none' ? 'block' : 'none';
+            
+            if (section.style.display === 'block') {
+                // Limpar formulário
+                clearItemForm();
+                paymentItems = [];
+                renderPaymentItems();
+                document.getElementById('createEventForm').style.display = 'none';
+            }
+        }
+
+        // Adicionar item de pagamento
+        function addPaymentItem() {
+            const tipo = document.getElementById('itemTipo').value.trim();
+            const subtipo = document.getElementById('itemSubtipo').value.trim();
+            const categoria = document.getElementById('itemCategoria').value.trim();
+            const nome = document.getElementById('itemNome').value.trim();
+            
+            // ✅ NOVO: Parsing correto do valor formatado
+            const valorText = document.getElementById('itemValor').value;
+            const valor = parseFloat(valorText.replace(/[^\d,]/g, '').replace(',', '.'));
+            
+            const status = document.getElementById('itemStatus').value;
+            const detalhe = document.getElementById('itemDetalhe').value.trim();
+
+            // Validação
+            if (!nome) {
+                alert('Nome do item é obrigatório!');
+                return;
+            }
+            if (!valor || valor <= 0) {
+                alert('Valor deve ser maior que zero!');
+                return;
+            }
+
+            // Criar item
+            const item = {
+                id: Date.now(),
+                tipo,
+                subtipo,
+                categoria,
+                nome,
+                valor,
+                status,
+                detalhe
+            };
+
+            paymentItems.push(item);
+            renderPaymentItems();
+            clearItemForm();
+            
+            // Mostrar formulário de evento se houver itens
+            if (paymentItems.length > 0) {
+                document.getElementById('createEventForm').style.display = 'block';
+            }
+        }
+
+        // Remover item de pagamento
+        function removePaymentItem(itemId) {
+            paymentItems = paymentItems.filter(item => item.id !== itemId);
+            renderPaymentItems();
+            
+            // Esconder formulário de evento se não houver itens
+            if (paymentItems.length === 0) {
+                document.getElementById('createEventForm').style.display = 'none';
+            }
+        }
+
+        // Renderizar lista de itens
+        function renderPaymentItems() {
+            const container = document.getElementById('itemsList');
+            
+            if (paymentItems.length === 0) {
+                container.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 20px;">Nenhum item adicionado</p>';
+                return;
+            }
+            
+            container.innerHTML = paymentItems.map(item => `
+                <div class="payment-item">
+                    <div class="item-info">
+                        <strong>${item.nome}</strong>
+                        ${item.tipo ? ` - ${item.tipo}` : ''}
+                        ${item.subtipo ? ` - ${item.subtipo}` : ''}
+                        ${item.categoria ? ` - ${item.categoria}` : ''}
+                        ${item.status ? ` (${item.status})` : ''}
+                        ${item.detalhe ? ` - ${item.detalhe}` : ''}
+                    </div>
+                    <div class="item-value">${formatCurrency(item.valor)}</div>
+                    <button onclick="removePaymentItem(${item.id})" class="remove-item-btn">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        // Limpar formulário de item
+        function clearItemForm() {
+            document.getElementById('itemTipo').value = '';
+            document.getElementById('itemSubtipo').value = '';
+            document.getElementById('itemCategoria').value = '';
+            document.getElementById('itemNome').value = '';
+            document.getElementById('itemValor').value = '';
+            document.getElementById('itemStatus').value = '';
+            document.getElementById('itemDetalhe').value = '';
+        }
+
+        // Criar evento de pagamento
+        async function createPaymentEvent() {
+            if (paymentItems.length === 0) {
+                alert('Adicione pelo menos um item de pagamento!');
+                return;
+            }
+
+            const eventDate = document.getElementById('eventDate').value;
+            const eventTime = document.getElementById('eventTime').value;
+            const recurrence = document.getElementById('eventRecurrence').value;
+
+            if (!eventDate) {
+                alert('Selecione uma data para o evento!');
+                return;
+            }
+
+            try {
+                // Preparar descrição do evento
+                let description = '';
+                
+                paymentItems.forEach(item => {
+                    const parts = [item.tipo, item.subtipo, item.categoria, item.nome];
+                    const itemDescription = parts.filter(p => p).join(' - ');
+                    const valorFormatado = formatCurrency(item.valor);
+                    const statusPart = item.status ? ` (${item.status})` : '';
+                    const detalhePart = item.detalhe ? ` - ${item.detalhe}` : '';
+                    
+                    description += `${itemDescription} - ${valorFormatado}${statusPart}${detalhePart}\\n`;
+                });
+
+                // Preparar data/hora do evento
+                const startDateTime = new Date(`${eventDate}T${eventTime}`);
+                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1 hora
+
+                // Preparar recorrência
+                let recurrenceRule = null;
+                if (recurrence !== 'NONE') {
+                    switch (recurrence) {
+                        case 'DAILY':
+                            recurrenceRule = ['RRULE:FREQ=DAILY'];
+                            break;
+                        case 'WEEKLY':
+                            recurrenceRule = ['RRULE:FREQ=WEEKLY'];
+                            break;
+                        case 'MONTHLY':
+                            recurrenceRule = ['RRULE:FREQ=MONTHLY'];
+                            break;
+                        case 'YEARLY':
+                            recurrenceRule = ['RRULE:FREQ=YEARLY'];
+                            break;
+                        case 'WEEKDAYS':
+                            recurrenceRule = ['RRULE:FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR'];
+                            break;
+                    }
+                }
+
+                // Criar evento
+                const event = {
+                    summary: 'PAGAMENTO',
+                    description: description.trim(),
+                    start: {
+                        dateTime: startDateTime.toISOString(),
+                        timeZone: 'America/Sao_Paulo'
+                    },
+                    end: {
+                        dateTime: endDateTime.toISOString(),
+                        timeZone: 'America/Sao_Paulo'
+                    }
+                };
+
+                if (recurrenceRule) {
+                    event.recurrence = recurrenceRule;
+                }
+
+                const response = await gapi.client.calendar.events.insert({
+                    calendarId: 'primary',
+                    resource: event
+                });
+
+                if (response.status === 200) {
+                    alert('Evento criado com sucesso!');
+                    
+                    // Limpar formulário
+                    paymentItems = [];
+                    renderPaymentItems();
+                    document.getElementById('createEventForm').style.display = 'none';
+                    document.getElementById('eventCreatorSection').style.display = 'none';
+                    
+                    // Recarregar eventos
+                    await loadEventsForAccount();
+                } else {
+                    throw new Error('Erro ao criar evento');
+                }
+
+            } catch (error) {
+                console.error('Erro ao criar evento:', error);
+                alert('Erro ao criar evento: ' + error.message);
+            }
+        }
+
+        // Cancelar criação de evento
+        function cancelEventCreation() {
+            paymentItems = [];
+            renderPaymentItems();
+            document.getElementById('createEventForm').style.display = 'none';
+            document.getElementById('eventCreatorSection').style.display = 'none';
+        }
+
+        // Manipular mudança de recorrência
+        function handleRecurrenceChange() {
+            const select = document.getElementById('eventRecurrence');
+            if (select.value === 'CUSTOM') {
+                alert('Funcionalidade de recorrência personalizada será implementada em breve!');
+                select.value = 'NONE';
+            }
+        }
+
+        // Event listeners para criação de eventos
+        document.addEventListener('DOMContentLoaded', function() {
+            // Botão adicionar item
+            const addItemBtn = document.getElementById('addItemBtn');
+            if (addItemBtn) {
+                addItemBtn.addEventListener('click', addPaymentItem);
+            }
+            
+            // Botão criar evento
+            const createEventBtn = document.getElementById('createEventBtn');
+            if (createEventBtn) {
+                createEventBtn.addEventListener('click', createPaymentEvent);
+            }
+            
+            // Botão cancelar evento
+            const cancelEventBtn = document.getElementById('cancelEventBtn');
+            if (cancelEventBtn) {
+                cancelEventBtn.addEventListener('click', cancelEventCreation);
+            }
+            
+            // Permitir Enter para adicionar item
+            const itemForm = document.querySelector('.add-item-form');
+            if (itemForm) {
+                itemForm.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addPaymentItem();
+                    }
+                });
+            }
+        });
+
+        // =================================================================
         // INICIALIZAÇÃO
         // =================================================================
         document.addEventListener('DOMContentLoaded', function() {
@@ -4100,610 +3564,6 @@
             updateAccountFilter();
             updateAccountsList();
         });
-
-        // =================================================================
-        // ✅ NOVO: FUNÇÕES PARA CRIAÇÃO DE EVENTOS
-        // =================================================================
-
-        let selectedEventType = '';
-        let selectedRecurrence = 'none';
-        let paymentItems = [];
-        let currentItemPdfs = [];
-
-        // Mostrar/ocultar seção de criação de eventos
-        function showEventCreator() {
-            const section = document.getElementById('eventCreatorSection');
-            section.style.display = section.style.display === 'none' ? 'block' : 'none';
-            
-            if (section.style.display === 'block') {
-                // Resetar para etapa 1
-                document.getElementById('step1').style.display = 'block';
-                document.getElementById('step2').style.display = 'none';
-                document.getElementById('step3').style.display = 'none';
-                document.getElementById('step4').style.display = 'none';
-                
-                // Resetar seleções
-                selectedEventType = null;
-                paymentItems = [];
-                selectedRecurrence = 'none';
-                
-                // Limpar formulários
-                document.getElementById('itemName').value = '';
-                document.getElementById('itemValue').value = '';
-                document.getElementById('eventDate').value = '';
-                document.getElementById('eventTime').value = '09:00';
-                document.getElementById('eventType').value = '';
-                document.getElementById('eventSubtype').value = '';
-                document.getElementById('eventCategory').value = '';
-                document.getElementById('eventName').value = '';
-                document.getElementById('eventDetails').value = '';
-                
-                // Resetar visual
-                document.querySelectorAll('.event-type-option').forEach(option => {
-                    option.classList.remove('selected');
-                });
-                document.querySelectorAll('.recurrence-option').forEach(option => {
-                    option.classList.remove('selected');
-                });
-                document.querySelector('[data-recurrence="none"]').classList.add('selected');
-                
-                renderPaymentItems();
-            }
-        }
-
-        // Atualizar seletor de contas
-        function updateAccountSelector() {
-            const select = document.getElementById('eventAccountSelect');
-            select.innerHTML = '<option value="">Selecione uma conta...</option>';
-            
-            accounts.forEach(account => {
-                const option = document.createElement('option');
-                option.value = account.email;
-                option.textContent = `${account.name} (${account.email})`;
-                select.appendChild(option);
-            });
-        }
-
-        // Definir data padrão como hoje
-        function setDefaultDate() {
-            const today = new Date();
-            const dateStr = today.toISOString().split('T')[0];
-            document.getElementById('eventDate').value = dateStr;
-        }
-
-        // Selecionar tipo de evento
-         function selectEventType(type) {
-            selectedEventType = type;
-            
-            // Atualizar visual dos botões
-            document.querySelectorAll('.event-type-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            document.querySelector(`[data-type="${type}"]`).classList.add('selected');
-            
-            // Atualizar título da seção de itens
-            const itemsTitle = document.getElementById('itemsSectionTitle');
-            if (type === 'ENTRADA') {
-                itemsTitle.textContent = 'Adicione os Itens de Entrada';
-                // Atualizar opções de status para entradas
-                const statusSelect = document.getElementById('itemStatus');
-                statusSelect.innerHTML = `
-                    <option value="AGUARDANDO">AGUARDANDO</option>
-                    <option value="RC">RC</option>
-                    <option value="ADIADO">ADIADO</option>
-                `;
-            } else {
-                itemsTitle.textContent = 'Adicione os Itens de Pagamento';
-                // Atualizar opções de status para pagamentos
-                const statusSelect = document.getElementById('itemStatus');
-                statusSelect.innerHTML = `
-                    <option value="PENDENTE">PENDENTE</option>
-                    <option value="PG">PG</option>
-                    <option value="RECALCULADO">RECALCULADO</option>
-                `;
-            }
-            
-            // Avançar para etapa 2
-            goToStep2();
-        }
-
-        // Funções de navegação entre etapas
-        function goToStep2() {
-            document.getElementById('step1').style.display = 'none';
-            document.getElementById('step2').style.display = 'block';
-            document.getElementById('step3').style.display = 'none';
-            document.getElementById('step4').style.display = 'none';
-        }
-
-        function goToStep3() {
-            if (paymentItems.length === 0) {
-                alert('Adicione pelo menos um item antes de continuar.');
-                return;
-            }
-            document.getElementById('step1').style.display = 'none';
-            document.getElementById('step2').style.display = 'none';
-            document.getElementById('step3').style.display = 'block';
-            document.getElementById('step4').style.display = 'none';
-        }
-
-        function goToStep4() {
-            // Validar campos obrigatórios
-            const requiredFields = ['eventDate', 'eventTime', 'eventType', 'eventName'];
-            for (const fieldId of requiredFields) {
-                const field = document.getElementById(fieldId);
-                if (!field.value.trim()) {
-                    alert(`Por favor, preencha o campo: ${field.previousElementSibling.textContent}`);
-                    field.focus();
-                    return;
-                }
-            }
-            
-            // Atualizar seletor de contas
-            updateAccountSelector();
-            
-            // Gerar resumo do evento
-            generateEventSummary();
-            
-            document.getElementById('step1').style.display = 'none';
-            document.getElementById('step2').style.display = 'none';
-            document.getElementById('step3').style.display = 'none';
-            document.getElementById('step4').style.display = 'block';
-        }
-
-        function generateEventSummary() {
-            const type = selectedEventType;
-            const date = document.getElementById('eventDate').value;
-            const time = document.getElementById('eventTime').value;
-            const eventType = document.getElementById('eventType').value;
-            const eventName = document.getElementById('eventName').value;
-            
-            const totalValue = paymentItems.reduce((sum, item) => sum + item.value, 0);
-            const itemCount = paymentItems.length;
-            
-            const summaryContent = document.getElementById('eventSummaryContent');
-            summaryContent.innerHTML = `
-                <div style="color: rgba(255, 255, 255, 0.9); line-height: 1.6;">
-                    <p><strong>Tipo:</strong> ${type}</p>
-                    <p><strong>Data:</strong> ${new Date(date).toLocaleDateString('pt-BR')} às ${time}</p>
-                    <p><strong>Evento:</strong> ${eventType} - ${eventName}</p>
-                    <p><strong>Itens:</strong> ${itemCount} item(s)</p>
-                    <p><strong>Valor Total:</strong> ${formatCurrency(totalValue)}</p>
-                </div>
-            `;
-        }
-
-        // Adicionar item de pagamento/entrada
-        function addPaymentItem() {
-            const name = document.getElementById('itemName').value.trim();
-            const value = parseFloat(document.getElementById('itemValue').value);
-            const status = document.getElementById('itemStatus').value;
-            
-            if (!name || !value || value <= 0) {
-                alert('Por favor, preencha o nome e valor do item corretamente.');
-                return;
-            }
-            
-            const item = {
-                id: Date.now(),
-                name: name,
-                value: value,
-                status: status
-            };
-            
-            paymentItems.push(item);
-            renderPaymentItems();
-            
-            // Limpar campos
-            document.getElementById('itemName').value = '';
-            document.getElementById('itemValue').value = '';
-        }
-
-        // Renderizar lista de itens
-        function renderPaymentItems() {
-            const container = document.getElementById('paymentItemsList');
-            const nextButton = document.getElementById('nextToStep3');
-            
-            if (paymentItems.length === 0) {
-                container.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 20px;">Nenhum item adicionado</p>';
-                nextButton.disabled = true;
-                return;
-            }
-            
-            // Habilitar botão próximo
-            nextButton.disabled = false;
-            
-            container.innerHTML = paymentItems.map(item => `
-                <div class="payment-item">
-                    <div class="payment-item-info">
-                        <div class="payment-item-name">${item.name}</div>
-                        <div class="payment-item-details">Status: ${item.status}</div>
-                    </div>
-                    <div class="payment-item-value">${formatCurrency(item.value)}</div>
-                    <button onclick="removePaymentItem(${item.id})" class="btn-remove">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        // Remover item de pagamento
-        function removePaymentItem(id) {
-            paymentItems = paymentItems.filter(item => item.id !== id);
-            renderPaymentItems();
-        }
-
-        // Selecionar recorrência
-        function selectRecurrence(type) {
-            selectedRecurrence = type;
-            
-            // Atualizar visual dos botões
-            document.querySelectorAll('.recurrence-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            document.querySelector(`[data-recurrence="${type}"]`).classList.add('selected');
-            
-            // Mostrar/ocultar detalhes de recorrência
-            const details = document.getElementById('recurrenceDetails');
-            details.style.display = type === 'none' ? 'none' : 'block';
-        }
-
-        // Gerar descrição do evento
-        function generateEventDescription() {
-            const type = document.getElementById('eventType').value.trim();
-            const subtype = document.getElementById('eventSubtype').value.trim();
-            const category = document.getElementById('eventCategory').value.trim();
-            const name = document.getElementById('eventName').value.trim();
-            const details = document.getElementById('eventDetails').value.trim();
-            
-            let description = [];
-            
-            if (type) description.push(type);
-            if (subtype) description.push(subtype);
-            if (category) description.push(category);
-            if (name) description.push(name);
-            
-            // Adicionar itens com valores
-            if (paymentItems.length > 0) {
-                const itemsText = paymentItems.map(item => 
-                    `${selectedEventType} ${item.name} ${formatCurrency(item.value)} (${item.status})`
-                ).join('\n');
-                description.push(itemsText);
-            }
-            
-            if (details) description.push(details);
-            
-            return description.join(' - ');
-        }
-
-        // Gerar regra de recorrência
-        function generateRecurrenceRule() {
-            if (selectedRecurrence === 'none') return null;
-            
-            const count = parseInt(document.getElementById('recurrenceCount').value) || 12;
-            const interval = parseInt(document.getElementById('recurrenceInterval').value) || 1;
-            
-            const freqMap = {
-                'daily': 'DAILY',
-                'weekly': 'WEEKLY',
-                'monthly': 'MONTHLY',
-                'yearly': 'YEARLY'
-            };
-            
-            const freq = freqMap[selectedRecurrence];
-            return [`RRULE:FREQ=${freq};INTERVAL=${interval};COUNT=${count}`];
-        }
-
-        // Criar evento
-        async function createEvent() {
-            try {
-                // Validações
-                const accountEmail = document.getElementById('eventAccountSelect').value;
-                if (!accountEmail) {
-                    alert('Por favor, selecione uma conta do Google Calendar.');
-                    return;
-                }
-                
-                if (!selectedEventType) {
-                    alert('Por favor, selecione o tipo de evento (PAGAMENTO ou ENTRADA).');
-                    return;
-                }
-                
-                if (paymentItems.length === 0) {
-                    alert('Por favor, adicione pelo menos um item.');
-                    return;
-                }
-                
-                const date = document.getElementById('eventDate').value;
-                const time = document.getElementById('eventTime').value;
-                
-                if (!date || !time) {
-                    alert('Por favor, preencha a data e horário.');
-                    return;
-                }
-                
-                // Encontrar conta
-                const account = accounts.find(acc => acc.email === accountEmail);
-                if (!account) {
-                    alert('Conta não encontrada.');
-                    return;
-                }
-                
-                // Preparar dados do evento
-                const startDateTime = new Date(`${date}T${time}`);
-                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // +1 hora
-                
-                const eventData = {
-                    summary: `${selectedEventType} - ${document.getElementById('eventName').value.trim()}`,
-                    description: generateEventDescription(),
-                    start: {
-                        dateTime: startDateTime.toISOString(),
-                        timeZone: 'America/Sao_Paulo'
-                    },
-                    end: {
-                        dateTime: endDateTime.toISOString(),
-                        timeZone: 'America/Sao_Paulo'
-                    },
-                    recurrence: generateRecurrenceRule()
-                };
-                
-                // Criar evento no Google Calendar
-                showMessage('Criando evento...', 'info');
-                
-                const response = await gapi.client.calendar.events.insert({
-                    calendarId: account.calendarId || 'primary',
-                    resource: eventData
-                });
-                
-                if (response.status === 200) {
-                    showMessage('Evento criado com sucesso!', 'success');
-                    
-                    // Limpar formulário
-                    cancelEventCreation();
-                    
-                    // Recarregar eventos
-                    await loadEventsForAccount(account);
-                    renderCalendar(allEvents);
-                } else {
-                    throw new Error('Falha ao criar evento');
-                }
-                
-            } catch (error) {
-                console.error('Erro ao criar evento:', error);
-                showMessage('Erro ao criar evento: ' + error.message, 'error');
-            }
-        }
-
-        // Cancelar criação de evento
-        function cancelEventCreation() {
-            // Limpar formulário
-            document.getElementById('eventForm').style.display = 'none';
-            document.getElementById('eventCreatorSection').style.display = 'none';
-            
-            // Resetar variáveis
-            selectedEventType = '';
-            selectedRecurrence = 'none';
-            paymentItems = [];
-            currentItemPdfs = [];
-            
-            // Limpar campos
-            document.querySelectorAll('#eventForm input, #eventForm select, #eventForm textarea').forEach(field => {
-                if (field.type === 'time') {
-                    field.value = '09:00';
-                } else if (field.type === 'number') {
-                    field.value = '';
-                } else if (field.tagName === 'SELECT') {
-                    field.selectedIndex = 0;
-                } else {
-                    field.value = '';
-                }
-            });
-            
-            // Resetar seleções visuais
-            document.querySelectorAll('.event-type-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            
-            document.querySelectorAll('.recurrence-option').forEach(option => {
-                option.classList.remove('selected');
-            });
-            document.querySelector('[data-recurrence="none"]').classList.add('selected');
-            
-            // Limpar lista de itens
-            renderPaymentItems();
-        }
-
-        // =================================================================
-        // ✅ NOVO: FUNÇÕES PARA UPLOAD DE PDF
-        // =================================================================
-
-        // Upload de PDF para Google Drive
-        async function uploadPdfToDrive(file, eventId) {
-            try {
-                const accessToken = gapi.client.getToken().access_token;
-                
-                if (!accessToken) {
-                    throw new Error('Token de acesso não encontrado');
-                }
-                
-                const metadata = {
-                    name: file.name,
-                    parents: ['root']
-                };
-                
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-                form.append('file', file);
-                
-                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
-                    },
-                    body: form
-                });
-                
-                if (!response.ok) {
-                    throw new Error(`Erro no upload: ${response.status} ${response.statusText}`);
-                }
-                
-                const result = await response.json();
-                
-                // Tornar arquivo público
-                await fetch(`https://www.googleapis.com/drive/v3/files/${result.id}/permissions`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        role: 'reader',
-                        type: 'anyone'
-                    })
-                });
-                
-                return {
-                    id: result.id,
-                    name: result.name,
-                    webViewLink: `https://drive.google.com/file/d/${result.id}/view`,
-                    webContentLink: `https://drive.google.com/uc?id=${result.id}`
-                };
-                
-            } catch (error) {
-                console.error('Erro no upload do PDF:', error);
-                throw error;
-            }
-        }
-
-        // Gerenciar upload de PDF no modal do evento
-        async function handleEventPdfUpload(eventId) {
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.accept = '.pdf';
-            input.multiple = true;
-            
-            input.onchange = async function(e) {
-                const files = Array.from(e.target.files);
-                
-                if (files.length === 0) return;
-                
-                try {
-                    showMessage('Fazendo upload dos PDFs...', 'info');
-                    
-                    const uploadPromises = files.map(file => uploadPdfToDrive(file, eventId));
-                    const uploadResults = await Promise.all(uploadPromises);
-                    
-                    // Atualizar evento com links dos PDFs
-                    await updateEventWithPdfs(eventId, uploadResults);
-                    
-                    showMessage('PDFs anexados com sucesso!', 'success');
-                    
-                    // Recarregar modal
-                    const event = allEvents.find(e => e.id === eventId);
-                    if (event) {
-                        showEventDetails(event);
-                    }
-                    
-                } catch (error) {
-                    console.error('Erro no upload:', error);
-                    showMessage('Erro ao anexar PDFs: ' + error.message, 'error');
-                }
-            };
-            
-            input.click();
-        }
-
-        // Atualizar evento com PDFs
-        async function updateEventWithPdfs(eventId, pdfResults) {
-            try {
-                const event = allEvents.find(e => e.id === eventId);
-                if (!event) throw new Error('Evento não encontrado');
-                
-                const account = accounts.find(acc => acc.email === event.accountEmail);
-                if (!account) throw new Error('Conta não encontrada');
-                
-                // Obter evento atual
-                const currentEvent = await gapi.client.calendar.events.get({
-                    calendarId: account.calendarId || 'primary',
-                    eventId: eventId
-                });
-                
-                // Adicionar links dos PDFs na descrição
-                let description = currentEvent.result.description || '';
-                
-                const pdfLinks = pdfResults.map(pdf => 
-                    `📎 ${pdf.name}: ${pdf.webViewLink}`
-                ).join('\n');
-                
-                if (description) {
-                    description += '\n\n--- ANEXOS ---\n' + pdfLinks;
-                } else {
-                    description = '--- ANEXOS ---\n' + pdfLinks;
-                }
-                
-                // Atualizar evento
-                await gapi.client.calendar.events.update({
-                    calendarId: account.calendarId || 'primary',
-                    eventId: eventId,
-                    resource: {
-                        ...currentEvent.result,
-                        description: description
-                    }
-                });
-                
-                // Atualizar evento local
-                event.description = description;
-                
-            } catch (error) {
-                console.error('Erro ao atualizar evento:', error);
-                throw error;
-            }
-        }
-
-        // Remover PDF do evento
-        async function removeEventPdf(eventId, pdfName) {
-            try {
-                const event = allEvents.find(e => e.id === eventId);
-                if (!event) throw new Error('Evento não encontrado');
-                
-                const account = accounts.find(acc => acc.email === event.accountEmail);
-                if (!account) throw new Error('Conta não encontrada');
-                
-                // Obter evento atual
-                const currentEvent = await gapi.client.calendar.events.get({
-                    calendarId: account.calendarId || 'primary',
-                    eventId: eventId
-                });
-                
-                let description = currentEvent.result.description || '';
-                
-                // Remover linha do PDF específico
-                const lines = description.split('\n');
-                const filteredLines = lines.filter(line => !line.includes(pdfName));
-                description = filteredLines.join('\n');
-                
-                // Atualizar evento
-                await gapi.client.calendar.events.update({
-                    calendarId: account.calendarId || 'primary',
-                    eventId: eventId,
-                    resource: {
-                        ...currentEvent.result,
-                        description: description
-                    }
-                });
-                
-                // Atualizar evento local
-                event.description = description;
-                
-                showMessage('PDF removido com sucesso!', 'success');
-                
-                // Recarregar modal
-                showEventDetails(event);
-                
-            } catch (error) {
-                console.error('Erro ao remover PDF:', error);
-                showMessage('Erro ao remover PDF: ' + error.message, 'error');
-            }
-        }
     </script>
 </head>
 
@@ -4738,232 +3598,103 @@
             </div>
         </div>
 
-        <!-- ✅ NOVO: Seção de Criação de Eventos -->
-        <div class="event-creator-section" id="eventCreatorSection">
-            <h3>
-                <i class="fas fa-plus-circle"></i>
-                Criar Novo Evento
-            </h3>
-
-            <!-- ETAPA 1: Seletor de Tipo de Evento -->
-            <div class="creation-step" id="step1">
-                <h4>
-                    <i class="fas fa-tag"></i>
-                    Etapa 1: Escolha o Tipo de Evento
-                </h4>
-                <div class="event-type-selector">
-                    <div class="event-type-option" data-type="PAGAMENTO" onclick="selectEventType('PAGAMENTO')">
-                        <i class="fas fa-credit-card"></i>
-                        <div><strong>PAGAMENTO</strong></div>
-                        <div style="font-size: 0.8rem; margin-top: 5px;">Despesas e saídas</div>
-                    </div>
-                    <div class="event-type-option" data-type="ENTRADA" onclick="selectEventType('ENTRADA')">
-                        <i class="fas fa-coins"></i>
-                        <div><strong>ENTRADA</strong></div>
-                        <div style="font-size: 0.8rem; margin-top: 5px;">Receitas e entradas</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ETAPA 2: Adicionar Itens -->
-            <div class="creation-step" id="step2" style="display: none;">
-                <h4>
-                    <i class="fas fa-list"></i>
-                    Etapa 2: <span id="itemsSectionTitle">Adicione os Itens</span>
-                </h4>
-
+        <!-- ✅ NOVO: Seção de Criação de Eventos (copiada da página do usuário) -->
+        <div id="eventCreatorSection" class="event-creator-section" style="display: none;">
+            <h3><i class="fas fa-plus-circle"></i> Criar Evento de Pagamento</h3>
+            
+            <!-- Lista de Itens de Pagamento -->
+            <div class="payment-items-container">
+                <h4><i class="fas fa-list"></i> Itens de Pagamento</h4>
+                
+                <!-- Formulário para Adicionar Item -->
                 <div class="add-item-form">
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="itemName">Nome do Item:</label>
-                            <input type="text" id="itemName" placeholder="Ex: Material de construção">
+                            <label>Tipo</label>
+                            <input type="text" id="itemTipo" placeholder="Ex: Despesa, Investimento...">
                         </div>
                         <div class="form-group">
-                            <label for="itemValue">Valor:</label>
-                            <input type="number" id="itemValue" step="0.01" placeholder="0,00">
+                            <label>Subtipo</label>
+                            <input type="text" id="itemSubtipo" placeholder="Ex: Fixa, Variável...">
+                        </div>
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <input type="text" id="itemCategoria" placeholder="Ex: Alimentação, Transporte...">
                         </div>
                     </div>
+                    
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="itemStatus">Status:</label>
+                            <label>Nome do Item *</label>
+                            <input type="text" id="itemNome" placeholder="Nome do item (obrigatório)" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Valor *</label>
+                            <input type="text" id="itemValor" placeholder="R$ 0,00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
                             <select id="itemStatus">
-                                <option value="PENDENTE">PENDENTE</option>
+                                <option value="">Selecionar...</option>
                                 <option value="PG">PG</option>
+                                <option value="PENDENTE">PENDENTE</option>
                                 <option value="RECALCULADO">RECALCULADO</option>
                             </select>
                         </div>
-                        <div class="form-group" style="display: flex; align-items: end;">
-                            <button type="button" onclick="addPaymentItem()" class="btn btn-primary">
-                                <i class="fas fa-plus"></i> Adicionar Item
-                            </button>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label>Detalhe</label>
+                            <input type="text" id="itemDetalhe" placeholder="Detalhes adicionais...">
                         </div>
                     </div>
-                </div>
-
-                <div id="paymentItemsList">
-                    <!-- Itens serão adicionados aqui -->
-                </div>
-
-                <div class="step-actions">
-                    <button type="button" onclick="goToStep3()" class="btn-next" id="nextToStep3" disabled>
-                        <i class="fas fa-arrow-right"></i>
-                        Próximo: Configurar Evento
+                    
+                    <button type="button" id="addItemBtn" class="add-item-btn">
+                        <i class="fas fa-plus"></i> Adicionar Item
                     </button>
                 </div>
+                
+                <!-- Lista de Itens Adicionados -->
+                <div id="itemsList" class="items-list">
+                    <!-- Itens serão listados aqui -->
+                </div>
             </div>
-
-            <!-- ETAPA 3: Configurações do Evento -->
-            <div class="creation-step" id="step3" style="display: none;">
-                <h4>
-                    <i class="fas fa-calendar"></i>
-                    Etapa 3: Configure o Evento
-                </h4>
-
+            
+            <!-- Formulário para Criar Evento -->
+            <div class="create-event-form" style="display: none;" id="createEventForm">
+                <h4><i class="fas fa-calendar-plus"></i> Criar Evento no Google Calendar</h4>
+                
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="eventDate">
-                            <i class="fas fa-calendar"></i> Data:
-                        </label>
+                        <label>Data *</label>
                         <input type="date" id="eventDate" required>
                     </div>
                     <div class="form-group">
-                        <label for="eventTime">
-                            <i class="fas fa-clock"></i> Horário:
-                        </label>
-                        <input type="time" id="eventTime" value="09:00" required>
+                        <label>Horário</label>
+                        <input type="time" id="eventTime" value="09:00">
                     </div>
                 </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="eventType">
-                            <i class="fas fa-tag"></i> Tipo:
-                        </label>
-                        <input type="text" id="eventType" placeholder="Ex: Fornecedor, Cliente, Funcionário" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="eventSubtype">
-                            <i class="fas fa-tags"></i> Subtipo:
-                        </label>
-                        <input type="text" id="eventSubtype" placeholder="Ex: Material, Serviço, Salário">
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="eventCategory">
-                            <i class="fas fa-folder"></i> Categoria:
-                        </label>
-                        <input type="text" id="eventCategory" placeholder="Ex: Construção, Administrativo">
-                    </div>
-                    <div class="form-group">
-                        <label for="eventName">
-                            <i class="fas fa-user"></i> Nome:
-                        </label>
-                        <input type="text" id="eventName" placeholder="Ex: João Silva, Empresa XYZ" required>
-                    </div>
-                </div>
-
+                
                 <div class="form-group">
-                    <label for="eventDetails">
-                        <i class="fas fa-info-circle"></i> Detalhes:
-                    </label>
-                    <textarea id="eventDetails" rows="3" placeholder="Informações adicionais sobre o evento..."></textarea>
-                </div>
-
-                <!-- Seção de Recorrência -->
-                <div class="recurrence-section">
-                    <h5>
-                        <i class="fas fa-repeat"></i>
-                        Recorrência
-                    </h5>
-
-                    <div class="recurrence-options">
-                        <div class="recurrence-option selected" data-recurrence="none" onclick="selectRecurrence('none')">
-                            <i class="fas fa-times"></i>
-                            <div>Sem Recorrência</div>
-                        </div>
-                        <div class="recurrence-option" data-recurrence="daily" onclick="selectRecurrence('daily')">
-                            <i class="fas fa-calendar-day"></i>
-                            <div>Diário</div>
-                        </div>
-                        <div class="recurrence-option" data-recurrence="weekly" onclick="selectRecurrence('weekly')">
-                            <i class="fas fa-calendar-week"></i>
-                            <div>Semanal</div>
-                        </div>
-                        <div class="recurrence-option" data-recurrence="monthly" onclick="selectRecurrence('monthly')">
-                            <i class="fas fa-calendar-alt"></i>
-                            <div>Mensal</div>
-                        </div>
-                        <div class="recurrence-option" data-recurrence="yearly" onclick="selectRecurrence('yearly')">
-                            <i class="fas fa-calendar"></i>
-                            <div>Anual</div>
-                        </div>
-                    </div>
-
-                    <div id="recurrenceDetails" style="display: none;">
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="recurrenceCount">Repetir quantas vezes:</label>
-                                <input type="number" id="recurrenceCount" min="1" max="100" value="12">
-                            </div>
-                            <div class="form-group">
-                                <label for="recurrenceInterval">Intervalo:</label>
-                                <select id="recurrenceInterval">
-                                    <option value="1">A cada 1</option>
-                                    <option value="2">A cada 2</option>
-                                    <option value="3">A cada 3</option>
-                                    <option value="6">A cada 6</option>
-                                </select>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="step-actions">
-                    <button type="button" onclick="goToStep4()" class="btn-next">
-                        <i class="fas fa-arrow-right"></i>
-                        Próximo: Escolher Conta
-                    </button>
-                </div>
-            </div>
-
-            <!-- ETAPA 4: Escolher Conta e Criar -->
-            <div class="creation-step" id="step4" style="display: none;">
-                <h4>
-                    <i class="fas fa-user"></i>
-                    Etapa 4: Escolha a Conta e Crie o Evento
-                </h4>
-
-                <div class="account-selector">
-                    <label for="eventAccountSelect">
-                        <i class="fas fa-user"></i> Conta do Google Calendar:
-                    </label>
-                    <select id="eventAccountSelect">
-                        <option value="">Selecione uma conta...</option>
+                    <label>Recorrência *</label>
+                    <select id="eventRecurrence" required onchange="handleRecurrenceChange()">
+                        <option value="NONE">Não se repete</option>
+                        <option value="DAILY">Todos os dias</option>
+                        <option value="WEEKLY">Semanal: cada quinta-feira</option>
+                        <option value="MONTHLY">Mensal no(a) terceiro(a) quinta-feira</option>
+                        <option value="YEARLY">Anual em setembro 18</option>
+                        <option value="WEEKDAYS">Todos os dias da semana (segunda a sexta-feira)</option>
+                        <option value="CUSTOM">Personalizar...</option>
                     </select>
                 </div>
-
-                <!-- Resumo do Evento -->
-                <div class="event-summary">
-                    <h5>
-                        <i class="fas fa-eye"></i>
-                        Resumo do Evento
-                    </h5>
-                    <div id="eventSummaryContent">
-                        <!-- Resumo será gerado aqui -->
-                    </div>
-                </div>
-
-                <!-- Ações Finais -->
-                <div class="event-actions">
-                    <button type="button" onclick="createEvent()" class="btn-success">
-                        <i class="fas fa-save"></i>
-                        Criar Evento
+                
+                <div class="form-actions">
+                    <button type="button" id="createEventBtn" class="create-event-btn">
+                        <i class="fas fa-calendar-check"></i> Criar Evento
                     </button>
-                    <button type="button" onclick="cancelEventCreation()" class="btn-cancel">
-                        <i class="fas fa-times"></i>
-                        Cancelar
+                    <button type="button" id="cancelEventBtn" class="cancel-event-btn">
+                        <i class="fas fa-times"></i> Cancelar
                     </button>
                 </div>
             </div>
