@@ -3955,6 +3955,9 @@
         async function uploadPdfToEvent(file, event) {
             try {
                 console.log('📤 Fazendo upload do PDF para o evento:', file.name);
+                console.log('🔍 Dados do evento recebido:', event);
+                console.log('🆔 ID do evento:', event.id);
+                console.log('📅 Título do evento:', event.summary);
                 
                 // Verificar autenticação
                 if (!gapi.client.getToken()) {
@@ -3971,6 +3974,7 @@
                 }, event.summary);
                 
                 console.log('✅ Arquivo enviado para o Drive com sucesso');
+                console.log('📄 Dados do arquivo no Drive:', driveFile);
                 
                 // Atualizar evento com novo anexo
                 await addAttachmentToEvent(event.id, driveFile);
@@ -3982,6 +3986,7 @@
                 
             } catch (error) {
                 console.error('❌ Erro no upload:', error);
+                console.error('❌ Stack trace:', error.stack);
                 
                 // Se o erro for relacionado ao evento, mas o arquivo foi criado, mostrar sucesso parcial
                 if (error.message && error.message.includes('evento')) {
@@ -4114,22 +4119,34 @@
         async function addAttachmentToEvent(eventId, attachment) {
             try {
                 console.log('📎 Tentando adicionar anexo ao evento:', eventId);
+                console.log('📄 Dados do anexo:', attachment);
+                
+                // Verificar se eventId é válido
+                if (!eventId || eventId === 'undefined' || eventId === 'null') {
+                    throw new Error('ID do evento é inválido: ' + eventId);
+                }
                 
                 // Buscar evento atual
+                console.log('🔍 Buscando evento com ID:', eventId);
                 const eventResponse = await gapi.client.calendar.events.get({
                     calendarId: 'primary',
                     eventId: eventId
                 });
                 
                 const event = eventResponse.result;
+                console.log('✅ Evento encontrado:', event.summary);
                 
                 // Adicionar novo anexo
                 if (!event.attachments) {
                     event.attachments = [];
                 }
+                
+                console.log('📎 Anexos atuais:', event.attachments.length);
                 event.attachments.push(attachment);
+                console.log('📎 Anexos após adicionar:', event.attachments.length);
                 
                 // Atualizar evento
+                console.log('💾 Atualizando evento...');
                 await gapi.client.calendar.events.update({
                     calendarId: 'primary',
                     eventId: eventId,
@@ -4141,6 +4158,8 @@
                 
             } catch (error) {
                 console.error('❌ Erro ao adicionar anexo ao evento:', error);
+                console.error('❌ Status do erro:', error.status);
+                console.error('❌ Detalhes do erro:', error.result);
                 throw new Error('Erro ao adicionar anexo ao evento: ' + error.message);
             }
         }
