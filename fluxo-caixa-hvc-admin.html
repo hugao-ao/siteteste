@@ -4094,51 +4094,53 @@
                 console.log(`🔍 Carregando anexos do evento ${event.id}`);
                 console.log('📅 Dados do evento:', event);
                 
-                let fullEvent = null;
+                let fullEvent = event; // Usar dados já disponíveis primeiro
                 let foundCalendarId = null;
                 
-                // Lista de calendários para tentar
-                const calendarsToTry = [
-                    'primary',
-                    event.calendarId,
-                    event.organizer?.email,
-                    event.creator?.email
-                ].filter(Boolean); // Remove valores undefined/null
-                
-                // Remover duplicatas
-                const uniqueCalendars = [...new Set(calendarsToTry)];
-                
-                console.log('📋 Tentando calendários:', uniqueCalendars);
-                
-                // Tentar buscar o evento em cada calendário
-                for (const calendarId of uniqueCalendars) {
-                    try {
-                        console.log(`🔍 Tentando calendário: ${calendarId}`);
-                        
-                        const response = await gapi.client.calendar.events.get({
-                            calendarId: calendarId,
-                            eventId: event.id
-                        });
-                        
-                        fullEvent = response.result;
-                        foundCalendarId = calendarId;
-                        console.log(`✅ Evento encontrado no calendário: ${calendarId}`);
-                        break;
-                        
-                    } catch (error) {
-                        console.log(`❌ Evento não encontrado no calendário ${calendarId}:`, error.status);
-                        continue;
+                // Se já temos a descrição, usar diretamente
+                if (event.description) {
+                    console.log('✅ Usando descrição já disponível do evento');
+                    console.log('📝 Descrição:', event.description);
+                } else {
+                    // Tentar buscar detalhes completos apenas se necessário
+                    console.log('🔍 Tentando buscar detalhes completos...');
+                    
+                    // Lista de calendários para tentar
+                    const calendarsToTry = [
+                        'primary',
+                        event.calendarId,
+                        event.organizer?.email,
+                        event.creator?.email
+                    ].filter(Boolean);
+                    
+                    const uniqueCalendars = [...new Set(calendarsToTry)];
+                    console.log('📋 Tentando calendários:', uniqueCalendars);
+                    
+                    // Tentar buscar o evento em cada calendário
+                    for (const calendarId of uniqueCalendars) {
+                        try {
+                            console.log(`🔍 Tentando calendário: ${calendarId}`);
+                            
+                            const response = await gapi.client.calendar.events.get({
+                                calendarId: calendarId,
+                                eventId: event.id
+                            });
+                            
+                            fullEvent = response.result;
+                            foundCalendarId = calendarId;
+                            console.log(`✅ Evento encontrado no calendário: ${calendarId}`);
+                            break;
+                            
+                        } catch (error) {
+                            console.log(`❌ Evento não encontrado no calendário ${calendarId}:`, error.status);
+                            continue;
+                        }
+                    }
+                    
+                    if (!fullEvent.description && !foundCalendarId) {
+                        console.log('⚠️ Não foi possível buscar detalhes completos, usando dados disponíveis');
                     }
                 }
-                
-                if (!fullEvent) {
-                    console.log('❌ Evento não encontrado em nenhum calendário');
-                    attachmentsList.innerHTML = '<p class="no-attachments">Evento não encontrado</p>';
-                    return;
-                }
-                
-                console.log('📎 Evento completo encontrado:', fullEvent);
-                console.log('📝 Descrição do evento:', fullEvent.description);
                 
                 // Extrair links do Google Drive da descrição
                 const attachments = extractDriveLinksFromDescription(fullEvent.description || '');
@@ -4156,7 +4158,7 @@
                                 <button onclick="openAttachment('${attachment.url}')" class="btn-view-attachment" title="Visualizar">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                <button onclick="removeAttachmentFromDescription('${event.id}', '${attachment.url}', '${foundCalendarId}')" class="btn-remove-attachment" title="Remover">
+                                <button onclick="removeAttachmentFromDescription('${event.id}', '${attachment.url}', '${foundCalendarId || 'primary'}')" class="btn-remove-attachment" title="Remover">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -4166,12 +4168,18 @@
                     attachmentsList.innerHTML = attachmentsHTML;
                 } else {
                     console.log('ℹ️ Nenhum anexo encontrado na descrição');
-                    attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado</p>';
+                    
+                    // Mostrar informação sobre a descrição
+                    if (!fullEvent.description) {
+                        attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado (evento sem descrição)</p>';
+                    } else {
+                        attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado</p>';
+                    }
                 }
                 
                 // Salvar calendário encontrado para uso posterior
                 if (currentEventForPdf) {
-                    currentEventForPdf.foundCalendarId = foundCalendarId;
+                    currentEventForPdf.foundCalendarId = foundCalendarId || 'primary';
                 }
                 
             } catch (error) {
