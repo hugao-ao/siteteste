@@ -3972,34 +3972,23 @@
                 
                 console.log('✅ Arquivo enviado para o Drive com sucesso');
                 
-                // Tentar atualizar evento com novo anexo
-                const attachResult = await addAttachmentToEvent(event.id, driveFile);
+                // Atualizar evento com novo anexo
+                await addAttachmentToEvent(event.id, driveFile);
                 
-                // Recarregar anexos independentemente do resultado
-                try {
-                    await loadEventAttachments(event);
-                } catch (loadError) {
-                    console.log('⚠️ Erro ao recarregar anexos (não crítico):', loadError);
-                }
+                // Recarregar anexos
+                await loadEventAttachments(event);
                 
-                // Mostrar mensagem de sucesso
-                if (attachResult && attachResult.message) {
-                    console.log('📎 Resultado:', attachResult.message);
-                    alert(`${file.name} - ${attachResult.message}`);
-                } else {
-                    console.log('✅ Upload concluído');
-                    alert(`${file.name} anexado com sucesso!`);
-                }
-                
-                return {
-                    success: true,
-                    driveFile: driveFile,
-                    message: attachResult ? attachResult.message : 'Upload concluído com sucesso'
-                };
+                alert(`${file.name} anexado com sucesso!`);
                 
             } catch (error) {
                 console.error('❌ Erro no upload:', error);
-                throw error;
+                
+                // Se o erro for relacionado ao evento, mas o arquivo foi criado, mostrar sucesso parcial
+                if (error.message && error.message.includes('evento')) {
+                    alert(`${file.name} - Arquivo enviado para o Drive, mas não foi possível vincular ao evento`);
+                } else {
+                    throw error;
+                }
             }
         }
         
@@ -4125,96 +4114,34 @@
         async function addAttachmentToEvent(eventId, attachment) {
             try {
                 console.log('📎 Tentando adicionar anexo ao evento:', eventId);
-                console.log('📄 Dados do anexo:', attachment);
                 
-                // Verificar se o usuário está autenticado
-                if (!gapi.client.getToken()) {
-                    throw new Error('Usuário não está autenticado');
+                // Buscar evento atual
+                const eventResponse = await gapi.client.calendar.events.get({
+                    calendarId: 'primary',
+                    eventId: eventId
+                });
+                
+                const event = eventResponse.result;
+                
+                // Adicionar novo anexo
+                if (!event.attachments) {
+                    event.attachments = [];
                 }
+                event.attachments.push(attachment);
                 
-                // Tentar buscar o evento atual
-                let event = null;
-                let calendarId = 'primary';
+                // Atualizar evento
+                await gapi.client.calendar.events.update({
+                    calendarId: 'primary',
+                    eventId: eventId,
+                    resource: event,
+                    supportsAttachments: true
+                });
                 
-                try {
-                    console.log('🔍 Buscando evento no calendário principal...');
-                    const eventResponse = await gapi.client.calendar.events.get({
-                        calendarId: 'primary',
-                        eventId: eventId
-                    });
-                    event = eventResponse.result;
-                    console.log('✅ Evento encontrado no calendário principal');
-                } catch (primaryError) {
-                    console.log('⚠️ Evento não encontrado no calendário principal:', primaryError.status);
-                    
-                    // Se não encontrou no principal, o anexo foi criado mas não pode ser vinculado ao evento
-                    // Isso não é um erro crítico - o arquivo está no Drive
-                    console.log('📎 Anexo criado no Drive, mas não foi possível vincular ao evento');
-                    console.log('💡 Isso pode acontecer com eventos de calendários externos ou compartilhados');
-                    
-                    // Retornar sucesso mesmo assim, pois o arquivo foi criado
-                    return {
-                        success: true,
-                        message: 'Arquivo enviado para o Drive, mas não foi possível vincular ao evento (isso é normal para alguns tipos de eventos)'
-                    };
-                }
-                
-                // Se encontrou o evento, tentar adicionar o anexo
-                if (event) {
-                    console.log('📎 Adicionando anexo ao evento...');
-                    
-                    // Inicializar array de anexos se não existir
-                    if (!event.attachments) {
-                        event.attachments = [];
-                    }
-                    
-                    // Verificar se o anexo já existe (evitar duplicatas)
-                    const existingAttachment = event.attachments.find(att => att.fileId === attachment.fileId);
-                    if (existingAttachment) {
-                        console.log('⚠️ Anexo já existe no evento');
-                        return {
-                            success: true,
-                            message: 'Anexo já estava vinculado ao evento'
-                        };
-                    }
-                    
-                    // Adicionar novo anexo
-                    event.attachments.push(attachment);
-                    
-                    // Tentar atualizar o evento
-                    try {
-                        await gapi.client.calendar.events.update({
-                            calendarId: calendarId,
-                            eventId: eventId,
-                            resource: event,
-                            supportsAttachments: true
-                        });
-                        
-                        console.log('✅ Anexo adicionado ao evento com sucesso');
-                        return {
-                            success: true,
-                            message: 'Anexo adicionado ao evento com sucesso'
-                        };
-                        
-                    } catch (updateError) {
-                        console.log('⚠️ Erro ao atualizar evento:', updateError.status);
-                        console.log('📎 Arquivo foi criado no Drive, mas não foi possível vincular ao evento');
-                        
-                        return {
-                            success: true,
-                            message: 'Arquivo enviado para o Drive, mas não foi possível vincular ao evento (permissões limitadas)'
-                        };
-                    }
-                }
+                console.log('✅ Anexo adicionado ao evento');
                 
             } catch (error) {
                 console.error('❌ Erro ao adicionar anexo ao evento:', error);
-                
-                // Mesmo com erro, se o arquivo foi criado no Drive, considerar sucesso parcial
-                return {
-                    success: true,
-                    message: 'Arquivo enviado para o Drive com sucesso'
-                };
+                throw new Error('Erro ao adicionar anexo ao evento: ' + error.message);
             }
         }
         
