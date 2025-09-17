@@ -4094,18 +4094,24 @@
                 console.log(`🔍 Carregando anexos do evento ${event.id}`);
                 console.log('📅 Dados do evento:', event);
                 
-                let fullEvent = event; // Usar dados já disponíveis primeiro
+                let fullEvent = event;
                 let foundCalendarId = null;
+                let allAttachments = [];
                 
-                // Se já temos a descrição, usar diretamente
-                if (event.description) {
-                    console.log('✅ Usando descrição já disponível do evento');
-                    console.log('📝 Descrição:', event.description);
-                } else {
-                    // Tentar buscar detalhes completos apenas se necessário
-                    console.log('🔍 Tentando buscar detalhes completos...');
+                // MÉTODO 1: Verificar se já temos anexos nos dados do evento
+                if (event.attachments && event.attachments.length > 0) {
+                    console.log('✅ Anexos encontrados nos dados do evento:', event.attachments);
+                    allAttachments = event.attachments.map(att => ({
+                        name: att.title || att.fileName || 'Anexo',
+                        url: att.fileUrl || att.iconLink || att.fileId,
+                        type: 'calendar'
+                    }));
+                }
+                
+                // MÉTODO 2: Buscar evento completo para verificar propriedades extras
+                if (allAttachments.length === 0) {
+                    console.log('🔍 Buscando evento completo para verificar anexos...');
                     
-                    // Lista de calendários para tentar
                     const calendarsToTry = [
                         'primary',
                         event.calendarId,
@@ -4116,7 +4122,6 @@
                     const uniqueCalendars = [...new Set(calendarsToTry)];
                     console.log('📋 Tentando calendários:', uniqueCalendars);
                     
-                    // Tentar buscar o evento em cada calendário
                     for (const calendarId of uniqueCalendars) {
                         try {
                             console.log(`🔍 Tentando calendário: ${calendarId}`);
@@ -4129,6 +4134,31 @@
                             fullEvent = response.result;
                             foundCalendarId = calendarId;
                             console.log(`✅ Evento encontrado no calendário: ${calendarId}`);
+                            console.log('📎 Evento completo:', fullEvent);
+                            
+                            // Verificar anexos no evento completo
+                            if (fullEvent.attachments && fullEvent.attachments.length > 0) {
+                                console.log('✅ Anexos encontrados no evento completo:', fullEvent.attachments);
+                                allAttachments = fullEvent.attachments.map(att => ({
+                                    name: att.title || att.fileName || 'Anexo',
+                                    url: att.fileUrl || att.iconLink || att.fileId,
+                                    type: 'calendar'
+                                }));
+                            }
+                            
+                            // Verificar propriedades estendidas
+                            if (fullEvent.extendedProperties) {
+                                console.log('🔍 Propriedades estendidas:', fullEvent.extendedProperties);
+                                
+                                if (fullEvent.extendedProperties.private) {
+                                    Object.keys(fullEvent.extendedProperties.private).forEach(key => {
+                                        if (key.includes('attachment') || key.includes('file')) {
+                                            console.log(`📎 Possível anexo em propriedade: ${key}`, fullEvent.extendedProperties.private[key]);
+                                        }
+                                    });
+                                }
+                            }
+                            
                             break;
                             
                         } catch (error) {
@@ -4136,40 +4166,55 @@
                             continue;
                         }
                     }
-                    
-                    if (!fullEvent.description && !foundCalendarId) {
-                        console.log('⚠️ Não foi possível buscar detalhes completos, usando dados disponíveis');
+                }
+                
+                // MÉTODO 3: Extrair links do Google Drive da descrição (método atual)
+                const driveAttachments = extractDriveLinksFromDescription(fullEvent.description || '');
+                if (driveAttachments.length > 0) {
+                    console.log(`✅ Links do Drive encontrados na descrição: ${driveAttachments.length}`);
+                    allAttachments = allAttachments.concat(driveAttachments.map(att => ({
+                        ...att,
+                        type: 'drive'
+                    })));
+                }
+                
+                // MÉTODO 4: Verificar se há referências a arquivos na descrição
+                if (fullEvent.description) {
+                    const fileReferences = extractFileReferences(fullEvent.description);
+                    if (fileReferences.length > 0) {
+                        console.log(`📎 Referências de arquivos encontradas: ${fileReferences.length}`);
+                        allAttachments = allAttachments.concat(fileReferences);
                     }
                 }
                 
-                // Extrair links do Google Drive da descrição
-                const attachments = extractDriveLinksFromDescription(fullEvent.description || '');
+                console.log('📎 Total de anexos encontrados:', allAttachments.length);
+                console.log('📎 Anexos:', allAttachments);
                 
-                if (attachments.length > 0) {
-                    console.log(`✅ Encontrados ${attachments.length} anexos na descrição`);
-                    
-                    const attachmentsHTML = attachments.map((attachment, index) => `
+                if (allAttachments.length > 0) {
+                    const attachmentsHTML = allAttachments.map((attachment, index) => `
                         <div class="attachment-item">
                             <div class="attachment-info">
                                 <i class="fas fa-file-pdf"></i>
                                 <span class="attachment-name">${attachment.name}</span>
+                                <small class="attachment-type">(${attachment.type})</small>
                             </div>
                             <div class="attachment-actions">
                                 <button onclick="openAttachment('${attachment.url}')" class="btn-view-attachment" title="Visualizar">
                                     <i class="fas fa-eye"></i>
                                 </button>
+                                ${attachment.type === 'drive' ? `
                                 <button onclick="removeAttachmentFromDescription('${event.id}', '${attachment.url}', '${foundCalendarId || 'primary'}')" class="btn-remove-attachment" title="Remover">
                                     <i class="fas fa-trash"></i>
                                 </button>
+                                ` : ''}
                             </div>
                         </div>
                     `).join('');
                     
                     attachmentsList.innerHTML = attachmentsHTML;
                 } else {
-                    console.log('ℹ️ Nenhum anexo encontrado na descrição');
+                    console.log('ℹ️ Nenhum anexo encontrado');
                     
-                    // Mostrar informação sobre a descrição
                     if (!fullEvent.description) {
                         attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado (evento sem descrição)</p>';
                     } else {
@@ -4186,6 +4231,40 @@
                 console.error('❌ Erro geral ao carregar anexos:', error);
                 attachmentsList.innerHTML = '<p class="no-attachments">Erro ao carregar anexos</p>';
             }
+        }
+        
+        // ✅ NOVO: Extrair referências de arquivos da descrição
+        function extractFileReferences(description) {
+            const fileReferences = [];
+            
+            // Padrões para detectar referências de arquivos
+            const patterns = [
+                /📎\s*([^:\n]+)(?:\s*:\s*(https?:\/\/[^\s\n]+))?/gi,
+                /anexo[:\s]*([^:\n]+)(?:\s*:\s*(https?:\/\/[^\s\n]+))?/gi,
+                /arquivo[:\s]*([^:\n]+)(?:\s*:\s*(https?:\/\/[^\s\n]+))?/gi,
+                /documento[:\s]*([^:\n]+)(?:\s*:\s*(https?:\/\/[^\s\n]+))?/gi,
+                /\.pdf\b/gi,
+                /\.doc\b/gi,
+                /\.docx\b/gi
+            ];
+            
+            patterns.forEach(pattern => {
+                let match;
+                while ((match = pattern.exec(description)) !== null) {
+                    const name = match[1] ? match[1].trim() : 'Arquivo detectado';
+                    const url = match[2] || '#';
+                    
+                    if (name && name.length > 0) {
+                        fileReferences.push({
+                            name: name,
+                            url: url,
+                            type: 'reference'
+                        });
+                    }
+                }
+            });
+            
+            return fileReferences;
         }
         
         // ✅ NOVO: Extrair links do Google Drive da descrição do evento
