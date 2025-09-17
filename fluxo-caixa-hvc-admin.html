@@ -4140,15 +4140,64 @@
             if (!attachmentsList) return;
             
             try {
-                // Buscar evento completo com anexos
-                const fullEventResponse = await gapi.client.calendar.events.get({
-                    calendarId: 'primary',
-                    eventId: event.id
-                });
+                console.log('🔍 Carregando anexos do evento:', event.id);
                 
-                const fullEvent = fullEventResponse.result;
+                // Verificar se o usuário está autenticado
+                if (!gapi.client.getToken()) {
+                    console.log('⚠️ Usuário não autenticado, não é possível carregar anexos');
+                    attachmentsList.innerHTML = '<p class="no-attachments">Faça login para ver anexos</p>';
+                    return;
+                }
                 
+                let fullEvent = null;
+                let foundCalendarId = 'primary';
+                
+                // Tentar buscar o evento no calendário principal primeiro
+                try {
+                    const fullEventResponse = await gapi.client.calendar.events.get({
+                        calendarId: 'primary',
+                        eventId: event.id
+                    });
+                    fullEvent = fullEventResponse.result;
+                    console.log('✅ Evento encontrado no calendário principal');
+                } catch (primaryError) {
+                    console.log('⚠️ Evento não encontrado no calendário principal, tentando outros calendários...');
+                    
+                    // Se não encontrou no principal, tentar em outros calendários
+                    try {
+                        const calendarListResponse = await gapi.client.calendar.calendarList.list();
+                        const calendars = calendarListResponse.result.items;
+                        
+                        for (const calendar of calendars) {
+                            try {
+                                const eventResponse = await gapi.client.calendar.events.get({
+                                    calendarId: calendar.id,
+                                    eventId: event.id
+                                });
+                                fullEvent = eventResponse.result;
+                                foundCalendarId = calendar.id;
+                                console.log(`✅ Evento encontrado no calendário: ${calendar.summary}`);
+                                break;
+                            } catch (calendarError) {
+                                // Continuar tentando outros calendários
+                                continue;
+                            }
+                        }
+                    } catch (listError) {
+                        console.error('❌ Erro ao listar calendários:', listError);
+                    }
+                }
+                
+                if (!fullEvent) {
+                    console.log('⚠️ Evento não encontrado em nenhum calendário');
+                    attachmentsList.innerHTML = '<p class="no-attachments">Evento não encontrado</p>';
+                    return;
+                }
+                
+                // Verificar se há anexos
                 if (fullEvent.attachments && fullEvent.attachments.length > 0) {
+                    console.log(`📎 ${fullEvent.attachments.length} anexo(s) encontrado(s)`);
+                    
                     const attachmentsHTML = fullEvent.attachments.map(attachment => `
                         <div class="attachment-item">
                             <div class="attachment-info">
@@ -4159,7 +4208,7 @@
                                 <button onclick="window.open('${attachment.fileUrl}', '_blank')" class="btn-view-attachment" title="Visualizar">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                <button onclick="removeAttachmentFromEvent('${event.id}', '${attachment.fileId}')" class="btn-remove-attachment" title="Remover">
+                                <button onclick="removeAttachmentFromEvent('${event.id}', '${attachment.fileId}', '${foundCalendarId}')" class="btn-remove-attachment" title="Remover">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -4168,22 +4217,25 @@
                     
                     attachmentsList.innerHTML = attachmentsHTML;
                 } else {
+                    console.log('📎 Nenhum anexo encontrado');
                     attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado</p>';
                 }
                 
             } catch (error) {
-                console.error('Erro ao carregar anexos:', error);
+                console.error('❌ Erro ao carregar anexos:', error);
                 attachmentsList.innerHTML = '<p class="no-attachments">Erro ao carregar anexos</p>';
             }
         }
         
-        async function removeAttachmentFromEvent(eventId, fileId) {
+        async function removeAttachmentFromEvent(eventId, fileId, calendarId = 'primary') {
             if (!confirm('Tem certeza que deseja remover este anexo?')) return;
             
             try {
+                console.log(`🗑️ Removendo anexo ${fileId} do evento ${eventId} no calendário ${calendarId}`);
+                
                 // Buscar evento atual
                 const eventResponse = await gapi.client.calendar.events.get({
-                    calendarId: 'primary',
+                    calendarId: calendarId,
                     eventId: eventId
                 });
                 
@@ -4191,12 +4243,14 @@
                 
                 // Remover anexo da lista
                 if (event.attachments) {
+                    const originalCount = event.attachments.length;
                     event.attachments = event.attachments.filter(att => att.fileId !== fileId);
+                    console.log(`📎 Anexos antes: ${originalCount}, depois: ${event.attachments.length}`);
                 }
                 
                 // Atualizar evento
                 await gapi.client.calendar.events.update({
-                    calendarId: 'primary',
+                    calendarId: calendarId,
                     eventId: eventId,
                     resource: event,
                     supportsAttachments: true
@@ -4206,10 +4260,11 @@
                 await loadEventAttachments(currentEventForPdf);
                 
                 alert('Anexo removido com sucesso!');
+                console.log('✅ Anexo removido com sucesso');
                 
             } catch (error) {
-                console.error('Erro ao remover anexo:', error);
-                alert('Erro ao remover anexo');
+                console.error('❌ Erro ao remover anexo:', error);
+                alert('Erro ao remover anexo: ' + error.message);
             }
         }
 
