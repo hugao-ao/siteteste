@@ -1685,6 +1685,7 @@
         let editingEventId = null;
         let gapi_loaded = false;
         let gsi_loaded = false;
+        let tokenClient;
 
         // ✅ NOVO: Variáveis para criação de eventos (copiadas da página do usuário)
         let paymentItems = [];
@@ -1847,8 +1848,27 @@
         }
 
         function gsiLoaded() {
-            gsi_loaded = true;
-            maybeEnableButtons();
+            console.log('🔄 Carregando GIS...');
+            try {
+                tokenClient = google.accounts.oauth2.initTokenClient({
+                    client_id: CLIENT_ID,
+                    scope: SCOPES,
+                    callback: (response) => {
+                        if (response.error) {
+                            console.error('❌ Erro na autenticação:', response.error);
+                            showMessage('Erro na autenticação: ' + response.error, 'error');
+                        } else {
+                            console.log('✅ Autenticação realizada com sucesso');
+                        }
+                    },
+                });
+                gsi_loaded = true;
+                maybeEnableButtons();
+                console.log('✅ GIS inicializado com sucesso!');
+            } catch (error) {
+                console.error('❌ Erro ao inicializar GIS:', error);
+                showMessage('Erro ao carregar sistema de autenticação do Google', 'error');
+            }
         }
 
         function maybeEnableButtons() {
@@ -3863,13 +3883,12 @@
         // =================================================================
         
         let currentEventForPdf = null;
-        
+
+        // ✅ NOVO: Configurar upload de PDF para evento
         function setupEventPdfUpload(event) {
             currentEventForPdf = event;
             const pdfInput = document.getElementById('eventPdfInput');
             if (pdfInput) {
-                // Remover listeners anteriores
-                pdfInput.removeEventListener('change', handleEventPdfUpload);
                 pdfInput.addEventListener('change', handleEventPdfUpload);
             }
         }
@@ -3885,28 +3904,29 @@
             
             let successCount = 0;
             let errorCount = 0;
+            const errors = [];
             
             for (const file of files) {
+                if (file.type !== 'application/pdf') {
+                    errors.push(`${file.name}: Apenas arquivos PDF são permitidos`);
+                    errorCount++;
+                    continue;
+                }
+                
+                if (file.size > 10 * 1024 * 1024) {
+                    errors.push(`${file.name}: Arquivo muito grande (máx. 10MB)`);
+                    errorCount++;
+                    continue;
+                }
+                
                 try {
-                    console.log(`📤 Fazendo upload do PDF: ${file.name}`);
-                    
-                    // Converter arquivo para base64
-                    const base64 = await convertFileToBase64(file);
-                    
-                    // Upload para Google Drive
-                    const driveFile = await uploadPdfToDrive({
-                        name: file.name,
-                        base64: base64
-                    }, currentEventForPdf.summary);
-                    
-                    // Atualizar evento com novo anexo
-                    await addAttachmentToEvent(currentEventForPdf.id, driveFile);
-                    
+                    console.log(`📤 Processando: ${file.name}`);
+                    await uploadPdfToEvent(file, currentEventForPdf);
                     successCount++;
-                    console.log(`✅ Upload concluído: ${file.name}`);
-                    
+                    console.log(`✅ Sucesso: ${file.name}`);
                 } catch (error) {
-                    console.error(`❌ Erro no upload de ${file.name}:`, error);
+                    console.error(`❌ Erro em ${file.name}:`, error);
+                    errors.push(`${file.name}: ${error.message}`);
                     errorCount++;
                 }
             }
@@ -3914,31 +3934,60 @@
             // Restaurar interface
             uploadSection.innerHTML = originalHTML;
             
-            // Reconfigurar event listener
-            setupEventPdfUpload(currentEventForPdf);
-            
-            // Recarregar anexos
-            await loadEventAttachments(currentEventForPdf);
-            
             // Mostrar resultado
+            let message = '';
             if (successCount > 0) {
-                alert(`${successCount} arquivo(s) anexado(s) com sucesso!`);
+                message += `✅ ${successCount} arquivo(s) anexado(s) com sucesso!`;
             }
             if (errorCount > 0) {
-                alert(`${errorCount} arquivo(s) falharam no upload.`);
+                if (message) message += '\n\n';
+                message += `❌ ${errorCount} erro(s):\n${errors.join('\n')}`;
+            }
+            
+            if (message) {
+                alert(message);
             }
             
             // Limpar input
             event.target.value = '';
         }
         
+        async function uploadPdfToEvent(file, event) {
+            try {
+                console.log('📤 Fazendo upload do PDF para o evento:', file.name);
+                
+                // Verificar autenticação
+                if (!gapi.client.getToken()) {
+                    throw new Error('Usuário não está autenticado');
+                }
+                
+                // Converter arquivo para base64
+                const base64 = await convertFileToBase64(file);
+                
+                // Upload para Google Drive
+                const driveFile = await uploadPdfToDrive({
+                    name: file.name,
+                    base64: base64
+                }, event.summary);
+                
+                // Atualizar evento com novo anexo
+                await addAttachmentToEvent(event.id, driveFile);
+                
+                // Recarregar anexos
+                await loadEventAttachments(event);
+                
+                alert(`${file.name} anexado com sucesso!`);
+                
+            } catch (error) {
+                console.error('Erro no upload:', error);
+                throw error;
+            }
+        }
+        
         function convertFileToBase64(file) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
-                reader.onload = () => {
-                    const base64 = reader.result.split(',')[1];
-                    resolve(base64);
-                };
+                reader.onload = () => resolve(reader.result.split(',')[1]);
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
             });
@@ -3967,15 +4016,13 @@
                     });
                 }
                 
-                // Preparar metadados do arquivo
-                const metadata = {
-                    name: `${eventTitle} - ${pdfData.name}`,
-                    parents: ['1BdxQ8gF5vK2mH3nL7pR9sT0uV6wX8yZ2'] // ID da pasta no Drive (opcional)
-                };
+                // Verificar novamente após autenticação
+                const newToken = gapi.client.getToken();
+                if (!newToken || !newToken.access_token) {
+                    throw new Error('Falha na autenticação. Tente novamente.');
+                }
                 
-                // Fazer upload usando fetch (mais confiável que gapi para uploads)
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
+                console.log('🔑 Token válido encontrado, prosseguindo com upload...');
                 
                 // Converter base64 para blob
                 const byteCharacters = atob(pdfData.base64);
@@ -3984,36 +4031,55 @@
                     byteNumbers[i] = byteCharacters.charCodeAt(i);
                 }
                 const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], {type: 'application/pdf'});
+                const blob = new Blob([byteArray], { type: 'application/pdf' });
                 
+                console.log('📄 Arquivo preparado:', blob.size, 'bytes');
+                
+                // Metadados do arquivo
+                const metadata = {
+                    name: `${eventTitle} - ${pdfData.name}`,
+                    parents: [] // Salvar na raiz do Drive
+                };
+                
+                // Criar FormData para upload
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
                 form.append('file', blob);
                 
+                console.log('📤 Enviando para Google Drive...');
+                
+                // Fazer upload usando fetch
                 const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
                     method: 'POST',
                     headers: {
-                        'Authorization': `Bearer ${gapi.client.getToken().access_token}`
+                        'Authorization': `Bearer ${newToken.access_token}`
                     },
                     body: form
                 });
                 
+                console.log('📡 Resposta do Drive:', response.status, response.statusText);
+                
                 if (!response.ok) {
                     const errorText = await response.text();
-                    console.error('❌ Erro na resposta do Drive:', response.status, errorText);
+                    console.error('❌ Erro detalhado:', errorText);
                     
                     if (response.status === 403) {
                         throw new Error('Permissão negada. Você precisa reautenticar com permissões do Google Drive. Clique em "Sincronizar" novamente.');
+                    } else if (response.status === 401) {
+                        throw new Error('Token expirado. Faça login novamente.');
+                    } else {
+                        throw new Error(`Erro no upload: ${response.status} - ${errorText}`);
                     }
-                    
-                    throw new Error(`Erro no upload: ${response.status} - ${errorText}`);
                 }
                 
-                const result = await response.json();
-                console.log('✅ Arquivo enviado para o Drive:', result);
+                const fileData = await response.json();
+                console.log('✅ Arquivo enviado com sucesso:', fileData.id);
                 
-                // Tornar arquivo público para visualização
+                // Tentar tornar arquivo público (opcional)
                 try {
+                    console.log('🔓 Tornando arquivo público...');
                     await gapi.client.drive.permissions.create({
-                        fileId: result.id,
+                        fileId: fileData.id,
                         resource: {
                             role: 'reader',
                             type: 'anyone'
@@ -4021,69 +4087,51 @@
                     });
                     console.log('✅ Arquivo tornado público');
                 } catch (permError) {
-                    console.warn('⚠️ Não foi possível tornar o arquivo público:', permError);
+                    console.warn('⚠️ Não foi possível tornar o arquivo público (não é crítico):', permError);
                 }
                 
                 return {
-                    id: result.id,
-                    name: result.name,
-                    webViewLink: `https://drive.google.com/file/d/${result.id}/view`,
-                    webContentLink: `https://drive.google.com/uc?id=${result.id}&export=download`
+                    fileId: fileData.id,
+                    fileUrl: `https://drive.google.com/file/d/${fileData.id}/view`,
+                    title: `${eventTitle} - ${pdfData.name}`,
+                    mimeType: 'application/pdf'
                 };
                 
             } catch (error) {
-                console.error('❌ Erro no upload para Drive:', error);
+                console.error('❌ Erro completo no upload:', error);
                 throw error;
             }
         }
         
-        async function addAttachmentToEvent(eventId, driveFile) {
+        async function addAttachmentToEvent(eventId, attachment) {
             try {
-                // Determinar o calendário correto (usar o mesmo do evento atual)
-                const calendarId = currentEventForPdf?.calendarId || currentEventForPdf?.organizer?.email || 'primary';
-                
-                console.log(`📎 Adicionando anexo ao evento ${eventId} no calendário ${calendarId}`);
-                
                 // Buscar evento atual
                 const eventResponse = await gapi.client.calendar.events.get({
-                    calendarId: calendarId,
+                    calendarId: 'primary',
                     eventId: eventId
                 });
                 
                 const event = eventResponse.result;
                 
-                // Adicionar link do PDF na descrição
-                const pdfLink = `\n\n📎 ${driveFile.name}\n${driveFile.webViewLink}`;
-                
-                if (!event.description) {
-                    event.description = '';
+                // Adicionar novo anexo
+                if (!event.attachments) {
+                    event.attachments = [];
                 }
-                
-                // Verificar se o link já existe na descrição
-                if (!event.description.includes(driveFile.webViewLink)) {
-                    event.description += pdfLink;
-                    console.log(`✅ Link do PDF adicionado à descrição`);
-                } else {
-                    console.log('ℹ️ Link já existe na descrição');
-                }
+                event.attachments.push(attachment);
                 
                 // Atualizar evento
                 await gapi.client.calendar.events.update({
-                    calendarId: calendarId,
+                    calendarId: 'primary',
                     eventId: eventId,
-                    resource: event
+                    resource: event,
+                    supportsAttachments: true
                 });
                 
-                console.log('✅ Evento atualizado com sucesso');
+                console.log('✅ Anexo adicionado ao evento');
                 
             } catch (error) {
-                console.error('❌ Erro ao adicionar anexo ao evento:', error);
-                
-                if (error.status === 404) {
-                    throw new Error('Evento não encontrado ou sem permissão para editar');
-                } else {
-                    throw error;
-                }
+                console.error('Erro ao adicionar anexo ao evento:', error);
+                throw error;
             }
         }
         
@@ -4092,320 +4140,50 @@
             if (!attachmentsList) return;
             
             try {
-                console.log(`🔍 Carregando anexos do evento ${event.id}`);
-                console.log('📅 Dados do evento:', event);
+                // Buscar evento completo com anexos
+                const fullEventResponse = await gapi.client.calendar.events.get({
+                    calendarId: 'primary',
+                    eventId: event.id
+                });
                 
-                let fullEvent = event;
-                let foundCalendarId = null;
-                let allAttachments = [];
+                const fullEvent = fullEventResponse.result;
                 
-                // MÉTODO 1: Verificar se já temos anexos nos dados do evento
-                if (event.attachments && event.attachments.length > 0) {
-                    console.log('✅ Anexos encontrados nos dados do evento:', event.attachments);
-                    allAttachments = event.attachments.map(att => ({
-                        name: att.title || att.fileName || 'Anexo',
-                        url: att.fileUrl || att.iconLink || att.fileId,
-                        type: 'calendar'
-                    }));
-                }
-                
-                // MÉTODO 2: Buscar evento completo para verificar propriedades extras
-                if (allAttachments.length === 0) {
-                    console.log('🔍 Buscando evento completo para verificar anexos...');
-                    
-                    const calendarsToTry = [
-                        'primary',
-                        event.calendarId,
-                        event.organizer?.email,
-                        event.creator?.email
-                    ].filter(Boolean);
-                    
-                    const uniqueCalendars = [...new Set(calendarsToTry)];
-                    console.log('📋 Tentando calendários:', uniqueCalendars);
-                    
-                    for (const calendarId of uniqueCalendars) {
-                        try {
-                            console.log(`🔍 Tentando calendário: ${calendarId}`);
-                            
-                            const response = await gapi.client.calendar.events.get({
-                                calendarId: calendarId,
-                                eventId: event.id
-                            });
-                            
-                            fullEvent = response.result;
-                            foundCalendarId = calendarId;
-                            console.log(`✅ Evento encontrado no calendário: ${calendarId}`);
-                            console.log('📎 Evento completo:', fullEvent);
-                            
-                            // Verificar anexos no evento completo
-                            if (fullEvent.attachments && fullEvent.attachments.length > 0) {
-                                console.log('✅ Anexos encontrados no evento completo:', fullEvent.attachments);
-                                allAttachments = fullEvent.attachments.map(att => ({
-                                    name: att.title || att.fileName || 'Anexo',
-                                    url: att.fileUrl || att.iconLink || att.fileId,
-                                    type: 'calendar'
-                                }));
-                            }
-                            
-                            // Verificar propriedades estendidas
-                            if (fullEvent.extendedProperties) {
-                                console.log('🔍 Propriedades estendidas:', fullEvent.extendedProperties);
-                                
-                                if (fullEvent.extendedProperties.private) {
-                                    Object.keys(fullEvent.extendedProperties.private).forEach(key => {
-                                        if (key.includes('attachment') || key.includes('file')) {
-                                            console.log(`📎 Possível anexo em propriedade: ${key}`, fullEvent.extendedProperties.private[key]);
-                                        }
-                                    });
-                                }
-                            }
-                            
-                            break;
-                            
-                        } catch (error) {
-                            console.log(`❌ Evento não encontrado no calendário ${calendarId}:`, error.status);
-                            continue;
-                        }
-                    }
-                }
-                
-                // MÉTODO 3: Extrair links do Google Drive da descrição (método atual)
-                const driveAttachments = extractDriveLinksFromDescription(fullEvent.description || '');
-                if (driveAttachments.length > 0) {
-                    console.log(`✅ Links do Drive encontrados na descrição: ${driveAttachments.length}`);
-                    allAttachments = allAttachments.concat(driveAttachments.map(att => ({
-                        ...att,
-                        type: 'drive'
-                    })));
-                }
-                
-                // MÉTODO 4: Verificar se há referências a arquivos na descrição
-                if (fullEvent.description) {
-                    const fileReferences = extractFileReferences(fullEvent.description);
-                    if (fileReferences.length > 0) {
-                        console.log(`📎 Referências de arquivos encontradas: ${fileReferences.length}`);
-                        allAttachments = allAttachments.concat(fileReferences);
-                    }
-                }
-                
-                console.log('📎 Total de anexos encontrados:', allAttachments.length);
-                console.log('📎 Anexos:', allAttachments);
-                
-                if (allAttachments.length > 0) {
-                    const attachmentsHTML = allAttachments.map((attachment, index) => `
+                if (fullEvent.attachments && fullEvent.attachments.length > 0) {
+                    const attachmentsHTML = fullEvent.attachments.map(attachment => `
                         <div class="attachment-item">
                             <div class="attachment-info">
                                 <i class="fas fa-file-pdf"></i>
-                                <span class="attachment-name">${attachment.name}</span>
-                                <small class="attachment-type">(${attachment.type})</small>
+                                <span class="attachment-name">${attachment.title || 'Anexo'}</span>
                             </div>
                             <div class="attachment-actions">
-                                <button onclick="openAttachment('${attachment.url}')" class="btn-view-attachment" title="Visualizar">
+                                <button onclick="window.open('${attachment.fileUrl}', '_blank')" class="btn-view-attachment" title="Visualizar">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                ${attachment.type === 'drive' ? `
-                                <button onclick="removeAttachmentFromDescription('${event.id}', '${attachment.url}', '${foundCalendarId || 'primary'}')" class="btn-remove-attachment" title="Remover">
+                                <button onclick="removeAttachmentFromEvent('${event.id}', '${attachment.fileId}')" class="btn-remove-attachment" title="Remover">
                                     <i class="fas fa-trash"></i>
                                 </button>
-                                ` : ''}
                             </div>
                         </div>
                     `).join('');
                     
                     attachmentsList.innerHTML = attachmentsHTML;
                 } else {
-                    console.log('ℹ️ Nenhum anexo encontrado');
-                    
-                    if (!fullEvent.description) {
-                        attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado (evento sem descrição)</p>';
-                    } else {
-                        attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado</p>';
-                    }
-                }
-                
-                // Salvar calendário encontrado para uso posterior
-                if (currentEventForPdf) {
-                    currentEventForPdf.foundCalendarId = foundCalendarId || 'primary';
+                    attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado</p>';
                 }
                 
             } catch (error) {
-                console.error('❌ Erro geral ao carregar anexos:', error);
+                console.error('Erro ao carregar anexos:', error);
                 attachmentsList.innerHTML = '<p class="no-attachments">Erro ao carregar anexos</p>';
             }
         }
         
-        // ✅ NOVO: Extrair referências de arquivos da descrição
-        function extractFileReferences(description) {
-            const fileReferences = [];
-            
-            // Padrões para detectar referências de arquivos
-            const patterns = [
-                /📎\s*([^:\n]+)(?:\s*:\s*(https?:\/\/[^\s\n]+))?/gi,
-                /anexo[:\s]*([^:\n]+)(?:\s*:\s*(https?:\/\/[^\s\n]+))?/gi,
-                /arquivo[:\s]*([^:\n]+)(?:\s*:\s*(https?:\/\/[^\s\n]+))?/gi,
-                /documento[:\s]*([^:\n]+)(?:\s*:\s*(https?:\/\/[^\s\n]+))?/gi,
-                /\.pdf\b/gi,
-                /\.doc\b/gi,
-                /\.docx\b/gi
-            ];
-            
-            patterns.forEach(pattern => {
-                let match;
-                while ((match = pattern.exec(description)) !== null) {
-                    const name = match[1] ? match[1].trim() : 'Arquivo detectado';
-                    const url = match[2] || '#';
-                    
-                    if (name && name.length > 0) {
-                        fileReferences.push({
-                            name: name,
-                            url: url,
-                            type: 'reference'
-                        });
-                    }
-                }
-            });
-            
-            return fileReferences;
-        }
-        
-        // ✅ NOVO: Extrair links do Google Drive da descrição do evento
-        function extractDriveLinksFromDescription(description) {
-            const attachments = [];
-            
-            if (!description) return attachments;
-            
-            // Regex para encontrar links do Google Drive
-            const driveRegex = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)\/view/g;
-            const driveRegex2 = /https:\/\/drive\.google\.com\/open\?id=([a-zA-Z0-9_-]+)/g;
-            
-            let match;
-            
-            // Buscar padrão 1: /file/d/ID/view
-            while ((match = driveRegex.exec(description)) !== null) {
-                const fileId = match[1];
-                const url = match[0];
-                
-                // Tentar extrair nome do arquivo da descrição (procurar texto antes do link)
-                const beforeLink = description.substring(0, match.index);
-                const lines = beforeLink.split('\n');
-                const lastLine = lines[lines.length - 1].trim();
-                
-                let fileName = 'Anexo PDF';
-                if (lastLine && lastLine.length > 0 && lastLine.length < 100) {
-                    fileName = lastLine.replace(/[^\w\s.-]/g, '').trim() || 'Anexo PDF';
-                }
-                
-                attachments.push({
-                    id: fileId,
-                    name: fileName,
-                    url: url
-                });
-            }
-            
-            // Buscar padrão 2: ?id=ID
-            while ((match = driveRegex2.exec(description)) !== null) {
-                const fileId = match[1];
-                const url = match[0];
-                
-                // Verificar se já não foi adicionado
-                if (!attachments.find(att => att.id === fileId)) {
-                    attachments.push({
-                        id: fileId,
-                        name: 'Anexo PDF',
-                        url: url
-                    });
-                }
-            }
-            
-            console.log('📎 Links extraídos da descrição:', attachments);
-            return attachments;
-        }
-        
-        // ✅ NOVO: Função para abrir anexo sem problemas de CORS
-        function openAttachment(fileUrl) {
-            try {
-                // Abrir em nova aba sem problemas de política
-                const newWindow = window.open('', '_blank');
-                newWindow.location.href = fileUrl;
-            } catch (error) {
-                console.error('Erro ao abrir anexo:', error);
-                // Fallback: tentar abrir diretamente
-                window.open(fileUrl, '_blank', 'noopener,noreferrer');
-            }
-        }
-        
-        async function removeAttachmentFromDescription(eventId, fileUrl, calendarId = 'primary') {
+        async function removeAttachmentFromEvent(eventId, fileId) {
             if (!confirm('Tem certeza que deseja remover este anexo?')) return;
             
             try {
-                console.log(`🗑️ Removendo anexo ${fileUrl} do evento ${eventId} no calendário ${calendarId}`);
-                
                 // Buscar evento atual
                 const eventResponse = await gapi.client.calendar.events.get({
-                    calendarId: calendarId,
-                    eventId: eventId
-                });
-                
-                const event = eventResponse.result;
-                
-                // Remover link da descrição
-                if (event.description) {
-                    // Remover linha com o link e a linha anterior (nome do arquivo)
-                    const lines = event.description.split('\n');
-                    const filteredLines = [];
-                    
-                    for (let i = 0; i < lines.length; i++) {
-                        const line = lines[i];
-                        
-                        // Se a linha contém o URL do arquivo
-                        if (line.includes(fileUrl)) {
-                            // Pular esta linha e a anterior se começar com 📎
-                            if (i > 0 && lines[i-1].startsWith('📎')) {
-                                filteredLines.pop(); // Remove a linha anterior já adicionada
-                            }
-                            // Pular linha atual
-                            continue;
-                        }
-                        
-                        filteredLines.push(line);
-                    }
-                    
-                    event.description = filteredLines.join('\n').trim();
-                    console.log(`✅ Link removido da descrição`);
-                }
-                
-                // Atualizar evento
-                await gapi.client.calendar.events.update({
-                    calendarId: calendarId,
-                    eventId: eventId,
-                    resource: event
-                });
-                
-                // Recarregar anexos
-                await loadEventAttachments(currentEventForPdf);
-                
-                alert('Anexo removido com sucesso!');
-                
-            } catch (error) {
-                console.error('❌ Erro ao remover anexo:', error);
-                
-                if (error.status === 404) {
-                    alert('Evento não encontrado ou sem permissão para editar');
-                } else {
-                    alert('Erro ao remover anexo');
-                }
-            }
-        }
-        
-        async function removeAttachmentFromEvent(eventId, fileId, calendarId = 'primary') {
-            if (!confirm('Tem certeza que deseja remover este anexo?')) return;
-            
-            try {
-                console.log(`🗑️ Removendo anexo ${fileId} do evento ${eventId} no calendário ${calendarId}`);
-                
-                // Buscar evento atual
-                const eventResponse = await gapi.client.calendar.events.get({
-                    calendarId: calendarId,
+                    calendarId: 'primary',
                     eventId: eventId
                 });
                 
@@ -4414,12 +4192,11 @@
                 // Remover anexo da lista
                 if (event.attachments) {
                     event.attachments = event.attachments.filter(att => att.fileId !== fileId);
-                    console.log(`✅ Anexo removido da lista. Restam ${event.attachments.length} anexos`);
                 }
                 
                 // Atualizar evento
                 await gapi.client.calendar.events.update({
-                    calendarId: calendarId,
+                    calendarId: 'primary',
                     eventId: eventId,
                     resource: event,
                     supportsAttachments: true
@@ -4431,15 +4208,12 @@
                 alert('Anexo removido com sucesso!');
                 
             } catch (error) {
-                console.error('❌ Erro ao remover anexo:', error);
-                
-                if (error.status === 404) {
-                    alert('Evento não encontrado ou sem permissão para editar');
-                } else {
-                    alert('Erro ao remover anexo');
-                }
+                console.error('Erro ao remover anexo:', error);
+                alert('Erro ao remover anexo');
             }
         }
+
+
 
         // =================================================================
         // INICIALIZAÇÃO
