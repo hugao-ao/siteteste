@@ -4116,6 +4116,58 @@
             }
         }
         
+        async function findEventInAllCalendars(eventId) {
+            console.log('🔍 Buscando evento em todos os calendários disponíveis...');
+            
+            try {
+                // Primeiro tentar no calendário principal
+                try {
+                    console.log('📅 Tentando calendário principal...');
+                    const eventResponse = await gapi.client.calendar.events.get({
+                        calendarId: 'primary',
+                        eventId: eventId
+                    });
+                    console.log('✅ Evento encontrado no calendário principal');
+                    return {
+                        event: eventResponse.result,
+                        calendarId: 'primary'
+                    };
+                } catch (primaryError) {
+                    console.log('⚠️ Evento não encontrado no calendário principal');
+                }
+                
+                // Se não encontrou no principal, buscar em todos os calendários
+                console.log('📋 Listando todos os calendários...');
+                const calendarListResponse = await gapi.client.calendar.calendarList.list();
+                const calendars = calendarListResponse.result.items;
+                console.log(`📅 Encontrados ${calendars.length} calendários`);
+                
+                for (const calendar of calendars) {
+                    try {
+                        console.log(`🔍 Tentando calendário: ${calendar.summary} (${calendar.id})`);
+                        const eventResponse = await gapi.client.calendar.events.get({
+                            calendarId: calendar.id,
+                            eventId: eventId
+                        });
+                        console.log(`✅ Evento encontrado no calendário: ${calendar.summary}`);
+                        return {
+                            event: eventResponse.result,
+                            calendarId: calendar.id
+                        };
+                    } catch (calendarError) {
+                        console.log(`⚠️ Evento não encontrado em: ${calendar.summary}`);
+                        continue;
+                    }
+                }
+                
+                throw new Error('Evento não encontrado em nenhum calendário');
+                
+            } catch (error) {
+                console.error('❌ Erro ao buscar evento:', error);
+                throw error;
+            }
+        }
+
         async function addAttachmentToEvent(eventId, attachment) {
             try {
                 console.log('📎 Tentando adicionar anexo ao evento:', eventId);
@@ -4126,15 +4178,19 @@
                     throw new Error('ID do evento é inválido: ' + eventId);
                 }
                 
-                // Buscar evento atual
-                console.log('🔍 Buscando evento com ID:', eventId);
-                const eventResponse = await gapi.client.calendar.events.get({
-                    calendarId: 'primary',
-                    eventId: eventId
-                });
+                // Buscar evento em todos os calendários
+                const result = await findEventInAllCalendars(eventId);
+                const event = result.event;
+                const calendarId = result.calendarId;
                 
-                const event = eventResponse.result;
                 console.log('✅ Evento encontrado:', event.summary);
+                console.log('📅 Calendário:', calendarId);
+                
+                // Verificar se o calendário permite edição
+                if (calendarId !== 'primary') {
+                    console.log('⚠️ Evento está em calendário externo/compartilhado');
+                    console.log('💡 Tentando adicionar anexo mesmo assim...');
+                }
                 
                 // Adicionar novo anexo
                 if (!event.attachments) {
@@ -4148,7 +4204,7 @@
                 // Atualizar evento
                 console.log('💾 Atualizando evento...');
                 await gapi.client.calendar.events.update({
-                    calendarId: 'primary',
+                    calendarId: calendarId,
                     eventId: eventId,
                     resource: event,
                     supportsAttachments: true
