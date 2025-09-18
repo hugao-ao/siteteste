@@ -3815,15 +3815,18 @@
                 if (allAttachments && allAttachments.length > 0) {
                     console.log(`📎 Encontrados ${allAttachments.length} anexos:`, allAttachments);
                     
-                    const attachmentsHTML = allAttachments.map(attachment => `
+                    const attachmentsHTML = allAttachments.map((attachment, index) => `
                         <div class="attachment-item">
                             <div class="attachment-info">
                                 <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 8px;"></i>
                                 <span class="attachment-name">${attachment.title || 'Anexo PDF'}</span>
                             </div>
                             <div class="attachment-actions">
-                                <button onclick="window.open('${attachment.fileUrl}', '_blank')" class="btn-view-attachment" title="Visualizar PDF" style="background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                                <button onclick="window.open('${attachment.fileUrl}', '_blank')" class="btn-view-attachment" title="Visualizar PDF" style="background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; margin-right: 5px;">
                                     <i class="fas fa-eye"></i> Visualizar
+                                </button>
+                                <button onclick="removeAttachment(${index}, '${attachment.fileId || ''}')" class="btn-remove-attachment" title="Excluir PDF" style="background: #dc3545; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                                    <i class="fas fa-trash"></i> Excluir
                                 </button>
                             </div>
                         </div>
@@ -4088,16 +4091,94 @@
                 // Salvar anexos no localStorage para persistência
                 const eventKey = `event_attachments_${event.id}`;
                 const existingAttachments = JSON.parse(localStorage.getItem(eventKey) || '[]');
-                existingAttachments.push(driveFile);
-                localStorage.setItem(eventKey, JSON.stringify(existingAttachments));
+                
+                // Verificar se já existe para evitar duplicação
+                if (!isDuplicateAttachment(driveFile, existingAttachments)) {
+                    existingAttachments.push(driveFile);
+                    localStorage.setItem(eventKey, JSON.stringify(existingAttachments));
+                    console.log('💾 Anexo salvo no localStorage para persistência');
+                } else {
+                    console.log('⚠️ Anexo já existe, não adicionando duplicata');
+                }
                 
                 console.log('✅ Anexo adicionado localmente ao evento (fallback)');
-                console.log('💾 Anexo salvo no localStorage para persistência');
                 
             } catch (error) {
                 console.error('❌ Erro ao adicionar anexo:', error);
                 throw error;
             }
+        }
+
+        // Função para remover anexo
+        async function removeAttachment(index, fileId) {
+            try {
+                if (!currentEventForPdf) {
+                    console.error('❌ Nenhum evento selecionado');
+                    return;
+                }
+                
+                console.log(`🗑️ Removendo anexo no índice ${index}, fileId: ${fileId}`);
+                
+                // Confirmar remoção
+                if (!confirm('Tem certeza que deseja excluir este anexo?')) {
+                    return;
+                }
+                
+                const eventKey = `event_attachments_${currentEventForPdf.id}`;
+                const savedAttachments = JSON.parse(localStorage.getItem(eventKey) || '[]');
+                const originalAttachments = currentEventForPdf.attachments || [];
+                
+                // Determinar se é anexo original ou salvo localmente
+                if (index < originalAttachments.length) {
+                    // É um anexo original - tentar remover do Google Calendar
+                    console.log('🔄 Tentando remover anexo original do Google Calendar...');
+                    
+                    try {
+                        // Estratégia: PATCH removendo o anexo
+                        const updatedAttachments = originalAttachments.filter((_, i) => i !== index);
+                        
+                        const response = await gapi.client.calendar.events.patch({
+                            calendarId: 'primary',
+                            eventId: currentEventForPdf.id,
+                            resource: {
+                                attachments: updatedAttachments
+                            }
+                        });
+                        
+                        console.log('✅ Anexo removido do Google Calendar!');
+                        
+                    } catch (error) {
+                        console.log('❌ Falha ao remover do Google Calendar:', error.message);
+                        alert('Não foi possível remover este anexo do Google Calendar. Ele pode ter sido criado por outro usuário.');
+                        return;
+                    }
+                } else {
+                    // É um anexo salvo localmente
+                    const localIndex = index - originalAttachments.length;
+                    console.log(`🗑️ Removendo anexo local no índice ${localIndex}`);
+                    
+                    // Remover do localStorage
+                    savedAttachments.splice(localIndex, 1);
+                    localStorage.setItem(eventKey, JSON.stringify(savedAttachments));
+                    
+                    console.log('✅ Anexo removido do localStorage!');
+                }
+                
+                // Recarregar lista de anexos
+                await loadEventAttachments(currentEventForPdf);
+                
+            } catch (error) {
+                console.error('❌ Erro ao remover anexo:', error);
+                alert('Erro ao remover anexo: ' + error.message);
+            }
+        }
+
+        // Função para evitar duplicação de anexos
+        function isDuplicateAttachment(newAttachment, existingAttachments) {
+            return existingAttachments.some(existing => 
+                existing.fileId === newAttachment.fileId || 
+                existing.title === newAttachment.title
+            );
         }
 
     </script>
