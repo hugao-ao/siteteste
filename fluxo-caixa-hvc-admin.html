@@ -4000,88 +4000,56 @@
             }
         }
 
-        // Função para simular adição de anexo ao evento (sem modificar o evento real)
+        // Função para salvar anexo diretamente no Google Calendar (copiada exatamente do usuário)
         async function simulateAddAttachmentToEvent(event, driveFile) {
             try {
-                console.log('📎 Tentando salvar anexo diretamente no Google Calendar:', event.id);
+                console.log('📎 Salvando anexo diretamente no Google Calendar (estratégia do usuário):', event.id);
                 
-                // Estratégia 1: PATCH apenas com attachments
-                try {
-                    console.log('🔄 Estratégia 1: PATCH simples');
+                // ESTRATÉGIA EXATA DO USUÁRIO: Buscar evento completo primeiro
+                console.log('🔄 Buscando evento completo...');
+                const eventResponse = await gapi.client.calendar.events.get({
+                    calendarId: 'primary',
+                    eventId: event.id
+                });
+                
+                const fullEvent = eventResponse.result;
+                console.log('✅ Evento completo obtido:', fullEvent);
+                
+                // Adicionar novo anexo (exatamente como no usuário)
+                if (!fullEvent.attachments) {
+                    fullEvent.attachments = [];
+                }
+                fullEvent.attachments.push(driveFile);
+                
+                console.log('📎 Anexos atualizados:', fullEvent.attachments);
+                
+                // Atualizar evento (exatamente como no usuário)
+                console.log('🔄 Atualizando evento no Google Calendar...');
+                const updateResponse = await gapi.client.calendar.events.update({
+                    calendarId: 'primary',
+                    eventId: event.id,
+                    resource: fullEvent,
+                    supportsAttachments: true
+                });
+                
+                console.log('✅ Resposta da atualização:', updateResponse);
+                
+                if (updateResponse.status === 200) {
+                    console.log('🎉 SUCESSO! Anexo salvo diretamente no Google Calendar!');
                     
-                    // Preparar lista de anexos atualizada
-                    const currentAttachments = event.attachments || [];
-                    const updatedAttachments = [...currentAttachments, driveFile];
+                    // Atualizar evento local também
+                    event.attachments = fullEvent.attachments;
                     
-                    const response = await gapi.client.calendar.events.patch({
-                        calendarId: 'primary',
-                        eventId: event.id,
-                        resource: {
-                            attachments: updatedAttachments
-                        }
-                    });
-                    
-                    console.log('✅ Anexo salvo no Google Calendar via PATCH simples!');
-                    return; // Sucesso, sair da função
-                    
-                } catch (error) {
-                    console.log('❌ Estratégia 1 falhou:', error.message);
+                    return; // Sucesso total!
+                } else {
+                    throw new Error(`Resposta inesperada: ${updateResponse.status}`);
                 }
                 
-                // Estratégia 2: PATCH com supportsAttachments
-                try {
-                    console.log('🔄 Estratégia 2: PATCH com supportsAttachments');
-                    
-                    const currentAttachments = event.attachments || [];
-                    const updatedAttachments = [...currentAttachments, driveFile];
-                    
-                    const response = await gapi.client.calendar.events.patch({
-                        calendarId: 'primary',
-                        eventId: event.id,
-                        supportsAttachments: true,
-                        resource: {
-                            attachments: updatedAttachments
-                        }
-                    });
-                    
-                    console.log('✅ Anexo salvo no Google Calendar via PATCH com supportsAttachments!');
-                    return; // Sucesso, sair da função
-                    
-                } catch (error) {
-                    console.log('❌ Estratégia 2 falhou:', error.message);
-                }
+            } catch (error) {
+                console.error('❌ Erro ao salvar no Google Calendar:', error);
+                console.log('⚠️ Tentando fallback local...');
                 
-                // Estratégia 3: UPDATE completo do evento
-                try {
-                    console.log('🔄 Estratégia 3: UPDATE completo');
-                    
-                    // Buscar evento completo primeiro
-                    const fullEventResponse = await gapi.client.calendar.events.get({
-                        calendarId: 'primary',
-                        eventId: event.id
-                    });
-                    
-                    const fullEvent = fullEventResponse.result;
-                    const currentAttachments = fullEvent.attachments || [];
-                    fullEvent.attachments = [...currentAttachments, driveFile];
-                    
-                    const response = await gapi.client.calendar.events.update({
-                        calendarId: 'primary',
-                        eventId: event.id,
-                        resource: fullEvent
-                    });
-                    
-                    console.log('✅ Anexo salvo no Google Calendar via UPDATE completo!');
-                    return; // Sucesso, sair da função
-                    
-                } catch (error) {
-                    console.log('❌ Estratégia 3 falhou:', error.message);
-                }
-                
-                // Se todas as estratégias falharam, salvar localmente como fallback
-                console.log('⚠️ Todas as estratégias falharam, salvando localmente como fallback');
-                
-                // Adicionar anexo à lista local do evento
+                // Fallback: salvar localmente
                 if (!event.attachments) {
                     event.attachments = [];
                 }
@@ -4102,10 +4070,6 @@
                 }
                 
                 console.log('✅ Anexo adicionado localmente ao evento (fallback)');
-                
-            } catch (error) {
-                console.error('❌ Erro ao adicionar anexo:', error);
-                throw error;
             }
         }
 
