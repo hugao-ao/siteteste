@@ -3049,6 +3049,9 @@
             // ✅ NOVO: Configurar upload de PDFs para este evento
             setupEventPdfUpload(event);
             
+            // ✅ NOVO: Debug do evento
+            debugEvent(event);
+            
             // ✅ NOVO: Carregar anexos existentes
             loadEventAttachments(event);
             
@@ -3794,12 +3797,57 @@
         // Variável global para o evento atual
         let currentEventForPdf = null;
 
-        // Função para carregar anexos do evento
+        // Função para debugar eventos
+        function debugEvent(event) {
+            console.log('🔍 DEBUG - Informações do evento:', {
+                id: event.id,
+                summary: event.summary,
+                start: event.start,
+                end: event.end,
+                creator: event.creator,
+                organizer: event.organizer,
+                hasAttachments: !!(event.attachments && event.attachments.length > 0),
+                attachmentsCount: event.attachments ? event.attachments.length : 0
+            });
+            
+            console.log('🔍 DEBUG - Estado da API:', {
+                gapiLoaded: !!(window.gapi),
+                clientLoaded: !!(window.gapi && window.gapi.client),
+                calendarLoaded: !!(window.gapi && window.gapi.client && window.gapi.client.calendar),
+                authInstance: !!(window.gapi && window.gapi.auth2 && window.gapi.auth2.getAuthInstance()),
+                isSignedIn: !!(window.gapi && window.gapi.auth2 && window.gapi.auth2.getAuthInstance() && window.gapi.auth2.getAuthInstance().isSignedIn.get())
+            });
+        }
+
+        // Função para carregar anexos do evento - VERSÃO MELHORADA
         async function loadEventAttachments(event) {
             const attachmentsList = document.getElementById('eventAttachmentsList');
-            if (!attachmentsList) return;
+            if (!attachmentsList) {
+                console.error('Elemento eventAttachmentsList não encontrado');
+                return;
+            }
+            
+            // Mostrar loading
+            attachmentsList.innerHTML = '<p class="no-attachments">Carregando anexos...</p>';
             
             try {
+                console.log('🔍 Tentando carregar anexos para evento:', {
+                    id: event.id,
+                    summary: event.summary,
+                    calendarId: 'primary'
+                });
+                
+                // Verificar se a API está inicializada
+                if (!gapi || !gapi.client || !gapi.client.calendar) {
+                    throw new Error('API do Google Calendar não está inicializada');
+                }
+                
+                // Verificar se o usuário está autenticado
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (!authInstance || !authInstance.isSignedIn.get()) {
+                    throw new Error('Usuário não está autenticado no Google');
+                }
+                
                 // Buscar evento completo com anexos
                 const fullEventResponse = await gapi.client.calendar.events.get({
                     calendarId: 'primary',
@@ -3807,14 +3855,18 @@
                     supportsAttachments: true
                 });
                 
+                console.log('✅ Evento carregado com sucesso:', fullEventResponse.result);
+                
                 const fullEvent = fullEventResponse.result;
                 
                 if (fullEvent.attachments && fullEvent.attachments.length > 0) {
-                    const attachmentsHTML = fullEvent.attachments.map(attachment => `
+                    console.log(`📎 Encontrados ${fullEvent.attachments.length} anexos`);
+                    
+                    const attachmentsHTML = fullEvent.attachments.map((attachment, index) => `
                         <div class="attachment-item">
                             <div class="attachment-info">
                                 <i class="fas fa-file-pdf"></i>
-                                <span class="attachment-name">${attachment.title || 'Anexo'}</span>
+                                <span class="attachment-name">${attachment.title || `Anexo ${index + 1}`}</span>
                             </div>
                             <div class="attachment-actions">
                                 <button onclick="window.open('${attachment.fileUrl}', '_blank')" class="btn-view-attachment" title="Visualizar">
@@ -3829,12 +3881,33 @@
                     
                     attachmentsList.innerHTML = attachmentsHTML;
                 } else {
+                    console.log('📎 Nenhum anexo encontrado no evento');
                     attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado</p>';
                 }
                 
             } catch (error) {
-                console.error('Erro ao carregar anexos:', error);
-                attachmentsList.innerHTML = '<p class="no-attachments">Erro ao carregar anexos</p>';
+                console.error('❌ Erro detalhado ao carregar anexos:', {
+                    error: error,
+                    message: error.message,
+                    status: error.status,
+                    eventId: event.id
+                });
+                
+                let errorMessage = 'Erro ao carregar anexos';
+                
+                if (error.status === 404) {
+                    errorMessage = 'Evento não encontrado. Pode ter sido deletado.';
+                } else if (error.status === 403) {
+                    errorMessage = 'Sem permissão para acessar este evento.';
+                } else if (error.status === 401) {
+                    errorMessage = 'Não autorizado. Faça login novamente.';
+                } else if (error.message.includes('não está inicializada')) {
+                    errorMessage = 'API não inicializada. Recarregue a página.';
+                } else if (error.message.includes('não está autenticado')) {
+                    errorMessage = 'Faça login no Google primeiro.';
+                }
+                
+                attachmentsList.innerHTML = `<p class="no-attachments">${errorMessage}</p>`;
             }
         }
 
