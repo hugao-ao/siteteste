@@ -554,11 +554,8 @@ function initMultiAccountManager() {
     const createEventButton = document.getElementById('createEventButton');
     if (createEventButton) {
         createEventButton.addEventListener('click', function() {
-            if (typeof showCreateEventForm === 'function') {
-                showCreateEventForm();
-            } else {
-                console.error('Função showCreateEventForm não encontrada');
-            }
+            // A função showCreateEventForm está definida no HTML principal
+            showCreateEventForm();
         });
     }
     
