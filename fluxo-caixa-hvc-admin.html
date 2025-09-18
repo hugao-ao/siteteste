@@ -3039,10 +3039,7 @@
             
             body.innerHTML = detailsHTML;
 
-            // ✅ NOVO: Configurar upload de PDFs para este evento
-            setupEventPdfUpload(event);
-            
-            // ✅ NOVO: Carregar anexos existentes
+            // ✅ CARREGAR ANEXOS EXISTENTES
             loadEventAttachments(event);
             
             modal.style.display = 'block';
