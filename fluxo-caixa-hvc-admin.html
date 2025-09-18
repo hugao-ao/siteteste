@@ -1565,9 +1565,8 @@
         // CONFIGURAÇÕES GLOBAIS
         // =================================================================
         const CLIENT_ID = '314578730498-ghkttnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
-        const DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest';
-        const DRIVE_DISCOVERY_DOC = 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest';
-        const SCOPES = 'https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/drive.file';
+        const DISCOVERY_DOC = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
+        const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file';
 
         // ✅ MODIFICADO: Filtro RESTRITIVO - incluindo 'entrada'
         const PAYMENT_KEYWORDS = ['pagamento', 'pagamentos', 'hvc', 'entrada'];
@@ -1779,7 +1778,7 @@
                 await gapi.load('client', async () => {
                     await gapi.client.init({
                         apiKey: '',
-                        discoveryDocs: [DISCOVERY_DOC, DRIVE_DISCOVERY_DOC],
+                        discoveryDocs: DISCOVERY_DOC,
                     });
 
                     const tokenClient = google.accounts.oauth2.initTokenClient({
@@ -1854,7 +1853,7 @@
                 await gapi.load('client', async () => {
                     await gapi.client.init({
                         apiKey: '',
-                        discoveryDocs: [DISCOVERY_DOC, DRIVE_DISCOVERY_DOC],
+                        discoveryDocs: DISCOVERY_DOC,
                     });
 
                     const tokenClient = google.accounts.oauth2.initTokenClient({
