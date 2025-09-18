@@ -44,6 +44,7 @@
                 margin-left: 0;
                 width: 100vw;
             }
+        }
 
         .hvc-container {
             background: rgba(25, 25, 112, 0.3);
@@ -901,6 +902,7 @@
                 opacity: 1;
                 transform: translateY(0);
             }
+        }
 
         .modal-header {
             display: flex;
@@ -1022,6 +1024,7 @@
                 min-height: 120px;
                 max-height: 120px;
             }
+        }
 
         @media (max-width: 768px) {
             #main-content-fluxo-caixa-hvc {
@@ -1117,6 +1120,7 @@
             .payments-filters {
                 grid-template-columns: 1fr;
             }
+        }
 
         @media (max-width: 480px) {
             .calendar-grid {
@@ -1146,6 +1150,7 @@
             .status-stats {
                 grid-template-columns: 1fr;
             }
+        }
 
         /* ✅ NOVO: Estilos para criação de eventos */
         .event-creator-section {
@@ -2091,6 +2096,7 @@
                 width: 100%;
                 text-align: center;
             }
+        }
 
         /* ✅ NOVO: Estilos para upload de PDF */
         .pdf-upload-container {
@@ -2401,6 +2407,7 @@
             if (paymentItems.length > 0) {
                 document.getElementById('createEventForm').style.display = 'block';
             }
+        }
 
         function removePaymentItem(itemId) {
             paymentItems = paymentItems.filter(item => item.id !== itemId);
@@ -2410,6 +2417,7 @@
             if (paymentItems.length === 0) {
                 document.getElementById('createEventForm').style.display = 'none';
             }
+        }
 
         function renderPaymentItems() {
             const itemsList = document.getElementById('itemsList');
@@ -2477,15 +2485,10 @@
                 return;
             }
 
-            const eventAccount = document.getElementById('eventAccount').value;
             const eventDate = document.getElementById('eventDate').value;
             const eventTime = document.getElementById('eventTime').value;
             const recurrence = document.getElementById('eventRecurrence').value;
 
-            if (!eventAccount) {
-                alert('Selecione uma conta Google!');
-                return;
-            }
             if (!eventDate) {
                 alert('Data é obrigatória!');
                 return;
@@ -2494,18 +2497,6 @@
                 alert('Recorrência é obrigatória!');
                 return;
             }
-
-            // ✅ NOVO: Definir token da conta selecionada
-            const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
-            const selectedAccount = connectedAccounts.find(acc => acc.email === eventAccount);
-            
-            if (!selectedAccount || !selectedAccount.accessToken) {
-                alert('Conta selecionada não está conectada ou não tem token válido!');
-                return;
-            }
-            
-            console.log(`🔄 Criando evento na conta: ${eventAccount}`);
-            gapi.client.setToken({ access_token: selectedAccount.accessToken });
 
             try {
                 // Preparar data e hora
@@ -2615,6 +2606,7 @@
                 console.error('❌ Erro ao criar evento:', error);
                 alert('Erro ao criar evento. Verifique sua conexão e tente novamente.');
             }
+        }
 
         function cancelEventCreation() {
             if (paymentItems.length > 0) {
@@ -2626,6 +2618,7 @@
             } else {
                 document.getElementById('createEventForm').style.display = 'none';
             }
+        }
 
         // ✅ NOVO: Função para alternar seção de criação de eventos
         function toggleEventCreator() {
@@ -2641,6 +2634,7 @@
                     renderPaymentItems();
                 }
             }
+        }
 
         // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
         window.gapiLoaded = function() {
@@ -2663,6 +2657,7 @@
                 console.error('❌ Erro ao inicializar GIS:', error);
                 showMessage('Erro ao carregar sistema de autenticação do Google', 'error');
             }
+        }
 
         async function initializeGapiClient() {
             try {
@@ -2699,6 +2694,7 @@
                 console.error('❌ Detalhes do erro:', error.message);
                 showMessage('Erro ao carregar APIs do Google', 'error');
             }
+        }
 
         function maybeEnableButtons() {
             if (gapiInited && gisInited) {
@@ -2709,6 +2705,7 @@
                     showMessage('APIs do Google carregadas com sucesso!', 'success');
                 }
             }
+        }
 
         // =================================================================
         // ✅ SISTEMA DE EXTRAÇÃO COM STATUS MELHORADO
@@ -2983,6 +2980,7 @@
             if (clearFiltersBtn) {
                 clearFiltersBtn.addEventListener('click', clearFilters);
             }
+        }
 
         function applyFilters() {
             const nameFilter = document.getElementById('nameFilter')?.value.toLowerCase() || '';
@@ -3065,6 +3063,7 @@
             if (event) {
                 showEventDetails(event);
             }
+        }
 
         // =================================================================
         // LÓGICA DE CORES BASEADA EM STATUS E DATA
@@ -3087,6 +3086,7 @@
             } else {
                 return 'upcoming'; // Azul (data posterior)
             }
+        }
 
         // =================================================================
         // CORREÇÃO DE FUSO HORÁRIO - FUNÇÃO PRINCIPAL
@@ -3137,6 +3137,7 @@
             } catch (error) {
                 console.error('❌ Erro ao salvar estado:', error);
             }
+        }
 
         function getConnectionState() {
             try {
@@ -3159,6 +3160,7 @@
                 console.error('❌ Erro ao recuperar estado:', error);
                 return null;
             }
+        }
 
         function clearConnectionState() {
             try {
@@ -3168,6 +3170,7 @@
             } catch (error) {
                 console.error('❌ Erro ao remover estado:', error);
             }
+        }
 
         async function tryRestoreSession() {
             const savedState = getConnectionState();
@@ -3180,6 +3183,7 @@
                     clearConnectionState();
                 }
             }
+        }
 
         // =================================================================
         // MODAL FUNCTIONS
@@ -3222,6 +3226,7 @@
                 case 'warning': return 'fa-exclamation-circle';
                 default: return 'fa-info-circle';
             }
+        }
 
         // =================================================================
         // GOOGLE AUTHENTICATION
@@ -3238,6 +3243,7 @@
                 console.error('❌ Erro na autenticação:', error);
                 showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
             }
+        }
 
         async function handleTokenResponse(resp) {
             if (resp.error) {
@@ -3282,6 +3288,7 @@
                 console.error('❌ Erro ao processar token:', error);
                 showMessage('Erro ao processar autenticação', 'error');
             }
+        }
 
         function handleSignoutClick() {
             try {
@@ -3306,6 +3313,7 @@
                 console.error('❌ Erro ao desconectar:', error);
                 showMessage('Erro ao desconectar', 'error');
             }
+        }
 
         // =================================================================
         // CONNECTION STATUS
@@ -3338,6 +3346,7 @@
                 if (monthlySummarySection) monthlySummarySection.style.display = 'none';
                 if (paymentsListSection) paymentsListSection.style.display = 'none';
             }
+        }
 
         // =================================================================
         // EVENT FILTERING
@@ -3513,6 +3522,7 @@
                     updateConnectionStatus(false);
                 }
             }
+        }
 
         function updateFilterStats(total, filtered) {
             const statsElement = document.getElementById('filterStats');
@@ -3523,6 +3533,7 @@
                     Palavras-chave: "PAGAMENTO", "PAGAMENTOS", "HVC"
                 `;
             }
+        }
 
         // =================================================================
         // CALENDAR RENDERING
@@ -3875,6 +3886,7 @@
             if (pdfInput) {
                 pdfInput.addEventListener('change', handleEventPdfUpload);
             }
+        }
         
         async function handleEventPdfUpload(event) {
             const files = Array.from(event.target.files);
@@ -3965,6 +3977,7 @@
                 console.error('Erro no upload:', error);
                 throw error;
             }
+        }
         
         function convertFileToBase64(file) {
             return new Promise((resolve, reject) => {
@@ -4083,6 +4096,7 @@
                 console.error('❌ Erro completo no upload:', error);
                 throw error;
             }
+        }
         
         async function addAttachmentToEvent(eventId, attachment) {
             try {
@@ -4114,6 +4128,7 @@
                 console.error('Erro ao adicionar anexo ao evento:', error);
                 throw error;
             }
+        }
         
         async function loadEventAttachments(event) {
             const attachmentsList = document.getElementById('eventAttachmentsList');
@@ -4166,6 +4181,7 @@
                 console.error('Erro ao carregar anexos:', error);
                 attachmentsList.innerHTML = '<p class="no-attachments">Erro ao carregar anexos</p>';
             }
+        }
         
         // ✅ NOVO: Função para visualizar anexo com o token correto
         async function viewAttachmentWithCorrectToken(fileUrl, accountEmail) {
@@ -4191,6 +4207,7 @@
                 console.error('Erro ao visualizar anexo:', error);
                 alert('Erro ao abrir o anexo. Verifique se você tem permissão para acessá-lo.');
             }
+        }
 
         async function removeAttachmentFromEvent(eventId, fileId, accountEmail) {
             if (!confirm('Tem certeza que deseja remover este anexo?')) return;
@@ -4237,6 +4254,7 @@
                 console.error('Erro ao remover anexo:', error);
                 alert('Erro ao remover anexo');
             }
+        }
 
         // =================================================================
         // EVENT DELETION
@@ -4292,6 +4310,7 @@
                 console.error('❌ Erro ao excluir evento:', error);
                 alert('Erro ao excluir evento. Verifique sua conexão e tente novamente.');
             }
+        }
 
         // Função para mostrar dialog de opções de recorrência para exclusão
         function showRecurrenceDeleteDialog(eventTitle) {
@@ -4733,6 +4752,7 @@
                 syncButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar';
                 syncButton.disabled = false;
             }
+        }
 
         // =================================================================
         // WINDOW CLICK HANDLER
@@ -4742,6 +4762,7 @@
             if (event.target === eventModal) {
                 eventModal.style.display = 'none';
             }
+        }
 
 
                     // =================================================================
@@ -5084,59 +5105,7 @@
             if (select.value === 'CUSTOM') {
                 showCustomRecurrenceModal();
             }
-
-        /**
-         * Mostra o formulário de criação de evento
-         */
-        function showCreateEventForm() {
-            const form = document.getElementById('createEventForm');
-            if (form) {
-                form.style.display = form.style.display === 'none' ? 'block' : 'none';
-                
-                // Definir data padrão como hoje
-                const today = new Date();
-                const dateInput = document.getElementById('eventDate');
-                if (dateInput) {
-                    dateInput.value = today.toISOString().split('T')[0];
-                }
-                
-                // ✅ NOVO: Popular seletor de contas
-                populateAccountSelector();
-            }
-        
-        // ✅ NOVO: Função para popular o seletor de contas
-        function populateAccountSelector() {
-            const accountSelect = document.getElementById('eventAccount');
-            if (!accountSelect) return;
-            
-            // Limpar opções existentes (exceto a primeira)
-            accountSelect.innerHTML = '<option value="">Selecionar conta...</option>';
-            
-            // Obter contas conectadas
-            const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
-            
-            if (connectedAccounts.length === 0) {
-                accountSelect.innerHTML = '<option value="">Nenhuma conta conectada</option>';
-                accountSelect.disabled = true;
-                return;
-            }
-            
-            // Adicionar cada conta como opção
-            connectedAccounts.forEach(account => {
-                if (account.status === 'connected') {
-                    const option = document.createElement('option');
-                    option.value = account.email;
-                    option.textContent = `${account.name || account.email} (${account.email})`;
-                    accountSelect.appendChild(option);
-                }
-            });
-            
-            accountSelect.disabled = false;
-            
-            // Se há apenas uma conta, selecioná-la automaticamente
-            if (connectedAccounts.length === 1) {
-                accountSelect.value = connectedAccounts[0].email;
-            }
+        }
 
         /**
          * Mostra o modal de recorrência personalizada
@@ -5144,9 +5113,9 @@
         function showCustomRecurrenceModal() {
             const modal = document.getElementById('customRecurrenceModal');
             if (modal) {
-                modal.style.display = 'block';
+                modal.style.display = 'flex';
                 
-                // Obter data do evento para configurar padrões
+                // Configurar data padrão baseada na data do evento
                 const eventDate = document.getElementById('eventDate').value;
                 if (eventDate) {
                     const date = new Date(eventDate);
@@ -5364,6 +5333,7 @@
                 default:
                     return null;
             }
+        }
 
 
         
@@ -5412,9 +5382,6 @@
                 </button>
                  <button id="syncAllButton" class="btn btn-secondary" disabled>
                     <i class="fas fa-sync-alt"></i> Sincronizar Todas as Contas
-                </button>
-                <button id="createEventButton" class="btn btn-success" style="display: none;">
-                    <i class="fas fa-plus-circle"></i> Criar Evento
                 </button>
             </div>
         </div>
@@ -5498,12 +5465,6 @@
                 <h4><i class="fas fa-calendar-plus"></i> Criar Evento no Google Calendar</h4>
                 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Conta Google *</label>
-                        <select id="eventAccount" required>
-                            <option value="">Selecionar conta...</option>
-                        </select>
-                    </div>
                     <div class="form-group">
                         <label>Data *</label>
                         <input type="date" id="eventDate" required>
@@ -5668,12 +5629,6 @@
                 <h4><i class="fas fa-calendar-plus"></i> Criar Evento no Google Calendar</h4>
                 
                 <div class="form-row">
-                    <div class="form-group">
-                        <label>Conta Google *</label>
-                        <select id="eventAccount" required>
-                            <option value="">Selecionar conta...</option>
-                        </select>
-                    </div>
                     <div class="form-group">
                         <label>Data *</label>
                         <input type="date" id="eventDate" required>
@@ -5895,7 +5850,8 @@
                         addPaymentItem();
                     }
                 });
-            });
+            }
+        });
     </script>
     
     <!-- Google APIs - Carregar DEPOIS das funções estarem definidas -->
