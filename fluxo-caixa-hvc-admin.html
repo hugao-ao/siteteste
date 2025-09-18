@@ -3861,7 +3861,7 @@
                         console.log('Arquivo enviado para o Drive:', driveFile);
                         
                         // Atualizar evento com novo anexo
-                        await addAttachmentToEvent(event.id, driveFile);
+                        const updatedEvent = await addAttachmentToEvent(event, driveFile);
                         
                         // Recarregar anexos
                         await loadEventAttachments(event);
@@ -3934,40 +3934,42 @@
             }
         }
 
-        // Função para adicionar anexo ao evento (copiada do usuário)
-        async function addAttachmentToEvent(eventId, driveFile) {
+        // Função para adicionar anexo ao evento (corrigida)
+        async function addAttachmentToEvent(event, driveFile) {
             try {
-                // Buscar evento atual
-                const eventResponse = await gapi.client.calendar.events.get({
-                    calendarId: 'primary',
-                    eventId: eventId
-                });
+                console.log('✅ Adicionando anexo ao evento:', event.id);
                 
-                const event = eventResponse.result;
+                // ✅ CORREÇÃO: Usar evento diretamente (não fazer nova busca na API)
+                const eventToUpdate = { ...event }; // Cópia do evento
                 
                 // Adicionar novo anexo
-                if (!event.attachments) {
-                    event.attachments = [];
+                if (!eventToUpdate.attachments) {
+                    eventToUpdate.attachments = [];
                 }
                 
-                event.attachments.push({
+                eventToUpdate.attachments.push({
                     fileId: driveFile.id,
                     fileUrl: `https://drive.google.com/file/d/${driveFile.id}/view`,
                     title: driveFile.name
                 });
                 
+                console.log('📎 Anexos após adição:', eventToUpdate.attachments);
+                
                 // Atualizar evento
-                await gapi.client.calendar.events.update({
+                const updateResponse = await gapi.client.calendar.events.update({
                     calendarId: 'primary',
-                    eventId: eventId,
-                    resource: event,
+                    eventId: event.id,
+                    resource: eventToUpdate,
                     supportsAttachments: true
                 });
                 
+                console.log('✅ Evento atualizado:', updateResponse.result);
                 console.log('✅ Anexo adicionado ao evento');
                 
+                return updateResponse.result;
+                
             } catch (error) {
-                console.error('Erro ao adicionar anexo ao evento:', error);
+                console.error('❌ Erro ao adicionar anexo ao evento:', error);
                 throw error;
             }
         }
