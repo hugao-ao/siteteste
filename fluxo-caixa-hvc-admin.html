@@ -3027,12 +3027,18 @@
                 `;
             }
 
-            // ✅ SEÇÃO DE ANEXOS PDF (APENAS VISUALIZAÇÃO)
+            // ✅ SEÇÃO DE ANEXOS PDF (COM UPLOAD)
             detailsHTML += `
                 <div class="event-attachments-section">
                     <h4><i class="fas fa-paperclip"></i> Anexos PDF</h4>
                     <div id="eventAttachmentsList" class="event-attachments-list">
                         <!-- Lista de anexos será carregada aqui -->
+                    </div>
+                    <div class="attachment-upload-section" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #dee2e6;">
+                        <input type="file" id="eventPdfInput" multiple accept=".pdf" style="display: none;">
+                        <button onclick="document.getElementById('eventPdfInput').click()" class="btn-add-pdf" style="background: #28a745; color: white; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer;">
+                            <i class="fas fa-plus"></i> Adicionar PDF
+                        </button>
                     </div>
                 </div>
             `;
@@ -3041,6 +3047,9 @@
 
             // ✅ CARREGAR ANEXOS EXISTENTES
             loadEventAttachments(event);
+            
+            // ✅ CONFIGURAR UPLOAD DE PDFs
+            setupEventPdfUpload(event);
             
             modal.style.display = 'block';
         }
@@ -3819,6 +3828,173 @@
             } catch (error) {
                 console.error('❌ Erro ao carregar anexos:', error);
                 attachmentsList.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Erro ao carregar anexos</p>';
+            }
+        }
+
+        // Variável global para o evento atual
+        let currentEventForPdf = null;
+
+        // Função para configurar upload de PDFs
+        function setupEventPdfUpload(event) {
+            currentEventForPdf = event;
+            
+            const pdfInput = document.getElementById('eventPdfInput');
+            if (!pdfInput) return;
+            
+            pdfInput.onchange = async function(e) {
+                const files = Array.from(e.target.files);
+                
+                for (const file of files) {
+                    if (file.type !== 'application/pdf') {
+                        alert(`${file.name} não é um arquivo PDF válido.`);
+                        continue;
+                    }
+                    
+                    try {
+                        console.log(`📤 Fazendo upload de ${file.name}...`);
+                        
+                        // Converter arquivo para base64
+                        const base64Data = await convertFileToBase64(file);
+                        
+                        // Upload para Google Drive
+                        const driveFile = await uploadPdfToDrive({
+                            name: file.name,
+                            base64: base64Data
+                        }, event.summary);
+                        
+                        console.log('✅ Arquivo enviado para o Drive:', driveFile);
+                        
+                        // Simular adição ao evento (sem modificar o evento real)
+                        await simulateAddAttachmentToEvent(event, driveFile);
+                        
+                        // Recarregar anexos
+                        await loadEventAttachments(event);
+                        
+                        alert(`${file.name} anexado com sucesso!`);
+                        
+                    } catch (error) {
+                        console.error('❌ Erro no upload:', error);
+                        alert(`Erro ao anexar ${file.name}. Tente novamente.`);
+                    }
+                }
+                
+                // Limpar input
+                e.target.value = '';
+            };
+        }
+
+        // Função para converter arquivo para base64
+        function convertFileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // Função para upload para Google Drive
+        async function uploadPdfToDrive(fileData, eventTitle) {
+            try {
+                console.log('📤 Iniciando upload para Google Drive:', fileData.name);
+                
+                // Verificar se o token está válido
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (!authInstance.isSignedIn.get()) {
+                    throw new Error('Usuário não está logado no Google');
+                }
+                
+                console.log('🔑 Token válido encontrado, prosseguindo com upload...');
+                
+                // Preparar arquivo para upload
+                const boundary = '-------314159265358979323846';
+                const delimiter = "\r\n--" + boundary + "\r\n";
+                const close_delim = "\r\n--" + boundary + "--";
+
+                const metadata = {
+                    'name': fileData.name,
+                    'description': `Anexo do evento: ${eventTitle}`
+                };
+
+                const multipartRequestBody =
+                    delimiter +
+                    'Content-Type: application/json\r\n\r\n' +
+                    JSON.stringify(metadata) +
+                    delimiter +
+                    'Content-Type: application/pdf\r\n' +
+                    'Content-Transfer-Encoding: base64\r\n' +
+                    '\r\n' +
+                    fileData.base64 +
+                    close_delim;
+
+                console.log('📦 Arquivo preparado:', Math.round(fileData.base64.length / 1024), 'KB');
+                console.log('📤 Enviando para Google Drive...');
+
+                const request = gapi.client.request({
+                    'path': 'https://www.googleapis.com/upload/drive/v3/files',
+                    'method': 'POST',
+                    'params': {'uploadType': 'multipart'},
+                    'headers': {
+                        'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+                    },
+                    'body': multipartRequestBody
+                });
+
+                const response = await request;
+                console.log('📤 Resposta do Drive:', response.status);
+                
+                if (response.status === 200) {
+                    const driveFile = response.result;
+                    console.log('✅ Arquivo enviado com sucesso:', driveFile.id);
+                    
+                    // Tornar arquivo público
+                    console.log('🔓 Tornando arquivo público...');
+                    await gapi.client.drive.permissions.create({
+                        fileId: driveFile.id,
+                        resource: {
+                            role: 'reader',
+                            type: 'anyone'
+                        }
+                    });
+                    
+                    console.log('✅ Arquivo tornado público');
+                    
+                    return {
+                        fileId: driveFile.id,
+                        fileUrl: `https://drive.google.com/file/d/${driveFile.id}/view`,
+                        title: driveFile.name,
+                        mimeType: 'application/pdf'
+                    };
+                } else {
+                    throw new Error(`Erro no upload: ${response.status}`);
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro no upload para Google Drive:', error);
+                throw error;
+            }
+        }
+
+        // Função para simular adição de anexo ao evento (sem modificar o evento real)
+        async function simulateAddAttachmentToEvent(event, driveFile) {
+            try {
+                console.log('📎 Adicionando anexo ao evento localmente:', event.id);
+                
+                // Adicionar anexo à lista local do evento
+                if (!event.attachments) {
+                    event.attachments = [];
+                }
+                
+                event.attachments.push(driveFile);
+                
+                console.log('✅ Anexo adicionado localmente ao evento');
+                
+            } catch (error) {
+                console.error('❌ Erro ao adicionar anexo:', error);
+                throw error;
             }
         }
 
