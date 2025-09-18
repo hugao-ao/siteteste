@@ -3798,16 +3798,28 @@
             const attachmentsList = document.getElementById('eventAttachmentsList');
             if (!attachmentsList) return;
             
+            // ✅ DEBUG: Logs detalhados
+            console.log('🔍 DEBUG - loadEventAttachments chamada com:', event);
+            console.log('🔍 DEBUG - event.id:', event.id);
+            console.log('🔍 DEBUG - typeof event.id:', typeof event.id);
+            console.log('🔍 DEBUG - event completo:', JSON.stringify(event, null, 2));
+            
             try {
+                console.log('🔄 Tentando buscar evento com ID:', event.id);
+                
                 // Buscar evento completo com anexos
                 const fullEventResponse = await gapi.client.calendar.events.get({
                     calendarId: 'primary',
                     eventId: event.id
                 });
                 
+                console.log('✅ Evento encontrado:', fullEventResponse.result);
+                
                 const fullEvent = fullEventResponse.result;
                 
                 if (fullEvent.attachments && fullEvent.attachments.length > 0) {
+                    console.log(`📎 Encontrados ${fullEvent.attachments.length} anexos:`, fullEvent.attachments);
+                    
                     const attachmentsHTML = fullEvent.attachments.map(attachment => `
                         <div class="attachment-item">
                             <div class="attachment-info">
@@ -3827,11 +3839,17 @@
                     
                     attachmentsList.innerHTML = attachmentsHTML;
                 } else {
+                    console.log('📎 Nenhum anexo encontrado no evento');
                     attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado</p>';
                 }
                 
             } catch (error) {
-                console.error('Erro ao carregar anexos:', error);
+                console.error('❌ Erro detalhado ao carregar anexos:', error);
+                console.error('❌ Error status:', error.status);
+                console.error('❌ Error message:', error.message);
+                console.error('❌ Error details:', error.details);
+                console.error('❌ Event ID usado:', event.id);
+                
                 attachmentsList.innerHTML = '<p class="no-attachments">Erro ao carregar anexos</p>';
             }
         }
