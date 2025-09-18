@@ -3898,13 +3898,25 @@
             try {
                 console.log('📤 Iniciando upload para Google Drive:', fileData.name);
                 
-                // Verificar se o token está válido
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (!authInstance.isSignedIn.get()) {
-                    throw new Error('Usuário não está logado no Google');
+                // Verificar se gapi está carregado
+                if (typeof gapi === 'undefined') {
+                    throw new Error('Google API não está carregada');
                 }
                 
-                console.log('🔑 Token válido encontrado, prosseguindo com upload...');
+                // Verificar se o cliente está inicializado
+                if (!gapi.client) {
+                    console.log('🔄 Inicializando cliente Google...');
+                    await new Promise((resolve) => {
+                        gapi.load('client', resolve);
+                    });
+                    
+                    await gapi.client.init({
+                        apiKey: API_KEY,
+                        discoveryDocs: DISCOVERY_DOCS,
+                    });
+                }
+                
+                console.log('🔑 Cliente Google inicializado, prosseguindo com upload...');
                 
                 // Preparar arquivo para upload
                 const boundary = '-------314159265358979323846';
