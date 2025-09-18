@@ -316,24 +316,29 @@ window.syncAccount = async function(email) {
     updateAccountStatus(email, 'syncing');
     
     try {
-        // Aqui você implementaria a lógica de sincronização específica da conta
-        // Por enquanto, simularemos uma sincronização
-        
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Simular delay
-        
+        // Marcar como sincronizada
         updateAccountStatus(email, 'connected', Date.now());
         
         console.log('Conta sincronizada com sucesso:', email);
         
-        // Recarregar dados se necessário
-        if (typeof loadCalendarData === 'function') {
-            loadCalendarData();
+        // ✅ NOVO: Recarregar eventos após sincronização
+        if (typeof loadFilteredEvents === 'function') {
+            console.log('🔄 Recarregando eventos após sincronização...');
+            await loadFilteredEvents();
+        }
+        
+        // Mostrar mensagem de sucesso
+        if (typeof showMessage === 'function') {
+            showMessage(`Conta ${email} sincronizada com sucesso!`, 'success');
         }
         
     } catch (error) {
         console.error('Erro ao sincronizar conta:', email, error);
         updateAccountStatus(email, 'error');
-        alert('Erro ao sincronizar a conta. Tente novamente.');
+        
+        if (typeof showMessage === 'function') {
+            showMessage('Erro ao sincronizar a conta. Tente novamente.', 'error');
+        }
     }
 };
 
@@ -391,25 +396,45 @@ window.syncAllAccounts = async function() {
     const connectedAccounts = window.connectedAccounts.filter(acc => acc.status === 'connected');
     
     if (connectedAccounts.length === 0) {
-        alert('Nenhuma conta conectada para sincronizar');
+        if (typeof showMessage === 'function') {
+            showMessage('Nenhuma conta conectada para sincronizar', 'warning');
+        }
         return;
     }
     
-    // Sincronizar todas as contas em paralelo
-    const syncPromises = connectedAccounts.map(account => syncAccount(account.email));
-    
     try {
-        await Promise.all(syncPromises);
+        // Marcar todas as contas como sincronizando
+        connectedAccounts.forEach(account => {
+            updateAccountStatus(account.email, 'syncing');
+        });
+        
+        // Aguardar um momento para mostrar o status
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        
+        // Marcar todas como sincronizadas
+        connectedAccounts.forEach(account => {
+            updateAccountStatus(account.email, 'connected', Date.now());
+        });
+        
         console.log('Todas as contas sincronizadas com sucesso');
+        
+        // ✅ NOVO: Recarregar eventos após sincronização de todas as contas
+        if (typeof loadFilteredEvents === 'function') {
+            console.log('🔄 Recarregando eventos após sincronização de todas as contas...');
+            await loadFilteredEvents();
+        }
         
         // Mostrar mensagem de sucesso
         if (typeof showMessage === 'function') {
-            showMessage('Todas as contas foram sincronizadas com sucesso!', 'success');
+            showMessage(`Todas as ${connectedAccounts.length} contas foram sincronizadas com sucesso!`, 'success');
         }
         
     } catch (error) {
         console.error('Erro ao sincronizar algumas contas:', error);
-        alert('Algumas contas não puderam ser sincronizadas. Verifique os logs para mais detalhes.');
+        
+        if (typeof showMessage === 'function') {
+            showMessage('Algumas contas não puderam ser sincronizadas. Verifique os logs para mais detalhes.', 'error');
+        }
     }
 };
 
@@ -444,6 +469,17 @@ window.onAuthSuccess = function(userInfo, accessToken) {
     
     // Limpar variável de controle
     currentAuthAccount = null;
+    
+    // ✅ NOVO: Atualizar interface e carregar eventos
+    updateConnectionStatus();
+    
+    // Carregar eventos após adicionar conta
+    if (typeof loadFilteredEvents === 'function') {
+        console.log('🔄 Carregando eventos após adicionar conta...');
+        loadFilteredEvents().catch(error => {
+            console.error('❌ Erro ao carregar eventos:', error);
+        });
+    }
     
     // Mostrar mensagem de sucesso
     if (typeof showMessage === 'function') {
