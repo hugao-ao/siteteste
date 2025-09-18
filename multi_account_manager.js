@@ -35,6 +35,7 @@ function addAccount(accountInfo) {
     // Atualizar interface
     renderAccountsList();
     updateSyncButtonState();
+    updateCreateEventButton();
 }
 
 /**
@@ -51,6 +52,7 @@ function removeAccount(email) {
     // Atualizar interface
     renderAccountsList();
     updateSyncButtonState();
+    updateCreateEventButton();
 }
 
 /**
@@ -265,23 +267,39 @@ function addAccountButtonListeners() {
     // Os event listeners são adicionados via onclick nos botões
     // Esta função pode ser expandida se necessário
 }
-
 /**
- * Atualiza o estado do botão de sincronização geral
+ * Atualiza o estado do botão "Sincronizar Todas as Contas"
  */
-function updateSyncButtonState() {
+function updateSyncAllButton() {
     const syncAllButton = document.getElementById('syncAllButton');
-    
     if (!syncAllButton) return;
     
-    const hasConnectedAccounts = window.connectedAccounts.some(acc => acc.status === 'connected');
+    const connectedAccounts = window.connectedAccounts.filter(acc => acc.status === 'connected');
     
-    syncAllButton.disabled = !hasConnectedAccounts;
-    
-    if (hasConnectedAccounts) {
-        syncAllButton.innerHTML = '<i class="fas fa-sync-alt"></i> Sincronizar Todas as Contas';
+    if (connectedAccounts.length > 1) {
+        syncAllButton.disabled = false;
+        syncAllButton.textContent = `Sincronizar Todas as ${connectedAccounts.length} Contas`;
     } else {
-        syncAllButton.innerHTML = '<i class="fas fa-sync-alt"></i> Nenhuma conta conectada';
+        syncAllButton.disabled = true;
+        syncAllButton.textContent = 'Sincronizar Todas as Contas';
+    }
+}
+
+/**
+ * Atualiza o estado do botão "Criar Evento"
+ */
+function updateCreateEventButton() {
+    const createEventButton = document.getElementById('createEventButton');
+    if (!createEventButton) return;
+    
+    const connectedAccounts = window.connectedAccounts.filter(acc => acc.status === 'connected');
+    
+    if (connectedAccounts.length > 0) {
+        createEventButton.style.display = 'block';
+        createEventButton.disabled = false;
+    } else {
+        createEventButton.style.display = 'none';
+        createEventButton.disabled = true;
     }
 }
 
@@ -533,8 +551,21 @@ function initMultiAccountManager() {
         syncAllButton.addEventListener('click', syncAllAccounts);
     }
     
-    // Atualizar estado dos botões
-    updateSyncButtonState();
+    const createEventButton = document.getElementById('createEventButton');
+    if (createEventButton) {
+        createEventButton.addEventListener('click', function() {
+            if (typeof showCreateEventForm === 'function') {
+                showCreateEventForm();
+            } else {
+                console.error('Função showCreateEventForm não encontrada');
+            }
+        });
+    }
+    
+    // Atualizar interface
+    updateAccountsDisplay();
+    updateSyncAllButton();
+    updateCreateEventButton();
     
     console.log('Gerenciador de múltiplas contas inicializado');
 }
