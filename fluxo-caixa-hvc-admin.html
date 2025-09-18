@@ -3939,37 +3939,44 @@
             try {
                 console.log('✅ Adicionando anexo ao evento:', event.id);
                 
-                // ✅ CORREÇÃO: Usar evento diretamente (não fazer nova busca na API)
-                const eventToUpdate = { ...event }; // Cópia do evento
+                // ✅ NOVA ABORDAGEM: Usar PATCH com apenas os anexos
+                const currentAttachments = event.attachments || [];
                 
-                // Adicionar novo anexo
-                if (!eventToUpdate.attachments) {
-                    eventToUpdate.attachments = [];
-                }
-                
-                eventToUpdate.attachments.push({
+                const newAttachment = {
                     fileId: driveFile.id,
                     fileUrl: `https://drive.google.com/file/d/${driveFile.id}/view`,
                     title: driveFile.name
-                });
+                };
                 
-                console.log('📎 Anexos após adição:', eventToUpdate.attachments);
+                const updatedAttachments = [...currentAttachments, newAttachment];
                 
-                // Atualizar evento
-                const updateResponse = await gapi.client.calendar.events.update({
+                console.log('📎 Anexos atualizados:', updatedAttachments);
+                
+                // Usar PATCH com apenas os campos necessários
+                const patchData = {
+                    attachments: updatedAttachments
+                };
+                
+                console.log('🔄 Enviando PATCH:', patchData);
+                
+                // Atualizar evento usando PATCH
+                const updateResponse = await gapi.client.calendar.events.patch({
                     calendarId: 'primary',
                     eventId: event.id,
-                    resource: eventToUpdate,
+                    resource: patchData,
                     supportsAttachments: true
                 });
                 
-                console.log('✅ Evento atualizado:', updateResponse.result);
+                console.log('✅ Evento atualizado via PATCH:', updateResponse.result);
                 console.log('✅ Anexo adicionado ao evento');
                 
                 return updateResponse.result;
                 
             } catch (error) {
                 console.error('❌ Erro ao adicionar anexo ao evento:', error);
+                console.error('❌ Error status:', error.status);
+                console.error('❌ Error message:', error.message);
+                console.error('❌ Error details:', error.details);
                 throw error;
             }
         }
