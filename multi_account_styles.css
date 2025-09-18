@@ -1,0 +1,175 @@
+/* Estilos para gerenciamento de múltiplas contas */
+.accounts-section {
+    background: rgba(25, 25, 112, 0.3);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.accounts-section h2 {
+    color: #ffffff;
+    font-size: 1.8rem;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.account-item {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+    transition: all 0.3s ease;
+}
+
+.account-item:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.account-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    flex: 1;
+    min-width: 200px;
+}
+
+.account-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.account-details {
+    flex: 1;
+}
+
+.account-email {
+    color: #ffffff;
+    font-weight: 500;
+    font-size: 16px;
+    margin-bottom: 5px;
+}
+
+.account-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.account-status.connected {
+    color: #34a853;
+}
+
+.account-status.disconnected {
+    color: #ea4335;
+}
+
+.account-status.syncing {
+    color: #ffc107;
+}
+
+.account-status.error {
+    color: #ea4335;
+}
+
+.account-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.account-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+}
+
+.account-btn.sync {
+    background: rgba(66, 133, 244, 0.3);
+    border: 1px solid #4285f4;
+    color: #4285f4;
+}
+
+.account-btn.sync:hover {
+    background: rgba(66, 133, 244, 0.5);
+    color: #ffffff;
+}
+
+.account-btn.disconnect {
+    background: rgba(234, 67, 53, 0.3);
+    border: 1px solid #ea4335;
+    color: #ea4335;
+}
+
+.account-btn.disconnect:hover {
+    background: rgba(234, 67, 53, 0.5);
+    color: #ffffff;
+}
+
+.account-btn.reconnect {
+    background: rgba(255, 193, 7, 0.3);
+    border: 1px solid #ffc107;
+    color: #ffc107;
+}
+
+.account-btn.reconnect:hover {
+    background: rgba(255, 193, 7, 0.5);
+    color: #ffffff;
+}
+
+.account-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.add-account-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+.no-accounts {
+    text-align: center;
+    padding: 40px;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.no-accounts i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    display: block;
+}
