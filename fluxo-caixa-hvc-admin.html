@@ -1554,43 +1554,6 @@
             padding: 20px;
         }
 
-        /* ✅ NOVO: Estilos para botão de login Google */
-        .google-login-section {
-            text-align: center;
-            padding: 20px;
-            background: rgba(66, 133, 244, 0.1);
-            border-radius: 8px;
-            border: 1px solid rgba(66, 133, 244, 0.3);
-            margin: 15px 0;
-        }
-
-        .btn-google-login {
-            background: #4285f4;
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            display: inline-flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .btn-google-login:hover {
-            background: #3367d6;
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(66, 133, 244, 0.3);
-        }
-
-        .login-message {
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 15px;
-            font-size: 14px;
-        }
-
     </style>
 
     <!-- Google APIs -->
@@ -3064,7 +3027,7 @@
                     </div>
                 `;
             }
-            
+
             // ✅ NOVO: Seção de anexos PDF
             detailsHTML += `
                 <div class="event-attachments-section">
@@ -3082,12 +3045,9 @@
             `;
             
             body.innerHTML = detailsHTML;
-            
+
             // ✅ NOVO: Configurar upload de PDFs para este evento
             setupEventPdfUpload(event);
-            
-            // ✅ NOVO: Debug do evento
-            debugEvent(event);
             
             // ✅ NOVO: Carregar anexos existentes
             loadEventAttachments(event);
@@ -3834,76 +3794,26 @@
         // Variável global para o evento atual
         let currentEventForPdf = null;
 
-        // Função para debugar eventos
-        function debugEvent(event) {
-            console.log('🔍 DEBUG - Informações do evento:', {
-                id: event.id,
-                summary: event.summary,
-                start: event.start,
-                end: event.end,
-                creator: event.creator,
-                organizer: event.organizer,
-                hasAttachments: !!(event.attachments && event.attachments.length > 0),
-                attachmentsCount: event.attachments ? event.attachments.length : 0
-            });
-            
-            console.log('🔍 DEBUG - Estado da API:', {
-                gapiLoaded: !!(window.gapi),
-                clientLoaded: !!(window.gapi && window.gapi.client),
-                calendarLoaded: !!(window.gapi && window.gapi.client && window.gapi.client.calendar),
-                authInstance: !!(window.gapi && window.gapi.auth2 && window.gapi.auth2.getAuthInstance()),
-                isSignedIn: !!(window.gapi && window.gapi.auth2 && window.gapi.auth2.getAuthInstance() && window.gapi.auth2.getAuthInstance().isSignedIn.get())
-            });
-        }
-
-        // Função para carregar anexos do evento - VERSÃO MELHORADA
+        // Função para carregar anexos do evento (copiada do usuário)
         async function loadEventAttachments(event) {
             const attachmentsList = document.getElementById('eventAttachmentsList');
-            if (!attachmentsList) {
-                console.error('Elemento eventAttachmentsList não encontrado');
-                return;
-            }
-            
-            // Mostrar loading
-            attachmentsList.innerHTML = '<p class="no-attachments">Carregando anexos...</p>';
+            if (!attachmentsList) return;
             
             try {
-                console.log('🔍 Tentando carregar anexos para evento:', {
-                    id: event.id,
-                    summary: event.summary,
-                    calendarId: 'primary'
-                });
-                
-                // Verificar se a API está inicializada
-                if (!gapi || !gapi.client || !gapi.client.calendar) {
-                    throw new Error('API do Google Calendar não está inicializada');
-                }
-                
-                // Verificar se o usuário está autenticado
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (!authInstance || !authInstance.isSignedIn.get()) {
-                    throw new Error('Usuário não está autenticado no Google');
-                }
-                
                 // Buscar evento completo com anexos
                 const fullEventResponse = await gapi.client.calendar.events.get({
                     calendarId: 'primary',
-                    eventId: event.id,
-                    supportsAttachments: true
+                    eventId: event.id
                 });
-                
-                console.log('✅ Evento carregado com sucesso:', fullEventResponse.result);
                 
                 const fullEvent = fullEventResponse.result;
                 
                 if (fullEvent.attachments && fullEvent.attachments.length > 0) {
-                    console.log(`📎 Encontrados ${fullEvent.attachments.length} anexos`);
-                    
-                    const attachmentsHTML = fullEvent.attachments.map((attachment, index) => `
+                    const attachmentsHTML = fullEvent.attachments.map(attachment => `
                         <div class="attachment-item">
                             <div class="attachment-info">
                                 <i class="fas fa-file-pdf"></i>
-                                <span class="attachment-name">${attachment.title || `Anexo ${index + 1}`}</span>
+                                <span class="attachment-name">${attachment.title || 'Anexo'}</span>
                             </div>
                             <div class="attachment-actions">
                                 <button onclick="window.open('${attachment.fileUrl}', '_blank')" class="btn-view-attachment" title="Visualizar">
@@ -3918,49 +3828,16 @@
                     
                     attachmentsList.innerHTML = attachmentsHTML;
                 } else {
-                    console.log('📎 Nenhum anexo encontrado no evento');
                     attachmentsList.innerHTML = '<p class="no-attachments">Nenhum anexo encontrado</p>';
                 }
                 
             } catch (error) {
-                console.error('❌ Erro detalhado ao carregar anexos:', {
-                    error: error,
-                    message: error.message,
-                    status: error.status,
-                    eventId: event.id
-                });
-                
-                let errorMessage = 'Erro ao carregar anexos';
-                
-                if (error.status === 404) {
-                    errorMessage = 'Evento não encontrado. Pode ter sido deletado.';
-                } else if (error.status === 403) {
-                    errorMessage = 'Sem permissão para acessar este evento.';
-                } else if (error.status === 401) {
-                    errorMessage = 'Não autorizado. Faça login novamente.';
-                } else if (error.message.includes('não está inicializada')) {
-                    errorMessage = 'API não inicializada. Recarregue a página.';
-                } else if (error.message.includes('não está autenticado')) {
-                    attachmentsList.innerHTML = `
-                        <div class="google-login-section">
-                            <p class="login-message">
-                                <i class="fas fa-info-circle"></i> 
-                                Para visualizar e gerenciar anexos, você precisa fazer login no Google
-                            </p>
-                            <button onclick="handleGoogleLogin()" class="btn-google-login">
-                                <i class="fab fa-google"></i>
-                                Fazer Login no Google
-                            </button>
-                        </div>
-                    `;
-                    return; // Sair da função para não sobrescrever o HTML
-                }
-                
-                attachmentsList.innerHTML = `<p class="no-attachments">${errorMessage}</p>`;
+                console.error('Erro ao carregar anexos:', error);
+                attachmentsList.innerHTML = '<p class="no-attachments">Erro ao carregar anexos</p>';
             }
         }
 
-        // Função para configurar upload de PDFs
+        // Função para configurar upload de PDFs (copiada do usuário)
         function setupEventPdfUpload(event) {
             currentEventForPdf = event;
             
@@ -3979,8 +3856,11 @@
                     try {
                         console.log(`Fazendo upload de ${file.name}...`);
                         
+                        // Converter arquivo para base64
+                        const base64Data = await convertFileToBase64(file);
+                        
                         // Upload para Google Drive
-                        const driveFile = await uploadToGoogleDrive(file);
+                        const driveFile = await uploadToGoogleDrive(file.name, base64Data);
                         console.log('Arquivo enviado para o Drive:', driveFile);
                         
                         // Atualizar evento com novo anexo
@@ -3993,7 +3873,7 @@
                         
                     } catch (error) {
                         console.error('Erro no upload:', error);
-                        alert(`Erro ao anexar ${file.name}: ${error.message}`);
+                        throw error;
                     }
                 }
                 
@@ -4002,33 +3882,62 @@
             };
         }
 
-        // Função para fazer upload para Google Drive
-        async function uploadToGoogleDrive(file) {
-            const metadata = {
-                name: file.name,
-                parents: [] // Opcional: especificar pasta
-            };
-            
-            const form = new FormData();
-            form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-            form.append('file', file);
-            
-            const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                method: 'POST',
-                headers: new Headers({
-                    'Authorization': `Bearer ${gapi.auth2.getAuthInstance().currentUser.get().getAuthResponse().access_token}`
-                }),
-                body: form
+        // Função para converter arquivo para base64 (copiada do usuário)
+        function convertFileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1]; // Remove o prefixo data:...;base64,
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
             });
-            
-            if (!response.ok) {
-                throw new Error(`Erro no upload: ${response.statusText}`);
-            }
-            
-            return await response.json();
         }
 
-        // Função para adicionar anexo ao evento
+        // Função para fazer upload para Google Drive (copiada do usuário)
+        async function uploadToGoogleDrive(fileName, base64Data) {
+            try {
+                const boundary = '-------314159265358979323846';
+                const delimiter = "\r\n--" + boundary + "\r\n";
+                const close_delim = "\r\n--" + boundary + "--";
+
+                const metadata = {
+                    'name': fileName,
+                    'parents': [] // Opcional: especificar pasta
+                };
+
+                const multipartRequestBody =
+                    delimiter +
+                    'Content-Type: application/json\r\n\r\n' +
+                    JSON.stringify(metadata) +
+                    delimiter +
+                    'Content-Type: application/pdf\r\n' +
+                    'Content-Transfer-Encoding: base64\r\n' +
+                    '\r\n' +
+                    base64Data +
+                    close_delim;
+
+                const request = gapi.client.request({
+                    'path': 'https://www.googleapis.com/upload/drive/v3/files',
+                    'method': 'POST',
+                    'params': {'uploadType': 'multipart'},
+                    'headers': {
+                        'Content-Type': 'multipart/related; boundary="' + boundary + '"'
+                    },
+                    'body': multipartRequestBody
+                });
+
+                const response = await request;
+                return response.result;
+                
+            } catch (error) {
+                console.error('Erro no upload para Google Drive:', error);
+                throw error;
+            }
+        }
+
+        // Função para adicionar anexo ao evento (copiada do usuário)
         async function addAttachmentToEvent(eventId, driveFile) {
             try {
                 // Buscar evento atual
@@ -4066,7 +3975,7 @@
             }
         }
 
-        // Função para remover anexo do evento
+        // Função para remover anexo do evento (copiada do usuário)
         async function removeAttachmentFromEvent(eventId, fileId) {
             if (!confirm('Tem certeza que deseja remover este anexo?')) return;
             
@@ -4101,69 +4010,6 @@
                 console.error('Erro ao remover anexo:', error);
                 alert('Erro ao remover anexo');
             }
-        }
-
-        // =================================================================
-        // ✅ NOVO: FUNÇÕES DE LOGIN DO GOOGLE
-        // =================================================================
-        
-        // Função para lidar com login do Google
-        async function handleGoogleLogin() {
-            try {
-                console.log('🔄 Iniciando processo de login...');
-                
-                // Verificar se a API está carregada
-                if (!gapi || !gapi.auth2) {
-                    alert('API do Google não está carregada. Recarregue a página.');
-                    return;
-                }
-                
-                const authInstance = gapi.auth2.getAuthInstance();
-                if (!authInstance) {
-                    alert('Instância de autenticação não encontrada. Recarregue a página.');
-                    return;
-                }
-                
-                // Fazer login
-                const user = await authInstance.signIn();
-                console.log('✅ Login realizado com sucesso:', user.getBasicProfile().getName());
-                
-                // Recarregar anexos após login
-                if (currentEventForPdf) {
-                    await loadEventAttachments(currentEventForPdf);
-                }
-                
-                alert('Login realizado com sucesso! Agora você pode visualizar os anexos.');
-                
-            } catch (error) {
-                console.error('❌ Erro no login:', error);
-                alert('Erro ao fazer login. Tente novamente.');
-            }
-        }
-
-        // Função para verificar status de login
-        function checkGoogleLoginStatus() {
-            if (!gapi || !gapi.auth2) {
-                console.log('⚠️ API do Google não carregada ainda');
-                return false;
-            }
-            
-            const authInstance = gapi.auth2.getAuthInstance();
-            if (!authInstance) {
-                console.log('⚠️ Instância de autenticação não encontrada');
-                return false;
-            }
-            
-            const isSignedIn = authInstance.isSignedIn.get();
-            console.log(`🔍 Status de login: ${isSignedIn ? 'Logado' : 'Não logado'}`);
-            
-            if (isSignedIn) {
-                const user = authInstance.currentUser.get();
-                const profile = user.getBasicProfile();
-                console.log(`👤 Usuário logado: ${profile.getName()} (${profile.getEmail()})`);
-            }
-            
-            return isSignedIn;
         }
 
     </script>
