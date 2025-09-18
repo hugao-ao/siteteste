@@ -3801,11 +3801,21 @@
             try {
                 console.log('✅ Carregando anexos diretamente do evento:', event);
                 
-                // ✅ USAR ANEXOS DIRETAMENTE DO EVENTO (SEM BUSCA NA API)
-                if (event.attachments && event.attachments.length > 0) {
-                    console.log(`📎 Encontrados ${event.attachments.length} anexos:`, event.attachments);
+                // Carregar anexos salvos no localStorage
+                const eventKey = `event_attachments_${event.id}`;
+                const savedAttachments = JSON.parse(localStorage.getItem(eventKey) || '[]');
+                
+                // Combinar anexos originais do evento com anexos salvos localmente
+                const originalAttachments = event.attachments || [];
+                const allAttachments = [...originalAttachments, ...savedAttachments];
+                
+                console.log(`📎 Anexos originais: ${originalAttachments.length}, Anexos salvos: ${savedAttachments.length}, Total: ${allAttachments.length}`);
+                
+                // ✅ USAR ANEXOS COMBINADOS (ORIGINAIS + SALVOS LOCALMENTE)
+                if (allAttachments && allAttachments.length > 0) {
+                    console.log(`📎 Encontrados ${allAttachments.length} anexos:`, allAttachments);
                     
-                    const attachmentsHTML = event.attachments.map(attachment => `
+                    const attachmentsHTML = allAttachments.map(attachment => `
                         <div class="attachment-item">
                             <div class="attachment-info">
                                 <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 8px;"></i>
@@ -3999,7 +4009,14 @@
                 
                 event.attachments.push(driveFile);
                 
+                // Salvar anexos no localStorage para persistência
+                const eventKey = `event_attachments_${event.id}`;
+                const existingAttachments = JSON.parse(localStorage.getItem(eventKey) || '[]');
+                existingAttachments.push(driveFile);
+                localStorage.setItem(eventKey, JSON.stringify(existingAttachments));
+                
                 console.log('✅ Anexo adicionado localmente ao evento');
+                console.log('💾 Anexo salvo no localStorage para persistência');
                 
             } catch (error) {
                 console.error('❌ Erro ao adicionar anexo:', error);
