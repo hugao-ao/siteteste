@@ -3938,8 +3938,9 @@
         async function addAttachmentToEvent(event, driveFile) {
             try {
                 console.log('✅ Adicionando anexo ao evento:', event.id);
+                console.log('🔍 Evento atual:', event);
                 
-                // ✅ NOVA ABORDAGEM: Usar PATCH com apenas os anexos
+                // ✅ ABORDAGEM SIMPLES: Tentar múltiplas estratégias
                 const currentAttachments = event.attachments || [];
                 
                 const newAttachment = {
@@ -3952,31 +3953,62 @@
                 
                 console.log('📎 Anexos atualizados:', updatedAttachments);
                 
-                // Usar PATCH com apenas os campos necessários
-                const patchData = {
-                    attachments: updatedAttachments
-                };
+                // Tentar múltiplas abordagens
+                const approaches = [
+                    // Abordagem 1: PATCH sem supportsAttachments
+                    () => gapi.client.calendar.events.patch({
+                        calendarId: 'primary',
+                        eventId: event.id,
+                        resource: { attachments: updatedAttachments }
+                    }),
+                    
+                    // Abordagem 2: PATCH com supportsAttachments
+                    () => gapi.client.calendar.events.patch({
+                        calendarId: 'primary',
+                        eventId: event.id,
+                        resource: { attachments: updatedAttachments },
+                        supportsAttachments: true
+                    }),
+                    
+                    // Abordagem 3: UPDATE sem supportsAttachments
+                    () => gapi.client.calendar.events.update({
+                        calendarId: 'primary',
+                        eventId: event.id,
+                        resource: { ...event, attachments: updatedAttachments }
+                    })
+                ];
                 
-                console.log('🔄 Enviando PATCH:', patchData);
+                let lastError = null;
                 
-                // Atualizar evento usando PATCH
-                const updateResponse = await gapi.client.calendar.events.patch({
-                    calendarId: 'primary',
-                    eventId: event.id,
-                    resource: patchData,
-                    supportsAttachments: true
-                });
+                for (let i = 0; i < approaches.length; i++) {
+                    try {
+                        console.log(`🔄 Tentativa ${i + 1}:`, i === 0 ? 'PATCH simples' : i === 1 ? 'PATCH com supportsAttachments' : 'UPDATE completo');
+                        
+                        const updateResponse = await approaches[i]();
+                        
+                        console.log('✅ Sucesso na tentativa', i + 1);
+                        console.log('✅ Evento atualizado:', updateResponse.result);
+                        
+                        return updateResponse.result;
+                        
+                    } catch (error) {
+                        console.warn(`❌ Tentativa ${i + 1} falhou:`, error.status, error.message);
+                        lastError = error;
+                        
+                        // Se não é erro 404, não tentar outras abordagens
+                        if (error.status !== 404) {
+                            throw error;
+                        }
+                    }
+                }
                 
-                console.log('✅ Evento atualizado via PATCH:', updateResponse.result);
-                console.log('✅ Anexo adicionado ao evento');
-                
-                return updateResponse.result;
+                // Se chegou aqui, todas as tentativas falharam
+                throw lastError;
                 
             } catch (error) {
-                console.error('❌ Erro ao adicionar anexo ao evento:', error);
+                console.error('❌ Todas as tentativas falharam:', error);
                 console.error('❌ Error status:', error.status);
                 console.error('❌ Error message:', error.message);
-                console.error('❌ Error details:', error.details);
                 throw error;
             }
         }
