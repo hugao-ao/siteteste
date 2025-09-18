@@ -33,8 +33,8 @@ function addAccount(accountInfo) {
     saveAccountsToStorage();
     
     // Atualizar interface
-    renderAccountsList();
-    updateSyncButtonState();
+    updateAccountsDisplay();
+    updateSyncAllButton();
     updateCreateEventButton();
 }
 
@@ -50,8 +50,8 @@ function removeAccount(email) {
     saveAccountsToStorage();
     
     // Atualizar interface
-    renderAccountsList();
-    updateSyncButtonState();
+    updateAccountsDisplay();
+    updateSyncAllButton();
     updateCreateEventButton();
 }
 
@@ -71,7 +71,7 @@ function updateAccountStatus(email, status, lastSync = null) {
         saveAccountsToStorage();
         
         // Atualizar interface
-        renderAccountsList();
+        updateAccountsDisplay();
     }
 }
 
@@ -124,7 +124,7 @@ function generateAvatar(email) {
 /**
  * Renderiza a lista de contas conectadas
  */
-function renderAccountsList() {
+function updateAccountsDisplay() {
     const accountsList = document.getElementById('accountsList');
     
     if (!accountsList) {
@@ -538,7 +538,7 @@ function initMultiAccountManager() {
     loadAccountsFromStorage();
     
     // Renderizar lista inicial
-    renderAccountsList();
+    updateAccountsDisplay();
     
     // Configurar event listeners
     const addAccountButton = document.getElementById('addAccountButton');
