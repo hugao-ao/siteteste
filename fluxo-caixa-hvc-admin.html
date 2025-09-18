@@ -4135,6 +4135,17 @@
             if (!attachmentsList) return;
             
             try {
+                // ✅ NOVO: Garantir que estamos usando o token correto da conta do evento
+                if (event._accountEmail) {
+                    const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
+                    const eventAccount = connectedAccounts.find(acc => acc.email === event._accountEmail);
+                    
+                    if (eventAccount && eventAccount.accessToken) {
+                        console.log(`🔄 Carregando anexos usando token da conta: ${event._accountEmail}`);
+                        gapi.client.setToken({ access_token: eventAccount.accessToken });
+                    }
+                }
+                
                 // Buscar evento completo com anexos
                 const fullEventResponse = await gapi.client.calendar.events.get({
                     calendarId: 'primary',
@@ -4151,10 +4162,10 @@
                                 <span class="attachment-name">${attachment.title || 'Anexo'}</span>
                             </div>
                             <div class="attachment-actions">
-                                <button onclick="window.open('${attachment.fileUrl}', '_blank')" class="btn-view-attachment" title="Visualizar">
+                                <button onclick="viewAttachmentWithCorrectToken('${attachment.fileUrl}', '${event._accountEmail || ''}')" class="btn-view-attachment" title="Visualizar">
                                     <i class="fas fa-eye"></i>
                                 </button>
-                                <button onclick="removeAttachmentFromEvent('${event.id}', '${attachment.fileId}')" class="btn-remove-attachment" title="Remover">
+                                <button onclick="removeAttachmentFromEvent('${event.id}', '${attachment.fileId}', '${event._accountEmail || ''}')" class="btn-remove-attachment" title="Remover">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
@@ -4172,10 +4183,47 @@
             }
         }
         
-        async function removeAttachmentFromEvent(eventId, fileId) {
+        // ✅ NOVO: Função para visualizar anexo com o token correto
+        async function viewAttachmentWithCorrectToken(fileUrl, accountEmail) {
+            try {
+                if (accountEmail) {
+                    const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
+                    const eventAccount = connectedAccounts.find(acc => acc.email === accountEmail);
+                    
+                    if (eventAccount && eventAccount.accessToken) {
+                        console.log(`🔄 Visualizando anexo usando token da conta: ${accountEmail}`);
+                        
+                        // Criar URL com token de acesso
+                        const urlWithToken = `${fileUrl}&access_token=${eventAccount.accessToken}`;
+                        window.open(urlWithToken, '_blank');
+                        return;
+                    }
+                }
+                
+                // Fallback: tentar abrir sem token específico
+                window.open(fileUrl, '_blank');
+                
+            } catch (error) {
+                console.error('Erro ao visualizar anexo:', error);
+                alert('Erro ao abrir o anexo. Verifique se você tem permissão para acessá-lo.');
+            }
+        }
+
+        async function removeAttachmentFromEvent(eventId, fileId, accountEmail) {
             if (!confirm('Tem certeza que deseja remover este anexo?')) return;
             
             try {
+                // ✅ NOVO: Garantir que estamos usando o token correto da conta do evento
+                if (accountEmail) {
+                    const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
+                    const eventAccount = connectedAccounts.find(acc => acc.email === accountEmail);
+                    
+                    if (eventAccount && eventAccount.accessToken) {
+                        console.log(`🔄 Removendo anexo usando token da conta: ${accountEmail}`);
+                        gapi.client.setToken({ access_token: eventAccount.accessToken });
+                    }
+                }
+                
                 // Buscar evento atual
                 const eventResponse = await gapi.client.calendar.events.get({
                     calendarId: 'primary',
