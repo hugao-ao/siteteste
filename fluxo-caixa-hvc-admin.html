@@ -2485,10 +2485,15 @@
                 return;
             }
 
+            const eventAccount = document.getElementById('eventAccount').value;
             const eventDate = document.getElementById('eventDate').value;
             const eventTime = document.getElementById('eventTime').value;
             const recurrence = document.getElementById('eventRecurrence').value;
 
+            if (!eventAccount) {
+                alert('Selecione uma conta Google!');
+                return;
+            }
             if (!eventDate) {
                 alert('Data é obrigatória!');
                 return;
@@ -2497,6 +2502,18 @@
                 alert('Recorrência é obrigatória!');
                 return;
             }
+
+            // ✅ NOVO: Definir token da conta selecionada
+            const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
+            const selectedAccount = connectedAccounts.find(acc => acc.email === eventAccount);
+            
+            if (!selectedAccount || !selectedAccount.accessToken) {
+                alert('Conta selecionada não está conectada ou não tem token válido!');
+                return;
+            }
+            
+            console.log(`🔄 Criando evento na conta: ${eventAccount}`);
+            gapi.client.setToken({ access_token: selectedAccount.accessToken });
 
             try {
                 // Preparar data e hora
@@ -5108,8 +5125,9 @@
         }
 
         /**
-         * Mostra o modal de recorrência personalizada
-             function showCreateEventForm() {
+         * Mostra o formulário de criação de evento
+         */
+        function showCreateEventForm() {
             const form = document.getElementById('createEventForm');
             if (form) {
                 form.style.display = form.style.display === 'none' ? 'block' : 'none';
