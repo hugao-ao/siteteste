@@ -3319,38 +3319,32 @@
         // CONNECTION STATUS
         // =================================================================
         function updateConnectionStatus(connected) {
-            const connectionStatus = document.getElementById('connectionStatus');
-            const authorizeButton = document.getElementById('authorizeButton');
-            const signoutButton = document.getElementById('signoutButton');
-            const syncButton = document.getElementById('syncButton');
-            const createEventButton = document.getElementById('createEventButton'); // ✅ NOVO
-            const calendarSection = document.getElementById('calendarSection');
-            const filterSection = document.getElementById('filterSection');
-            const monthlySummarySection = document.getElementById('monthlySummarySection');
-            const paymentsListSection = document.getElementById('paymentsListSection');
+            // ✅ NOVO: Para múltiplas contas, não usar mais esta função
+            // A interface será controlada pelo gerenciador de múltiplas contas
+            const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
             
-            if (connected) {
-                connectionStatus.className = 'status-indicator status-connected';
-                connectionStatus.innerHTML = '<i class="fas fa-check-circle"></i><span>Conectado ao Google Calendar</span>';
-                authorizeButton.style.display = 'none';
-                signoutButton.style.display = 'block';
-                syncButton.disabled = false;
-                createEventButton.style.display = 'block'; // ✅ NOVO: Mostrar botão de criar evento
-                calendarSection.style.display = 'block';
-                filterSection.style.display = 'block';
-                monthlySummarySection.style.display = 'block';
-                paymentsListSection.style.display = 'block';
+            if (connectedAccounts.length > 0) {
+                // Mostrar seções quando há contas conectadas
+                const calendarSection = document.getElementById('calendarSection');
+                const filterSection = document.getElementById('filterSection');
+                const monthlySummarySection = document.getElementById('monthlySummarySection');
+                const paymentsListSection = document.getElementById('paymentsListSection');
+                
+                if (calendarSection) calendarSection.style.display = 'block';
+                if (filterSection) filterSection.style.display = 'block';
+                if (monthlySummarySection) monthlySummarySection.style.display = 'block';
+                if (paymentsListSection) paymentsListSection.style.display = 'block';
             } else {
-                connectionStatus.className = 'status-indicator status-disconnected';
-                connectionStatus.innerHTML = '<i class="fas fa-times-circle"></i><span>Desconectado do Google Calendar</span>';
-                authorizeButton.style.display = 'block';
-                signoutButton.style.display = 'none';
-                syncButton.disabled = true;
-                createEventButton.style.display = 'none'; // ✅ NOVO: Esconder botão de criar evento
-                calendarSection.style.display = 'none';
-                filterSection.style.display = 'none';
-                monthlySummarySection.style.display = 'none';
-                paymentsListSection.style.display = 'none';
+                // Esconder seções quando não há contas conectadas
+                const calendarSection = document.getElementById('calendarSection');
+                const filterSection = document.getElementById('filterSection');
+                const monthlySummarySection = document.getElementById('monthlySummarySection');
+                const paymentsListSection = document.getElementById('paymentsListSection');
+                
+                if (calendarSection) calendarSection.style.display = 'none';
+                if (filterSection) filterSection.style.display = 'none';
+                if (monthlySummarySection) monthlySummarySection.style.display = 'none';
+                if (paymentsListSection) paymentsListSection.style.display = 'none';
             }
         }
 
