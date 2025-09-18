@@ -3940,6 +3940,26 @@
                 console.log('✅ Adicionando anexo ao evento:', event.id);
                 console.log('🔍 Evento atual:', event);
                 
+                // ✅ VERIFICAÇÃO: Analisar se o evento pode ser editado
+                console.log('🔍 Verificando permissões do evento...');
+                console.log('📋 Criador:', event.creator);
+                console.log('📋 Organizador:', event.organizer);
+                console.log('📋 Status:', event.status);
+                console.log('📋 Recorrente:', event.recurringEventId ? 'Sim' : 'Não');
+                console.log('📋 Tipo:', event.eventType || 'default');
+                
+                // Verificar se é um evento editável
+                const isEditable = checkIfEventIsEditable(event);
+                
+                if (!isEditable.canEdit) {
+                    const message = `❌ Este evento não pode ser editado: ${isEditable.reason}`;
+                    console.error(message);
+                    alert(message);
+                    throw new Error(isEditable.reason);
+                }
+                
+                console.log('✅ Evento pode ser editado, prosseguindo...');
+                
                 // ✅ ABORDAGEM SIMPLES: Tentar múltiplas estratégias
                 const currentAttachments = event.attachments || [];
                 
@@ -4011,6 +4031,50 @@
                 console.error('❌ Error message:', error.message);
                 throw error;
             }
+        }
+        
+        // ✅ NOVA FUNÇÃO: Verificar se evento pode ser editado
+        function checkIfEventIsEditable(event) {
+            // Verificar se é um evento do próprio usuário
+            const userEmail = gapi.auth2.getAuthInstance().currentUser.get().getBasicProfile().getEmail();
+            
+            // Verificar criador
+            if (event.creator && event.creator.email && event.creator.email !== userEmail) {
+                return {
+                    canEdit: false,
+                    reason: `Evento criado por outro usuário (${event.creator.email}). Apenas o criador pode adicionar anexos.`
+                };
+            }
+            
+            // Verificar organizador
+            if (event.organizer && event.organizer.email && event.organizer.email !== userEmail) {
+                return {
+                    canEdit: false,
+                    reason: `Evento organizado por outro usuário (${event.organizer.email}). Apenas o organizador pode adicionar anexos.`
+                };
+            }
+            
+            // Verificar se é evento cancelado
+            if (event.status === 'cancelled') {
+                return {
+                    canEdit: false,
+                    reason: 'Evento cancelado não pode ser editado.'
+                };
+            }
+            
+            // Verificar se é evento recorrente (mais complexo)
+            if (event.recurringEventId) {
+                return {
+                    canEdit: false,
+                    reason: 'Eventos recorrentes precisam de tratamento especial. Tente editar a série principal.'
+                };
+            }
+            
+            // Se passou por todas as verificações, pode editar
+            return {
+                canEdit: true,
+                reason: 'Evento pode ser editado'
+            };
         }
 
         // Função para remover anexo do evento (copiada do usuário)
