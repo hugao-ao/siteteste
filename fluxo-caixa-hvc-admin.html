@@ -3880,7 +3880,7 @@
                 }, event.summary);
                 
                 // Atualizar evento com novo anexo
-                await addAttachmentToEvent(event.id, driveFile);
+                await addAttachmentToEvent(event, driveFile);
                 
                 // Recarregar anexos
                 await loadEventAttachments(event);
@@ -4012,17 +4012,11 @@
             }
         }
         
-        async function addAttachmentToEvent(eventId, attachment) {
+        async function addAttachmentToEvent(event, attachment) {
             try {
-                // Buscar evento atual
-                const eventResponse = await gapi.client.calendar.events.get({
-                    calendarId: 'primary',
-                    eventId: eventId
-                });
+                console.log('✅ Adicionando anexo ao evento:', event.id);
                 
-                const event = eventResponse.result;
-                
-                // Adicionar novo anexo
+                // Adicionar novo anexo diretamente ao evento
                 if (!event.attachments) {
                     event.attachments = [];
                 }
@@ -4031,7 +4025,7 @@
                 // Atualizar evento
                 await gapi.client.calendar.events.update({
                     calendarId: 'primary',
-                    eventId: eventId,
+                    eventId: event.id,
                     resource: event,
                     supportsAttachments: true
                 });
@@ -4086,18 +4080,18 @@
             }
         }
         
-        // Função para remover anexo do evento (copiada do usuário)
+        // Função para remover anexo do evento (corrigida)
         async function removeAttachmentFromEvent(eventId, fileId) {
             if (!confirm('Tem certeza que deseja remover este anexo?')) return;
             
             try {
-                // Buscar evento atual
-                const eventResponse = await gapi.client.calendar.events.get({
-                    calendarId: 'primary',
-                    eventId: eventId
-                });
+                console.log('🗑️ Removendo anexo do evento:', eventId, fileId);
                 
-                const event = eventResponse.result;
+                // Usar o evento atual que já está em currentEventForPdf
+                const event = currentEventForPdf;
+                if (!event) {
+                    throw new Error('Evento não encontrado');
+                }
                 
                 // Remover anexo da lista
                 if (event.attachments) {
@@ -4111,6 +4105,8 @@
                     resource: event,
                     supportsAttachments: true
                 });
+                
+                console.log('✅ Anexo removido do evento');
                 
                 // Recarregar anexos
                 await loadEventAttachments(event);
