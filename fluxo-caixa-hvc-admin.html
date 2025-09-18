@@ -1554,6 +1554,43 @@
             padding: 20px;
         }
 
+        /* ✅ NOVO: Estilos para botão de login Google */
+        .google-login-section {
+            text-align: center;
+            padding: 20px;
+            background: rgba(66, 133, 244, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(66, 133, 244, 0.3);
+            margin: 15px 0;
+        }
+
+        .btn-google-login {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-google-login:hover {
+            background: #3367d6;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(66, 133, 244, 0.3);
+        }
+
+        .login-message {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
     </style>
 
     <!-- Google APIs -->
@@ -3904,7 +3941,19 @@
                 } else if (error.message.includes('não está inicializada')) {
                     errorMessage = 'API não inicializada. Recarregue a página.';
                 } else if (error.message.includes('não está autenticado')) {
-                    errorMessage = 'Faça login no Google primeiro.';
+                    attachmentsList.innerHTML = `
+                        <div class="google-login-section">
+                            <p class="login-message">
+                                <i class="fas fa-info-circle"></i> 
+                                Para visualizar e gerenciar anexos, você precisa fazer login no Google
+                            </p>
+                            <button onclick="handleGoogleLogin()" class="btn-google-login">
+                                <i class="fab fa-google"></i>
+                                Fazer Login no Google
+                            </button>
+                        </div>
+                    `;
+                    return; // Sair da função para não sobrescrever o HTML
                 }
                 
                 attachmentsList.innerHTML = `<p class="no-attachments">${errorMessage}</p>`;
@@ -4052,6 +4101,69 @@
                 console.error('Erro ao remover anexo:', error);
                 alert('Erro ao remover anexo');
             }
+        }
+
+        // =================================================================
+        // ✅ NOVO: FUNÇÕES DE LOGIN DO GOOGLE
+        // =================================================================
+        
+        // Função para lidar com login do Google
+        async function handleGoogleLogin() {
+            try {
+                console.log('🔄 Iniciando processo de login...');
+                
+                // Verificar se a API está carregada
+                if (!gapi || !gapi.auth2) {
+                    alert('API do Google não está carregada. Recarregue a página.');
+                    return;
+                }
+                
+                const authInstance = gapi.auth2.getAuthInstance();
+                if (!authInstance) {
+                    alert('Instância de autenticação não encontrada. Recarregue a página.');
+                    return;
+                }
+                
+                // Fazer login
+                const user = await authInstance.signIn();
+                console.log('✅ Login realizado com sucesso:', user.getBasicProfile().getName());
+                
+                // Recarregar anexos após login
+                if (currentEventForPdf) {
+                    await loadEventAttachments(currentEventForPdf);
+                }
+                
+                alert('Login realizado com sucesso! Agora você pode visualizar os anexos.');
+                
+            } catch (error) {
+                console.error('❌ Erro no login:', error);
+                alert('Erro ao fazer login. Tente novamente.');
+            }
+        }
+
+        // Função para verificar status de login
+        function checkGoogleLoginStatus() {
+            if (!gapi || !gapi.auth2) {
+                console.log('⚠️ API do Google não carregada ainda');
+                return false;
+            }
+            
+            const authInstance = gapi.auth2.getAuthInstance();
+            if (!authInstance) {
+                console.log('⚠️ Instância de autenticação não encontrada');
+                return false;
+            }
+            
+            const isSignedIn = authInstance.isSignedIn.get();
+            console.log(`🔍 Status de login: ${isSignedIn ? 'Logado' : 'Não logado'}`);
+            
+            if (isSignedIn) {
+                const user = authInstance.currentUser.get();
+                const profile = user.getBasicProfile();
+                console.log(`👤 Usuário logado: ${profile.getName()} (${profile.getEmail()})`);
+            }
+            
+            return isSignedIn;
         }
 
     </script>
