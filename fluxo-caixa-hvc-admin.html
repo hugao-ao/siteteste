@@ -1448,114 +1448,110 @@
             background: rgba(255, 255, 255, 0.2);
               border-color: rgba(255, 255, 255, 0.5);
         }
-        
-        /* Estilos para anexos PDF */
-        .event-attachments {
-            margin-top: 15px;
+
+        /* ✅ NOVO: Estilos para anexos PDF */
+        .event-attachments-section {
+            margin-top: 20px;
             padding: 15px;
-            background-color: #f8f9fa;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
-            border: 1px solid #dee2e6;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
-        .event-attachments h4 {
-            margin: 0 0 10px 0;
-            color: #495057;
+
+        .event-attachments-section h4 {
+            color: #ffd700;
+            margin: 0 0 15px 0;
             font-size: 16px;
-            font-weight: 600;
         }
-        
+
+        .event-attachments-list {
+            margin-bottom: 15px;
+        }
+
         .attachment-item {
             display: flex;
-            align-items: center;
             justify-content: space-between;
-            padding: 8px 12px;
-            margin: 5px 0;
-            background-color: white;
-            border: 1px solid #dee2e6;
+            align-items: center;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
             border-radius: 6px;
-            transition: all 0.2s ease;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
-        
-        .attachment-item:hover {
-            background-color: #f8f9fa;
-            border-color: #007bff;
-        }
-        
+
         .attachment-info {
             display: flex;
             align-items: center;
-            flex: 1;
+            gap: 10px;
         }
-        
+
         .attachment-info i {
-            color: #dc3545;
-            margin-right: 8px;
-            font-size: 16px;
+            color: #ea4335;
+            font-size: 18px;
         }
-        
+
         .attachment-name {
+            color: #ffffff;
             font-weight: 500;
-            color: #495057;
         }
-        
+
         .attachment-actions {
             display: flex;
             gap: 8px;
         }
-        
-        .attachment-btn {
-            padding: 4px 8px;
+
+        .btn-view-attachment,
+        .btn-remove-attachment {
+            padding: 6px 10px;
             border: none;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 12px;
-            transition: all 0.2s ease;
+            font-size: 14px;
+            transition: all 0.3s ease;
         }
-        
-        .attachment-btn.view {
-            background-color: #007bff;
+
+        .btn-view-attachment {
+            background: #4285f4;
             color: white;
         }
-        
-        .attachment-btn.view:hover {
-            background-color: #0056b3;
+
+        .btn-view-attachment:hover {
+            background: #3367d6;
         }
-        
-        .attachment-btn.remove {
-            background-color: #dc3545;
+
+        .btn-remove-attachment {
+            background: #ea4335;
             color: white;
         }
-        
-        .attachment-btn.remove:hover {
-            background-color: #c82333;
+
+        .btn-remove-attachment:hover {
+            background: #d33b2c;
         }
-        
+
         .attachment-upload-section {
-            margin-top: 15px;
-            padding: 15px;
-            background-color: #e9ecef;
-            border-radius: 6px;
             text-align: center;
         }
-        
-        .upload-btn {
-            background-color: #28a745;
+
+        .btn-add-pdf {
+            background: #28a745;
             color: white;
             border: none;
-            padding: 8px 16px;
+            padding: 10px 20px;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
         }
-        
-        .upload-btn:hover {
-            background-color: #218838;
+
+        .btn-add-pdf:hover {
+            background: #218838;
         }
-        
-        #eventPdfInput {
-            display: none;
+
+        .no-attachments {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+            padding: 20px;
         }
 
     </style>
@@ -1954,8 +1950,7 @@
                     showDeleted: false,
                     singleEvents: true,
                     maxResults: 1000,
-                    orderBy: 'startTime',
-                    fields: 'items(id,summary,description,start,end,location)'
+                    orderBy: 'startTime'
                 });
 
                 if (response.status !== 200) {
@@ -3031,27 +3026,24 @@
                     </div>
                 `;
             }
-            
-            // ✅ ADICIONAR SEÇÃO DE ANEXOS PDF
+
+            // ✅ SEÇÃO DE ANEXOS PDF (APENAS VISUALIZAÇÃO)
             detailsHTML += `
-                <div class="event-attachments">
+                <div class="event-attachments-section">
                     <h4><i class="fas fa-paperclip"></i> Anexos PDF</h4>
-                    <div id="eventAttachmentsList">
-                        <p style="color: #6c757d;"><i class="fas fa-spinner fa-spin"></i> Carregando anexos...</p>
-                    </div>
-                    <div class="attachment-upload-section">
-                        <button class="upload-btn" onclick="document.getElementById('eventPdfInput').click()">
-                            <i class="fas fa-plus"></i> Adicionar PDF
-                        </button>
-                        <input type="file" id="eventPdfInput" accept=".pdf" multiple>
+                    <div id="eventAttachmentsList" class="event-attachments-list">
+                        <!-- Lista de anexos será carregada aqui -->
                     </div>
                 </div>
             `;
             
             body.innerHTML = detailsHTML;
+
+            // ✅ NOVO: Configurar upload de PDFs para este evento
+            setupEventPdfUpload(event);
             
-            // ✅ CARREGAR ANEXOS APÓS RENDERIZAR O HTML
-            await loadEventAttachments(event);
+            // ✅ NOVO: Carregar anexos existentes
+            loadEventAttachments(event);
             
             modal.style.display = 'block';
         }
@@ -3787,338 +3779,52 @@
             updateAccountFilter();
             updateAccountsList();
         });
+
+        // =================================================================
+        // ✅ NOVO: FUNÇÕES PARA GERENCIAR ANEXOS PDF
+        // =================================================================
         
-        // ===================================================================
-        // ✅ FUNÇÕES DE ANEXOS PDF (COPIADAS EXATAMENTE DO USUÁRIO)
-        // ===================================================================
-        
+        // Variável global para o evento atual
         let currentEventForPdf = null;
-        
-        // Inicializar event listeners para upload de PDF
-        function initializePdfUpload() {
-            const pdfInput = document.getElementById('eventPdfInput');
-            if (pdfInput) {
-                pdfInput.addEventListener('change', handleEventPdfUpload);
-            }
-        }
-        
-        async function handleEventPdfUpload(event) {
-            const files = Array.from(event.target.files);
-            if (files.length === 0 || !currentEventForPdf) return;
-            
-            // Mostrar indicador de carregamento
-            const uploadSection = document.querySelector('.attachment-upload-section');
-            const originalHTML = uploadSection.innerHTML;
-            uploadSection.innerHTML = '<p style="color: #007bff;"><i class="fas fa-spinner fa-spin"></i> Fazendo upload...</p>';
-            
-            let successCount = 0;
-            let errorCount = 0;
-            const errors = [];
-            
-            for (const file of files) {
-                if (file.type !== 'application/pdf') {
-                    errors.push(`${file.name}: Apenas arquivos PDF são permitidos`);
-                    errorCount++;
-                    continue;
-                }
-                
-                if (file.size > 10 * 1024 * 1024) {
-                    errors.push(`${file.name}: Arquivo muito grande (máx. 10MB)`);
-                    errorCount++;
-                    continue;
-                }
-                
-                try {
-                    console.log(`📤 Processando: ${file.name}`);
-                    await uploadPdfToEvent(file, currentEventForPdf);
-                    successCount++;
-                    console.log(`✅ Sucesso: ${file.name}`);
-                } catch (error) {
-                    console.error(`❌ Erro em ${file.name}:`, error);
-                    errors.push(`${file.name}: ${error.message}`);
-                    errorCount++;
-                }
-            }
-            
-            // Restaurar interface
-            uploadSection.innerHTML = originalHTML;
-            
-            // Mostrar resultado
-            let message = '';
-            if (successCount > 0) {
-                message += `✅ ${successCount} arquivo(s) anexado(s) com sucesso!`;
-            }
-            if (errorCount > 0) {
-                if (message) message += '\n\n';
-                message += `❌ ${errorCount} erro(s):\n${errors.join('\n')}`;
-            }
-            
-            if (message) {
-                alert(message);
-            }
-            
-            // Limpar input
-            event.target.value = '';
-        }
-        
-        async function uploadPdfToEvent(file, event) {
-            try {
-                console.log('📤 Fazendo upload do PDF para o evento:', file.name);
-                
-                // Verificar autenticação
-                if (!gapi.client.getToken()) {
-                    throw new Error('Usuário não está autenticado');
-                }
-                
-                // Converter arquivo para base64
-                const base64 = await convertFileToBase64(file);
-                
-                // Upload para Google Drive
-                const driveFile = await uploadPdfToDrive({
-                    name: file.name,
-                    base64: base64
-                }, event.summary);
-                
-                // Atualizar evento com novo anexo
-                await addAttachmentToEvent(event, driveFile);
-                
-                // Recarregar anexos
-                await loadEventAttachments(event);
-                
-                alert(`${file.name} anexado com sucesso!`);
-                
-            } catch (error) {
-                console.error('Erro no upload:', error);
-                throw error;
-            }
-        }
-        
-        function convertFileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => resolve(reader.result.split(',')[1]);
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-        
-        async function uploadPdfToDrive(pdfData, eventTitle) {
-            try {
-                console.log('📤 Iniciando upload para Google Drive:', pdfData.name);
-                
-                // Verificar se o usuário está autenticado
-                const token = gapi.client.getToken();
-                if (!token || !token.access_token) {
-                    console.error('❌ Token não encontrado, solicitando nova autenticação...');
-                    
-                    // Solicitar nova autenticação com escopos corretos
-                    await new Promise((resolve, reject) => {
-                        tokenClient.callback = async (resp) => {
-                            if (resp.error !== undefined) {
-                                reject(resp);
-                            } else {
-                                console.log('✅ Nova autenticação realizada');
-                                resolve(resp);
-                            }
-                        };
-                        tokenClient.requestAccessToken({prompt: 'consent'});
-                    });
-                }
-                
-                // Verificar novamente após autenticação
-                const newToken = gapi.client.getToken();
-                if (!newToken || !newToken.access_token) {
-                    throw new Error('Falha na autenticação. Tente novamente.');
-                }
-                
-                console.log('🔑 Token válido encontrado, prosseguindo com upload...');
-                
-                // Converter base64 para blob
-                const byteCharacters = atob(pdfData.base64);
-                const byteNumbers = new Array(byteCharacters.length);
-                for (let i = 0; i < byteCharacters.length; i++) {
-                    byteNumbers[i] = byteCharacters.charCodeAt(i);
-                }
-                const byteArray = new Uint8Array(byteNumbers);
-                const blob = new Blob([byteArray], { type: 'application/pdf' });
-                
-                console.log('📄 Arquivo preparado:', blob.size, 'bytes');
-                
-                // Metadados do arquivo
-                const metadata = {
-                    name: `${eventTitle} - ${pdfData.name}`,
-                    parents: [] // Salvar na raiz do Drive
-                };
-                
-                // Criar FormData para upload
-                const form = new FormData();
-                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
-                form.append('file', blob);
-                
-                console.log('📤 Enviando para Google Drive...');
-                
-                // Fazer upload usando fetch
-                const response = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${newToken.access_token}`
-                    },
-                    body: form
-                });
-                
-                console.log('📡 Resposta do Drive:', response.status, response.statusText);
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('❌ Erro detalhado:', errorText);
-                    
-                    if (response.status === 403) {
-                        throw new Error('Permissão negada. Você precisa reautenticar com permissões do Google Drive. Clique em "Sincronizar" novamente.');
-                    } else if (response.status === 401) {
-                        throw new Error('Token expirado. Faça login novamente.');
-                    } else {
-                        throw new Error(`Erro no upload: ${response.status} - ${errorText}`);
-                    }
-                }
-                
-                const fileData = await response.json();
-                console.log('✅ Arquivo enviado com sucesso:', fileData.id);
-                
-                // Tentar tornar arquivo público (opcional)
-                try {
-                    console.log('🔓 Tornando arquivo público...');
-                    await gapi.client.drive.permissions.create({
-                        fileId: fileData.id,
-                        resource: {
-                            role: 'reader',
-                            type: 'anyone'
-                        }
-                    });
-                    console.log('✅ Arquivo tornado público');
-                } catch (permError) {
-                    console.warn('⚠️ Não foi possível tornar o arquivo público (não é crítico):', permError);
-                }
-                
-                return {
-                    fileId: fileData.id,
-                    fileUrl: `https://drive.google.com/file/d/${fileData.id}/view`,
-                    title: `${eventTitle} - ${pdfData.name}`,
-                    mimeType: 'application/pdf'
-                };
-                
-            } catch (error) {
-                console.error('❌ Erro completo no upload:', error);
-                throw error;
-            }
-        }
-        
-        async function addAttachmentToEvent(event, attachment) {
-            try {
-                console.log('✅ Adicionando anexo ao evento:', event.id);
-                
-                // Adicionar novo anexo diretamente ao evento
-                if (!event.attachments) {
-                    event.attachments = [];
-                }
-                event.attachments.push(attachment);
-                
-                // Atualizar evento
-                await gapi.client.calendar.events.update({
-                    calendarId: 'primary',
-                    eventId: event.id,
-                    resource: event,
-                    supportsAttachments: true
-                });
-                
-                console.log('✅ Anexo adicionado ao evento');
-                
-            } catch (error) {
-                console.error('Erro ao adicionar anexo ao evento:', error);
-                throw error;
-            }
-        }
-        
+
         // Função para carregar anexos do evento (copiada do usuário)
         async function loadEventAttachments(event) {
             const attachmentsList = document.getElementById('eventAttachmentsList');
             if (!attachmentsList) return;
             
-            currentEventForPdf = event;
-            
             try {
+                console.log('✅ Carregando anexos diretamente do evento:', event);
+                
+                // ✅ USAR ANEXOS DIRETAMENTE DO EVENTO (SEM BUSCA NA API)
                 if (event.attachments && event.attachments.length > 0) {
-                    let attachmentsHTML = '';
-                    event.attachments.forEach(attachment => {
-                        attachmentsHTML += `
-                            <div class="attachment-item">
-                                <div class="attachment-info">
-                                    <i class="fas fa-file-pdf"></i>
-                                    <span class="attachment-name">${attachment.title}</span>
-                                </div>
-                                <div class="attachment-actions">
-                                    <button class="attachment-btn view" onclick="window.open('${attachment.fileUrl}', '_blank')">
-                                        <i class="fas fa-eye"></i> Visualizar
-                                    </button>
-                                    <button class="attachment-btn remove" onclick="removeAttachmentFromEvent('${event.id}', '${attachment.fileId}')">
-                                        <i class="fas fa-trash"></i> Remover
-                                    </button>
-                                </div>
+                    console.log(`📎 Encontrados ${event.attachments.length} anexos:`, event.attachments);
+                    
+                    const attachmentsHTML = event.attachments.map(attachment => `
+                        <div class="attachment-item">
+                            <div class="attachment-info">
+                                <i class="fas fa-file-pdf" style="color: #dc3545; margin-right: 8px;"></i>
+                                <span class="attachment-name">${attachment.title || 'Anexo PDF'}</span>
                             </div>
-                        `;
-                    });
+                            <div class="attachment-actions">
+                                <button onclick="window.open('${attachment.fileUrl}', '_blank')" class="btn-view-attachment" title="Visualizar PDF" style="background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer;">
+                                    <i class="fas fa-eye"></i> Visualizar
+                                </button>
+                            </div>
+                        </div>
+                    `).join('');
+                    
                     attachmentsList.innerHTML = attachmentsHTML;
                 } else {
-                    attachmentsList.innerHTML = '<p style="color: #6c757d; font-style: italic;">Nenhum anexo encontrado</p>';
+                    console.log('📎 Nenhum anexo encontrado no evento');
+                    attachmentsList.innerHTML = '<p style="color: #6c757d; font-style: italic; text-align: center; padding: 20px;">Nenhum anexo PDF encontrado neste evento</p>';
                 }
-                
-                // Inicializar upload após carregar anexos
-                initializePdfUpload();
                 
             } catch (error) {
-                console.error('Erro ao carregar anexos:', error);
-                attachmentsList.innerHTML = '<p style="color: #dc3545;">Erro ao carregar anexos</p>';
+                console.error('❌ Erro ao carregar anexos:', error);
+                attachmentsList.innerHTML = '<p style="color: #dc3545; text-align: center; padding: 20px;">Erro ao carregar anexos</p>';
             }
         }
-        
-        // Função para remover anexo do evento (corrigida)
-        async function removeAttachmentFromEvent(eventId, fileId) {
-            if (!confirm('Tem certeza que deseja remover este anexo?')) return;
-            
-            try {
-                console.log('🗑️ Removendo anexo do evento:', eventId, fileId);
-                
-                // Usar o evento atual que já está em currentEventForPdf
-                const event = currentEventForPdf;
-                if (!event) {
-                    throw new Error('Evento não encontrado');
-                }
-                
-                // Remover anexo da lista
-                if (event.attachments) {
-                    event.attachments = event.attachments.filter(att => att.fileId !== fileId);
-                }
-                
-                // Atualizar evento
-                await gapi.client.calendar.events.update({
-                    calendarId: 'primary',
-                    eventId: eventId,
-                    resource: event,
-                    supportsAttachments: true
-                });
-                
-                console.log('✅ Anexo removido do evento');
-                
-                // Recarregar anexos
-                await loadEventAttachments(event);
-                
-                alert('Anexo removido com sucesso!');
-                
-            } catch (error) {
-                console.error('Erro ao remover anexo:', error);
-                alert('Erro ao remover anexo. Tente novamente.');
-            }
-        }
-        
+
     </script>
 </head>
 
