@@ -510,6 +510,243 @@
             transform: none !important;
         }
 
+        /* ✅ NOVO: Estilos para criação de eventos */
+        .event-creator-section {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            max-width: 100%;
+            box-sizing: border-box;
+        }
+
+        .event-creator-section h3 {
+            color: #ffffff;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .payment-items-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .payment-items-container h4 {
+            color: #ffc107;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .add-item-form {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .form-group.full-width {
+            grid-column: 1 / -1;
+        }
+
+        .form-group label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .form-group input,
+        .form-group select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            padding: 10px 12px;
+            color: #ffffff;
+            font-size: 0.9rem;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #4285f4;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .form-group input::placeholder {
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .add-item-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .add-item-btn:hover {
+            background: #218838;
+            transform: translateY(-1px);
+        }
+
+        .items-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border-radius: 8px;
+        }
+
+        .item-card {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+        }
+
+        .item-card:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .item-info {
+            flex: 1;
+        }
+
+        .item-name {
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 5px;
+        }
+
+        .item-details {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .item-details span {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .item-value {
+            color: #ffc107;
+            font-weight: bold;
+            font-size: 1.2rem;
+            margin: 0 15px;
+        }
+
+        .remove-item-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .remove-item-btn:hover {
+            background: #c82333;
+        }
+
+        .create-event-form {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+        }
+
+        .create-event-form h4 {
+            color: #4285f4;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-actions {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+            justify-content: flex-end;
+        }
+
+        .create-event-btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .create-event-btn:hover {
+            background: #3367d6;
+            transform: translateY(-1px);
+        }
+
+        .cancel-event-btn {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px 24px;
+            cursor: pointer;
+            font-size: 0.95rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cancel-event-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
         /* Calendar View */
         .calendar-section {
             background: rgba(25, 25, 112, 0.3);
@@ -2696,6 +2933,352 @@
                     }
                 });
             }
+        }
+
+        // ✅ NOVO: Funções para gerenciar itens de pagamento
+        function addPaymentItem() {
+            const tipo = document.getElementById('itemTipo').value.trim();
+            const subtipo = document.getElementById('itemSubtipo').value.trim();
+            const categoria = document.getElementById('itemCategoria').value.trim();
+            const nome = document.getElementById('itemNome').value.trim();
+            
+            // ✅ NOVO: Parsing correto do valor formatado
+            const valorText = document.getElementById('itemValor').value;
+            const valor = parseFloat(valorText.replace(/[^\d,]/g, '').replace(',', '.'));
+            
+            const status = document.getElementById('itemStatus').value;
+            const detalhe = document.getElementById('itemDetalhe').value.trim();
+
+            // Validação
+            if (!nome) {
+                alert('Nome do item é obrigatório!');
+                return;
+            }
+            if (!valor || valor <= 0) {
+                alert('Valor deve ser maior que zero!');
+                return;
+            }
+
+            // Criar item
+            const item = {
+                id: Date.now(),
+                tipo,
+                subtipo,
+                categoria,
+                nome,
+                valor,
+                status,
+                detalhe
+            };
+
+            if (!window.paymentItems) {
+                window.paymentItems = [];
+            }
+            window.paymentItems.push(item);
+            renderPaymentItems();
+            clearItemForm();
+            
+            // Mostrar formulário de evento se houver itens
+            if (window.paymentItems.length > 0) {
+                document.getElementById('createEventForm').style.display = 'block';
+            }
+        }
+
+        function removePaymentItem(itemId) {
+            if (!window.paymentItems) return;
+            
+            window.paymentItems = window.paymentItems.filter(item => item.id !== itemId);
+            renderPaymentItems();
+            
+            // Esconder formulário de evento se não houver itens
+            if (window.paymentItems.length === 0) {
+                document.getElementById('createEventForm').style.display = 'none';
+            }
+        }
+
+        function renderPaymentItems() {
+            const itemsList = document.getElementById('itemsList');
+            if (!itemsList) return;
+            
+            if (!window.paymentItems) {
+                window.paymentItems = [];
+            }
+            
+            if (window.paymentItems.length === 0) {
+                itemsList.innerHTML = '<p style="color: rgba(255, 255, 255, 0.6); text-align: center; padding: 20px;">Nenhum item adicionado ainda.</p>';
+                return;
+            }
+
+            itemsList.innerHTML = window.paymentItems.map(item => `
+                <div class="item-card">
+                    <div class="item-info">
+                        <div class="item-name">${item.nome}</div>
+                        <div class="item-details">
+                            ${item.tipo ? `<span>Tipo: ${item.tipo}</span>` : ''}
+                            ${item.subtipo ? `<span>Subtipo: ${item.subtipo}</span>` : ''}
+                            ${item.categoria ? `<span>Categoria: ${item.categoria}</span>` : ''}
+                            ${item.status ? `<span>Status: ${item.status}</span>` : ''}
+                            ${item.detalhe ? `<span>Detalhe: ${item.detalhe}</span>` : ''}
+                        </div>
+                    </div>
+                    <div class="item-value">${formatCurrency(item.valor)}</div>
+                    <button class="remove-item-btn" onclick="removePaymentItem(${item.id})">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function clearItemForm() {
+            const fields = ['itemTipo', 'itemSubtipo', 'itemCategoria', 'itemNome', 'itemValor', 'itemStatus', 'itemDetalhe'];
+            fields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (field) field.value = '';
+            });
+        }
+
+        function clearEventForm() {
+            // Limpar itens de pagamento
+            if (window.paymentItems) {
+                window.paymentItems = [];
+            }
+            renderPaymentItems();
+            
+            // Limpar formulário de item
+            clearItemForm();
+            
+            // Limpar formulário de evento
+            const eventDate = document.getElementById('eventDate');
+            const eventTime = document.getElementById('eventTime');
+            const eventRecurrence = document.getElementById('eventRecurrence');
+            const eventAccount = document.getElementById('eventAccount');
+            
+            if (eventDate) eventDate.value = '';
+            if (eventTime) eventTime.value = '09:00';
+            if (eventRecurrence) eventRecurrence.value = 'NONE';
+            if (eventAccount) eventAccount.value = '';
+            
+            // Esconder formulário de evento
+            const createEventForm = document.getElementById('createEventForm');
+            if (createEventForm) {
+                createEventForm.style.display = 'none';
+            }
+        }
+
+        function generateEventDescription() {
+            if (!window.paymentItems || window.paymentItems.length === 0) return '';
+            
+            return window.paymentItems.map(item => {
+                const parts = [];
+                if (item.tipo) parts.push(item.tipo);
+                if (item.subtipo) parts.push(item.subtipo);
+                if (item.categoria) parts.push(item.categoria);
+                parts.push(item.nome);
+                
+                // Formatar valor com status (sem hífen entre eles)
+                let valorFormatado = formatCurrency(item.valor);
+                if (item.status) {
+                    valorFormatado += ` (${item.status})`;
+                }
+                parts.push(valorFormatado);
+                
+                if (item.detalhe) parts.push(item.detalhe);
+                
+                return parts.join(' - ');
+            }).join('\n');
+        }
+
+        /**
+         * Cria evento de pagamento na conta selecionada
+         */
+        async function createPaymentEvent() {
+            if (!window.paymentItems || window.paymentItems.length === 0) {
+                alert('Adicione pelo menos um item de pagamento!');
+                return;
+            }
+
+            const eventDate = document.getElementById('eventDate').value;
+            const eventTime = document.getElementById('eventTime').value;
+            const recurrence = document.getElementById('eventRecurrence').value;
+            const selectedAccount = document.getElementById('eventAccount').value;
+
+            if (!eventDate) {
+                alert('Data é obrigatória!');
+                return;
+            }
+            if (!recurrence || recurrence === '') {
+                alert('Recorrência é obrigatória!');
+                return;
+            }
+            if (!selectedAccount) {
+                alert('Selecione uma conta Google!');
+                return;
+            }
+
+            try {
+                // Encontrar a conta selecionada
+                const account = window.connectedAccounts.find(acc => acc.email === selectedAccount);
+                if (!account || !account.isConnected) {
+                    throw new Error('Conta selecionada não está conectada');
+                }
+
+                // Configurar cliente para a conta selecionada
+                gapi.client.setToken(account.accessToken);
+
+                // Gerar título e descrição do evento
+                const totalValue = window.paymentItems.reduce((sum, item) => sum + item.valor, 0);
+                const eventTitle = `💰 Pagamentos - ${formatCurrency(totalValue)}`;
+                const eventDescription = generateEventDescription();
+
+                // Configurar data e hora
+                const startDateTime = new Date(`${eventDate}T${eventTime}:00`);
+                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // 1 hora depois
+
+                // Configurar evento
+                const event = {
+                    summary: eventTitle,
+                    description: eventDescription,
+                    start: {
+                        dateTime: startDateTime.toISOString(),
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    },
+                    end: {
+                        dateTime: endDateTime.toISOString(),
+                        timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone
+                    }
+                };
+
+                // Adicionar recorrência se necessário
+                const rrule = generateRRule(recurrence, eventDate);
+                if (rrule) {
+                    event.recurrence = [`RRULE:${rrule}`];
+                }
+
+                console.log('🔄 Criando evento na conta:', selectedAccount);
+                console.log('📅 Evento:', event);
+
+                // Criar evento
+                const response = await gapi.client.calendar.events.insert({
+                    calendarId: 'primary',
+                    resource: event
+                });
+
+                if (response.status === 200) {
+                    showMessage(`Evento criado com sucesso na conta ${selectedAccount}!`, 'success');
+                    
+                    // Limpar formulário
+                    clearEventForm();
+                    
+                    // Fechar criador de eventos
+                    toggleEventCreator();
+                    
+                    // Sincronizar eventos da conta se a função existir
+                    if (typeof syncAccountEvents === 'function') {
+                        await syncAccountEvents(account);
+                    }
+                    
+                } else {
+                    throw new Error(`Erro ao criar evento: ${response.status}`);
+                }
+
+            } catch (error) {
+                console.error('❌ Erro ao criar evento:', error);
+                showMessage(`Erro ao criar evento: ${error.message}`, 'error');
+            }
+        }
+
+        /**
+         * Gera RRULE baseado na seleção do dropdown
+         */
+        function generateRRule(recurrenceType, eventDate) {
+            const date = new Date(eventDate);
+            const dayOfWeek = date.getDay();
+            const dayOfMonth = date.getDate();
+            const month = date.getMonth() + 1;
+            
+            // Mapear dias da semana para RRULE
+            const rruleDays = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
+            const currentDay = rruleDays[dayOfWeek];
+            
+            switch (recurrenceType) {
+                case 'NONE':
+                    return null;
+                    
+                case 'DAILY':
+                    return 'FREQ=DAILY';
+                    
+                case 'WEEKLY':
+                    return `FREQ=WEEKLY;BYDAY=${currentDay}`;
+                    
+                case 'MONTHLY':
+                    // Calcular qual semana do mês (primeira, segunda, terceira, etc.)
+                    const weekOfMonth = Math.ceil(dayOfMonth / 7);
+                    return `FREQ=MONTHLY;BYDAY=${weekOfMonth}${currentDay}`;
+                    
+                case 'YEARLY':
+                    return `FREQ=YEARLY;BYMONTH=${month};BYMONTHDAY=${dayOfMonth}`;
+                    
+                case 'WEEKDAYS':
+                    return 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
+                    
+                case 'CUSTOM_GENERATED':
+                    return window.customRRule || null;
+                    
+                default:
+                    return null;
+            }
+        }
+
+        // Função para formatar moeda
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('pt-BR', {
+                style: 'currency',
+                currency: 'BRL'
+            }).format(value);
+        }
+
+        // Função para mostrar mensagens
+        function showMessage(message, type = 'info') {
+            const container = document.getElementById('messagesContainer');
+            if (!container) {
+                // Criar container se não existir
+                const newContainer = document.createElement('div');
+                newContainer.id = 'messagesContainer';
+                newContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+                document.body.appendChild(newContainer);
+            }
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.cssText = `
+                padding: 15px 20px;
+                border-radius: 10px;
+                margin-bottom: 10px;
+                font-size: 14px;
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                color: white;
+                font-weight: 500;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                ${type === 'success' ? 'background: rgba(52, 168, 83, 0.9); border: 1px solid #34a853;' : ''}
+                ${type === 'error' ? 'background: rgba(234, 67, 53, 0.9); border: 1px solid #ea4335;' : ''}
+                ${type === 'info' ? 'background: rgba(66, 133, 244, 0.9); border: 1px solid #4285f4;' : ''}
+            `;
+            messageDiv.innerHTML = `
+                <i class="fas fa-${type === 'success' ? 'check-circle' : type === 'error' ? 'exclamation-circle' : 'info-circle'}"></i>
+                <span>${message}</span>
+            `;
+            
+            const container = document.getElementById('messagesContainer');
+            container.appendChild(messageDiv);
+            
+            // Remover mensagem após 5 segundos
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.parentNode.removeChild(messageDiv);
+                }
+            }, 5000);
         }
 
         // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
@@ -5981,7 +6564,10 @@
             }
             
             if (cancelEventBtn) {
-                cancelEventBtn.addEventListener('click', cancelEventCreation);
+                cancelEventBtn.addEventListener('click', function() {
+                    clearEventForm();
+                    toggleEventCreator();
+                });
             }
             
             // ✅ NOVO: Formatação automática do campo valor
