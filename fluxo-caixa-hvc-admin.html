@@ -3371,6 +3371,148 @@
             }).format(value);
         }
 
+        /**
+         * Exclui um evento do Google Calendar
+         */
+        async function deleteCalendarEvent(eventId, accountEmail) {
+            if (!eventId) {
+                showMessage('ID do evento não encontrado', 'error');
+                return;
+            }
+
+            // Confirmar exclusão
+            const confirmDelete = confirm(`Tem certeza que deseja excluir este evento?\n\nEsta ação não pode ser desfeita.`);
+            if (!confirmDelete) {
+                return;
+            }
+
+            try {
+                console.log('🗑️ Excluindo evento:', eventId, 'da conta:', accountEmail);
+
+                // Encontrar a conta se especificada
+                if (accountEmail && window.connectedAccounts) {
+                    const account = window.connectedAccounts.find(acc => acc.email === accountEmail);
+                    if (account) {
+                        let accessToken = account.accessToken || account.access_token || account.token;
+                        if (accessToken) {
+                            gapi.client.setToken({ access_token: accessToken });
+                            console.log('✅ Token configurado para conta:', accountEmail);
+                        }
+                    }
+                }
+
+                // Verificar se o cliente está inicializado
+                if (!gapi.client.calendar) {
+                    throw new Error('Cliente do Google Calendar não está disponível');
+                }
+
+                // Excluir evento
+                console.log('📤 Enviando requisição para excluir evento...');
+                const response = await gapi.client.calendar.events.delete({
+                    calendarId: 'primary',
+                    eventId: eventId
+                });
+
+                console.log('📥 Resposta da exclusão:', response);
+
+                if (response.status === 204 || response.status === 200) {
+                    console.log('✅ Evento excluído com sucesso!');
+                    showMessage('Evento excluído com sucesso!', 'success');
+                    
+                    // Recarregar eventos se a função existir
+                    if (typeof loadEvents === 'function') {
+                        console.log('🔄 Recarregando eventos...');
+                        await loadEvents();
+                    } else if (typeof syncAllAccounts === 'function') {
+                        console.log('🔄 Sincronizando todas as contas...');
+                        await syncAllAccounts();
+                    } else {
+                        // Fallback: recarregar a página após um delay
+                        setTimeout(() => {
+                            window.location.reload();
+                        }, 1500);
+                    }
+                    
+                } else {
+                    throw new Error(`Erro HTTP ao excluir evento: ${response.status}`);
+                }
+
+            } catch (error) {
+                console.error('❌ Erro ao excluir evento:', error);
+                
+                let errorMessage = 'Erro ao excluir evento';
+                if (error.message.includes('404')) {
+                    errorMessage = 'Evento não encontrado (pode já ter sido excluído)';
+                } else if (error.message.includes('403')) {
+                    errorMessage = 'Sem permissão para excluir este evento';
+                } else if (error.message.includes('401')) {
+                    errorMessage = 'Token de acesso expirado. Reconecte sua conta.';
+                }
+                
+                showMessage(errorMessage, 'error');
+            }
+        }
+
+        /**
+         * Adiciona botão de exclusão aos eventos no calendário
+         */
+        function addDeleteButtonsToEvents() {
+            // Buscar todos os eventos no DOM
+            const eventElements = document.querySelectorAll('.event-item, .calendar-event, [data-event-id]');
+            
+            eventElements.forEach(eventElement => {
+                // Verificar se já tem botão de exclusão
+                if (eventElement.querySelector('.delete-event-btn')) {
+                    return;
+                }
+                
+                // Obter ID do evento
+                const eventId = eventElement.getAttribute('data-event-id') || 
+                               eventElement.getAttribute('data-id') ||
+                               eventElement.id;
+                
+                if (!eventId) return;
+                
+                // Obter email da conta (se disponível)
+                const accountEmail = eventElement.getAttribute('data-account') ||
+                                   eventElement.getAttribute('data-email');
+                
+                // Criar botão de exclusão
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'delete-event-btn';
+                deleteBtn.innerHTML = '<i class="fas fa-trash"></i>';
+                deleteBtn.title = 'Excluir evento';
+                deleteBtn.style.cssText = `
+                    background: #dc3545;
+                    color: white;
+                    border: none;
+                    border-radius: 4px;
+                    padding: 4px 8px;
+                    cursor: pointer;
+                    font-size: 12px;
+                    margin-left: 8px;
+                    transition: all 0.3s ease;
+                `;
+                
+                deleteBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    deleteCalendarEvent(eventId, accountEmail);
+                });
+                
+                deleteBtn.addEventListener('mouseenter', function() {
+                    this.style.background = '#c82333';
+                });
+                
+                deleteBtn.addEventListener('mouseleave', function() {
+                    this.style.background = '#dc3545';
+                });
+                
+                // Adicionar botão ao evento
+                eventElement.appendChild(deleteBtn);
+            });
+        }
+
         // Função para mostrar mensagens
         function showMessage(message, type = 'info') {
             let messagesContainer = document.getElementById('messagesContainer');
@@ -6803,6 +6945,46 @@
                     }
                 });
             }
+            
+            // ✅ NOVO: Adicionar botões de exclusão aos eventos existentes
+            setTimeout(() => {
+                if (typeof addDeleteButtonsToEvents === 'function') {
+                    addDeleteButtonsToEvents();
+                }
+            }, 3000);
+            
+            // ✅ NOVO: Observer para adicionar botões quando novos eventos aparecem
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length > 0) {
+                        setTimeout(() => {
+                            if (typeof addDeleteButtonsToEvents === 'function') {
+                                addDeleteButtonsToEvents();
+                            }
+                        }, 1000);
+                    }
+                });
+            });
+            
+            // Observar mudanças no calendário e na lista de eventos
+            const observeTargets = [
+                '.calendar-section',
+                '.events-container', 
+                '#calendar',
+                '.calendar-grid',
+                '.event-list',
+                '.payments-list'
+            ];
+            
+            observeTargets.forEach(selector => {
+                const target = document.querySelector(selector);
+                if (target) {
+                    observer.observe(target, {
+                        childList: true,
+                        subtree: true
+                    });
+                }
+            });
         });
     </script>
     
