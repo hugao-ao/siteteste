@@ -3239,13 +3239,13 @@
 
         // Função para mostrar mensagens
         function showMessage(message, type = 'info') {
-            const container = document.getElementById('messagesContainer');
-            if (!container) {
+            let messagesContainer = document.getElementById('messagesContainer');
+            if (!messagesContainer) {
                 // Criar container se não existir
-                const newContainer = document.createElement('div');
-                newContainer.id = 'messagesContainer';
-                newContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
-                document.body.appendChild(newContainer);
+                messagesContainer = document.createElement('div');
+                messagesContainer.id = 'messagesContainer';
+                messagesContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; max-width: 400px;';
+                document.body.appendChild(messagesContainer);
             }
             
             const messageDiv = document.createElement('div');
@@ -3270,8 +3270,7 @@
                 <span>${message}</span>
             `;
             
-            const container = document.getElementById('messagesContainer');
-            container.appendChild(messageDiv);
+            messagesContainer.appendChild(messageDiv);
             
             // Remover mensagem após 5 segundos
             setTimeout(() => {
@@ -3284,24 +3283,60 @@
         // CORREÇÃO: Definir as funções ANTES dos scripts carregarem
         window.gapiLoaded = function() {
             console.log('🔄 Carregando GAPI...');
-            gapi.load('client', initializeGapiClient);
+            if (typeof gapi !== 'undefined') {
+                gapi.load('client', initializeGapiClient);
+            } else {
+                console.error('❌ GAPI não está disponível');
+            }
         }
 
         window.gisLoaded = function() {
             console.log('🔄 Carregando GIS...');
             try {
-                tokenClient = google.accounts.oauth2.initTokenClient({
-                    client_id: CLIENT_ID,
-                    scope: SCOPES,
-                    callback: handleTokenResponse,
-                });
-                gisInited = true;
-                maybeEnableButtons();
-                console.log('✅ GIS inicializado com sucesso!');
+                if (typeof google !== 'undefined' && google.accounts) {
+                    tokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: CLIENT_ID,
+                        scope: SCOPES,
+                        callback: handleTokenResponse,
+                    });
+                    gisInited = true;
+                    maybeEnableButtons();
+                    console.log('✅ GIS carregado com sucesso');
+                } else {
+                    console.error('❌ Google Identity Services não está disponível');
+                }
             } catch (error) {
-                console.error('❌ Erro ao inicializar GIS:', error);
-                showMessage('Erro ao carregar sistema de autenticação do Google', 'error');
+                console.error('❌ Erro ao carregar GIS:', error);
             }
+        }
+
+        // Garantir que as funções estejam disponíveis globalmente
+        if (typeof window.gapiLoaded === 'undefined') {
+            window.gapiLoaded = function() {
+                console.log('🔄 Carregando GAPI (fallback)...');
+                if (typeof gapi !== 'undefined') {
+                    gapi.load('client', initializeGapiClient);
+                }
+            };
+        }
+
+        if (typeof window.gisLoaded === 'undefined') {
+            window.gisLoaded = function() {
+                console.log('🔄 Carregando GIS (fallback)...');
+                try {
+                    if (typeof google !== 'undefined' && google.accounts) {
+                        tokenClient = google.accounts.oauth2.initTokenClient({
+                            client_id: CLIENT_ID,
+                            scope: SCOPES,
+                            callback: handleTokenResponse,
+                        });
+                        gisInited = true;
+                        maybeEnableButtons();
+                    }
+                } catch (error) {
+                    console.error('❌ Erro ao carregar GIS (fallback):', error);
+                }
+            };
         }
 
         async function initializeGapiClient() {
@@ -6555,12 +6590,16 @@
             const createEventBtn = document.getElementById('createEventBtn');
             const cancelEventBtn = document.getElementById('cancelEventBtn');
             
-            if (addItemBtn) {
+            if (addItemBtn && typeof addPaymentItem === 'function') {
                 addItemBtn.addEventListener('click', addPaymentItem);
+            } else if (addItemBtn) {
+                console.warn('⚠️ addPaymentItem function not found');
             }
             
-            if (createEventBtn) {
+            if (createEventBtn && typeof createPaymentEvent === 'function') {
                 createEventBtn.addEventListener('click', createPaymentEvent);
+            } else if (createEventBtn) {
+                console.warn('⚠️ createPaymentEvent function not found');
             }
             
             if (cancelEventBtn) {
