@@ -2937,7 +2937,26 @@
             // Fonte 1: window.connectedAccounts
             if (window.connectedAccounts && Array.isArray(window.connectedAccounts)) {
                 console.log('📋 Contas encontradas em window.connectedAccounts:', window.connectedAccounts.length);
-                accounts = window.connectedAccounts.filter(account => account && account.isConnected);
+                console.log('🔍 Estrutura das contas:', window.connectedAccounts.map(acc => ({
+                    email: acc.email,
+                    isConnected: acc.isConnected,
+                    connected: acc.connected,
+                    status: acc.status
+                })));
+                
+                // Verificar múltiplas propriedades de conexão
+                accounts = window.connectedAccounts.filter(account => {
+                    if (!account || !account.email) return false;
+                    
+                    // Verificar diferentes formas de indicar conexão
+                    return account.isConnected === true || 
+                           account.connected === true || 
+                           account.status === 'connected' ||
+                           account.status === 'active' ||
+                           (account.accessToken && account.accessToken.length > 0);
+                });
+                
+                console.log('✅ Contas filtradas como conectadas:', accounts.length);
             }
             
             // Fonte 2: window.accounts (fallback)
@@ -2972,6 +2991,12 @@
                         accounts.push({ email: email, isConnected: true });
                     }
                 });
+            }
+            
+            // Fallback: Se nenhuma conta foi detectada como conectada, usar todas as contas disponíveis
+            if (accounts.length === 0 && window.connectedAccounts && window.connectedAccounts.length > 0) {
+                console.log('⚠️ Nenhuma conta detectada como conectada, usando todas as contas disponíveis');
+                accounts = window.connectedAccounts.filter(account => account && account.email);
             }
             
             console.log('✅ Total de contas conectadas encontradas:', accounts.length);
