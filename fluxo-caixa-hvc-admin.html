@@ -3249,8 +3249,7 @@
                 }
 
                 // Gerar título e descrição do evento
-                const totalValue = window.paymentItems.reduce((sum, item) => sum + item.valor, 0);
-                const eventTitle = `💰 Pagamentos - ${formatCurrency(totalValue)}`;
+                const eventTitle = "PAGAMENTOS";
                 const eventDescription = generateEventDescription();
 
                 // Configurar data e hora
