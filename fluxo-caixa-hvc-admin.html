@@ -3299,16 +3299,82 @@
                     console.log('✅ Evento criado com sucesso!');
                     showMessage(`Evento criado com sucesso na conta ${selectedAccount}!`, 'success');
                     
+                    // Armazenar informações do evento criado para uso posterior
+                    const createdEvent = response.result;
+                    window.lastCreatedEvent = {
+                        id: createdEvent.id,
+                        account: selectedAccount,
+                        summary: createdEvent.summary,
+                        start: createdEvent.start
+                    };
+                    
+                    console.log('📅 Evento criado:', window.lastCreatedEvent);
+                    
                     // Limpar formulário
                     clearEventForm();
                     
                     // Fechar criador de eventos
                     toggleEventCreator();
                     
-                    // Sincronizar eventos da conta se a função existir
+                    // Sincronizar eventos automaticamente
+                    console.log('🔄 Iniciando sincronização automática...');
+                    
+                    // Tentar múltiplas formas de sincronização
+                    let syncSuccess = false;
+                    
+                    // Método 1: syncAccountEvents
                     if (typeof syncAccountEvents === 'function') {
-                        console.log('🔄 Sincronizando eventos da conta...');
-                        await syncAccountEvents(account);
+                        try {
+                            console.log('🔄 Método 1: syncAccountEvents...');
+                            await syncAccountEvents(account);
+                            syncSuccess = true;
+                        } catch (error) {
+                            console.warn('⚠️ syncAccountEvents falhou:', error);
+                        }
+                    }
+                    
+                    // Método 2: syncAllAccounts
+                    if (!syncSuccess && typeof syncAllAccounts === 'function') {
+                        try {
+                            console.log('🔄 Método 2: syncAllAccounts...');
+                            await syncAllAccounts();
+                            syncSuccess = true;
+                        } catch (error) {
+                            console.warn('⚠️ syncAllAccounts falhou:', error);
+                        }
+                    }
+                    
+                    // Método 3: loadEvents
+                    if (!syncSuccess && typeof loadEvents === 'function') {
+                        try {
+                            console.log('🔄 Método 3: loadEvents...');
+                            await loadEvents();
+                            syncSuccess = true;
+                        } catch (error) {
+                            console.warn('⚠️ loadEvents falhou:', error);
+                        }
+                    }
+                    
+                    // Método 4: Recarregar eventos manualmente
+                    if (!syncSuccess) {
+                        console.log('🔄 Método 4: Recarregamento manual...');
+                        setTimeout(() => {
+                            // Tentar clicar no botão de sincronização se existir
+                            const syncButtons = document.querySelectorAll('[onclick*="sync"], .sync-btn, .sincronizar-btn');
+                            if (syncButtons.length > 0) {
+                                console.log('🔄 Clicando em botão de sincronização...');
+                                syncButtons[0].click();
+                            } else {
+                                console.log('🔄 Recarregando página em 2 segundos...');
+                                setTimeout(() => {
+                                    window.location.reload();
+                                }, 2000);
+                            }
+                        }, 1000);
+                    }
+                    
+                    if (syncSuccess) {
+                        console.log('✅ Sincronização automática concluída!');
                     }
                     
                 } else {
@@ -3451,6 +3517,72 @@
                 
                 showMessage(errorMessage, 'error');
             }
+        }
+
+        /**
+         * Intercepta o sistema de exclusão de eventos de forma mais direta
+         */
+        function overrideDeleteSystem() {
+            console.log('🔧 Configurando override do sistema de exclusão...');
+            
+            // Override de possíveis funções de exclusão existentes
+            const originalFunctions = {};
+            
+            // Lista de possíveis nomes de funções de exclusão
+            const deleteFunction = ['deleteEvent', 'excluirEvento', 'removeEvent', 'deleteCalendarEvent'];
+            
+            deleteFunction.forEach(funcName => {
+                if (window[funcName] && typeof window[funcName] === 'function') {
+                    console.log(`🔧 Fazendo override da função: ${funcName}`);
+                    originalFunctions[funcName] = window[funcName];
+                    
+                    window[funcName] = function(...args) {
+                        console.log(`🗑️ Função ${funcName} interceptada com args:`, args);
+                        
+                        // Tentar extrair ID do evento dos argumentos
+                        let eventId = null;
+                        for (const arg of args) {
+                            if (typeof arg === 'string' && arg.length > 10) {
+                                eventId = arg;
+                                break;
+                            } else if (typeof arg === 'object' && arg.id) {
+                                eventId = arg.id;
+                                break;
+                            }
+                        }
+                        
+                        if (eventId) {
+                            console.log(`🗑️ ID do evento extraído: ${eventId}`);
+                            deleteCalendarEvent(eventId);
+                        } else {
+                            console.warn('⚠️ ID do evento não encontrado, executando função original');
+                            return originalFunctions[funcName].apply(this, args);
+                        }
+                    };
+                }
+            });
+            
+            // Interceptar cliques em elementos com onclick que contenham "delete" ou "excluir"
+            document.addEventListener('click', function(e) {
+                const element = e.target;
+                const onclick = element.getAttribute('onclick') || '';
+                
+                if (onclick.includes('delete') || onclick.includes('excluir')) {
+                    console.log('🗑️ Clique interceptado em elemento com onclick de exclusão:', onclick);
+                    
+                    // Tentar extrair ID do evento do onclick
+                    const matches = onclick.match(/['"]([a-zA-Z0-9_-]{10,})['"]/) || onclick.match(/\(([a-zA-Z0-9_-]{10,})\)/);
+                    if (matches && matches[1]) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const eventId = matches[1];
+                        console.log(`🗑️ ID do evento extraído do onclick: ${eventId}`);
+                        deleteCalendarEvent(eventId);
+                        return false;
+                    }
+                }
+            }, true); // Use capture para interceptar antes de outros handlers
         }
 
         /**
@@ -7088,6 +7220,9 @@
                     }
                 });
             }
+            
+            // ✅ NOVO: Configurar override do sistema de exclusão imediatamente
+            overrideDeleteSystem();
             
             // ✅ NOVO: Interceptar botão de exclusão existente no modal
             setTimeout(() => {
