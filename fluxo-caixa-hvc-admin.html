@@ -3457,28 +3457,57 @@
          * Intercepta botões de exclusão existentes no modal e faz eles usarem nossa função
          */
         function interceptExistingDeleteButtons() {
+            // Evitar loop infinito - só executar se não estiver já executando
+            if (window.interceptingButtons) return;
+            window.interceptingButtons = true;
+            
             console.log('🔍 Procurando botões de exclusão existentes...');
             
-            // Buscar botões de exclusão existentes
+            // Buscar botões de exclusão existentes com seletores mais específicos
             const deleteButtons = document.querySelectorAll(
                 'button[onclick*="deleteEvent"], ' +
                 'button[onclick*="excluir"], ' +
+                'button[onclick*="delete"], ' +
                 '.delete-btn, ' +
                 '.excluir-btn, ' +
+                '.btn-delete, ' +
+                '.btn-excluir, ' +
                 '[data-action="delete"], ' +
-                '[data-action="excluir"]'
+                '[data-action="excluir"], ' +
+                '[id*="delete"], ' +
+                '[id*="excluir"], ' +
+                '[class*="delete"], ' +
+                '[class*="excluir"]'
             );
             
-            // Também buscar por texto
-            const allButtons = document.querySelectorAll('button');
+            // Também buscar por texto em todos os botões
+            const allButtons = document.querySelectorAll('button, input[type="button"], .btn');
             const deleteButtonsByText = Array.from(allButtons).filter(btn => {
-                const text = btn.textContent.toLowerCase();
-                return text.includes('excluir') || text.includes('delete') || text.includes('🗑️');
+                const text = btn.textContent.toLowerCase().trim();
+                const title = (btn.title || '').toLowerCase();
+                const ariaLabel = (btn.getAttribute('aria-label') || '').toLowerCase();
+                
+                return text.includes('excluir evento') || 
+                       text.includes('delete event') ||
+                       text.includes('excluir') || 
+                       text.includes('delete') || 
+                       text.includes('🗑️') ||
+                       title.includes('excluir') ||
+                       title.includes('delete') ||
+                       ariaLabel.includes('excluir') ||
+                       ariaLabel.includes('delete');
             });
             
             const allDeleteButtons = [...deleteButtons, ...deleteButtonsByText];
             
             console.log('🔍 Botões de exclusão encontrados:', allDeleteButtons.length);
+            
+            if (allDeleteButtons.length > 0) {
+                console.log('📋 Detalhes dos botões encontrados:');
+                allDeleteButtons.forEach((btn, i) => {
+                    console.log(`  ${i+1}. Texto: "${btn.textContent.trim()}" | ID: "${btn.id}" | Class: "${btn.className}"`);
+                });
+            }
             
             allDeleteButtons.forEach((button, index) => {
                 if (button.dataset.intercepted) return; // Já interceptado
@@ -3550,6 +3579,11 @@
                     }
                 });
             });
+            
+            // Reset da flag após processamento
+            setTimeout(() => {
+                window.interceptingButtons = false;
+            }, 1000);
         }
 
         /**
@@ -5434,6 +5468,11 @@
                     }
                 });
             });
+            
+            // Reset da flag após processamento
+            setTimeout(() => {
+                window.interceptingButtons = false;
+            }, 1000);
         }
 
         // Função para mostrar dialog de opções de recorrência para edição
@@ -5503,6 +5542,11 @@
                     }
                 });
             });
+            
+            // Reset da flag após processamento
+            setTimeout(() => {
+                window.interceptingButtons = false;
+            }, 1000);
         }
 
         // Função para lidar com exclusão de eventos recorrentes
@@ -7058,20 +7102,31 @@
             }, 3000);
             
             // ✅ NOVO: Observer para adicionar botões quando novos eventos aparecem
+            let observerTimeout = null;
             const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes.length > 0) {
-                        setTimeout(() => {
-                            // Interceptar novos botões de exclusão
-                            interceptExistingDeleteButtons();
-                            
-                            // Adicionar nossos botões
-                            if (typeof addDeleteButtonsToEvents === 'function') {
-                                addDeleteButtonsToEvents();
-                            }
-                        }, 1000);
+                // Debounce para evitar execuções excessivas
+                if (observerTimeout) clearTimeout(observerTimeout);
+                
+                observerTimeout = setTimeout(() => {
+                    let hasNewNodes = false;
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes.length > 0) {
+                            hasNewNodes = true;
+                        }
+                    });
+                    
+                    if (hasNewNodes) {
+                        console.log('🔄 Novos elementos detectados, interceptando botões...');
+                        
+                        // Interceptar novos botões de exclusão
+                        interceptExistingDeleteButtons();
+                        
+                        // Adicionar nossos botões
+                        if (typeof addDeleteButtonsToEvents === 'function') {
+                            addDeleteButtonsToEvents();
+                        }
                     }
-                });
+                }, 2000); // Aguardar 2 segundos antes de executar
             });
             
             // Observar mudanças no calendário e na lista de eventos
