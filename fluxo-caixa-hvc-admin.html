@@ -3210,14 +3210,43 @@
             }
 
             try {
-                // Encontrar a conta selecionada
-                const account = window.connectedAccounts.find(acc => acc.email === selectedAccount);
-                if (!account || !account.isConnected) {
-                    throw new Error('Conta selecionada não está conectada');
+                console.log('🔍 Buscando conta selecionada:', selectedAccount);
+                console.log('📋 Contas disponíveis:', window.connectedAccounts);
+                
+                // Encontrar a conta selecionada com múltiplas verificações
+                let account = null;
+                
+                if (window.connectedAccounts && Array.isArray(window.connectedAccounts)) {
+                    account = window.connectedAccounts.find(acc => acc && acc.email === selectedAccount);
                 }
+                
+                if (!account) {
+                    throw new Error(`Conta ${selectedAccount} não encontrada na lista de contas`);
+                }
+                
+                console.log('✅ Conta encontrada:', account);
+                
+                // Verificar se a conta tem token de acesso
+                let accessToken = account.accessToken || account.access_token || account.token;
+                
+                if (!accessToken) {
+                    console.warn('⚠️ Token não encontrado na conta, tentando usar token global...');
+                    // Fallback: usar token global se disponível
+                    if (gapi.client.getToken()) {
+                        accessToken = gapi.client.getToken().access_token;
+                        console.log('✅ Usando token global do GAPI');
+                    } else {
+                        throw new Error('Nenhum token de acesso disponível para a conta selecionada');
+                    }
+                }
+                
+                console.log('🔑 Token de acesso encontrado:', accessToken ? 'Sim' : 'Não');
 
                 // Configurar cliente para a conta selecionada
-                gapi.client.setToken(account.accessToken);
+                if (accessToken) {
+                    gapi.client.setToken({ access_token: accessToken });
+                    console.log('✅ Token configurado no cliente GAPI');
+                }
 
                 // Gerar título e descrição do evento
                 const totalValue = window.paymentItems.reduce((sum, item) => sum + item.valor, 0);
@@ -3250,14 +3279,25 @@
 
                 console.log('🔄 Criando evento na conta:', selectedAccount);
                 console.log('📅 Evento:', event);
+                console.log('🔑 Token atual do cliente:', gapi.client.getToken());
+
+                // Verificar se o cliente GAPI está pronto
+                if (!gapi.client.calendar) {
+                    console.error('❌ Cliente do Google Calendar não está inicializado');
+                    throw new Error('Cliente do Google Calendar não está disponível');
+                }
 
                 // Criar evento
+                console.log('📤 Enviando requisição para criar evento...');
                 const response = await gapi.client.calendar.events.insert({
                     calendarId: 'primary',
                     resource: event
                 });
 
-                if (response.status === 200) {
+                console.log('📥 Resposta da API:', response);
+
+                if (response.status === 200 || response.status === 201) {
+                    console.log('✅ Evento criado com sucesso!');
                     showMessage(`Evento criado com sucesso na conta ${selectedAccount}!`, 'success');
                     
                     // Limpar formulário
@@ -3268,11 +3308,12 @@
                     
                     // Sincronizar eventos da conta se a função existir
                     if (typeof syncAccountEvents === 'function') {
+                        console.log('🔄 Sincronizando eventos da conta...');
                         await syncAccountEvents(account);
                     }
                     
                 } else {
-                    throw new Error(`Erro ao criar evento: ${response.status}`);
+                    throw new Error(`Erro HTTP ao criar evento: ${response.status} - ${response.statusText}`);
                 }
 
             } catch (error) {
