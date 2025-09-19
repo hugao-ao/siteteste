@@ -2878,7 +2878,12 @@
                 if (button) {
                     button.innerHTML = '<i class="fas fa-times"></i> Fechar Criador';
                 }
-                populateAccountSelector();
+                
+                // Aguardar um pouco para garantir que o DOM foi atualizado
+                setTimeout(() => {
+                    populateAccountSelector();
+                }, 100);
+                
             } else {
                 eventCreatorSection.style.display = 'none';
                 if (button) {
@@ -2914,24 +2919,88 @@
          * Popula o seletor de contas com as contas conectadas
          */
         function populateAccountSelector() {
+            console.log('🔍 Populando seletor de contas...');
             const selector = document.getElementById('eventAccount');
-            if (!selector) return;
+            if (!selector) {
+                console.error('❌ Seletor de conta não encontrado');
+                return;
+            }
             
             // Limpar opções existentes (exceto a primeira)
             while (selector.children.length > 1) {
                 selector.removeChild(selector.lastChild);
             }
             
-            // Adicionar contas conectadas
-            if (window.connectedAccounts && window.connectedAccounts.length > 0) {
-                window.connectedAccounts.forEach(account => {
-                    if (account.isConnected) {
+            // Buscar contas de múltiplas fontes
+            let accounts = [];
+            
+            // Fonte 1: window.connectedAccounts
+            if (window.connectedAccounts && Array.isArray(window.connectedAccounts)) {
+                console.log('📋 Contas encontradas em window.connectedAccounts:', window.connectedAccounts.length);
+                accounts = window.connectedAccounts.filter(account => account && account.isConnected);
+            }
+            
+            // Fonte 2: window.accounts (fallback)
+            if (accounts.length === 0 && window.accounts && Array.isArray(window.accounts)) {
+                console.log('📋 Contas encontradas em window.accounts:', window.accounts.length);
+                accounts = window.accounts.filter(account => account && (account.isConnected || account.connected));
+            }
+            
+            // Fonte 3: localStorage (fallback)
+            if (accounts.length === 0) {
+                try {
+                    const storedAccounts = localStorage.getItem('connectedAccounts');
+                    if (storedAccounts) {
+                        const parsedAccounts = JSON.parse(storedAccounts);
+                        console.log('📋 Contas encontradas no localStorage:', parsedAccounts.length);
+                        accounts = parsedAccounts.filter(account => account && account.isConnected);
+                    }
+                } catch (error) {
+                    console.warn('⚠️ Erro ao ler contas do localStorage:', error);
+                }
+            }
+            
+            // Fonte 4: Buscar no DOM (fallback)
+            if (accounts.length === 0) {
+                const accountElements = document.querySelectorAll('.account-item[data-email]');
+                console.log('📋 Elementos de conta encontrados no DOM:', accountElements.length);
+                accountElements.forEach(element => {
+                    const email = element.getAttribute('data-email');
+                    const isConnected = element.classList.contains('connected') || 
+                                      element.querySelector('.status-connected') !== null;
+                    if (email && isConnected) {
+                        accounts.push({ email: email, isConnected: true });
+                    }
+                });
+            }
+            
+            console.log('✅ Total de contas conectadas encontradas:', accounts.length);
+            console.log('📧 Contas:', accounts.map(acc => acc.email));
+            
+            // Adicionar contas ao seletor
+            if (accounts.length > 0) {
+                accounts.forEach(account => {
+                    if (account.email) {
                         const option = document.createElement('option');
                         option.value = account.email;
                         option.textContent = account.email;
                         selector.appendChild(option);
+                        console.log('➕ Conta adicionada ao seletor:', account.email);
                     }
                 });
+                
+                // Selecionar a primeira conta por padrão
+                if (selector.children.length > 1) {
+                    selector.selectedIndex = 1;
+                }
+            } else {
+                console.warn('⚠️ Nenhuma conta conectada encontrada');
+                // Adicionar opção informativa
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'Nenhuma conta conectada encontrada';
+                option.disabled = true;
+                selector.appendChild(option);
             }
         }
 
@@ -6170,6 +6239,9 @@
                 </div>
                 
                 <div class="form-actions">
+                    <button type="button" id="refreshAccountsBtn" class="btn btn-secondary" style="margin-right: auto;">
+                        <i class="fas fa-refresh"></i> Atualizar Contas
+                    </button>
                     <button type="button" id="createEventBtn" class="create-event-btn">
                         <i class="fas fa-calendar-check"></i> Criar Evento
                     </button>
@@ -6283,6 +6355,9 @@
                 </div>
                 
                 <div class="form-actions">
+                    <button type="button" id="refreshAccountsBtn" class="btn btn-secondary" style="margin-right: auto;">
+                        <i class="fas fa-refresh"></i> Atualizar Contas
+                    </button>
                     <button type="button" id="createEventBtn" class="create-event-btn">
                         <i class="fas fa-calendar-check"></i> Criar Evento
                     </button>
@@ -6447,6 +6522,9 @@
                 </div>
                 
                 <div class="form-actions">
+                    <button type="button" id="refreshAccountsBtn" class="btn btn-secondary" style="margin-right: auto;">
+                        <i class="fas fa-refresh"></i> Atualizar Contas
+                    </button>
                     <button type="button" id="createEventBtn" class="create-event-btn">
                         <i class="fas fa-calendar-check"></i> Criar Evento
                     </button>
@@ -6589,6 +6667,7 @@
             const addItemBtn = document.getElementById('addItemBtn');
             const createEventBtn = document.getElementById('createEventBtn');
             const cancelEventBtn = document.getElementById('cancelEventBtn');
+            const refreshAccountsBtn = document.getElementById('refreshAccountsBtn');
             
             if (addItemBtn && typeof addPaymentItem === 'function') {
                 addItemBtn.addEventListener('click', addPaymentItem);
@@ -6606,6 +6685,13 @@
                 cancelEventBtn.addEventListener('click', function() {
                     clearEventForm();
                     toggleEventCreator();
+                });
+            }
+            
+            if (refreshAccountsBtn) {
+                refreshAccountsBtn.addEventListener('click', function() {
+                    console.log('🔄 Atualizando lista de contas...');
+                    populateAccountSelector();
                 });
             }
             
