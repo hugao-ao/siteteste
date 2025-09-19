@@ -1152,6 +1152,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -1274,6 +1282,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         @media (max-width: 768px) {
             #main-content-fluxo-caixa-hvc {
                 padding: 1rem;
@@ -1370,6 +1386,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         @media (max-width: 480px) {
             .calendar-grid {
                 min-width: 350px;
@@ -1398,6 +1422,14 @@
             .status-stats {
                 grid-template-columns: 1fr;
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         /* ✅ NOVO: Estilos para criação de eventos */
@@ -2346,6 +2378,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         /* ✅ NOVO: Estilos para upload de PDF */
         .pdf-upload-container {
             border: 2px dashed #ddd;
@@ -2657,6 +2697,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function removePaymentItem(itemId) {
             paymentItems = paymentItems.filter(item => item.id !== itemId);
             renderPaymentItems();
@@ -2665,6 +2713,14 @@
             if (paymentItems.length === 0) {
                 document.getElementById('createEventForm').style.display = 'none';
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         function renderPaymentItems() {
@@ -2856,6 +2912,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function cancelEventCreation() {
             if (paymentItems.length > 0) {
                 if (confirm('Tem certeza que deseja cancelar? Todos os itens serão perdidos.')) {
@@ -2866,6 +2930,14 @@
             } else {
                 document.getElementById('createEventForm').style.display = 'none';
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // ✅ NOVO: Função para alternar seção de criação de eventos
@@ -2894,6 +2966,14 @@
         }
 
         /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
+        /**
          * Atualiza a visibilidade do botão criar evento baseado nas contas conectadas
          */
         function updateCreateEventButtonVisibility() {
@@ -2913,6 +2993,14 @@
                     toggleEventCreator();
                 }
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         /**
@@ -3029,6 +3117,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         // ✅ NOVO: Funções para gerenciar itens de pagamento
         function addPaymentItem() {
             const tipo = document.getElementById('itemTipo').value.trim();
@@ -3078,6 +3174,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function removePaymentItem(itemId) {
             if (!window.paymentItems) return;
             
@@ -3088,6 +3192,14 @@
             if (window.paymentItems.length === 0) {
                 document.getElementById('createEventForm').style.display = 'none';
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         function renderPaymentItems() {
@@ -3157,6 +3269,14 @@
             if (createEventForm) {
                 createEventForm.style.display = 'none';
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         function generateEventDescription() {
@@ -3388,6 +3508,14 @@
         }
 
         /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
+        /**
          * Gera RRULE baseado na seleção do dropdown
          */
         function generateRRule(recurrenceType, eventDate) {
@@ -3429,6 +3557,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         // Função para formatar moeda
         function formatCurrency(value) {
             return new Intl.NumberFormat('pt-BR', {
@@ -3438,9 +3574,9 @@
         }
 
         /**
-         * Exclui um evento do Google Calendar
+         * Função interna para exclusão real de eventos (evita loop infinito)
          */
-        async function deleteCalendarEvent(eventId, accountEmail) {
+        async function realDeleteCalendarEvent(eventId, accountEmail = null) {
             if (!eventId) {
                 showMessage('ID do evento não encontrado', 'error');
                 return;
@@ -3520,6 +3656,14 @@
         }
 
         /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
+        /**
          * Intercepta o sistema de exclusão de eventos de forma mais direta
          */
         function overrideDeleteSystem() {
@@ -3553,7 +3697,7 @@
                         
                         if (eventId) {
                             console.log(`🗑️ ID do evento extraído: ${eventId}`);
-                            deleteCalendarEvent(eventId);
+                            realDeleteCalendarEvent(eventId);
                         } else {
                             console.warn('⚠️ ID do evento não encontrado, executando função original');
                             return originalFunctions[funcName].apply(this, args);
@@ -3578,7 +3722,7 @@
                         
                         const eventId = matches[1];
                         console.log(`🗑️ ID do evento extraído do onclick: ${eventId}`);
-                        deleteCalendarEvent(eventId);
+                        realDeleteCalendarEvent(eventId);
                         return false;
                     }
                 }
@@ -3831,6 +3975,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         window.gisLoaded = function() {
             console.log('🔄 Carregando GIS...');
             try {
@@ -3849,6 +4001,14 @@
             } catch (error) {
                 console.error('❌ Erro ao carregar GIS:', error);
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // Garantir que as funções estejam disponíveis globalmente
@@ -3917,6 +4077,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function maybeEnableButtons() {
             if (gapiInited && gisInited) {
                 const authorizeButton = document.getElementById('authorizeButton');
@@ -3926,6 +4094,14 @@
                     showMessage('APIs do Google carregadas com sucesso!', 'success');
                 }
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // =================================================================
@@ -4203,6 +4379,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function applyFilters() {
             const nameFilter = document.getElementById('nameFilter')?.value.toLowerCase() || '';
             const dateFilter = document.getElementById('dateFilter')?.value || '';
@@ -4286,6 +4470,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         // =================================================================
         // LÓGICA DE CORES BASEADA EM STATUS E DATA
         // =================================================================
@@ -4307,6 +4499,14 @@
             } else {
                 return 'upcoming'; // Azul (data posterior)
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // =================================================================
@@ -4360,6 +4560,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function getConnectionState() {
             try {
                 const connectionData = localStorage.getItem('google_calendar_connection');
@@ -4383,6 +4591,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function clearConnectionState() {
             try {
                 localStorage.removeItem('google_calendar_connection');
@@ -4391,6 +4607,14 @@
             } catch (error) {
                 console.error('❌ Erro ao remover estado:', error);
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         async function tryRestoreSession() {
@@ -4404,6 +4628,14 @@
                     clearConnectionState();
                 }
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // =================================================================
@@ -4449,6 +4681,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         // =================================================================
         // GOOGLE AUTHENTICATION
         // =================================================================
@@ -4464,6 +4704,14 @@
                 console.error('❌ Erro na autenticação:', error);
                 showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         async function handleTokenResponse(resp) {
@@ -4511,6 +4759,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function handleSignoutClick() {
             try {
                 const token = gapi.client.getToken();
@@ -4534,6 +4790,14 @@
                 console.error('❌ Erro ao desconectar:', error);
                 showMessage('Erro ao desconectar', 'error');
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // =================================================================
@@ -4567,6 +4831,14 @@
                 if (monthlySummarySection) monthlySummarySection.style.display = 'none';
                 if (paymentsListSection) paymentsListSection.style.display = 'none';
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // =================================================================
@@ -4745,6 +5017,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         function updateFilterStats(total, filtered) {
             const statsElement = document.getElementById('filterStats');
             if (statsElement) {
@@ -4754,6 +5034,14 @@
                     Palavras-chave: "PAGAMENTO", "PAGAMENTOS", "HVC"
                 `;
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // =================================================================
@@ -5108,6 +5396,14 @@
                 pdfInput.addEventListener('change', handleEventPdfUpload);
             }
         }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
         
         async function handleEventPdfUpload(event) {
             const files = Array.from(event.target.files);
@@ -5198,6 +5494,14 @@
                 console.error('Erro no upload:', error);
                 throw error;
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
         
         function convertFileToBase64(file) {
@@ -5318,6 +5622,14 @@
                 throw error;
             }
         }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
         
         async function addAttachmentToEvent(eventId, attachment) {
             try {
@@ -5349,6 +5661,14 @@
                 console.error('Erro ao adicionar anexo ao evento:', error);
                 throw error;
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
         
         async function loadEventAttachments(event) {
@@ -5403,6 +5723,14 @@
                 attachmentsList.innerHTML = '<p class="no-attachments">Erro ao carregar anexos</p>';
             }
         }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
         
         // ✅ NOVO: Função para visualizar anexo com o token correto
         async function viewAttachmentWithCorrectToken(fileUrl, accountEmail) {
@@ -5428,6 +5756,14 @@
                 console.error('Erro ao visualizar anexo:', error);
                 alert('Erro ao abrir o anexo. Verifique se você tem permissão para acessá-lo.');
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         async function removeAttachmentFromEvent(eventId, fileId, accountEmail) {
@@ -5475,6 +5811,14 @@
                 console.error('Erro ao remover anexo:', error);
                 alert('Erro ao remover anexo');
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // =================================================================
@@ -5531,6 +5875,14 @@
                 console.error('❌ Erro ao excluir evento:', error);
                 alert('Erro ao excluir evento. Verifique sua conexão e tente novamente.');
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         // Função para mostrar dialog de opções de recorrência para exclusão
@@ -5985,6 +6337,14 @@
             }
         }
 
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
         // =================================================================
         // WINDOW CLICK HANDLER
         // =================================================================
@@ -5993,6 +6353,14 @@
             if (event.target === eventModal) {
                 eventModal.style.display = 'none';
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
 
@@ -6339,6 +6707,14 @@
         }
 
         /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
+        }
+
+        /**
          * Mostra o modal de recorrência personalizada
          */
         function showCustomRecurrenceModal() {
@@ -6371,6 +6747,14 @@
                 // Configurar event listeners
                 setupCustomRecurrenceListeners();
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
         /**
@@ -6564,6 +6948,14 @@
                 default:
                     return null;
             }
+        }
+
+        /**
+         * Função pública para exclusão de eventos (wrapper que evita override)
+         */
+        async function deleteCalendarEvent(eventId, accountEmail = null) {
+            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
+            return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
 
