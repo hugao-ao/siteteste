@@ -493,6 +493,17 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        /* ✅ NOVO: Estilos para o botão criar evento */
+        .btn-success {
+            background: linear-gradient(135deg, #28a745, #20c997);
+            color: white;
+        }
+
+        .btn-success:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+        }
+
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
@@ -2623,16 +2634,67 @@
         // ✅ NOVO: Função para alternar seção de criação de eventos
         function toggleEventCreator() {
             const eventCreatorSection = document.getElementById('eventCreatorSection');
-            const isVisible = eventCreatorSection.style.display !== 'none';
+            const button = document.getElementById('createEventButton');
             
-            if (isVisible) {
-                eventCreatorSection.style.display = 'none';
-            } else {
+            if (eventCreatorSection.style.display === 'none' || eventCreatorSection.style.display === '') {
                 eventCreatorSection.style.display = 'block';
-                // Inicializar lista vazia se necessário
-                if (paymentItems.length === 0) {
-                    renderPaymentItems();
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-times"></i> Fechar Criador';
                 }
+                populateAccountSelector();
+            } else {
+                eventCreatorSection.style.display = 'none';
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-plus-circle"></i> Criar Evento';
+                }
+                clearEventForm();
+            }
+        }
+
+        /**
+         * Atualiza a visibilidade do botão criar evento baseado nas contas conectadas
+         */
+        function updateCreateEventButtonVisibility() {
+            const button = document.getElementById('createEventButton');
+            if (!button) return;
+            
+            const hasConnectedAccounts = window.connectedAccounts && 
+                                        window.connectedAccounts.some(account => account.isConnected);
+            
+            if (hasConnectedAccounts) {
+                button.style.display = 'inline-flex';
+            } else {
+                button.style.display = 'none';
+                // Fechar criador se estiver aberto
+                const section = document.getElementById('eventCreatorSection');
+                if (section && section.style.display === 'block') {
+                    toggleEventCreator();
+                }
+            }
+        }
+
+        /**
+         * Popula o seletor de contas com as contas conectadas
+         */
+        function populateAccountSelector() {
+            const selector = document.getElementById('eventAccount');
+            if (!selector) return;
+            
+            // Limpar opções existentes (exceto a primeira)
+            while (selector.children.length > 1) {
+                selector.removeChild(selector.lastChild);
+            }
+            
+            // Adicionar contas conectadas
+            if (window.connectedAccounts && window.connectedAccounts.length > 0) {
+                window.connectedAccounts.forEach(account => {
+                    if (account.isConnected) {
+                        const option = document.createElement('option');
+                        option.value = account.email;
+                        option.textContent = account.email;
+                        selector.appendChild(option);
+                    }
+                });
             }
         }
 
@@ -5383,6 +5445,120 @@
                  <button id="syncAllButton" class="btn btn-secondary" disabled>
                     <i class="fas fa-sync-alt"></i> Sincronizar Todas as Contas
                 </button>
+                <!-- ✅ NOVO: Botão para criar eventos -->
+                <button id="createEventButton" onclick="toggleEventCreator()" class="btn btn-success" style="display: none;">
+                    <i class="fas fa-plus-circle"></i> Criar Evento
+                </button>
+            </div>
+        </div>
+
+        <!-- ✅ NOVO: Seção de Criação de Eventos -->
+        <div id="eventCreatorSection" class="event-creator-section" style="display: none;">
+            <h3><i class="fas fa-plus-circle"></i> Criar Evento de Pagamento</h3>
+            
+            <!-- Lista de Itens de Pagamento -->
+            <div class="payment-items-container">
+                <h4><i class="fas fa-list"></i> Itens de Pagamento</h4>
+                
+                <!-- Formulário para Adicionar Item -->
+                <div class="add-item-form">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Tipo</label>
+                            <input type="text" id="itemTipo" placeholder="Ex: Despesa, Investimento...">
+                        </div>
+                        <div class="form-group">
+                            <label>Subtipo</label>
+                            <input type="text" id="itemSubtipo" placeholder="Ex: Fixa, Variável...">
+                        </div>
+                        <div class="form-group">
+                            <label>Categoria</label>
+                            <input type="text" id="itemCategoria" placeholder="Ex: Alimentação, Transporte...">
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Nome do Item *</label>
+                            <input type="text" id="itemNome" placeholder="Nome do item (obrigatório)" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Valor *</label>
+                            <input type="text" id="itemValor" placeholder="R$ 0,00" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Status</label>
+                            <select id="itemStatus">
+                                <option value="">Selecionar...</option>
+                                <option value="PG">PG</option>
+                                <option value="PENDENTE">PENDENTE</option>
+                                <option value="RECALCULADO">RECALCULADO</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group full-width">
+                            <label>Detalhe</label>
+                            <input type="text" id="itemDetalhe" placeholder="Detalhes adicionais...">
+                        </div>
+                    </div>
+                    
+                    <button type="button" id="addItemBtn" class="add-item-btn">
+                        <i class="fas fa-plus"></i> Adicionar Item
+                    </button>
+                </div>
+                
+                <!-- Lista de Itens Adicionados -->
+                <div id="itemsList" class="items-list">
+                    <!-- Itens serão listados aqui -->
+                </div>
+            </div>
+            
+            <!-- Formulário para Criar Evento -->
+            <div class="create-event-form" style="display: none;" id="createEventForm">
+                <h4><i class="fas fa-calendar-plus"></i> Criar Evento no Google Calendar</h4>
+                
+                <!-- ✅ NOVO: Seletor de conta para criar evento -->
+                <div class="form-group">
+                    <label>Conta Google *</label>
+                    <select id="eventAccount" required>
+                        <option value="">Selecione uma conta...</option>
+                        <!-- As opções serão preenchidas dinamicamente -->
+                    </select>
+                </div>
+                
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Data *</label>
+                        <input type="date" id="eventDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Horário</label>
+                        <input type="time" id="eventTime" value="09:00">
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label>Recorrência *</label>
+                    <select id="eventRecurrence" required>
+                        <option value="NONE">Não se repete</option>
+                        <option value="DAILY">Todos os dias</option>
+                        <option value="WEEKLY">Semanal: cada quinta-feira</option>
+                        <option value="MONTHLY">Mensal no(a) terceiro(a) quinta-feira</option>
+                        <option value="YEARLY">Anual em setembro 18</option>
+                        <option value="WEEKDAYS">Todos os dias da semana (segunda a sexta-feira)</option>
+                    </select>
+                </div>
+                
+                <div class="form-actions">
+                    <button type="button" id="createEventBtn" class="create-event-btn">
+                        <i class="fas fa-calendar-check"></i> Criar Evento
+                    </button>
+                    <button type="button" id="cancelEventBtn" class="cancel-event-btn">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                </div>
             </div>
         </div>
 
