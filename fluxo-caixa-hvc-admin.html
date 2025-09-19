@@ -3454,6 +3454,106 @@
         }
 
         /**
+         * Intercepta botões de exclusão existentes no modal e faz eles usarem nossa função
+         */
+        function interceptExistingDeleteButtons() {
+            console.log('🔍 Procurando botões de exclusão existentes...');
+            
+            // Buscar botões de exclusão existentes
+            const deleteButtons = document.querySelectorAll(
+                'button[onclick*="deleteEvent"], ' +
+                'button[onclick*="excluir"], ' +
+                'button:contains("Excluir Evento"), ' +
+                '.delete-btn, ' +
+                '.excluir-btn, ' +
+                '[data-action="delete"], ' +
+                '[data-action="excluir"]'
+            );
+            
+            // Também buscar por texto
+            const allButtons = document.querySelectorAll('button');
+            const deleteButtonsByText = Array.from(allButtons).filter(btn => {
+                const text = btn.textContent.toLowerCase();
+                return text.includes('excluir') || text.includes('delete') || text.includes('🗑️');
+            });
+            
+            const allDeleteButtons = [...deleteButtons, ...deleteButtonsByText];
+            
+            console.log('🔍 Botões de exclusão encontrados:', allDeleteButtons.length);
+            
+            allDeleteButtons.forEach((button, index) => {
+                if (button.dataset.intercepted) return; // Já interceptado
+                
+                console.log(`🔧 Interceptando botão ${index + 1}:`, button.textContent);
+                
+                // Marcar como interceptado
+                button.dataset.intercepted = 'true';
+                
+                // Remover event listeners existentes
+                const newButton = button.cloneNode(true);
+                button.parentNode.replaceChild(newButton, button);
+                
+                // Adicionar novo event listener
+                newButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    console.log('🗑️ Botão de exclusão interceptado clicado');
+                    
+                    // Tentar encontrar o ID do evento no modal
+                    let eventId = null;
+                    let accountEmail = null;
+                    
+                    // Buscar ID do evento em vários lugares
+                    const modal = newButton.closest('.modal, .popup, .event-modal, .event-details');
+                    if (modal) {
+                        eventId = modal.getAttribute('data-event-id') ||
+                                 modal.getAttribute('data-id') ||
+                                 modal.id;
+                        
+                        accountEmail = modal.getAttribute('data-account') ||
+                                     modal.getAttribute('data-email');
+                    }
+                    
+                    // Buscar em elementos próximos
+                    if (!eventId) {
+                        const eventElement = newButton.closest('[data-event-id], [data-id]');
+                        if (eventElement) {
+                            eventId = eventElement.getAttribute('data-event-id') ||
+                                     eventElement.getAttribute('data-id');
+                            
+                            accountEmail = eventElement.getAttribute('data-account') ||
+                                         eventElement.getAttribute('data-email');
+                        }
+                    }
+                    
+                    // Buscar no DOM global
+                    if (!eventId) {
+                        const eventElements = document.querySelectorAll('[data-event-id], [data-id]');
+                        for (const el of eventElements) {
+                            if (el.style.display !== 'none' && el.offsetParent !== null) {
+                                eventId = el.getAttribute('data-event-id') || el.getAttribute('data-id');
+                                accountEmail = el.getAttribute('data-account') || el.getAttribute('data-email');
+                                break;
+                            }
+                        }
+                    }
+                    
+                    console.log('🔍 ID do evento encontrado:', eventId);
+                    console.log('📧 Email da conta:', accountEmail);
+                    
+                    if (eventId) {
+                        // Usar nossa função de exclusão
+                        deleteCalendarEvent(eventId, accountEmail);
+                    } else {
+                        console.error('❌ ID do evento não encontrado');
+                        showMessage('Não foi possível identificar o evento para exclusão', 'error');
+                    }
+                });
+            });
+        }
+
+        /**
          * Adiciona botão de exclusão aos eventos no calendário
          */
         function addDeleteButtonsToEvents() {
@@ -6946,6 +7046,11 @@
                 });
             }
             
+            // ✅ NOVO: Interceptar botão de exclusão existente no modal
+            setTimeout(() => {
+                interceptExistingDeleteButtons();
+            }, 2000);
+            
             // ✅ NOVO: Adicionar botões de exclusão aos eventos existentes
             setTimeout(() => {
                 if (typeof addDeleteButtonsToEvents === 'function') {
@@ -6958,6 +7063,10 @@
                 mutations.forEach(function(mutation) {
                     if (mutation.addedNodes.length > 0) {
                         setTimeout(() => {
+                            // Interceptar novos botões de exclusão
+                            interceptExistingDeleteButtons();
+                            
+                            // Adicionar nossos botões
                             if (typeof addDeleteButtonsToEvents === 'function') {
                                 addDeleteButtonsToEvents();
                             }
