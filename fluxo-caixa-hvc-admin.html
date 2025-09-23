@@ -1031,6 +1031,27 @@
             background: linear-gradient(135deg, #ff9800, #f57c00);
         }
 
+        /* ✅ NOVO: Estilos para eventos de recebimentos */
+        .event-item.event-rc {
+            background: linear-gradient(135deg, #66bb6a, #4caf50);
+            border-left: 4px solid #81c784;
+        }
+
+        .event-item.event-aguardando {
+            background: linear-gradient(135deg, #ff7043, #ff5722);
+            border-left: 4px solid #ff8a65;
+        }
+
+        .event-item.event-adiado {
+            background: linear-gradient(135deg, #42a5f5, #2196f3);
+            border-left: 4px solid #64b5f6;
+        }
+
+        .event-item.event-receiving-mixed {
+            background: linear-gradient(135deg, #ab47bc, #9c27b0);
+            border-left: 4px solid #ba68c8;
+        }
+
         /* ✅ NOVO: Estilos para modal de eventos agrupados */
         .day-summary {
             background: rgba(255, 255, 255, 0.1);
@@ -4106,8 +4127,15 @@
         // =================================================================
         // ✅ SISTEMA DE EXTRAÇÃO COM STATUS MELHORADO
         // =================================================================
-        function extractPaymentInfo(text) {
+        function extractPaymentInfo(text, eventTitle = '') {
             if (!text) return [];
+            
+            // Determinar tipo baseado no título do evento primeiro
+            const titleLower = eventTitle.toLowerCase();
+            let defaultType = 'pagamento';
+            if (titleLower.includes('recebimento')) {
+                defaultType = 'recebimento';
+            }
             
             // Regex para detectar padrões como "Nome do pagamento - R$ 1.234,56 (STATUS)"
             const paymentRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?/gi;
@@ -4116,9 +4144,9 @@
             
             while ((match = paymentRegex.exec(text)) !== null) {
                 let paymentName = match[1].trim();
-                let itemType = 'pagamento'; // Tipo padrão
+                let itemType = defaultType; // Usar tipo baseado no título do evento
                 
-                // Remover "PAGAMENTO" ou "RECEBIMENTO" do início se existir
+                // Remover "PAGAMENTO" ou "RECEBIMENTO" do início se existir e ajustar tipo
                 if (paymentName.toLowerCase().startsWith('pagamento ')) {
                     paymentName = paymentName.substring(10).trim(); // Remove "PAGAMENTO "
                     itemType = 'pagamento';
@@ -4198,7 +4226,7 @@
             const summary = event.summary || '';
             const fullText = `${summary} ${description}`;
             
-            const payments = extractPaymentInfo(fullText);
+            const payments = extractPaymentInfo(fullText, summary);
             
             // Separar pagamentos e recebimentos
             const paymentItems = payments.filter(p => p.type === 'pagamento');
@@ -5412,19 +5440,22 @@
                     dayDiv.appendChild(totalDiv);
                 }
                 
-                // Events for this day - AGRUPADOS
+                // Events for this day - AGRUPADOS POR TIPO
                 const dayEvents = document.createElement('div');
                 dayEvents.className = 'day-events';
                 
                 const eventsForDay = getEventsForDay(cellDate);
                 if (eventsForDay.length > 0) {
-                    // Se há eventos, criar um único "eventão" agrupado
-                    const groupedEvent = createGroupedEvent(eventsForDay, cellDate);
-                    const eventDiv = document.createElement('div');
-                    eventDiv.className = `event-item ${groupedEvent.colorClass}`;
-                    eventDiv.textContent = groupedEvent.title;
-                    eventDiv.onclick = () => showGroupedEventDetails(eventsForDay, cellDate);
-                    dayEvents.appendChild(eventDiv);
+                    // Criar eventos agrupados separados por tipo
+                    const groupedEvents = createGroupedEvents(eventsForDay, cellDate);
+                    
+                    groupedEvents.forEach(groupedEvent => {
+                        const eventDiv = document.createElement('div');
+                        eventDiv.className = `event-item ${groupedEvent.colorClass}`;
+                        eventDiv.textContent = groupedEvent.title;
+                        eventDiv.onclick = () => showGroupedEventDetails(groupedEvent.events, cellDate, groupedEvent.type);
+                        dayEvents.appendChild(eventDiv);
+                    });
                 }
                 
                 dayDiv.appendChild(dayEvents);
@@ -5435,54 +5466,114 @@
             updateMonthlySummary();
         }
 
-        // NOVA: Função para criar evento agrupado
-        function createGroupedEvent(events, date) {
-            const totalEvents = events.length;
-            let title = '';
+        // NOVA: Função para criar eventos agrupados (separados por tipo)
+        function createGroupedEvents(events, date) {
+            // Separar eventos por tipo
+            const paymentEvents = events.filter(event => getEventType(event) === 'pagamento');
+            const receivingEvents = events.filter(event => getEventType(event) === 'recebimento');
+            const hvcEvents = events.filter(event => getEventType(event) === 'hvc');
             
-            if (totalEvents === 1) {
-                title = events[0].summary || 'Pagamento';
-            } else {
-                title = `${totalEvents} Pagamentos`;
+            const groupedEvents = [];
+            
+            // Criar eventão de pagamentos
+            if (paymentEvents.length > 0) {
+                const totalPayments = paymentEvents.length;
+                let title = totalPayments === 1 ? 
+                    (paymentEvents[0].summary || 'Pagamento') : 
+                    `${totalPayments} Pagamentos`;
+                
+                groupedEvents.push({
+                    title: title,
+                    colorClass: getDayColorClass(paymentEvents, 'pagamento'),
+                    events: paymentEvents,
+                    type: 'pagamento'
+                });
             }
             
-            // Determinar cor baseada em todos os itens do dia
-            const colorClass = getDayColorClass(events);
+            // Criar eventão de recebimentos
+            if (receivingEvents.length > 0) {
+                const totalReceivings = receivingEvents.length;
+                let title = totalReceivings === 1 ? 
+                    (receivingEvents[0].summary || 'Recebimento') : 
+                    `${totalReceivings} Recebimentos`;
+                
+                groupedEvents.push({
+                    title: title,
+                    colorClass: getDayColorClass(receivingEvents, 'recebimento'),
+                    events: receivingEvents,
+                    type: 'recebimento'
+                });
+            }
             
-            return {
-                title: title,
-                colorClass: colorClass,
-                events: events
-            };
+            // Adicionar eventos HVC se existirem
+            if (hvcEvents.length > 0) {
+                hvcEvents.forEach(event => {
+                    groupedEvents.push({
+                        title: event.summary || 'HVC',
+                        colorClass: getEventColorClass(event),
+                        events: [event],
+                        type: 'hvc'
+                    });
+                });
+            }
+            
+            return groupedEvents;
         }
 
         // NOVA: Função para determinar cor do dia baseada em todos os eventos
-        function getDayColorClass(events) {
-            let hasPG = false;
-            let hasPendente = false;
-            let hasRecalculado = false;
-            
-            // Analisar todos os itens de todos os eventos do dia
-            events.forEach(event => {
-                const eventCalc = calculateEventTotal(event);
-                eventCalc.payments.forEach(payment => {
-                    if (payment.status === 'PG') hasPG = true;
-                    else if (payment.status === 'PENDENTE') hasPendente = true;
-                    else if (payment.status === 'RECALCULADO') hasRecalculado = true;
+        function getDayColorClass(events, eventType = 'pagamento') {
+            if (eventType === 'pagamento') {
+                let hasPG = false;
+                let hasPendente = false;
+                let hasRecalculado = false;
+                
+                // Analisar todos os itens de pagamento de todos os eventos do dia
+                events.forEach(event => {
+                    const eventCalc = calculateEventTotal(event);
+                    eventCalc.paymentItems.forEach(payment => {
+                        if (payment.status === 'PG') hasPG = true;
+                        else if (payment.status === 'PENDENTE') hasPendente = true;
+                        else if (payment.status === 'RECALCULADO') hasRecalculado = true;
+                    });
                 });
-            }); // Fechamento do DOMContentLoaded
+                
+                // Prioridade: PG > PENDENTE > RECALCULADO
+                if (hasPG && !hasPendente && !hasRecalculado) return 'event-pg';
+                if (hasPendente && !hasPG && !hasRecalculado) return 'event-pendente';
+                if (hasRecalculado && !hasPG && !hasPendente) return 'event-recalculado';
+                
+                // Se há mistura, usar cor mista
+                return 'event-mixed';
+                
+            } else if (eventType === 'recebimento') {
+                let hasRC = false;
+                let hasAguardando = false;
+                let hasAdiado = false;
+                
+                // Analisar todos os itens de recebimento de todos os eventos do dia
+                events.forEach(event => {
+                    const eventCalc = calculateEventTotal(event);
+                    eventCalc.receivingItems.forEach(receiving => {
+                        if (receiving.status === 'RC') hasRC = true;
+                        else if (receiving.status === 'AGUARDANDO') hasAguardando = true;
+                        else if (receiving.status === 'ADIADO') hasAdiado = true;
+                    });
+                });
+                
+                // Prioridade: RC > AGUARDANDO > ADIADO
+                if (hasRC && !hasAguardando && !hasAdiado) return 'event-rc';
+                if (hasAguardando && !hasRC && !hasAdiado) return 'event-aguardando';
+                if (hasAdiado && !hasRC && !hasAguardando) return 'event-adiado';
+                
+                // Se há mistura, usar cor mista para recebimentos
+                return 'event-receiving-mixed';
+            }
             
-            // Prioridade: PG > PENDENTE > RECALCULADO
-            if (hasPG && !hasPendente && !hasRecalculado) return 'event-pg';
-            if (hasPendente && !hasPG && !hasRecalculado) return 'event-pendente';
-            if (hasRecalculado && !hasPG && !hasPendente) return 'event-recalculado';
-            
-            // Se há mistura, usar cor mista
-            return 'event-mixed';
+            return 'event-default';
         }
 
         // NOVA: Função para mostrar detalhes do evento agrupado
-        async function showGroupedEventDetails(events, date) {
+        async function showGroupedEventDetails(events, date, eventType = 'pagamento') {
             const modal = document.getElementById('eventModal');
             const title = document.getElementById('eventModalTitle');
             const body = document.getElementById('eventModalBody');
@@ -5490,39 +5581,46 @@
             if (!modal || !title || !body) return;
             
             const dateStr = date.toLocaleDateString('pt-BR');
-            title.textContent = `Pagamentos de ${dateStr} (${events.length} evento${events.length > 1 ? 's' : ''})`;
+            const typeLabel = eventType === 'recebimento' ? 'Recebimentos' : 'Pagamentos';
+            title.textContent = `${typeLabel} de ${dateStr} (${events.length} evento${events.length > 1 ? 's' : ''})`;
             
             let detailsHTML = '';
             let totalDay = 0;
-            let allPayments = [];
+            let allItems = [];
             
             // Processar todos os eventos do dia
             events.forEach((event, index) => {
                 const eventCalc = calculateEventTotal(event);
-                totalDay += eventCalc.total;
-                allPayments = allPayments.concat(eventCalc.payments);
+                
+                // Escolher itens baseado no tipo
+                const items = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
+                const itemTotal = eventType === 'recebimento' ? eventCalc.receivingTotal : eventCalc.paymentTotal;
+                
+                totalDay += itemTotal;
+                allItems = allItems.concat(items);
                 
                 detailsHTML += `
                     <div class="grouped-event-section">
                         <h4><i class="fas fa-calendar-alt"></i> ${event.summary || 'Evento sem título'}</h4>
                         <div class="event-total-value">
-                            ${formatCurrency(eventCalc.total)}
+                            ${formatCurrency(itemTotal)}
                         </div>
                 `;
                 
-                if (eventCalc.payments.length > 0) {
+                if (items.length > 0) {
+                    const itemLabel = eventType === 'recebimento' ? 'Recebimentos' : 'Pagamentos';
                     detailsHTML += `
                         <div class="event-values-list">
-                            <h5><i class="fas fa-list"></i> Pagamentos (${eventCalc.count}):</h5>
+                            <h5><i class="fas fa-list"></i> ${itemLabel} (${items.length}):</h5>
                     `;
-                    eventCalc.payments.forEach(payment => {
+                    items.forEach(item => {
                         detailsHTML += `
                             <div class="value-item">
                                 <div>
-                                    <strong>${payment.name}</strong> - ${payment.formattedValue}
+                                    <strong>${item.name}</strong> - ${item.formattedValue}
                                 </div>
-                                <div class="value-item-status ${payment.status.toLowerCase()}">
-                                    ${payment.status}
+                                <div class="value-item-status ${item.status.toLowerCase()}">
+                                    ${item.status}
                                 </div>
                             </div>
                         `;
