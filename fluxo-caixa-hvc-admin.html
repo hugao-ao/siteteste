@@ -5170,12 +5170,10 @@
             
             return events.filter(event => {
                 const title = (event.summary || '').toLowerCase();
-                const description = (event.description || '').toLowerCase();
                 
-                return keywords.some(keyword => 
-                    title.includes(keyword) || description.includes(keyword)
-                );
-            }); // Fechamento do DOMContentLoaded
+                // Buscar palavras-chave APENAS no título do evento
+                return keywords.some(keyword => title.includes(keyword));
+            });
         }
 
         function getEventType(event) {
