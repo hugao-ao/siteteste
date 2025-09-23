@@ -136,6 +136,7 @@
             border: 2px solid transparent;
         }
 
+        /* ✅ STATUS DE PAGAMENTOS */
         .status-stat-item.pg {
             border-color: #34a853;
             background: rgba(52, 168, 83, 0.2);
@@ -149,6 +150,22 @@
         .status-stat-item.recalculado {
             border-color: #4285f4;
             background: rgba(66, 133, 244, 0.2);
+        }
+
+        /* ✅ NOVO: STATUS DE RECEBIMENTOS */
+        .status-stat-item.rc {
+            border-color: #66bb6a;
+            background: rgba(102, 187, 106, 0.2);
+        }
+
+        .status-stat-item.aguardando {
+            border-color: #03a9f4;
+            background: rgba(3, 169, 244, 0.2);
+        }
+
+        .status-stat-item.adiado {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.2);
         }
 
         .status-stat-value {
@@ -171,15 +188,65 @@
         }
 
         /* Lista de Pagamentos */
-        .payments-list-section {
+        /* ✅ NOVO: Container para resumos mensais */
+        .monthly-summary-container {
             background: rgba(25, 25, 112, 0.3);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 15px;
             padding: 30px;
             margin-bottom: 30px;
-            max-width: 100%;
-            box-sizing: border-box;
+        }
+
+        .monthly-summary-general {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .summaries-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .payments-summary,
+        .receivings-summary {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .section-total {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ffc107;
+            text-align: center;
+            margin: 15px 0;
+        }
+
+        /* ✅ NOVO: Container para listas lado a lado */
+        .lists-container {
+            background: rgba(25, 25, 112, 0.3);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .lists-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .payments-list-section,
+        .receivings-list-section {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
         }
 
         .payments-list-section h3 {
@@ -191,8 +258,9 @@
             gap: 10px;
         }
 
-        /* ✅ NOVO: Filtros de Pagamentos */
-        .payments-filters {
+        /* ✅ NOVO: Filtros de Pagamentos e Recebimentos */
+        .payments-filters,
+        .receivings-filters {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 15px;
@@ -264,28 +332,33 @@
             color: #ffffff;
         }
 
-        .payments-list {
+        .payments-list,
+        .receivings-list {
             max-height: 500px;
             overflow-y: auto;
             border-radius: 8px;
             background: rgba(255, 255, 255, 0.05);
         }
 
-        .payments-list::-webkit-scrollbar {
+        .payments-list::-webkit-scrollbar,
+        .receivings-list::-webkit-scrollbar {
             width: 8px;
         }
 
-        .payments-list::-webkit-scrollbar-track {
+        .payments-list::-webkit-scrollbar-track,
+        .receivings-list::-webkit-scrollbar-track {
             background: rgba(255, 255, 255, 0.1);
             border-radius: 4px;
         }
 
-        .payments-list::-webkit-scrollbar-thumb {
+        .payments-list::-webkit-scrollbar-thumb,
+        .receivings-list::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.3);
             border-radius: 4px;
         }
 
-        .payment-item {
+        .payment-item,
+        .receiving-item {
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
@@ -295,7 +368,8 @@
             cursor: pointer;
         }
 
-        .payment-item:hover {
+        .payment-item:hover,
+        .receiving-item:hover {
             background: rgba(255, 255, 255, 0.15);
             transform: translateX(5px);
         }
@@ -905,16 +979,39 @@
             word-wrap: break-word;
         }
 
+        /* ✅ CORES PARA PAGAMENTOS */
+        .event-item.payment-completed,
         .event-item.completed {
-            background: linear-gradient(135deg, #34a853, #2e7d32);
+            background: linear-gradient(135deg, #2e7d32, #1b5e20);
+            border-left: 4px solid #4caf50;
         }
 
+        .event-item.payment-overdue,
         .event-item.overdue {
-            background: linear-gradient(135deg, #ea4335, #d33b2c);
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+            border-left: 4px solid #f44336;
         }
 
+        .event-item.payment-upcoming,
         .event-item.upcoming {
-            background: linear-gradient(135deg, #4285f4, #1976d2);
+            background: linear-gradient(135deg, #1976d2, #0d47a1);
+            border-left: 4px solid #2196f3;
+        }
+
+        /* ✅ NOVO: CORES PARA RECEBIMENTOS */
+        .event-item.receiving-completed {
+            background: linear-gradient(135deg, #388e3c, #2e7d32);
+            border-left: 4px solid #66bb6a;
+        }
+
+        .event-item.receiving-overdue {
+            background: linear-gradient(135deg, #f57c00, #e65100);
+            border-left: 4px solid #ff9800;
+        }
+
+        .event-item.receiving-upcoming {
+            background: linear-gradient(135deg, #0288d1, #01579b);
+            border-left: 4px solid #03a9f4;
         }
 
         /* ✅ NOVO: Estilos para eventos agrupados por status */
@@ -1253,6 +1350,61 @@
             background: rgba(255, 193, 7, 0.2);
             border: 1px solid rgba(255, 193, 7, 0.4);
             color: #ffc107;
+        }
+
+        /* ✅ NOVO: Estilos para seleção de tipo de evento */
+        .event-type-selector {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .type-options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .type-option {
+            cursor: pointer;
+            display: block;
+        }
+
+        .type-option input[type="radio"] {
+            display: none;
+        }
+
+        .type-label {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 15px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            color: rgba(255, 255, 255, 0.7);
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .type-option input[type="radio"]:checked + .type-label.pagamento-type {
+            border-color: #4285f4;
+            background: rgba(66, 133, 244, 0.2);
+            color: #4285f4;
+        }
+
+        .type-option input[type="radio"]:checked + .type-label.recebimento-type {
+            border-color: #34a853;
+            background: rgba(52, 168, 83, 0.2);
+            color: #34a853;
+        }
+
+        .type-label:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
         }
 
         /* Loading Spinner */
@@ -2653,6 +2805,13 @@
 
         // ✅ NOVO: Funções para gerenciar itens de pagamento
         function addPaymentItem() {
+            // ✅ NOVO: Validar tipo de evento selecionado
+            const eventType = document.querySelector('input[name="eventType"]:checked');
+            if (!eventType) {
+                alert('Selecione o tipo de evento (PAGAMENTO ou RECEBIMENTO) primeiro!');
+                return;
+            }
+
             const tipo = document.getElementById('itemTipo').value.trim();
             const subtipo = document.getElementById('itemSubtipo').value.trim();
             const categoria = document.getElementById('itemCategoria').value.trim();
@@ -2672,6 +2831,10 @@
             }
             if (!valor || valor <= 0) {
                 alert('Valor deve ser maior que zero!');
+                return;
+            }
+            if (!status) {
+                alert('Selecione um status para o item!');
                 return;
             }
 
@@ -2784,8 +2947,15 @@
         }
 
         async function createPaymentEvent() {
+            // ✅ NOVO: Validar tipo de evento selecionado
+            const eventType = document.querySelector('input[name="eventType"]:checked');
+            if (!eventType) {
+                alert('Selecione o tipo de evento (PAGAMENTO ou RECEBIMENTO) primeiro!');
+                return;
+            }
+
             if (paymentItems.length === 0) {
-                alert('Adicione pelo menos um item de pagamento!');
+                alert(`Adicione pelo menos um item de ${eventType.value.toLowerCase()}!`);
                 return;
             }
 
@@ -2871,7 +3041,7 @@
 
                 // Criar evento
                 const event = {
-                    summary: 'PAGAMENTO',
+                    summary: eventType.value, // ✅ NOVO: Usar tipo selecionado
                     description: generateEventDescription(),
                     start: {
                         dateTime: startDateTime.toISOString(),
@@ -3127,6 +3297,13 @@
 
         // ✅ NOVO: Funções para gerenciar itens de pagamento
         function addPaymentItem() {
+            // ✅ NOVO: Validar tipo de evento selecionado
+            const eventType = document.querySelector('input[name="eventType"]:checked');
+            if (!eventType) {
+                alert('Selecione o tipo de evento (PAGAMENTO ou RECEBIMENTO) primeiro!');
+                return;
+            }
+
             const tipo = document.getElementById('itemTipo').value.trim();
             const subtipo = document.getElementById('itemSubtipo').value.trim();
             const categoria = document.getElementById('itemCategoria').value.trim();
@@ -3146,6 +3323,10 @@
             }
             if (!valor || valor <= 0) {
                 alert('Valor deve ser maior que zero!');
+                return;
+            }
+            if (!status) {
+                alert('Selecione um status para o item!');
                 return;
             }
 
@@ -3306,8 +3487,15 @@
          * Cria evento de pagamento na conta selecionada
          */
         async function createPaymentEvent() {
+            // ✅ NOVO: Validar tipo de evento selecionado
+            const eventType = document.querySelector('input[name="eventType"]:checked');
+            if (!eventType) {
+                alert('Selecione o tipo de evento (PAGAMENTO ou RECEBIMENTO) primeiro!');
+                return;
+            }
+
             if (!window.paymentItems || window.paymentItems.length === 0) {
-                alert('Adicione pelo menos um item de pagamento!');
+                alert(`Adicione pelo menos um item de ${eventType.value.toLowerCase()}!`);
                 return;
             }
 
@@ -3369,7 +3557,7 @@
                 }
 
                 // Gerar título e descrição do evento
-                const eventTitle = "PAGAMENTOS";
+                const eventTitle = eventType.value; // ✅ NOVO: Usar tipo selecionado
                 const eventDescription = generateEventDescription();
 
                 // Configurar data e hora
@@ -4484,7 +4672,7 @@
         }
 
         // =================================================================
-        // ✅ NOVO: SISTEMA DE FILTROS DE PAGAMENTOS
+        // ✅ NOVO: SISTEMA DE FILTROS DE PAGAMENTOS E RECEBIMENTOS
         // =================================================================
         function initializePaymentFilters() {
             const nameFilter = document.getElementById('nameFilter');
@@ -4509,6 +4697,71 @@
             }
         }
 
+        function initializeReceivingFilters() {
+            const nameFilter = document.getElementById('receivingNameFilter');
+            const dateFilter = document.getElementById('receivingDateFilter');
+            const statusFilter = document.getElementById('receivingStatusFilter');
+            const clearFiltersBtn = document.getElementById('clearReceivingFilters');
+            
+            if (nameFilter) {
+                nameFilter.addEventListener('input', applyReceivingFilters);
+            }
+            
+            if (dateFilter) {
+                dateFilter.addEventListener('change', applyReceivingFilters);
+            }
+            
+            if (statusFilter) {
+                statusFilter.addEventListener('change', applyReceivingFilters);
+            }
+            
+            if (clearFiltersBtn) {
+                clearFiltersBtn.addEventListener('click', clearReceivingFilters);
+            }
+        }
+
+        function initializeEventTypeListeners() {
+            const typePagamento = document.getElementById('typePagamento');
+            const typeRecebimento = document.getElementById('typeRecebimento');
+            
+            if (typePagamento) {
+                typePagamento.addEventListener('change', updateEventTypeInterface);
+            }
+            
+            if (typeRecebimento) {
+                typeRecebimento.addEventListener('change', updateEventTypeInterface);
+            }
+        }
+
+        function updateEventTypeInterface() {
+            const selectedType = document.querySelector('input[name="eventType"]:checked');
+            const itemsTitle = document.getElementById('itemsTitle');
+            const statusSelect = document.getElementById('itemStatus');
+            
+            if (!selectedType) return;
+            
+            // Atualizar título da seção
+            if (itemsTitle) {
+                itemsTitle.textContent = selectedType.value === 'PAGAMENTO' ? 'Itens de Pagamento' : 'Itens de Recebimento';
+            }
+            
+            // Atualizar opções de status
+            if (statusSelect) {
+                statusSelect.innerHTML = '';
+                statusSelect.appendChild(new Option('Selecionar...', ''));
+                
+                if (selectedType.value === 'PAGAMENTO') {
+                    statusSelect.appendChild(new Option('PG', 'PG'));
+                    statusSelect.appendChild(new Option('PENDENTE', 'PENDENTE'));
+                    statusSelect.appendChild(new Option('RECALCULADO', 'RECALCULADO'));
+                } else {
+                    statusSelect.appendChild(new Option('RC', 'RC'));
+                    statusSelect.appendChild(new Option('AGUARDANDO', 'AGUARDANDO'));
+                    statusSelect.appendChild(new Option('ADIADO', 'ADIADO'));
+                }
+            }
+        }
+
         /**
          * Função pública para exclusão de eventos (wrapper que evita override)
          */
@@ -4517,7 +4770,7 @@
             return await realDeleteCalendarEvent(eventId, accountEmail);
         }
 
-        function applyFilters() {
+           function applyFilters() {
             const nameFilter = document.getElementById('nameFilter')?.value.toLowerCase() || '';
             const dateFilter = document.getElementById('dateFilter')?.value || '';
             const statusFilter = document.getElementById('statusFilter')?.value || '';
@@ -4533,13 +4786,37 @@
                     payment.eventDate.toISOString().split('T')[0] === dateFilter;
                 
                 // Filtro por status
-                const statusMatch = !statusFilter || 
-                    payment.status === statusFilter;
+                const statusMatch = !statusFilter || payment.status === statusFilter;
                 
                 return nameMatch && dateMatch && statusMatch;
             });
             
             updatePaymentsList();
+        }
+
+        function applyReceivingFilters() {
+            const nameFilter = document.getElementById('receivingNameFilter')?.value.toLowerCase() || '';
+            const dateFilter = document.getElementById('receivingDateFilter')?.value || '';
+            const statusFilter = document.getElementById('receivingStatusFilter')?.value || '';
+            
+            filteredReceivingsList = allReceivingsList.filter(receiving => {
+                // Filtro por nome
+                const nameMatch = !nameFilter || 
+                    receiving.name.toLowerCase().includes(nameFilter) ||
+                    receiving.eventTitle.toLowerCase().includes(nameFilter);
+                
+                // Filtro por data
+                const dateMatch = !dateFilter || 
+                    receiving.eventDate.toISOString().split('T')[0] === dateFilter;
+                
+                // Filtro por status
+                const statusMatch = !statusFilter || receiving.status === statusFilter;
+                
+                return nameMatch && dateMatch && statusMatch;
+            });
+            
+            updateReceivingsList();
+        }sList();
         }
 
         function clearFilters() {
@@ -4553,6 +4830,19 @@
             
             filteredPaymentsList = [...allPaymentsList];
             updatePaymentsList();
+        }
+
+        function clearReceivingFilters() {
+            const nameFilter = document.getElementById('receivingNameFilter');
+            const dateFilter = document.getElementById('receivingDateFilter');
+            const statusFilter = document.getElementById('receivingStatusFilter');
+            
+            if (nameFilter) nameFilter.value = '';
+            if (dateFilter) dateFilter.value = '';
+            if (statusFilter) statusFilter.value = '';
+            
+            filteredReceivingsList = [...allReceivingsList];
+            updateReceivingsList();
         }
 
         function updatePaymentsList() {
@@ -4593,7 +4883,52 @@
             `).join('');
         }
 
+        function updateReceivingsList() {
+            const receivingsListElement = document.getElementById('receivingsList');
+            if (!receivingsListElement) return;
+            
+            if (filteredReceivingsList.length === 0) {
+                receivingsListElement.innerHTML = `
+                    <div class="no-receivings">
+                        <i class="fas fa-inbox"></i>
+                        <p>Nenhum recebimento encontrado</p>
+                        ${allReceivingsList.length > 0 ? '<p style="font-size: 0.9rem;">Tente ajustar os filtros</p>' : ''}
+                    </div>
+                `;
+                return;
+            }
+            
+            receivingsListElement.innerHTML = filteredReceivingsList.map(receiving => `
+                <div class="receiving-item" onclick="showReceivingEvent('${receiving.eventId}')">
+                    <div class="payment-header">
+                        <div class="payment-name">${receiving.name}</div>
+                        <div class="payment-value">${receiving.formattedValue}</div>
+                    </div>
+                    <div class="payment-details">
+                        <div class="payment-date">
+                            <i class="fas fa-calendar"></i>
+                            ${receiving.eventDate.toLocaleDateString('pt-BR')}
+                        </div>
+                        <div class="payment-status ${receiving.status.toLowerCase()}">
+                            <i class="fas fa-tag"></i>
+                            ${receiving.status}
+                        </div>
+                        <div style="color: rgba(255, 255, 255, 0.6);">
+                            ${receiving.eventTitle}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
         function showPaymentEvent(eventId) {
+            const event = filteredEvents.find(e => e.id === eventId);
+            if (event) {
+                showEventDetails(event);
+            }
+        }
+
+        function showReceivingEvent(eventId) {
             const event = filteredEvents.find(e => e.id === eventId);
             if (event) {
                 showEventDetails(event);
@@ -4618,16 +4953,34 @@
             today.setHours(0, 0, 0, 0);
             eventDate.setHours(0, 0, 0, 0);
             
-            // Verificar se todos os pagamentos estão com PG ou RECALCULADO
-            const allCompleted = eventCalc.payments.length > 0 && 
-                eventCalc.payments.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
+            const eventType = getEventType(event);
             
-            if (allCompleted) {
-                return 'completed'; // Verde
-            } else if (eventDate < today) {
-                return 'overdue'; // Vermelho (data anterior)
+            if (eventType === 'recebimento') {
+                // ✅ NOVO: Lógica de cores para RECEBIMENTOS
+                // Verificar se todos os recebimentos estão com RC ou ADIADO
+                const allReceivingsCompleted = eventCalc.receivingItems.length > 0 && 
+                    eventCalc.receivingItems.every(r => r.status === 'RC' || r.status === 'ADIADO');
+                
+                if (allReceivingsCompleted) {
+                    return 'receiving-completed'; // Verde claro para recebimentos
+                } else if (eventDate < today) {
+                    return 'receiving-overdue'; // Laranja para recebimentos em atraso
+                } else {
+                    return 'receiving-upcoming'; // Azul claro para recebimentos futuros
+                }
             } else {
-                return 'upcoming'; // Azul (data posterior)
+                // Lógica original para PAGAMENTOS
+                // Verificar se todos os pagamentos estão com PG ou RECALCULADO
+                const allPaymentsCompleted = eventCalc.paymentItems.length > 0 && 
+                    eventCalc.paymentItems.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
+                
+                if (allPaymentsCompleted) {
+                    return 'payment-completed'; // Verde escuro para pagamentos
+                } else if (eventDate < today) {
+                    return 'payment-overdue'; // Vermelho para pagamentos em atraso
+                } else {
+                    return 'payment-upcoming'; // Azul escuro para pagamentos futuros
+                }
             }
         }
 
@@ -7104,8 +7457,12 @@
             // Renderizar calendário inicial (vazio)
             renderCalendar();
             
-            // ✅ NOVO: Inicializar filtros de pagamentos
+            // ✅ NOVO: Inicializar filtros de pagamentos e recebimentos
             initializePaymentFilters();
+            initializeReceivingFilters();
+            
+            // ✅ NOVO: Inicializar event listeners para tipo de evento
+            initializeEventTypeListeners();
         });
     </script>
 </head>
@@ -7147,11 +7504,32 @@
 
         <!-- ✅ NOVO: Seção de Criação de Eventos -->
         <div id="eventCreatorSection" class="event-creator-section" style="display: none;">
-            <h3><i class="fas fa-plus-circle"></i> Criar Evento de Pagamento</h3>
+            <h3><i class="fas fa-plus-circle"></i> Criar Evento</h3>
             
-            <!-- Lista de Itens de Pagamento -->
+            <!-- ✅ NOVO: Seleção Obrigatória de Tipo -->
+            <div class="event-type-selector">
+                <h4><i class="fas fa-tags"></i> Tipo de Evento *</h4>
+                <div class="type-options">
+                    <label class="type-option">
+                        <input type="radio" name="eventType" value="PAGAMENTO" id="typePagamento" required>
+                        <span class="type-label pagamento-type">
+                            <i class="fas fa-credit-card"></i>
+                            PAGAMENTO
+                        </span>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" name="eventType" value="RECEBIMENTO" id="typeRecebimento" required>
+                        <span class="type-label recebimento-type">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            RECEBIMENTO
+                        </span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Lista de Itens -->
             <div class="payment-items-container">
-                <h4><i class="fas fa-list"></i> Itens de Pagamento</h4>
+                <h4><i class="fas fa-list"></i> <span id="itemsTitle">Itens</span></h4>
                 
                 <!-- Formulário para Adicionar Item -->
                 <div class="add-item-form">
@@ -7182,10 +7560,8 @@
                         <div class="form-group">
                             <label>Status</label>
                             <select id="itemStatus">
-                                <option value="">Selecionar...</option>
-                                <option value="PG">PG</option>
-                                <option value="PENDENTE">PENDENTE</option>
-                                <option value="RECALCULADO">RECALCULADO</option>
+                                <option value="">Selecione o tipo primeiro...</option>
+                                <!-- Opções serão atualizadas dinamicamente -->
                             </select>
                         </div>
                     </div>
@@ -7271,11 +7647,32 @@
 
         <!-- ✅ NOVO: Seção de Criação de Eventos -->
         <div id="eventCreatorSection" class="event-creator-section" style="display: none;">
-            <h3><i class="fas fa-plus-circle"></i> Criar Evento de Pagamento</h3>
+            <h3><i class="fas fa-plus-circle"></i> Criar Evento</h3>
             
-            <!-- Lista de Itens de Pagamento -->
+            <!-- ✅ NOVO: Seleção Obrigatória de Tipo -->
+            <div class="event-type-selector">
+                <h4><i class="fas fa-tags"></i> Tipo de Evento *</h4>
+                <div class="type-options">
+                    <label class="type-option">
+                        <input type="radio" name="eventType" value="PAGAMENTO" id="typePagamento" required>
+                        <span class="type-label pagamento-type">
+                            <i class="fas fa-credit-card"></i>
+                            PAGAMENTO
+                        </span>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" name="eventType" value="RECEBIMENTO" id="typeRecebimento" required>
+                        <span class="type-label recebimento-type">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            RECEBIMENTO
+                        </span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Lista de Itens -->
             <div class="payment-items-container">
-                <h4><i class="fas fa-list"></i> Itens de Pagamento</h4>
+                <h4><i class="fas fa-list"></i> <span id="itemsTitle">Itens</span></h4>
                 
                 <!-- Formulário para Adicionar Item -->
                 <div class="add-item-form">
@@ -7306,10 +7703,8 @@
                         <div class="form-group">
                             <label>Status</label>
                             <select id="itemStatus">
-                                <option value="">Selecionar...</option>
-                                <option value="PG">PG</option>
-                                <option value="PENDENTE">PENDENTE</option>
-                                <option value="RECALCULADO">RECALCULADO</option>
+                                <option value="">Selecione o tipo primeiro...</option>
+                                <!-- Opções serão atualizadas dinamicamente -->
                             </select>
                         </div>
                     </div>
@@ -7473,11 +7868,32 @@
 
         <!-- ✅ NOVO: Criador de Eventos de Pagamento -->
         <div id="eventCreatorSection" class="event-creator-section" style="display: none;">
-            <h3><i class="fas fa-plus-circle"></i> Criar Evento de Pagamento</h3>
+            <h3><i class="fas fa-plus-circle"></i> Criar Evento</h3>
             
-            <!-- Lista de Itens de Pagamento -->
+            <!-- ✅ NOVO: Seleção Obrigatória de Tipo -->
+            <div class="event-type-selector">
+                <h4><i class="fas fa-tags"></i> Tipo de Evento *</h4>
+                <div class="type-options">
+                    <label class="type-option">
+                        <input type="radio" name="eventType" value="PAGAMENTO" id="typePagamento" required>
+                        <span class="type-label pagamento-type">
+                            <i class="fas fa-credit-card"></i>
+                            PAGAMENTO
+                        </span>
+                    </label>
+                    <label class="type-option">
+                        <input type="radio" name="eventType" value="RECEBIMENTO" id="typeRecebimento" required>
+                        <span class="type-label recebimento-type">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            RECEBIMENTO
+                        </span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Lista de Itens -->
             <div class="payment-items-container">
-                <h4><i class="fas fa-list"></i> Itens de Pagamento</h4>
+                <h4><i class="fas fa-list"></i> <span id="itemsTitle">Itens</span></h4>
                 
                 <!-- Formulário para Adicionar Item -->
                 <div class="add-item-form">
@@ -7508,10 +7924,8 @@
                         <div class="form-group">
                             <label>Status</label>
                             <select id="itemStatus">
-                                <option value="">Selecionar...</option>
-                                <option value="PG">PG</option>
-                                <option value="PENDENTE">PENDENTE</option>
-                                <option value="RECALCULADO">RECALCULADO</option>
+                                <option value="">Selecione o tipo primeiro...</option>
+                                <!-- Opções serão atualizadas dinamicamente -->
                             </select>
                         </div>
                     </div>
@@ -7890,4 +8304,3 @@
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
- 
