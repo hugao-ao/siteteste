@@ -898,9 +898,9 @@
 
         .calendar-day {
             background: rgba(255, 255, 255, 0.05);
-            min-height: 140px;
-            max-height: 140px;
-            padding: 8px;
+            min-height: 180px;
+            max-height: 180px;
+            padding: 6px;
             position: relative;
             transition: all 0.3s ease;
             width: 100%;
@@ -946,6 +946,63 @@
             line-height: 1.1;
         }
 
+        /* ✅ NOVO: Estilos para totais separados */
+        .day-payment-total {
+            background: rgba(255, 193, 7, 0.9);
+            color: #000;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            margin-bottom: 2px;
+            text-align: center;
+            flex-shrink: 0;
+            word-wrap: break-word;
+            line-height: 1.1;
+            border: 1px solid #ffc107;
+        }
+
+        .day-receiving-total {
+            background: rgba(33, 150, 243, 0.9);
+            color: white;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            margin-top: 2px;
+            margin-bottom: 2px;
+            text-align: center;
+            flex-shrink: 0;
+            word-wrap: break-word;
+            line-height: 1.1;
+            border: 1px solid #2196f3;
+        }
+
+        .day-balance {
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-size: 9px;
+            font-weight: bold;
+            margin-top: 2px;
+            text-align: center;
+            flex-shrink: 0;
+            word-wrap: break-word;
+            line-height: 1.1;
+            border: 1px solid;
+        }
+
+        .day-balance.positive {
+            background: rgba(76, 175, 80, 0.9);
+            color: white;
+            border-color: #4caf50;
+        }
+
+        .day-balance.negative {
+            background: rgba(244, 67, 54, 0.9);
+            color: white;
+            border-color: #f44336;
+        }
+
         .day-events {
             display: flex;
             flex-direction: column;
@@ -957,9 +1014,9 @@
 
         .event-item {
             color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 9px;
             cursor: pointer;
             transition: all 0.3s ease;
             overflow: hidden;
@@ -969,6 +1026,7 @@
             box-sizing: border-box;
             min-width: 0;
             flex-shrink: 0;
+            line-height: 1.2;
         }
 
         .event-item:hover {
@@ -4271,9 +4329,28 @@
             eventsForDay.forEach(event => {
                 const eventCalc = calculateEventTotal(event);
                 dayTotal += eventCalc.total; // Já considera apenas PG e PENDENTE
-            }); // Fechamento do DOMContentLoaded
+            });
             
             return dayTotal;
+        }
+
+        // ✅ NOVA: Função para calcular totais separados por tipo
+        function calculateDayTotals(date) {
+            const eventsForDay = getEventsForDay(date);
+            let paymentTotal = 0;
+            let receivingTotal = 0;
+            
+            eventsForDay.forEach(event => {
+                const eventCalc = calculateEventTotal(event);
+                paymentTotal += eventCalc.paymentTotal; // PG + PENDENTE
+                receivingTotal += eventCalc.receivingTotal; // RC + AGUARDANDO
+            });
+            
+            return {
+                paymentTotal: paymentTotal,
+                receivingTotal: receivingTotal,
+                balance: receivingTotal - paymentTotal
+            };
         }
 
         // =================================================================
@@ -5429,13 +5506,15 @@
                 dayNumber.textContent = cellDate.getDate();
                 dayDiv.appendChild(dayNumber);
                 
-                // Total do dia (apenas PG e PENDENTE)
-                const dayTotal = calculateDayTotal(cellDate);
-                if (dayTotal > 0) {
-                    const totalDiv = document.createElement('div');
-                    totalDiv.className = 'day-total';
-                    totalDiv.textContent = formatCurrency(dayTotal);
-                    dayDiv.appendChild(totalDiv);
+                // ✅ NOVO: Calcular totais separados
+                const dayTotals = calculateDayTotals(cellDate);
+                
+                // Total de Pagamentos (amarelo) - acima dos eventos
+                if (dayTotals.paymentTotal > 0) {
+                    const paymentTotalDiv = document.createElement('div');
+                    paymentTotalDiv.className = 'day-payment-total';
+                    paymentTotalDiv.textContent = formatCurrency(dayTotals.paymentTotal);
+                    dayDiv.appendChild(paymentTotalDiv);
                 }
                 
                 // Events for this day - AGRUPADOS POR TIPO
@@ -5457,6 +5536,26 @@
                 }
                 
                 dayDiv.appendChild(dayEvents);
+                
+                // Total de Recebimentos (azul) - abaixo dos eventos
+                if (dayTotals.receivingTotal > 0) {
+                    const receivingTotalDiv = document.createElement('div');
+                    receivingTotalDiv.className = 'day-receiving-total';
+                    receivingTotalDiv.textContent = formatCurrency(dayTotals.receivingTotal);
+                    dayDiv.appendChild(receivingTotalDiv);
+                }
+                
+                // Saldo (recebimentos - pagamentos) - com cores para positivo/negativo
+                if (dayTotals.paymentTotal > 0 || dayTotals.receivingTotal > 0) {
+                    const balanceDiv = document.createElement('div');
+                    balanceDiv.className = `day-balance ${dayTotals.balance >= 0 ? 'positive' : 'negative'}`;
+                    balanceDiv.textContent = formatCurrency(Math.abs(dayTotals.balance));
+                    if (dayTotals.balance < 0) {
+                        balanceDiv.textContent = '-' + balanceDiv.textContent;
+                    }
+                    dayDiv.appendChild(balanceDiv);
+                }
+                
                 calendarGrid.appendChild(dayDiv);
             }
             
