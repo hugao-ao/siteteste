@@ -2795,70 +2795,17 @@
         let currentDate = new Date();
         let allPaymentsList = []; // ✅ NOVO: Lista completa de pagamentos
         let filteredPaymentsList = []; // ✅ NOVO: Lista filtrada
+        let allReceivingsList = []; // ✅ NOVO: Lista completa de recebimentos
+        let filteredReceivingsList = []; // ✅ NOVO: Lista filtrada de recebimentos
         // ✅ NOVO: Variáveis para criação de eventos
         let paymentItems = [];
         let currentEditingEvent = null;
         let isEditingDescription = false;
         let originalDescription = '';
-        // ✅ NOVO:        let paymentItems = [];
+        // ✅ REMOVIDO: Declaração duplicada removida
         let allEventAttachments = []; // Todos os anexos do evento
 
-        // ✅ NOVO: Funções para gerenciar itens de pagamento
-        function addPaymentItem() {
-            // ✅ NOVO: Validar tipo de evento selecionado
-            const eventType = document.querySelector('input[name="eventType"]:checked');
-            if (!eventType) {
-                alert('Selecione o tipo de evento (PAGAMENTO ou RECEBIMENTO) primeiro!');
-                return;
-            }
-
-            const tipo = document.getElementById('itemTipo').value.trim();
-            const subtipo = document.getElementById('itemSubtipo').value.trim();
-            const categoria = document.getElementById('itemCategoria').value.trim();
-            const nome = document.getElementById('itemNome').value.trim();
-            
-            // ✅ NOVO: Parsing correto do valor formatado
-            const valorText = document.getElementById('itemValor').value;
-            const valor = parseFloat(valorText.replace(/[^\d,]/g, '').replace(',', '.'));
-            
-            const status = document.getElementById('itemStatus').value;
-            const detalhe = document.getElementById('itemDetalhe').value.trim();
-
-            // Validação
-            if (!nome) {
-                alert('Nome do item é obrigatório!');
-                return;
-            }
-            if (!valor || valor <= 0) {
-                alert('Valor deve ser maior que zero!');
-                return;
-            }
-            if (!status) {
-                alert('Selecione um status para o item!');
-                return;
-            }
-
-            // Criar item
-            const item = {
-                id: Date.now(),
-                tipo,
-                subtipo,
-                categoria,
-                nome,
-                valor,
-                status,
-                detalhe
-            };
-
-            paymentItems.push(item);
-            renderPaymentItems();
-            clearItemForm();
-            
-            // Mostrar formulário de evento se houver itens
-            if (paymentItems.length > 0) {
-                document.getElementById('createEventForm').style.display = 'block';
-            }
-        }
+        // ✅ REMOVIDO: Função duplicada removida
 
         /**
          * Função pública para exclusão de eventos (wrapper que evita override)
@@ -2946,140 +2893,6 @@
             }).join('\n');
         }
 
-        async function createPaymentEvent() {
-            // ✅ NOVO: Validar tipo de evento selecionado
-            const eventType = document.querySelector('input[name="eventType"]:checked');
-            if (!eventType) {
-                alert('Selecione o tipo de evento (PAGAMENTO ou RECEBIMENTO) primeiro!');
-                return;
-            }
-
-            if (paymentItems.length === 0) {
-                alert(`Adicione pelo menos um item de ${eventType.value.toLowerCase()}!`);
-                return;
-            }
-
-            const eventDate = document.getElementById('eventDate').value;
-            const eventTime = document.getElementById('eventTime').value;
-            const recurrence = document.getElementById('eventRecurrence').value;
-
-            if (!eventDate) {
-                alert('Data é obrigatória!');
-                return;
-            }
-            if (!recurrence || recurrence === '') {
-                alert('Recorrência é obrigatória!');
-                return;
-            }
-
-            try {
-                // Preparar data e hora
-                const startDateTime = new Date(`${eventDate}T${eventTime}:00`);
-                const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000); // 1 hora depois
-
-                // Preparar recorrência
-                let rrule = null;
-                if (recurrence !== 'NONE') {
-                    console.log('🔄 Gerando RRULE para:', recurrence, 'Data:', eventDate);
-                    
-                    // Usar a mesma data base para evitar problemas de fuso horário
-                    // Criar data no fuso horário local para garantir consistência
-                    const [year, month, day] = eventDate.split('-').map(Number);
-                    const date = new Date(year, month - 1, day, 12, 0, 0); // Meio-dia local
-                    const dayOfWeek = date.getDay();
-                    const dayOfMonth = date.getDate();
-                    const monthNum = date.getMonth() + 1;
-                    
-                    console.log('📅 Data processada:', date.toString());
-                    console.log('📅 Dia da semana:', dayOfWeek, '(0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sab)');
-                    
-                    // Mapear dias da semana para RRULE
-                    const rruleDays = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA'];
-                    const currentDay = rruleDays[dayOfWeek];
-                    
-                    console.log('📅 RRULE Day:', currentDay);
-                    
-                    let rruleString = null;
-                    
-                    switch (recurrence) {
-                        case 'DAILY':
-                            rruleString = 'FREQ=DAILY';
-                            break;
-                            
-                        case 'WEEKLY':
-                            rruleString = `FREQ=WEEKLY;BYDAY=${currentDay}`;
-                            break;
-                            
-                        case 'MONTHLY':
-                            // Calcular qual semana do mês (primeira, segunda, terceira, etc.)
-                            const weekOfMonth = Math.ceil(dayOfMonth / 7);
-                            rruleString = `FREQ=MONTHLY;BYDAY=${weekOfMonth}${currentDay}`;
-                            break;
-                            
-                        case 'YEARLY':
-                            rruleString = `FREQ=YEARLY;BYMONTH=${monthNum};BYMONTHDAY=${dayOfMonth}`;
-                            break;
-                            
-                        case 'WEEKDAYS':
-                            rruleString = 'FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR';
-                            break;
-                            
-                        case 'CUSTOM_GENERATED':
-                            rruleString = window.customRRule || null;
-                            break;
-                            
-                        default:
-                            rruleString = null;
-                    }
-                    
-                    console.log('📝 RRULE gerada:', rruleString);
-                    if (rruleString) {
-                        rrule = [`RRULE:${rruleString}`];
-                        console.log('✅ RRULE final:', rrule);
-                    }
-                }
-
-                // Criar evento
-                const event = {
-                    summary: eventType.value, // ✅ NOVO: Usar tipo selecionado
-                    description: generateEventDescription(),
-                    start: {
-                        dateTime: startDateTime.toISOString(),
-                        timeZone: 'America/Sao_Paulo'
-                    },
-                    end: {
-                        dateTime: endDateTime.toISOString(),
-                        timeZone: 'America/Sao_Paulo'
-                    }
-                };
-
-                if (rrule) {
-                    event.recurrence = rrule;
-                }
-
-                const response = await gapi.client.calendar.events.insert({
-                    calendarId: 'primary',
-                    resource: event
-                });
-
-                console.log('✅ Evento criado:', response.result);
-                alert('Evento criado com sucesso!');
-                
-                // Limpar formulário
-                paymentItems = [];
-                renderPaymentItems();
-                document.getElementById('createEventForm').style.display = 'none';
-                document.getElementById('eventDate').value = '';
-                document.getElementById('eventTime').value = '09:00';
-                document.getElementById('eventRecurrence').value = '';
-                
-                // Recarregar calendário
-                handleSyncClick();
-                
-            } catch (error) {
-                console.error('❌ Erro ao criar evento:', error);
-                alert('Erro ao criar evento. Verifique sua conexão e tente novamente.');
-            }
         }
 
         /**
@@ -4816,7 +4629,6 @@
             });
             
             updateReceivingsList();
-        }sList();
         }
 
         function clearFilters() {
@@ -8295,7 +8107,6 @@
                         subtree: true
                     });
                 }
-            });
         });
     </script>
     
