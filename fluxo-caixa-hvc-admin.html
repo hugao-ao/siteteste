@@ -2893,8 +2893,6 @@
             }).join('\n');
         }
 
-        }
-
         /**
          * Função pública para exclusão de eventos (wrapper que evita override)
          */
@@ -3234,7 +3232,7 @@
             fields.forEach(fieldId => {
                 const field = document.getElementById(fieldId);
                 if (field) field.value = '';
-            });
+            }); // Fechamento do DOMContentLoaded
         }
 
         function clearEventForm() {
@@ -3705,7 +3703,7 @@
                         }
                     };
                 }
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // Interceptar cliques em elementos com onclick que contenham "delete" ou "excluir"
             document.addEventListener('click', function(e) {
@@ -3773,7 +3771,7 @@
                        title.includes('delete') ||
                        ariaLabel.includes('excluir') ||
                        ariaLabel.includes('delete');
-            });
+            }); // Fechamento do DOMContentLoaded
             
             const allDeleteButtons = [...deleteButtons, ...deleteButtonsByText];
             
@@ -3855,7 +3853,7 @@
                         showMessage('Não foi possível identificar o evento para exclusão', 'error');
                     }
                 });
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // Reset da flag após processamento
             setTimeout(() => {
@@ -3920,7 +3918,7 @@
                 
                 // Adicionar botão ao evento
                 eventElement.appendChild(deleteBtn);
-            });
+            }); // Fechamento do DOMContentLoaded
         }
 
         // Função para mostrar mensagens
@@ -4245,7 +4243,7 @@
             eventsForDay.forEach(event => {
                 const eventCalc = calculateEventTotal(event);
                 dayTotal += eventCalc.total; // Já considera apenas PG e PENDENTE
-            });
+            }); // Fechamento do DOMContentLoaded
             
             return dayTotal;
         }
@@ -4335,7 +4333,7 @@
                         });
                     });
                 }
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // ✅ NOVO: Ordenar por data (mais recente primeiro)
             paymentsList.sort((a, b) => b.eventDate - a.eventDate);
@@ -4602,7 +4600,7 @@
                 const statusMatch = !statusFilter || payment.status === statusFilter;
                 
                 return nameMatch && dateMatch && statusMatch;
-            });
+            }); // Fechamento do DOMContentLoaded
             
             updatePaymentsList();
         }
@@ -4626,7 +4624,7 @@
                 const statusMatch = !statusFilter || receiving.status === statusFilter;
                 
                 return nameMatch && dateMatch && statusMatch;
-            });
+            }); // Fechamento do DOMContentLoaded
             
             updateReceivingsList();
         }
@@ -5149,7 +5147,7 @@
                 return keywords.some(keyword => 
                     title.includes(keyword) || description.includes(keyword)
                 );
-            });
+            }); // Fechamento do DOMContentLoaded
         }
 
         function getEventType(event) {
@@ -5367,7 +5365,7 @@
                 headerDiv.className = 'calendar-day-header';
                 headerDiv.textContent = day;
                 calendarGrid.appendChild(headerDiv);
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // Get first day of month and number of days
             const firstDay = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -5472,7 +5470,7 @@
                     else if (payment.status === 'PENDENTE') hasPendente = true;
                     else if (payment.status === 'RECALCULADO') hasRecalculado = true;
                 });
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // Prioridade: PG > PENDENTE > RECALCULADO
             if (hasPG && !hasPendente && !hasRecalculado) return 'event-pg';
@@ -5540,7 +5538,7 @@
                         </div>
                     </div>
                 `;
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // Resumo do dia
             detailsHTML = `
@@ -5570,7 +5568,7 @@
                 const eventDateString = getCalendarDateString(eventDate);
                 
                 return eventDateString === targetDateString;
-            });
+            }); // Fechamento do DOMContentLoaded
         }
 
         async function showEventDetails(event) {
@@ -5807,7 +5805,7 @@
                 reader.onload = () => resolve(reader.result.split(',')[1]);
                 reader.onerror = reject;
                 reader.readAsDataURL(file);
-            });
+            }); // Fechamento do DOMContentLoaded
         }
         
         async function uploadPdfToDrive(pdfData, eventTitle) {
@@ -6248,7 +6246,7 @@
                         resolve(null);
                     }
                 });
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // Reset da flag após processamento
             setTimeout(() => {
@@ -6322,7 +6320,7 @@
                         resolve(null);
                     }
                 });
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // Reset da flag após processamento
             setTimeout(() => {
@@ -7067,14 +7065,14 @@
                 } else {
                     weekdaysGroup.style.display = 'none';
                 }
-            });
+            }); // Fechamento do DOMContentLoaded
 
             // Listeners para botões de dias da semana
             document.querySelectorAll('.weekday-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     this.classList.toggle('selected');
                 });
-            });
+            }); // Fechamento do DOMContentLoaded
 
             // Listeners para opções de término
             document.querySelectorAll('input[name="endType"]').forEach(radio => {
@@ -7085,7 +7083,7 @@
                     endDateInput.disabled = this.value !== 'date';
                     endCountInput.disabled = this.value !== 'count';
                 });
-            });
+            }); // Fechamento do DOMContentLoaded
 
             // Fechar modal ao clicar fora
             const modal = document.getElementById('customRecurrenceModal');
@@ -7093,7 +7091,7 @@
                 if (e.target === modal) {
                     closeCustomRecurrenceModal();
                 }
-            });
+            }); // Fechamento do DOMContentLoaded
         }
 
         /**
@@ -7275,7 +7273,7 @@
             
             // ✅ NOVO: Inicializar event listeners para tipo de evento
             initializeEventTypeListeners();
-        });
+        }); // Fechamento do DOMContentLoaded
     </script>
 </head>
 
@@ -8087,7 +8085,7 @@
                         }
                     }
                 }, 2000); // Aguardar 2 segundos antes de executar
-            });
+            }); // Fechamento do DOMContentLoaded
             
             // Observar mudanças no calendário e na lista de eventos
             const observeTargets = [
@@ -8107,7 +8105,8 @@
                         subtree: true
                     });
                 }
-        });
+            });
+        };
     </script>
     
     <!-- Google APIs - Carregar DEPOIS das funções estarem definidas -->
