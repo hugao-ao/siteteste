@@ -552,12 +552,7 @@ function initMultiAccountManager() {
     }
     
     const createEventButton = document.getElementById('createEventButton');
-    if (createEventButton) {
-        createEventButton.addEventListener('click', function() {
-            // A função showCreateEventForm está definida no HTML principal
-            showCreateEventForm();
-        });
-    }
+
     
     // Atualizar interface
     updateAccountsDisplay();
