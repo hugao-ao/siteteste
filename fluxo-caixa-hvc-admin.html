@@ -4117,25 +4117,45 @@
             
             while ((match = paymentRegex.exec(text)) !== null) {
                 let paymentName = match[1].trim();
+                let itemType = 'pagamento'; // Tipo padrão
                 
-                // Remover "PAGAMENTO" do início se existir
+                // Remover "PAGAMENTO" ou "RECEBIMENTO" do início se existir
                 if (paymentName.toLowerCase().startsWith('pagamento ')) {
                     paymentName = paymentName.substring(10).trim(); // Remove "PAGAMENTO "
+                    itemType = 'pagamento';
+                } else if (paymentName.toLowerCase().startsWith('recebimento ')) {
+                    paymentName = paymentName.substring(12).trim(); // Remove "RECEBIMENTO "
+                    itemType = 'recebimento';
                 }
                 
                 const valueStr = match[2];
                 const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
                 const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
                 
-                // Determinar status baseado no texto entre parênteses
-                let status = 'PENDENTE'; // Status padrão
+                // Determinar status baseado no texto entre parênteses e tipo
+                let status = itemType === 'recebimento' ? 'AGUARDANDO' : 'PENDENTE'; // Status padrão
                 
                 if (statusText) {
                     const statusLower = statusText.toLowerCase();
-                    if (statusLower.includes('pg')) {
-                        status = 'PG';
-                    } else if (statusLower.includes('recalculado')) {
-                        status = 'RECALCULADO';
+                    
+                    if (itemType === 'recebimento') {
+                        // Status para recebimentos: RC, ADIADO, AGUARDANDO
+                        if (statusLower.includes('rc')) {
+                            status = 'RC';
+                        } else if (statusLower.includes('adiado')) {
+                            status = 'ADIADO';
+                        } else if (statusLower.includes('aguardando')) {
+                            status = 'AGUARDANDO';
+                        }
+                    } else {
+                        // Status para pagamentos: PG, RECALCULADO, PENDENTE
+                        if (statusLower.includes('pg')) {
+                            status = 'PG';
+                        } else if (statusLower.includes('recalculado')) {
+                            status = 'RECALCULADO';
+                        } else if (statusLower.includes('pendente')) {
+                            status = 'PENDENTE';
+                        }
                     }
                 }
                 
@@ -4145,7 +4165,8 @@
                     value: numericValue,
                     formattedValue: `R$ ${valueStr}`,
                     status: status,
-                    statusText: statusText
+                    statusText: statusText,
+                    type: itemType
                 });
             }
             
@@ -4164,7 +4185,8 @@
                         value: numericValue,
                         formattedValue: match,
                         status: 'PENDENTE',
-                        statusText: ''
+                        statusText: '',
+                        type: 'pagamento'
                     });
                 });
             }
@@ -4179,16 +4201,32 @@
             
             const payments = extractPaymentInfo(fullText);
             
-            // Só contar PG e PENDENTE para o total
-            const countablePayments = payments.filter(p => p.status === 'PG' || p.status === 'PENDENTE');
-            const total = countablePayments.reduce((sum, item) => sum + item.value, 0);
+            // Separar pagamentos e recebimentos
+            const paymentItems = payments.filter(p => p.type === 'pagamento');
+            const receivingItems = payments.filter(p => p.type === 'recebimento');
+            
+            // Para pagamentos: contar PG e PENDENTE
+            const countablePayments = paymentItems.filter(p => p.status === 'PG' || p.status === 'PENDENTE');
+            const paymentTotal = countablePayments.reduce((sum, item) => sum + item.value, 0);
+            
+            // Para recebimentos: contar RC e AGUARDANDO (equivalentes a PG e PENDENTE)
+            const countableReceivings = receivingItems.filter(p => p.status === 'RC' || p.status === 'AGUARDANDO');
+            const receivingTotal = countableReceivings.reduce((sum, item) => sum + item.value, 0);
+            
+            // Total geral (pagamentos + recebimentos contáveis)
+            const total = paymentTotal + receivingTotal;
             
             return {
                 total: total,
+                paymentTotal: paymentTotal,
+                receivingTotal: receivingTotal,
                 payments: payments,
+                paymentItems: paymentItems,
+                receivingItems: receivingItems,
                 countablePayments: countablePayments,
+                countableReceivings: countableReceivings,
                 count: payments.length,
-                countableCount: countablePayments.length
+                countableCount: countablePayments.length + countableReceivings.length
             };
         }
 
@@ -4220,9 +4258,9 @@
             
             let monthlyTotal = 0;
             let totalEvents = 0;
-            let totalPayments = 0;
+            let totalItems = 0;
             
-            // ✅ NOVO: Contadores e montantes por status
+            // ✅ NOVO: Contadores e montantes por status - PAGAMENTOS
             let totalPG = 0;
             let totalPendente = 0;
             let totalRecalculado = 0;
@@ -4230,19 +4268,28 @@
             let amountPendente = 0;
             let amountRecalculado = 0;
             
+            // ✅ NOVO: Contadores e montantes por status - RECEBIMENTOS
+            let totalRC = 0;
+            let totalAguardando = 0;
+            let totalAdiado = 0;
+            let amountRC = 0;
+            let amountAguardando = 0;
+            let amountAdiado = 0;
+            
             const paymentsList = [];
+            const receivingsList = [];
             
             filteredEvents.forEach(event => {
                 const eventDate = parseEventDate(event);
                 
                 if (eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear) {
                     const eventCalc = calculateEventTotal(event);
-                    monthlyTotal += eventCalc.total; // Já considera apenas PG e PENDENTE
+                    monthlyTotal += eventCalc.total; // Já considera apenas contáveis
                     totalEvents++;
-                    totalPayments += eventCalc.count;
+                    totalItems += eventCalc.count;
                     
-                    // Contar por status e somar montantes
-                    eventCalc.payments.forEach(payment => {
+                    // Processar pagamentos
+                    eventCalc.paymentItems.forEach(payment => {
                         if (payment.status === 'PG') {
                             totalPG++;
                             amountPG += payment.value;
@@ -4263,59 +4310,105 @@
                             eventId: event.id
                         });
                     });
+                    
+                    // Processar recebimentos
+                    eventCalc.receivingItems.forEach(receiving => {
+                        if (receiving.status === 'RC') {
+                            totalRC++;
+                            amountRC += receiving.value;
+                        } else if (receiving.status === 'AGUARDANDO') {
+                            totalAguardando++;
+                            amountAguardando += receiving.value;
+                        } else if (receiving.status === 'ADIADO') {
+                            totalAdiado++;
+                            amountAdiado += receiving.value;
+                        }
+                        
+                        // Adicionar recebimentos à lista
+                        receivingsList.push({
+                            ...receiving,
+                            eventTitle: event.summary || 'Sem título',
+                            eventDate: eventDate,
+                            eventType: getEventType(event),
+                            eventId: event.id
+                        });
+                    });
                 }
             });
             
-            // ✅ NOVO: Ordenar pagamentos por data (mais recente primeiro)
+            // ✅ NOVO: Ordenar por data (mais recente primeiro)
             paymentsList.sort((a, b) => b.eventDate - a.eventDate);
+            receivingsList.sort((a, b) => b.eventDate - a.eventDate);
             
             return {
                 total: monthlyTotal,
+                paymentTotal: amountPG + amountPendente,
+                receivingTotal: amountRC + amountAguardando,
                 events: totalEvents,
-                payments: totalPayments,
+                items: totalItems,
+                // Pagamentos
                 totalPG: totalPG,
                 totalPendente: totalPendente,
                 totalRecalculado: totalRecalculado,
                 amountPG: amountPG,
                 amountPendente: amountPendente,
                 amountRecalculado: amountRecalculado,
-                paymentsList: paymentsList
+                paymentsList: paymentsList,
+                // Recebimentos
+                totalRC: totalRC,
+                totalAguardando: totalAguardando,
+                totalAdiado: totalAdiado,
+                amountRC: amountRC,
+                amountAguardando: amountAguardando,
+                amountAdiado: amountAdiado,
+                receivingsList: receivingsList
             };
         }
 
         function updateMonthlySummary() {
             const monthlyData = calculateMonthlyTotals();
             
-            // Atualizar total mensal
+            // Atualizar total mensal geral
             const monthlyTotalElement = document.getElementById('monthlyTotal');
             if (monthlyTotalElement) {
                 monthlyTotalElement.textContent = formatCurrency(monthlyData.total);
             }
             
+            // Atualizar totais por seção
+            const paymentTotalElement = document.getElementById('paymentTotal');
+            const receivingTotalElement = document.getElementById('receivingTotal');
+            
+            if (paymentTotalElement) {
+                paymentTotalElement.textContent = formatCurrency(monthlyData.paymentTotal);
+            }
+            
+            if (receivingTotalElement) {
+                receivingTotalElement.textContent = formatCurrency(monthlyData.receivingTotal);
+            }
+            
             // Atualizar estatísticas gerais
             const totalEventsElement = document.getElementById('totalEvents');
-            const totalPaymentsElement = document.getElementById('totalPayments');
+            const totalItemsElement = document.getElementById('totalItems');
             const avgPaymentElement = document.getElementById('avgPayment');
             
             if (totalEventsElement) {
                 totalEventsElement.textContent = monthlyData.events;
             }
             
-            if (totalPaymentsElement) {
-                totalPaymentsElement.textContent = monthlyData.payments;
+            if (totalItemsElement) {
+                totalItemsElement.textContent = monthlyData.items;
             }
             
-                if (avgPaymentElement) {
-                    // ✅ NOVO: Calcular valor médio por dia do mês
-                    const currentMonth = currentDate.getMonth();
-                    const currentYear = currentDate.getFullYear();
-                    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-                    const avgValue = monthlyData.total > 0 ? monthlyData.total / daysInMonth : 0;
-                    avgPaymentElement.textContent = formatCurrency(avgValue);
-                }
+            if (avgPaymentElement) {
+                // Calcular valor médio por dia do mês
+                const currentMonth = currentDate.getMonth();
+                const currentYear = currentDate.getFullYear();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const avgValue = monthlyData.total > 0 ? monthlyData.total / daysInMonth : 0;
+                avgPaymentElement.textContent = formatCurrency(avgValue);
+            }
 
-            
-            // ✅ NOVO: Atualizar estatísticas por status com montantes
+            // Atualizar estatísticas de PAGAMENTOS por status
             const totalPGElement = document.getElementById('totalPG');
             const totalPendenteElement = document.getElementById('totalPendente');
             const totalRecalculadoElement = document.getElementById('totalRecalculado');
@@ -4347,10 +4440,47 @@
                 amountRecalculadoElement.textContent = formatCurrency(monthlyData.amountRecalculado);
             }
             
-            // ✅ NOVO: Atualizar lista de pagamentos com filtros
+            // ✅ NOVO: Atualizar estatísticas de RECEBIMENTOS por status
+            const totalRCElement = document.getElementById('totalRC');
+            const totalAguardandoElement = document.getElementById('totalAguardando');
+            const totalAdiadoElement = document.getElementById('totalAdiado');
+            const amountRCElement = document.getElementById('amountRC');
+            const amountAguardandoElement = document.getElementById('amountAguardando');
+            const amountAdiadoElement = document.getElementById('amountAdiado');
+            
+            if (totalRCElement) {
+                totalRCElement.textContent = monthlyData.totalRC;
+            }
+            
+            if (totalAguardandoElement) {
+                totalAguardandoElement.textContent = monthlyData.totalAguardando;
+            }
+            
+            if (totalAdiadoElement) {
+                totalAdiadoElement.textContent = monthlyData.totalAdiado;
+            }
+            
+            if (amountRCElement) {
+                amountRCElement.textContent = formatCurrency(monthlyData.amountRC);
+            }
+            
+            if (amountAguardandoElement) {
+                amountAguardandoElement.textContent = formatCurrency(monthlyData.amountAguardando);
+            }
+            
+            if (amountAdiadoElement) {
+                amountAdiadoElement.textContent = formatCurrency(monthlyData.amountAdiado);
+            }
+            
+            // Atualizar listas com filtros
             allPaymentsList = monthlyData.paymentsList;
             filteredPaymentsList = [...allPaymentsList];
             updatePaymentsList();
+            
+            // ✅ NOVO: Atualizar lista de recebimentos
+            allReceivingsList = monthlyData.receivingsList;
+            filteredReceivingsList = [...allReceivingsList];
+            updateReceivingsList();
         }
 
         // =================================================================
@@ -4813,23 +4943,23 @@
                 const calendarSection = document.getElementById('calendarSection');
                 const filterSection = document.getElementById('filterSection');
                 const monthlySummarySection = document.getElementById('monthlySummarySection');
-                const paymentsListSection = document.getElementById('paymentsListSection');
+                const listsSection = document.getElementById('listsSection');
                 
                 if (calendarSection) calendarSection.style.display = 'block';
                 if (filterSection) filterSection.style.display = 'block';
                 if (monthlySummarySection) monthlySummarySection.style.display = 'block';
-                if (paymentsListSection) paymentsListSection.style.display = 'block';
+                if (listsSection) listsSection.style.display = 'block';
             } else {
                 // Esconder seções quando não há contas conectadas
                 const calendarSection = document.getElementById('calendarSection');
                 const filterSection = document.getElementById('filterSection');
                 const monthlySummarySection = document.getElementById('monthlySummarySection');
-                const paymentsListSection = document.getElementById('paymentsListSection');
+                const listsSection = document.getElementById('listsSection');
                 
                 if (calendarSection) calendarSection.style.display = 'none';
                 if (filterSection) filterSection.style.display = 'none';
                 if (monthlySummarySection) monthlySummarySection.style.display = 'none';
-                if (paymentsListSection) paymentsListSection.style.display = 'none';
+                if (listsSection) listsSection.style.display = 'none';
             }
         }
 
@@ -4845,7 +4975,7 @@
         // EVENT FILTERING
         // =================================================================
         function filterEvents(events) {
-            const keywords = ['pagamento', 'pagamentos', 'hvc'];
+            const keywords = ['pagamento', 'pagamentos', 'recebimento', 'recebimentos', 'hvc'];
             
             return events.filter(event => {
                 const title = (event.summary || '').toLowerCase();
@@ -4862,6 +4992,8 @@
             
             if (title.includes('pagamento')) {
                 return 'pagamento';
+            } else if (title.includes('recebimento')) {
+                return 'recebimento';
             } else if (title.includes('hvc')) {
                 return 'hvc';
             }
@@ -7264,42 +7396,77 @@
             </div>
         </div>
 
-        <!-- ✅ NOVO: Resumo Mensal com Montantes -->
-        <div id="monthlySummarySection" class="monthly-summary" style="display: none;">
-            <h3><i class="fas fa-chart-pie"></i> Resumo do Mês</h3>
-            <div id="monthlyTotal" class="monthly-total">R$ 0,00</div>
-            
-            <div class="monthly-stats">
-                <div class="stat-item">
-                    <div id="totalEvents" class="stat-value">0</div>
-                    <div class="stat-label">Eventos</div>
-                </div>
-                <div class="stat-item">
-                    <div id="totalPayments" class="stat-value">0</div>
-                    <div class="stat-label">Pagamentos</div>
-                </div>
-                <div class="stat-item">
-                    <div id="avgPayment" class="stat-value">R$ 0,00</div>
-                    <div class="stat-label">Valor Médio</div>
+        <!-- ✅ NOVO: Resumos Mensais - Pagamentos e Recebimentos -->
+        <div id="monthlySummarySection" class="monthly-summary-container" style="display: none;">
+            <!-- Resumo Geral -->
+            <div class="monthly-summary-general">
+                <h3><i class="fas fa-chart-pie"></i> Resumo Geral do Mês</h3>
+                <div id="monthlyTotal" class="monthly-total">R$ 0,00</div>
+                
+                <div class="monthly-stats">
+                    <div class="stat-item">
+                        <div id="totalEvents" class="stat-value">0</div>
+                        <div class="stat-label">Eventos</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="totalItems" class="stat-value">0</div>
+                        <div class="stat-label">Itens</div>
+                    </div>
+                    <div class="stat-item">
+                        <div id="avgPayment" class="stat-value">R$ 0,00</div>
+                        <div class="stat-label">Valor Médio</div>
+                    </div>
                 </div>
             </div>
 
-            <!-- ✅ NOVO: Estatísticas por Status com Montantes -->
-            <div class="status-stats">
-                <div class="status-stat-item pg">
-                    <div id="totalPG" class="status-stat-value">0</div>
-                    <div id="amountPG" class="status-stat-amount">R$ 0,00</div>
-                    <div class="status-stat-label">PG</div>
+            <!-- Resumos Lado a Lado -->
+            <div class="summaries-row">
+                <!-- Resumo de Pagamentos -->
+                <div class="monthly-summary payments-summary">
+                    <h4><i class="fas fa-credit-card"></i> Pagamentos</h4>
+                    <div id="paymentTotal" class="section-total">R$ 0,00</div>
+                    
+                    <div class="status-stats">
+                        <div class="status-stat-item pg">
+                            <div id="totalPG" class="status-stat-value">0</div>
+                            <div id="amountPG" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-label">PG</div>
+                        </div>
+                        <div class="status-stat-item pendente">
+                            <div id="totalPendente" class="status-stat-value">0</div>
+                            <div id="amountPendente" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-label">Pendente</div>
+                        </div>
+                        <div class="status-stat-item recalculado">
+                            <div id="totalRecalculado" class="status-stat-value">0</div>
+                            <div id="amountRecalculado" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-label">Recalculado</div>
+                        </div>
+                    </div>
                 </div>
-                <div class="status-stat-item pendente">
-                    <div id="totalPendente" class="status-stat-value">0</div>
-                    <div id="amountPendente" class="status-stat-amount">R$ 0,00</div>
-                    <div class="status-stat-label">Pendente</div>
-                </div>
-                <div class="status-stat-item recalculado">
-                    <div id="totalRecalculado" class="status-stat-value">0</div>
-                    <div id="amountRecalculado" class="status-stat-amount">R$ 0,00</div>
-                    <div class="status-stat-label">Recalculado</div>
+
+                <!-- Resumo de Recebimentos -->
+                <div class="monthly-summary receivings-summary">
+                    <h4><i class="fas fa-hand-holding-usd"></i> Recebimentos</h4>
+                    <div id="receivingTotal" class="section-total">R$ 0,00</div>
+                    
+                    <div class="status-stats">
+                        <div class="status-stat-item rc">
+                            <div id="totalRC" class="status-stat-value">0</div>
+                            <div id="amountRC" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-label">RC</div>
+                        </div>
+                        <div class="status-stat-item aguardando">
+                            <div id="totalAguardando" class="status-stat-value">0</div>
+                            <div id="amountAguardando" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-label">Aguardando</div>
+                        </div>
+                        <div class="status-stat-item adiado">
+                            <div id="totalAdiado" class="status-stat-value">0</div>
+                            <div id="amountAdiado" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-label">Adiado</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -7409,38 +7576,78 @@
             </div>
         </div>
 
-        <!-- ✅ NOVO: Lista de Pagamentos com Filtros -->
-        <div id="paymentsListSection" class="payments-list-section" style="display: none;">
-            <h3><i class="fas fa-list-alt"></i> Lista de Pagamentos do Mês</h3>
-            
-            <!-- ✅ NOVO: Filtros -->
-            <div class="payments-filters">
-                <div class="filter-group">
-                    <label class="filter-label">Nome do Pagamento</label>
-                    <input type="text" id="nameFilter" class="filter-input" placeholder="Buscar por nome...">
+        <!-- ✅ NOVO: Listas de Pagamentos e Recebimentos -->
+        <div id="listsSection" class="lists-container" style="display: none;">
+            <div class="lists-row">
+                <!-- Lista de Pagamentos -->
+                <div id="paymentsListSection" class="payments-list-section">
+                    <h3><i class="fas fa-credit-card"></i> Lista de Pagamentos do Mês</h3>
+                    
+                    <!-- Filtros de Pagamentos -->
+                    <div class="payments-filters">
+                        <div class="filter-group">
+                            <label class="filter-label">Nome do Pagamento</label>
+                            <input type="text" id="nameFilter" class="filter-input" placeholder="Buscar por nome...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Data</label>
+                            <input type="date" id="dateFilter" class="filter-input">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Status</label>
+                            <select id="statusFilter" class="filter-select">
+                                <option value="">Todos os status</option>
+                                <option value="PG">PG</option>
+                                <option value="PENDENTE">Pendente</option>
+                                <option value="RECALCULADO">Recalculado</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <button id="clearFilters" class="clear-filters-btn">
+                                <i class="fas fa-times"></i> Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="paymentsList" class="payments-list">
+                        <!-- Pagamentos serão listados aqui -->
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <label class="filter-label">Data</label>
-                    <input type="date" id="dateFilter" class="filter-input">
+
+                <!-- Lista de Recebimentos -->
+                <div id="receivingsListSection" class="receivings-list-section">
+                    <h3><i class="fas fa-hand-holding-usd"></i> Lista de Recebimentos do Mês</h3>
+                    
+                    <!-- Filtros de Recebimentos -->
+                    <div class="receivings-filters">
+                        <div class="filter-group">
+                            <label class="filter-label">Nome do Recebimento</label>
+                            <input type="text" id="receivingNameFilter" class="filter-input" placeholder="Buscar por nome...">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Data</label>
+                            <input type="date" id="receivingDateFilter" class="filter-input">
+                        </div>
+                        <div class="filter-group">
+                            <label class="filter-label">Status</label>
+                            <select id="receivingStatusFilter" class="filter-select">
+                                <option value="">Todos os status</option>
+                                <option value="RC">RC</option>
+                                <option value="AGUARDANDO">Aguardando</option>
+                                <option value="ADIADO">Adiado</option>
+                            </select>
+                        </div>
+                        <div class="filter-group">
+                            <button id="clearReceivingFilters" class="clear-filters-btn">
+                                <i class="fas fa-times"></i> Limpar Filtros
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="receivingsList" class="receivings-list">
+                        <!-- Recebimentos serão listados aqui -->
+                    </div>
                 </div>
-                <div class="filter-group">
-                    <label class="filter-label">Status</label>
-                    <select id="statusFilter" class="filter-select">
-                        <option value="">Todos os status</option>
-                        <option value="PG">PG</option>
-                        <option value="PENDENTE">Pendente</option>
-                        <option value="RECALCULADO">Recalculado</option>
-                    </select>
-                </div>
-                <div class="filter-group">
-                    <button id="clearFilters" class="clear-filters-btn">
-                        <i class="fas fa-times"></i> Limpar Filtros
-                    </button>
-                </div>
-            </div>
-            
-            <div id="paymentsList" class="payments-list">
-                <!-- Pagamentos serão listados aqui -->
             </div>
         </div>
     </div>
