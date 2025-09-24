@@ -931,6 +931,7 @@
             align-items: center;
             margin-bottom: 3px;
             flex-shrink: 0;
+            position: relative;
         }
 
         .day-number {
@@ -946,6 +947,9 @@
             padding: 1px 3px;
             border-radius: 2px;
             flex-shrink: 0;
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
         }
 
         .day-balance-inline.positive {
@@ -1044,6 +1048,44 @@
             line-height: 1.2;
             margin-bottom: 1px;
             opacity: 0.9;
+        }
+
+        /* ✅ NOVO: Cores dos totais iguais aos eventões - PAGAMENTOS */
+        .event-total.event-pg {
+            background: linear-gradient(135deg, #34a853, #2e7d32);
+        }
+
+        .event-total.event-pendente {
+            background: linear-gradient(135deg, #ea4335, #d33b2c);
+        }
+
+        .event-total.event-recalculado {
+            background: linear-gradient(135deg, #4285f4, #1976d2);
+        }
+
+        .event-total.event-mixed {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+        }
+
+        /* ✅ NOVO: Cores dos totais iguais aos eventões - RECEBIMENTOS */
+        .event-total.event-rc {
+            background: linear-gradient(135deg, #66bb6a, #4caf50);
+            border-left: 4px solid #81c784;
+        }
+
+        .event-total.event-aguardando {
+            background: linear-gradient(135deg, #ff7043, #ff5722);
+            border-left: 4px solid #ff8a65;
+        }
+
+        .event-total.event-adiado {
+            background: linear-gradient(135deg, #42a5f5, #2196f3);
+            border-left: 4px solid #64b5f6;
+        }
+
+        .event-total.event-receiving-mixed {
+            background: linear-gradient(135deg, #ab47bc, #9c27b0);
+            border-left: 4px solid #ba68c8;
         }
 
         .day-events {
