@@ -1237,29 +1237,13 @@
             padding: 30px;
             border-radius: 20px;
             width: 90%;
-            max-width: 800px;
-            min-width: 600px;
-            max-height: 85vh;
-            min-height: 400px;
+            max-width: 600px;
+            max-height: 80vh;
             overflow-y: auto;
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             animation: modalSlideIn 0.3s ease;
             box-sizing: border-box;
-            resize: both;
-            overflow: auto;
-        }
-        
-        .event-modal-content::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            right: 0;
-            width: 20px;
-            height: 20px;
-            background: linear-gradient(-45deg, transparent 30%, rgba(255,255,255,0.3) 30%, rgba(255,255,255,0.3) 70%, transparent 70%);
-            cursor: nw-resize;
-            border-bottom-right-radius: 20px;
         }
 
         .event-total-section {
@@ -5931,19 +5915,18 @@
                     </div>
                 `;
                 
-                // ✅ CORRIGIDO: Seção para PAGAMENTOS
-                if (eventCalc.paymentItems.length > 0) {
+                if (eventCalc.payments.length > 0) {
                     detailsHTML += `
                         <div class="event-values-list">
                             <div class="payments-header">
-                                <h4><i class="fas fa-credit-card"></i> Pagamentos Encontrados (${eventCalc.paymentItems.length}):</h4>
+                                <h4><i class="fas fa-list"></i> Pagamentos Encontrados (${eventCalc.count}):</h4>
                                 <button class="btn-edit-payments" onclick="startEditingEventItems('${event.id}', 'pagamento')">
                                     <i class="fas fa-edit"></i> EDITAR
                                 </button>
                             </div>
                             <div id="payments-display" class="payments-display">
                     `;
-                    eventCalc.paymentItems.forEach((payment, index) => {
+                    eventCalc.payments.forEach((payment, index) => {
                         detailsHTML += `
                             <div class="value-item" data-item-index="${index}">
                                 <div>
@@ -5952,40 +5935,6 @@
                                 </div>
                                 <div class="value-item-status ${payment.status.toLowerCase()}">
                                     ${payment.status}
-                                </div>
-                            </div>
-                        `;
-                    });
-                    detailsHTML += `
-                            </div>
-                            <div id="payments-edit" class="payments-edit" style="display: none;">
-                                <!-- Formulário de edição será inserido aqui -->
-                            </div>
-                        </div>
-                    `;
-                }
-                
-                // ✅ NOVO: Seção para RECEBIMENTOS
-                if (eventCalc.receivingItems.length > 0) {
-                    detailsHTML += `
-                        <div class="event-values-list">
-                            <div class="payments-header">
-                                <h4><i class="fas fa-hand-holding-usd"></i> Recebimentos Encontrados (${eventCalc.receivingItems.length}):</h4>
-                                <button class="btn-edit-payments" onclick="startEditingEventItems('${event.id}', 'recebimento')">
-                                    <i class="fas fa-edit"></i> EDITAR
-                                </button>
-                            </div>
-                            <div id="payments-display" class="payments-display">
-                    `;
-                    eventCalc.receivingItems.forEach((receiving, index) => {
-                        detailsHTML += `
-                            <div class="value-item" data-item-index="${index}">
-                                <div>
-                                    <strong>${receiving.name}</strong> - ${receiving.formattedValue}
-                                    ${receiving.detail ? `<br><small>${receiving.detail}</small>` : ''}
-                                </div>
-                                <div class="value-item-status ${receiving.status.toLowerCase()}">
-                                    ${receiving.status}
                                 </div>
                             </div>
                         `;
@@ -7632,126 +7581,6 @@
             // ✅ NOVO: Inicializar event listeners para tipo de evento
             initializeEventTypeListeners();
         }); // Fechamento do DOMContentLoaded
-
-        // =================================================================
-        // ✅ FUNCIONALIDADES DE EDIÇÃO DE ITENS - ESCOPO GLOBAL
-        // =================================================================
-        
-        let currentEditingEventData = null;
-        let currentEditingItemsData = [];
-        
-        // Declarar função no escopo global para garantir disponibilidade
-        window.startEditingEventItems = async function(eventId, eventType) {
-            try {
-                console.log('🔄 Iniciando edição de itens...', { eventId, eventType });
-                
-                // Verificar se o Google API está carregado
-                if (typeof gapi === 'undefined' || !gapi.client) {
-                    alert('Google API não está carregado. Aguarde o carregamento da página e tente novamente.');
-                    return;
-                }
-                
-                // Verificar se há token de acesso
-                const token = gapi.client.getToken();
-                if (!token) {
-                    alert('Você precisa estar conectado ao Google Calendar para editar eventos.');
-                    return;
-                }
-                
-                console.log('✅ Google API verificado, buscando evento...');
-                
-                // Buscar evento completo
-                const event = await gapi.client.calendar.events.get({
-                    calendarId: 'primary',
-                    eventId: eventId
-                });
-                
-                console.log('✅ Evento encontrado:', event.result);
-                
-                currentEditingEventData = event.result;
-                const eventCalc = calculateEventTotal(currentEditingEventData);
-                const items = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
-                currentEditingItemsData = [...items]; // Cópia dos itens
-                
-                // Esconder display e mostrar formulário de edição
-                const displayDiv = document.getElementById('payments-display');
-                const editDiv = document.getElementById('payments-edit');
-                
-                if (displayDiv && editDiv) {
-                    displayDiv.style.display = 'none';
-                    editDiv.style.display = 'block';
-                    
-                    // Criar formulário de edição
-                    let editHTML = '<div class="edit-items-form">';
-                    
-                    items.forEach((item, itemIndex) => {
-                        const statusOptions = eventType === 'recebimento' 
-                            ? ['RC', 'AGUARDANDO', 'ADIADO']
-                            : ['PG', 'PENDENTE', 'RECALCULADO'];
-                        
-                        editHTML += `
-                            <div class="edit-item-row" data-item-index="${itemIndex}">
-                                <div class="edit-item-field">
-                                    <label>Nome:</label>
-                                    <input type="text" class="edit-item-name" value="${item.name}" />
-                                </div>
-                                <div class="edit-item-field">
-                                    <label>Valor:</label>
-                                    <input type="number" class="edit-item-value" value="${item.value}" step="0.01" />
-                                </div>
-                                <div class="edit-item-field">
-                                    <label>Status:</label>
-                                    <select class="edit-item-status">
-                                        ${statusOptions.map(status => 
-                                            `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`
-                                        ).join('')}
-                                    </select>
-                                </div>
-                                <div class="edit-item-field">
-                                    <label>Detalhe:</label>
-                                    <input type="text" class="edit-item-detail" value="${item.detail || ''}" />
-                                </div>
-                            </div>
-                        `;
-                    });
-                    
-                    editHTML += `
-                        <div class="edit-items-actions">
-                            <button class="btn-save-items" onclick="saveEventItemsChanges('${eventId}', '${eventType}')">
-                                <i class="fas fa-save"></i> SALVAR ALTERAÇÕES
-                            </button>
-                            <button class="btn-cancel-edit" onclick="cancelEventItemsEdit()">
-                                <i class="fas fa-times"></i> CANCELAR
-                            </button>
-                        </div>
-                    </div>`;
-                    
-                    editDiv.innerHTML = editHTML;
-                } else {
-                    alert('Elementos do modal não encontrados. Tente abrir o evento novamente.');
-                }
-                
-            } catch (error) {
-                console.error('❌ Erro ao iniciar edição:', error);
-                alert('Erro ao carregar dados para edição: ' + (error.message || 'Erro desconhecido'));
-            }
-        };
-        
-        window.cancelEventItemsEdit = function() {
-            const displayDiv = document.getElementById('payments-display');
-            const editDiv = document.getElementById('payments-edit');
-            
-            if (displayDiv && editDiv) {
-                displayDiv.style.display = 'block';
-                editDiv.style.display = 'none';
-            }
-            
-            currentEditingEventData = null;
-            currentEditingItemsData = [];
-        };
-
-        // Verificar se a função foi declarada corretamente
-        console.log('✅ Função startEditingEventItems declarada:', typeof window.startEditingEventItems);
     </script>
 </head>
 
@@ -8587,30 +8416,104 @@
         };
 
         // =================================================================
-        // ✅ FUNCIONALIDADES DE EDIÇÃO - FUNÇÕES AUXILIARES
+        // ✅ NOVA: FUNCIONALIDADES DE EDIÇÃO DE ITENS NO MODAL INDIVIDUAL
         // =================================================================
+        
+        let currentEditingEventData = null;
+        let currentEditingItemsData = [];
+        
+        window.startEditingEventItems = async function(eventId, eventType) {
+            try {
+                // Buscar evento completo
+                const event = await gapi.client.calendar.events.get({
+                    calendarId: 'primary',
+                    eventId: eventId
+                });
+                
+                currentEditingEventData = event.result;
+                const eventCalc = calculateEventTotal(currentEditingEventData);
+                const items = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
+                currentEditingItemsData = [...items]; // Cópia dos itens
+                
+                // Esconder display e mostrar formulário de edição
+                const displayDiv = document.getElementById('payments-display');
+                const editDiv = document.getElementById('payments-edit');
+                
+                if (displayDiv && editDiv) {
+                    displayDiv.style.display = 'none';
+                    editDiv.style.display = 'block';
+                    
+                    // Criar formulário de edição
+                    let editHTML = '<div class="edit-items-form">';
+                    
+                    items.forEach((item, itemIndex) => {
+                        const statusOptions = eventType === 'recebimento' 
+                            ? ['RC', 'AGUARDANDO', 'ADIADO']
+                            : ['PG', 'PENDENTE', 'RECALCULADO'];
+                        
+                        editHTML += `
+                            <div class="edit-item-row" data-item-index="${itemIndex}">
+                                <div class="edit-item-field">
+                                    <label>Nome:</label>
+                                    <input type="text" class="edit-item-name" value="${item.name}" />
+                                </div>
+                                <div class="edit-item-field">
+                                    <label>Valor:</label>
+                                    <input type="number" class="edit-item-value" value="${item.value}" step="0.01" />
+                                </div>
+                                <div class="edit-item-field">
+                                    <label>Status:</label>
+                                    <select class="edit-item-status">
+                                        ${statusOptions.map(status => 
+                                            `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                <div class="edit-item-field">
+                                    <label>Detalhe:</label>
+                                    <input type="text" class="edit-item-detail" value="${item.detail || ''}" />
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    editHTML += `
+                        <div class="edit-items-actions">
+                            <button class="btn-save-items" onclick="saveEventItemsChanges('${eventId}', '${eventType}')">
+                                <i class="fas fa-save"></i> SALVAR ALTERAÇÕES
+                            </button>
+                            <button class="btn-cancel-edit" onclick="cancelEventItemsEdit()">
+                                <i class="fas fa-times"></i> CANCELAR
+                            </button>
+                        </div>
+                    </div>`;
+                    
+                    editDiv.innerHTML = editHTML;
+                }
+                
+            } catch (error) {
+                console.error('Erro ao iniciar edição:', error);
+                alert('Erro ao carregar dados para edição. Tente novamente.');
+            }
+        };
+        
+        window.cancelEventItemsEdit = function() {
+            const displayDiv = document.getElementById('payments-display');
+            const editDiv = document.getElementById('payments-edit');
+            
+            if (displayDiv && editDiv) {
+                displayDiv.style.display = 'block';
+                editDiv.style.display = 'none';
+            }
+            
+            currentEditingEventData = null;
+            currentEditingItemsData = [];
+        };
         
         window.saveEventItemsChanges = async function(eventId, eventType) {
             try {
-                console.log('💾 Iniciando salvamento das alterações...');
-                console.log('🆔 Event ID:', eventId);
-                console.log('🏷️ Event Type:', eventType);
-                
                 if (!currentEditingEventData) {
                     throw new Error('Evento não encontrado para edição');
-                }
-                
-                // Mostrar indicador de carregamento
-                const saveBtn = document.querySelector('.btn-save-items');
-                const cancelBtn = document.querySelector('.btn-cancel-edit');
-                
-                if (saveBtn) {
-                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SALVANDO...';
-                    saveBtn.disabled = true;
-                }
-                
-                if (cancelBtn) {
-                    cancelBtn.disabled = true;
                 }
                 
                 // Coletar dados editados
@@ -8618,16 +8521,11 @@
                 const editRows = editDiv.querySelectorAll('.edit-item-row');
                 const updatedItems = [];
                 
-                console.log('📋 Coletando dados de', editRows.length, 'itens...');
-                
                 editRows.forEach((row, itemIndex) => {
                     const name = row.querySelector('.edit-item-name').value.trim();
-                    const valueInput = row.querySelector('.edit-item-value').value;
-                    const value = parseFloat(valueInput) || 0;
+                    const value = parseFloat(row.querySelector('.edit-item-value').value) || 0;
                     const status = row.querySelector('.edit-item-status').value;
                     const detail = row.querySelector('.edit-item-detail').value.trim();
-                    
-                    console.log(`📝 Item ${itemIndex + 1}:`, { name, value, status, detail });
                     
                     updatedItems.push({
                         name: name,
@@ -8639,27 +8537,11 @@
                     });
                 });
                 
-                console.log('✅ Dados coletados:', updatedItems);
-                
                 // Reconstruir descrição do evento
-                console.log('🔄 Reconstruindo descrição...');
                 const newDescription = rebuildEventDescription(currentEditingEventData.description, updatedItems, eventType);
                 
-                console.log('📝 Nova descrição:', newDescription);
-                
-                // Verificar se há contas múltiplas e usar o token correto
-                let accountEmail = currentEditingEventData._accountEmail;
-                if (accountEmail && window.connectedAccounts) {
-                    const account = window.connectedAccounts.find(acc => acc.email === accountEmail);
-                    if (account && account.accessToken) {
-                        console.log('🔑 Usando token da conta:', accountEmail);
-                        gapi.client.setToken({ access_token: account.accessToken });
-                    }
-                }
-                
                 // Atualizar evento no Google Calendar
-                console.log('📤 Atualizando evento no Google Calendar...');
-                const updateResponse = await gapi.client.calendar.events.patch({
+                await gapi.client.calendar.events.patch({
                     calendarId: 'primary',
                     eventId: eventId,
                     resource: {
@@ -8667,234 +8549,53 @@
                     }
                 });
                 
-                console.log('✅ Evento atualizado:', updateResponse);
+                // Atualizar interface
+                alert('Alterações salvas com sucesso!');
                 
-                // Mostrar mensagem de sucesso melhorada
-                showSuccessMessage('Alterações salvas com sucesso!');
-                
-                // Recarregar eventos
-                console.log('🔄 Recarregando eventos...');
-                if (typeof loadFilteredEvents === 'function') {
-                    await loadFilteredEvents();
-                } else if (typeof loadEvents === 'function') {
-                    await loadEvents();
-                }
-                
-                // Fechar modal
-                console.log('🚪 Fechando modal...');
-                const modal = document.getElementById('eventModal');
-                if (modal) {
-                    modal.style.display = 'none';
-                }
-                
-                console.log('✅ Processo de salvamento concluído com sucesso!');
+                // Recarregar eventos e fechar modal
+                await loadEvents();
+                document.getElementById('eventModal').style.display = 'none';
                 
             } catch (error) {
-                console.error('❌ Erro ao salvar alterações:', error);
-                showErrorMessage('Erro ao salvar alterações: ' + error.message);
-                
-                // Restaurar botões
-                const saveBtn = document.querySelector('.btn-save-items');
-                const cancelBtn = document.querySelector('.btn-cancel-edit');
-                
-                if (saveBtn) {
-                    saveBtn.innerHTML = '<i class="fas fa-save"></i> SALVAR ALTERAÇÕES';
-                    saveBtn.disabled = false;
-                }
-                
-                if (cancelBtn) {
-                    cancelBtn.disabled = false;
-                }
+                console.error('Erro ao salvar alterações:', error);
+                alert('Erro ao salvar alterações. Tente novamente.');
             }
         };
         
         window.rebuildEventDescription = function(originalDescription, updatedItems, eventType) {
             if (!originalDescription) return '';
             
-            console.log('🔄 Reconstruindo descrição do evento...');
-            console.log('📝 Descrição original:', originalDescription);
-            console.log('📋 Itens atualizados:', updatedItems);
-            console.log('🏷️ Tipo do evento:', eventType);
-            
             let newDescription = originalDescription;
             const eventCalc = calculateEventTotal(currentEditingEventData);
             const originalItems = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
-            
-            console.log('📊 Itens originais extraídos:', originalItems);
             
             // Para cada item original, substituir pela versão editada
             originalItems.forEach((originalItem, index) => {
                 if (index < updatedItems.length) {
                     const updatedItem = updatedItems[index];
                     
-                    console.log(`🔄 Processando item ${index + 1}:`);
-                    console.log('   Original:', originalItem);
-                    console.log('   Atualizado:', updatedItem);
+                    // Encontrar padrão do item original na descrição
+                    const originalPattern = `${originalItem.name} ${originalItem.formattedValue} (${originalItem.status})`;
+                    const detailPattern = originalItem.detail ? ` ${originalItem.detail}` : '';
+                    const fullOriginalPattern = originalPattern + detailPattern;
                     
-                    // Construir padrões mais flexíveis para encontrar o item na descrição
-                    const patterns = [
-                        // Padrão completo com detalhe
-                        `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})${originalItem.detail ? ' ' + originalItem.detail : ''}`,
-                        
-                        // Padrão sem hífen
-                        `${originalItem.name} ${originalItem.formattedValue} (${originalItem.status})${originalItem.detail ? ' ' + originalItem.detail : ''}`,
-                        
-                        // Padrão básico sem detalhe
-                        `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`,
-                        
-                        // Padrão básico sem hífen e sem detalhe
-                        `${originalItem.name} ${originalItem.formattedValue} (${originalItem.status})`,
-                        
-                        // Padrão apenas com nome e valor
-                        `${originalItem.name} - ${originalItem.formattedValue}`,
-                        
-                        // Padrão apenas com nome e valor sem hífen
-                        `${originalItem.name} ${originalItem.formattedValue}`
-                    ];
+                    // Criar novo padrão
+                    const newPattern = `${updatedItem.name} ${updatedItem.formattedValue} (${updatedItem.status})`;
+                    const newDetailPattern = updatedItem.detail ? ` ${updatedItem.detail}` : '';
+                    const fullNewPattern = newPattern + newDetailPattern;
                     
-                    // Construir novo padrão mantendo o formato original
-                    const newPatterns = [
-                        // Padrão completo com detalhe
-                        `${updatedItem.name} - ${updatedItem.formattedValue} (${updatedItem.status})${updatedItem.detail ? ' ' + updatedItem.detail : ''}`,
-                        
-                        // Padrão sem hífen
-                        `${updatedItem.name} ${updatedItem.formattedValue} (${updatedItem.status})${updatedItem.detail ? ' ' + updatedItem.detail : ''}`,
-                        
-                        // Padrão básico sem detalhe
-                        `${updatedItem.name} - ${updatedItem.formattedValue} (${updatedItem.status})`,
-                        
-                        // Padrão básico sem hífen e sem detalhe
-                        `${updatedItem.name} ${updatedItem.formattedValue} (${updatedItem.status})`,
-                        
-                        // Padrão apenas com nome e valor
-                        `${updatedItem.name} - ${updatedItem.formattedValue}`,
-                        
-                        // Padrão apenas com nome e valor sem hífen
-                        `${updatedItem.name} ${updatedItem.formattedValue}`
-                    ];
+                    // Substituir na descrição
+                    newDescription = newDescription.replace(fullOriginalPattern, fullNewPattern);
                     
-                    // Tentar encontrar e substituir usando os padrões
-                    let found = false;
-                    for (let i = 0; i < patterns.length && !found; i++) {
-                        const originalPattern = patterns[i];
-                        const newPattern = newPatterns[i];
-                        
-                        if (newDescription.includes(originalPattern)) {
-                            console.log(`   ✅ Padrão encontrado (${i + 1}): "${originalPattern}"`);
-                            console.log(`   🔄 Substituindo por: "${newPattern}"`);
-                            
-                            newDescription = newDescription.replace(originalPattern, newPattern);
-                            found = true;
-                        }
-                    }
-                    
-                    if (!found) {
-                        console.warn(`   ⚠️ Nenhum padrão encontrado para o item ${index + 1}`);
-                        console.warn('   📝 Tentando substituição por regex...');
-                        
-                        // Fallback: usar regex para encontrar padrões similares
-                        const nameRegex = new RegExp(escapeRegExp(originalItem.name), 'gi');
-                        const valueRegex = new RegExp(escapeRegExp(originalItem.formattedValue), 'gi');
-                        
-                        // Substituir nome se encontrado
-                        if (nameRegex.test(newDescription)) {
-                            newDescription = newDescription.replace(nameRegex, updatedItem.name);
-                            console.log(`   ✅ Nome substituído via regex`);
-                        }
-                        
-                        // Substituir valor se encontrado
-                        if (valueRegex.test(newDescription)) {
-                            newDescription = newDescription.replace(valueRegex, updatedItem.formattedValue);
-                            console.log(`   ✅ Valor substituído via regex`);
-                        }
+                    // Se não encontrou o padrão completo, tentar apenas o padrão básico
+                    if (newDescription === originalDescription) {
+                        newDescription = newDescription.replace(originalPattern, newPattern);
                     }
                 }
             });
             
-            console.log('✅ Descrição reconstruída:', newDescription);
             return newDescription;
         };
-
-        // Função auxiliar para escapar caracteres especiais em regex
-        function escapeRegExp(string) {
-            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        }
-
-        // Funções auxiliares para mensagens melhoradas
-        function showSuccessMessage(message) {
-            showMessage(message, 'success');
-        }
-
-        function showErrorMessage(message) {
-            showMessage(message, 'error');
-        }
-
-        function showMessage(message, type = 'info') {
-            // Remover mensagem anterior se existir
-            const existingMessage = document.querySelector('.message-notification');
-            if (existingMessage) {
-                existingMessage.remove();
-            }
-
-            // Criar nova mensagem
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message-notification message-${type}`;
-            messageDiv.style.cssText = `
-                position: fixed;
-                top: 20px;
-                right: 20px;
-                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
-                color: white;
-                padding: 15px 20px;
-                border-radius: 8px;
-                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-                z-index: 10000;
-                max-width: 400px;
-                font-size: 14px;
-                font-weight: 500;
-                animation: slideIn 0.3s ease-out;
-            `;
-            messageDiv.textContent = message;
-
-            // Adicionar animação CSS se não existir
-            if (!document.querySelector('#message-animation-styles')) {
-                const style = document.createElement('style');
-                style.id = 'message-animation-styles';
-                style.textContent = `
-                    @keyframes slideIn {
-                        from { transform: translateX(100%); opacity: 0; }
-                        to { transform: translateX(0); opacity: 1; }
-                    }
-                    @keyframes slideOut {
-                        from { transform: translateX(0); opacity: 1; }
-                        to { transform: translateX(100%); opacity: 0; }
-                    }
-                `;
-                document.head.appendChild(style);
-            }
-
-            document.body.appendChild(messageDiv);
-
-            // Remover após 5 segundos
-            setTimeout(() => {
-                messageDiv.style.animation = 'slideOut 0.3s ease-in forwards';
-                setTimeout(() => {
-                    if (messageDiv.parentNode) {
-                        messageDiv.parentNode.removeChild(messageDiv);
-                    }
-                }, 300);
-            }, 5000);
-        }
-        
-        // Debug: Verificar se as funções estão disponíveis
-        setTimeout(() => {
-            console.log('🔍 Debug - Funções disponíveis:');
-            console.log('  - startEditingEventItems:', typeof window.startEditingEventItems);
-            console.log('  - saveEventItemsChanges:', typeof window.saveEventItemsChanges);
-            console.log('  - rebuildEventDescription:', typeof window.rebuildEventDescription);
-            console.log('  - gapi:', typeof gapi);
-            console.log('  - gapi.client:', typeof gapi?.client);
-        }, 3000);
     </script>
     
     <style>
@@ -8928,10 +8629,6 @@
             border-radius: 8px;
             padding: 20px;
             margin-top: 15px;
-            width: 100%;
-            max-width: 100%;
-            box-sizing: border-box;
-            overflow-x: auto;
         }
         
         .edit-item-row {
@@ -8943,8 +8640,6 @@
             background: rgba(255, 255, 255, 0.03);
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            width: 100%;
-            box-sizing: border-box;
         }
         
         .edit-item-field {
@@ -8968,18 +8663,6 @@
             padding: 8px 12px;
             color: #ffffff;
             font-size: 14px;
-        }
-        
-        .edit-item-field select {
-            background: #2196F3;
-            color: #ffffff;
-            border: 1px solid #1976D2;
-        }
-        
-        .edit-item-field select option {
-            background: #2196F3;
-            color: #ffffff;
-            padding: 8px;
         }
         
         .edit-item-field input:focus,
@@ -9033,18 +8716,9 @@
         }
         
         @media (max-width: 768px) {
-            .event-modal-content {
-                width: 95%;
-                min-width: 300px;
-                margin: 2% auto;
-                padding: 15px;
-                max-height: 90vh;
-            }
-            
             .edit-item-row {
                 grid-template-columns: 1fr;
                 gap: 10px;
-                padding: 10px;
             }
             
             .payments-header {
@@ -9055,10 +8729,6 @@
             
             .edit-items-actions {
                 flex-direction: column;
-            }
-            
-            .edit-items-form {
-                padding: 15px;
             }
         }
     </style>
