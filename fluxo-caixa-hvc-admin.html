@@ -4224,8 +4224,8 @@
                 defaultType = 'recebimento';
             }
             
-            // Regex para detectar padrões como "Nome do pagamento - R$ 1.234,56 (STATUS)"
-            const paymentRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?/gi;
+            // Regex para detectar padrões como "Nome do pagamento - R$ 1.234,56 (STATUS) - detalhes"
+            const paymentRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?\s*(?:-\s*([^\n\r]*))?/gi;
             const matches = [];
             let match;
             
@@ -4244,6 +4244,7 @@
                 
                 const valueStr = match[2];
                 const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
+                const detailText = match[4] ? match[4].trim() : ''; // ✅ NOVO: Capturar detalhes
                 const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
                 
                 // Determinar status baseado no texto entre parênteses e tipo
@@ -4275,11 +4276,12 @@
                 
                 matches.push({
                     name: paymentName,
-                    original: `${paymentName} - R$ ${valueStr}${match[3] ? ' ' + match[3] : ''}`,
+                    original: `${paymentName} - R$ ${valueStr}${match[3] ? ' ' + match[3] : ''}${detailText ? ' - ' + detailText : ''}`,
                     value: numericValue,
                     formattedValue: `R$ ${valueStr}`,
                     status: status,
                     statusText: statusText,
+                    detail: detailText, // ✅ NOVO: Incluir detalhes
                     type: itemType
                 });
             }
@@ -7581,6 +7583,277 @@
             // ✅ NOVO: Inicializar event listeners para tipo de evento
             initializeEventTypeListeners();
         }); // Fechamento do DOMContentLoaded
+
+        // =================================================================
+        // ✅ FUNCIONALIDADES DE EDIÇÃO DE ITENS - ESCOPO GLOBAL
+        // =================================================================
+        
+        // Variáveis globais para edição
+        let currentEditingEventData = null;
+        let currentEditingItemsData = [];
+
+        // Função para iniciar edição de itens
+        window.startEditingEventItems = async function(eventId, eventType) {
+            try {
+                console.log('🔧 Iniciando edição de itens...');
+                console.log('🆔 Event ID:', eventId);
+                console.log('🏷️ Event Type:', eventType);
+                
+                // Verificar se o Google API está carregado
+                if (typeof gapi === 'undefined' || !gapi.client) {
+                    throw new Error('Google API não está carregado. Aguarde o carregamento da página.');
+                }
+                
+                // Verificar se há token de acesso
+                const token = gapi.client.getToken();
+                if (!token) {
+                    throw new Error('Você precisa estar conectado ao Google Calendar para editar eventos.');
+                }
+                
+                console.log('📤 Buscando evento...');
+                const response = await gapi.client.calendar.events.get({
+                    calendarId: 'primary',
+                    eventId: eventId
+                });
+                
+                console.log('✅ Evento encontrado:', response.result);
+                currentEditingEventData = response.result;
+                
+                // Calcular itens do evento
+                const eventCalc = calculateEventTotal(currentEditingEventData);
+                const items = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
+                
+                console.log('📋 Itens encontrados:', items);
+                currentEditingItemsData = items;
+                
+                // Criar interface de edição
+                const editDiv = document.getElementById('payments-edit');
+                if (!editDiv) {
+                    console.error('❌ Div payments-edit não encontrada');
+                    return;
+                }
+                
+                let editHTML = '<div class="edit-items-form">';
+                
+                items.forEach((item, index) => {
+                    const statusOptions = eventType === 'recebimento' 
+                        ? ['RC', 'ADIADO', 'AGUARDANDO']
+                        : ['PG', 'RECALCULADO', 'PENDENTE'];
+                    
+                    editHTML += `
+                        <div class="edit-item-row">
+                            <div class="edit-item-field">
+                                <label>NOME:</label>
+                                <input type="text" class="edit-item-name" value="${item.name || ''}" />
+                            </div>
+                            <div class="edit-item-field">
+                                <label>VALOR:</label>
+                                <input type="number" class="edit-item-value" value="${item.value || 0}" step="0.01" />
+                            </div>
+                            <div class="edit-item-field">
+                                <label>STATUS:</label>
+                                <select class="edit-item-status">
+                                    ${statusOptions.map(status => 
+                                        `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`
+                                    ).join('')}
+                                </select>
+                            </div>
+                            <div class="edit-item-field">
+                                <label>DETALHE:</label>
+                                <input type="text" class="edit-item-detail" value="${item.detail || ''}" />
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                editHTML += `
+                    <div class="edit-items-actions">
+                        <button class="btn-save-items" onclick="saveEventItemsChanges('${eventId}', '${eventType}')">
+                            <i class="fas fa-save"></i> SALVAR ALTERAÇÕES
+                        </button>
+                        <button class="btn-cancel-edit" onclick="cancelEditingEventItems()">
+                            <i class="fas fa-times"></i> CANCELAR
+                        </button>
+                    </div>
+                </div>`;
+                
+                editDiv.innerHTML = editHTML;
+                editDiv.style.display = 'block';
+                
+                console.log('✅ Interface de edição criada');
+                
+            } catch (error) {
+                console.error('❌ Erro ao iniciar edição:', error);
+                alert('Erro ao carregar dados para edição: ' + error.message);
+            }
+        };
+
+        // Função para cancelar edição
+        window.cancelEditingEventItems = function() {
+            const editDiv = document.getElementById('payments-edit');
+            if (editDiv) {
+                editDiv.style.display = 'none';
+                editDiv.innerHTML = '';
+            }
+            currentEditingEventData = null;
+            currentEditingItemsData = [];
+        };
+
+        // Função para salvar alterações
+        window.saveEventItemsChanges = async function(eventId, eventType) {
+            try {
+                console.log('💾 Iniciando salvamento das alterações...');
+                
+                if (!currentEditingEventData) {
+                    throw new Error('Evento não encontrado para edição');
+                }
+                
+                // Mostrar indicador de carregamento
+                const saveBtn = document.querySelector('.btn-save-items');
+                if (saveBtn) {
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SALVANDO...';
+                    saveBtn.disabled = true;
+                }
+                
+                // Coletar dados editados
+                const editDiv = document.getElementById('payments-edit');
+                const editRows = editDiv.querySelectorAll('.edit-item-row');
+                const updatedItems = [];
+                
+                editRows.forEach((row, itemIndex) => {
+                    const name = row.querySelector('.edit-item-name').value.trim();
+                    const valueInput = row.querySelector('.edit-item-value').value;
+                    const value = parseFloat(valueInput) || 0;
+                    const status = row.querySelector('.edit-item-status').value;
+                    const detail = row.querySelector('.edit-item-detail').value.trim();
+                    
+                    updatedItems.push({
+                        name: name,
+                        value: value,
+                        status: status,
+                        detail: detail,
+                        formattedValue: formatCurrency(value),
+                        originalIndex: itemIndex
+                    });
+                });
+                
+                console.log('✅ Dados coletados:', updatedItems);
+                
+                // Reconstruir descrição do evento
+                const newDescription = rebuildEventDescription(currentEditingEventData.description, updatedItems, eventType);
+                
+                console.log('📝 Nova descrição:', newDescription);
+                
+                // Verificar se há contas múltiplas e usar o token correto
+                let accountEmail = currentEditingEventData._accountEmail;
+                if (accountEmail && window.connectedAccounts) {
+                    const account = window.connectedAccounts.find(acc => acc.email === accountEmail);
+                    if (account && account.accessToken) {
+                        console.log('🔑 Usando token da conta:', accountEmail);
+                        gapi.client.setToken({ access_token: account.accessToken });
+                    }
+                }
+                
+                // Atualizar evento no Google Calendar
+                console.log('📤 Atualizando evento no Google Calendar...');
+                const updateResponse = await gapi.client.calendar.events.patch({
+                    calendarId: 'primary',
+                    eventId: eventId,
+                    resource: {
+                        description: newDescription
+                    }
+                });
+                
+                console.log('✅ Evento atualizado:', updateResponse);
+                
+                // Mostrar mensagem de sucesso
+                alert('Alterações salvas com sucesso!');
+                
+                // Recarregar eventos
+                if (typeof loadFilteredEvents === 'function') {
+                    await loadFilteredEvents();
+                } else if (typeof loadEvents === 'function') {
+                    await loadEvents();
+                }
+                
+                // Fechar modal
+                const modal = document.getElementById('eventModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+                
+                console.log('✅ Processo de salvamento concluído!');
+                
+            } catch (error) {
+                console.error('❌ Erro ao salvar alterações:', error);
+                alert('Erro ao salvar alterações: ' + error.message);
+                
+                // Restaurar botão
+                const saveBtn = document.querySelector('.btn-save-items');
+                if (saveBtn) {
+                    saveBtn.innerHTML = '<i class="fas fa-save"></i> SALVAR ALTERAÇÕES';
+                    saveBtn.disabled = false;
+                }
+            }
+        };
+
+        // Função para reconstruir a descrição do evento
+        window.rebuildEventDescription = function(originalDescription, updatedItems, eventType) {
+            if (!originalDescription) return '';
+            
+            console.log('🔧 Reconstruindo descrição...');
+            console.log('📝 Descrição original:', originalDescription);
+            console.log('📋 Itens atualizados:', updatedItems);
+            
+            let newDescription = originalDescription;
+            const eventCalc = calculateEventTotal(currentEditingEventData);
+            const originalItems = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
+            
+            console.log('📊 Itens originais:', originalItems);
+            
+            // Para cada item original, substituir pela versão editada
+            originalItems.forEach((originalItem, index) => {
+                if (index < updatedItems.length) {
+                    const updatedItem = updatedItems[index];
+                    
+                    console.log(`🔄 Processando item ${index + 1}:`);
+                    console.log('  Original:', originalItem);
+                    console.log('  Atualizado:', updatedItem);
+                    
+                    // Padrão 1: Com detalhes - "Nome - R$ Valor (Status) - Detalhes"
+                    if (originalItem.detail) {
+                        const originalPattern = `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status}) - ${originalItem.detail}`;
+                        const newPattern = `${updatedItem.name} - ${updatedItem.formattedValue} (${updatedItem.status})${updatedItem.detail ? ' - ' + updatedItem.detail : ''}`;
+                        
+                        if (newDescription.includes(originalPattern)) {
+                            newDescription = newDescription.replace(originalPattern, newPattern);
+                            console.log('  ✅ Substituição realizada (Padrão 1)');
+                            return;
+                        }
+                    }
+                    
+                    // Padrão 2: Sem detalhes - "Nome - R$ Valor (Status)"
+                    const originalPattern2 = `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`;
+                    const newPattern2 = `${updatedItem.name} - ${updatedItem.formattedValue} (${updatedItem.status})${updatedItem.detail ? ' - ' + updatedItem.detail : ''}`;
+                    
+                    if (newDescription.includes(originalPattern2)) {
+                        newDescription = newDescription.replace(originalPattern2, newPattern2);
+                        console.log('  ✅ Substituição realizada (Padrão 2)');
+                        return;
+                    }
+                    
+                    console.log('  ⚠️ Nenhum padrão encontrado para substituição');
+                }
+            });
+            
+            console.log('📝 Descrição final:', newDescription);
+            return newDescription;
+        };
+
+        // Verificar se as funções foram declaradas corretamente
+        console.log('✅ Função startEditingEventItems declarada:', typeof window.startEditingEventItems);
+        console.log('✅ Função saveEventItemsChanges declarada:', typeof window.saveEventItemsChanges);
+        console.log('✅ Função rebuildEventDescription declarada:', typeof window.rebuildEventDescription);
     </script>
 </head>
 
