@@ -4369,16 +4369,49 @@
             let paymentTotal = 0;
             let receivingTotal = 0;
             
+            // Verificar se a data é anterior à data atual
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const compareDate = new Date(date);
+            compareDate.setHours(0, 0, 0, 0);
+            const isPastDate = compareDate < today;
+            
+            let balanceReceivingTotal = 0;
+            let balancePaymentTotal = 0;
+            
             eventsForDay.forEach(event => {
                 const eventCalc = calculateEventTotal(event);
                 paymentTotal += eventCalc.paymentTotal; // PG + PENDENTE
                 receivingTotal += eventCalc.receivingTotal; // RC + AGUARDANDO
+                
+                // Para o saldo, usar lógica diferente baseada na data
+                if (isPastDate) {
+                    // Data anterior: apenas RC e PG
+                    eventCalc.receivingItems.forEach(item => {
+                        if (item.status.toLowerCase() === 'rc') {
+                            balanceReceivingTotal += item.value;
+                        }
+                    });
+                    eventCalc.paymentItems.forEach(item => {
+                        if (item.status.toLowerCase() === 'pg') {
+                            balancePaymentTotal += item.value;
+                        }
+                    });
+                } else {
+                    // Outras datas: todos os itens independente do status
+                    eventCalc.receivingItems.forEach(item => {
+                        balanceReceivingTotal += item.value;
+                    });
+                    eventCalc.paymentItems.forEach(item => {
+                        balancePaymentTotal += item.value;
+                    });
+                }
             });
             
             return {
                 paymentTotal: paymentTotal,
                 receivingTotal: receivingTotal,
-                balance: receivingTotal - paymentTotal
+                balance: balanceReceivingTotal - balancePaymentTotal
             };
         }
 
@@ -5764,13 +5797,20 @@
                     const itemLabel = eventType === 'recebimento' ? 'Recebimentos' : 'Pagamentos';
                     detailsHTML += `
                         <div class="event-values-list">
-                            <h5><i class="fas fa-list"></i> ${itemLabel} (${items.length}):</h5>
+                            <div class="items-header">
+                                <h5><i class="fas fa-list"></i> ${itemLabel} (${items.length}):</h5>
+                                <button class="btn-edit-items" onclick="startEditingItems('${event.id}', '${eventType}', ${index})">
+                                    <i class="fas fa-edit"></i> EDITAR
+                                </button>
+                            </div>
+                            <div id="items-display-${index}" class="items-display">
                     `;
-                    items.forEach(item => {
+                    items.forEach((item, itemIndex) => {
                         detailsHTML += `
-                            <div class="value-item">
+                            <div class="value-item" data-item-index="${itemIndex}">
                                 <div>
                                     <strong>${item.name}</strong> - ${item.formattedValue}
+                                    ${item.detail ? `<br><small>${item.detail}</small>` : ''}
                                 </div>
                                 <div class="value-item-status ${item.status.toLowerCase()}">
                                     ${item.status}
@@ -5778,7 +5818,13 @@
                             </div>
                         `;
                     });
-                    detailsHTML += '</div>';
+                    detailsHTML += `
+                            </div>
+                            <div id="items-edit-${index}" class="items-edit" style="display: none;">
+                                <!-- Formulário de edição será inserido aqui -->
+                            </div>
+                        </div>
+                    `;
                 }
                 
                 detailsHTML += `
@@ -8365,3 +8411,317 @@
     <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
 </body>
 </html>
+
+
+        // =================================================================
+        // ✅ NOVA: FUNCIONALIDADES DE EDIÇÃO DE ITENS
+        // =================================================================
+        
+        let currentEditingEvent = null;
+        let currentEditingItems = [];
+        
+        async function startEditingItems(eventId, eventType, eventIndex) {
+            try {
+                // Buscar evento completo
+                const event = await gapi.client.calendar.events.get({
+                    calendarId: 'primary',
+                    eventId: eventId
+                });
+                
+                currentEditingEvent = event.result;
+                const eventCalc = calculateEventTotal(currentEditingEvent);
+                const items = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
+                currentEditingItems = [...items]; // Cópia dos itens
+                
+                // Esconder display e mostrar formulário de edição
+                const displayDiv = document.getElementById(`items-display-${eventIndex}`);
+                const editDiv = document.getElementById(`items-edit-${eventIndex}`);
+                
+                if (displayDiv && editDiv) {
+                    displayDiv.style.display = 'none';
+                    editDiv.style.display = 'block';
+                    
+                    // Criar formulário de edição
+                    let editHTML = '<div class="edit-items-form">';
+                    
+                    items.forEach((item, itemIndex) => {
+                        const statusOptions = eventType === 'recebimento' 
+                            ? ['RC', 'AGUARDANDO', 'ADIADO']
+                            : ['PG', 'PENDENTE', 'RECALCULADO'];
+                        
+                        editHTML += `
+                            <div class="edit-item-row" data-item-index="${itemIndex}">
+                                <div class="edit-item-field">
+                                    <label>Nome:</label>
+                                    <input type="text" class="edit-item-name" value="${item.name}" />
+                                </div>
+                                <div class="edit-item-field">
+                                    <label>Valor:</label>
+                                    <input type="number" class="edit-item-value" value="${item.value}" step="0.01" />
+                                </div>
+                                <div class="edit-item-field">
+                                    <label>Status:</label>
+                                    <select class="edit-item-status">
+                                        ${statusOptions.map(status => 
+                                            `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`
+                                        ).join('')}
+                                    </select>
+                                </div>
+                                <div class="edit-item-field">
+                                    <label>Detalhe:</label>
+                                    <input type="text" class="edit-item-detail" value="${item.detail || ''}" />
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    editHTML += `
+                        <div class="edit-items-actions">
+                            <button class="btn-save-items" onclick="saveItemsChanges('${eventId}', '${eventType}', ${eventIndex})">
+                                <i class="fas fa-save"></i> SALVAR ALTERAÇÕES
+                            </button>
+                            <button class="btn-cancel-edit" onclick="cancelItemsEdit(${eventIndex})">
+                                <i class="fas fa-times"></i> CANCELAR
+                            </button>
+                        </div>
+                    </div>`;
+                    
+                    editDiv.innerHTML = editHTML;
+                }
+                
+            } catch (error) {
+                console.error('Erro ao iniciar edição:', error);
+                alert('Erro ao carregar dados para edição. Tente novamente.');
+            }
+        }
+        
+        function cancelItemsEdit(eventIndex) {
+            const displayDiv = document.getElementById(`items-display-${eventIndex}`);
+            const editDiv = document.getElementById(`items-edit-${eventIndex}`);
+            
+            if (displayDiv && editDiv) {
+                displayDiv.style.display = 'block';
+                editDiv.style.display = 'none';
+            }
+            
+            currentEditingEvent = null;
+            currentEditingItems = [];
+        }
+        
+        async function saveItemsChanges(eventId, eventType, eventIndex) {
+            try {
+                if (!currentEditingEvent) {
+                    throw new Error('Evento não encontrado para edição');
+                }
+                
+                // Coletar dados editados
+                const editDiv = document.getElementById(`items-edit-${eventIndex}`);
+                const editRows = editDiv.querySelectorAll('.edit-item-row');
+                const updatedItems = [];
+                
+                editRows.forEach((row, itemIndex) => {
+                    const name = row.querySelector('.edit-item-name').value.trim();
+                    const value = parseFloat(row.querySelector('.edit-item-value').value) || 0;
+                    const status = row.querySelector('.edit-item-status').value;
+                    const detail = row.querySelector('.edit-item-detail').value.trim();
+                    
+                    updatedItems.push({
+                        name: name,
+                        value: value,
+                        status: status,
+                        detail: detail,
+                        formattedValue: formatCurrency(value),
+                        originalIndex: itemIndex
+                    });
+                });
+                
+                // Reconstruir descrição do evento
+                const newDescription = rebuildEventDescription(currentEditingEvent.description, updatedItems, eventType);
+                
+                // Atualizar evento no Google Calendar
+                await gapi.client.calendar.events.patch({
+                    calendarId: 'primary',
+                    eventId: eventId,
+                    resource: {
+                        description: newDescription
+                    }
+                });
+                
+                // Atualizar interface
+                alert('Alterações salvas com sucesso!');
+                
+                // Recarregar eventos e fechar modal
+                await loadEvents();
+                document.getElementById('eventModal').style.display = 'none';
+                
+            } catch (error) {
+                console.error('Erro ao salvar alterações:', error);
+                alert('Erro ao salvar alterações. Tente novamente.');
+            }
+        }
+        
+        function rebuildEventDescription(originalDescription, updatedItems, eventType) {
+            if (!originalDescription) return '';
+            
+            let newDescription = originalDescription;
+            const eventCalc = calculateEventTotal(currentEditingEvent);
+            const originalItems = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
+            
+            // Para cada item original, substituir pela versão editada
+            originalItems.forEach((originalItem, index) => {
+                if (index < updatedItems.length) {
+                    const updatedItem = updatedItems[index];
+                    
+                    // Encontrar padrão do item original na descrição
+                    const originalPattern = `${originalItem.name} ${originalItem.formattedValue} (${originalItem.status})`;
+                    const detailPattern = originalItem.detail ? ` ${originalItem.detail}` : '';
+                    const fullOriginalPattern = originalPattern + detailPattern;
+                    
+                    // Criar novo padrão
+                    const newPattern = `${updatedItem.name} ${updatedItem.formattedValue} (${updatedItem.status})`;
+                    const newDetailPattern = updatedItem.detail ? ` ${updatedItem.detail}` : '';
+                    const fullNewPattern = newPattern + newDetailPattern;
+                    
+                    // Substituir na descrição
+                    newDescription = newDescription.replace(fullOriginalPattern, fullNewPattern);
+                    
+                    // Se não encontrou o padrão completo, tentar apenas o padrão básico
+                    if (newDescription === originalDescription) {
+                        newDescription = newDescription.replace(originalPattern, newPattern);
+                    }
+                }
+            });
+            
+            return newDescription;
+        }
+
+        /* ✅ NOVO: Estilos para edição de itens */
+        .items-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .btn-edit-items {
+            background: linear-gradient(135deg, #ff9800, #f57c00);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-edit-items:hover {
+            background: linear-gradient(135deg, #f57c00, #e65100);
+            transform: translateY(-1px);
+        }
+        
+        .edit-items-form {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 10px;
+        }
+        
+        .edit-item-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 2fr;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 5px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .edit-item-field {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .edit-item-field label {
+            color: #ffffff;
+            font-size: 11px;
+            font-weight: bold;
+            margin-bottom: 3px;
+            text-transform: uppercase;
+        }
+        
+        .edit-item-field input,
+        .edit-item-field select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+            padding: 5px 8px;
+            color: #ffffff;
+            font-size: 12px;
+        }
+        
+        .edit-item-field input:focus,
+        .edit-item-field select:focus {
+            outline: none;
+            border-color: #4CAF50;
+            background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .edit-items-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+            padding-top: 15px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .btn-save-items {
+            background: linear-gradient(135deg, #4CAF50, #388E3C);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-save-items:hover {
+            background: linear-gradient(135deg, #388E3C, #2E7D32);
+            transform: translateY(-2px);
+        }
+        
+        .btn-cancel-edit {
+            background: linear-gradient(135deg, #f44336, #d32f2f);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-cancel-edit:hover {
+            background: linear-gradient(135deg, #d32f2f, #b71c1c);
+            transform: translateY(-2px);
+        }
+        
+        @media (max-width: 768px) {
+            .edit-item-row {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .items-header {
+                flex-direction: column;
+                gap: 10px;
+                align-items: stretch;
+            }
+            
+            .edit-items-actions {
+                flex-direction: column;
+            }
+        }
