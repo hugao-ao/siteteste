@@ -7820,19 +7820,21 @@
             }
         };
 
-        // Função para reconstruir a descrição do evento
+        // Função para reconstruir a descrição do evento usando a string original do extractPaymentInfo
         window.rebuildEventDescription = function(originalDescription, updatedItems, eventType) {
             if (!originalDescription) return '';
             
-            console.log('🔧 Reconstruindo descrição...');
+            console.log('🔧 Reconstruindo descrição usando extractPaymentInfo...');
             console.log('📝 Descrição original:', originalDescription);
             console.log('📋 Itens atualizados:', updatedItems);
             
             let newDescription = originalDescription;
-            const eventCalc = calculateEventTotal(currentEditingEventData);
-            const originalItems = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
             
-            console.log('📊 Itens originais:', originalItems);
+            // Usar extractPaymentInfo para obter os itens originais com suas strings exatas
+            const extractedInfo = extractPaymentInfo(originalDescription);
+            const originalItems = eventType === 'recebimento' ? extractedInfo.receivingItems : extractedInfo.paymentItems;
+            
+            console.log('📊 Itens extraídos pelo extractPaymentInfo:', originalItems);
             
             // Para cada item original, substituir pela versão editada
             originalItems.forEach((originalItem, index) => {
@@ -7843,60 +7845,30 @@
                     console.log('  Original:', originalItem);
                     console.log('  Atualizado:', updatedItem);
                     
-                    // Encontrar o padrão original completo na descrição
-                    let itemPattern = null;
-                    let itemStart = -1;
-                    let itemEnd = -1;
+                    // Usar a string original exata que o extractPaymentInfo encontrou
+                    const originalString = originalItem.original;
+                    console.log(`  📄 String original exata: "${originalString}"`);
                     
-                    // Buscar padrões possíveis (do mais completo para o mais simples)
-                    const possiblePatterns = [];
-                    
-                    // Padrão 1: Completo com detalhes
-                    if (originalItem.detail) {
-                        possiblePatterns.push(`${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status}) - ${originalItem.detail}`);
-                    }
-                    
-                    // Padrão 2: Com status mas sem detalhes  
-                    possiblePatterns.push(`${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`);
-                    
-                    // Padrão 3: Apenas nome e valor (só se não encontrar os outros)
-                    possiblePatterns.push(`${originalItem.name} - ${originalItem.formattedValue}`);
-                    
-                    console.log(`  🔍 Testando padrões:`, possiblePatterns);
-                    
-                    for (const pattern of possiblePatterns) {
-                        itemStart = newDescription.indexOf(pattern);
-                        console.log(`  🔎 Testando padrão: "${pattern}" - Encontrado: ${itemStart !== -1}`);
-                        if (itemStart !== -1) {
-                            itemPattern = pattern;
-                            itemEnd = itemStart + pattern.length;
-                            console.log(`  ✅ Padrão selecionado: "${pattern}"`);
-                            break;
-                        }
-                    }
-                    
-                    if (itemPattern && itemStart !== -1) {
-                        console.log(`  🔍 Padrão encontrado: "${itemPattern}"`);
-                        
-                        // Criar nova versão do item mantendo o formato original
-                        let newItemText = itemPattern; // Usar o padrão encontrado como base
+                    if (originalString && newDescription.includes(originalString)) {
+                        // Construir nova string com as alterações
+                        let newString = originalString;
                         
                         // 1. Substituir NOME se mudou
                         if (updatedItem.name !== originalItem.name) {
-                            newItemText = newItemText.replace(originalItem.name, updatedItem.name);
+                            newString = newString.replace(originalItem.name, updatedItem.name);
                             console.log(`  📝 Nome alterado: "${originalItem.name}" → "${updatedItem.name}"`);
                         }
                         
                         // 2. Substituir VALOR se mudou
                         if (updatedItem.value !== originalItem.value) {
                             const newFormattedValue = `R$ ${updatedItem.value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                            newItemText = newItemText.replace(originalItem.formattedValue, newFormattedValue);
+                            newString = newString.replace(originalItem.formattedValue, newFormattedValue);
                             console.log(`  💰 Valor alterado: "${originalItem.formattedValue}" → "${newFormattedValue}"`);
                         }
                         
                         // 3. Substituir STATUS se mudou
                         if (updatedItem.status !== originalItem.status) {
-                            newItemText = newItemText.replace(`(${originalItem.status})`, `(${updatedItem.status})`);
+                            newString = newString.replace(`(${originalItem.status})`, `(${updatedItem.status})`);
                             console.log(`  🏷️ Status alterado: "(${originalItem.status})" → "(${updatedItem.status})"`);
                         }
                         
@@ -7904,25 +7876,24 @@
                         if (updatedItem.detail !== (originalItem.detail || '')) {
                             if (originalItem.detail && updatedItem.detail) {
                                 // Ambos existem - substituir
-                                newItemText = newItemText.replace(` - ${originalItem.detail}`, ` - ${updatedItem.detail}`);
+                                newString = newString.replace(` - ${originalItem.detail}`, ` - ${updatedItem.detail}`);
                                 console.log(`  📋 Detalhe alterado: "- ${originalItem.detail}" → "- ${updatedItem.detail}"`);
                             } else if (!originalItem.detail && updatedItem.detail) {
                                 // Adicionar detalhe novo
-                                newItemText = newItemText + ` - ${updatedItem.detail}`;
+                                newString = newString + ` - ${updatedItem.detail}`;
                                 console.log(`  📋 Detalhe adicionado: "- ${updatedItem.detail}"`);
                             } else if (originalItem.detail && !updatedItem.detail) {
                                 // Remover detalhe
-                                newItemText = newItemText.replace(` - ${originalItem.detail}`, '');
+                                newString = newString.replace(` - ${originalItem.detail}`, '');
                                 console.log(`  📋 Detalhe removido: "- ${originalItem.detail}"`);
                             }
                         }
                         
                         // Fazer a substituição na descrição
-                        newDescription = newDescription.replace(itemPattern, newItemText);
-                        console.log(`  ✅ Substituição completa: "${itemPattern}" → "${newItemText}"`);
+                        newDescription = newDescription.replace(originalString, newString);
+                        console.log(`  ✅ Substituição completa: "${originalString}" → "${newString}"`);
                     } else {
-                        console.log('  ⚠️ Nenhum padrão encontrado para substituição');
-                        console.log('  🔍 Padrões testados:', possiblePatterns);
+                        console.log(`  ⚠️ String original não encontrada na descrição: "${originalString}"`);
                     }
                 }
             });
