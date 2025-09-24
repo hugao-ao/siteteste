@@ -8495,7 +8495,7 @@
                 console.error('Erro ao iniciar edição:', error);
                 alert('Erro ao carregar dados para edição. Tente novamente.');
             }
-        }
+        };
         
         window.cancelEventItemsEdit = function() {
             const displayDiv = document.getElementById('payments-display');
@@ -8508,7 +8508,7 @@
             
             currentEditingEventData = null;
             currentEditingItemsData = [];
-        }
+        };
         
         window.saveEventItemsChanges = async function(eventId, eventType) {
             try {
@@ -8560,9 +8560,9 @@
                 console.error('Erro ao salvar alterações:', error);
                 alert('Erro ao salvar alterações. Tente novamente.');
             }
-        }
+        };
         
-        function rebuildEventDescription(originalDescription, updatedItems, eventType) {
+        window.rebuildEventDescription = function(originalDescription, updatedItems, eventType) {
             if (!originalDescription) return '';
             
             let newDescription = originalDescription;
@@ -8595,7 +8595,7 @@
             });
             
             return newDescription;
-        }
+        };
     </script>
     
     <style>
