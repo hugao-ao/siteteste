@@ -8902,6 +8902,10 @@
             border-radius: 8px;
             padding: 20px;
             margin-top: 15px;
+            width: 100%;
+            max-width: 100%;
+            box-sizing: border-box;
+            overflow-x: auto;
         }
         
         .edit-item-row {
@@ -8913,11 +8917,14 @@
             background: rgba(255, 255, 255, 0.03);
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+            box-sizing: border-box;
         }
         
         .edit-item-field {
             display: flex;
             flex-direction: column;
+            min-width: 0;
         }
         
         .edit-item-field label {
@@ -8936,6 +8943,20 @@
             padding: 8px 12px;
             color: #ffffff;
             font-size: 14px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        .edit-item-field select {
+            background: #2196F3;
+            color: #ffffff;
+            border: 1px solid #1976D2;
+        }
+        
+        .edit-item-field select option {
+            background: #2196F3;
+            color: #ffffff;
+            padding: 8px;
         }
         
         .edit-item-field input:focus,
@@ -8943,6 +8964,10 @@
             outline: none;
             border-color: #4CAF50;
             background: rgba(255, 255, 255, 0.15);
+        }
+        
+        .edit-item-field select:focus {
+            background: #1976D2;
         }
         
         .edit-items-actions {
