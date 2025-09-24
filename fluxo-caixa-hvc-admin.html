@@ -7868,7 +7868,7 @@
                         console.log(`  🔍 Padrão encontrado: "${itemPattern}"`);
                         
                         // Criar nova versão do item mantendo o formato original
-                        let newItemText = originalItem.original; // Começar com o original
+                        let newItemText = itemPattern; // Usar o padrão encontrado como base
                         
                         // 1. Substituir NOME se mudou
                         if (updatedItem.name !== originalItem.name) {
