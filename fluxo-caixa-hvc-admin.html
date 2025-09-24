@@ -7843,41 +7843,75 @@
                     console.log('  Original:', originalItem);
                     console.log('  Atualizado:', updatedItem);
                     
-                    // Criar padrões de busca mais flexíveis
-                    const patterns = [];
+                    // Encontrar o padrão original completo na descrição
+                    let itemPattern = null;
+                    let itemStart = -1;
+                    let itemEnd = -1;
                     
-                    // Padrão 1: Completo com detalhes - "Nome - R$ Valor (Status) - Detalhes"
-                    if (originalItem.detail) {
-                        patterns.push(`${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status}) - ${originalItem.detail}`);
-                    }
+                    // Buscar padrões possíveis
+                    const possiblePatterns = [
+                        `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status}) - ${originalItem.detail}`,
+                        `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`,
+                        `${originalItem.name} - ${originalItem.formattedValue}`
+                    ];
                     
-                    // Padrão 2: Sem detalhes - "Nome - R$ Valor (Status)"
-                    patterns.push(`${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`);
-                    
-                    // Padrão 3: Apenas nome e valor - "Nome - R$ Valor"
-                    patterns.push(`${originalItem.name} - ${originalItem.formattedValue}`);
-                    
-                    // Tentar cada padrão
-                    let substituted = false;
-                    for (const pattern of patterns) {
-                        if (newDescription.includes(pattern)) {
-                            // Criar novo padrão com formatação correta
-                            const newFormattedValue = `R$ ${updatedItem.value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                            const newPattern = `${updatedItem.name} - ${newFormattedValue} (${updatedItem.status})${updatedItem.detail ? ' - ' + updatedItem.detail : ''}`;
-                            
-                            console.log(`  🔄 Substituindo: "${pattern}"`);
-                            console.log(`  ➡️ Por: "${newPattern}"`);
-                            
-                            newDescription = newDescription.replace(pattern, newPattern);
-                            console.log(`  ✅ Substituição realizada com sucesso!`);
-                            substituted = true;
+                    for (const pattern of possiblePatterns) {
+                        itemStart = newDescription.indexOf(pattern);
+                        if (itemStart !== -1) {
+                            itemPattern = pattern;
+                            itemEnd = itemStart + pattern.length;
                             break;
                         }
                     }
                     
-                    if (!substituted) {
+                    if (itemPattern && itemStart !== -1) {
+                        console.log(`  🔍 Padrão encontrado: "${itemPattern}"`);
+                        
+                        // Criar nova versão do item mantendo o formato original
+                        let newItemText = originalItem.original; // Começar com o original
+                        
+                        // 1. Substituir NOME se mudou
+                        if (updatedItem.name !== originalItem.name) {
+                            newItemText = newItemText.replace(originalItem.name, updatedItem.name);
+                            console.log(`  📝 Nome alterado: "${originalItem.name}" → "${updatedItem.name}"`);
+                        }
+                        
+                        // 2. Substituir VALOR se mudou
+                        if (updatedItem.value !== originalItem.value) {
+                            const newFormattedValue = `R$ ${updatedItem.value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                            newItemText = newItemText.replace(originalItem.formattedValue, newFormattedValue);
+                            console.log(`  💰 Valor alterado: "${originalItem.formattedValue}" → "${newFormattedValue}"`);
+                        }
+                        
+                        // 3. Substituir STATUS se mudou
+                        if (updatedItem.status !== originalItem.status) {
+                            newItemText = newItemText.replace(`(${originalItem.status})`, `(${updatedItem.status})`);
+                            console.log(`  🏷️ Status alterado: "(${originalItem.status})" → "(${updatedItem.status})"`);
+                        }
+                        
+                        // 4. Substituir DETALHE se mudou
+                        if (updatedItem.detail !== (originalItem.detail || '')) {
+                            if (originalItem.detail && updatedItem.detail) {
+                                // Ambos existem - substituir
+                                newItemText = newItemText.replace(` - ${originalItem.detail}`, ` - ${updatedItem.detail}`);
+                                console.log(`  📋 Detalhe alterado: "- ${originalItem.detail}" → "- ${updatedItem.detail}"`);
+                            } else if (!originalItem.detail && updatedItem.detail) {
+                                // Adicionar detalhe novo
+                                newItemText = newItemText + ` - ${updatedItem.detail}`;
+                                console.log(`  📋 Detalhe adicionado: "- ${updatedItem.detail}"`);
+                            } else if (originalItem.detail && !updatedItem.detail) {
+                                // Remover detalhe
+                                newItemText = newItemText.replace(` - ${originalItem.detail}`, '');
+                                console.log(`  📋 Detalhe removido: "- ${originalItem.detail}"`);
+                            }
+                        }
+                        
+                        // Fazer a substituição na descrição
+                        newDescription = newDescription.replace(itemPattern, newItemText);
+                        console.log(`  ✅ Substituição completa: "${itemPattern}" → "${newItemText}"`);
+                    } else {
                         console.log('  ⚠️ Nenhum padrão encontrado para substituição');
-                        console.log('  🔍 Padrões testados:', patterns);
+                        console.log('  🔍 Padrões testados:', possiblePatterns);
                     }
                 }
             });
