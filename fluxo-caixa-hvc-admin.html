@@ -1051,41 +1051,29 @@
         }
 
         /* ✅ NOVO: Cores dos totais iguais aos eventões - PAGAMENTOS */
-        .event-total.event-pg {
-            background: linear-gradient(135deg, #34a853, #2e7d32);
+        .event-total.event-payment-complete {
+            background: linear-gradient(135deg, #ff9800, #f57c00); /* LARANJA */
         }
 
-        .event-total.event-pendente {
-            background: linear-gradient(135deg, #ea4335, #d33b2c);
+        .event-total.event-payment-overdue {
+            background: linear-gradient(135deg, #f44336, #d32f2f); /* VERMELHO */
         }
 
-        .event-total.event-recalculado {
-            background: linear-gradient(135deg, #4285f4, #1976d2);
-        }
-
-        .event-total.event-mixed {
-            background: linear-gradient(135deg, #ff9800, #f57c00);
+        .event-total.event-payment-default {
+            background: linear-gradient(135deg, #8e24aa, #6a1b9a); /* VINHO (VERMELHO ESCURO) */
         }
 
         /* ✅ NOVO: Cores dos totais iguais aos eventões - RECEBIMENTOS */
-        .event-total.event-rc {
-            background: linear-gradient(135deg, #66bb6a, #4caf50);
-            border-left: 4px solid #81c784;
+        .event-total.event-receiving-complete {
+            background: linear-gradient(135deg, #2196f3, #1976d2); /* AZUL */
         }
 
-        .event-total.event-aguardando {
-            background: linear-gradient(135deg, #ff7043, #ff5722);
-            border-left: 4px solid #ff8a65;
+        .event-total.event-receiving-overdue {
+            background: linear-gradient(135deg, #ffeb3b, #fbc02d); /* AMARELO */
         }
 
-        .event-total.event-adiado {
-            background: linear-gradient(135deg, #42a5f5, #2196f3);
-            border-left: 4px solid #64b5f6;
-        }
-
-        .event-total.event-receiving-mixed {
-            background: linear-gradient(135deg, #ab47bc, #9c27b0);
-            border-left: 4px solid #ba68c8;
+        .event-total.event-receiving-default {
+            background: linear-gradient(135deg, #4caf50, #388e3c); /* VERDE */
         }
 
         .day-events {
@@ -1157,42 +1145,30 @@
             border-left: 4px solid #03a9f4;
         }
 
-        /* ✅ NOVO: Estilos para eventos agrupados por status */
-        .event-item.event-pg {
-            background: linear-gradient(135deg, #34a853, #2e7d32);
+        /* ✅ NOVO: Estilos para eventos agrupados por status - PAGAMENTOS */
+        .event-item.event-payment-complete {
+            background: linear-gradient(135deg, #ff9800, #f57c00); /* LARANJA */
         }
 
-        .event-item.event-pendente {
-            background: linear-gradient(135deg, #ea4335, #d33b2c);
+        .event-item.event-payment-overdue {
+            background: linear-gradient(135deg, #f44336, #d32f2f); /* VERMELHO */
         }
 
-        .event-item.event-recalculado {
-            background: linear-gradient(135deg, #4285f4, #1976d2);
-        }
-
-        .event-item.event-mixed {
-            background: linear-gradient(135deg, #ff9800, #f57c00);
+        .event-item.event-payment-default {
+            background: linear-gradient(135deg, #8e24aa, #6a1b9a); /* VINHO (VERMELHO ESCURO) */
         }
 
         /* ✅ NOVO: Estilos para eventos de recebimentos */
-        .event-item.event-rc {
-            background: linear-gradient(135deg, #66bb6a, #4caf50);
-            border-left: 4px solid #81c784;
+        .event-item.event-receiving-complete {
+            background: linear-gradient(135deg, #2196f3, #1976d2); /* AZUL */
         }
 
-        .event-item.event-aguardando {
-            background: linear-gradient(135deg, #ff7043, #ff5722);
-            border-left: 4px solid #ff8a65;
+        .event-item.event-receiving-overdue {
+            background: linear-gradient(135deg, #ffeb3b, #fbc02d); /* AMARELO */
         }
 
-        .event-item.event-adiado {
-            background: linear-gradient(135deg, #42a5f5, #2196f3);
-            border-left: 4px solid #64b5f6;
-        }
-
-        .event-item.event-receiving-mixed {
-            background: linear-gradient(135deg, #ab47bc, #9c27b0);
-            border-left: 4px solid #ba68c8;
+        .event-item.event-receiving-default {
+            background: linear-gradient(135deg, #4caf50, #388e3c); /* VERDE */
         }
 
         /* ✅ NOVO: Estilos para modal de eventos agrupados */
@@ -5672,7 +5648,7 @@
                 
                 groupedEvents.push({
                     title: title,
-                    colorClass: getDayColorClass(paymentEvents, 'pagamento'),
+                    colorClass: getDayColorClass(paymentEvents, 'pagamento', date),
                     events: paymentEvents,
                     type: 'pagamento'
                 });
@@ -5687,7 +5663,7 @@
                 
                 groupedEvents.push({
                     title: title,
-                    colorClass: getDayColorClass(receivingEvents, 'recebimento'),
+                    colorClass: getDayColorClass(receivingEvents, 'recebimento', date),
                     events: receivingEvents,
                     type: 'recebimento'
                 });
@@ -5709,52 +5685,73 @@
         }
 
         // NOVA: Função para determinar cor do dia baseada em todos os eventos
-        function getDayColorClass(events, eventType = 'pagamento') {
+        function getDayColorClass(events, eventType = 'pagamento', eventDate) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const compareDate = new Date(eventDate);
+            compareDate.setHours(0, 0, 0, 0);
+            
             if (eventType === 'pagamento') {
-                let hasPG = false;
-                let hasPendente = false;
-                let hasRecalculado = false;
+                let allItemsPG = true;
+                let hasNonCompliantItem = false;
                 
                 // Analisar todos os itens de pagamento de todos os eventos do dia
                 events.forEach(event => {
                     const eventCalc = calculateEventTotal(event);
                     eventCalc.paymentItems.forEach(payment => {
-                        if (payment.status === 'PG') hasPG = true;
-                        else if (payment.status === 'PENDENTE') hasPendente = true;
-                        else if (payment.status === 'RECALCULADO') hasRecalculado = true;
+                        const statusLower = payment.status.toLowerCase();
+                        
+                        // Verificar se todos são PG
+                        if (statusLower !== 'pg') {
+                            allItemsPG = false;
+                        }
+                        
+                        // Verificar se há itens não conformes (não PG e não RECALCULADO)
+                        if (statusLower !== 'pg' && statusLower !== 'recalculado') {
+                            hasNonCompliantItem = true;
+                        }
                     });
                 });
                 
-                // Prioridade: PG > PENDENTE > RECALCULADO
-                if (hasPG && !hasPendente && !hasRecalculado) return 'event-pg';
-                if (hasPendente && !hasPG && !hasRecalculado) return 'event-pendente';
-                if (hasRecalculado && !hasPG && !hasPendente) return 'event-recalculado';
+                // Regra 1: Todos os itens são PG = LARANJA
+                if (allItemsPG) return 'event-payment-complete';
                 
-                // Se há mistura, usar cor mista
-                return 'event-mixed';
+                // Regra 2: Data atual > data do evento + algum item não conforme = VERMELHO
+                if (today > compareDate && hasNonCompliantItem) return 'event-payment-overdue';
+                
+                // Regra 3: Demais casos = VINHO (VERMELHO ESCURO)
+                return 'event-payment-default';
                 
             } else if (eventType === 'recebimento') {
-                let hasRC = false;
-                let hasAguardando = false;
-                let hasAdiado = false;
+                let allItemsRC = true;
+                let hasNonCompliantItem = false;
                 
                 // Analisar todos os itens de recebimento de todos os eventos do dia
                 events.forEach(event => {
                     const eventCalc = calculateEventTotal(event);
                     eventCalc.receivingItems.forEach(receiving => {
-                        if (receiving.status === 'RC') hasRC = true;
-                        else if (receiving.status === 'AGUARDANDO') hasAguardando = true;
-                        else if (receiving.status === 'ADIADO') hasAdiado = true;
+                        const statusLower = receiving.status.toLowerCase();
+                        
+                        // Verificar se todos são RC
+                        if (statusLower !== 'rc') {
+                            allItemsRC = false;
+                        }
+                        
+                        // Verificar se há itens não conformes (não RC e não ADIADO)
+                        if (statusLower !== 'rc' && statusLower !== 'adiado') {
+                            hasNonCompliantItem = true;
+                        }
                     });
                 });
                 
-                // Prioridade: RC > AGUARDANDO > ADIADO
-                if (hasRC && !hasAguardando && !hasAdiado) return 'event-rc';
-                if (hasAguardando && !hasRC && !hasAdiado) return 'event-aguardando';
-                if (hasAdiado && !hasRC && !hasAguardando) return 'event-adiado';
+                // Regra 1: Todos os itens são RC = AZUL
+                if (allItemsRC) return 'event-receiving-complete';
                 
-                // Se há mistura, usar cor mista para recebimentos
-                return 'event-receiving-mixed';
+                // Regra 2: Data atual > data do evento + algum item não conforme = AMARELO
+                if (today > compareDate && hasNonCompliantItem) return 'event-receiving-overdue';
+                
+                // Regra 3: Demais casos = VERDE
+                return 'event-receiving-default';
             }
             
             return 'event-default';
