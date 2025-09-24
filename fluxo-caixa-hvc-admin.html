@@ -5915,18 +5915,19 @@
                     </div>
                 `;
                 
-                if (eventCalc.payments.length > 0) {
+                // ✅ CORRIGIDO: Seção para PAGAMENTOS
+                if (eventCalc.paymentItems.length > 0) {
                     detailsHTML += `
                         <div class="event-values-list">
                             <div class="payments-header">
-                                <h4><i class="fas fa-list"></i> Pagamentos Encontrados (${eventCalc.count}):</h4>
+                                <h4><i class="fas fa-credit-card"></i> Pagamentos Encontrados (${eventCalc.paymentItems.length}):</h4>
                                 <button class="btn-edit-payments" onclick="startEditingEventItems('${event.id}', 'pagamento')">
                                     <i class="fas fa-edit"></i> EDITAR
                                 </button>
                             </div>
                             <div id="payments-display" class="payments-display">
                     `;
-                    eventCalc.payments.forEach((payment, index) => {
+                    eventCalc.paymentItems.forEach((payment, index) => {
                         detailsHTML += `
                             <div class="value-item" data-item-index="${index}">
                                 <div>
@@ -5935,6 +5936,40 @@
                                 </div>
                                 <div class="value-item-status ${payment.status.toLowerCase()}">
                                     ${payment.status}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    detailsHTML += `
+                            </div>
+                            <div id="payments-edit" class="payments-edit" style="display: none;">
+                                <!-- Formulário de edição será inserido aqui -->
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                // ✅ NOVO: Seção para RECEBIMENTOS
+                if (eventCalc.receivingItems.length > 0) {
+                    detailsHTML += `
+                        <div class="event-values-list">
+                            <div class="payments-header">
+                                <h4><i class="fas fa-hand-holding-usd"></i> Recebimentos Encontrados (${eventCalc.receivingItems.length}):</h4>
+                                <button class="btn-edit-payments" onclick="startEditingEventItems('${event.id}', 'recebimento')">
+                                    <i class="fas fa-edit"></i> EDITAR
+                                </button>
+                            </div>
+                            <div id="payments-display" class="payments-display">
+                    `;
+                    eventCalc.receivingItems.forEach((receiving, index) => {
+                        detailsHTML += `
+                            <div class="value-item" data-item-index="${index}">
+                                <div>
+                                    <strong>${receiving.name}</strong> - ${receiving.formattedValue}
+                                    ${receiving.detail ? `<br><small>${receiving.detail}</small>` : ''}
+                                </div>
+                                <div class="value-item-status ${receiving.status.toLowerCase()}">
+                                    ${receiving.status}
                                 </div>
                             </div>
                         `;
