@@ -7848,18 +7848,29 @@
                     let itemStart = -1;
                     let itemEnd = -1;
                     
-                    // Buscar padrões possíveis
-                    const possiblePatterns = [
-                        `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status}) - ${originalItem.detail}`,
-                        `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`,
-                        `${originalItem.name} - ${originalItem.formattedValue}`
-                    ];
+                    // Buscar padrões possíveis (do mais completo para o mais simples)
+                    const possiblePatterns = [];
+                    
+                    // Padrão 1: Completo com detalhes
+                    if (originalItem.detail) {
+                        possiblePatterns.push(`${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status}) - ${originalItem.detail}`);
+                    }
+                    
+                    // Padrão 2: Com status mas sem detalhes  
+                    possiblePatterns.push(`${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`);
+                    
+                    // Padrão 3: Apenas nome e valor (só se não encontrar os outros)
+                    possiblePatterns.push(`${originalItem.name} - ${originalItem.formattedValue}`);
+                    
+                    console.log(`  🔍 Testando padrões:`, possiblePatterns);
                     
                     for (const pattern of possiblePatterns) {
                         itemStart = newDescription.indexOf(pattern);
+                        console.log(`  🔎 Testando padrão: "${pattern}" - Encontrado: ${itemStart !== -1}`);
                         if (itemStart !== -1) {
                             itemPattern = pattern;
                             itemEnd = itemStart + pattern.length;
+                            console.log(`  ✅ Padrão selecionado: "${pattern}"`);
                             break;
                         }
                     }
