@@ -1233,20 +1233,21 @@
 
         .event-modal-content {
             background: linear-gradient(135deg, #000080, #800080);
-            margin: 5% auto;
+            margin: 3% auto;
             padding: 30px;
             border-radius: 20px;
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
+            width: 95%;
+            max-width: 900px;
+            max-height: 90vh;
             overflow-y: auto;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
             position: relative;
             animation: modalSlideIn 0.3s ease;
             box-sizing: border-box;
             resize: both;
-            min-width: 400px;
-            min-height: 300px;
+            min-width: 600px;
+            min-height: 400px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
         }
         
         .event-modal-content .close {
@@ -7830,9 +7831,9 @@
             
             let newDescription = originalDescription;
             
-            // Usar extractPaymentInfo para obter os itens originais com suas strings exatas
-            const extractedInfo = extractPaymentInfo(originalDescription);
-            const originalItems = eventType === 'recebimento' ? extractedInfo.receivingItems : extractedInfo.paymentItems;
+            // Usar calculateEventTotal que já funciona para obter os itens originais
+            const eventCalc = calculateEventTotal(currentEditingEventData);
+            const originalItems = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
             
             console.log('📊 Itens extraídos pelo extractPaymentInfo:', originalItems);
             
@@ -8741,186 +8742,9 @@
         };
 
         // =================================================================
-        // ✅ NOVA: FUNCIONALIDADES DE EDIÇÃO DE ITENS NO MODAL INDIVIDUAL
+        // ✅ FUNCIONALIDADES DE EDIÇÃO DE ITENS REMOVIDAS (DUPLICAÇÃO)
+        // As funções de edição estão implementadas anteriormente no código
         // =================================================================
-        
-        let currentEditingEventData = null;
-        let currentEditingItemsData = [];
-        
-        window.startEditingEventItems = async function(eventId, eventType) {
-            try {
-                // Buscar evento completo
-                const event = await gapi.client.calendar.events.get({
-                    calendarId: 'primary',
-                    eventId: eventId
-                });
-                
-                currentEditingEventData = event.result;
-                const eventCalc = calculateEventTotal(currentEditingEventData);
-                const items = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
-                currentEditingItemsData = [...items]; // Cópia dos itens
-                
-                // Esconder display e mostrar formulário de edição
-                const displayDiv = document.getElementById('payments-display');
-                const editDiv = document.getElementById('payments-edit');
-                
-                if (displayDiv && editDiv) {
-                    displayDiv.style.display = 'none';
-                    editDiv.style.display = 'block';
-                    
-                    // Criar formulário de edição
-                    let editHTML = '<div class="edit-items-form">';
-                    
-                    items.forEach((item, itemIndex) => {
-                        const statusOptions = eventType === 'recebimento' 
-                            ? ['RC', 'AGUARDANDO', 'ADIADO']
-                            : ['PG', 'PENDENTE', 'RECALCULADO'];
-                        
-                        editHTML += `
-                            <div class="edit-item-row" data-item-index="${itemIndex}">
-                                <div class="edit-item-field">
-                                    <label>Nome:</label>
-                                    <input type="text" class="edit-item-name" value="${item.name}" />
-                                </div>
-                                <div class="edit-item-field">
-                                    <label>Valor:</label>
-                                    <input type="number" class="edit-item-value" value="${item.value}" step="0.01" />
-                                </div>
-                                <div class="edit-item-field">
-                                    <label>Status:</label>
-                                    <select class="edit-item-status">
-                                        ${statusOptions.map(status => 
-                                            `<option value="${status}" ${item.status === status ? 'selected' : ''}>${status}</option>`
-                                        ).join('')}
-                                    </select>
-                                </div>
-                                <div class="edit-item-field">
-                                    <label>Detalhe:</label>
-                                    <input type="text" class="edit-item-detail" value="${item.detail || ''}" />
-                                </div>
-                            </div>
-                        `;
-                    });
-                    
-                    editHTML += `
-                        <div class="edit-items-actions">
-                            <button class="btn-save-items" onclick="saveEventItemsChanges('${eventId}', '${eventType}')">
-                                <i class="fas fa-save"></i> SALVAR ALTERAÇÕES
-                            </button>
-                            <button class="btn-cancel-edit" onclick="cancelEventItemsEdit()">
-                                <i class="fas fa-times"></i> CANCELAR
-                            </button>
-                        </div>
-                    </div>`;
-                    
-                    editDiv.innerHTML = editHTML;
-                }
-                
-            } catch (error) {
-                console.error('Erro ao iniciar edição:', error);
-                alert('Erro ao carregar dados para edição. Tente novamente.');
-            }
-        };
-        
-        window.cancelEventItemsEdit = function() {
-            const displayDiv = document.getElementById('payments-display');
-            const editDiv = document.getElementById('payments-edit');
-            
-            if (displayDiv && editDiv) {
-                displayDiv.style.display = 'block';
-                editDiv.style.display = 'none';
-            }
-            
-            currentEditingEventData = null;
-            currentEditingItemsData = [];
-        };
-        
-        window.saveEventItemsChanges = async function(eventId, eventType) {
-            try {
-                if (!currentEditingEventData) {
-                    throw new Error('Evento não encontrado para edição');
-                }
-                
-                // Coletar dados editados
-                const editDiv = document.getElementById('payments-edit');
-                const editRows = editDiv.querySelectorAll('.edit-item-row');
-                const updatedItems = [];
-                
-                editRows.forEach((row, itemIndex) => {
-                    const name = row.querySelector('.edit-item-name').value.trim();
-                    const value = parseFloat(row.querySelector('.edit-item-value').value) || 0;
-                    const status = row.querySelector('.edit-item-status').value;
-                    const detail = row.querySelector('.edit-item-detail').value.trim();
-                    
-                    updatedItems.push({
-                        name: name,
-                        value: value,
-                        status: status,
-                        detail: detail,
-                        formattedValue: formatCurrency(value),
-                        originalIndex: itemIndex
-                    });
-                });
-                
-                // Reconstruir descrição do evento
-                const newDescription = rebuildEventDescription(currentEditingEventData.description, updatedItems, eventType);
-                
-                // Atualizar evento no Google Calendar
-                await gapi.client.calendar.events.patch({
-                    calendarId: 'primary',
-                    eventId: eventId,
-                    resource: {
-                        description: newDescription
-                    }
-                });
-                
-                // Atualizar interface
-                alert('Alterações salvas com sucesso!');
-                
-                // Recarregar eventos e fechar modal
-                await loadEvents();
-                document.getElementById('eventModal').style.display = 'none';
-                
-            } catch (error) {
-                console.error('Erro ao salvar alterações:', error);
-                alert('Erro ao salvar alterações. Tente novamente.');
-            }
-        };
-        
-        window.rebuildEventDescription = function(originalDescription, updatedItems, eventType) {
-            if (!originalDescription) return '';
-            
-            let newDescription = originalDescription;
-            const eventCalc = calculateEventTotal(currentEditingEventData);
-            const originalItems = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
-            
-            // Para cada item original, substituir pela versão editada
-            originalItems.forEach((originalItem, index) => {
-                if (index < updatedItems.length) {
-                    const updatedItem = updatedItems[index];
-                    
-                    // Encontrar padrão do item original na descrição
-                    const originalPattern = `${originalItem.name} ${originalItem.formattedValue} (${originalItem.status})`;
-                    const detailPattern = originalItem.detail ? ` ${originalItem.detail}` : '';
-                    const fullOriginalPattern = originalPattern + detailPattern;
-                    
-                    // Criar novo padrão
-                    const newPattern = `${updatedItem.name} ${updatedItem.formattedValue} (${updatedItem.status})`;
-                    const newDetailPattern = updatedItem.detail ? ` ${updatedItem.detail}` : '';
-                    const fullNewPattern = newPattern + newDetailPattern;
-                    
-                    // Substituir na descrição
-                    newDescription = newDescription.replace(fullOriginalPattern, fullNewPattern);
-                    
-                    // Se não encontrou o padrão completo, tentar apenas o padrão básico
-                    if (newDescription === originalDescription) {
-                        newDescription = newDescription.replace(originalPattern, newPattern);
-                    }
-                }
-            });
-            
-            return newDescription;
-        };
     </script>
     
     <style>
@@ -8950,27 +8774,35 @@
         }
         
         .edit-items-form {
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 8px;
-            padding: 20px;
-            margin-top: 15px;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 25px;
+            margin-top: 20px;
             width: 100%;
             max-width: 100%;
             box-sizing: border-box;
             overflow-x: auto;
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
         .edit-item-row {
             display: grid;
-            grid-template-columns: 2fr 1fr 1fr 2fr;
-            gap: 15px;
-            margin-bottom: 20px;
-            padding: 15px;
-            background: rgba(255, 255, 255, 0.03);
-            border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            grid-template-columns: 2fr 1.2fr 1fr 2fr;
+            gap: 20px;
+            margin-bottom: 25px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.15);
             width: 100%;
             box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+        
+        .edit-item-row:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-2px);
         }
         
         .edit-item-field {
@@ -8989,37 +8821,48 @@
         
         .edit-item-field input,
         .edit-item-field select {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 5px;
-            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.15);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 12px 16px;
             color: #ffffff;
             font-size: 14px;
             width: 100%;
             box-sizing: border-box;
+            transition: all 0.3s ease;
         }
         
         .edit-item-field select {
-            background: #2196F3;
-            color: #ffffff;
-            border: 1px solid #1976D2;
+            background: linear-gradient(135deg, #2196F3, #1976D2) !important;
+            color: #ffffff !important;
+            border: 2px solid #1565C0 !important;
+            font-weight: 600;
+            cursor: pointer;
         }
         
         .edit-item-field select option {
-            background: #2196F3;
-            color: #ffffff;
-            padding: 8px;
+            background: #1976D2 !important;
+            color: #ffffff !important;
+            padding: 12px;
+            font-weight: 500;
         }
         
         .edit-item-field input:focus,
         .edit-item-field select:focus {
             outline: none;
-            border-color: #4CAF50;
-            background: rgba(255, 255, 255, 0.15);
+            border-color: #4CAF50 !important;
+            background: rgba(255, 255, 255, 0.25) !important;
+            box-shadow: 0 0 15px rgba(76, 175, 80, 0.3);
+            transform: translateY(-1px);
         }
         
         .edit-item-field select:focus {
-            background: #1976D2;
+            background: linear-gradient(135deg, #1976D2, #1565C0) !important;
+        }
+        
+        .edit-item-field input:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.2);
         }
         
         .edit-items-actions {
@@ -9035,40 +8878,59 @@
             background: linear-gradient(135deg, #4CAF50, #388E3C);
             color: white;
             border: none;
-            padding: 12px 25px;
-            border-radius: 5px;
+            padding: 15px 30px;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .btn-save-items:hover {
             background: linear-gradient(135deg, #388E3C, #2E7D32);
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
         }
         
         .btn-cancel-edit {
             background: linear-gradient(135deg, #f44336, #d32f2f);
             color: white;
             border: none;
-            padding: 12px 25px;
-            border-radius: 5px;
+            padding: 15px 30px;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
             transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(244, 67, 54, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         
         .btn-cancel-edit:hover {
             background: linear-gradient(135deg, #d32f2f, #b71c1c);
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(244, 67, 54, 0.4);
         }
         
         @media (max-width: 768px) {
+            .event-modal-content {
+                width: 98%;
+                margin: 2% auto;
+                padding: 20px;
+                min-width: 350px;
+                max-height: 95vh;
+            }
+            
             .edit-item-row {
                 grid-template-columns: 1fr;
-                gap: 10px;
+                gap: 15px;
+                padding: 15px;
             }
             
             .payments-header {
@@ -9079,6 +8941,15 @@
             
             .edit-items-actions {
                 flex-direction: column;
+                gap: 10px;
+            }
+            
+            .btn-save-items,
+            .btn-cancel-edit {
+                width: 100%;
+                justify-content: center;
+                padding: 12px 20px;
+                font-size: 14px;
             }
         }
     </style>
