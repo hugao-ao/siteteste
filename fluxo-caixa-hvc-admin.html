@@ -8512,8 +8512,25 @@
         
         window.saveEventItemsChanges = async function(eventId, eventType) {
             try {
+                console.log('💾 Iniciando salvamento das alterações...');
+                console.log('🆔 Event ID:', eventId);
+                console.log('🏷️ Event Type:', eventType);
+                
                 if (!currentEditingEventData) {
                     throw new Error('Evento não encontrado para edição');
+                }
+                
+                // Mostrar indicador de carregamento
+                const saveBtn = document.querySelector('.btn-save-items');
+                const cancelBtn = document.querySelector('.btn-cancel-edit');
+                
+                if (saveBtn) {
+                    saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> SALVANDO...';
+                    saveBtn.disabled = true;
+                }
+                
+                if (cancelBtn) {
+                    cancelBtn.disabled = true;
                 }
                 
                 // Coletar dados editados
@@ -8521,11 +8538,16 @@
                 const editRows = editDiv.querySelectorAll('.edit-item-row');
                 const updatedItems = [];
                 
+                console.log('📋 Coletando dados de', editRows.length, 'itens...');
+                
                 editRows.forEach((row, itemIndex) => {
                     const name = row.querySelector('.edit-item-name').value.trim();
-                    const value = parseFloat(row.querySelector('.edit-item-value').value) || 0;
+                    const valueInput = row.querySelector('.edit-item-value').value;
+                    const value = parseFloat(valueInput) || 0;
                     const status = row.querySelector('.edit-item-status').value;
                     const detail = row.querySelector('.edit-item-detail').value.trim();
+                    
+                    console.log(`📝 Item ${itemIndex + 1}:`, { name, value, status, detail });
                     
                     updatedItems.push({
                         name: name,
@@ -8537,11 +8559,27 @@
                     });
                 });
                 
+                console.log('✅ Dados coletados:', updatedItems);
+                
                 // Reconstruir descrição do evento
+                console.log('🔄 Reconstruindo descrição...');
                 const newDescription = rebuildEventDescription(currentEditingEventData.description, updatedItems, eventType);
                 
+                console.log('📝 Nova descrição:', newDescription);
+                
+                // Verificar se há contas múltiplas e usar o token correto
+                let accountEmail = currentEditingEventData._accountEmail;
+                if (accountEmail && window.connectedAccounts) {
+                    const account = window.connectedAccounts.find(acc => acc.email === accountEmail);
+                    if (account && account.accessToken) {
+                        console.log('🔑 Usando token da conta:', accountEmail);
+                        gapi.client.setToken({ access_token: account.accessToken });
+                    }
+                }
+                
                 // Atualizar evento no Google Calendar
-                await gapi.client.calendar.events.patch({
+                console.log('📤 Atualizando evento no Google Calendar...');
+                const updateResponse = await gapi.client.calendar.events.patch({
                     calendarId: 'primary',
                     eventId: eventId,
                     resource: {
@@ -8549,53 +8587,224 @@
                     }
                 });
                 
-                // Atualizar interface
-                alert('Alterações salvas com sucesso!');
+                console.log('✅ Evento atualizado:', updateResponse);
                 
-                // Recarregar eventos e fechar modal
-                await loadEvents();
-                document.getElementById('eventModal').style.display = 'none';
+                // Mostrar mensagem de sucesso melhorada
+                showSuccessMessage('Alterações salvas com sucesso!');
+                
+                // Recarregar eventos
+                console.log('🔄 Recarregando eventos...');
+                if (typeof loadFilteredEvents === 'function') {
+                    await loadFilteredEvents();
+                } else if (typeof loadEvents === 'function') {
+                    await loadEvents();
+                }
+                
+                // Fechar modal
+                console.log('🚪 Fechando modal...');
+                const modal = document.getElementById('eventModal');
+                if (modal) {
+                    modal.style.display = 'none';
+                }
+                
+                console.log('✅ Processo de salvamento concluído com sucesso!');
                 
             } catch (error) {
-                console.error('Erro ao salvar alterações:', error);
-                alert('Erro ao salvar alterações. Tente novamente.');
+                console.error('❌ Erro ao salvar alterações:', error);
+                showErrorMessage('Erro ao salvar alterações: ' + error.message);
+                
+                // Restaurar botões
+                const saveBtn = document.querySelector('.btn-save-items');
+                const cancelBtn = document.querySelector('.btn-cancel-edit');
+                
+                if (saveBtn) {
+                    saveBtn.innerHTML = '<i class="fas fa-save"></i> SALVAR ALTERAÇÕES';
+                    saveBtn.disabled = false;
+                }
+                
+                if (cancelBtn) {
+                    cancelBtn.disabled = false;
+                }
             }
         };
         
         window.rebuildEventDescription = function(originalDescription, updatedItems, eventType) {
             if (!originalDescription) return '';
             
+            console.log('🔄 Reconstruindo descrição do evento...');
+            console.log('📝 Descrição original:', originalDescription);
+            console.log('📋 Itens atualizados:', updatedItems);
+            console.log('🏷️ Tipo do evento:', eventType);
+            
             let newDescription = originalDescription;
             const eventCalc = calculateEventTotal(currentEditingEventData);
             const originalItems = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
+            
+            console.log('📊 Itens originais extraídos:', originalItems);
             
             // Para cada item original, substituir pela versão editada
             originalItems.forEach((originalItem, index) => {
                 if (index < updatedItems.length) {
                     const updatedItem = updatedItems[index];
                     
-                    // Encontrar padrão do item original na descrição
-                    const originalPattern = `${originalItem.name} ${originalItem.formattedValue} (${originalItem.status})`;
-                    const detailPattern = originalItem.detail ? ` ${originalItem.detail}` : '';
-                    const fullOriginalPattern = originalPattern + detailPattern;
+                    console.log(`🔄 Processando item ${index + 1}:`);
+                    console.log('   Original:', originalItem);
+                    console.log('   Atualizado:', updatedItem);
                     
-                    // Criar novo padrão
-                    const newPattern = `${updatedItem.name} ${updatedItem.formattedValue} (${updatedItem.status})`;
-                    const newDetailPattern = updatedItem.detail ? ` ${updatedItem.detail}` : '';
-                    const fullNewPattern = newPattern + newDetailPattern;
+                    // Construir padrões mais flexíveis para encontrar o item na descrição
+                    const patterns = [
+                        // Padrão completo com detalhe
+                        `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})${originalItem.detail ? ' ' + originalItem.detail : ''}`,
+                        
+                        // Padrão sem hífen
+                        `${originalItem.name} ${originalItem.formattedValue} (${originalItem.status})${originalItem.detail ? ' ' + originalItem.detail : ''}`,
+                        
+                        // Padrão básico sem detalhe
+                        `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`,
+                        
+                        // Padrão básico sem hífen e sem detalhe
+                        `${originalItem.name} ${originalItem.formattedValue} (${originalItem.status})`,
+                        
+                        // Padrão apenas com nome e valor
+                        `${originalItem.name} - ${originalItem.formattedValue}`,
+                        
+                        // Padrão apenas com nome e valor sem hífen
+                        `${originalItem.name} ${originalItem.formattedValue}`
+                    ];
                     
-                    // Substituir na descrição
-                    newDescription = newDescription.replace(fullOriginalPattern, fullNewPattern);
+                    // Construir novo padrão mantendo o formato original
+                    const newPatterns = [
+                        // Padrão completo com detalhe
+                        `${updatedItem.name} - ${updatedItem.formattedValue} (${updatedItem.status})${updatedItem.detail ? ' ' + updatedItem.detail : ''}`,
+                        
+                        // Padrão sem hífen
+                        `${updatedItem.name} ${updatedItem.formattedValue} (${updatedItem.status})${updatedItem.detail ? ' ' + updatedItem.detail : ''}`,
+                        
+                        // Padrão básico sem detalhe
+                        `${updatedItem.name} - ${updatedItem.formattedValue} (${updatedItem.status})`,
+                        
+                        // Padrão básico sem hífen e sem detalhe
+                        `${updatedItem.name} ${updatedItem.formattedValue} (${updatedItem.status})`,
+                        
+                        // Padrão apenas com nome e valor
+                        `${updatedItem.name} - ${updatedItem.formattedValue}`,
+                        
+                        // Padrão apenas com nome e valor sem hífen
+                        `${updatedItem.name} ${updatedItem.formattedValue}`
+                    ];
                     
-                    // Se não encontrou o padrão completo, tentar apenas o padrão básico
-                    if (newDescription === originalDescription) {
-                        newDescription = newDescription.replace(originalPattern, newPattern);
+                    // Tentar encontrar e substituir usando os padrões
+                    let found = false;
+                    for (let i = 0; i < patterns.length && !found; i++) {
+                        const originalPattern = patterns[i];
+                        const newPattern = newPatterns[i];
+                        
+                        if (newDescription.includes(originalPattern)) {
+                            console.log(`   ✅ Padrão encontrado (${i + 1}): "${originalPattern}"`);
+                            console.log(`   🔄 Substituindo por: "${newPattern}"`);
+                            
+                            newDescription = newDescription.replace(originalPattern, newPattern);
+                            found = true;
+                        }
+                    }
+                    
+                    if (!found) {
+                        console.warn(`   ⚠️ Nenhum padrão encontrado para o item ${index + 1}`);
+                        console.warn('   📝 Tentando substituição por regex...');
+                        
+                        // Fallback: usar regex para encontrar padrões similares
+                        const nameRegex = new RegExp(escapeRegExp(originalItem.name), 'gi');
+                        const valueRegex = new RegExp(escapeRegExp(originalItem.formattedValue), 'gi');
+                        
+                        // Substituir nome se encontrado
+                        if (nameRegex.test(newDescription)) {
+                            newDescription = newDescription.replace(nameRegex, updatedItem.name);
+                            console.log(`   ✅ Nome substituído via regex`);
+                        }
+                        
+                        // Substituir valor se encontrado
+                        if (valueRegex.test(newDescription)) {
+                            newDescription = newDescription.replace(valueRegex, updatedItem.formattedValue);
+                            console.log(`   ✅ Valor substituído via regex`);
+                        }
                     }
                 }
             });
             
+            console.log('✅ Descrição reconstruída:', newDescription);
             return newDescription;
         };
+
+        // Função auxiliar para escapar caracteres especiais em regex
+        function escapeRegExp(string) {
+            return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        }
+
+        // Funções auxiliares para mensagens melhoradas
+        function showSuccessMessage(message) {
+            showMessage(message, 'success');
+        }
+
+        function showErrorMessage(message) {
+            showMessage(message, 'error');
+        }
+
+        function showMessage(message, type = 'info') {
+            // Remover mensagem anterior se existir
+            const existingMessage = document.querySelector('.message-notification');
+            if (existingMessage) {
+                existingMessage.remove();
+            }
+
+            // Criar nova mensagem
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message-notification message-${type}`;
+            messageDiv.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${type === 'success' ? '#4CAF50' : type === 'error' ? '#f44336' : '#2196F3'};
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                z-index: 10000;
+                max-width: 400px;
+                font-size: 14px;
+                font-weight: 500;
+                animation: slideIn 0.3s ease-out;
+            `;
+            messageDiv.textContent = message;
+
+            // Adicionar animação CSS se não existir
+            if (!document.querySelector('#message-animation-styles')) {
+                const style = document.createElement('style');
+                style.id = 'message-animation-styles';
+                style.textContent = `
+                    @keyframes slideIn {
+                        from { transform: translateX(100%); opacity: 0; }
+                        to { transform: translateX(0); opacity: 1; }
+                    }
+                    @keyframes slideOut {
+                        from { transform: translateX(0); opacity: 1; }
+                        to { transform: translateX(100%); opacity: 0; }
+                    }
+                `;
+                document.head.appendChild(style);
+            }
+
+            document.body.appendChild(messageDiv);
+
+            // Remover após 5 segundos
+            setTimeout(() => {
+                messageDiv.style.animation = 'slideOut 0.3s ease-in forwards';
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.parentNode.removeChild(messageDiv);
+                    }
+                }, 300);
+            }, 5000);
+        }
     </script>
     
     <style>
