@@ -1052,7 +1052,7 @@
 
         /* ✅ NOVO: Cores dos totais iguais aos eventões - PAGAMENTOS */
         .event-total.event-payment-complete {
-            background: linear-gradient(135deg, #ff9800, #f57c00); /* LARANJA */
+            background: linear-gradient(135deg, #8e24aa, #6a1b9a); /* VERMELHO ESCURO */
         }
 
         .event-total.event-payment-overdue {
@@ -1060,7 +1060,7 @@
         }
 
         .event-total.event-payment-default {
-            background: linear-gradient(135deg, #8e24aa, #6a1b9a); /* VINHO (VERMELHO ESCURO) */
+            background: linear-gradient(135deg, #ff9800, #f57c00); /* LARANJA */
         }
 
         /* ✅ NOVO: Cores dos totais iguais aos eventões - RECEBIMENTOS */
@@ -1069,7 +1069,7 @@
         }
 
         .event-total.event-receiving-overdue {
-            background: linear-gradient(135deg, #ffeb3b, #fbc02d); /* AMARELO */
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2); /* ROXO */
         }
 
         .event-total.event-receiving-default {
@@ -1147,7 +1147,7 @@
 
         /* ✅ NOVO: Estilos para eventos agrupados por status - PAGAMENTOS */
         .event-item.event-payment-complete {
-            background: linear-gradient(135deg, #ff9800, #f57c00); /* LARANJA */
+            background: linear-gradient(135deg, #8e24aa, #6a1b9a); /* VERMELHO ESCURO */
         }
 
         .event-item.event-payment-overdue {
@@ -1155,7 +1155,7 @@
         }
 
         .event-item.event-payment-default {
-            background: linear-gradient(135deg, #8e24aa, #6a1b9a); /* VINHO (VERMELHO ESCURO) */
+            background: linear-gradient(135deg, #ff9800, #f57c00); /* LARANJA */
         }
 
         /* ✅ NOVO: Estilos para eventos de recebimentos */
@@ -1164,7 +1164,7 @@
         }
 
         .event-item.event-receiving-overdue {
-            background: linear-gradient(135deg, #ffeb3b, #fbc02d); /* AMARELO */
+            background: linear-gradient(135deg, #9c27b0, #7b1fa2); /* ROXO */
         }
 
         .event-item.event-receiving-default {
@@ -5713,13 +5713,13 @@
                     });
                 });
                 
-                // Regra 1: Todos os itens são PG = LARANJA
+                // Regra 1: Todos os itens são PG = VERMELHO ESCURO
                 if (allItemsPG) return 'event-payment-complete';
                 
                 // Regra 2: Data atual > data do evento + algum item não conforme = VERMELHO
                 if (today > compareDate && hasNonCompliantItem) return 'event-payment-overdue';
                 
-                // Regra 3: Demais casos = VINHO (VERMELHO ESCURO)
+                // Regra 3: Demais casos = LARANJA
                 return 'event-payment-default';
                 
             } else if (eventType === 'recebimento') {
@@ -5747,7 +5747,7 @@
                 // Regra 1: Todos os itens são RC = AZUL
                 if (allItemsRC) return 'event-receiving-complete';
                 
-                // Regra 2: Data atual > data do evento + algum item não conforme = AMARELO
+                // Regra 2: Data atual > data do evento + algum item não conforme = ROXO
                 if (today > compareDate && hasNonCompliantItem) return 'event-receiving-overdue';
                 
                 // Regra 3: Demais casos = VERDE
