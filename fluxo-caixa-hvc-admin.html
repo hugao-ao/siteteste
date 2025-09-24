@@ -1244,6 +1244,34 @@
             position: relative;
             animation: modalSlideIn 0.3s ease;
             box-sizing: border-box;
+            resize: both;
+            min-width: 400px;
+            min-height: 300px;
+        }
+        
+        .event-modal-content .close {
+            position: fixed;
+            top: calc(5% + 10px);
+            right: calc((100% - 90%) / 2 - 15px);
+            color: #ffffff;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 2001;
+            background: rgba(255, 0, 0, 0.8);
+            border-radius: 50%;
+            width: 35px;
+            height: 35px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid #ffffff;
+            transition: all 0.3s ease;
+        }
+        
+        .event-modal-content .close:hover {
+            background: rgba(255, 0, 0, 1);
+            transform: scale(1.1);
         }
 
         .event-total-section {
@@ -6950,14 +6978,9 @@
         }
 
         // =================================================================
-        // WINDOW CLICK HANDLER
+        // WINDOW CLICK HANDLER - REMOVIDO PARA EVITAR FECHAR MODAL AO CLICAR FORA
         // =================================================================
-        window.onclick = function(event) {
-            const eventModal = document.getElementById('eventModal');
-            if (event.target === eventModal) {
-                eventModal.style.display = 'none';
-            }
-        }
+        // Modal só fecha quando clicar no X
 
         /**
          * Função pública para exclusão de eventos (wrapper que evita override)
@@ -7820,29 +7843,42 @@
                     console.log('  Original:', originalItem);
                     console.log('  Atualizado:', updatedItem);
                     
-                    // Padrão 1: Com detalhes - "Nome - R$ Valor (Status) - Detalhes"
+                    // Criar padrões de busca mais flexíveis
+                    const patterns = [];
+                    
+                    // Padrão 1: Completo com detalhes - "Nome - R$ Valor (Status) - Detalhes"
                     if (originalItem.detail) {
-                        const originalPattern = `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status}) - ${originalItem.detail}`;
-                        const newPattern = `${updatedItem.name} - ${updatedItem.formattedValue} (${updatedItem.status})${updatedItem.detail ? ' - ' + updatedItem.detail : ''}`;
-                        
-                        if (newDescription.includes(originalPattern)) {
-                            newDescription = newDescription.replace(originalPattern, newPattern);
-                            console.log('  ✅ Substituição realizada (Padrão 1)');
-                            return;
-                        }
+                        patterns.push(`${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status}) - ${originalItem.detail}`);
                     }
                     
                     // Padrão 2: Sem detalhes - "Nome - R$ Valor (Status)"
-                    const originalPattern2 = `${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`;
-                    const newPattern2 = `${updatedItem.name} - ${updatedItem.formattedValue} (${updatedItem.status})${updatedItem.detail ? ' - ' + updatedItem.detail : ''}`;
+                    patterns.push(`${originalItem.name} - ${originalItem.formattedValue} (${originalItem.status})`);
                     
-                    if (newDescription.includes(originalPattern2)) {
-                        newDescription = newDescription.replace(originalPattern2, newPattern2);
-                        console.log('  ✅ Substituição realizada (Padrão 2)');
-                        return;
+                    // Padrão 3: Apenas nome e valor - "Nome - R$ Valor"
+                    patterns.push(`${originalItem.name} - ${originalItem.formattedValue}`);
+                    
+                    // Tentar cada padrão
+                    let substituted = false;
+                    for (const pattern of patterns) {
+                        if (newDescription.includes(pattern)) {
+                            // Criar novo padrão com formatação correta
+                            const newFormattedValue = `R$ ${updatedItem.value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+                            const newPattern = `${updatedItem.name} - ${newFormattedValue} (${updatedItem.status})${updatedItem.detail ? ' - ' + updatedItem.detail : ''}`;
+                            
+                            console.log(`  🔄 Substituindo: "${pattern}"`);
+                            console.log(`  ➡️ Por: "${newPattern}"`);
+                            
+                            newDescription = newDescription.replace(pattern, newPattern);
+                            console.log(`  ✅ Substituição realizada com sucesso!`);
+                            substituted = true;
+                            break;
+                        }
                     }
                     
-                    console.log('  ⚠️ Nenhum padrão encontrado para substituição');
+                    if (!substituted) {
+                        console.log('  ⚠️ Nenhum padrão encontrado para substituição');
+                        console.log('  🔍 Padrões testados:', patterns);
+                    }
                 }
             });
             
