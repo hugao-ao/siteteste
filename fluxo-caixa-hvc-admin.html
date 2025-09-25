@@ -187,6 +187,135 @@
             margin-top: 5px;
         }
 
+        /* ✅ NOVO: Estilos para layout atualizado dos status */
+        .status-stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .status-stat-count {
+            color: #ffffff;
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .status-stat-daily {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.8rem;
+            font-style: italic;
+            margin-bottom: 5px;
+        }
+
+        /* ✅ NOVO: Estilos para Análise de Saldo */
+        .balance-analysis {
+            background: rgba(138, 43, 226, 0.2);
+            border: 2px solid #8a2be2;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .balance-analysis h3 {
+            color: #da70d6;
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .balance-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .balance-item {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 20px;
+            border: 2px solid transparent;
+        }
+
+        .balance-item.positive {
+            border-color: #4caf50;
+            background: rgba(76, 175, 80, 0.1);
+        }
+
+        .balance-item.pending {
+            border-color: #ff9800;
+            background: rgba(255, 152, 0, 0.1);
+        }
+
+        .balance-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 15px;
+            color: #ffffff;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .balance-values {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .balance-value {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+        }
+
+        .balance-label {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .balance-amount {
+            color: #ffc107;
+            font-size: 1rem;
+            font-weight: bold;
+        }
+
+        .balance-daily {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+
+        .balance-result {
+            margin-top: 10px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .balance-final {
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .balance-final.positive {
+            color: #4caf50;
+        }
+
+        .balance-final.negative {
+            color: #f44336;
+        }
+
         /* Lista de Pagamentos */
         /* ✅ NOVO: Container para resumos mensais */
         .monthly-summary-container {
@@ -4565,6 +4694,11 @@
         function updateMonthlySummary() {
             const monthlyData = calculateMonthlyTotals();
             
+            // Calcular dias do mês para médias diárias
+            const currentMonth = currentDate.getMonth();
+            const currentYear = currentDate.getFullYear();
+            const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+            
             // Atualizar total mensal geral
             const monthlyTotalElement = document.getElementById('monthlyTotal');
             if (monthlyTotalElement) {
@@ -4597,32 +4731,64 @@
             }
             
             if (avgPaymentElement) {
-                // Calcular valor médio por dia do mês
-                const currentMonth = currentDate.getMonth();
-                const currentYear = currentDate.getFullYear();
-                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
                 const avgValue = monthlyData.total > 0 ? monthlyData.total / daysInMonth : 0;
                 avgPaymentElement.textContent = formatCurrency(avgValue);
             }
 
-            // Atualizar estatísticas de PAGAMENTOS por status
+            // ✅ NOVO: Atualizar Análise de Saldo
+            const balanceRCElement = document.getElementById('balanceRC');
+            const balancePGElement = document.getElementById('balancePG');
+            const balanceRCDailyElement = document.getElementById('balanceRCDaily');
+            const balancePGDailyElement = document.getElementById('balancePGDaily');
+            const balanceRCPGElement = document.getElementById('balanceRCPG');
+            
+            const balanceAguardandoElement = document.getElementById('balanceAguardando');
+            const balancePendenteElement = document.getElementById('balancePendente');
+            const balanceAguardandoDailyElement = document.getElementById('balanceAguardandoDaily');
+            const balancePendenteDailyElement = document.getElementById('balancePendenteDaily');
+            const balanceAguardandoPendenteElement = document.getElementById('balanceAguardandoPendente');
+            
+            if (balanceRCElement) balanceRCElement.textContent = formatCurrency(monthlyData.amountRC);
+            if (balancePGElement) balancePGElement.textContent = formatCurrency(monthlyData.amountPG);
+            if (balanceRCDailyElement) balanceRCDailyElement.textContent = `(${formatCurrency(monthlyData.amountRC / daysInMonth)}/dia)`;
+            if (balancePGDailyElement) balancePGDailyElement.textContent = `(${formatCurrency(monthlyData.amountPG / daysInMonth)}/dia)`;
+            if (balanceRCPGElement) {
+                const saldoRCPG = monthlyData.amountRC - monthlyData.amountPG;
+                balanceRCPGElement.textContent = formatCurrency(saldoRCPG);
+                balanceRCPGElement.className = `balance-final ${saldoRCPG >= 0 ? 'positive' : 'negative'}`;
+            }
+            
+            if (balanceAguardandoElement) balanceAguardandoElement.textContent = formatCurrency(monthlyData.amountAguardando);
+            if (balancePendenteElement) balancePendenteElement.textContent = formatCurrency(monthlyData.amountPendente);
+            if (balanceAguardandoDailyElement) balanceAguardandoDailyElement.textContent = `(${formatCurrency(monthlyData.amountAguardando / daysInMonth)}/dia)`;
+            if (balancePendenteDailyElement) balancePendenteDailyElement.textContent = `(${formatCurrency(monthlyData.amountPendente / daysInMonth)}/dia)`;
+            if (balanceAguardandoPendenteElement) {
+                const saldoAguardandoPendente = monthlyData.amountAguardando - monthlyData.amountPendente;
+                balanceAguardandoPendenteElement.textContent = formatCurrency(saldoAguardandoPendente);
+                balanceAguardandoPendenteElement.className = `balance-final ${saldoAguardandoPendente >= 0 ? 'positive' : 'negative'}`;
+            }
+
+            // ✅ ATUALIZADO: Estatísticas de PAGAMENTOS com quantidade e média diária
             const totalPGElement = document.getElementById('totalPG');
             const totalPendenteElement = document.getElementById('totalPendente');
             const totalRecalculadoElement = document.getElementById('totalRecalculado');
             const amountPGElement = document.getElementById('amountPG');
             const amountPendenteElement = document.getElementById('amountPendente');
             const amountRecalculadoElement = document.getElementById('amountRecalculado');
+            const avgPGDailyElement = document.getElementById('avgPGDaily');
+            const avgPendenteDailyElement = document.getElementById('avgPendenteDaily');
+            const avgRecalculadoDailyElement = document.getElementById('avgRecalculadoDaily');
             
             if (totalPGElement) {
-                totalPGElement.textContent = monthlyData.totalPG;
+                totalPGElement.textContent = `${monthlyData.totalPG} itens`;
             }
             
             if (totalPendenteElement) {
-                totalPendenteElement.textContent = monthlyData.totalPendente;
+                totalPendenteElement.textContent = `${monthlyData.totalPendente} itens`;
             }
             
             if (totalRecalculadoElement) {
-                totalRecalculadoElement.textContent = monthlyData.totalRecalculado;
+                totalRecalculadoElement.textContent = `${monthlyData.totalRecalculado} itens`;
             }
             
             if (amountPGElement) {
@@ -4637,24 +4803,39 @@
                 amountRecalculadoElement.textContent = formatCurrency(monthlyData.amountRecalculado);
             }
             
-            // ✅ NOVO: Atualizar estatísticas de RECEBIMENTOS por status
+            if (avgPGDailyElement) {
+                avgPGDailyElement.textContent = formatCurrency(monthlyData.amountPG / daysInMonth) + '/dia';
+            }
+            
+            if (avgPendenteDailyElement) {
+                avgPendenteDailyElement.textContent = formatCurrency(monthlyData.amountPendente / daysInMonth) + '/dia';
+            }
+            
+            if (avgRecalculadoDailyElement) {
+                avgRecalculadoDailyElement.textContent = formatCurrency(monthlyData.amountRecalculado / daysInMonth) + '/dia';
+            }
+            
+            // ✅ ATUALIZADO: Estatísticas de RECEBIMENTOS com quantidade e média diária
             const totalRCElement = document.getElementById('totalRC');
             const totalAguardandoElement = document.getElementById('totalAguardando');
             const totalAdiadoElement = document.getElementById('totalAdiado');
             const amountRCElement = document.getElementById('amountRC');
             const amountAguardandoElement = document.getElementById('amountAguardando');
             const amountAdiadoElement = document.getElementById('amountAdiado');
+            const avgRCDailyElement = document.getElementById('avgRCDaily');
+            const avgAguardandoDailyElement = document.getElementById('avgAguardandoDaily');
+            const avgAdiadoDailyElement = document.getElementById('avgAdiadoDaily');
             
             if (totalRCElement) {
-                totalRCElement.textContent = monthlyData.totalRC;
+                totalRCElement.textContent = `${monthlyData.totalRC} itens`;
             }
             
             if (totalAguardandoElement) {
-                totalAguardandoElement.textContent = monthlyData.totalAguardando;
+                totalAguardandoElement.textContent = `${monthlyData.totalAguardando} itens`;
             }
             
             if (totalAdiadoElement) {
-                totalAdiadoElement.textContent = monthlyData.totalAdiado;
+                totalAdiadoElement.textContent = `${monthlyData.totalAdiado} itens`;
             }
             
             if (amountRCElement) {
@@ -4667,6 +4848,18 @@
             
             if (amountAdiadoElement) {
                 amountAdiadoElement.textContent = formatCurrency(monthlyData.amountAdiado);
+            }
+            
+            if (avgRCDailyElement) {
+                avgRCDailyElement.textContent = formatCurrency(monthlyData.amountRC / daysInMonth) + '/dia';
+            }
+            
+            if (avgAguardandoDailyElement) {
+                avgAguardandoDailyElement.textContent = formatCurrency(monthlyData.amountAguardando / daysInMonth) + '/dia';
+            }
+            
+            if (avgAdiadoDailyElement) {
+                avgAdiadoDailyElement.textContent = formatCurrency(monthlyData.amountAdiado / daysInMonth) + '/dia';
             }
             
             // Atualizar listas com filtros
@@ -8271,6 +8464,58 @@
                 </div>
             </div>
 
+            <!-- ✅ NOVO: Análise de Saldo -->
+            <div class="balance-analysis">
+                <h3><i class="fas fa-balance-scale"></i> Análise de Saldo</h3>
+                <div class="balance-stats">
+                    <div class="balance-item positive">
+                        <div class="balance-header">
+                            <i class="fas fa-arrow-up"></i>
+                            <span>Recebido vs Pago</span>
+                        </div>
+                        <div class="balance-values">
+                            <div class="balance-value">
+                                <span class="balance-label">RC:</span>
+                                <span id="balanceRC" class="balance-amount">R$ 0,00</span>
+                                <span id="balanceRCDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                            </div>
+                            <div class="balance-value">
+                                <span class="balance-label">PG:</span>
+                                <span id="balancePG" class="balance-amount">R$ 0,00</span>
+                                <span id="balancePGDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                            </div>
+                            <div class="balance-result">
+                                <span class="balance-label">Saldo:</span>
+                                <span id="balanceRCPG" class="balance-final">R$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="balance-item pending">
+                        <div class="balance-header">
+                            <i class="fas fa-clock"></i>
+                            <span>Aguardando vs Pendente</span>
+                        </div>
+                        <div class="balance-values">
+                            <div class="balance-value">
+                                <span class="balance-label">AGUARDANDO:</span>
+                                <span id="balanceAguardando" class="balance-amount">R$ 0,00</span>
+                                <span id="balanceAguardandoDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                            </div>
+                            <div class="balance-value">
+                                <span class="balance-label">PENDENTE:</span>
+                                <span id="balancePendente" class="balance-amount">R$ 0,00</span>
+                                <span id="balancePendenteDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                            </div>
+                            <div class="balance-result">
+                                <span class="balance-label">Saldo:</span>
+                                <span id="balanceAguardandoPendente" class="balance-final">R$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Resumos Lado a Lado -->
             <div class="summaries-row">
                 <!-- Resumo de Pagamentos -->
@@ -8280,18 +8525,27 @@
                     
                     <div class="status-stats">
                         <div class="status-stat-item pg">
-                            <div id="totalPG" class="status-stat-value">0</div>
-                            <div id="amountPG" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-header">
+                                <div id="totalPG" class="status-stat-count">0 itens</div>
+                                <div id="amountPG" class="status-stat-amount">R$ 0,00</div>
+                            </div>
+                            <div id="avgPGDaily" class="status-stat-daily">R$ 0,00/dia</div>
                             <div class="status-stat-label">PG</div>
                         </div>
                         <div class="status-stat-item pendente">
-                            <div id="totalPendente" class="status-stat-value">0</div>
-                            <div id="amountPendente" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-header">
+                                <div id="totalPendente" class="status-stat-count">0 itens</div>
+                                <div id="amountPendente" class="status-stat-amount">R$ 0,00</div>
+                            </div>
+                            <div id="avgPendenteDaily" class="status-stat-daily">R$ 0,00/dia</div>
                             <div class="status-stat-label">Pendente</div>
                         </div>
                         <div class="status-stat-item recalculado">
-                            <div id="totalRecalculado" class="status-stat-value">0</div>
-                            <div id="amountRecalculado" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-header">
+                                <div id="totalRecalculado" class="status-stat-count">0 itens</div>
+                                <div id="amountRecalculado" class="status-stat-amount">R$ 0,00</div>
+                            </div>
+                            <div id="avgRecalculadoDaily" class="status-stat-daily">R$ 0,00/dia</div>
                             <div class="status-stat-label">Recalculado</div>
                         </div>
                     </div>
@@ -8304,18 +8558,27 @@
                     
                     <div class="status-stats">
                         <div class="status-stat-item rc">
-                            <div id="totalRC" class="status-stat-value">0</div>
-                            <div id="amountRC" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-header">
+                                <div id="totalRC" class="status-stat-count">0 itens</div>
+                                <div id="amountRC" class="status-stat-amount">R$ 0,00</div>
+                            </div>
+                            <div id="avgRCDaily" class="status-stat-daily">R$ 0,00/dia</div>
                             <div class="status-stat-label">RC</div>
                         </div>
                         <div class="status-stat-item aguardando">
-                            <div id="totalAguardando" class="status-stat-value">0</div>
-                            <div id="amountAguardando" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-header">
+                                <div id="totalAguardando" class="status-stat-count">0 itens</div>
+                                <div id="amountAguardando" class="status-stat-amount">R$ 0,00</div>
+                            </div>
+                            <div id="avgAguardandoDaily" class="status-stat-daily">R$ 0,00/dia</div>
                             <div class="status-stat-label">Aguardando</div>
                         </div>
                         <div class="status-stat-item adiado">
-                            <div id="totalAdiado" class="status-stat-value">0</div>
-                            <div id="amountAdiado" class="status-stat-amount">R$ 0,00</div>
+                            <div class="status-stat-header">
+                                <div id="totalAdiado" class="status-stat-count">0 itens</div>
+                                <div id="amountAdiado" class="status-stat-amount">R$ 0,00</div>
+                            </div>
+                            <div id="avgAdiadoDaily" class="status-stat-daily">R$ 0,00/dia</div>
                             <div class="status-stat-label">Adiado</div>
                         </div>
                     </div>
