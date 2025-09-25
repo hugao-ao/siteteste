@@ -281,42 +281,52 @@
         .balance-values {
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
+            padding: 8px 0;
         }
 
         .balance-value {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 12px;
+            padding: 12px 16px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
+            min-height: 44px;
         }
 
-        .balance-label {
+         .balance-label {
             color: rgba(255, 255, 255, 0.8);
-            font-size: 0.9rem;
-            font-weight: bold;
+            font-size: 0.95rem;
+            font-weight: 500;
+            min-width: 120px;
         }
 
         .balance-amount {
-            color: #ffc107;
-            font-size: 1rem;
+            color: #ffffff;
             font-weight: bold;
+            font-size: 1.1rem;
+            margin-right: 8px;
         }
 
         .balance-daily {
             color: rgba(255, 255, 255, 0.6);
-            font-size: 0.8rem;
+            font-size: 0.85rem;
+            margin-left: 8px;
+            white-space: nowrap;
             font-style: italic;
         }
 
         .balance-result {
-            margin-top: 10px;
-            padding: 12px;
+            margin-top: 16px;
+            padding: 16px;
             background: rgba(255, 255, 255, 0.1);
             border-radius: 8px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-top: 2px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            min-height: 48px;
         }
 
         .balance-final {
@@ -4737,8 +4747,31 @@
             paymentsList.sort((a, b) => b.eventDate - a.eventDate);
             receivingsList.sort((a, b) => b.eventDate - a.eventDate);
             
+            // ✅ NOVO: Calcular movimentação atual (apenas PG + RC até ontem)
+            const yesterday = new Date(today);
+            yesterday.setDate(yesterday.getDate() - 1);
+            
+            let currentMovement = 0;
+            filteredEvents.forEach(event => {
+                const eventDate = parseEventDate(event);
+                if (eventDate.getMonth() === currentMonth && eventDate.getFullYear() === currentYear && eventDate <= yesterday) {
+                    const eventCalc = calculateEventTotal(event);
+                    eventCalc.paymentItems.forEach(payment => {
+                        if (payment.status === 'PG') {
+                            currentMovement += payment.value;
+                        }
+                    });
+                    eventCalc.receivingItems.forEach(receiving => {
+                        if (receiving.status === 'RC') {
+                            currentMovement += receiving.value;
+                        }
+                    });
+                }
+            });
+
             return {
                 total: monthlyTotal,
+                currentMovement: currentMovement, // ✅ NOVO: Movimentação atual
                 paymentTotal: amountPG + amountPendente,
                 receivingTotal: amountRC + amountAguardando,
                 events: totalEvents,
@@ -4775,10 +4808,10 @@
             const currentYear = currentDate.getFullYear();
             const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
             
-            // Atualizar total mensal geral
+            // ✅ ATUALIZADO: Usar movimentação atual (PG + RC até ontem)
             const monthlyTotalElement = document.getElementById('monthlyTotal');
             if (monthlyTotalElement) {
-                monthlyTotalElement.textContent = formatCurrency(monthlyData.total);
+                monthlyTotalElement.textContent = formatCurrency(monthlyData.currentMovement);
             }
             
             // Atualizar totais por seção
@@ -6280,11 +6313,16 @@
                 `;
                 
                 if (eventCalc.payments.length > 0) {
+                    const eventType = getEventType(event);
+                    const isReceiving = eventType === 'recebimento';
+                    const itemsLabel = isReceiving ? 'Recebimentos' : 'Pagamentos';
+                    const editType = isReceiving ? 'recebimento' : 'pagamento';
+                    
                     detailsHTML += `
                         <div class="event-values-list">
                             <div class="payments-header">
-                                <h4><i class="fas fa-list"></i> Pagamentos Encontrados (${eventCalc.count}):</h4>
-                                <button class="btn-edit-payments" onclick="startEditingEventItems('${event.id}', 'pagamento')">
+                                <h4><i class="fas fa-list"></i> ${itemsLabel} Encontrados (${eventCalc.count}):</h4>
+                                <button class="btn-edit-payments" onclick="startEditingEventItems('${event.id}', '${editType}')">
                                     <i class="fas fa-edit"></i> EDITAR
                                 </button>
                             </div>
