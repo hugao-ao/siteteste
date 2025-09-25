@@ -7821,85 +7821,38 @@
             }
         };
 
-        // Função para reconstruir a descrição do evento usando a string original do extractPaymentInfo
+        // Função para reconstruir a descrição do evento - USANDO LÓGICA EXISTENTE
         window.rebuildEventDescription = function(originalDescription, updatedItems, eventType) {
-            if (!originalDescription) return '';
-            
-            console.log('🔧 Reconstruindo descrição usando extractPaymentInfo...');
+            console.log('🔧 Reconstruindo descrição usando lógica existente...');
             console.log('📝 Descrição original:', originalDescription);
             console.log('📋 Itens atualizados:', updatedItems);
             
-            let newDescription = originalDescription;
-            
-            // Usar calculateEventTotal que já funciona para obter os itens originais
-            const eventCalc = calculateEventTotal(currentEditingEventData);
-            const originalItems = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
-            
-            console.log('📊 Itens extraídos pelo extractPaymentInfo:', originalItems);
-            
-            // Para cada item original, substituir pela versão editada
-            originalItems.forEach((originalItem, index) => {
-                if (index < updatedItems.length) {
-                    const updatedItem = updatedItems[index];
-                    
-                    console.log(`🔄 Processando item ${index + 1}:`);
-                    console.log('  Original:', originalItem);
-                    console.log('  Atualizado:', updatedItem);
-                    
-                    // Usar a string original exata que o extractPaymentInfo encontrou
-                    const originalString = originalItem.original;
-                    console.log(`  📄 String original exata: "${originalString}"`);
-                    
-                    if (originalString && newDescription.includes(originalString)) {
-                        // Construir nova string com as alterações
-                        let newString = originalString;
-                        
-                        // 1. Substituir NOME se mudou
-                        if (updatedItem.name !== originalItem.name) {
-                            newString = newString.replace(originalItem.name, updatedItem.name);
-                            console.log(`  📝 Nome alterado: "${originalItem.name}" → "${updatedItem.name}"`);
-                        }
-                        
-                        // 2. Substituir VALOR se mudou
-                        if (updatedItem.value !== originalItem.value) {
-                            const newFormattedValue = `R$ ${updatedItem.value.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
-                            newString = newString.replace(originalItem.formattedValue, newFormattedValue);
-                            console.log(`  💰 Valor alterado: "${originalItem.formattedValue}" → "${newFormattedValue}"`);
-                        }
-                        
-                        // 3. Substituir STATUS se mudou
-                        if (updatedItem.status !== originalItem.status) {
-                            newString = newString.replace(`(${originalItem.status})`, `(${updatedItem.status})`);
-                            console.log(`  🏷️ Status alterado: "(${originalItem.status})" → "(${updatedItem.status})"`);
-                        }
-                        
-                        // 4. Substituir DETALHE se mudou
-                        if (updatedItem.detail !== (originalItem.detail || '')) {
-                            if (originalItem.detail && updatedItem.detail) {
-                                // Ambos existem - substituir
-                                newString = newString.replace(` - ${originalItem.detail}`, ` - ${updatedItem.detail}`);
-                                console.log(`  📋 Detalhe alterado: "- ${originalItem.detail}" → "- ${updatedItem.detail}"`);
-                            } else if (!originalItem.detail && updatedItem.detail) {
-                                // Adicionar detalhe novo
-                                newString = newString + ` - ${updatedItem.detail}`;
-                                console.log(`  📋 Detalhe adicionado: "- ${updatedItem.detail}"`);
-                            } else if (originalItem.detail && !updatedItem.detail) {
-                                // Remover detalhe
-                                newString = newString.replace(` - ${originalItem.detail}`, '');
-                                console.log(`  📋 Detalhe removido: "- ${originalItem.detail}"`);
-                            }
-                        }
-                        
-                        // Fazer a substituição na descrição
-                        newDescription = newDescription.replace(originalString, newString);
-                        console.log(`  ✅ Substituição completa: "${originalString}" → "${newString}"`);
-                    } else {
-                        console.log(`  ⚠️ String original não encontrada na descrição: "${originalString}"`);
-                    }
+            // Usar a mesma lógica da função generateEventDescription existente
+            const newDescription = updatedItems.map(item => {
+                const parts = [];
+                
+                // Formato: [tipo] - [subtipo] - [categoria] - [nome] - [valor] ([status]) - [detalhe]
+                // Como não temos tipo/subtipo/categoria nos itens editados, usar apenas nome
+                parts.push(item.name);
+                
+                // Formatar valor com status (usando formatCurrency existente)
+                let valorFormatado = formatCurrency(item.value);
+                if (item.status) {
+                    valorFormatado += ` (${item.status})`;
                 }
-            });
+                parts.push(valorFormatado);
+                
+                // Adicionar detalhe se existir
+                if (item.detail && item.detail.trim() !== '') {
+                    parts.push(item.detail.trim());
+                }
+                
+                const itemString = parts.join(' - ');
+                console.log(`  ✅ Item construído: "${itemString}"`);
+                return itemString;
+            }).join('\n');
             
-            console.log('📝 Descrição final:', newDescription);
+            console.log('📝 Nova descrição completa:', newDescription);
             return newDescription;
         };
 
