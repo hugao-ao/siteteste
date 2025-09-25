@@ -168,6 +168,17 @@
             background: rgba(255, 152, 0, 0.2);
         }
 
+        /* ✅ NOVO: STATUS EM ATRASO */
+        .status-stat-item.pendente-atraso {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.2);
+        }
+
+        .status-stat-item.aguardando-atraso {
+            border-color: #9c27b0;
+            background: rgba(156, 39, 176, 0.2);
+        }
+
         .status-stat-value {
             color: #ffffff;
             font-size: 1.1rem;
@@ -249,6 +260,11 @@
         .balance-item.pending {
             border-color: #ff9800;
             background: rgba(255, 152, 0, 0.1);
+        }
+
+        .balance-item.overdue {
+            border-color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
         }
 
         .balance-header {
@@ -583,6 +599,17 @@
         .payment-status.adiado {
             background: rgba(255, 152, 0, 0.3);
             color: #ff9800;
+        }
+
+        /* ✅ NOVO: Estilos para status em atraso nas listas */
+        .payment-status.pendente.overdue {
+            background: rgba(244, 67, 54, 0.3);
+            color: #f44336;
+        }
+
+        .payment-status.aguardando.overdue {
+            background: rgba(156, 39, 176, 0.3);
+            color: #9c27b0;
         }
 
         .payment-type {
@@ -4618,6 +4645,16 @@
             let amountAguardando = 0;
             let amountAdiado = 0;
             
+            // ✅ NOVO: Contadores e montantes para itens em atraso
+            let totalPendenteAtraso = 0;
+            let totalAguardandoAtraso = 0;
+            let amountPendenteAtraso = 0;
+            let amountAguardandoAtraso = 0;
+            
+            // Data atual para comparação
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
             const paymentsList = [];
             const receivingsList = [];
             
@@ -4632,12 +4669,21 @@
                     
                     // Processar pagamentos
                     eventCalc.paymentItems.forEach(payment => {
+                        const eventDateCopy = new Date(eventDate);
+                        eventDateCopy.setHours(0, 0, 0, 0);
+                        const isOverdue = eventDateCopy < today;
+                        
                         if (payment.status === 'PG') {
                             totalPG++;
                             amountPG += payment.value;
                         } else if (payment.status === 'PENDENTE') {
-                            totalPendente++;
-                            amountPendente += payment.value;
+                            if (isOverdue) {
+                                totalPendenteAtraso++;
+                                amountPendenteAtraso += payment.value;
+                            } else {
+                                totalPendente++;
+                                amountPendente += payment.value;
+                            }
                         } else if (payment.status === 'RECALCULADO') {
                             totalRecalculado++;
                             amountRecalculado += payment.value;
@@ -4655,12 +4701,21 @@
                     
                     // Processar recebimentos
                     eventCalc.receivingItems.forEach(receiving => {
+                        const eventDateCopy = new Date(eventDate);
+                        eventDateCopy.setHours(0, 0, 0, 0);
+                        const isOverdue = eventDateCopy < today;
+                        
                         if (receiving.status === 'RC') {
                             totalRC++;
                             amountRC += receiving.value;
                         } else if (receiving.status === 'AGUARDANDO') {
-                            totalAguardando++;
-                            amountAguardando += receiving.value;
+                            if (isOverdue) {
+                                totalAguardandoAtraso++;
+                                amountAguardandoAtraso += receiving.value;
+                            } else {
+                                totalAguardando++;
+                                amountAguardando += receiving.value;
+                            }
                         } else if (receiving.status === 'ADIADO') {
                             totalAdiado++;
                             amountAdiado += receiving.value;
@@ -4703,7 +4758,12 @@
                 amountRC: amountRC,
                 amountAguardando: amountAguardando,
                 amountAdiado: amountAdiado,
-                receivingsList: receivingsList
+                receivingsList: receivingsList,
+                // ✅ NOVO: Itens em atraso
+                totalPendenteAtraso: totalPendenteAtraso,
+                totalAguardandoAtraso: totalAguardandoAtraso,
+                amountPendenteAtraso: amountPendenteAtraso,
+                amountAguardandoAtraso: amountAguardandoAtraso
             };
         }
 
@@ -4764,6 +4824,13 @@
             const balancePendenteDailyElement = document.getElementById('balancePendenteDaily');
             const balanceAguardandoPendenteElement = document.getElementById('balanceAguardandoPendente');
             
+            // ✅ NOVO: Elementos para análise de atraso
+            const balanceAguardandoAtrasoElement = document.getElementById('balanceAguardandoAtraso');
+            const balancePendenteAtrasoElement = document.getElementById('balancePendenteAtraso');
+            const balanceAguardandoAtrasoDailyElement = document.getElementById('balanceAguardandoAtrasoDaily');
+            const balancePendenteAtrasoDailyElement = document.getElementById('balancePendenteAtrasoDaily');
+            const balanceAtrasoElement = document.getElementById('balanceAtraso');
+            
             if (balanceRCElement) balanceRCElement.textContent = formatCurrency(monthlyData.amountRC);
             if (balancePGElement) balancePGElement.textContent = formatCurrency(monthlyData.amountPG);
             if (balanceRCDailyElement) balanceRCDailyElement.textContent = `(${formatCurrency(monthlyData.amountRC / daysInMonth)}/dia)`;
@@ -4782,6 +4849,17 @@
                 const saldoAguardandoPendente = monthlyData.amountAguardando - monthlyData.amountPendente;
                 balanceAguardandoPendenteElement.textContent = formatCurrency(saldoAguardandoPendente);
                 balanceAguardandoPendenteElement.className = `balance-final ${saldoAguardandoPendente >= 0 ? 'positive' : 'negative'}`;
+            }
+            
+            // ✅ NOVO: Atualizar análise de atraso
+            if (balanceAguardandoAtrasoElement) balanceAguardandoAtrasoElement.textContent = formatCurrency(monthlyData.amountAguardandoAtraso);
+            if (balancePendenteAtrasoElement) balancePendenteAtrasoElement.textContent = formatCurrency(monthlyData.amountPendenteAtraso);
+            if (balanceAguardandoAtrasoDailyElement) balanceAguardandoAtrasoDailyElement.textContent = `(${formatCurrency(monthlyData.amountAguardandoAtraso / daysInMonth)}/dia)`;
+            if (balancePendenteAtrasoDailyElement) balancePendenteAtrasoDailyElement.textContent = `(${formatCurrency(monthlyData.amountPendenteAtraso / daysInMonth)}/dia)`;
+            if (balanceAtrasoElement) {
+                const saldoAtraso = monthlyData.amountAguardandoAtraso - monthlyData.amountPendenteAtraso;
+                balanceAtrasoElement.textContent = formatCurrency(saldoAtraso);
+                balanceAtrasoElement.className = `balance-final ${saldoAtraso >= 0 ? 'positive' : 'negative'}`;
             }
 
             // ✅ ATUALIZADO: Estatísticas de PAGAMENTOS com quantidade e média diária
@@ -4876,6 +4954,38 @@
             
             if (avgAdiadoDailyElement) {
                 avgAdiadoDailyElement.textContent = formatCurrency(monthlyData.amountAdiado / daysInMonth) + '/dia';
+            }
+            
+            // ✅ NOVO: Atualizar estatísticas de itens em atraso
+            const totalPendenteAtrasoElement = document.getElementById('totalPendenteAtraso');
+            const totalAguardandoAtrasoElement = document.getElementById('totalAguardandoAtraso');
+            const amountPendenteAtrasoElement = document.getElementById('amountPendenteAtraso');
+            const amountAguardandoAtrasoElement = document.getElementById('amountAguardandoAtraso');
+            const avgPendenteAtrasoDailyElement = document.getElementById('avgPendenteAtrasoDaily');
+            const avgAguardandoAtrasoDailyElement = document.getElementById('avgAguardandoAtrasoDaily');
+            
+            if (totalPendenteAtrasoElement) {
+                totalPendenteAtrasoElement.textContent = `${monthlyData.totalPendenteAtraso} itens`;
+            }
+            
+            if (totalAguardandoAtrasoElement) {
+                totalAguardandoAtrasoElement.textContent = `${monthlyData.totalAguardandoAtraso} itens`;
+            }
+            
+            if (amountPendenteAtrasoElement) {
+                amountPendenteAtrasoElement.textContent = formatCurrency(monthlyData.amountPendenteAtraso);
+            }
+            
+            if (amountAguardandoAtrasoElement) {
+                amountAguardandoAtrasoElement.textContent = formatCurrency(monthlyData.amountAguardandoAtraso);
+            }
+            
+            if (avgPendenteAtrasoDailyElement) {
+                avgPendenteAtrasoDailyElement.textContent = formatCurrency(monthlyData.amountPendenteAtraso / daysInMonth) + '/dia';
+            }
+            
+            if (avgAguardandoAtrasoDailyElement) {
+                avgAguardandoAtrasoDailyElement.textContent = formatCurrency(monthlyData.amountAguardandoAtraso / daysInMonth) + '/dia';
             }
             
             // Atualizar listas com filtros
@@ -5088,7 +5198,14 @@
                             <i class="fas fa-calendar"></i>
                             ${payment.eventDate.toLocaleDateString('pt-BR')}
                         </div>
-                        <div class="payment-status ${payment.status.toLowerCase()}">
+                        <div class="payment-status ${payment.status.toLowerCase()}${(() => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const eventDate = new Date(payment.eventDate);
+                            eventDate.setHours(0, 0, 0, 0);
+                            const isOverdue = eventDate < today && (payment.status === 'PENDENTE' || payment.status === 'AGUARDANDO');
+                            return isOverdue ? ' overdue' : '';
+                        })()}">
                             <i class="fas fa-tag"></i>
                             ${payment.status}
                         </div>
@@ -5126,7 +5243,14 @@
                             <i class="fas fa-calendar"></i>
                             ${receiving.eventDate.toLocaleDateString('pt-BR')}
                         </div>
-                        <div class="payment-status ${receiving.status.toLowerCase()}">
+                        <div class="payment-status ${receiving.status.toLowerCase()}${(() => {
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            const eventDate = new Date(receiving.eventDate);
+                            eventDate.setHours(0, 0, 0, 0);
+                            const isOverdue = eventDate < today && (receiving.status === 'PENDENTE' || receiving.status === 'AGUARDANDO');
+                            return isOverdue ? ' overdue' : '';
+                        })()}">
                             <i class="fas fa-tag"></i>
                             ${receiving.status}
                         </div>
@@ -8529,6 +8653,29 @@
                             </div>
                         </div>
                     </div>
+                    
+                    <div class="balance-item overdue">
+                        <div class="balance-header">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Em Atraso</span>
+                        </div>
+                        <div class="balance-values">
+                            <div class="balance-value">
+                                <span class="balance-label">REC. ATRASO:</span>
+                                <span id="balanceAguardandoAtraso" class="balance-amount">R$ 0,00</span>
+                                <span id="balanceAguardandoAtrasoDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                            </div>
+                            <div class="balance-value">
+                                <span class="balance-label">PAG. ATRASO:</span>
+                                <span id="balancePendenteAtraso" class="balance-amount">R$ 0,00</span>
+                                <span id="balancePendenteAtrasoDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                            </div>
+                            <div class="balance-result">
+                                <span class="balance-label">Saldo:</span>
+                                <span id="balanceAtraso" class="balance-final">R$ 0,00</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -8564,6 +8711,14 @@
                             <div id="avgRecalculadoDaily" class="status-stat-daily">R$ 0,00/dia</div>
                             <div class="status-stat-label">Recalculado</div>
                         </div>
+                        <div class="status-stat-item pendente-atraso">
+                            <div class="status-stat-header">
+                                <div id="totalPendenteAtraso" class="status-stat-count">0 itens</div>
+                                <div id="amountPendenteAtraso" class="status-stat-amount">R$ 0,00</div>
+                            </div>
+                            <div id="avgPendenteAtrasoDaily" class="status-stat-daily">R$ 0,00/dia</div>
+                            <div class="status-stat-label">Em Atraso</div>
+                        </div>
                     </div>
                 </div>
 
@@ -8596,6 +8751,14 @@
                             </div>
                             <div id="avgAdiadoDaily" class="status-stat-daily">R$ 0,00/dia</div>
                             <div class="status-stat-label">Adiado</div>
+                        </div>
+                        <div class="status-stat-item aguardando-atraso">
+                            <div class="status-stat-header">
+                                <div id="totalAguardandoAtraso" class="status-stat-count">0 itens</div>
+                                <div id="amountAguardandoAtraso" class="status-stat-amount">R$ 0,00</div>
+                            </div>
+                            <div id="avgAguardandoAtrasoDaily" class="status-stat-daily">R$ 0,00/dia</div>
+                            <div class="status-stat-label">Em Atraso</div>
                         </div>
                     </div>
                 </div>
