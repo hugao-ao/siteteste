@@ -6324,7 +6324,7 @@
                 const eventDateString = getCalendarDateString(eventDate);
                 
                 return eventDateString === targetDateString;
-            }); // Fechamento do DOMContentLoaded
+            });
         }
 
         async function showEventDetails(event) {
@@ -9587,7 +9587,7 @@
 
         function calculateDayBalance(dayNumber) {
             // Buscar eventos do dia e calcular saldo
-            const events = getEventsForDay(dayNumber);
+            const events = getEventsForDayNumber(dayNumber);
             let dayBalance = 0;
 
             events.forEach(event => {
@@ -9614,15 +9614,10 @@
             return dayBalance;
         }
 
-        function getEventsForDay(dayNumber) {
-            // Buscar eventos do dia específico
-            const currentDate = new Date(currentYear, currentMonth, dayNumber);
-            return filteredEvents.filter(event => {
-                const eventDate = parseEventDate(event);
-                return eventDate.getDate() === dayNumber &&
-                       eventDate.getMonth() === currentMonth &&
-                       eventDate.getFullYear() === currentYear;
-            });
+        function getEventsForDayNumber(dayNumber) {
+            // Buscar eventos do dia específico usando número do dia
+            const targetDate = new Date(currentYear, currentMonth, dayNumber);
+            return getEventsForDay(targetDate);
         }
     </script>
 
