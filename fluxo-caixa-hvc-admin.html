@@ -6365,29 +6365,90 @@
             return await realDeleteCalendarEvent(eventId, accountEmail);
         }
         
-        // ✅ NOVO: Função para visualizar anexo com o token correto
+        // ✅ CORRIGIDO: Função para visualizar anexo com o token correto
         async function viewAttachmentWithCorrectToken(fileUrl, accountEmail) {
             try {
+                console.log('🔄 Tentando visualizar anexo:', fileUrl);
+                console.log('📧 Conta do evento:', accountEmail);
+                
+                // Extrair o file ID da URL do Google Drive
+                let fileId = null;
+                
+                // Diferentes formatos de URL do Google Drive
+                const driveUrlPatterns = [
+                    /\/file\/d\/([a-zA-Z0-9-_]+)/,  // drive.google.com/file/d/ID
+                    /id=([a-zA-Z0-9-_]+)/,         // drive.google.com/open?id=ID
+                    /\/d\/([a-zA-Z0-9-_]+)/        // Outros formatos
+                ];
+                
+                for (const pattern of driveUrlPatterns) {
+                    const match = fileUrl.match(pattern);
+                    if (match) {
+                        fileId = match[1];
+                        break;
+                    }
+                }
+                
+                if (!fileId) {
+                    console.log('⚠️ Não foi possível extrair file ID, tentando abrir URL diretamente');
+                    window.open(fileUrl, '_blank');
+                    return;
+                }
+                
+                console.log('📄 File ID extraído:', fileId);
+                
+                // Tentar usar o token da conta específica
                 if (accountEmail) {
                     const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
                     const eventAccount = connectedAccounts.find(acc => acc.email === accountEmail);
                     
                     if (eventAccount && eventAccount.accessToken) {
-                        console.log(`🔄 Visualizando anexo usando token da conta: ${accountEmail}`);
+                        console.log(`🔑 Usando token da conta: ${accountEmail}`);
                         
-                        // Criar URL com token de acesso
-                        const urlWithToken = `${fileUrl}&access_token=${eventAccount.accessToken}`;
-                        window.open(urlWithToken, '_blank');
-                        return;
+                        // Definir o token no gapi para esta operação
+                        const currentToken = gapi.client.getToken();
+                        gapi.client.setToken({ access_token: eventAccount.accessToken });
+                        
+                        try {
+                            // Tentar obter informações do arquivo via API
+                            const fileResponse = await gapi.client.request({
+                                path: `https://www.googleapis.com/drive/v3/files/${fileId}`,
+                                method: 'GET',
+                                params: {
+                                    fields: 'webViewLink,webContentLink,name'
+                                }
+                            });
+                            
+                            console.log('📁 Informações do arquivo:', fileResponse.result);
+                            
+                            // Usar webViewLink para visualização
+                            if (fileResponse.result.webViewLink) {
+                                window.open(fileResponse.result.webViewLink, '_blank');
+                                return;
+                            }
+                            
+                        } catch (apiError) {
+                            console.log('⚠️ Erro na API do Drive, tentando URL direta:', apiError);
+                        } finally {
+                            // Restaurar token original
+                            if (currentToken) {
+                                gapi.client.setToken(currentToken);
+                            }
+                        }
                     }
                 }
                 
-                // Fallback: tentar abrir sem token específico
-                window.open(fileUrl, '_blank');
+                // Fallback 1: Tentar URL de visualização direta
+                const viewUrl = `https://drive.google.com/file/d/${fileId}/view`;
+                console.log('🔄 Tentando URL de visualização:', viewUrl);
+                window.open(viewUrl, '_blank');
                 
             } catch (error) {
-                console.error('Erro ao visualizar anexo:', error);
-                alert('Erro ao abrir o anexo. Verifique se você tem permissão para acessá-lo.');
+                console.error('❌ Erro ao visualizar anexo:', error);
+                
+                // Fallback final: URL original
+                console.log('🔄 Fallback: abrindo URL original');
+                window.open(fileUrl, '_blank');
             }
         }
 
