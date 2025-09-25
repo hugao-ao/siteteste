@@ -5330,30 +5330,28 @@
             const eventType = getEventType(event);
             
             if (eventType === 'recebimento') {
-                // ✅ NOVO: Lógica de cores para RECEBIMENTOS
-                // Verificar se todos os recebimentos estão com RC ou ADIADO
+                // ✅ HIERARQUIA CORRIGIDA: Verificar PRIMEIRO se todos estão completos (RC ou ADIADO)
                 const allReceivingsCompleted = eventCalc.receivingItems.length > 0 && 
                     eventCalc.receivingItems.every(r => r.status === 'RC' || r.status === 'ADIADO');
                 
                 if (allReceivingsCompleted) {
-                    return 'receiving-completed'; // Verde claro para recebimentos
+                    return 'event-receiving-complete'; // 🔵 AZUL para recebimentos completos
                 } else if (eventDate < today) {
-                    return 'receiving-overdue'; // Laranja para recebimentos em atraso
+                    return 'event-receiving-overdue'; // 🟣 ROXO para recebimentos em atraso
                 } else {
-                    return 'receiving-upcoming'; // Azul claro para recebimentos futuros
+                    return 'event-receiving-default'; // 🟢 VERDE para recebimentos futuros
                 }
             } else {
-                // Lógica original para PAGAMENTOS
-                // Verificar se todos os pagamentos estão com PG ou RECALCULADO
+                // ✅ HIERARQUIA CORRIGIDA: Verificar PRIMEIRO se todos estão completos (PG ou RECALCULADO)
                 const allPaymentsCompleted = eventCalc.paymentItems.length > 0 && 
                     eventCalc.paymentItems.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
                 
                 if (allPaymentsCompleted) {
-                    return 'payment-completed'; // Verde escuro para pagamentos
+                    return 'event-payment-complete'; // 🟤 MARROM para pagamentos completos
                 } else if (eventDate < today) {
-                    return 'payment-overdue'; // Vermelho para pagamentos em atraso
+                    return 'event-payment-overdue'; // 🔴 VERMELHO para pagamentos em atraso
                 } else {
-                    return 'payment-upcoming'; // Azul escuro para pagamentos futuros
+                    return 'event-payment-default'; // 🟠 LARANJA para pagamentos futuros
                 }
             }
         }
