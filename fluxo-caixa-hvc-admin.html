@@ -3171,6 +3171,8 @@
         let isGoogleConnected = false;
         let filteredEvents = [];
         let currentDate = new Date();
+        let currentYear = currentDate.getFullYear(); // ✅ NOVO: Variável global
+        let currentMonth = currentDate.getMonth(); // ✅ NOVO: Variável global
         let allPaymentsList = []; // ✅ NOVO: Lista completa de pagamentos
         let filteredPaymentsList = []; // ✅ NOVO: Lista filtrada
         let allReceivingsList = []; // ✅ NOVO: Lista completa de recebimentos
@@ -5969,6 +5971,10 @@
             
             if (!calendarGrid || !calendarTitle) return;
             
+            // ✅ NOVO: Atualizar variáveis globais
+            currentYear = currentDate.getFullYear();
+            currentMonth = currentDate.getMonth();
+            
             // Update title
             const monthNames = [
                 'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
@@ -7426,16 +7432,25 @@
         // =================================================================
         function previousMonth() {
             currentDate.setMonth(currentDate.getMonth() - 1);
+            // ✅ NOVO: Atualizar variáveis globais
+            currentYear = currentDate.getFullYear();
+            currentMonth = currentDate.getMonth();
             renderCalendar();
         }
 
         function nextMonth() {
             currentDate.setMonth(currentDate.getMonth() + 1);
+            // ✅ NOVO: Atualizar variáveis globais
+            currentYear = currentDate.getFullYear();
+            currentMonth = currentDate.getMonth();
             renderCalendar();
         }
 
         function goToToday() {
             currentDate = new Date();
+            // ✅ NOVO: Atualizar variáveis globais
+            currentYear = currentDate.getFullYear();
+            currentMonth = currentDate.getMonth();
             renderCalendar();
         }
 
