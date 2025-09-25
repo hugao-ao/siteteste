@@ -9587,7 +9587,8 @@
 
         function calculateDayBalance(dayNumber) {
             // Buscar eventos do dia e calcular saldo
-            const events = getEventsForDay(dayNumber);
+            const dayDate = new Date(currentYear, currentMonth, dayNumber);
+            const events = getEventsForDay(dayDate);
             let dayBalance = 0;
 
             events.forEach(event => {
@@ -9614,16 +9615,7 @@
             return dayBalance;
         }
 
-        function getEventsForDay(dayNumber) {
-            // Buscar eventos do dia específico
-            const currentDate = new Date(currentYear, currentMonth, dayNumber);
-            return filteredEvents.filter(event => {
-                const eventDate = parseEventDate(event);
-                return eventDate.getDate() === dayNumber &&
-                       eventDate.getMonth() === currentMonth &&
-                       eventDate.getFullYear() === currentYear;
-            });
-        }
+        // ✅ REMOVIDO: Função duplicada que causava conflito
     </script>
 
     <!-- Google APIs - Carregar DEPOIS das funções estarem definidas -->
