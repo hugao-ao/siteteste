@@ -1313,6 +1313,10 @@
             background: linear-gradient(135deg, #9c27b0, #7b1fa2); /* ROXO */
         }
 
+        .event-total.receiving-completed {
+            background: #2196f3; /* AZUL SÓLIDO */
+        }
+
         .event-total.receiving-default {
             background: linear-gradient(135deg, #4caf50, #388e3c); /* VERDE */
         }
@@ -1374,6 +1378,10 @@
 
         .event-item.receiving-overdue {
             background: linear-gradient(135deg, #9c27b0, #7b1fa2); /* ROXO */
+        }
+
+        .event-item.receiving-completed {
+            background: #2196f3; /* AZUL SÓLIDO */
         }
 
         .event-item.receiving-default {
@@ -6177,13 +6185,13 @@
                 });
                 
                 // ✅ CORRIGIDO: Todos os itens são PG OU RECALCULADO = MARROM
-                if (allItemsCompleted) return 'event-payment-complete';
+                if (allItemsCompleted) return 'payment-completed';
                 
                 // Regra 2: Data atual > data do evento + algum item não conforme = VERMELHO
-                if (today > compareDate && hasNonCompliantItem) return 'event-payment-overdue';
+                if (today > compareDate && hasNonCompliantItem) return 'payment-overdue';
                 
                 // Regra 3: Demais casos = LARANJA
-                return 'event-payment-default';
+                return 'payment-upcoming';
                 
             } else if (eventType === 'recebimento') {
                 let allItemsCompleted = true;
@@ -6208,13 +6216,13 @@
                 });
                 
                 // ✅ CORRIGIDO: Todos os itens são RC OU ADIADO = AZUL
-                if (allItemsCompleted) return 'event-receiving-complete';
+                if (allItemsCompleted) return 'receiving-completed';
                 
                 // Regra 2: Data atual > data do evento + algum item não conforme = ROXO
-                if (today > compareDate && hasNonCompliantItem) return 'event-receiving-overdue';
+                if (today > compareDate && hasNonCompliantItem) return 'receiving-overdue';
                 
                 // Regra 3: Demais casos = VERDE
-                return 'event-receiving-default';
+                return 'receiving-default';
             }
             
             return 'event-default';
