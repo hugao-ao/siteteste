@@ -3171,6 +3171,8 @@
         let isGoogleConnected = false;
         let filteredEvents = [];
         let currentDate = new Date();
+        let currentYear = currentDate.getFullYear(); // ✅ VARIÁVEL GLOBAL
+        let currentMonth = currentDate.getMonth();   // ✅ VARIÁVEL GLOBAL
         let allPaymentsList = []; // ✅ NOVO: Lista completa de pagamentos
         let filteredPaymentsList = []; // ✅ NOVO: Lista filtrada
         let allReceivingsList = []; // ✅ NOVO: Lista completa de recebimentos
@@ -5964,6 +5966,10 @@
         // CALENDAR RENDERING
         // =================================================================
         function renderCalendar() {
+            // ✅ SINCRONIZAR variáveis globais no início
+            currentYear = currentDate.getFullYear();
+            currentMonth = currentDate.getMonth();
+            
             const calendarGrid = document.getElementById('calendarGrid');
             const calendarTitle = document.getElementById('calendarTitle');
             
@@ -7426,16 +7432,25 @@
         // =================================================================
         function previousMonth() {
             currentDate.setMonth(currentDate.getMonth() - 1);
+            // ✅ SINCRONIZAR variáveis globais
+            currentYear = currentDate.getFullYear();
+            currentMonth = currentDate.getMonth();
             renderCalendar();
         }
 
         function nextMonth() {
             currentDate.setMonth(currentDate.getMonth() + 1);
+            // ✅ SINCRONIZAR variáveis globais
+            currentYear = currentDate.getFullYear();
+            currentMonth = currentDate.getMonth();
             renderCalendar();
         }
 
         function goToToday() {
             currentDate = new Date();
+            // ✅ SINCRONIZAR variáveis globais
+            currentYear = currentDate.getFullYear();
+            currentMonth = currentDate.getMonth();
             renderCalendar();
         }
 
