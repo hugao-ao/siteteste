@@ -287,12 +287,18 @@
 
         .balance-value {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
             padding: 12px 16px;
             background: rgba(255, 255, 255, 0.05);
             border-radius: 8px;
             min-height: 44px;
+        }
+
+        .balance-value-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
         }
 
          .balance-label {
@@ -312,9 +318,11 @@
         .balance-daily {
             color: rgba(255, 255, 255, 0.6);
             font-size: 0.85rem;
-            margin-left: 8px;
-            white-space: nowrap;
             font-style: italic;
+            text-align: center;
+            margin-top: 4px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .balance-result {
@@ -4866,8 +4874,8 @@
             
             if (balanceRCElement) balanceRCElement.textContent = formatCurrency(monthlyData.amountRC);
             if (balancePGElement) balancePGElement.textContent = formatCurrency(monthlyData.amountPG);
-            if (balanceRCDailyElement) balanceRCDailyElement.textContent = `(${formatCurrency(monthlyData.amountRC / daysInMonth)}/dia)`;
-            if (balancePGDailyElement) balancePGDailyElement.textContent = `(${formatCurrency(monthlyData.amountPG / daysInMonth)}/dia)`;
+            if (balanceRCDailyElement) balanceRCDailyElement.textContent = `${formatCurrency(monthlyData.amountRC / daysInMonth)}/dia`;
+            if (balancePGDailyElement) balancePGDailyElement.textContent = `${formatCurrency(monthlyData.amountPG / daysInMonth)}/dia`;
             if (balanceRCPGElement) {
                 const saldoRCPG = monthlyData.amountRC - monthlyData.amountPG;
                 balanceRCPGElement.textContent = formatCurrency(saldoRCPG);
@@ -4876,8 +4884,8 @@
             
             if (balanceAguardandoElement) balanceAguardandoElement.textContent = formatCurrency(monthlyData.amountAguardando);
             if (balancePendenteElement) balancePendenteElement.textContent = formatCurrency(monthlyData.amountPendente);
-            if (balanceAguardandoDailyElement) balanceAguardandoDailyElement.textContent = `(${formatCurrency(monthlyData.amountAguardando / daysInMonth)}/dia)`;
-            if (balancePendenteDailyElement) balancePendenteDailyElement.textContent = `(${formatCurrency(monthlyData.amountPendente / daysInMonth)}/dia)`;
+            if (balanceAguardandoDailyElement) balanceAguardandoDailyElement.textContent = `${formatCurrency(monthlyData.amountAguardando / daysInMonth)}/dia`;
+            if (balancePendenteDailyElement) balancePendenteDailyElement.textContent = `${formatCurrency(monthlyData.amountPendente / daysInMonth)}/dia`;
             if (balanceAguardandoPendenteElement) {
                 const saldoAguardandoPendente = monthlyData.amountAguardando - monthlyData.amountPendente;
                 balanceAguardandoPendenteElement.textContent = formatCurrency(saldoAguardandoPendente);
@@ -4887,8 +4895,8 @@
             // ✅ NOVO: Atualizar análise de atraso
             if (balanceAguardandoAtrasoElement) balanceAguardandoAtrasoElement.textContent = formatCurrency(monthlyData.amountAguardandoAtraso);
             if (balancePendenteAtrasoElement) balancePendenteAtrasoElement.textContent = formatCurrency(monthlyData.amountPendenteAtraso);
-            if (balanceAguardandoAtrasoDailyElement) balanceAguardandoAtrasoDailyElement.textContent = `(${formatCurrency(monthlyData.amountAguardandoAtraso / daysInMonth)}/dia)`;
-            if (balancePendenteAtrasoDailyElement) balancePendenteAtrasoDailyElement.textContent = `(${formatCurrency(monthlyData.amountPendenteAtraso / daysInMonth)}/dia)`;
+            if (balanceAguardandoAtrasoDailyElement) balanceAguardandoAtrasoDailyElement.textContent = `${formatCurrency(monthlyData.amountAguardandoAtraso / daysInMonth)}/dia`;
+            if (balancePendenteAtrasoDailyElement) balancePendenteAtrasoDailyElement.textContent = `${formatCurrency(monthlyData.amountPendenteAtraso / daysInMonth)}/dia`;
             if (balanceAtrasoElement) {
                 const saldoAtraso = monthlyData.amountAguardandoAtraso - monthlyData.amountPendenteAtraso;
                 balanceAtrasoElement.textContent = formatCurrency(saldoAtraso);
@@ -5336,24 +5344,24 @@
                     eventCalc.receivingItems.every(r => r.status === 'RC' || r.status === 'ADIADO');
                 
                 if (allReceivingsCompleted) {
-                    return 'receiving-completed'; // Verde claro para recebimentos
+                    return 'receiving-upcoming'; // ✅ AZUL para recebimentos RC/ADIADO
                 } else if (eventDate < today) {
                     return 'receiving-overdue'; // Laranja para recebimentos em atraso
                 } else {
                     return 'receiving-upcoming'; // Azul claro para recebimentos futuros
                 }
             } else {
-                // Lógica original para PAGAMENTOS
+                // ✅ NOVO: Lógica de cores para PAGAMENTOS
                 // Verificar se todos os pagamentos estão com PG ou RECALCULADO
                 const allPaymentsCompleted = eventCalc.paymentItems.length > 0 && 
                     eventCalc.paymentItems.every(p => p.status === 'PG' || p.status === 'RECALCULADO');
                 
                 if (allPaymentsCompleted) {
-                    return 'payment-completed'; // Verde escuro para pagamentos
+                    return 'payment-completed'; // ✅ MARROM para pagamentos PG/RECALCULADO
                 } else if (eventDate < today) {
                     return 'payment-overdue'; // Vermelho para pagamentos em atraso
                 } else {
-                    return 'payment-upcoming'; // Azul escuro para pagamentos futuros
+                    return 'payment-upcoming'; // Laranja para pagamentos futuros
                 }
             }
         }
@@ -8624,22 +8632,6 @@
             <!-- Resumo Geral -->
             <div class="monthly-summary-general">
                 <h3><i class="fas fa-chart-pie"></i> Resumo Geral do Mês</h3>
-                <div id="monthlyTotal" class="monthly-total">R$ 0,00</div>
-                
-                <div class="monthly-stats">
-                    <div class="stat-item">
-                        <div id="totalEvents" class="stat-value">0</div>
-                        <div class="stat-label">Eventos</div>
-                    </div>
-                    <div class="stat-item">
-                        <div id="totalItems" class="stat-value">0</div>
-                        <div class="stat-label">Itens</div>
-                    </div>
-                    <div class="stat-item">
-                        <div id="avgPayment" class="stat-value">R$ 0,00</div>
-                        <div class="stat-label">Valor Médio</div>
-                    </div>
-                </div>
             </div>
 
             <!-- ✅ NOVO: Análise de Saldo -->
@@ -8653,14 +8645,18 @@
                         </div>
                         <div class="balance-values">
                             <div class="balance-value">
-                                <span class="balance-label">RC:</span>
-                                <span id="balanceRC" class="balance-amount">R$ 0,00</span>
-                                <span id="balanceRCDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                                <div class="balance-value-row">
+                                    <span class="balance-label">RC:</span>
+                                    <span id="balanceRC" class="balance-amount">R$ 0,00</span>
+                                </div>
+                                <div id="balanceRCDaily" class="balance-daily">R$ 0,00/dia</div>
                             </div>
                             <div class="balance-value">
-                                <span class="balance-label">PG:</span>
-                                <span id="balancePG" class="balance-amount">R$ 0,00</span>
-                                <span id="balancePGDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                                <div class="balance-value-row">
+                                    <span class="balance-label">PG:</span>
+                                    <span id="balancePG" class="balance-amount">R$ 0,00</span>
+                                </div>
+                                <div id="balancePGDaily" class="balance-daily">R$ 0,00/dia</div>
                             </div>
                             <div class="balance-result">
                                 <span class="balance-label">Saldo:</span>
@@ -8676,14 +8672,18 @@
                         </div>
                         <div class="balance-values">
                             <div class="balance-value">
-                                <span class="balance-label">AGUARDANDO:</span>
-                                <span id="balanceAguardando" class="balance-amount">R$ 0,00</span>
-                                <span id="balanceAguardandoDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                                <div class="balance-value-row">
+                                    <span class="balance-label">AGUARDANDO:</span>
+                                    <span id="balanceAguardando" class="balance-amount">R$ 0,00</span>
+                                </div>
+                                <div id="balanceAguardandoDaily" class="balance-daily">R$ 0,00/dia</div>
                             </div>
                             <div class="balance-value">
-                                <span class="balance-label">PENDENTE:</span>
-                                <span id="balancePendente" class="balance-amount">R$ 0,00</span>
-                                <span id="balancePendenteDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                                <div class="balance-value-row">
+                                    <span class="balance-label">PENDENTE:</span>
+                                    <span id="balancePendente" class="balance-amount">R$ 0,00</span>
+                                </div>
+                                <div id="balancePendenteDaily" class="balance-daily">R$ 0,00/dia</div>
                             </div>
                             <div class="balance-result">
                                 <span class="balance-label">Saldo:</span>
@@ -8699,14 +8699,18 @@
                         </div>
                         <div class="balance-values">
                             <div class="balance-value">
-                                <span class="balance-label">REC. ATRASO:</span>
-                                <span id="balanceAguardandoAtraso" class="balance-amount">R$ 0,00</span>
-                                <span id="balanceAguardandoAtrasoDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                                <div class="balance-value-row">
+                                    <span class="balance-label">REC. ATRASO:</span>
+                                    <span id="balanceAguardandoAtraso" class="balance-amount">R$ 0,00</span>
+                                </div>
+                                <div id="balanceAguardandoAtrasoDaily" class="balance-daily">R$ 0,00/dia</div>
                             </div>
                             <div class="balance-value">
-                                <span class="balance-label">PAG. ATRASO:</span>
-                                <span id="balancePendenteAtraso" class="balance-amount">R$ 0,00</span>
-                                <span id="balancePendenteAtrasoDaily" class="balance-daily">(R$ 0,00/dia)</span>
+                                <div class="balance-value-row">
+                                    <span class="balance-label">PAG. ATRASO:</span>
+                                    <span id="balancePendenteAtraso" class="balance-amount">R$ 0,00</span>
+                                </div>
+                                <div id="balancePendenteAtrasoDaily" class="balance-daily">R$ 0,00/dia</div>
                             </div>
                             <div class="balance-result">
                                 <span class="balance-label">Saldo:</span>
