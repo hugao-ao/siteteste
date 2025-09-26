@@ -8,10 +8,6 @@
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="propostas-hvc-precos.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  
-  <!-- Carregar Supabase via CDN primeiro -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
   <style>
     /* Estilos específicos para a página de propostas */
     body {
@@ -1097,38 +1093,7 @@
   </main>
 
   <!-- Scripts -->
-  <script>
-    // Configuração simplificada do Supabase
-    console.log('📦 Inicializando Supabase...');
-    
-    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
-    
-    let supabaseClient = null;
-    
-    // Inicializar Supabase quando a biblioteca estiver disponível
-    function initSupabase() {
-      if (window.supabase && window.supabase.createClient) {
-        try {
-          supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-          window.supabaseClient = supabaseClient;
-          console.log('✅ Supabase inicializado com sucesso');
-        } catch (error) {
-          console.error('❌ Erro ao inicializar Supabase:', error);
-        }
-      } else {
-        console.warn('⚠️ Biblioteca Supabase não encontrada, tentando novamente...');
-        setTimeout(initSupabase, 500);
-      }
-    }
-    
-    // Inicializar quando possível
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', initSupabase);
-    } else {
-      initSupabase();
-    }
-  </script>
+  <script src="supabase.js"></script>
   <script src="sidebar.js"></script>
   <script src="propostas-hvc.js"></script>
 </body>
