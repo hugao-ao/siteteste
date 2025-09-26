@@ -1,48 +1,205 @@
-// 🎯 FUNÇÃO GLOBAL: Garantir que valores sejam numéricos
-function ensureNumericValue(value) {
-    if (typeof value === 'number' && !isNaN(value)) {
-        return value;
-    }
+// propostas-hvc.js - Versão CÁLCULO FINAL CORRIGIDO
+// Correção definitiva para os problemas de cálculo e formatação de valores
+
+// Aguardar carregamento do Supabase
+let supabaseClient = null;
+let propostasManager = null;
+
+// Inicializar quando a página carregar
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔧 DOM carregado, aguardando Supabase...');
+    // Aguardar um pouco para o Supabase carregar
+    setTimeout(initializeApp, 1000);
+});
+
+function initializeApp() {
+    console.log('🔧 Tentando inicializar aplicação...');
     
-    if (typeof value === 'string') {
-        // Remover formatação de moeda brasileira
-        const cleanValue = value
-            .replace(/[R$\s]/g, '')
-            .replace(/\./g, '')
-            .replace(',', '.');
-        
-        const numericValue = parseFloat(cleanValue);
-        return isNaN(numericValue) ? 0 : numericValue;
+    // Verificar se o Supabase está disponível
+    if (typeof supabase !== 'undefined') {
+        console.log('✅ Supabase encontrado via global');
+        supabaseClient = supabase;
+        initializePropostasManager();
+    } else {
+        console.log('⚠️ Supabase não encontrado, tentando carregar via CDN...');
+        loadSupabaseFromCDN();
     }
-    
-    return 0;
 }
 
-// 🎯 FUNÇÃO GLOBAL: Validar tipo de prazo
-function validateTipoPrazo(tipoPrazo) {
-    const validTypes = ['corridos', 'uteis', 'cronograma'];
-    if (validTypes.includes(tipoPrazo)) {
-        return tipoPrazo;
+function initializePropostasManager() {
+    try {
+        console.log('🚀 Inicializando PropostasManager...');
+        propostasManager = new PropostasManager();
+        
+        // Expor globalmente para uso nos event handlers inline
+        window.propostasManager = propostasManager;
+        console.log('✅ PropostasManager inicializado e exposto globalmente');
+        
+        // Aguardar um pouco e tentar novamente se não funcionou
+        setTimeout(() => {
+            if (!window.propostasManager) {
+                console.log('⚠️ PropostasManager não encontrado após múltiplas tentativas');
+                console.log('🔄 Tentando novamente...');
+                window.propostasManager = propostasManager;
+            }
+        }, 2000);
+        
+    } catch (error) {
+        console.error('❌ Erro ao inicializar PropostasManager:', error);
+        setTimeout(() => {
+            console.log('🔄 Tentando inicializar novamente após erro...');
+            initializePropostasManager();
+        }, 2000);
     }
+}
+
+function loadSupabaseFromCDN() {
+    // Criar cliente Supabase diretamente
+    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
     
-    // Se não for válido, tentar mapear valores antigos
-    const mapping = {
-        'dias corridos': 'corridos',
-        'dias úteis': 'uteis',
-        'dias uteis': 'uteis',
-        'cronograma': 'cronograma',
-        'cronograma da obra': 'cronograma'
-    };
-    
-    const lowerTipo = tipoPrazo?.toLowerCase() || '';
-    for (const [key, value] of Object.entries(mapping)) {
-        if (lowerTipo.includes(key)) {
-            return value;
+    // Carregar Supabase via script
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
+    script.onload = function() {
+        if (window.supabase && window.supabase.createClient) {
+            console.log('✅ Supabase carregado via CDN');
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            initializePropostasManager();
+        } else {
+            console.error('❌ Erro ao carregar Supabase via CDN');
         }
+    };
+    script.onerror = function() {
+        console.error('❌ Erro ao carregar script do Supabase');
+    };
+    document.head.appendChild(script);
+}
+
+// 💰 FUNÇÃO FINAL CORRIGIDA: Garantir formato numérico correto com tratamento melhorado
+function ensureNumericValue(value) {
+    console.log('💰 CÁLCULO-FINAL-FIX - Valor recebido:', value, 'Tipo:', typeof value);
+    
+    if (value === null || value === undefined || value === '') {
+        console.log('💰 CÁLCULO-FINAL-FIX - Valor vazio, retornando 0');
+        return 0;
     }
     
-    // Valor padrão
-    return 'corridos';
+    // Se já é um número válido, usar diretamente
+    if (typeof value === 'number' && !isNaN(value)) {
+        console.log('💰 CÁLCULO-FINAL-FIX - Já é número válido:', value);
+        return Math.round(value * 100) / 100; // Apenas arredondar para 2 casas decimais
+    }
+    
+    // Converter para string primeiro
+    let stringValue = String(value);
+    console.log('💰 CÁLCULO-FINAL-FIX - String value:', stringValue);
+    
+    // CORREÇÃO MELHORADA: Remover símbolos de moeda e espaços primeiro
+    stringValue = stringValue.replace(/[R$\s]/g, '');
+    console.log('💰 CÁLCULO-FINAL-FIX - Após remover R$ e espaços:', stringValue);
+    
+    // CORREÇÃO: Tratar formato brasileiro (115.000,00)
+    // Se tem ponto E vírgula, é formato brasileiro
+    if (stringValue.includes('.') && stringValue.includes(',')) {
+        // Remover pontos (separadores de milhares) e trocar vírgula por ponto
+        stringValue = stringValue.replace(/\./g, '').replace(',', '.');
+        console.log('💰 CÁLCULO-FINAL-FIX - Formato brasileiro convertido:', stringValue);
+    } else if (stringValue.includes(',') && !stringValue.includes('.')) {
+        // Só vírgula, trocar por ponto
+        stringValue = stringValue.replace(',', '.');
+        console.log('💰 CÁLCULO-FINAL-FIX - Vírgula convertida para ponto:', stringValue);
+    }
+    // Se só tem ponto, manter como está (formato americano)
+    
+    // Remover qualquer caractere não numérico restante (exceto ponto)
+    stringValue = stringValue.replace(/[^\d.]/g, '');
+    console.log('💰 CÁLCULO-FINAL-FIX - Após limpeza final:', stringValue);
+    
+    // Converter para número
+    const numericValue = parseFloat(stringValue);
+    console.log('💰 CÁLCULO-FINAL-FIX - Valor numérico final:', numericValue);
+    
+    // Verificar se é um número válido
+    if (isNaN(numericValue)) {
+        console.log('💰 CÁLCULO-FINAL-FIX - NaN detectado, retornando 0');
+        return 0;
+    }
+    
+    // CORREÇÃO: Apenas arredondar para 2 casas decimais, SEM divisões
+    const finalValue = Math.round(numericValue * 100) / 100;
+    console.log('💰 CÁLCULO-FINAL-FIX - Valor final processado:', finalValue);
+    return finalValue;
+}
+
+// 🔧 CORREÇÃO DEFINITIVA: Função de validação do tipo_prazo
+function validateTipoPrazo(tipoPrazo) {
+    console.log('🔧 CRONOGRAMA-FIX - Validando tipo_prazo:', tipoPrazo);
+    
+    // LISTA EXATA de valores aceitos pela constraint do banco
+    const VALID_VALUES = ['corridos', 'uteis', 'cronograma'];
+    
+    // Se é null, undefined, ou vazio, usar padrão
+    if (!tipoPrazo || tipoPrazo === null || tipoPrazo === undefined || tipoPrazo === '') {
+        console.log('🔧 CRONOGRAMA-FIX - Valor vazio, retornando: corridos');
+        return 'corridos';
+    }
+    
+    // Converter para string e limpar
+    let cleanValue = String(tipoPrazo).toLowerCase().trim();
+    console.log('🔧 CRONOGRAMA-FIX - Valor limpo:', cleanValue);
+    
+    // 🎯 MAPEAMENTO CORRETO - aceitar AMBOS os formatos
+    let finalValue;
+    
+    if (cleanValue === 'uteis' || cleanValue === 'úteis') {
+        finalValue = 'uteis';
+    } else if (cleanValue === 'cronograma' || 
+               cleanValue === 'de acordo com cronograma da obra' ||
+               cleanValue.includes('cronograma')) {
+        finalValue = 'cronograma';  // ✅ SEMPRE cronograma no banco
+    } else if (cleanValue === 'corridos') {
+        finalValue = 'corridos';
+    } else {
+        // Se não reconhecer, usar padrão
+        console.log('🔧 CRONOGRAMA-FIX - Valor não reconhecido, usando padrão: corridos');
+        finalValue = 'corridos';
+    }
+    
+    console.log('🔧 CRONOGRAMA-FIX - Valor final:', finalValue);
+    
+    // VERIFICAÇÃO FINAL
+    if (!VALID_VALUES.includes(finalValue)) {
+        console.log('🔧 CRONOGRAMA-FIX - ERRO! Valor não está na lista, forçando: corridos');
+        finalValue = 'corridos';
+    }
+    
+    console.log('🔧 CRONOGRAMA-FIX - Valor DEFINITIVO para o banco:', finalValue);
+    return finalValue;
+}
+
+// NOVA FUNÇÃO: Obter tipo de prazo de forma ultra-segura
+function getTipoPrazoSafe() {
+    console.log('🔧 CRONOGRAMA-FIX - Obtendo tipo_prazo de forma segura...');
+    
+    try {
+        const element = document.getElementById('tipo-prazo');
+        if (!element) {
+            console.log('🔧 CRONOGRAMA-FIX - Elemento não encontrado, retornando: corridos');
+            return 'corridos';
+        }
+        
+        const rawValue = element.value;
+        console.log('🔧 CRONOGRAMA-FIX - Valor bruto do elemento:', rawValue);
+        
+        const validatedValue = validateTipoPrazo(rawValue);
+        console.log('🔧 CRONOGRAMA-FIX - Valor validado final:', validatedValue);
+        
+        return validatedValue;
+    } catch (error) {
+        console.error('🔧 CRONOGRAMA-FIX - Erro ao obter tipo_prazo:', error);
+        return 'corridos';
+    }
 }
 
 // 🎯 NOVA FUNÇÃO: Formatar tipo de prazo para exibição
@@ -68,7 +225,6 @@ class PropostasManager {
         this.servicosAdicionados = [];
         this.clientes = [];
         this.servicos = [];
-        this.locais = []; // ✅ NOVO: Armazenar locais de aplicação
         this.propostas = []; // Armazenar propostas para filtros
         
         this.init();
@@ -87,7 +243,6 @@ class PropostasManager {
             
             await this.loadClientes();
             await this.loadServicos();
-            await this.loadLocais(); // ✅ NOVO: Carregar locais
             await this.loadPropostas();
             this.setupEventListeners();
             this.setupMasks();
@@ -95,102 +250,127 @@ class PropostasManager {
             this.updateTableHeaders(); // Atualizar cabeçalhos da tabela
             
             console.log('✅ PropostasManager inicializado com sucesso');
-            
         } catch (error) {
-            console.error('❌ Erro na inicialização:', error);
-            this.showNotification('Erro na inicialização: ' + error.message, 'error');
+            console.error('❌ Erro ao inicializar PropostasManager:', error);
+            this.showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
         }
     }
 
-    // === FILTROS ===
+    // === ATUALIZAR CABEÇALHOS DA TABELA ===
+    updateTableHeaders() {
+        const tableHead = document.querySelector('#proposals-table thead tr');
+        if (tableHead) {
+            tableHead.innerHTML = `
+                <th>Número</th>
+                <th>Cliente</th>
+                <th>Total</th>
+                <th>Prazo</th>
+                <th>Pagamento</th>
+                <th>Status</th>
+                <th>Observações</th>
+                <th>Data</th>
+                <th>Ações</th>
+            `;
+        }
+    }
+
+    // === NOVA FUNCIONALIDADE: FILTROS ===
     addFilterControls() {
-        const container = document.querySelector('.proposals-container');
-        if (!container) return;
+        const proposalsList = document.querySelector('.proposals-list');
+        if (!proposalsList) return;
 
-        const existingFilters = document.getElementById('filter-controls');
-        if (existingFilters) return; // Já existe
+        // Criar controles de filtro
+        const filterControls = document.createElement('div');
+        filterControls.className = 'filter-controls';
+        filterControls.style.cssText = `
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(173, 216, 230, 0.2);
+            flex-wrap: wrap;
+        `;
 
-        const filterHTML = `
-            <div id="filter-controls" class="filter-controls">
-                <div class="filter-row">
-                    <div class="filter-group">
-                        <label for="filter-search">🔍 Buscar:</label>
-                        <input type="text" id="filter-search" placeholder="Número ou cliente...">
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="filter-status">📊 Status:</label>
-                        <select id="filter-status">
-                            <option value="">Todos</option>
-                            <option value="Pendente">Pendente</option>
-                            <option value="Aprovada">Aprovada</option>
-                            <option value="Recusada">Recusada</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="filter-cliente">👤 Cliente:</label>
-                        <select id="filter-cliente">
-                            <option value="">Todos</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <label for="filter-periodo">📅 Período:</label>
-                        <select id="filter-periodo">
-                            <option value="">Todos</option>
-                            <option value="hoje">Hoje</option>
-                            <option value="semana">Esta semana</option>
-                            <option value="mes">Este mês</option>
-                            <option value="trimestre">Este trimestre</option>
-                        </select>
-                    </div>
-                    
-                    <div class="filter-group">
-                        <button id="clear-filters" class="btn-secondary">🗑️ Limpar</button>
-                    </div>
-                </div>
+        filterControls.innerHTML = `
+            <div style="flex: 1; min-width: 200px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-search"></i> Buscar
+                </label>
+                <input type="text" 
+                       id="filtro-busca" 
+                       placeholder="Número, cliente..." 
+                       class="form-input"
+                       style="width: 100%;"
+                       onkeyup="window.propostasManager.filtrarPropostas()">
+            </div>
+            
+            <div style="min-width: 150px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-filter"></i> Status
+                </label>
+                <select id="filtro-status" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                    <option value="Pendente">Pendente</option>
+                    <option value="Aprovada">Aprovada</option>
+                    <option value="Recusada">Recusada</option>
+                </select>
+            </div>
+            
+            <div style="min-width: 150px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-user"></i> Cliente
+                </label>
+                <select id="filtro-cliente" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                </select>
+            </div>
+            
+            <div style="min-width: 120px;">
+                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                    <i class="fas fa-calendar"></i> Período
+                </label>
+                <select id="filtro-periodo" 
+                        class="form-select"
+                        style="width: 100%;"
+                        onchange="window.propostasManager.filtrarPropostas()">
+                    <option value="">Todos</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="semana">Esta Semana</option>
+                    <option value="mes">Este Mês</option>
+                    <option value="trimestre">Últimos 3 Meses</option>
+                </select>
+            </div>
+            
+            <div style="display: flex; align-items: end;">
+                <button type="button" 
+                        class="btn-secondary" 
+                        onclick="window.propostasManager.limparFiltros()"
+                        style="height: fit-content;">
+                    <i class="fas fa-times"></i>
+                    Limpar
+                </button>
             </div>
         `;
 
-        const tableContainer = container.querySelector('.table-container');
-        if (tableContainer) {
-            tableContainer.insertAdjacentHTML('beforebegin', filterHTML);
-            this.setupFilterEvents();
-        }
-    }
-
-    setupFilterEvents() {
-        const searchInput = document.getElementById('filter-search');
-        const statusSelect = document.getElementById('filter-status');
-        const clienteSelect = document.getElementById('filter-cliente');
-        const periodoSelect = document.getElementById('filter-periodo');
-        const clearButton = document.getElementById('clear-filters');
-
-        // Eventos de filtro
-        [searchInput, statusSelect, clienteSelect, periodoSelect].forEach(element => {
-            if (element) {
-                element.addEventListener('change', () => this.applyFilters());
-                if (element.type === 'text') {
-                    element.addEventListener('input', () => this.applyFilters());
-                }
-            }
-        });
-
-        if (clearButton) {
-            clearButton.addEventListener('click', () => this.clearFilters());
-        }
-
-        // Popular dropdown de clientes
-        this.populateClienteFilter();
+        // Inserir antes da tabela
+        const tableContainer = proposalsList.querySelector('.form-title').nextElementSibling;
+        proposalsList.insertBefore(filterControls, tableContainer);
     }
 
     populateClienteFilter() {
-        const clienteSelect = document.getElementById('filter-cliente');
-        if (!clienteSelect) return;
+        const filtroCliente = document.getElementById('filtro-cliente');
+        if (!filtroCliente) return;
 
         // Limpar opções existentes (exceto "Todos")
-        clienteSelect.innerHTML = '<option value="">Todos</option>';
+        filtroCliente.innerHTML = '<option value="">Todos</option>';
 
         // Adicionar clientes únicos das propostas
         const clientesUnicos = [...new Set(this.propostas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
@@ -198,148 +378,68 @@ class PropostasManager {
             const option = document.createElement('option');
             option.value = nomeCliente;
             option.textContent = nomeCliente;
-            clienteSelect.appendChild(option);
+            filtroCliente.appendChild(option);
         });
     }
 
-    applyFilters() {
-        const searchTerm = document.getElementById('filter-search')?.value.toLowerCase() || '';
-        const statusFilter = document.getElementById('filter-status')?.value || '';
-        const clienteFilter = document.getElementById('filter-cliente')?.value || '';
-        const periodoFilter = document.getElementById('filter-periodo')?.value || '';
+    filtrarPropostas() {
+        const busca = document.getElementById('filtro-busca')?.value.toLowerCase() || '';
+        const status = document.getElementById('filtro-status')?.value || '';
+        const cliente = document.getElementById('filtro-cliente')?.value || '';
+        const periodo = document.getElementById('filtro-periodo')?.value || '';
 
-        const tbody = document.getElementById('proposals-tbody');
-        if (!tbody) return;
-
-        const rows = tbody.querySelectorAll('tr');
-        let visibleCount = 0;
-
-        rows.forEach(row => {
-            const cells = row.querySelectorAll('td');
-            if (cells.length === 0) return; // Pular linhas de cabeçalho ou vazias
-
-            const numero = cells[0]?.textContent.toLowerCase() || '';
-            const cliente = cells[1]?.textContent.toLowerCase() || '';
-            const status = cells[5]?.textContent || '';
-            const dataText = cells[6]?.textContent || '';
-
+        let propostasFiltradas = this.propostas.filter(proposta => {
             // Filtro de busca
-            const matchSearch = !searchTerm || numero.includes(searchTerm) || cliente.includes(searchTerm);
+            if (busca) {
+                const textoBusca = `${proposta.numero_proposta} ${proposta.clientes_hvc?.nome || ''}`.toLowerCase();
+                if (!textoBusca.includes(busca)) return false;
+            }
 
             // Filtro de status
-            const matchStatus = !statusFilter || status === statusFilter;
+            if (status && proposta.status !== status) return false;
 
             // Filtro de cliente
-            const matchCliente = !clienteFilter || cells[1]?.textContent === clienteFilter;
+            if (cliente && proposta.clientes_hvc?.nome !== cliente) return false;
 
             // Filtro de período
-            let matchPeriodo = true;
-            if (periodoFilter && dataText) {
-                const dataRow = new Date(dataText.split('/').reverse().join('-'));
+            if (periodo) {
+                const dataProposta = new Date(proposta.created_at);
                 const hoje = new Date();
                 
-                switch (periodoFilter) {
+                switch (periodo) {
                     case 'hoje':
-                        matchPeriodo = dataRow.toDateString() === hoje.toDateString();
+                        if (dataProposta.toDateString() !== hoje.toDateString()) return false;
                         break;
                     case 'semana':
                         const inicioSemana = new Date(hoje);
-                        inicioSemana.setDate(hoje.getDate() - hoje.getDay());
-                        matchPeriodo = dataRow >= inicioSemana;
+                        inicioSemana.setDate(hoje.getDate() - 7);
+                        if (dataProposta < inicioSemana) return false;
                         break;
                     case 'mes':
-                        matchPeriodo = dataRow.getMonth() === hoje.getMonth() && dataRow.getFullYear() === hoje.getFullYear();
+                        const inicioMes = new Date(hoje);
+                        inicioMes.setDate(hoje.getDate() - 30);
+                        if (dataProposta < inicioMes) return false;
                         break;
                     case 'trimestre':
-                        const trimestreAtual = Math.floor(hoje.getMonth() / 3);
-                        const trimestreRow = Math.floor(dataRow.getMonth() / 3);
-                        matchPeriodo = trimestreRow === trimestreAtual && dataRow.getFullYear() === hoje.getFullYear();
+                        const inicioTrimestre = new Date(hoje);
+                        inicioTrimestre.setDate(hoje.getDate() - 90);
+                        if (dataProposta < inicioTrimestre) return false;
                         break;
                 }
             }
 
-            const shouldShow = matchSearch && matchStatus && matchCliente && matchPeriodo;
-            row.style.display = shouldShow ? '' : 'none';
-            
-            if (shouldShow) visibleCount++;
+            return true;
         });
 
-        // Mostrar contador de resultados
-        this.updateFilterCounter(visibleCount);
+        this.renderPropostas(propostasFiltradas);
     }
 
-    updateFilterCounter(count) {
-        let counter = document.getElementById('filter-counter');
-        if (!counter) {
-            counter = document.createElement('div');
-            counter.id = 'filter-counter';
-            counter.className = 'filter-counter';
-            
-            const filterControls = document.getElementById('filter-controls');
-            if (filterControls) {
-                filterControls.appendChild(counter);
-            }
-        }
-        
-        counter.textContent = `${count} proposta${count !== 1 ? 's' : ''} encontrada${count !== 1 ? 's' : ''}`;
-    }
-
-    clearFilters() {
-        document.getElementById('filter-search').value = '';
-        document.getElementById('filter-status').value = '';
-        document.getElementById('filter-cliente').value = '';
-        document.getElementById('filter-periodo').value = '';
-        this.applyFilters();
-    }
-
-    // === CABEÇALHOS DA TABELA ===
-    updateTableHeaders() {
-        const table = document.getElementById('proposals-table');
-        if (!table) return;
-
-        const headers = table.querySelectorAll('th');
-        headers.forEach((header, index) => {
-            if (header.textContent.trim() && !header.querySelector('.sort-icon')) {
-                header.style.cursor = 'pointer';
-                header.innerHTML += ' <span class="sort-icon">↕️</span>';
-                header.addEventListener('click', () => this.sortTable(index));
-            }
-        });
-    }
-
-    sortTable(columnIndex) {
-        const table = document.getElementById('proposals-table');
-        const tbody = table.querySelector('tbody');
-        const rows = Array.from(tbody.querySelectorAll('tr')).filter(row => row.style.display !== 'none');
-        
-        const isAscending = table.dataset.sortDirection !== 'asc';
-        table.dataset.sortDirection = isAscending ? 'asc' : 'desc';
-
-        rows.sort((a, b) => {
-            const aText = a.cells[columnIndex]?.textContent.trim() || '';
-            const bText = b.cells[columnIndex]?.textContent.trim() || '';
-            
-            // Tentar converter para número se possível
-            const aNum = parseFloat(aText.replace(/[R$\s.,]/g, ''));
-            const bNum = parseFloat(bText.replace(/[R$\s.,]/g, ''));
-            
-            if (!isNaN(aNum) && !isNaN(bNum)) {
-                return isAscending ? aNum - bNum : bNum - aNum;
-            }
-            
-            return isAscending ? aText.localeCompare(bText) : bText.localeCompare(aText);
-        });
-
-        // Reordenar as linhas
-        rows.forEach(row => tbody.appendChild(row));
-
-        // Atualizar ícones de ordenação
-        table.querySelectorAll('.sort-icon').forEach(icon => icon.textContent = '↕️');
-        const currentHeader = table.querySelectorAll('th')[columnIndex];
-        const currentIcon = currentHeader.querySelector('.sort-icon');
-        if (currentIcon) {
-            currentIcon.textContent = isAscending ? '↑' : '↓';
-        }
+    limparFiltros() {
+        document.getElementById('filtro-busca').value = '';
+        document.getElementById('filtro-status').value = '';
+        document.getElementById('filtro-cliente').value = '';
+        document.getElementById('filtro-periodo').value = '';
+        this.renderPropostas(this.propostas);
     }
 
     // === CLIENTES ===
@@ -373,7 +473,7 @@ class PropostasManager {
         const select = document.getElementById('cliente-select');
         if (!select) return;
 
-        select.innerHTML = '<option value="">Selecione um cliente</option>';
+        select.innerHTML = '<option value="">Selecione um cliente...</option>';
         
         this.clientes.forEach(cliente => {
             const option = document.createElement('option');
@@ -422,14 +522,15 @@ class PropostasManager {
 
             this.clientes.push(data);
             this.populateClienteSelect();
-            this.hideModalCliente();
-            this.showNotification('Cliente criado com sucesso! Agora você pode selecioná-lo.', 'success');
             
-            // Selecionar automaticamente o cliente recém-criado
+            // Selecionar o cliente recém-criado
             const clienteSelect = document.getElementById('cliente-select');
             if (clienteSelect) {
                 clienteSelect.value = data.id;
             }
+            
+            this.hideModalCliente();
+            this.showNotification('Cliente adicionado com sucesso!', 'success');
         } catch (error) {
             console.error('Erro ao adicionar cliente:', error);
             this.showNotification('Erro ao adicionar cliente: ' + error.message, 'error');
@@ -459,120 +560,6 @@ class PropostasManager {
         } catch (error) {
             console.error('Erro ao carregar serviços:', error);
             this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
-        }
-    }
-
-    // === LOCAIS ===
-    async loadLocais() {
-        try {
-            if (!supabaseClient) {
-                console.error('Supabase client não disponível');
-                return;
-            }
-            
-            const { data, error } = await supabaseClient
-                .from('locais_hvc')
-                .select('*')
-                .eq('ativo', true)
-                .order('nome');
-
-            if (error) {
-                console.error('Erro na query de locais:', error);
-                throw error;
-            }
-
-            this.locais = data || [];
-            console.log('✅ Locais carregados:', this.locais.length);
-            
-        } catch (error) {
-            console.error('Erro ao carregar locais:', error);
-            this.showNotification('Erro ao carregar locais: ' + error.message, 'error');
-        }
-    }
-
-    async saveLocal(localData) {
-        try {
-            if (!supabaseClient) {
-                throw new Error('Supabase client não disponível');
-            }
-
-            const { data, error } = await supabaseClient
-                .from('locais_hvc')
-                .insert([localData])
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            // Adicionar à lista local
-            this.locais.push(data);
-            this.locais.sort((a, b) => a.nome.localeCompare(b.nome));
-            
-            this.showNotification('Local adicionado com sucesso!', 'success');
-            return data;
-            
-        } catch (error) {
-            console.error('Erro ao salvar local:', error);
-            this.showNotification('Erro ao salvar local: ' + error.message, 'error');
-            throw error;
-        }
-    }
-
-    async editLocal(localId, localData) {
-        try {
-            if (!supabaseClient) {
-                throw new Error('Supabase client não disponível');
-            }
-
-            const { data, error } = await supabaseClient
-                .from('locais_hvc')
-                .update(localData)
-                .eq('id', localId)
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            // Atualizar na lista local
-            const index = this.locais.findIndex(l => l.id === localId);
-            if (index !== -1) {
-                this.locais[index] = data;
-                this.locais.sort((a, b) => a.nome.localeCompare(b.nome));
-            }
-            
-            this.showNotification('Local atualizado com sucesso!', 'success');
-            return data;
-            
-        } catch (error) {
-            console.error('Erro ao editar local:', error);
-            this.showNotification('Erro ao editar local: ' + error.message, 'error');
-            throw error;
-        }
-    }
-
-    async deleteLocal(localId) {
-        try {
-            if (!supabaseClient) {
-                throw new Error('Supabase client não disponível');
-            }
-
-            // Marcar como inativo ao invés de deletar
-            const { error } = await supabaseClient
-                .from('locais_hvc')
-                .update({ ativo: false })
-                .eq('id', localId);
-
-            if (error) throw error;
-
-            // Remover da lista local
-            this.locais = this.locais.filter(l => l.id !== localId);
-            
-            this.showNotification('Local removido com sucesso!', 'success');
-            
-        } catch (error) {
-            console.error('Erro ao deletar local:', error);
-            this.showNotification('Erro ao deletar local: ' + error.message, 'error');
-            throw error;
         }
     }
 
@@ -629,18 +616,22 @@ class PropostasManager {
 
     // === PROPOSTAS ===
     showFormProposta(proposta = null) {
+        this.currentPropostaId = proposta?.id || null;
+        
         const formSection = document.getElementById('form-proposta');
+        const titleText = document.getElementById('form-title-text');
+        
         if (formSection) {
+            if (proposta) {
+                if (titleText) titleText.textContent = 'Editar Proposta';
+                this.populateForm(proposta);
+            } else {
+                if (titleText) titleText.textContent = 'Nova Proposta';
+                this.clearForm();
+            }
+            
             formSection.classList.remove('hidden');
-        }
-
-        if (proposta) {
-            this.currentPropostaId = proposta.id;
-            this.populateForm(proposta);
-            this.loadItensProposta(proposta.id);
-        } else {
-            this.currentPropostaId = null;
-            this.clearForm();
+            formSection.scrollIntoView({ behavior: 'smooth' });
         }
     }
 
@@ -691,49 +682,11 @@ class PropostasManager {
         if (statusSelect) statusSelect.value = proposta.status || 'Pendente';
         if (observacoesTextarea) observacoesTextarea.value = proposta.observacoes || '';
         if (prazoInput) prazoInput.value = proposta.prazo_execucao || '';
-        if (tipoPrazoSelect) {
-            const tipoPrazoValidado = validateTipoPrazo(proposta.tipo_prazo);
-            tipoPrazoSelect.value = tipoPrazoValidado;
-        }
+        if (tipoPrazoSelect) tipoPrazoSelect.value = proposta.tipo_prazo || 'corridos';
         if (formaPagamentoInput) formaPagamentoInput.value = proposta.forma_pagamento || '';
         
-        // Se a proposta estiver aprovada, desabilitar edição
-        if (proposta.status === 'Aprovada') {
-            this.disableFormForApproved();
-        }
-    }
-
-    disableFormForApproved() {
-        const form = document.getElementById('proposta-form');
-        if (!form) return;
-        
-        // Desabilitar todos os campos exceto observações
-        const inputs = form.querySelectorAll('input, select, textarea, button');
-        inputs.forEach(input => {
-            if (input.id !== 'observacoes' && input.type !== 'button') {
-                input.disabled = true;
-                input.style.opacity = '0.6';
-                input.style.cursor = 'not-allowed';
-                input.title = 'Proposta aprovada - edição bloqueada';
-            }
-        });
-        
-        // Desabilitar botões de ação na tabela de serviços
-        const actionButtons = document.querySelectorAll('#services-tbody button');
-        actionButtons.forEach(btn => {
-            btn.disabled = true;
-            btn.style.opacity = '0.6';
-            btn.style.cursor = 'not-allowed';
-            btn.title = 'Proposta aprovada - edição bloqueada';
-        });
-        
-        // Alterar texto do botão salvar
-        const btnSalvar = document.querySelector('button[type="submit"]');
-        if (btnSalvar) {
-            btnSalvar.textContent = 'Proposta Aprovada (Somente Observações)';
-        }
-        
-        this.showNotification('⚠️ Proposta aprovada: apenas observações podem ser editadas', 'warning');
+        // Carregar itens da proposta
+        this.loadItensProposta(proposta.id);
     }
 
     async loadItensProposta(propostaId) {
@@ -751,394 +704,136 @@ class PropostasManager {
             this.servicosAdicionados = data.map(item => ({
                 servico_id: item.servico_id,
                 servico: item.servicos_hvc,
-                local_id: item.local_id, // ✅ NOVO: Carregar local_id
-                quantidade: item.quantidade,
-                preco_mao_obra: item.preco_mao_obra,
-                preco_material: item.preco_material,
-                preco_total: item.preco_total
+                quantidade: ensureNumericValue(item.quantidade),
+                preco_mao_obra: ensureNumericValue(item.preco_mao_obra),
+                preco_material: ensureNumericValue(item.preco_material),
+                preco_total: ensureNumericValue(item.preco_total)
             }));
 
             this.updateServicesTable();
             this.updateTotal();
-
         } catch (error) {
             console.error('Erro ao carregar itens da proposta:', error);
-            this.showNotification('Erro ao carregar itens da proposta: ' + error.message, 'error');
         }
     }
 
-    async loadPropostas() {
-        try {
-            if (!supabaseClient) {
-                console.error('Supabase client não disponível');
-                return;
-            }
-            
-            const { data, error } = await supabaseClient
-                .from('propostas_hvc')
-                .select(`
-                    *,
-                    clientes_hvc (nome)
-                `)
-                .order('created_at', { ascending: false });
-
-            if (error) {
-                console.error('Erro na query de propostas:', error);
-                throw error;
-            }
-
-            this.propostas = data || [];
-            this.renderPropostas();
-            this.populateClienteFilter(); // Atualizar filtro de clientes
-            
-        } catch (error) {
-            console.error('Erro ao carregar propostas:', error);
-            this.showNotification('Erro ao carregar propostas: ' + error.message, 'error');
-        }
-    }
-
-    renderPropostas() {
-        const tbody = document.getElementById('proposals-tbody');
-        if (!tbody) {
-            console.error('Tbody de propostas não encontrado');
-            return;
-        }
-        
-        tbody.innerHTML = '';
-
-        if (this.propostas.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
-                        <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                        Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        this.propostas.forEach(proposta => {
-            const row = document.createElement('tr');
-            
-            const clienteNome = proposta.clientes_hvc?.nome || 'Cliente não encontrado';
-            const dataFormatada = proposta.created_at ? 
-                new Date(proposta.created_at).toLocaleDateString('pt-BR') : '';
-            
-            // Formatar prazo de execução
-            const prazoFormatado = formatTipoPrazoDisplay(proposta.tipo_prazo, proposta.prazo_execucao);
-            
-            // Definir classe CSS baseada no status
-            let statusClass = '';
-            switch (proposta.status) {
-                case 'Aprovada':
-                    statusClass = 'status-aprovada';
-                    break;
-                case 'Recusada':
-                    statusClass = 'status-recusada';
-                    break;
-                default:
-                    statusClass = 'status-pendente';
-            }
-            
-            row.innerHTML = `
-                <td><strong>${proposta.numero_proposta || ''}</strong></td>
-                <td>${clienteNome}</td>
-                <td><strong>${this.formatMoney(proposta.valor_total || 0)}</strong></td>
-                <td>${prazoFormatado}</td>
-                <td>${proposta.forma_pagamento || ''}</td>
-                <td><span class="status-badge ${statusClass}">${proposta.status || 'Pendente'}</span></td>
-                <td>${dataFormatada}</td>
-                <td>
-                    <button class="btn-primary" 
-                            onclick="window.propostasManager.editProposta(${proposta.id})"
-                            title="Editar proposta">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-danger" 
-                            onclick="window.propostasManager.deleteProposta(${proposta.id})"
-                            title="Excluir proposta">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            
-            tbody.appendChild(row);
-        });
-    }
-
-    editProposta(id) {
-        const proposta = this.propostas.find(p => p.id === id);
-        if (proposta) {
-            this.showFormProposta(proposta);
-            
-            // Scroll para o formulário
-            const formSection = document.getElementById('form-proposta');
-            if (formSection) {
-                formSection.scrollIntoView({ behavior: 'smooth' });
-            }
-        }
-    }
-
-    async deleteProposta(id) {
-        const proposta = this.propostas.find(p => p.id === id);
-        if (!proposta) return;
-
-        if (confirm(`Tem certeza que deseja excluir a proposta ${proposta.numero_proposta}?`)) {
-            try {
-                // Primeiro, deletar os itens da proposta
-                await supabaseClient
-                    .from('itens_proposta_hvc')
-                    .delete()
-                    .eq('proposta_id', id);
-
-                // Depois, deletar a proposta
-                const { error } = await supabaseClient
-                    .from('propostas_hvc')
-                    .delete()
-                    .eq('id', id);
-
-                if (error) throw error;
-
-                await this.loadPropostas();
-                this.showNotification('Proposta excluída com sucesso!', 'success');
-
-            } catch (error) {
-                console.error('Erro ao excluir proposta:', error);
-                this.showNotification('Erro ao excluir proposta: ' + error.message, 'error');
-            }
-        }
-    }
-
-    // 💰 FUNÇÃO CORRIGIDA: saveProposta com validação de tipo de prazo
-    async saveProposta(e) {
-        e.preventDefault();
-        
-        console.log('🎉 CRONOGRAMA-FIX - Iniciando salvamento da proposta...');
-        
-        const numeroInput = document.getElementById('numero-proposta');
-        const clienteSelect = document.getElementById('cliente-select');
-        const statusSelect = document.getElementById('status-select');
-        const observacoesTextarea = document.getElementById('observacoes');
-        const prazoInput = document.getElementById('prazo-execucao');
-        const tipoPrazoSelect = document.getElementById('tipo-prazo');
-        const formaPagamentoInput = document.getElementById('forma-pagamento');
-
-        // Validações básicas
-        if (!numeroInput?.value) {
-            this.showNotification('Número da proposta é obrigatório', 'error');
-            return;
-        }
-
-        if (!clienteSelect?.value) {
-            this.showNotification('Cliente é obrigatório', 'error');
-            return;
-        }
-
-        // 🎯 CORREÇÃO: Validar tipo de prazo
-        const tipoPrazoValue = tipoPrazoSelect?.value;
-        const tipoPrazoValidado = validateTipoPrazo(tipoPrazoValue);
-        
-        console.log('🎉 CRONOGRAMA-FIX - Tipo de prazo original:', tipoPrazoValue);
-        console.log('🎉 CRONOGRAMA-FIX - Tipo de prazo validado:', tipoPrazoValidado);
-
-        // Calcular total da proposta
-        const valorTotal = this.servicosAdicionados.reduce((total, item) => {
-            return total + ensureNumericValue(item.preco_total);
-        }, 0);
-
-        const propostaData = {
-            numero_proposta: numeroInput.value,
-            cliente_id: clienteSelect.value,
-            status: statusSelect?.value || 'Pendente',
-            observacoes: observacoesTextarea?.value || '',
-            prazo_execucao: prazoInput?.value || '',
-            tipo_prazo: tipoPrazoValidado, // 🎯 CORREÇÃO: Usar valor validado
-            forma_pagamento: formaPagamentoInput?.value || '',
-            valor_total: valorTotal
-        };
-
-        console.log('🎉 CRONOGRAMA-FIX - Dados da proposta para salvar:', propostaData);
-
-        try {
-            let proposta;
-            
-            if (this.currentPropostaId) {
-                // Atualizar proposta existente
-                const { data, error } = await supabaseClient
-                    .from('propostas_hvc')
-                    .update(propostaData)
-                    .eq('id', this.currentPropostaId)
-                    .select()
-                    .single();
-
-                if (error) throw error;
-                proposta = data;
-                console.log('🎉 CRONOGRAMA-FIX - Proposta atualizada:', proposta);
-            } else {
-                // Criar nova proposta
-                const { data, error } = await supabaseClient
-                    .from('propostas_hvc')
-                    .insert([propostaData])
-                    .select()
-                    .single();
-
-                if (error) throw error;
-                proposta = data;
-                console.log('🎉 CRONOGRAMA-FIX - Nova proposta criada:', proposta);
-            }
-
-            // Salvar itens da proposta
-            await this.saveItensProposta(proposta.id);
-
-            this.hideFormProposta();
-            
-            // CORREÇÃO: Forçar recarregamento completo da lista
-            await this.loadPropostas();
-            
-            this.showNotification('Proposta salva com sucesso!', 'success');
-            console.log('🎉 CRONOGRAMA-FIX - Processo concluído com sucesso!');
-
-        } catch (error) {
-            console.error('💥 CRONOGRAMA-FIX - Erro no salvamento:', error);
-            console.error('💥 CRONOGRAMA-FIX - Detalhes do erro:', JSON.stringify(error, null, 2));
-            this.showNotification('Erro ao salvar proposta: ' + error.message, 'error');
-        }
-    }
-
-    // 💰 FUNÇÃO CORRIGIDA: saveItensProposta com valores garantidos
-    async saveItensProposta(propostaId) {
-        console.log('💰 CÁLCULO-FINAL-FIX - Iniciando saveItensProposta...');
-        
-        // Remover itens existentes
-        await supabaseClient
-            .from('itens_proposta_hvc')
-            .delete()
-            .eq('proposta_id', propostaId);
-
-        // Inserir novos itens com valores garantidos como numéricos
-        const itens = this.servicosAdicionados.map((item, index) => {
-            const quantidade = ensureNumericValue(item.quantidade);
-            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
-            const precoMaterial = ensureNumericValue(item.preco_material);
-            const precoTotal = ensureNumericValue(quantidade * (precoMaoObra + precoMaterial));
-            
-            console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index} para salvar:`, {
-                quantidade, precoMaoObra, precoMaterial, precoTotal, local_id: item.local_id
-            });
-            
-            return {
-                proposta_id: propostaId,
-                servico_id: item.servico_id,
-                local_id: item.local_id || null, // ✅ NOVO: Incluir local_id
-                quantidade: quantidade,
-                preco_mao_obra: precoMaoObra,
-                preco_material: precoMaterial,
-                preco_total: precoTotal
-            };
-        });
-
-        console.log('💰 CÁLCULO-FINAL-FIX - Itens finais para inserir:', itens);
-
-        if (itens.length > 0) {
-            const { error } = await supabaseClient
-                .from('itens_proposta_hvc')
-                .insert(itens);
-
-            if (error) {
-                console.error('💥 CÁLCULO-FINAL-FIX - Erro ao inserir itens:', error);
-                throw error;
-            }
-            
-            console.log('✅ CÁLCULO-FINAL-FIX - Itens inseridos com sucesso!');
-        }
-    }
-
-    // === SERVIÇOS DA PROPOSTA ===
     addServicoToProposta() {
         if (this.servicos.length === 0) {
-            this.showNotification('Nenhum serviço disponível. Crie um serviço primeiro.', 'warning');
+            this.showNotification('Nenhum serviço encontrado. Adicione serviços primeiro.', 'warning');
             return;
         }
+        
+        this.showServicoSelectionModal();
+    }
 
-        // Criar modal de seleção múltipla
+    // === NOVA FUNCIONALIDADE: SELEÇÃO MÚLTIPLA ===
+    showServicoSelectionModal() {
+        // Remover modal existente se houver
+        const existingModal = document.querySelector('.modal-selection');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Verificar se há serviços carregados
+        if (!this.servicos || this.servicos.length === 0) {
+            this.showNotification('Nenhum serviço encontrado. Verifique se há serviços cadastrados no banco de dados.', 'error');
+            return;
+        }
+        
+        // Filtrar serviços que já foram adicionados
+        const servicosDisponiveis = this.servicos.filter(servico => 
+            !this.servicosAdicionados.find(s => s.servico_id === servico.id)
+        );
+        
+        if (servicosDisponiveis.length === 0) {
+            this.showNotification('Todos os serviços disponíveis já foram adicionados à proposta.', 'info');
+            return;
+        }
+        
+        // Criar lista de serviços com checkboxes
+        let servicosCheckboxes = '';
+        servicosDisponiveis.forEach(servico => {
+            if (servico && servico.id && servico.codigo && servico.descricao) {
+                servicosCheckboxes += `
+                    <div style="display: flex; align-items: center; padding: 8px; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 6px; margin-bottom: 8px; background: rgba(255, 255, 255, 0.05);">
+                        <input type="checkbox" 
+                               id="servico-${servico.id}" 
+                               value="${servico.id}" 
+                               style="margin-right: 12px; transform: scale(1.2);">
+                        <label for="servico-${servico.id}" style="flex: 1; cursor: pointer; color: #e0e0e0;">
+                            <strong>${servico.codigo}</strong> - ${servico.descricao}
+                            ${servico.unidade ? `<br><small style="color: #add8e6;">Unidade: ${servico.unidade}</small>` : ''}
+                        </label>
+                    </div>
+                `;
+            }
+        });
+        
+        // Criar modal dinâmico para seleção múltipla
         const modal = document.createElement('div');
         modal.className = 'modal modal-selection show';
         modal.innerHTML = `
-            <div class="modal-content" style="max-width: 900px; width: 95%;">
+            <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
                 <div class="modal-header">
                     <h3 class="modal-title">
-                        <i class="fas fa-tools"></i>
-                        Selecionar Serviços para a Proposta
+                        <i class="fas fa-tasks"></i>
+                        Selecionar Serviços (Múltipla Seleção)
                     </h3>
                     <button class="close-modal" onclick="this.closest('.modal').remove()">
                         <i class="fas fa-times"></i>
                     </button>
                 </div>
                 
-                <div class="modal-body">
-                    <div class="selection-controls">
-                        <div class="search-group">
-                            <input type="text" 
-                                   id="search-servicos" 
-                                   placeholder="🔍 Buscar serviços..." 
-                                   onkeyup="window.propostasManager.filtrarServicos(this.value)">
-                        </div>
-                        
-                        <div class="action-buttons">
-                            <button type="button" class="btn-secondary" onclick="window.propostasManager.selecionarTodosServicos()">
-                                ✅ Selecionar Todos
-                            </button>
-                            <button type="button" class="btn-secondary" onclick="window.propostasManager.limparSelecaoServicos()">
-                                ❌ Limpar Seleção
-                            </button>
-                            <button type="button" class="btn-primary" onclick="window.propostasManager.showModalServicoFromSelection()">
-                                ➕ Criar Novo Serviço
-                            </button>
-                        </div>
+                <div style="margin-bottom: 1rem;">
+                    <div style="display: flex; gap: 10px; margin-bottom: 1rem;">
+                        <input type="text" 
+                               id="filtro-servicos" 
+                               placeholder="Buscar serviços..." 
+                               class="form-input" 
+                               style="flex: 1;"
+                               onkeyup="window.propostasManager.filtrarServicos(this.value)">
+                        <button type="button" 
+                                class="btn-info" 
+                                onclick="window.propostasManager.selecionarTodosServicos()">
+                            <i class="fas fa-check-double"></i>
+                            Todos
+                        </button>
+                        <button type="button" 
+                                class="btn-secondary" 
+                                onclick="window.propostasManager.limparSelecaoServicos()">
+                            <i class="fas fa-times"></i>
+                            Limpar
+                        </button>
                     </div>
                     
-                    <div class="services-list" id="lista-servicos">
-                        ${this.servicos.map(servico => {
-                            const jaAdicionado = this.servicosAdicionados.find(s => s.servico_id === servico.id);
-                            return `
-                                <div class="service-item ${jaAdicionado ? 'already-added' : ''}">
-                                    <label class="service-checkbox">
-                                        <input type="checkbox" 
-                                               value="${servico.id}" 
-                                               ${jaAdicionado ? 'disabled' : ''}>
-                                        <div class="service-info">
-                                            <div class="service-header">
-                                                <strong>${servico.codigo} - ${servico.descricao}</strong>
-                                                <span class="service-unit">${servico.unidade}</span>
-                                            </div>
-                                            ${servico.detalhe ? `<div class="service-detail">${servico.detalhe}</div>` : ''}
-                                            ${jaAdicionado ? '<div class="already-added-label">✅ Já adicionado</div>' : ''}
-                                        </div>
-                                    </label>
-                                </div>
-                            `;
-                        }).join('')}
+                    <div id="contador-selecionados" style="color: #add8e6; font-weight: 600; margin-bottom: 1rem;">
+                        0 serviços selecionados
                     </div>
                 </div>
                 
+                <div id="lista-servicos" style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; padding: 1rem; background: rgba(0, 0, 0, 0.2);">
+                    ${servicosCheckboxes}
+                </div>
+                
                 <div class="modal-footer">
-                    <div class="selection-summary">
-                        <span id="contador-selecionados">0 serviços selecionados</span>
-                    </div>
-                    <div class="footer-buttons">
-                        <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">
-                            Cancelar
-                        </button>
-                        <button type="button" 
-                                class="btn-success" 
-                                id="btn-adicionar-selecionados"
-                                onclick="window.propostasManager.addSelectedServicos()"
-                                disabled>
-                            <i class="fas fa-plus"></i>
-                            Adicionar Selecionados
-                        </button>
-                    </div>
+                    <button type="button" class="btn-secondary" onclick="this.closest('.modal').remove()">
+                        <i class="fas fa-times"></i>
+                        Cancelar
+                    </button>
+                    <button type="button" 
+                            class="btn-info" 
+                            onclick="window.propostasManager.showModalServicoFromSelection()" 
+                            style="margin-right: 10px;">
+                        <i class="fas fa-plus"></i>
+                        Criar Novo Serviço
+                    </button>
+                    <button type="button" 
+                            class="btn-success" 
+                            onclick="window.propostasManager.addSelectedServicos()"
+                            id="btn-adicionar-selecionados">
+                        <i class="fas fa-plus-circle"></i>
+                        Adicionar Selecionados
+                    </button>
                 </div>
             </div>
         `;
@@ -1242,15 +937,10 @@ class PropostasManager {
                 return;
             }
 
-            // ✅ NOVO: Obter local_id selecionado
-            const localSelect = document.getElementById('servico-local');
-            const localId = localSelect ? localSelect.value : null;
-            
             // Adicionar serviço à lista
             this.servicosAdicionados.push({
                 servico_id: servicoId,
                 servico: servico,
-                local_id: localId || null, // ✅ NOVO: Incluir local_id
                 quantidade: 1,
                 preco_mao_obra: 0,
                 preco_material: 0,
@@ -1308,7 +998,7 @@ class PropostasManager {
         if (this.servicosAdicionados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="7" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhum serviço adicionado. Clique em "Adicionar Serviço" para começar.
                     </td>
@@ -1325,16 +1015,11 @@ class PropostasManager {
             const servicoNome = servico ? `${servico.codigo} - ${servico.descricao}` : 'Serviço não encontrado';
             const unidade = servico?.unidade || '';
             
-            // ✅ NOVO: Buscar nome do local
-            const local = this.locais.find(l => l.id == item.local_id);
-            const localNome = local ? local.nome : '-';
-            
             row.innerHTML = `
                 <td>
                     <strong>${servicoNome}</strong>
                     ${servico?.detalhe ? `<br><small style="color: #add8e6;">${servico.detalhe}</small>` : ''}
                 </td>
-                <td><span style="color: #add8e6;">${localNome}</span></td>
                 <td>
                     <input type="number" 
                            value="${item.quantidade}" 
@@ -1378,41 +1063,43 @@ class PropostasManager {
 
     // 💰 FUNÇÃO CORRIGIDA: updateItemValue com logs detalhados
     updateItemValue(index, field, value) {
-        console.log(`💰 CÁLCULO-FINAL-FIX - updateItemValue chamado:`, { index, field, value });
+        console.log(`💰 CÁLCULO-FINAL-FIX - updateItemValue chamada:`, {index, field, value});
         
-        if (index < 0 || index >= this.servicosAdicionados.length) {
-            console.error('💥 CÁLCULO-FINAL-FIX - Índice inválido:', index);
-            return;
+        if (index >= 0 && index < this.servicosAdicionados.length) {
+            const item = this.servicosAdicionados[index];
+            
+            // CORREÇÃO: Usar função para garantir formato numérico correto
+            const valorProcessado = ensureNumericValue(value);
+            console.log(`💰 CÁLCULO-FINAL-FIX - Valor processado para ${field}:`, valorProcessado);
+            
+            item[field] = valorProcessado;
+            
+            // Recalcular total do item
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Valores para cálculo:`, {quantidade, precoMaoObra, precoMaterial});
+            
+            const somaPrecos = precoMaoObra + precoMaterial;
+            const totalCalculado = quantidade * somaPrecos;
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Cálculo: ${quantidade} × (${precoMaoObra} + ${precoMaterial}) = ${totalCalculado}`);
+            
+            item.preco_total = ensureNumericValue(totalCalculado);
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Total final do item:`, item.preco_total);
+            
+            this.updateServicesTable();
+            this.updateTotal();
         }
-
-        const item = this.servicosAdicionados[index];
-        const numericValue = ensureNumericValue(value);
-        
-        console.log(`💰 CÁLCULO-FINAL-FIX - Valor numérico convertido:`, numericValue);
-        
-        // Atualizar o campo
-        item[field] = numericValue;
-        
-        // Recalcular total do item
-        const quantidade = ensureNumericValue(item.quantidade);
-        const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
-        const precoMaterial = ensureNumericValue(item.preco_material);
-        const novoTotal = quantidade * (precoMaoObra + precoMaterial);
-        
-        item.preco_total = novoTotal;
-        
-        console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index} atualizado:`, {
-            quantidade, precoMaoObra, precoMaterial, novoTotal
-        });
-        
-        // Atualizar exibição da tabela
-        this.updateServicesTable();
     }
 
     removeServico(index) {
-        if (index >= 0 && index < this.servicosAdicionados.length) {
+        if (confirm('Tem certeza que deseja remover este serviço?')) {
             this.servicosAdicionados.splice(index, 1);
             this.updateServicesTable();
+            this.updateTotal();
         }
     }
 
@@ -1420,40 +1107,381 @@ class PropostasManager {
     updateTotal() {
         console.log('💰 CÁLCULO-FINAL-FIX - Iniciando updateTotal...');
         
-        const total = this.servicosAdicionados.reduce((acc, item) => {
-            const itemTotal = ensureNumericValue(item.preco_total);
-            console.log(`💰 CÁLCULO-FINAL-FIX - Item total: ${itemTotal}`);
-            return acc + itemTotal;
-        }, 0);
+        // CORREÇÃO: Cálculo simplificado e direto com garantia numérica
+        let total = 0;
         
-        console.log('💰 CÁLCULO-FINAL-FIX - Total calculado:', total);
+        this.servicosAdicionados.forEach((item, index) => {
+            const itemTotal = ensureNumericValue(item.preco_total);
+            console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index}: ${itemTotal}`);
+            total += itemTotal;
+        });
+        
+        // Garantir que o total seja um número válido
+        total = ensureNumericValue(total);
+        
+        console.log('💰 CÁLCULO-FINAL-FIX - Total calculado final:', total);
         
         const totalElement = document.getElementById('total-proposta');
         if (totalElement) {
             const totalFormatado = this.formatMoney(total);
+            console.log('💰 CÁLCULO-FINAL-FIX - Total formatado:', totalFormatado);
             totalElement.textContent = totalFormatado;
-            console.log('💰 CÁLCULO-FINAL-FIX - Total formatado exibido:', totalFormatado);
+        }
+    }
+
+    // 💰 FUNÇÃO CORRIGIDA: getCurrentTotal para obter total atual
+    getCurrentTotal() {
+        console.log('💰 CÁLCULO-FINAL-FIX - Iniciando getCurrentTotal...');
+        
+        let total = 0;
+        
+        this.servicosAdicionados.forEach((item, index) => {
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
+            const itemTotal = quantidade * (precoMaoObra + precoMaterial);
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index}: ${quantidade} × (${precoMaoObra} + ${precoMaterial}) = ${itemTotal}`);
+            
+            total += itemTotal;
+        });
+        
+        // CORREÇÃO: Garantir que o total seja um número válido
+        const totalFinal = ensureNumericValue(total);
+        console.log('💰 CÁLCULO-FINAL-FIX - Total final getCurrentTotal:', totalFinal);
+        
+        return totalFinal;
+    }
+
+    // 🔧 FUNÇÃO CORRIGIDA: handleSubmitProposta com validação de cronograma
+    async handleSubmitProposta(e) {
+        e.preventDefault();
+
+        console.log('🚀 CRONOGRAMA-FIX - Iniciando handleSubmitProposta');
+
+        if (!this.validateForm()) {
+            console.log('❌ CRONOGRAMA-FIX - Validação do formulário falhou');
+            return;
+        }
+
+        // 💰 CORREÇÃO: Usar função dedicada para obter o total atual com garantia numérica
+        const totalCalculado = this.getCurrentTotal();
+        console.log('💰 CÁLCULO-FINAL-FIX - Total para salvar no banco:', totalCalculado);
+
+        // 🎯 CORREÇÃO CRONOGRAMA: Usar função segura para obter tipo de prazo
+        const tipoPrazoValidado = getTipoPrazoSafe();
+        
+        console.log('📊 CRONOGRAMA-FIX - Dados da proposta antes do envio:');
+        console.log('- numero_proposta:', document.getElementById('numero-proposta').value);
+        console.log('- cliente_id:', document.getElementById('cliente-select').value);
+        console.log('- status:', document.getElementById('status-select').value);
+        console.log('- prazo_execucao:', document.getElementById('prazo-execucao')?.value);
+        console.log('- tipo_prazo (VALIDADO):', tipoPrazoValidado);
+        console.log('- forma_pagamento:', document.getElementById('forma-pagamento')?.value);
+        console.log('- total_proposta:', totalCalculado);
+
+        const propostaData = {
+            numero_proposta: document.getElementById('numero-proposta').value,
+            cliente_id: document.getElementById('cliente-select').value,
+            status: document.getElementById('status-select').value,
+            observacoes: document.getElementById('observacoes').value || null,
+            prazo_execucao: parseInt(document.getElementById('prazo-execucao')?.value) || null,
+            tipo_prazo: tipoPrazoValidado, // 🎯 CORREÇÃO: Valor GARANTIDAMENTE válido
+            forma_pagamento: document.getElementById('forma-pagamento')?.value || null,
+            total_proposta: totalCalculado // 💰 CORREÇÃO: Valor já garantido como numérico correto
+        };
+
+        console.log('📦 CRONOGRAMA-FIX - Objeto propostaData final:', JSON.stringify(propostaData, null, 2));
+
+        try {
+            let proposta;
+            
+            if (this.currentPropostaId) {
+                console.log('✏️ CRONOGRAMA-FIX - Atualizando proposta existente:', this.currentPropostaId);
+                // Atualizar proposta existente
+                const { data, error } = await supabaseClient
+                    .from('propostas_hvc')
+                    .update(propostaData)
+                    .eq('id', this.currentPropostaId)
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('❌ CRONOGRAMA-FIX - Erro na atualização:', error);
+                    throw error;
+                }
+                proposta = data;
+                console.log('✅ CRONOGRAMA-FIX - Proposta atualizada com sucesso:', proposta);
+                
+            } else {
+                console.log('➕ CRONOGRAMA-FIX - Criando nova proposta');
+                // Criar nova proposta
+                const { data, error } = await supabaseClient
+                    .from('propostas_hvc')
+                    .insert([propostaData])
+                    .select()
+                    .single();
+
+                if (error) {
+                    console.error('❌ CRONOGRAMA-FIX - Erro na criação:', error);
+                    throw error;
+                }
+                proposta = data;
+                console.log('✅ CRONOGRAMA-FIX - Proposta criada com sucesso:', proposta);
+            }
+
+            // Salvar itens da proposta
+            console.log('💾 CRONOGRAMA-FIX - Salvando itens da proposta...');
+            await this.saveItensProposta(proposta.id);
+
+            this.hideFormProposta();
+            
+            // CORREÇÃO: Forçar recarregamento completo da lista
+            await this.loadPropostas();
+            
+            this.showNotification('Proposta salva com sucesso!', 'success');
+            console.log('🎉 CRONOGRAMA-FIX - Processo concluído com sucesso!');
+
+        } catch (error) {
+            console.error('💥 CRONOGRAMA-FIX - Erro no salvamento:', error);
+            console.error('💥 CRONOGRAMA-FIX - Detalhes do erro:', JSON.stringify(error, null, 2));
+            this.showNotification('Erro ao salvar proposta: ' + error.message, 'error');
+        }
+    }
+
+    // 💰 FUNÇÃO CORRIGIDA: saveItensProposta com valores garantidos
+    async saveItensProposta(propostaId) {
+        console.log('💰 CÁLCULO-FINAL-FIX - Iniciando saveItensProposta...');
+        
+        // Remover itens existentes
+        await supabaseClient
+            .from('itens_proposta_hvc')
+            .delete()
+            .eq('proposta_id', propostaId);
+
+        // Inserir novos itens com valores garantidos como numéricos
+        const itens = this.servicosAdicionados.map((item, index) => {
+            const quantidade = ensureNumericValue(item.quantidade);
+            const precoMaoObra = ensureNumericValue(item.preco_mao_obra);
+            const precoMaterial = ensureNumericValue(item.preco_material);
+            const precoTotal = ensureNumericValue(quantidade * (precoMaoObra + precoMaterial));
+            
+            console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index} para salvar:`, {
+                quantidade, precoMaoObra, precoMaterial, precoTotal
+            });
+            
+            return {
+                proposta_id: propostaId,
+                servico_id: item.servico_id,
+                quantidade: quantidade,
+                preco_mao_obra: precoMaoObra,
+                preco_material: precoMaterial,
+                preco_total: precoTotal
+            };
+        });
+
+        console.log('💰 CÁLCULO-FINAL-FIX - Itens finais para inserir:', itens);
+
+        if (itens.length > 0) {
+            const { error } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .insert(itens);
+
+            if (error) throw error;
+        }
+    }
+
+    validateForm() {
+        const numeroProposta = document.getElementById('numero-proposta').value;
+        const clienteId = document.getElementById('cliente-select').value;
+        
+        if (!numeroProposta || !numeroProposta.match(/^\d{4}\/\d{4}$/)) {
+            this.showNotification('Número da proposta deve estar no formato XXXX/YYYY', 'error');
+            return false;
+        }
+
+        if (!clienteId) {
+            this.showNotification('Selecione um cliente', 'error');
+            return false;
+        }
+
+        if (this.servicosAdicionados.length === 0) {
+            this.showNotification('Adicione pelo menos um serviço', 'error');
+            return false;
+        }
+
+        // Validar se todos os serviços têm quantidade e preço
+        for (let item of this.servicosAdicionados) {
+            if (item.quantidade <= 0) {
+                this.showNotification('Todos os serviços devem ter quantidade maior que zero', 'error');
+                return false;
+            }
+            if (item.preco_mao_obra <= 0 && item.preco_material <= 0) {
+                this.showNotification('Todos os serviços devem ter pelo menos um preço (mão de obra ou material)', 'error');
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    // === LISTA DE PROPOSTAS CORRIGIDA ===
+    async loadPropostas() {
+        try {
+            if (!supabaseClient) {
+                console.error('Supabase client não disponível');
+                return;
+            }
+            
+            const { data, error } = await supabaseClient
+                .from('propostas_hvc')
+                .select(`
+                    *,
+                    clientes_hvc (nome)
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            this.propostas = data || []; // Armazenar para filtros
+            this.renderPropostas(this.propostas);
+            this.populateClienteFilter(); // Atualizar filtro de clientes
+        } catch (error) {
+            console.error('Erro ao carregar propostas:', error);
+            this.showNotification('Erro ao carregar propostas: ' + error.message, 'error');
+        }
+    }
+
+    // 🎯 FUNÇÃO CORRIGIDA: renderPropostas com formatação correta do prazo
+    renderPropostas(propostas) {
+        const tbody = document.getElementById('proposals-tbody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+
+        if (propostas.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="text-align: center; padding: 2rem; color: #888;">
+                        <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                        Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        propostas.forEach(proposta => {
+            const row = document.createElement('tr');
+            
+            // 🎯 CORREÇÃO: Formatar prazo usando a nova função
+            let prazoTexto = '-';
+            if (proposta.prazo_execucao) {
+                prazoTexto = formatTipoPrazoDisplay(proposta.tipo_prazo, proposta.prazo_execucao);
+            }
+
+            // Formatar observações (truncar se muito longo)
+            let observacoesTexto = proposta.observacoes || '-';
+            if (observacoesTexto.length > 50) {
+                observacoesTexto = observacoesTexto.substring(0, 50) + '...';
+            }
+            
+            // Botões de ação sempre habilitados
+            const editButtonClass = 'btn-secondary';
+            const editButtonStyle = '';
+            const editButtonTitle = 'Editar proposta';
+            const editButtonOnclick = `onclick="window.propostasManager.editProposta('${proposta.id}')"`;
+            
+            row.innerHTML = `
+                <td><strong>${proposta.numero_proposta}</strong></td>
+                <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
+                <td><strong>${this.formatMoney(proposta.total_proposta || 0)}</strong></td>
+                <td>${prazoTexto}</td>
+                <td>${proposta.forma_pagamento || '-'}</td>
+                <td>
+                    <span class="status-badge status-${proposta.status.toLowerCase()}">
+                        ${proposta.status}
+                    </span>
+                </td>
+                <td title="${proposta.observacoes || ''}">${observacoesTexto}</td>
+                <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
+                <td class="actions-cell">
+                    <button class="${editButtonClass}" 
+                            ${editButtonOnclick}
+                            style="${editButtonStyle}"
+                            title="${editButtonTitle}">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-danger" 
+                            onclick="window.propostasManager.deleteProposta('${proposta.id}')"
+                            title="Excluir proposta">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    async editProposta(propostaId) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('propostas_hvc')
+                .select('*')
+                .eq('id', propostaId)
+                .single();
+
+            if (error) throw error;
+
+            // Carregar proposta para edição
+            this.showFormProposta(data);
+        } catch (error) {
+            console.error('Erro ao carregar proposta:', error);
+            this.showNotification('Erro ao carregar proposta: ' + error.message, 'error');
+        }
+    }
+
+    async deleteProposta(propostaId) {
+        if (!confirm('Tem certeza que deseja excluir esta proposta? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+
+        try {
+            const { error } = await supabaseClient
+                .from('propostas_hvc')
+                .delete()
+                .eq('id', propostaId);
+
+            if (error) throw error;
+
+            this.loadPropostas();
+            this.showNotification('Proposta excluída com sucesso!', 'success');
+        } catch (error) {
+            console.error('Erro ao excluir proposta:', error);
+            this.showNotification('Erro ao excluir proposta: ' + error.message, 'error');
         }
     }
 
     // === EVENT LISTENERS ===
     setupEventListeners() {
         try {
-            // Formulário principal
-            const form = document.getElementById('proposta-form');
-            if (form) {
-                form.addEventListener('submit', (e) => this.saveProposta(e));
-            }
-            
             // Botões principais
             const btnNovaProposta = document.getElementById('btn-nova-proposta');
             const btnCancelar = document.getElementById('btn-cancelar');
             
             if (btnNovaProposta) {
-                btnNovaProposta.addEventListener('click', () => this.showFormProposta());
+                btnNovaProposta.addEventListener('click', () => {
+                    this.showFormProposta();
+                });
             }
             if (btnCancelar) {
                 btnCancelar.addEventListener('click', () => this.hideFormProposta());
+            }
+            
+            // Formulário de proposta
+            const propostaForm = document.getElementById('proposta-form');
+            if (propostaForm) {
+                propostaForm.addEventListener('submit', (e) => this.handleSubmitProposta(e));
             }
             
             // Botões de adicionar
@@ -1499,33 +1527,9 @@ class PropostasManager {
                 clienteForm.addEventListener('submit', (e) => this.handleSubmitCliente(e));
             }
             
-            // ✅ NOVO: Event listeners para locais
-            const btnGerenciarLocais = document.getElementById('btn-gerenciar-locais');
-            const btnNovoLocal = document.getElementById('btn-novo-local');
-            const btnCancelarLocal = document.getElementById('btn-cancelar-local');
-            const closeModalLocais = document.getElementById('close-modal-locais');
-            const localForm = document.getElementById('local-form');
-            
-            if (btnGerenciarLocais) {
-                btnGerenciarLocais.addEventListener('click', () => this.showModalLocais());
-            }
-            if (btnNovoLocal) {
-                btnNovoLocal.addEventListener('click', () => this.showLocalForm());
-            }
-            if (btnCancelarLocal) {
-                btnCancelarLocal.addEventListener('click', () => this.hideLocalForm());
-            }
-            if (closeModalLocais) {
-                closeModalLocais.addEventListener('click', () => this.hideModalLocais());
-            }
-            if (localForm) {
-                localForm.addEventListener('submit', (e) => this.handleSubmitLocal(e));
-            }
-            
             // Fechar modal clicando fora
             const modalServico = document.getElementById('modal-servico');
             const modalCliente = document.getElementById('modal-cliente');
-            const modalLocais = document.getElementById('modal-locais');
             
             if (modalServico) {
                 modalServico.addEventListener('click', (e) => {
@@ -1535,11 +1539,6 @@ class PropostasManager {
             if (modalCliente) {
                 modalCliente.addEventListener('click', (e) => {
                     if (e.target.id === 'modal-cliente') this.hideModalCliente();
-                });
-            }
-            if (modalLocais) {
-                modalLocais.addEventListener('click', (e) => {
-                    if (e.target.id === 'modal-locais') this.hideModalLocais();
                 });
             }
             
@@ -1587,25 +1586,13 @@ class PropostasManager {
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         notification.innerHTML = `
-            <i class="fas fa-${this.getNotificationIcon(type)}"></i>
-            <span>${message}</span>
+            <div class="notification-content">
+                <i class="fas fa-${this.getNotificationIcon(type)}"></i>
+                <span>${message}</span>
+            </div>
         `;
 
         // Adicionar estilos se não existirem
-        this.addNotificationStyles();
-
-        // Adicionar ao DOM
-        document.body.appendChild(notification);
-
-        // Remover após 5 segundos
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.parentNode.removeChild(notification);
-            }
-        }, 5000);
-    }
-
-    addNotificationStyles() {
         if (!document.getElementById('notification-styles')) {
             const styles = document.createElement('style');
             styles.id = 'notification-styles';
@@ -1627,6 +1614,7 @@ class PropostasManager {
                 .notification-error { background: linear-gradient(135deg, #dc3545, #e74c3c); }
                 .notification-warning { background: linear-gradient(135deg, #ffc107, #f39c12); }
                 .notification-info { background: linear-gradient(135deg, #17a2b8, #3498db); }
+                .notification-content { display: flex; align-items: center; gap: 10px; }
                 @keyframes slideIn {
                     from { transform: translateX(100%); opacity: 0; }
                     to { transform: translateX(0); opacity: 1; }
@@ -1634,6 +1622,14 @@ class PropostasManager {
             `;
             document.head.appendChild(styles);
         }
+
+        document.body.appendChild(notification);
+
+        // Remover após 5 segundos
+        setTimeout(() => {
+            notification.style.animation = 'slideIn 0.3s ease-out reverse';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
     }
 
     getNotificationIcon(type) {
@@ -1645,184 +1641,4 @@ class PropostasManager {
         };
         return icons[type] || 'info-circle';
     }
-
-    // === MÉTODOS DE GERENCIAMENTO DE LOCAIS ===
-    
-    showModalLocais() {
-        const modal = document.getElementById('modal-locais');
-        if (modal) {
-            modal.classList.add('show');
-            this.populateLocaisSelect(); // Atualizar dropdown
-            this.renderLocaisTable(); // Atualizar tabela
-            this.hideLocalForm(); // Esconder formulário
-        }
-    }
-
-    hideModalLocais() {
-        const modal = document.getElementById('modal-locais');
-        if (modal) {
-            modal.classList.remove('show');
-            this.hideLocalForm();
-        }
-    }
-
-    showLocalForm(local = null) {
-        const formSection = document.getElementById('local-form-section');
-        const formTitle = document.getElementById('local-form-title');
-        const form = document.getElementById('local-form');
-        
-        if (formSection && formTitle && form) {
-            formSection.classList.remove('hidden');
-            
-            if (local) {
-                // Modo edição
-                formTitle.textContent = 'Editar Local';
-                document.getElementById('local-nome').value = local.nome || '';
-                document.getElementById('local-descricao').value = local.descricao || '';
-                form.dataset.editId = local.id;
-            } else {
-                // Modo criação
-                formTitle.textContent = 'Novo Local';
-                form.reset();
-                delete form.dataset.editId;
-            }
-            
-            // Focar no campo nome
-            const nomeInput = document.getElementById('local-nome');
-            if (nomeInput) nomeInput.focus();
-        }
-    }
-
-    hideLocalForm() {
-        const formSection = document.getElementById('local-form-section');
-        const form = document.getElementById('local-form');
-        
-        if (formSection && form) {
-            formSection.classList.add('hidden');
-            form.reset();
-            delete form.dataset.editId;
-        }
-    }
-
-    async handleSubmitLocal(e) {
-        e.preventDefault();
-        
-        const form = e.target;
-        const editId = form.dataset.editId;
-        
-        const localData = {
-            nome: document.getElementById('local-nome').value.trim(),
-            descricao: document.getElementById('local-descricao').value.trim()
-        };
-
-        if (!localData.nome) {
-            this.showNotification('Nome do local é obrigatório', 'error');
-            return;
-        }
-
-        try {
-            if (editId) {
-                // Editar local existente
-                await this.editLocal(parseInt(editId), localData);
-            } else {
-                // Criar novo local
-                await this.saveLocal(localData);
-            }
-            
-            this.hideLocalForm();
-            this.renderLocaisTable();
-            this.populateLocaisSelect();
-            
-        } catch (error) {
-            console.error('Erro ao salvar local:', error);
-        }
-    }
-
-    renderLocaisTable() {
-        const tbody = document.getElementById('locais-tbody');
-        if (!tbody) return;
-
-        tbody.innerHTML = '';
-
-        if (this.locais.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="3" style="text-align: center; color: #999; padding: 2rem;">
-                        <i class="fas fa-map-marker-alt" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                        Nenhum local cadastrado
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        this.locais.forEach(local => {
-            const row = document.createElement('tr');
-            row.className = 'local-row-enter';
-            
-            row.innerHTML = `
-                <td><strong>${local.nome}</strong></td>
-                <td>${local.descricao || '-'}</td>
-                <td>
-                    <button class="btn-edit-local" onclick="window.propostasManager.editLocalForm(${local.id})">
-                        <i class="fas fa-edit"></i> Editar
-                    </button>
-                    <button class="btn-delete-local" onclick="window.propostasManager.confirmDeleteLocal(${local.id})">
-                        <i class="fas fa-trash"></i> Excluir
-                    </button>
-                </td>
-            `;
-            
-            tbody.appendChild(row);
-        });
-    }
-
-    editLocalForm(localId) {
-        const local = this.locais.find(l => l.id === localId);
-        if (local) {
-            this.showLocalForm(local);
-        }
-    }
-
-    async confirmDeleteLocal(localId) {
-        const local = this.locais.find(l => l.id === localId);
-        if (!local) return;
-
-        if (confirm(`Tem certeza que deseja excluir o local "${local.nome}"?`)) {
-            try {
-                await this.deleteLocal(localId);
-                this.renderLocaisTable();
-                this.populateLocaisSelect();
-            } catch (error) {
-                console.error('Erro ao excluir local:', error);
-            }
-        }
-    }
-
-    populateLocaisSelect() {
-        const select = document.getElementById('servico-local');
-        if (!select) return;
-
-        // Salvar valor atual
-        const currentValue = select.value;
-        
-        // Limpar opções
-        select.innerHTML = '<option value="">Selecione um local (opcional)</option>';
-        
-        // Adicionar locais
-        this.locais.forEach(local => {
-            const option = document.createElement('option');
-            option.value = local.id;
-            option.textContent = local.nome;
-            select.appendChild(option);
-        });
-        
-        // Restaurar valor se ainda existir
-        if (currentValue && this.locais.find(l => l.id == currentValue)) {
-            select.value = currentValue;
-        }
-    }
 }
-
-// ✅ NOVO: Inicializar instância global para acesso aos métodos
-window.propostasManager = new PropostasManager();
