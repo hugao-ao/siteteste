@@ -295,6 +295,86 @@
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
 
+    /* Seção de Filtros */
+    .filters-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .filter-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr auto;
+      gap: 1rem;
+      align-items: end;
+      margin-bottom: 1rem;
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+
+    .filter-label {
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: #add8e6;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .filter-input,
+    .filter-select {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: #e0e0e0;
+      font-size: 0.95rem;
+      transition: all 0.3s ease;
+    }
+
+    .filter-input:focus,
+    .filter-select:focus {
+      outline: none;
+      border-color: #add8e6;
+      box-shadow: 0 0 8px rgba(173, 216, 230, 0.3);
+    }
+
+    .filter-input::placeholder {
+      color: rgba(224, 224, 224, 0.6);
+    }
+
+    .results-counter {
+      font-size: 0.95rem;
+      color: #add8e6;
+      font-weight: 600;
+      padding: 0.5rem 0;
+    }
+
+    /* Responsividade dos filtros */
+    @media (max-width: 1200px) {
+      .filter-row {
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1rem;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .filter-row {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+      }
+      
+      .filter-group {
+        width: 100%;
+      }
+    }
+
     .proposals-table {
       width: 100%;
       background: rgba(255, 255, 255, 0.05);
@@ -723,6 +803,74 @@
       <div class="form-title">
         <i class="fas fa-list"></i>
         Lista de Propostas
+      </div>
+
+      <!-- Seção de Filtros -->
+      <div class="filters-section">
+        <div class="filter-row">
+          <div class="filter-group">
+            <label class="filter-label">
+              <i class="fas fa-search"></i>
+              Buscar:
+            </label>
+            <input 
+              type="text" 
+              id="filter-buscar" 
+              class="filter-input" 
+              placeholder="Número ou cliente..."
+            >
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">
+              <i class="fas fa-flag"></i>
+              Status:
+            </label>
+            <select id="filter-status" class="filter-select">
+              <option value="">Todos</option>
+              <option value="Pendente">Pendente</option>
+              <option value="Aprovada">Aprovada</option>
+              <option value="Recusada">Recusada</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">
+              <i class="fas fa-user"></i>
+              Cliente:
+            </label>
+            <select id="filter-cliente" class="filter-select">
+              <option value="">Todos</option>
+              <!-- Clientes serão carregados dinamicamente -->
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <label class="filter-label">
+              <i class="fas fa-calendar"></i>
+              Período:
+            </label>
+            <select id="filter-periodo" class="filter-select">
+              <option value="">Todos</option>
+              <option value="hoje">Hoje</option>
+              <option value="semana">Esta Semana</option>
+              <option value="mes">Este Mês</option>
+              <option value="trimestre">Este Trimestre</option>
+              <option value="ano">Este Ano</option>
+            </select>
+          </div>
+
+          <div class="filter-group">
+            <button type="button" class="btn-secondary" id="btn-limpar-filtros">
+              <i class="fas fa-eraser"></i>
+              Limpar
+            </button>
+          </div>
+        </div>
+
+        <div class="results-counter" id="results-counter">
+          Carregando propostas...
+        </div>
       </div>
 
       <table class="proposals-table" id="proposals-table">
