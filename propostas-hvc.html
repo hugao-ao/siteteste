@@ -98,87 +98,84 @@
       transition: all 0.3s ease;
     }
 
-    /* Formulário de Nova Proposta */
+    .btn-info {
+      background: linear-gradient(135deg, #17a2b8, #138496);
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+
     .form-section {
       background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
+      border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 15px;
       padding: 2rem;
       margin-bottom: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-
-    .form-section.hidden {
-      display: none;
+      backdrop-filter: blur(10px);
     }
 
     .form-title {
-      font-size: 1.5rem;
-      font-weight: 600;
+      font-size: 1.8rem;
       color: #add8e6;
       margin-bottom: 1.5rem;
       display: flex;
       align-items: center;
-      gap: 10px;
+      gap: 0.5rem;
     }
 
     .form-row {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
+      grid-template-columns: 1fr 1fr;
+      gap: 2rem;
+      margin-bottom: 2rem;
     }
 
     .form-group {
-      display: flex;
-      flex-direction: column;
+      margin-bottom: 1.5rem;
     }
 
     .form-label {
-      font-weight: 600;
+      display: block;
       margin-bottom: 0.5rem;
       color: #add8e6;
+      font-weight: 600;
     }
 
-    .form-input {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 8px;
-      padding: 12px;
-      color: #e0e0e0;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-    }
-
-    .form-input:focus {
-      outline: none;
-      border-color: #add8e6;
-      box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
-    }
-
+    .form-input,
     .form-select {
-      background: rgba(255, 255, 255, 0.1);
+      width: 100%;
+      padding: 12px;
       border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 8px;
-      padding: 12px;
-      color: #e0e0e0;
+      background: rgba(255, 255, 255, 0.1);
+      color: white;
       font-size: 1rem;
-      cursor: pointer;
+    }
+
+    .form-input::placeholder {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .form-select option {
+      background: #000080;
+      color: white;
     }
 
     .input-group {
       display: flex;
-      gap: 10px;
-      align-items: end;
+      gap: 0.5rem;
     }
 
-    .input-group .form-input {
+    .input-group .form-select {
       flex: 1;
     }
 
     .btn-add {
-      background: linear-gradient(135deg, #17a2b8, #138496);
+      background: linear-gradient(135deg, #28a745, #20c997);
       color: white;
       border: none;
       padding: 12px 16px;
@@ -188,132 +185,97 @@
       transition: all 0.3s ease;
     }
 
-    /* CORREÇÃO: Estilos específicos para campos de prazo - evitar sobreposição */
+    .btn-add:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
+    }
+
     .prazo-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
+      grid-column: 1 / -1;
     }
 
     .prazo-fields {
-      display: flex;
-      gap: 10px;
-      align-items: end;
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 1rem;
     }
 
-    .prazo-fields .form-input,
-    .prazo-fields .form-select {
-      flex: 1;
-      min-width: 0; /* Permite que os elementos encolham */
-    }
-
-    /* CORREÇÃO: Responsividade para campos de prazo */
-    @media (max-width: 768px) {
-      .prazo-fields {
-        flex-direction: column;
-        gap: 1rem;
-      }
-      
-      .prazo-fields .form-input,
-      .prazo-fields .form-select {
-        width: 100%;
-      }
-    }
-
-    /* CORREÇÃO: Garantir que forma de pagamento tenha espaço adequado */
     .forma-pagamento-container {
-      margin-top: 1.5rem;
-      margin-bottom: 1.5rem;
+      grid-column: 1 / -1;
     }
 
-    /* Tabela de Serviços */
     .services-section {
       margin: 2rem 0;
     }
 
+    .services-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+
     .services-table {
       width: 100%;
+      border-collapse: collapse;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       overflow: hidden;
-      border: 1px solid rgba(173, 216, 230, 0.2);
     }
 
     .services-table th,
     .services-table td {
-      padding: 12px;
+      padding: 1rem;
       text-align: left;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
     }
 
     .services-table th {
-      background: rgba(173, 216, 230, 0.1);
-      font-weight: 600;
+      background: rgba(255, 255, 255, 0.1);
       color: #add8e6;
+      font-weight: 600;
     }
 
-    .services-table tr:hover {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .services-table input {
-      background: transparent;
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 4px;
-      padding: 8px;
-      color: #e0e0e0;
-      width: 100%;
-    }
-
-    .total-display {
+    .total-section {
       background: rgba(76, 175, 80, 0.2);
       border: 2px solid #4CAF50;
-      border-radius: 10px;
-      padding: 1rem;
-      margin: 1rem 0;
+      border-radius: 15px;
+      padding: 2rem;
       text-align: center;
+      margin: 2rem 0;
     }
 
     .total-value {
-      font-size: 2rem;
+      font-size: 3rem;
       font-weight: bold;
       color: #4CAF50;
+      text-shadow: 0 0 20px rgba(76, 175, 80, 0.5);
     }
 
-    /* Lista de Propostas */
     .proposals-list {
       background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
+      border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 15px;
       padding: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(10px);
     }
 
     .proposals-table {
       width: 100%;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid rgba(173, 216, 230, 0.2);
+      border-collapse: collapse;
     }
 
     .proposals-table th,
     .proposals-table td {
-      padding: 12px;
+      padding: 1rem;
       text-align: left;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
     }
 
     .proposals-table th {
-      background: rgba(173, 216, 230, 0.1);
-      font-weight: 600;
+      background: rgba(255, 255, 255, 0.1);
       color: #add8e6;
-    }
-
-    .proposals-table tr:hover {
-      background: rgba(255, 255, 255, 0.05);
+      font-weight: 600;
     }
 
     .status-badge {
@@ -321,6 +283,7 @@
       border-radius: 20px;
       font-size: 0.8rem;
       font-weight: 600;
+      text-transform: uppercase;
     }
 
     .status-pendente {
@@ -343,20 +306,23 @@
 
     .actions-cell {
       display: flex;
-      gap: 8px;
+      gap: 0.5rem;
     }
 
-    /* Modal */
+    .hidden {
+      display: none;
+    }
+
+    /* Modal Styles */
     .modal {
       display: none;
       position: fixed;
-      z-index: 1000;
-      left: 0;
       top: 0;
+      left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(5px);
+      background: rgba(0, 0, 0, 0.8);
+      z-index: 1000;
     }
 
     .modal.show {
@@ -370,33 +336,35 @@
       border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 15px;
       padding: 2rem;
+      max-width: 600px;
       width: 90%;
-      max-width: 500px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+      max-height: 80vh;
+      overflow-y: auto;
     }
 
     .modal-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 1.5rem;
+      margin-bottom: 2rem;
       padding-bottom: 1rem;
       border-bottom: 1px solid rgba(173, 216, 230, 0.3);
     }
 
     .modal-title {
-      font-size: 1.5rem;
-      font-weight: 600;
       color: #add8e6;
+      font-size: 1.5rem;
     }
 
     .close-modal {
       background: none;
       border: none;
+      color: #add8e6;
       font-size: 1.5rem;
-      color: #e0e0e0;
       cursor: pointer;
-      transition: color 0.3s ease;
+      padding: 0.5rem;
+      border-radius: 50%;
+      transition: all 0.3s ease;
     }
 
     .close-modal:hover {
@@ -410,6 +378,94 @@
       margin-top: 2rem;
       padding-top: 1rem;
       border-top: 1px solid rgba(173, 216, 230, 0.3);
+    }
+
+    /* Estilos para Modal de Locais */
+    .form-section {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      border-radius: 10px;
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-section h4 {
+      color: #add8e6;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .locais-section {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      border-radius: 10px;
+      padding: 1.5rem;
+    }
+
+    .locais-list {
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .local-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 1rem;
+      margin-bottom: 0.5rem;
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(173, 216, 230, 0.1);
+      border-radius: 8px;
+      transition: all 0.3s ease;
+    }
+
+    .local-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(173, 216, 230, 0.3);
+    }
+
+    .local-info h5 {
+      color: #add8e6;
+      margin: 0 0 0.5rem 0;
+      font-size: 1rem;
+    }
+
+    .local-info p {
+      color: #e0e0e0;
+      margin: 0;
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
+    .local-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    .btn-delete {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.3s ease;
+    }
+
+    .btn-delete:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+    }
+
+    .empty-locais {
+      text-align: center;
+      padding: 2rem;
+      color: #888;
+      font-style: italic;
     }
 
     /* Responsividade */
@@ -506,8 +562,7 @@
               type="text" 
               id="numero-proposta" 
               class="form-input" 
-              placeholder="0000/0000"
-              maxlength="9"
+              placeholder="Ex: 0001/2025"
               required
             >
           </div>
@@ -535,6 +590,20 @@
               <option value="Aprovada">Aprovada</option>
               <option value="Recusada">Recusada</option>
             </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="local-select">
+              Local de Execução
+            </label>
+            <div class="input-group">
+              <select id="local-select" class="form-select">
+                <option value="">Selecione um local...</option>
+              </select>
+              <button type="button" class="btn-add" id="btn-manage-locais" title="Gerenciar Locais">
+                <i class="fas fa-cog"></i>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -572,7 +641,7 @@
               type="text" 
               id="forma-pagamento" 
               class="form-input" 
-              placeholder="Ex: À vista, 30/60/90 dias, PIX, etc."
+              placeholder="Ex: À vista, Parcelado, etc."
               required
             >
           </div>
@@ -580,10 +649,12 @@
 
         <!-- Seção de Serviços -->
         <div class="services-section">
-          <div class="form-title">
-            <i class="fas fa-tools"></i>
-            Serviços da Proposta
-            <button type="button" class="btn-add" id="btn-add-servico">
+          <div class="services-header">
+            <h3>
+              <i class="fas fa-tools"></i>
+              Serviços da Proposta
+            </h3>
+            <button type="button" class="btn-primary" id="btn-add-servico">
               <i class="fas fa-plus"></i>
               Adicionar Serviço
             </button>
@@ -605,31 +676,32 @@
               <!-- Serviços serão adicionados dinamicamente -->
             </tbody>
           </table>
-
-          <div class="total-display">
-            <div>Total da Proposta:</div>
-            <div class="total-value" id="total-proposta">R$ 0,00</div>
-          </div>
         </div>
 
+        <!-- Total da Proposta -->
+        <div class="total-section">
+          <h3>Total da Proposta:</h3>
+          <div class="total-value" id="total-proposta">R$ 0,00</div>
+        </div>
+
+        <!-- Observações -->
         <div class="form-group">
-          <label class="form-label" for="observacoes">
-            Observações
-          </label>
+          <label class="form-label" for="observacoes">Observações</label>
           <textarea 
             id="observacoes" 
             class="form-input" 
-            rows="3"
+            rows="4"
             placeholder="Observações adicionais sobre a proposta..."
           ></textarea>
         </div>
 
-        <div class="modal-footer">
+        <!-- Botões de Ação -->
+        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
           <button type="button" class="btn-secondary" id="btn-cancelar">
             <i class="fas fa-times"></i>
             Cancelar
           </button>
-          <button type="submit" class="btn-success" id="btn-salvar">
+          <button type="submit" class="btn-success">
             <i class="fas fa-save"></i>
             Salvar Proposta
           </button>
@@ -638,21 +710,22 @@
     </div>
 
     <!-- Lista de Propostas -->
-    <div class="proposals-list" id="proposals-list">
-      <div class="form-title">
+    <div class="proposals-list">
+      <h2>
         <i class="fas fa-list"></i>
         Lista de Propostas
-      </div>
-
+      </h2>
       <table class="proposals-table" id="proposals-table">
         <thead>
           <tr>
             <th>Número</th>
             <th>Cliente</th>
+            <th>Local</th>
             <th>Total</th>
             <th>Prazo</th>
             <th>Pagamento</th>
             <th>Status</th>
+            <th>Observações</th>
             <th>Data</th>
             <th>Ações</th>
           </tr>
@@ -662,179 +735,237 @@
         </tbody>
       </table>
     </div>
+  </main>
 
-    <!-- Modal Adicionar Serviço -->
-    <div class="modal" id="modal-servico">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Serviço</h3>
-          <button class="close-modal" id="close-modal-servico">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <form id="servico-form">
-          <div class="form-group">
-            <label class="form-label" for="servico-codigo">
-              Código do Serviço *
-            </label>
-            <input 
-              type="text" 
-              id="servico-codigo" 
-              class="form-input" 
-              placeholder="Ex: 001"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-descricao">
-              Descrição *
-            </label>
-            <input 
-              type="text" 
-              id="servico-descricao" 
-              class="form-input" 
-              placeholder="Ex: Pintura de parede"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-detalhe">
-              Detalhe
-            </label>
-            <input 
-              type="text" 
-              id="servico-detalhe" 
-              class="form-input" 
-              placeholder="Detalhes adicionais do serviço"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-unidade">
-              Unidade *
-            </label>
-            <select 
-              id="servico-unidade" 
-              class="form-select" 
-              required
-            >
-              <option value="">Selecione uma unidade</option>
-              <option value="m">Metro (m)</option>
-              <option value="m²">Metro Quadrado (m²)</option>
-              <option value="m³">Metro Cúbico (m³)</option>
-              <option value="kg">Quilograma (kg)</option>
-              <option value="t">Tonelada (t)</option>
-              <option value="un">Unidade (un)</option>
-              <option value="h">Hora (h)</option>
-              <option value="dia">Dia (dia)</option>
-              <option value="mês">Mês (mês)</option>
-              <option value="vb">Verba (vb)</option>
-            </select>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="cancel-servico">
-              Cancelar
-            </button>
-            <button type="submit" class="btn-success">
-              <i class="fas fa-save"></i>
-              Criar Serviço
-            </button>
-          </div>
-        </form>
+  <!-- Modal de Serviço -->
+  <div id="modal-servico" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-tools"></i>
+          Adicionar Novo Serviço
+        </h3>
+        <button type="button" class="close-modal" id="close-modal-servico">
+          <i class="fas fa-times"></i>
+        </button>
       </div>
-    </div>
 
-    <!-- Modal Adicionar Cliente -->
-    <div class="modal" id="modal-cliente">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Cliente</h3>
-          <button class="close-modal" id="close-modal-cliente">
-            <i class="fas fa-times"></i>
-          </button>
+      <form id="servico-form">
+        <div class="form-group">
+          <label class="form-label" for="servico-codigo">
+            Código do Serviço *
+          </label>
+          <input 
+            type="text" 
+            id="servico-codigo" 
+            class="form-input" 
+            placeholder="Ex: IMP001"
+            required
+          >
         </div>
 
-        <form id="cliente-form">
+        <div class="form-group">
+          <label class="form-label" for="servico-descricao">
+            Descrição *
+          </label>
+          <input 
+            type="text" 
+            id="servico-descricao" 
+            class="form-input" 
+            placeholder="Ex: Impermeabilização de Laje"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="servico-detalhe">
+            Detalhe
+          </label>
+          <textarea 
+            id="servico-detalhe" 
+            class="form-input" 
+            rows="3"
+            placeholder="Detalhes técnicos do serviço"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="servico-unidade">
+            Unidade *
+          </label>
+          <select id="servico-unidade" class="form-select" required>
+            <option value="">Selecione uma unidade...</option>
+            <option value="m²">m² (Metro Quadrado)</option>
+            <option value="m">m (Metro Linear)</option>
+            <option value="un">un (Unidade)</option>
+            <option value="kg">kg (Quilograma)</option>
+            <option value="l">l (Litro)</option>
+            <option value="h">h (Hora)</option>
+            <option value="vb">vb (Verba)</option>
+          </select>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancel-servico">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-success">
+            <i class="fas fa-save"></i>
+            Salvar Serviço
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de Cliente -->
+  <div id="modal-cliente" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-user-plus"></i>
+          Adicionar Novo Cliente
+        </h3>
+        <button type="button" class="close-modal" id="close-modal-cliente">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <form id="cliente-form">
+        <div class="form-group">
+          <label class="form-label" for="cliente-nome">
+            Nome do Cliente *
+          </label>
+          <input 
+            type="text" 
+            id="cliente-nome" 
+            class="form-input" 
+            placeholder="Nome completo ou razão social"
+            required
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cliente-email">
+            Email
+          </label>
+          <input 
+            type="email" 
+            id="cliente-email" 
+            class="form-input" 
+            placeholder="email@exemplo.com"
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cliente-telefone">
+            Telefone
+          </label>
+          <input 
+            type="tel" 
+            id="cliente-telefone" 
+            class="form-input" 
+            placeholder="(11) 99999-9999"
+          >
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="cliente-endereco">
+            Endereço
+          </label>
+          <textarea 
+            id="cliente-endereco" 
+            class="form-input" 
+            rows="3"
+            placeholder="Endereço completo do cliente"
+          ></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancel-cliente">
+            Cancelar
+          </button>
+          <button type="submit" class="btn-success">
+            <i class="fas fa-save"></i>
+            Salvar Cliente
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Modal de Gestão de Locais -->
+  <div id="modal-locais" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-map-marker-alt"></i>
+          Gerenciar Locais de Execução
+        </h3>
+        <button type="button" class="close-modal" id="close-modal-locais">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Formulário para adicionar novo local -->
+        <form id="form-novo-local" class="form-section">
+          <h4><i class="fas fa-plus-circle"></i> Adicionar Novo Local</h4>
+          
           <div class="form-group">
-            <label class="form-label" for="cliente-nome">
-              Nome do Cliente *
+            <label class="form-label" for="novo-local-nome">
+              Nome do Local *
             </label>
             <input 
               type="text" 
-              id="cliente-nome" 
+              id="novo-local-nome" 
               class="form-input" 
-              placeholder="Nome completo do cliente"
+              placeholder="Ex: Área Externa, Fachada, etc."
               required
             >
           </div>
 
           <div class="form-group">
-            <label class="form-label" for="cliente-email">
-              Email
-            </label>
-            <input 
-              type="email" 
-              id="cliente-email" 
-              class="form-input" 
-              placeholder="email@exemplo.com"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cliente-telefone">
-              Telefone
-            </label>
-            <input 
-              type="tel" 
-              id="cliente-telefone" 
-              class="form-input" 
-              placeholder="(11) 99999-9999"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cliente-endereco">
-              Endereço
+            <label class="form-label" for="novo-local-descricao">
+              Descrição
             </label>
             <textarea 
-              id="cliente-endereco" 
+              id="novo-local-descricao" 
               class="form-input" 
-              rows="3"
-              placeholder="Endereço completo do cliente"
+              rows="2"
+              placeholder="Descrição detalhada do local"
             ></textarea>
           </div>
 
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="cancel-cliente">
-              Cancelar
-            </button>
-            <button type="submit" class="btn-success">
-              <i class="fas fa-save"></i>
-              Salvar Cliente
-            </button>
-          </div>
+          <button type="submit" class="btn-success">
+            <i class="fas fa-plus"></i>
+            Adicionar Local
+          </button>
         </form>
+
+        <!-- Lista de locais existentes -->
+        <div class="locais-section">
+          <h4><i class="fas fa-list"></i> Locais Cadastrados</h4>
+          <div id="lista-locais" class="locais-list">
+            <!-- Locais serão carregados dinamicamente -->
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="fechar-modal-locais">
+          Fechar
+        </button>
       </div>
     </div>
-  </main>
+  </div>
 
   <script type="module" src="sidebar.js"></script>
 <script type="module" src="supabase.js"></script>
 <script type="module" src="propostas-hvc.js"></script>
 <script type="module">
   import { injectSidebar } from './sidebar.js';
-  document.addEventListener('DOMContentLoaded', () => {
-    if (typeof injectSidebar === 'function') {
-      injectSidebar('main-content-propostas-hvc');
-    } else {
-      console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
-    }
-  });
+  injectSidebar();
 </script>
-<script defer src="propostas-hvc-precos.js"></script>
 </body>
 </html>
