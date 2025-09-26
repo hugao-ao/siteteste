@@ -455,173 +455,6 @@
         overflow-x: auto;
       }
     }
-
-    /* Filtros */
-    .filter-controls {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
-      padding: 1rem;
-      margin-bottom: 1rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-    }
-
-    .filter-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 1rem;
-      align-items: end;
-    }
-
-    .filter-group {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-
-    .filter-group label {
-      font-size: 0.9rem;
-      color: #add8e6;
-      font-weight: 600;
-    }
-
-    .filter-group input,
-    .filter-group select {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 6px;
-      padding: 8px;
-      color: #e0e0e0;
-      font-size: 0.9rem;
-    }
-
-    .filter-counter {
-      margin-top: 0.5rem;
-      color: #add8e6;
-      font-size: 0.9rem;
-      font-style: italic;
-    }
-
-    /* Seleção múltipla de serviços */
-    .modal-selection .modal-content {
-      max-width: 900px;
-    }
-
-    .selection-controls {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1rem;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-
-    .search-group {
-      flex: 1;
-      min-width: 200px;
-    }
-
-    .search-group input {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 8px;
-      padding: 10px;
-      color: #e0e0e0;
-      font-size: 1rem;
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .services-list {
-      max-height: 400px;
-      overflow-y: auto;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.02);
-    }
-
-    .service-item {
-      display: flex;
-      align-items: center;
-      padding: 12px;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
-      transition: background 0.2s ease;
-    }
-
-    .service-item:hover {
-      background: rgba(173, 216, 230, 0.05);
-    }
-
-    .service-item.already-added {
-      opacity: 0.6;
-      background: rgba(255, 193, 7, 0.1);
-    }
-
-    .service-checkbox {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      cursor: pointer;
-      width: 100%;
-    }
-
-    .service-checkbox input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      accent-color: #add8e6;
-    }
-
-    .service-info {
-      flex: 1;
-    }
-
-    .service-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 4px;
-    }
-
-    .service-header strong {
-      color: #e0e0e0;
-      font-size: 1rem;
-    }
-
-    .service-unit {
-      background: rgba(173, 216, 230, 0.2);
-      color: #add8e6;
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-
-    .service-detail {
-      color: #b0b0b0;
-      font-size: 0.9rem;
-      margin-top: 4px;
-    }
-
-    .already-added-label {
-      color: #ffc107;
-      font-size: 0.8rem;
-      font-weight: 600;
-      margin-top: 4px;
-    }
-
-    .selection-summary {
-      color: #add8e6;
-      font-weight: 600;
-    }
-
-    .footer-buttons {
-      display: flex;
-      gap: 10px;
-    }
   </style>
 </head>
 
@@ -1093,8 +926,11 @@
   </main>
 
   <!-- Scripts -->
-  <script src="supabase.js"></script>
-  <script src="sidebar.js"></script>
-  <script src="propostas-hvc.js"></script>
+  <script type="module" src="supabase.js"></script>
+  <script type="module" src="propostas-hvc.js"></script>
+  <script type="module">
+    import { injectSidebar } from './sidebar.js';
+    injectSidebar("main-content-propostas-hvc");
+  </script>
 </body>
 </html>
