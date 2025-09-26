@@ -6,7 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Propostas HVC - Gerenciamento</title>
   <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="propostas-hvc-precos.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
   <style>
     /* Estilos específicos para a página de propostas */
@@ -49,7 +48,7 @@
     }
 
     .btn-primary {
-      background: linear-gradient(135deg, #007bff, #0056b3);
+      background: linear-gradient(135deg, #4CAF50, #45a049);
       color: white;
       border: none;
       padding: 12px 24px;
@@ -58,53 +57,23 @@
       font-size: 1rem;
       font-weight: 600;
       transition: all 0.3s ease;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
+      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
     }
 
     .btn-primary:hover {
-      background: linear-gradient(135deg, #0056b3, #004085);
       transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3);
+      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
     }
 
     .btn-secondary {
       background: linear-gradient(135deg, #6c757d, #5a6268);
       color: white;
       border: none;
-      padding: 10px 20px;
+      padding: 8px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.9rem;
       transition: all 0.3s ease;
-    }
-
-    .btn-secondary:hover {
-      background: linear-gradient(135deg, #5a6268, #495057);
-      transform: translateY(-1px);
-    }
-
-    .btn-success {
-      background: linear-gradient(135deg, #28a745, #20c997);
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .btn-success:hover {
-      background: linear-gradient(135deg, #20c997, #17a2b8);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
     }
 
     .btn-danger {
@@ -118,38 +87,26 @@
       transition: all 0.3s ease;
     }
 
-    .btn-danger:hover {
-      background: linear-gradient(135deg, #c82333, #bd2130);
-      transform: translateY(-1px);
-    }
-
-    .btn-add {
-      background: linear-gradient(135deg, #28a745, #20c997);
+    .btn-success {
+      background: linear-gradient(135deg, #28a745, #218838);
       color: white;
       border: none;
-      padding: 8px 12px;
+      padding: 8px 16px;
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.9rem;
       transition: all 0.3s ease;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
     }
 
-    .btn-add:hover {
-      background: linear-gradient(135deg, #20c997, #17a2b8);
-      transform: translateY(-1px);
-    }
-
-    /* Formulário de proposta */
+    /* Formulário de Nova Proposta */
     .form-section {
-      background: rgba(255, 255, 255, 0.05);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
       border-radius: 15px;
       padding: 2rem;
       margin-bottom: 2rem;
       border: 1px solid rgba(173, 216, 230, 0.2);
-      backdrop-filter: blur(10px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     }
 
     .form-section.hidden {
@@ -157,8 +114,8 @@
     }
 
     .form-title {
-      font-size: 1.8rem;
-      font-weight: bold;
+      font-size: 1.5rem;
+      font-weight: 600;
       color: #add8e6;
       margin-bottom: 1.5rem;
       display: flex;
@@ -166,28 +123,25 @@
       gap: 10px;
     }
 
-    .form-grid {
+    .form-row {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1.5rem;
-      margin-bottom: 2rem;
+      gap: 1rem;
+      margin-bottom: 1rem;
     }
 
     .form-group {
       display: flex;
       flex-direction: column;
-      gap: 8px;
     }
 
     .form-label {
       font-weight: 600;
+      margin-bottom: 0.5rem;
       color: #add8e6;
-      font-size: 0.95rem;
     }
 
-    .form-input,
-    .form-select,
-    .form-textarea {
+    .form-input {
       background: rgba(255, 255, 255, 0.1);
       border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 8px;
@@ -197,91 +151,206 @@
       transition: all 0.3s ease;
     }
 
-    .form-input:focus,
-    .form-select:focus,
-    .form-textarea:focus {
+    .form-input:focus {
       outline: none;
       border-color: #add8e6;
       box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
     }
 
+    .form-select {
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 8px;
+      padding: 12px;
+      color: #e0e0e0;
+      font-size: 1rem;
+      cursor: pointer;
+    }
+
     .input-group {
       display: flex;
-      gap: 8px;
-      align-items: stretch;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .input-group .form-input {
+      flex: 1;
     }
 
     .input-group .form-select {
       flex: 1;
     }
 
-    /* Tabelas */
-    .table-container {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 15px;
-      padding: 1.5rem;
-      margin-bottom: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      overflow-x: auto;
+    .btn-add {
+      background: linear-gradient(135deg, #17a2b8, #138496);
+      color: white;
+      border: none;
+      padding: 12px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.3s ease;
     }
 
-    .table {
+    /* CORREÇÃO: Estilos específicos para campos de prazo - evitar sobreposição */
+    .prazo-container {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .prazo-fields {
+      display: flex;
+      gap: 10px;
+      align-items: end;
+    }
+
+    .prazo-fields .form-input,
+    .prazo-fields .form-select {
+      flex: 1;
+      min-width: 0; /* Permite que os elementos encolham */
+    }
+
+    /* CORREÇÃO: Responsividade para campos de prazo */
+    @media (max-width: 768px) {
+      .prazo-fields {
+        flex-direction: column;
+        gap: 1rem;
+      }
+      
+      .prazo-fields .form-input,
+      .prazo-fields .form-select {
+        width: 100%;
+      }
+    }
+
+    /* CORREÇÃO: Garantir que forma de pagamento tenha espaço adequado */
+    .forma-pagamento-container {
+      margin-top: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    /* Tabela de Serviços */
+    .services-section {
+      margin: 2rem 0;
+    }
+
+    .services-table {
       width: 100%;
-      border-collapse: collapse;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       overflow: hidden;
+      border: 1px solid rgba(173, 216, 230, 0.2);
     }
 
-    .table th,
-    .table td {
-      padding: 12px 15px;
+    .services-table th,
+    .services-table td {
+      padding: 12px;
       text-align: left;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
     }
 
-    .table th {
+    .services-table th {
       background: rgba(173, 216, 230, 0.1);
       font-weight: 600;
       color: #add8e6;
-      text-transform: uppercase;
-      font-size: 0.9rem;
-      letter-spacing: 0.5px;
     }
 
-    .table td {
+    .services-table tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .services-table input {
+      background: transparent;
+      border: 1px solid rgba(173, 216, 230, 0.3);
+      border-radius: 4px;
+      padding: 8px;
       color: #e0e0e0;
+      width: 100%;
     }
 
-    .table tr:hover {
-      background: rgba(173, 216, 230, 0.05);
+    .total-display {
+      background: rgba(76, 175, 80, 0.2);
+      border: 2px solid #4CAF50;
+      border-radius: 10px;
+      padding: 1rem;
+      margin: 1rem 0;
+      text-align: center;
     }
 
-    /* Status badges */
+    .total-value {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #4CAF50;
+    }
+
+    /* Lista de Propostas */
+    .proposals-list {
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 15px;
+      padding: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    }
+
+    .proposals-table {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
+      overflow: hidden;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+    }
+
+    .proposals-table th,
+    .proposals-table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+    }
+
+    .proposals-table th {
+      background: rgba(173, 216, 230, 0.1);
+      font-weight: 600;
+      color: #add8e6;
+    }
+
+    .proposals-table tr:hover {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
     .status-badge {
       padding: 4px 12px;
       border-radius: 20px;
       font-size: 0.8rem;
       font-weight: 600;
-      text-transform: uppercase;
     }
 
     .status-pendente {
-      background: linear-gradient(135deg, #ffc107, #e0a800);
-      color: #000;
+      background: rgba(255, 193, 7, 0.2);
+      color: #ffc107;
+      border: 1px solid #ffc107;
     }
 
     .status-aprovada {
-      background: linear-gradient(135deg, #28a745, #20c997);
-      color: white;
+      background: rgba(40, 167, 69, 0.2);
+      color: #28a745;
+      border: 1px solid #28a745;
     }
 
     .status-recusada {
-      background: linear-gradient(135deg, #dc3545, #c82333);
-      color: white;
+      background: rgba(220, 53, 69, 0.2);
+      color: #dc3545;
+      border: 1px solid #dc3545;
     }
 
-    /* Modais */
+    .actions-cell {
+      display: flex;
+      gap: 8px;
+    }
+
+    /* Modal */
     .modal {
       display: none;
       position: fixed;
@@ -290,7 +359,7 @@
       top: 0;
       width: 100%;
       height: 100%;
-      background-color: rgba(0, 0, 0, 0.7);
+      background: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(5px);
     }
 
@@ -301,132 +370,126 @@
     }
 
     .modal-content {
-      background: linear-gradient(135deg, #1a1a2e, #16213e);
+      background: linear-gradient(135deg, #000080, #191970);
+      border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 15px;
-      padding: 0;
-      max-width: 600px;
+      padding: 2rem;
       width: 90%;
+      max-width: 500px;
       max-height: 90vh;
       overflow-y: auto;
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
     }
 
     .modal-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
     }
 
     .modal-title {
       font-size: 1.5rem;
-      font-weight: bold;
+      font-weight: 600;
       color: #add8e6;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 10px;
     }
 
     .close-modal {
       background: none;
       border: none;
-      color: #add8e6;
       font-size: 1.5rem;
+      color: #e0e0e0;
       cursor: pointer;
-      padding: 5px;
-      border-radius: 50%;
-      transition: all 0.3s ease;
+      transition: color 0.3s ease;
     }
 
     .close-modal:hover {
-      background: rgba(173, 216, 230, 0.1);
-      transform: rotate(90deg);
-    }
-
-    .modal-body {
-      padding: 1.5rem;
+      color: #add8e6;
     }
 
     .modal-footer {
-      padding: 1.5rem;
-      border-top: 1px solid rgba(173, 216, 230, 0.2);
       display: flex;
       justify-content: flex-end;
-      gap: 10px;
+      gap: 1rem;
+      margin-top: 2rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(173, 216, 230, 0.3);
     }
 
-    /* Seção de serviços */
-    .services-section {
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 15px;
-      padding: 1.5rem;
+    /* Estilos específicos para modal de locais */
+    .locais-section {
       margin-bottom: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
     }
 
-    .services-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-    }
-
-    .services-table {
+    .locais-table {
       width: 100%;
-      border-collapse: collapse;
       background: rgba(255, 255, 255, 0.05);
       border-radius: 10px;
       overflow: hidden;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      margin-bottom: 1rem;
     }
 
-    .services-table th,
-    .services-table td {
-      padding: 12px 15px;
+    .locais-table th,
+    .locais-table td {
+      padding: 12px;
       text-align: left;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.2);
+      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
     }
 
-    .services-table th {
+    .locais-table th {
       background: rgba(173, 216, 230, 0.1);
       font-weight: 600;
       color: #add8e6;
-      text-transform: uppercase;
-      font-size: 0.9rem;
     }
 
-    .services-table input {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 4px;
-      padding: 8px;
-      color: #e0e0e0;
-      text-align: center;
+    .locais-table tr:hover {
+      background: rgba(255, 255, 255, 0.05);
     }
 
-    /* Total da proposta */
-    .total-section {
-      background: rgba(40, 167, 69, 0.1);
-      border: 2px solid rgba(40, 167, 69, 0.3);
-      border-radius: 15px;
+    .local-form-section {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 10px;
       padding: 1.5rem;
-      text-align: center;
-      margin-bottom: 2rem;
+      border: 1px solid rgba(173, 216, 230, 0.2);
+      margin-top: 1rem;
     }
 
-    .total-label {
-      font-size: 1.2rem;
-      color: #add8e6;
-      margin-bottom: 0.5rem;
+    .local-form-section.hidden {
+      display: none;
     }
 
-    .total-value {
-      font-size: 2.5rem;
-      font-weight: bold;
-      color: #28a745;
-      text-shadow: 0 0 10px rgba(40, 167, 69, 0.5);
+    .btn-edit-local,
+    .btn-delete-local {
+      padding: 6px 12px;
+      margin: 0 2px;
+      border-radius: 4px;
+      border: none;
+      cursor: pointer;
+      font-size: 0.8rem;
+      transition: all 0.3s ease;
+    }
+
+    .btn-edit-local {
+      background: linear-gradient(135deg, #ffc107, #e0a800);
+      color: #000;
+    }
+
+    .btn-edit-local:hover {
+      background: linear-gradient(135deg, #e0a800, #d39e00);
+      transform: translateY(-1px);
+    }
+
+    .btn-delete-local {
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+    }
+
+    .btn-delete-local:hover {
+      background: linear-gradient(135deg, #c82333, #bd2130);
+      transform: translateY(-1px);
     }
 
     /* Responsividade */
@@ -436,39 +499,69 @@
         padding: 1rem;
       }
 
+      .form-row {
+        grid-template-columns: 1fr;
+      }
+
       .page-header {
         flex-direction: column;
         gap: 1rem;
         text-align: center;
       }
 
-      .form-grid {
-        grid-template-columns: 1fr;
+      .services-table,
+      .proposals-table {
+        font-size: 0.9rem;
       }
 
       .modal-content {
         width: 95%;
-        margin: 10px;
-      }
-
-      .table-container {
-        overflow-x: auto;
+        padding: 1rem;
       }
     }
+
+    /* Animações */
+    .fade-in {
+      animation: fadeIn 0.3s ease-in;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
+
+    .loading::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 20px;
+      height: 20px;
+      margin: -10px 0 0 -10px;
+      border: 2px solid #add8e6;
+      border-radius: 50%;
+      border-top-color: transparent;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
   </style>
+  <link rel="stylesheet" href="propostas-hvc-precos.css">
 </head>
-
 <body>
-  <!-- Sidebar -->
-  <div id="sidebar"></div>
-
-  <!-- Conteúdo Principal -->
   <main id="main-content-propostas-hvc">
     <!-- Cabeçalho da Página -->
     <div class="page-header">
       <h1 class="page-title">
         <i class="fas fa-file-contract"></i>
-        Propostas HVC
+        Gerenciamento de Propostas HVC
       </h1>
       <button class="btn-primary" id="btn-nova-proposta">
         <i class="fas fa-plus"></i>
@@ -476,15 +569,15 @@
       </button>
     </div>
 
-    <!-- Formulário de Proposta -->
+    <!-- Formulário de Nova/Editar Proposta -->
     <div class="form-section hidden" id="form-proposta">
       <div class="form-title">
         <i class="fas fa-edit"></i>
-        Dados da Proposta
+        <span id="form-title-text">Nova Proposta</span>
       </div>
 
       <form id="proposta-form">
-        <div class="form-grid">
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label" for="numero-proposta">
               Número da Proposta *
@@ -493,7 +586,8 @@
               type="text" 
               id="numero-proposta" 
               class="form-input" 
-              placeholder="Ex: 2024/001"
+              placeholder="0000/0000"
+              maxlength="9"
               required
             >
           </div>
@@ -503,13 +597,8 @@
               Cliente *
             </label>
             <div class="input-group">
-              <select 
-                id="cliente-select" 
-                class="form-select" 
-                required
-              >
-                <option value="">Selecione um cliente</option>
-                <!-- Clientes serão carregados dinamicamente -->
+              <select id="cliente-select" class="form-select" required>
+                <option value="">Selecione um cliente...</option>
               </select>
               <button type="button" class="btn-add" id="btn-add-cliente">
                 <i class="fas fa-plus"></i>
@@ -519,84 +608,68 @@
 
           <div class="form-group">
             <label class="form-label" for="status-select">
-              Status
+              Status *
             </label>
-            <select 
-              id="status-select" 
-              class="form-select"
-            >
+            <select id="status-select" class="form-select" required>
               <option value="Pendente">Pendente</option>
               <option value="Aprovada">Aprovada</option>
               <option value="Recusada">Recusada</option>
             </select>
           </div>
+        </div>
 
+        <!-- CORREÇÃO: Campos de Prazo reorganizados para evitar sobreposição -->
+        <div class="prazo-container">
           <div class="form-group">
             <label class="form-label" for="prazo-execucao">
-              Prazo de Execução
+              Prazo de Execução *
             </label>
-            <input 
-              type="number" 
-              id="prazo-execucao" 
-              class="form-input" 
-              placeholder="Ex: 30"
-              min="1"
-            >
+            <div class="prazo-fields">
+              <input 
+                type="number" 
+                id="prazo-execucao" 
+                class="form-input" 
+                placeholder="Ex: 30"
+                min="1"
+                required
+              >
+              <select id="tipo-prazo" class="form-select" required>
+                <option value="corridos">Dias Corridos</option>
+                <option value="uteis">Dias Úteis</option>
+                <option value="cronograma">De Acordo com Cronograma da Obra</option>
+              </select>
+            </div>
           </div>
+        </div>
 
-          <div class="form-group">
-            <label class="form-label" for="tipo-prazo">
-              Tipo de Prazo
-            </label>
-            <select 
-              id="tipo-prazo" 
-              class="form-select"
-            >
-              <option value="corridos">Dias Corridos</option>
-              <option value="uteis">Dias Úteis</option>
-              <option value="cronograma">Cronograma da Obra</option>
-            </select>
-          </div>
-
+        <!-- CORREÇÃO: Campo de Forma de Pagamento em container separado -->
+        <div class="forma-pagamento-container">
           <div class="form-group">
             <label class="form-label" for="forma-pagamento">
-              Forma de Pagamento
+              Forma de Pagamento *
             </label>
             <input 
               type="text" 
               id="forma-pagamento" 
               class="form-input" 
               placeholder="Ex: À vista, 30/60/90 dias, PIX, etc."
+              required
             >
           </div>
         </div>
 
-        <div class="form-group">
-          <label class="form-label" for="observacoes">
-            Observações
-          </label>
-          <textarea 
-            id="observacoes" 
-            class="form-textarea" 
-            rows="3"
-            placeholder="Observações adicionais sobre a proposta..."
-          ></textarea>
-        </div>
-
         <!-- Seção de Serviços -->
         <div class="services-section">
-          <div class="services-header">
-            <div class="form-title">
-              <i class="fas fa-tools"></i>
-              Serviços da Proposta
-            </div>
+          <div class="form-title">
+            <i class="fas fa-tools"></i>
+            Serviços da Proposta
             <button type="button" class="btn-add" id="btn-add-servico">
               <i class="fas fa-plus"></i>
               Adicionar Serviço
             </button>
           </div>
 
-          <table class="services-table">
+          <table class="services-table" id="services-table">
             <thead>
               <tr>
                 <th>Serviço</th>
@@ -613,20 +686,31 @@
               <!-- Serviços serão adicionados dinamicamente -->
             </tbody>
           </table>
+
+          <div class="total-display">
+            <div>Total da Proposta:</div>
+            <div class="total-value" id="total-proposta">R$ 0,00</div>
+          </div>
         </div>
 
-        <!-- Total da Proposta -->
-        <div class="total-section">
-          <div class="total-label">Total da Proposta:</div>
-          <div class="total-value" id="total-proposta">R$ 0,00</div>
+        <div class="form-group">
+          <label class="form-label" for="observacoes">
+            Observações
+          </label>
+          <textarea 
+            id="observacoes" 
+            class="form-input" 
+            rows="3"
+            placeholder="Observações adicionais sobre a proposta..."
+          ></textarea>
         </div>
 
-        <!-- Botões do Formulário -->
         <div class="modal-footer">
           <button type="button" class="btn-secondary" id="btn-cancelar">
+            <i class="fas fa-times"></i>
             Cancelar
           </button>
-          <button type="submit" class="btn-success">
+          <button type="submit" class="btn-success" id="btn-salvar">
             <i class="fas fa-save"></i>
             Salvar Proposta
           </button>
@@ -635,120 +719,118 @@
     </div>
 
     <!-- Lista de Propostas -->
-    <div class="proposals-container">
-      <div class="table-container">
-        <table class="table" id="proposals-table">
-          <thead>
-            <tr>
-              <th>Número</th>
-              <th>Cliente</th>
-              <th>Valor Total</th>
-              <th>Prazo</th>
-              <th>Pagamento</th>
-              <th>Status</th>
-              <th>Data</th>
-              <th>Ações</th>
-            </tr>
-          </thead>
-          <tbody id="proposals-tbody">
-            <!-- Propostas serão carregadas dinamicamente -->
-          </tbody>
-        </table>
+    <div class="proposals-list" id="proposals-list">
+      <div class="form-title">
+        <i class="fas fa-list"></i>
+        Lista de Propostas
       </div>
+
+      <table class="proposals-table" id="proposals-table">
+        <thead>
+          <tr>
+            <th>Número</th>
+            <th>Cliente</th>
+            <th>Total</th>
+            <th>Prazo</th>
+            <th>Pagamento</th>
+            <th>Status</th>
+            <th>Data</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="proposals-tbody">
+          <!-- Propostas serão carregadas dinamicamente -->
+        </tbody>
+      </table>
     </div>
 
     <!-- Modal Adicionar Serviço -->
     <div class="modal" id="modal-servico">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">
-            <i class="fas fa-tools"></i>
-            Novo Serviço
-          </h3>
+          <h3 class="modal-title">Adicionar Novo Serviço</h3>
           <button class="close-modal" id="close-modal-servico">
             <i class="fas fa-times"></i>
           </button>
         </div>
 
         <form id="servico-form">
-          <div class="modal-body">
-            <div class="form-group">
-              <label class="form-label" for="servico-codigo">
-                Código *
-              </label>
-              <input 
-                type="text" 
-                id="servico-codigo" 
-                class="form-input" 
-                placeholder="Ex: IMP001"
-                required
-              >
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="servico-codigo">
+              Código do Serviço *
+            </label>
+            <input 
+              type="text" 
+              id="servico-codigo" 
+              class="form-input" 
+              placeholder="Ex: 001"
+              required
+            >
+          </div>
 
-            <div class="form-group">
-              <label class="form-label" for="servico-descricao">
-                Descrição *
-              </label>
-              <input 
-                type="text" 
-                id="servico-descricao" 
-                class="form-input" 
-                placeholder="Ex: Impermeabilização de laje"
-                required
-              >
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="servico-descricao">
+              Descrição *
+            </label>
+            <input 
+              type="text" 
+              id="servico-descricao" 
+              class="form-input" 
+              placeholder="Ex: Pintura de parede"
+              required
+            >
+          </div>
 
-            <div class="form-group">
-              <label class="form-label" for="servico-detalhe">
-                Detalhe
-              </label>
-              <textarea 
-                id="servico-detalhe" 
-                class="form-input" 
-                rows="2"
-                placeholder="Detalhes técnicos do serviço"
-              ></textarea>
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="servico-detalhe">
+              Detalhe
+            </label>
+            <input 
+              type="text" 
+              id="servico-detalhe" 
+              class="form-input" 
+              placeholder="Detalhes adicionais do serviço"
+            >
+          </div>
 
-            <div class="form-group">
-              <label class="form-label" for="servico-unidade">
-                Unidade *
-              </label>
+          <div class="form-group">
+            <label class="form-label" for="servico-unidade">
+              Unidade *
+            </label>
+            <select 
+              id="servico-unidade" 
+              class="form-select" 
+              required
+            >
+              <option value="">Selecione uma unidade</option>
+              <option value="m">Metro (m)</option>
+              <option value="m²">Metro Quadrado (m²)</option>
+              <option value="m³">Metro Cúbico (m³)</option>
+              <option value="kg">Quilograma (kg)</option>
+              <option value="t">Tonelada (t)</option>
+              <option value="un">Unidade (un)</option>
+              <option value="h">Hora (h)</option>
+              <option value="dia">Dia (dia)</option>
+              <option value="mês">Mês (mês)</option>
+              <option value="vb">Verba (vb)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="servico-local">
+              Local de Aplicação
+            </label>
+            <div class="input-group">
               <select 
-                id="servico-unidade" 
-                class="form-select" 
-                required
+                id="servico-local" 
+                class="form-select"
               >
-                <option value="">Selecione uma unidade</option>
-                <option value="m">Metro (m)</option>
-                <option value="m²">Metro Quadrado (m²)</option>
-                <option value="m³">Metro Cúbico (m³)</option>
-                <option value="kg">Quilograma (kg)</option>
-                <option value="t">Tonelada (t)</option>
-                <option value="un">Unidade (un)</option>
-                <option value="h">Hora (h)</option>
-                <option value="dia">Dia (dia)</option>
-                <option value="mês">Mês (mês)</option>
-                <option value="vb">Verba (vb)</option>
+                <option value="">Selecione um local (opcional)</option>
+                <!-- Locais serão carregados dinamicamente -->
               </select>
-            </div>
-
-            <div class="form-group">
-              <label class="form-label" for="servico-local">
-                Local de Aplicação
-              </label>
-              <div class="input-group">
-                <select 
-                  id="servico-local" 
-                  class="form-select"
-                >
-                  <option value="">Selecione um local (opcional)</option>
-                  <!-- Locais serão carregados dinamicamente -->
-                </select>
-                <button type="button" class="btn-add" id="btn-gerenciar-locais">
-                  <i class="fas fa-cog"></i>
-                </button>
-              </div>
+              <button type="button" class="btn-add" id="btn-gerenciar-locais">
+                <i class="fas fa-cog"></i>
+              </button>
             </div>
           </div>
 
@@ -758,7 +840,7 @@
             </button>
             <button type="submit" class="btn-success">
               <i class="fas fa-save"></i>
-              Salvar Serviço
+              Criar Serviço
             </button>
           </div>
         </form>
@@ -769,65 +851,60 @@
     <div class="modal" id="modal-cliente">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">
-            <i class="fas fa-user-plus"></i>
-            Novo Cliente
-          </h3>
+          <h3 class="modal-title">Adicionar Novo Cliente</h3>
           <button class="close-modal" id="close-modal-cliente">
             <i class="fas fa-times"></i>
           </button>
         </div>
 
         <form id="cliente-form">
-          <div class="modal-body">
-            <div class="form-group">
-              <label class="form-label" for="cliente-nome">
-                Nome *
-              </label>
-              <input 
-                type="text" 
-                id="cliente-nome" 
-                class="form-input" 
-                placeholder="Nome do cliente"
-                required
-              >
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="cliente-nome">
+              Nome do Cliente *
+            </label>
+            <input 
+              type="text" 
+              id="cliente-nome" 
+              class="form-input" 
+              placeholder="Nome completo do cliente"
+              required
+            >
+          </div>
 
-            <div class="form-group">
-              <label class="form-label" for="cliente-email">
-                Email
-              </label>
-              <input 
-                type="email" 
-                id="cliente-email" 
-                class="form-input" 
-                placeholder="email@exemplo.com"
-              >
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="cliente-email">
+              Email
+            </label>
+            <input 
+              type="email" 
+              id="cliente-email" 
+              class="form-input" 
+              placeholder="email@exemplo.com"
+            >
+          </div>
 
-            <div class="form-group">
-              <label class="form-label" for="cliente-telefone">
-                Telefone
-              </label>
-              <input 
-                type="tel" 
-                id="cliente-telefone" 
-                class="form-input" 
-                placeholder="(11) 99999-9999"
-              >
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="cliente-telefone">
+              Telefone
+            </label>
+            <input 
+              type="tel" 
+              id="cliente-telefone" 
+              class="form-input" 
+              placeholder="(11) 99999-9999"
+            >
+          </div>
 
-            <div class="form-group">
-              <label class="form-label" for="cliente-endereco">
-                Endereço
-              </label>
-              <textarea 
-                id="cliente-endereco" 
-                class="form-input" 
-                rows="2"
-                placeholder="Endereço completo"
-              ></textarea>
-            </div>
+          <div class="form-group">
+            <label class="form-label" for="cliente-endereco">
+              Endereço
+            </label>
+            <textarea 
+              id="cliente-endereco" 
+              class="form-input" 
+              rows="3"
+              placeholder="Endereço completo do cliente"
+            ></textarea>
           </div>
 
           <div class="modal-footer">
@@ -845,7 +922,7 @@
 
     <!-- Modal Gerenciar Locais -->
     <div class="modal" id="modal-locais">
-      <div class="modal-content">
+      <div class="modal-content" style="max-width: 800px;">
         <div class="modal-header">
           <h3 class="modal-title">Gerenciar Locais de Aplicação</h3>
           <button class="close-modal" id="close-modal-locais">
@@ -925,12 +1002,19 @@
     </div>
   </main>
 
-  <!-- Scripts -->
+  <script type="module" src="sidebar.js"></script>
   <script type="module" src="supabase.js"></script>
   <script type="module" src="propostas-hvc.js"></script>
   <script type="module">
     import { injectSidebar } from './sidebar.js';
-    injectSidebar("main-content-propostas-hvc");
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof injectSidebar === 'function') {
+        injectSidebar('main-content-propostas-hvc');
+      } else {
+        console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
+      }
+    });
   </script>
+  <script defer src="propostas-hvc-precos.js"></script>
 </body>
 </html>
