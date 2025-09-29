@@ -1593,7 +1593,12 @@ class ObrasManager {
                 console.log('Select equipe encontrado:', selectEquipe);
                 
                 if (selectEquipe) {
-                    selectEquipe.innerHTML = '<option value="">Selecione...</option>';
+                    // ✅ ADICIONADO: Estilo para o select principal
+                    selectEquipe.style.backgroundColor = 'rgba(0, 0, 128, 0.2)';
+                    selectEquipe.style.color = '#e0e0e0';
+                    selectEquipe.style.border = '1px solid rgba(173, 216, 230, 0.3)';
+                    
+                    selectEquipe.innerHTML = '<option value="" style="background-color: rgba(0, 0, 128, 0.2); color: #e0e0e0;">Selecione...</option>';
                     
                     console.log('Populando select com', this.equipesIntegrantes.length, 'itens');
                     
@@ -1602,6 +1607,9 @@ class ObrasManager {
                         const option = document.createElement('option');
                         option.value = `${item.tipo}:${item.id}`;
                         option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
+                        // ✅ ADICIONADO: Estilo para as options
+                        option.style.backgroundColor = 'rgba(0, 0, 128, 0.2)';
+                        option.style.color = '#e0e0e0';
                         selectEquipe.appendChild(option);
                     });
                     
@@ -2118,12 +2126,15 @@ class ObrasManager {
         const select = document.getElementById('filtro-equipe-producao');
         if (!select) return;
         
-        select.innerHTML = '<option value="">Todos</option>';
+        select.innerHTML = '<option value="" style="background-color: rgba(0, 0, 128, 0.2); color: #e0e0e0;">Todos</option>';
         
         this.equipesIntegrantes.forEach(item => {
             const option = document.createElement('option');
             option.value = `${item.tipo}:${item.id}`;
             option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
+            // ✅ ADICIONADO: Estilo para as options do filtro
+            option.style.backgroundColor = 'rgba(0, 0, 128, 0.2)';
+            option.style.color = '#e0e0e0';
             select.appendChild(option);
         });
     }
