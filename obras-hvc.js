@@ -439,10 +439,10 @@ class ObrasManager {
                 display: flex;
                 align-items: center;
                 padding: 1rem;
-                border: 1px solid #e1e5e9;
+                border: 1px solid rgba(173, 216, 230, 0.2);
                 border-radius: 8px;
                 margin-bottom: 0.5rem;
-                background: white;
+                background: rgba(0, 0, 128, 0.1);
                 transition: all 0.3s ease;
             `;
             
@@ -1022,11 +1022,19 @@ class ObrasManager {
             this.servicosObra = todosServicos.reduce((unique, item) => {
                 const servicoExistente = unique.find(s => s.id === item.servicos_hvc?.id);
                 if (!servicoExistente && item.servicos_hvc) {
+                    // ✅ MODIFICADO: Incluir informações de locais
+                    const locaisDoServico = todosServicos
+                        .filter(i => i.servicos_hvc?.id === item.servicos_hvc.id)
+                        .map(i => this.getLocalNome(i.local_id))
+                        .filter(local => local !== '-')
+                        .filter((local, index, arr) => arr.indexOf(local) === index); // Remove duplicatas
+                    
                     unique.push({
                         id: item.servicos_hvc.id,
                         codigo: item.servicos_hvc.codigo,
                         descricao: item.servicos_hvc.descricao,
-                        unidade: item.servicos_hvc.unidade
+                        unidade: item.servicos_hvc.unidade,
+                        locais: locaisDoServico // ✅ ADICIONADO: Array de locais onde o serviço será executado
                     });
                 }
                 return unique;
@@ -1617,13 +1625,22 @@ class ObrasManager {
         
         this.servicosObra.forEach(servico => {
             const servicoDiv = document.createElement('div');
-            servicoDiv.style.cssText = 'display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid rgba(173, 216, 230, 0.1); border-radius: 4px; background: rgba(255, 255, 255, 0.02);';
+            // ✅ MODIFICADO: Mudou cor de fundo para azul da página
+            servicoDiv.style.cssText = 'display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid rgba(173, 216, 230, 0.1); border-radius: 4px; background: rgba(0, 0, 128, 0.1);';
+            
+            // ✅ MODIFICADO: Incluir informação dos locais
+            const locaisTexto = servico.locais && servico.locais.length > 0 
+                ? servico.locais.join(', ') 
+                : 'Local não definido';
             
             servicoDiv.innerHTML = `
                 <div style="flex: 1; min-width: 0;">
                     <strong style="color: #add8e6;">${servico.codigo || 'N/A'}</strong>
                     <div style="font-size: 0.9em; color: #c0c0c0; margin-top: 0.2rem;">
                         ${servico.descricao || 'Sem descrição'}
+                    </div>
+                    <div style="font-size: 0.8em; color: #20c997; margin-top: 0.2rem;">
+                        <i class="fas fa-map-marker-alt"></i> Local: ${locaisTexto}
                     </div>
                     <div style="font-size: 0.8em; color: #a0a0a0;">
                         Unidade: ${servico.unidade || 'N/A'}
