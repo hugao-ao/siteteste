@@ -1081,17 +1081,15 @@ class ObrasManager {
 
     // Atualizar valor total da obra no banco
     async atualizarValorTotalNoBanco(obraId, valorTotal) {
-        
         try {
             const { error } = await supabaseClient
                 .from('obras_hvc')
                 .update({ valor_total: Math.round(valorTotal * 100) }) // Salvar em centavos
                 .eq('id', obraId);
 
-            if (error) {
-            } else {
-            }
+            if (error) throw error;
         } catch (error) {
+            this.showNotification('Erro ao atualizar valor total: ' + error.message, 'error');
         }
     }
 
