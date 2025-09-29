@@ -912,11 +912,6 @@ class ObrasManager {
                 // ✅ ADICIONADO: Obter nome do local
                 const localNome = this.getLocalNome(item.local_id);
                 
-                    precoTotal,
-                    quantidade,
-                    quantidadeExecutada
-                });
-                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${item.propostas_hvc?.numero_proposta}</strong></td>
