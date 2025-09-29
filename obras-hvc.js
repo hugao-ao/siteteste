@@ -418,10 +418,10 @@ class ObrasManager {
                 display: flex;
                 align-items: center;
                 padding: 1rem;
-                border: 1px solid rgba(173, 216, 230, 0.2);
+                border: 1px solid #e1e5e9;
                 border-radius: 8px;
                 margin-bottom: 0.5rem;
-                background: rgba(0, 0, 128, 0.1);
+                background: white;
                 transition: all 0.3s ease;
             `;
             
@@ -693,6 +693,8 @@ class ObrasManager {
             if (!itensPropostas || itensPropostas.length === 0) {
                 return 0;
             }
+
+
             // PASSO 3: Calcular valor total da obra e percentual de cada item
             let valorTotalObra = 0;
             const itensComValor = [];
@@ -707,6 +709,8 @@ class ObrasManager {
                     percentualObra: 0 // Será calculado depois
                 });
             }
+
+
             if (valorTotalObra === 0) {
                 return 0;
             }
@@ -879,7 +883,7 @@ class ObrasManager {
             
             const tbody = document.getElementById('servicos-andamento-tbody');
             
-            todosServicos.forEach((item, index) => {
+                     todosServicos.forEach((item, index) => {
                 // Buscar andamento existente para este item
                 const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
                 
@@ -967,19 +971,11 @@ class ObrasManager {
             this.servicosObra = todosServicos.reduce((unique, item) => {
                 const servicoExistente = unique.find(s => s.id === item.servicos_hvc?.id);
                 if (!servicoExistente && item.servicos_hvc) {
-                    // ✅ MODIFICADO: Incluir informações de locais
-                    const locaisDoServico = todosServicos
-                        .filter(i => i.servicos_hvc?.id === item.servicos_hvc.id)
-                        .map(i => this.getLocalNome(i.local_id))
-                        .filter(local => local !== '-')
-                        .filter((local, index, arr) => arr.indexOf(local) === index); // Remove duplicatas
-                    
                     unique.push({
                         id: item.servicos_hvc.id,
                         codigo: item.servicos_hvc.codigo,
                         descricao: item.servicos_hvc.descricao,
-                        unidade: item.servicos_hvc.unidade,
-                        locais: locaisDoServico // ✅ ADICIONADO: Array de locais onde o serviço será executado
+                        unidade: item.servicos_hvc.unidade
                     });
                 }
                 return unique;
@@ -1081,15 +1077,17 @@ class ObrasManager {
 
     // Atualizar valor total da obra no banco
     async atualizarValorTotalNoBanco(obraId, valorTotal) {
+        
         try {
             const { error } = await supabaseClient
                 .from('obras_hvc')
                 .update({ valor_total: Math.round(valorTotal * 100) }) // Salvar em centavos
                 .eq('id', obraId);
 
-            if (error) throw error;
+            if (error) {
+            } else {
+            }
         } catch (error) {
-            this.showNotification('Erro ao atualizar valor total: ' + error.message, 'error');
         }
     }
 
@@ -1232,6 +1230,8 @@ class ObrasManager {
             observacoes: document.getElementById('observacoes-obra').value || null,
             valor_total: Math.round(valorTotalCorreto * 100) // Salvar em centavos
         };
+
+
         try {
             let obra;
             
@@ -1505,21 +1505,13 @@ class ObrasManager {
                 const selectEquipe = document.getElementById('equipe-producao');
                 
                 if (selectEquipe) {
-                    // ✅ ADICIONADO: Estilo para o select principal
-                    selectEquipe.style.backgroundColor = 'rgba(0, 0, 128, 0.2)';
-                    selectEquipe.style.color = '#e0e0e0';
-                    selectEquipe.style.border = '1px solid rgba(173, 216, 230, 0.3)';
-                    
-                    selectEquipe.innerHTML = '<option value="" style="background-color: rgba(0, 0, 128, 0.2); color: #e0e0e0;">Selecione...</option>';
+                    selectEquipe.innerHTML = '<option value="">Selecione...</option>';
                     
                     
                     this.equipesIntegrantes.forEach((item, index) => {
                         const option = document.createElement('option');
                         option.value = `${item.tipo}:${item.id}`;
                         option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
-                        // ✅ ADICIONADO: Estilo para as options
-                        option.style.backgroundColor = 'rgba(0, 0, 128, 0.2)';
-                        option.style.color = '#e0e0e0';
                         selectEquipe.appendChild(option);
                     });
                     
@@ -1540,22 +1532,13 @@ class ObrasManager {
         
         this.servicosObra.forEach(servico => {
             const servicoDiv = document.createElement('div');
-            // ✅ MODIFICADO: Mudou cor de fundo para azul da página
-            servicoDiv.style.cssText = 'display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid rgba(173, 216, 230, 0.1); border-radius: 4px; background: rgba(0, 0, 128, 0.1);';
-            
-            // ✅ MODIFICADO: Incluir informação dos locais
-            const locaisTexto = servico.locais && servico.locais.length > 0 
-                ? servico.locais.join(', ') 
-                : 'Local não definido';
+            servicoDiv.style.cssText = 'display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid rgba(173, 216, 230, 0.1); border-radius: 4px; background: rgba(255, 255, 255, 0.02);';
             
             servicoDiv.innerHTML = `
                 <div style="flex: 1; min-width: 0;">
                     <strong style="color: #add8e6;">${servico.codigo || 'N/A'}</strong>
                     <div style="font-size: 0.9em; color: #c0c0c0; margin-top: 0.2rem;">
                         ${servico.descricao || 'Sem descrição'}
-                    </div>
-                    <div style="font-size: 0.8em; color: #20c997; margin-top: 0.2rem;">
-                        <i class="fas fa-map-marker-alt"></i> Local: ${locaisTexto}
                     </div>
                     <div style="font-size: 0.8em; color: #a0a0a0;">
                         Unidade: ${servico.unidade || 'N/A'}
@@ -2017,18 +2000,56 @@ class ObrasManager {
         const select = document.getElementById('filtro-equipe-producao');
         if (!select) return;
         
-        select.innerHTML = '<option value="" style="background-color: rgba(0, 0, 128, 0.2); color: #e0e0e0;">Todos</option>';
+        select.innerHTML = '<option value="">Todos</option>';
         
         this.equipesIntegrantes.forEach(item => {
             const option = document.createElement('option');
             option.value = `${item.tipo}:${item.id}`;
             option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
-            // ✅ ADICIONADO: Estilo para as options do filtro
-            option.style.backgroundColor = 'rgba(0, 0, 128, 0.2)';
-            option.style.color = '#e0e0e0';
             select.appendChild(option);
         });
     }
 }
+
+
+                            // DEBUG PARA PRODUÇÕES DIÁRIAS
+                            async function debugProducoesDiarias() {
+                                
+                                // 1. Verificar se obrasManager existe
+                                
+                                if (!window.obrasManager) {
+                                    return;
+                                }
+                                
+                                // 2. Verificar obra atual
+                                
+                                // 3. Verificar container
+                                const container = document.getElementById('lista-producoes-diarias');
+                                
+                                // 4. Verificar produções carregadas
+                                
+                                // 5. Testar consulta direta
+                                try {
+                                    const { data, error } = await supabaseClient
+                                        .from('producoes_diarias_hvc')
+                                        .select('*')
+                                        .eq('obra_id', window.obrasManager.currentObraId);
+                                    
+                                    
+                                } catch (err) {
+                                }
+                                
+                                // 6. Forçar renderização
+                                if (window.obrasManager.renderProducoesDiarias) {
+                                    await window.obrasManager.renderProducoesDiarias();
+                                }
+                                
+                            }
+                            
+                            // Executar
+                            debugProducoesDiarias();
+
+
+
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
