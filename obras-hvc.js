@@ -879,7 +879,7 @@ class ObrasManager {
             
             const tbody = document.getElementById('servicos-andamento-tbody');
             
-                     todosServicos.forEach((item, index) => {
+            todosServicos.forEach((item, index) => {
                 // Buscar andamento existente para este item
                 const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
                 
