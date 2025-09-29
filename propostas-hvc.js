@@ -644,7 +644,7 @@ class PropostasManager {
             await this.loadLocais();
             
             // Atualizar todos os selects de local na tabela
-            this.updateServicesTable();
+            this.forceUpdateServicesTable();
             
             this.showNotification('Local criado com sucesso!', 'success');
             
@@ -937,7 +937,7 @@ class PropostasManager {
         });
 
         // Atualizar tabela
-        this.updateServicesTable();
+        this.forceUpdateServicesTable();
         
         // Fechar modal
         const modal = document.querySelector('.modal-selection');
@@ -961,17 +961,23 @@ class PropostasManager {
         this.showModalServico();
     }
 
-    // FUNÇÃO CORRIGIDA: updateServicesTable com local por serviço
-    updateServicesTable() {
+    // 🔧 FUNÇÃO ULTRA-CORRIGIDA: forceUpdateServicesTable com logs detalhados
+    forceUpdateServicesTable() {
+        console.log('🔧 TABLE-FIX - FORÇANDO atualização da tabela de serviços...');
+        console.log('🔧 TABLE-FIX - servicosAdicionados.length:', this.servicosAdicionados.length);
+        console.log('🔧 TABLE-FIX - servicosAdicionados:', this.servicosAdicionados);
+        
         const tbody = document.getElementById('services-tbody');
         if (!tbody) {
-            console.error('Tbody de serviços não encontrado');
+            console.error('🔧 TABLE-FIX - ERRO: Tbody de serviços não encontrado!');
             return;
         }
         
+        console.log('🔧 TABLE-FIX - Tbody encontrado, limpando conteúdo...');
         tbody.innerHTML = '';
 
         if (this.servicosAdicionados.length === 0) {
+            console.log('🔧 TABLE-FIX - Nenhum serviço, mostrando mensagem vazia...');
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
@@ -984,16 +990,31 @@ class PropostasManager {
             return;
         }
 
+        console.log('🔧 TABLE-FIX - Criando linhas para', this.servicosAdicionados.length, 'serviços...');
+
         this.servicosAdicionados.forEach((item, index) => {
+            console.log(`🔧 TABLE-FIX - Criando linha ${index} para serviço:`, item);
+            
             const row = document.createElement('tr');
             
             // Criar select de local para este serviço
             const localSelectContainer = document.createElement('td');
             const localSelect = this.createLocalSelect(item.local_id);
             localSelect.addEventListener('change', (e) => {
+                console.log(`🔧 TABLE-FIX - Local alterado para serviço ${index}:`, e.target.value);
                 this.updateServicoLocal(index, e.target.value);
             });
             localSelectContainer.appendChild(localSelect);
+            
+            // CORREÇÃO: Garantir que os valores sejam exibidos corretamente
+            const quantidade = parseFloat(item.quantidade) || 1;
+            const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
+            const precoMaterial = parseFloat(item.preco_material) || 0;
+            const precoTotal = parseFloat(item.preco_total) || 0;
+            
+            console.log(`🔧 TABLE-FIX - Valores do serviço ${index}:`, {
+                quantidade, precoMaoObra, precoMaterial, precoTotal
+            });
             
             row.innerHTML = `
                 <td>
@@ -1003,7 +1024,7 @@ class PropostasManager {
                 <td></td>
                 <td>
                     <input type="number" 
-                           value="${item.quantidade}" 
+                           value="${quantidade}" 
                            min="0.01" 
                            step="0.01"
                            onchange="window.propostasManager.updateServicoQuantidade(${index}, this.value)"
@@ -1012,7 +1033,7 @@ class PropostasManager {
                 <td>${item.servico.unidade}</td>
                 <td>
                     <input type="number" 
-                           value="${item.preco_mao_obra}" 
+                           value="${precoMaoObra}" 
                            min="0" 
                            step="0.01"
                            onchange="window.propostasManager.updateServicoPrecoMaoObra(${index}, this.value)"
@@ -1020,13 +1041,13 @@ class PropostasManager {
                 </td>
                 <td>
                     <input type="number" 
-                           value="${item.preco_material}" 
+                           value="${precoMaterial}" 
                            min="0" 
                            step="0.01"
                            onchange="window.propostasManager.updateServicoPrecoMaterial(${index}, this.value)"
                            style="width: 100px;">
                 </td>
-                <td><strong>${this.formatMoney(item.preco_total)}</strong></td>
+                <td><strong>${this.formatMoney(precoTotal)}</strong></td>
                 <td>
                     <button class="btn-danger" onclick="window.propostasManager.removeServico(${index})">
                         <i class="fas fa-trash"></i>
@@ -1038,9 +1059,19 @@ class PropostasManager {
             row.children[1].replaceWith(localSelectContainer);
             
             tbody.appendChild(row);
+            console.log(`🔧 TABLE-FIX - Linha ${index} adicionada ao tbody`);
         });
 
+        console.log('🔧 TABLE-FIX - Todas as linhas criadas, atualizando total...');
         this.updateTotal();
+        
+        console.log('🔧 TABLE-FIX - ✅ Atualização da tabela CONCLUÍDA!');
+    }
+
+    // FUNÇÃO CORRIGIDA: updateServicesTable (alias para forceUpdateServicesTable)
+    updateServicesTable() {
+        console.log('🔧 TABLE-FIX - updateServicesTable chamada, redirecionando para forceUpdateServicesTable...');
+        this.forceUpdateServicesTable();
     }
 
     // NOVA FUNÇÃO: Atualizar local do serviço
@@ -1057,7 +1088,7 @@ class PropostasManager {
         if (item) {
             item.quantidade = ensureNumericValue(quantidade);
             item.preco_total = ensureNumericValue(item.quantidade * (item.preco_mao_obra + item.preco_material));
-            this.updateServicesTable();
+            this.forceUpdateServicesTable();
         }
     }
 
@@ -1066,7 +1097,7 @@ class PropostasManager {
         if (item) {
             item.preco_mao_obra = ensureNumericValue(preco);
             item.preco_total = ensureNumericValue(item.quantidade * (item.preco_mao_obra + item.preco_material));
-            this.updateServicesTable();
+            this.forceUpdateServicesTable();
         }
     }
 
@@ -1075,13 +1106,13 @@ class PropostasManager {
         if (item) {
             item.preco_material = ensureNumericValue(preco);
             item.preco_total = ensureNumericValue(item.quantidade * (item.preco_mao_obra + item.preco_material));
-            this.updateServicesTable();
+            this.forceUpdateServicesTable();
         }
     }
 
     removeServico(index) {
         this.servicosAdicionados.splice(index, 1);
-        this.updateServicesTable();
+        this.forceUpdateServicesTable();
     }
 
     updateTotal() {
@@ -1137,7 +1168,7 @@ class PropostasManager {
         
         // Limpar serviços adicionados
         this.servicosAdicionados = [];
-        this.updateServicesTable();
+        this.forceUpdateServicesTable();
         
         // Resetar ID da proposta atual
         this.currentPropostaId = null;
@@ -1404,7 +1435,7 @@ class PropostasManager {
         });
     }
 
-    // 🔧 FUNÇÃO ULTRA-CORRIGIDA: editProposta com debug detalhado
+    // 🔧 FUNÇÃO ULTRA-CORRIGIDA: editProposta com forçar atualização da tabela
     async editProposta(propostaId) {
         try {
             console.log('🔧 EDIT-FIX - Iniciando carregamento da proposta:', propostaId);
@@ -1491,11 +1522,7 @@ class PropostasManager {
                 console.log('🔧 EDIT-FIX - Nenhum item encontrado ou array vazio');
             }
 
-            // Atualizar tabela de serviços
-            console.log('🔧 EDIT-FIX - Atualizando tabela de serviços...');
-            this.updateServicesTable();
-
-            // Mostrar formulário
+            // Mostrar formulário ANTES de atualizar a tabela
             console.log('🔧 EDIT-FIX - Mostrando formulário...');
             this.showFormProposta();
             
@@ -1504,6 +1531,27 @@ class PropostasManager {
             if (titleElement) {
                 titleElement.textContent = 'Editar Proposta';
             }
+
+            // CORREÇÃO CRÍTICA: Aguardar um pouco e FORÇAR atualização da tabela
+            console.log('🔧 EDIT-FIX - Aguardando e FORÇANDO atualização da tabela...');
+            setTimeout(() => {
+                console.log('🔧 EDIT-FIX - FORÇANDO atualização da tabela de serviços...');
+                this.forceUpdateServicesTable();
+                
+                // Verificar se a tabela foi realmente atualizada
+                setTimeout(() => {
+                    const tbody = document.getElementById('services-tbody');
+                    const rows = tbody ? tbody.querySelectorAll('tr') : [];
+                    console.log('🔧 EDIT-FIX - Verificação: tabela tem', rows.length, 'linhas');
+                    
+                    if (rows.length === 0 || (rows.length === 1 && rows[0].textContent.includes('Nenhum serviço'))) {
+                        console.log('🔧 EDIT-FIX - ⚠️ TABELA AINDA VAZIA! Tentando novamente...');
+                        this.forceUpdateServicesTable();
+                    } else {
+                        console.log('🔧 EDIT-FIX - ✅ Tabela atualizada com sucesso!');
+                    }
+                }, 500);
+            }, 100);
 
             console.log('🔧 EDIT-FIX - Edição carregada com sucesso!');
             this.showNotification('Proposta carregada para edição!', 'success');
