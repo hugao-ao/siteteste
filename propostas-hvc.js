@@ -221,13 +221,52 @@ function formatTipoPrazoDisplay(tipoPrazo, prazoExecucao) {
 class PropostasManager {
     constructor() {
         this.currentPropostaId = null;
-        this.servicosAdicionados = [];
+        
+        // 🛡️ PROTEÇÃO CRÍTICA: Inicializar array protegido
+        this._servicosAdicionados = [];
+        this._isEditMode = false; // Flag para modo de edição
+        
         this.clientes = [];
         this.servicos = [];
         this.locais = []; // Array para armazenar locais
         this.propostas = []; // Armazenar propostas para filtros
         
         this.init();
+    }
+
+    // 🛡️ GETTER/SETTER PROTEGIDO para servicosAdicionados
+    get servicosAdicionados() {
+        console.log('🛡️ ARRAY-PROTECT - Acessando servicosAdicionados, length:', this._servicosAdicionados.length);
+        return this._servicosAdicionados;
+    }
+
+    set servicosAdicionados(value) {
+        console.log('🛡️ ARRAY-PROTECT - Definindo servicosAdicionados:', value);
+        console.log('🛡️ ARRAY-PROTECT - Modo edição ativo:', this._isEditMode);
+        
+        // Se está em modo de edição, proteger contra limpeza acidental
+        if (this._isEditMode && Array.isArray(value) && value.length === 0 && this._servicosAdicionados.length > 0) {
+            console.log('🛡️ ARRAY-PROTECT - ⚠️ TENTATIVA DE LIMPAR ARRAY EM MODO EDIÇÃO BLOQUEADA!');
+            console.log('🛡️ ARRAY-PROTECT - Mantendo array atual:', this._servicosAdicionados);
+            return; // Bloquear limpeza
+        }
+        
+        this._servicosAdicionados = Array.isArray(value) ? value : [];
+        console.log('🛡️ ARRAY-PROTECT - Array atualizado, novo length:', this._servicosAdicionados.length);
+    }
+
+    // 🛡️ FUNÇÃO PROTEGIDA: Limpar array apenas quando permitido
+    clearServicosAdicionados() {
+        console.log('🛡️ ARRAY-PROTECT - Limpeza AUTORIZADA do array');
+        this._isEditMode = false;
+        this._servicosAdicionados = [];
+    }
+
+    // 🛡️ FUNÇÃO PROTEGIDA: Adicionar serviço ao array
+    addServicoToArray(servico) {
+        console.log('🛡️ ARRAY-PROTECT - Adicionando serviço ao array:', servico);
+        this._servicosAdicionados.push(servico);
+        console.log('🛡️ ARRAY-PROTECT - Novo length:', this._servicosAdicionados.length);
     }
 
     async init() {
@@ -921,9 +960,8 @@ class PropostasManager {
                 return;
             }
 
-            // CORREÇÃO: Permitir adicionar o mesmo serviço múltiplas vezes
-            // Adicionar serviço à lista
-            this.servicosAdicionados.push({
+            // 🛡️ PROTEÇÃO: Usar função protegida para adicionar
+            this.addServicoToArray({
                 servico_id: servicoId,
                 servico: servico,
                 quantidade: 1,
@@ -961,23 +999,39 @@ class PropostasManager {
         this.showModalServico();
     }
 
-    // 🔧 FUNÇÃO ULTRA-CORRIGIDA: forceUpdateServicesTable com logs detalhados
+    // 🛡️ FUNÇÃO ULTRA-PROTEGIDA: forceUpdateServicesTable
     forceUpdateServicesTable() {
-        console.log('🔧 TABLE-FIX - FORÇANDO atualização da tabela de serviços...');
-        console.log('🔧 TABLE-FIX - servicosAdicionados.length:', this.servicosAdicionados.length);
-        console.log('🔧 TABLE-FIX - servicosAdicionados:', this.servicosAdicionados);
+        console.log('🛡️ TABLE-PROTECT - FORÇANDO atualização da tabela de serviços...');
+        console.log('🛡️ TABLE-PROTECT - servicosAdicionados.length:', this.servicosAdicionados.length);
+        console.log('🛡️ TABLE-PROTECT - Modo edição:', this._isEditMode);
+        console.log('🛡️ TABLE-PROTECT - servicosAdicionados:', this.servicosAdicionados);
         
         const tbody = document.getElementById('services-tbody');
         if (!tbody) {
-            console.error('🔧 TABLE-FIX - ERRO: Tbody de serviços não encontrado!');
+            console.error('🛡️ TABLE-PROTECT - ERRO: Tbody de serviços não encontrado!');
             return;
         }
         
-        console.log('🔧 TABLE-FIX - Tbody encontrado, limpando conteúdo...');
+        console.log('🛡️ TABLE-PROTECT - Tbody encontrado, limpando conteúdo...');
         tbody.innerHTML = '';
 
+        // 🛡️ PROTEÇÃO CRÍTICA: Verificar se array foi limpo indevidamente
+        if (this._isEditMode && this.servicosAdicionados.length === 0) {
+            console.log('🛡️ TABLE-PROTECT - ⚠️ ARRAY VAZIO EM MODO EDIÇÃO! Tentando recuperar...');
+            // Aqui poderia tentar recarregar os dados, mas por ora vamos mostrar mensagem
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 2rem; color: #ff6b6b;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                        ⚠️ Erro: Dados dos serviços foram perdidos. Recarregue a página e tente novamente.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
         if (this.servicosAdicionados.length === 0) {
-            console.log('🔧 TABLE-FIX - Nenhum serviço, mostrando mensagem vazia...');
+            console.log('🛡️ TABLE-PROTECT - Nenhum serviço, mostrando mensagem vazia...');
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
@@ -990,10 +1044,10 @@ class PropostasManager {
             return;
         }
 
-        console.log('🔧 TABLE-FIX - Criando linhas para', this.servicosAdicionados.length, 'serviços...');
+        console.log('🛡️ TABLE-PROTECT - Criando linhas para', this.servicosAdicionados.length, 'serviços...');
 
         this.servicosAdicionados.forEach((item, index) => {
-            console.log(`🔧 TABLE-FIX - Criando linha ${index} para serviço:`, item);
+            console.log(`🛡️ TABLE-PROTECT - Criando linha ${index} para serviço:`, item);
             
             const row = document.createElement('tr');
             
@@ -1001,7 +1055,7 @@ class PropostasManager {
             const localSelectContainer = document.createElement('td');
             const localSelect = this.createLocalSelect(item.local_id);
             localSelect.addEventListener('change', (e) => {
-                console.log(`🔧 TABLE-FIX - Local alterado para serviço ${index}:`, e.target.value);
+                console.log(`🛡️ TABLE-PROTECT - Local alterado para serviço ${index}:`, e.target.value);
                 this.updateServicoLocal(index, e.target.value);
             });
             localSelectContainer.appendChild(localSelect);
@@ -1012,7 +1066,7 @@ class PropostasManager {
             const precoMaterial = parseFloat(item.preco_material) || 0;
             const precoTotal = parseFloat(item.preco_total) || 0;
             
-            console.log(`🔧 TABLE-FIX - Valores do serviço ${index}:`, {
+            console.log(`🛡️ TABLE-PROTECT - Valores do serviço ${index}:`, {
                 quantidade, precoMaoObra, precoMaterial, precoTotal
             });
             
@@ -1059,18 +1113,18 @@ class PropostasManager {
             row.children[1].replaceWith(localSelectContainer);
             
             tbody.appendChild(row);
-            console.log(`🔧 TABLE-FIX - Linha ${index} adicionada ao tbody`);
+            console.log(`🛡️ TABLE-PROTECT - Linha ${index} adicionada ao tbody`);
         });
 
-        console.log('🔧 TABLE-FIX - Todas as linhas criadas, atualizando total...');
+        console.log('🛡️ TABLE-PROTECT - Todas as linhas criadas, atualizando total...');
         this.updateTotal();
         
-        console.log('🔧 TABLE-FIX - ✅ Atualização da tabela CONCLUÍDA!');
+        console.log('🛡️ TABLE-PROTECT - ✅ Atualização da tabela CONCLUÍDA!');
     }
 
     // FUNÇÃO CORRIGIDA: updateServicesTable (alias para forceUpdateServicesTable)
     updateServicesTable() {
-        console.log('🔧 TABLE-FIX - updateServicesTable chamada, redirecionando para forceUpdateServicesTable...');
+        console.log('🛡️ TABLE-PROTECT - updateServicesTable chamada, redirecionando para forceUpdateServicesTable...');
         this.forceUpdateServicesTable();
     }
 
@@ -1135,13 +1189,15 @@ class PropostasManager {
             form.classList.remove('hidden');
             list.style.display = 'none';
             
-            // Limpar formulário
-            this.clearForm();
+            // Limpar formulário apenas se não estiver em modo edição
+            if (!this._isEditMode) {
+                this.clearForm();
+            }
             
             // Definir título
             const titleElement = document.getElementById('form-title-text');
             if (titleElement) {
-                titleElement.textContent = 'Nova Proposta';
+                titleElement.textContent = this._isEditMode ? 'Editar Proposta' : 'Nova Proposta';
             }
         }
     }
@@ -1166,8 +1222,8 @@ class PropostasManager {
             form.reset();
         }
         
-        // Limpar serviços adicionados
-        this.servicosAdicionados = [];
+        // 🛡️ PROTEÇÃO: Limpar serviços apenas quando autorizado
+        this.clearServicosAdicionados();
         this.forceUpdateServicesTable();
         
         // Resetar ID da proposta atual
@@ -1435,15 +1491,19 @@ class PropostasManager {
         });
     }
 
-    // 🔧 FUNÇÃO ULTRA-CORRIGIDA: editProposta com forçar atualização da tabela
+    // 🛡️ FUNÇÃO ULTRA-PROTEGIDA: editProposta
     async editProposta(propostaId) {
         try {
-            console.log('🔧 EDIT-FIX - Iniciando carregamento da proposta:', propostaId);
+            console.log('🛡️ EDIT-PROTECT - Iniciando carregamento da proposta:', propostaId);
+            
+            // 🛡️ ATIVAR MODO EDIÇÃO ANTES DE QUALQUER COISA
+            this._isEditMode = true;
+            console.log('🛡️ EDIT-PROTECT - Modo edição ATIVADO');
             
             // CORREÇÃO: Fazer duas queries separadas para garantir que os dados sejam carregados
             
             // 1. Carregar dados da proposta
-            console.log('🔧 EDIT-FIX - Carregando dados da proposta...');
+            console.log('🛡️ EDIT-PROTECT - Carregando dados da proposta...');
             const { data: proposta, error: propostaError } = await supabaseClient
                 .from('propostas_hvc')
                 .select('*')
@@ -1451,14 +1511,14 @@ class PropostasManager {
                 .single();
 
             if (propostaError) {
-                console.error('🔧 EDIT-FIX - Erro ao carregar proposta:', propostaError);
+                console.error('🛡️ EDIT-PROTECT - Erro ao carregar proposta:', propostaError);
                 throw propostaError;
             }
 
-            console.log('🔧 EDIT-FIX - Proposta carregada:', proposta);
+            console.log('🛡️ EDIT-PROTECT - Proposta carregada:', proposta);
 
             // 2. Carregar itens da proposta separadamente
-            console.log('🔧 EDIT-FIX - Carregando itens da proposta...');
+            console.log('🛡️ EDIT-PROTECT - Carregando itens da proposta...');
             const { data: itens, error: itensError } = await supabaseClient
                 .from('itens_proposta_hvc')
                 .select(`
@@ -1468,35 +1528,28 @@ class PropostasManager {
                 .eq('proposta_id', propostaId);
 
             if (itensError) {
-                console.error('🔧 EDIT-FIX - Erro ao carregar itens:', itensError);
+                console.error('🛡️ EDIT-PROTECT - Erro ao carregar itens:', itensError);
                 throw itensError;
             }
 
-            console.log('🔧 EDIT-FIX - Itens carregados:', itens);
-            console.log('🔧 EDIT-FIX - Quantidade de itens:', itens ? itens.length : 0);
+            console.log('🛡️ EDIT-PROTECT - Itens carregados:', itens);
+            console.log('🛡️ EDIT-PROTECT - Quantidade de itens:', itens ? itens.length : 0);
 
             // Definir ID da proposta atual
             this.currentPropostaId = propostaId;
 
-            // Preencher formulário
-            console.log('🔧 EDIT-FIX - Preenchendo formulário...');
-            document.getElementById('numero-proposta').value = proposta.numero_proposta || '';
-            document.getElementById('cliente-select').value = proposta.cliente_id || '';
-            document.getElementById('status-select').value = proposta.status || 'Pendente';
-            document.getElementById('prazo-execucao').value = proposta.prazo_execucao || '';
-            document.getElementById('tipo-prazo').value = proposta.tipo_prazo || 'corridos';
-            document.getElementById('forma-pagamento').value = proposta.forma_pagamento || '';
-            document.getElementById('observacoes').value = proposta.observacoes || '';
+            // 🛡️ PROTEÇÃO CRÍTICA: Limpar array ANTES de popular
+            console.log('🛡️ EDIT-PROTECT - Limpando array para repopular...');
+            this._servicosAdicionados = []; // Limpeza direta do array interno
 
             // CORREÇÃO ULTRA-DETALHADA: Carregar itens da proposta
-            console.log('🔧 EDIT-FIX - Processando itens para servicosAdicionados...');
-            this.servicosAdicionados = [];
+            console.log('🛡️ EDIT-PROTECT - Processando itens para servicosAdicionados...');
             
             if (itens && Array.isArray(itens) && itens.length > 0) {
-                console.log('🔧 EDIT-FIX - Processando', itens.length, 'itens...');
+                console.log('🛡️ EDIT-PROTECT - Processando', itens.length, 'itens...');
                 
                 itens.forEach((item, index) => {
-                    console.log(`🔧 EDIT-FIX - Processando item ${index}:`, item);
+                    console.log(`🛡️ EDIT-PROTECT - Processando item ${index}:`, item);
                     
                     if (item.servicos_hvc) {
                         const servicoProcessado = {
@@ -1509,56 +1562,72 @@ class PropostasManager {
                             local_id: item.local_id || null
                         };
                         
-                        console.log(`🔧 EDIT-FIX - Serviço ${index} processado:`, servicoProcessado);
-                        this.servicosAdicionados.push(servicoProcessado);
+                        console.log(`🛡️ EDIT-PROTECT - Serviço ${index} processado:`, servicoProcessado);
+                        this._servicosAdicionados.push(servicoProcessado); // Adicionar diretamente ao array interno
                     } else {
-                        console.error(`🔧 EDIT-FIX - Item ${index} não tem servicos_hvc:`, item);
+                        console.error(`🛡️ EDIT-PROTECT - Item ${index} não tem servicos_hvc:`, item);
                     }
                 });
                 
-                console.log('🔧 EDIT-FIX - Total de serviços processados:', this.servicosAdicionados.length);
-                console.log('🔧 EDIT-FIX - servicosAdicionados final:', this.servicosAdicionados);
+                console.log('🛡️ EDIT-PROTECT - Total de serviços processados:', this._servicosAdicionados.length);
+                console.log('🛡️ EDIT-PROTECT - servicosAdicionados final:', this._servicosAdicionados);
             } else {
-                console.log('🔧 EDIT-FIX - Nenhum item encontrado ou array vazio');
+                console.log('🛡️ EDIT-PROTECT - Nenhum item encontrado ou array vazio');
             }
 
-            // Mostrar formulário ANTES de atualizar a tabela
-            console.log('🔧 EDIT-FIX - Mostrando formulário...');
+            // Preencher formulário
+            console.log('🛡️ EDIT-PROTECT - Preenchendo formulário...');
+            document.getElementById('numero-proposta').value = proposta.numero_proposta || '';
+            document.getElementById('cliente-select').value = proposta.cliente_id || '';
+            document.getElementById('status-select').value = proposta.status || 'Pendente';
+            document.getElementById('prazo-execucao').value = proposta.prazo_execucao || '';
+            document.getElementById('tipo-prazo').value = proposta.tipo_prazo || 'corridos';
+            document.getElementById('forma-pagamento').value = proposta.forma_pagamento || '';
+            document.getElementById('observacoes').value = proposta.observacoes || '';
+
+            // Mostrar formulário
+            console.log('🛡️ EDIT-PROTECT - Mostrando formulário...');
             this.showFormProposta();
-            
-            // Definir título
-            const titleElement = document.getElementById('form-title-text');
-            if (titleElement) {
-                titleElement.textContent = 'Editar Proposta';
-            }
 
-            // CORREÇÃO CRÍTICA: Aguardar um pouco e FORÇAR atualização da tabela
-            console.log('🔧 EDIT-FIX - Aguardando e FORÇANDO atualização da tabela...');
+            // CORREÇÃO CRÍTICA: Aguardar e FORÇAR atualização da tabela múltiplas vezes
+            console.log('🛡️ EDIT-PROTECT - FORÇANDO atualização da tabela...');
+            
+            // Primeira tentativa imediata
+            this.forceUpdateServicesTable();
+            
+            // Segunda tentativa após 100ms
             setTimeout(() => {
-                console.log('🔧 EDIT-FIX - FORÇANDO atualização da tabela de serviços...');
+                console.log('🛡️ EDIT-PROTECT - Segunda tentativa de atualização...');
                 this.forceUpdateServicesTable();
                 
-                // Verificar se a tabela foi realmente atualizada
+                // Terceira tentativa após mais 500ms
                 setTimeout(() => {
-                    const tbody = document.getElementById('services-tbody');
-                    const rows = tbody ? tbody.querySelectorAll('tr') : [];
-                    console.log('🔧 EDIT-FIX - Verificação: tabela tem', rows.length, 'linhas');
+                    console.log('🛡️ EDIT-PROTECT - Terceira tentativa de atualização...');
+                    this.forceUpdateServicesTable();
                     
-                    if (rows.length === 0 || (rows.length === 1 && rows[0].textContent.includes('Nenhum serviço'))) {
-                        console.log('🔧 EDIT-FIX - ⚠️ TABELA AINDA VAZIA! Tentando novamente...');
-                        this.forceUpdateServicesTable();
-                    } else {
-                        console.log('🔧 EDIT-FIX - ✅ Tabela atualizada com sucesso!');
-                    }
+                    // Verificação final
+                    setTimeout(() => {
+                        const tbody = document.getElementById('services-tbody');
+                        const rows = tbody ? tbody.querySelectorAll('tr') : [];
+                        console.log('🛡️ EDIT-PROTECT - Verificação final: tabela tem', rows.length, 'linhas');
+                        
+                        if (this._servicosAdicionados.length > 0 && (rows.length === 0 || (rows.length === 1 && rows[0].textContent.includes('Nenhum serviço')))) {
+                            console.log('🛡️ EDIT-PROTECT - ⚠️ TABELA AINDA VAZIA! Última tentativa...');
+                            this.forceUpdateServicesTable();
+                        } else {
+                            console.log('🛡️ EDIT-PROTECT - ✅ Tabela atualizada com sucesso!');
+                        }
+                    }, 500);
                 }, 500);
             }, 100);
 
-            console.log('🔧 EDIT-FIX - Edição carregada com sucesso!');
+            console.log('🛡️ EDIT-PROTECT - Edição carregada com sucesso!');
             this.showNotification('Proposta carregada para edição!', 'success');
 
         } catch (error) {
-            console.error('🔧 EDIT-FIX - Erro FATAL ao carregar proposta:', error);
-            console.error('🔧 EDIT-FIX - Stack trace:', error.stack);
+            console.error('🛡️ EDIT-PROTECT - Erro FATAL ao carregar proposta:', error);
+            console.error('🛡️ EDIT-PROTECT - Stack trace:', error.stack);
+            this._isEditMode = false; // Desativar modo edição em caso de erro
             this.showNotification('Erro ao carregar proposta: ' + error.message, 'error');
         }
     }
