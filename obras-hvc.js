@@ -9,16 +9,13 @@ let obrasManager = null;
 
 // Inicializar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado, iniciando aplicação de obras...');
     initializeApp();
 });
 
 function initializeApp() {
-    console.log('Inicializando aplicação de obras...');
     
     // Verificar se o Supabase está disponível
     if (supabaseClient) {
-        console.log('Supabase conectado com sucesso!');
         
         // Inicializar o gerenciador de obras
         obrasManager = new ObrasManager();
@@ -26,7 +23,6 @@ function initializeApp() {
         // Expor globalmente para uso nos event handlers inline
         window.obrasManager = obrasManager;
     } else {
-        console.error('Erro: Supabase não disponível');
         // Mostrar mensagem de erro para o usuário
         document.body.innerHTML = `
             <div style="display: flex; justify-content: center; align-items: center; height: 100vh; background: #f8f9fa;">
@@ -60,7 +56,6 @@ class ObrasManager {
     }
 
     async init() {
-        console.log('Inicializando ObrasManager...');
         
         try {
             await this.loadPropostas();
@@ -69,9 +64,7 @@ class ObrasManager {
             this.setupEventListeners();
             this.setupMasks();
             this.setupFilters();
-            console.log('ObrasManager inicializado com sucesso!');
         } catch (error) {
-            console.error('Erro ao inicializar ObrasManager:', error);
             this.showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
         }
     }
@@ -79,7 +72,6 @@ class ObrasManager {
     // ✅ ADICIONADO: Função para carregar locais
     async loadLocais() {
         try {
-            console.log('Carregando locais...');
             
             const { data, error } = await supabaseClient
                 .from('locais_hvc')
@@ -90,9 +82,7 @@ class ObrasManager {
             if (error) throw error;
 
             this.locais = data || [];
-            console.log('Locais carregados:', this.locais.length);
         } catch (error) {
-            console.error('Erro ao carregar locais:', error);
             this.showNotification('Erro ao carregar locais: ' + error.message, 'error');
         }
     }
@@ -105,7 +95,6 @@ class ObrasManager {
     }
 
     setupEventListeners() {
-        console.log('Configurando event listeners...');
         
         try {
             // Botões principais
@@ -235,9 +224,7 @@ class ObrasManager {
                 });
             }
             
-            console.log('Event listeners configurados!');
         } catch (error) {
-            console.error('Erro ao configurar event listeners:', error);
         }
     }
 
@@ -282,7 +269,6 @@ class ObrasManager {
     // === PROPOSTAS ===
     async loadPropostas() {
         try {
-            console.log('Carregando propostas...');
             
             const { data, error } = await supabaseClient
                 .from('propostas_hvc')
@@ -296,16 +282,13 @@ class ObrasManager {
             if (error) throw error;
 
             this.propostas = data || [];
-            console.log('Propostas carregadas:', this.propostas.length);
         } catch (error) {
-            console.error('Erro ao carregar propostas:', error);
             this.showNotification('Erro ao carregar propostas: ' + error.message, 'error');
         }
     }
 
     // === OBRAS ===
     showFormObra(obra = null) {
-        console.log('Mostrando formulário de obra...');
         
         this.currentObraId = obra?.id || null;
         
@@ -323,7 +306,6 @@ class ObrasManager {
             
             formSection.classList.remove('hidden');
             formSection.scrollIntoView({ behavior: 'smooth' });
-            console.log('Formulário de obra exibido');
         }
     }
 
@@ -360,7 +342,6 @@ class ObrasManager {
 
     async loadPropostasObra(obraId) {
         try {
-            console.log('Carregando propostas da obra:', obraId);
             
             const { data, error } = await supabaseClient
                 .from('obras_propostas')
@@ -379,13 +360,11 @@ class ObrasManager {
             await this.updateResumoObra();
             
         } catch (error) {
-            console.error('Erro ao carregar propostas da obra:', error);
         }
     }
 
     // === MODAL DE PROPOSTAS ===
     showModalPropostas() {
-        console.log('Mostrando modal de seleção de propostas...');
         
         const modal = document.getElementById('modal-propostas');
         if (modal) {
@@ -523,7 +502,6 @@ class ObrasManager {
     }
 
     addSelectedPropostas() {
-        console.log('Adicionando propostas selecionadas...');
         
         const checkboxesSelecionados = document.querySelectorAll('#lista-propostas-modal input[type="checkbox"]:checked');
         
@@ -539,7 +517,6 @@ class ObrasManager {
             const proposta = this.propostas.find(p => p.id === propostaId);
             
             if (!proposta) {
-                console.error('Proposta não encontrada:', propostaId);
                 return;
             }
 
@@ -551,7 +528,6 @@ class ObrasManager {
             // Adicionar proposta à lista
             this.propostasSelecionadas.push(proposta);
             propostasAdicionadas++;
-            console.log('Proposta adicionada:', proposta.numero_proposta);
         });
 
         // Atualizar tabela e resumo
@@ -619,7 +595,6 @@ class ObrasManager {
     }
 
     async updateResumoObra() {
-        console.log('🎯 DUAS DATAS - Atualizando resumo da obra...');
         
         // Calcular totais
         const totalPropostas = this.propostasSelecionadas.length;
@@ -636,7 +611,6 @@ class ObrasManager {
         let percentualConclusao = 0;
         if (this.currentObraId) {
             percentualConclusao = await this.calcularPercentualCorrigido(this.currentObraId);
-            console.log('🎯 DUAS DATAS - Percentual calculado:', percentualConclusao);
         }
         
         // Atualizar elementos
@@ -650,13 +624,11 @@ class ObrasManager {
         if (valorTotalEl) valorTotalEl.textContent = this.formatMoney(valorTotal);
         if (progressoEl) {
             progressoEl.textContent = `${percentualConclusao}%`;
-            console.log('🎯 DUAS DATAS - Elemento atualizado com:', `${percentualConclusao}%`);
         }
     }
 
     // Calcular valor total usando coluna preco_total
     async calcularValorTotalCorreto() {
-        console.log('🎯 DUAS DATAS - Calculando valor total correto...');
         
         try {
             let valorTotalObra = 0;
@@ -669,7 +641,6 @@ class ObrasManager {
                     .eq('proposta_id', proposta.id);
 
                 if (error) {
-                    console.error('🎯 DUAS DATAS - Erro ao buscar itens:', error);
                     continue;
                 }
 
@@ -678,23 +649,19 @@ class ObrasManager {
                         const precoTotal = parseFloat(item.preco_total) || 0;
                         valorTotalObra += precoTotal;
                         
-                        console.log(`🎯 DUAS DATAS - Item: R$ ${precoTotal.toFixed(2)}`);
                     }
                 }
             }
             
-            console.log('🎯 DUAS DATAS - Valor total da obra:', valorTotalObra);
             return valorTotalObra;
             
         } catch (error) {
-            console.error('🎯 DUAS DATAS - Erro no cálculo do valor total:', error);
             return 0;
         }
     }
 
     // Calcular percentual usando preco_total
     async calcularPercentualCorrigido(obraId) {
-        console.log('🎯 DUAS DATAS - Calculando percentual para obra:', obraId);
         
         try {
             // PASSO 1: Buscar propostas da obra
@@ -704,17 +671,14 @@ class ObrasManager {
                 .eq('obra_id', obraId);
 
             if (errorObrasPropostas) {
-                console.error('🎯 DUAS DATAS - Erro ao buscar propostas da obra:', errorObrasPropostas);
                 return 0;
             }
 
             if (!obrasPropostas || obrasPropostas.length === 0) {
-                console.log('🎯 DUAS DATAS - Nenhuma proposta encontrada para a obra');
                 return 0;
             }
 
             const propostaIds = obrasPropostas.map(op => op.proposta_id);
-            console.log('🎯 DUAS DATAS - Propostas da obra:', propostaIds);
 
             // PASSO 2: Buscar todos os itens das propostas com preco_total
             const { data: itensPropostas, error: errorItens } = await supabaseClient
@@ -723,17 +687,12 @@ class ObrasManager {
                 .in('proposta_id', propostaIds);
 
             if (errorItens) {
-                console.error('🎯 DUAS DATAS - Erro ao buscar itens:', errorItens);
                 return 0;
             }
 
             if (!itensPropostas || itensPropostas.length === 0) {
-                console.log('🎯 DUAS DATAS - Nenhum item encontrado');
                 return 0;
             }
-
-            console.log('🎯 DUAS DATAS - Itens encontrados:', itensPropostas.length);
-
             // PASSO 3: Calcular valor total da obra e percentual de cada item
             let valorTotalObra = 0;
             const itensComValor = [];
@@ -748,18 +707,13 @@ class ObrasManager {
                     percentualObra: 0 // Será calculado depois
                 });
             }
-
-            console.log('🎯 DUAS DATAS - Valor total da obra:', valorTotalObra);
-
             if (valorTotalObra === 0) {
-                console.log('🎯 DUAS DATAS - Valor total da obra é zero');
                 return 0;
             }
 
             // PASSO 4: Calcular percentual de cada item em relação ao total da obra
             itensComValor.forEach(item => {
                 item.percentualObra = (item.valorTotal / valorTotalObra) * 100;
-                console.log(`🎯 DUAS DATAS - Item ${item.id}: R$ ${item.valorTotal.toFixed(2)} = ${item.percentualObra.toFixed(2)}% da obra`);
             });
 
             // PASSO 5: Buscar status dos itens
@@ -769,7 +723,6 @@ class ObrasManager {
                 .eq('obra_id', obraId);
 
             if (errorAndamentos) {
-                console.error('🎯 DUAS DATAS - Erro ao buscar andamentos:', errorAndamentos);
                 return 0;
             }
 
@@ -797,11 +750,9 @@ class ObrasManager {
                 const contribuicao = item.percentualObra * multiplicador;
                 somaPercentuais += contribuicao;
                 
-                console.log(`🎯 DUAS DATAS - Item ${item.id}: ${item.percentualObra.toFixed(2)}% × ${multiplicador} = ${contribuicao.toFixed(2)}%`);
             });
 
             const percentualFinal = Math.round(somaPercentuais);
-            console.log('🎯 DUAS DATAS - Percentual final calculado:', percentualFinal);
             
             // Atualizar percentual na tabela obras_hvc
             await this.atualizarPercentualNoBanco(obraId, percentualFinal);
@@ -809,13 +760,11 @@ class ObrasManager {
             return percentualFinal;
             
         } catch (error) {
-            console.error('🎯 DUAS DATAS - Erro no cálculo:', error);
             return 0;
         }
     }
 
     async atualizarPercentualNoBanco(obraId, percentual) {
-        console.log('🎯 DUAS DATAS - Atualizando percentual no banco:', obraId, percentual);
         
         try {
             const { error } = await supabaseClient
@@ -824,12 +773,9 @@ class ObrasManager {
                 .eq('id', obraId);
 
             if (error) {
-                console.error('🎯 DUAS DATAS - Erro ao atualizar banco:', error);
             } else {
-                console.log('🎯 DUAS DATAS - Percentual atualizado no banco com sucesso');
             }
         } catch (error) {
-            console.error('🎯 DUAS DATAS - Erro na atualização do banco:', error);
         }
     }
 
@@ -962,7 +908,6 @@ class ObrasManager {
                 // ✅ ADICIONADO: Obter nome do local
                 const localNome = this.getLocalNome(item.local_id);
                 
-                console.log(`🎯 DUAS DATAS MODAL - Item ${item.id}:`, {
                     precoTotal,
                     quantidade,
                     quantidadeExecutada
@@ -1052,7 +997,6 @@ class ObrasManager {
             await this.loadProducoesDiarias();
             
         } catch (error) {
-            console.error('Erro ao carregar serviços:', error);
             container.innerHTML = `
                 <div style="text-align: center; padding: 2rem; color: #dc3545;">
                     <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
@@ -1064,7 +1008,6 @@ class ObrasManager {
 
     // 🎯 FUNÇÃO ATUALIZADA: salvarAndamento com duas datas
     async salvarAndamento() {
-        console.log('🎯 DUAS DATAS - Salvando andamento dos serviços...');
         
         if (!this.currentObraId) {
             this.showNotification('Salve a obra primeiro antes de gerenciar o andamento', 'warning');
@@ -1113,14 +1056,12 @@ class ObrasManager {
             }
             
             // Recalcular percentual usando função corrigida
-            console.log('🎯 DUAS DATAS - Recalculando percentual após salvar andamento...');
             const novoPercentual = await this.calcularPercentualCorrigido(this.currentObraId);
             
             // Atualizar interface imediatamente
             const progressoEl = document.getElementById('progresso-geral');
             if (progressoEl) {
                 progressoEl.textContent = `${novoPercentual}%`;
-                console.log('🎯 DUAS DATAS - Interface atualizada com novo percentual:', `${novoPercentual}%`);
             }
             
             // Atualizar valor total da obra no banco
@@ -1134,14 +1075,12 @@ class ObrasManager {
             this.showNotification(`Andamento salvo! Percentual: ${novoPercentual}% | Valor: ${this.formatMoney(valorTotalCorreto)}`, 'success');
             
         } catch (error) {
-            console.error('🎯 DUAS DATAS - Erro ao salvar andamento:', error);
             this.showNotification('Erro ao salvar andamento: ' + error.message, 'error');
         }
     }
 
     // Atualizar valor total da obra no banco
     async atualizarValorTotalNoBanco(obraId, valorTotal) {
-        console.log('🎯 DUAS DATAS - Atualizando valor total no banco:', obraId, valorTotal);
         
         try {
             const { error } = await supabaseClient
@@ -1150,19 +1089,15 @@ class ObrasManager {
                 .eq('id', obraId);
 
             if (error) {
-                console.error('🎯 DUAS DATAS - Erro ao atualizar valor total:', error);
             } else {
-                console.log('🎯 DUAS DATAS - Valor total atualizado no banco com sucesso');
             }
         } catch (error) {
-            console.error('🎯 DUAS DATAS - Erro na atualização do valor total:', error);
         }
     }
 
     // === OBRAS ===
     async loadObras() {
         try {
-            console.log('Carregando obras...');
             
             const { data, error } = await supabaseClient
                 .from('obras_hvc')
@@ -1181,9 +1116,7 @@ class ObrasManager {
             this.obras = data || [];
             this.renderObras(this.obras);
             
-            console.log('Obras carregadas:', this.obras.length);
         } catch (error) {
-            console.error('Erro ao carregar obras:', error);
             this.showNotification('Erro ao carregar obras: ' + error.message, 'error');
         }
     }
@@ -1301,9 +1234,6 @@ class ObrasManager {
             observacoes: document.getElementById('observacoes-obra').value || null,
             valor_total: Math.round(valorTotalCorreto * 100) // Salvar em centavos
         };
-
-        console.log('Dados da obra para salvar:', obraData);
-
         try {
             let obra;
             
@@ -1318,7 +1248,6 @@ class ObrasManager {
 
                 if (error) throw error;
                 obra = data;
-                console.log('Obra atualizada:', obra);
             } else {
                 // Criar nova obra
                 const { data, error } = await supabaseClient
@@ -1329,7 +1258,6 @@ class ObrasManager {
 
                 if (error) throw error;
                 obra = data;
-                console.log('Nova obra criada:', obra);
                 this.currentObraId = obra.id;
             }
 
@@ -1341,7 +1269,6 @@ class ObrasManager {
             this.showNotification('Obra salva com sucesso!', 'success');
 
         } catch (error) {
-            console.error('Erro ao salvar obra:', error);
             this.showNotification('Erro ao salvar obra: ' + error.message, 'error');
         }
     }
@@ -1366,10 +1293,8 @@ class ObrasManager {
                     .insert(propostasData);
 
                 if (error) throw error;
-                console.log('Propostas da obra salvas com sucesso');
             }
         } catch (error) {
-            console.error('Erro ao salvar propostas da obra:', error);
             throw error;
         }
     }
@@ -1392,7 +1317,6 @@ class ObrasManager {
 
     async editObra(obraId) {
         try {
-            console.log('Editando obra:', obraId);
             
             const { data, error } = await supabaseClient
                 .from('obras_hvc')
@@ -1404,7 +1328,6 @@ class ObrasManager {
 
             this.showFormObra(data);
         } catch (error) {
-            console.error('Erro ao carregar obra:', error);
             this.showNotification('Erro ao carregar obra: ' + error.message, 'error');
         }
     }
@@ -1415,7 +1338,6 @@ class ObrasManager {
         }
         
         try {
-            console.log('Excluindo obra:', obraId);
             
             const { error } = await supabaseClient
                 .from('obras_hvc')
@@ -1428,14 +1350,12 @@ class ObrasManager {
             this.showNotification('Obra excluída com sucesso!', 'success');
             
         } catch (error) {
-            console.error('Erro ao excluir obra:', error);
             this.showNotification('Erro ao excluir obra: ' + error.message, 'error');
         }
     }
 
     async gerenciarAndamento(obraId) {
         try {
-            console.log('Gerenciando andamento da obra:', obraId);
             
             // Carregar obra e suas propostas
             const { data, error } = await supabaseClient
@@ -1462,14 +1382,12 @@ class ObrasManager {
             this.showModalAndamento();
             
         } catch (error) {
-            console.error('Erro ao carregar dados da obra:', error);
             this.showNotification('Erro ao carregar dados da obra: ' + error.message, 'error');
         }
     }
 
     // === NOTIFICAÇÕES ===
     showNotification(message, type = 'info') {
-        console.log(`Notificação [${type}]: ${message}`);
         
         // Criar elemento de notificação
         const notification = document.createElement('div');
@@ -1534,7 +1452,6 @@ class ObrasManager {
     // === FUNÇÕES PARA PRODUÇÕES DIÁRIAS ===
     
     async showModalProducao(producaoId = null) {
-        console.log('Mostrando modal de produção...', producaoId);
         
         this.currentProducaoId = producaoId;
         
@@ -1585,12 +1502,9 @@ class ObrasManager {
     }
     
                 async populateFormProducao() {
-                console.log('=== POPULATE FORM PRODUCAO ===');
-                console.log('Equipes e integrantes disponíveis:', this.equipesIntegrantes);
                 
                 // Popular select de equipes/integrantes
                 const selectEquipe = document.getElementById('equipe-producao');
-                console.log('Select equipe encontrado:', selectEquipe);
                 
                 if (selectEquipe) {
                     // ✅ ADICIONADO: Estilo para o select principal
@@ -1600,10 +1514,8 @@ class ObrasManager {
                     
                     selectEquipe.innerHTML = '<option value="" style="background-color: rgba(0, 0, 128, 0.2); color: #e0e0e0;">Selecione...</option>';
                     
-                    console.log('Populando select com', this.equipesIntegrantes.length, 'itens');
                     
                     this.equipesIntegrantes.forEach((item, index) => {
-                        console.log(`Item ${index}:`, item);
                         const option = document.createElement('option');
                         option.value = `${item.tipo}:${item.id}`;
                         option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
@@ -1613,15 +1525,12 @@ class ObrasManager {
                         selectEquipe.appendChild(option);
                     });
                     
-                    console.log('Select populado. Total de options:', selectEquipe.options.length);
                 } else {
-                    console.error('Select equipe-producao não encontrado!');
                 }
                 
                 // Popular serviços da obra
                 await this.populateServicosProducao();
                 
-                console.log('=== FIM POPULATE FORM ===');
             }
 
     
@@ -1673,7 +1582,6 @@ class ObrasManager {
     
    async loadEquipesIntegrantes() {
     try {
-        console.log('Carregando equipes e integrantes...');
         
         // Carregar equipes ativas (usando NUMERO em vez de NOME)
         const { data: equipes, error: errorEquipes } = await supabaseClient
@@ -1720,10 +1628,8 @@ class ObrasManager {
             ...integrantesComEquipe
         ];
         
-        console.log('Equipes e integrantes carregados:', this.equipesIntegrantes.length);
         
     } catch (error) {
-        console.error('Erro ao carregar equipes e integrantes:', error);
         this.showNotification('Erro ao carregar equipes e integrantes: ' + error.message, 'error');
     }
 }
@@ -1778,7 +1684,6 @@ class ObrasManager {
             await this.loadProducoesDiarias();
             
         } catch (error) {
-            console.error('Erro ao salvar produção:', error);
             this.showNotification('Erro ao salvar produção: ' + error.message, 'error');
         }
     }
@@ -1825,7 +1730,6 @@ class ObrasManager {
             await this.loadProducoesDiarias();
             
         } catch (error) {
-            console.error('Erro ao excluir produção:', error);
             this.showNotification('Erro ao excluir produção: ' + error.message, 'error');
         }
     }
@@ -1834,7 +1738,6 @@ class ObrasManager {
         if (!this.currentObraId) return;
         
         try {
-            console.log('Carregando produções diárias...');
             
             const { data, error } = await supabaseClient
                 .from('producoes_diarias_hvc')
@@ -1848,7 +1751,6 @@ class ObrasManager {
             this.renderProducoesDiarias();
             
         } catch (error) {
-            console.error('Erro ao carregar produções diárias:', error);
             this.showNotification('Erro ao carregar produções diárias: ' + error.message, 'error');
         }
     }
@@ -1880,12 +1782,6 @@ class ObrasManager {
                     });
                     
                     // Debug: mostrar dados disponíveis
-                    console.log('=== DEBUG PRODUÇÃO ===');
-                    console.log('Produção ID:', producao.id);
-                    console.log('Tipo responsável:', producao.tipo_responsavel);
-                    console.log('Responsável ID:', producao.responsavel_id);
-                    console.log('Equipes disponíveis:', this.equipesIntegrantes.filter(i => i.tipo === 'equipe'));
-                    console.log('Integrantes disponíveis:', this.equipesIntegrantes.filter(i => i.tipo === 'integrante'));
                     
                     // Criar texto no formato: "Equipes: [números] ::: Integrantes: [todos]"
                     let equipesTexto = '';
@@ -1915,7 +1811,6 @@ class ObrasManager {
                             );
                         }
                         
-                        console.log('Equipe encontrada:', equipe);
                         
                         if (equipe) {
                             equipesTexto = `Equipes: ${equipe.nome}`;
@@ -1946,7 +1841,6 @@ class ObrasManager {
                             );
                         }
                         
-                        console.log('Integrante encontrado:', integrante);
                         
                         if (integrante) {
                             equipesTexto = `Integrante Individual`;
@@ -2064,7 +1958,6 @@ class ObrasManager {
             });
             
         } catch (error) {
-            console.error('Erro ao carregar dados da produção:', error);
             this.showNotification('Erro ao carregar dados da produção: ' + error.message, 'error');
         }
     }
@@ -2139,59 +2032,5 @@ class ObrasManager {
         });
     }
 }
-
-
-                            // DEBUG PARA PRODUÇÕES DIÁRIAS
-                            async function debugProducoesDiarias() {
-                                console.log('=== DEBUG PRODUÇÕES DIÁRIAS ===');
-                                
-                                // 1. Verificar se obrasManager existe
-                                console.log('1. ObrasManager:', window.obrasManager);
-                                
-                                if (!window.obrasManager) {
-                                    console.error('ObrasManager não encontrado!');
-                                    return;
-                                }
-                                
-                                // 2. Verificar obra atual
-                                console.log('2. Obra atual ID:', window.obrasManager.currentObraId);
-                                
-                                // 3. Verificar container
-                                const container = document.getElementById('lista-producoes-diarias');
-                                console.log('3. Container encontrado:', container);
-                                
-                                // 4. Verificar produções carregadas
-                                console.log('4. Produções carregadas:', window.obrasManager.producoesDiarias);
-                                console.log('4.1. Quantidade:', window.obrasManager.producoesDiarias?.length || 0);
-                                
-                                // 5. Testar consulta direta
-                                try {
-                                    console.log('5. Testando consulta direta...');
-                                    const { data, error } = await supabaseClient
-                                        .from('producoes_diarias_hvc')
-                                        .select('*')
-                                        .eq('obra_id', window.obrasManager.currentObraId);
-                                    
-                                    console.log('5.1. Dados:', data);
-                                    console.log('5.2. Erro:', error);
-                                    
-                                } catch (err) {
-                                    console.error('Erro na consulta:', err);
-                                }
-                                
-                                // 6. Forçar renderização
-                                console.log('6. Forçando renderização...');
-                                if (window.obrasManager.renderProducoesDiarias) {
-                                    await window.obrasManager.renderProducoesDiarias();
-                                }
-                                
-                                console.log('=== FIM DEBUG ===');
-                            }
-                            
-                            // Executar
-                            debugProducoesDiarias();
-
-
-
 // Expor globalmente para uso nos event handlers inline
 window.obrasManager = null;
