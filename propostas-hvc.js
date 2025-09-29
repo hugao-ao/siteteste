@@ -1404,36 +1404,51 @@ class PropostasManager {
         });
     }
 
-    // FUNÇÃO CORRIGIDA: editProposta com carregamento dos itens
+    // 🔧 FUNÇÃO ULTRA-CORRIGIDA: editProposta com debug detalhado
     async editProposta(propostaId) {
         try {
-            console.log('🔧 EDIT-FIX - Carregando proposta para edição:', propostaId);
+            console.log('🔧 EDIT-FIX - Iniciando carregamento da proposta:', propostaId);
             
-            // Carregar dados da proposta COM os itens
-            const { data: proposta, error } = await supabaseClient
+            // CORREÇÃO: Fazer duas queries separadas para garantir que os dados sejam carregados
+            
+            // 1. Carregar dados da proposta
+            console.log('🔧 EDIT-FIX - Carregando dados da proposta...');
+            const { data: proposta, error: propostaError } = await supabaseClient
                 .from('propostas_hvc')
-                .select(`
-                    *,
-                    itens_proposta_hvc (
-                        *,
-                        servicos_hvc (*),
-                        locais_hvc (nome)
-                    )
-                `)
+                .select('*')
                 .eq('id', propostaId)
                 .single();
 
-            if (error) {
-                console.error('🔧 EDIT-FIX - Erro ao carregar proposta:', error);
-                throw error;
+            if (propostaError) {
+                console.error('🔧 EDIT-FIX - Erro ao carregar proposta:', propostaError);
+                throw propostaError;
             }
 
             console.log('🔧 EDIT-FIX - Proposta carregada:', proposta);
+
+            // 2. Carregar itens da proposta separadamente
+            console.log('🔧 EDIT-FIX - Carregando itens da proposta...');
+            const { data: itens, error: itensError } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select(`
+                    *,
+                    servicos_hvc (*)
+                `)
+                .eq('proposta_id', propostaId);
+
+            if (itensError) {
+                console.error('🔧 EDIT-FIX - Erro ao carregar itens:', itensError);
+                throw itensError;
+            }
+
+            console.log('🔧 EDIT-FIX - Itens carregados:', itens);
+            console.log('🔧 EDIT-FIX - Quantidade de itens:', itens ? itens.length : 0);
 
             // Definir ID da proposta atual
             this.currentPropostaId = propostaId;
 
             // Preencher formulário
+            console.log('🔧 EDIT-FIX - Preenchendo formulário...');
             document.getElementById('numero-proposta').value = proposta.numero_proposta || '';
             document.getElementById('cliente-select').value = proposta.cliente_id || '';
             document.getElementById('status-select').value = proposta.status || 'Pendente';
@@ -1442,32 +1457,46 @@ class PropostasManager {
             document.getElementById('forma-pagamento').value = proposta.forma_pagamento || '';
             document.getElementById('observacoes').value = proposta.observacoes || '';
 
-            // CORREÇÃO: Carregar itens da proposta
+            // CORREÇÃO ULTRA-DETALHADA: Carregar itens da proposta
+            console.log('🔧 EDIT-FIX - Processando itens para servicosAdicionados...');
             this.servicosAdicionados = [];
-            if (proposta.itens_proposta_hvc && proposta.itens_proposta_hvc.length > 0) {
-                console.log('🔧 EDIT-FIX - Carregando itens:', proposta.itens_proposta_hvc);
+            
+            if (itens && Array.isArray(itens) && itens.length > 0) {
+                console.log('🔧 EDIT-FIX - Processando', itens.length, 'itens...');
                 
-                proposta.itens_proposta_hvc.forEach(item => {
-                    this.servicosAdicionados.push({
-                        servico_id: item.servico_id,
-                        servico: item.servicos_hvc,
-                        quantidade: item.quantidade,
-                        preco_mao_obra: item.preco_mao_obra,
-                        preco_material: item.preco_material,
-                        preco_total: item.preco_total,
-                        local_id: item.local_id // NOVO: Carregar local_id do item
-                    });
+                itens.forEach((item, index) => {
+                    console.log(`🔧 EDIT-FIX - Processando item ${index}:`, item);
+                    
+                    if (item.servicos_hvc) {
+                        const servicoProcessado = {
+                            servico_id: item.servico_id,
+                            servico: item.servicos_hvc,
+                            quantidade: parseFloat(item.quantidade) || 0,
+                            preco_mao_obra: parseFloat(item.preco_mao_obra) || 0,
+                            preco_material: parseFloat(item.preco_material) || 0,
+                            preco_total: parseFloat(item.preco_total) || 0,
+                            local_id: item.local_id || null
+                        };
+                        
+                        console.log(`🔧 EDIT-FIX - Serviço ${index} processado:`, servicoProcessado);
+                        this.servicosAdicionados.push(servicoProcessado);
+                    } else {
+                        console.error(`🔧 EDIT-FIX - Item ${index} não tem servicos_hvc:`, item);
+                    }
                 });
                 
-                console.log('🔧 EDIT-FIX - Serviços carregados:', this.servicosAdicionados);
+                console.log('🔧 EDIT-FIX - Total de serviços processados:', this.servicosAdicionados.length);
+                console.log('🔧 EDIT-FIX - servicosAdicionados final:', this.servicosAdicionados);
             } else {
-                console.log('🔧 EDIT-FIX - Nenhum item encontrado na proposta');
+                console.log('🔧 EDIT-FIX - Nenhum item encontrado ou array vazio');
             }
 
             // Atualizar tabela de serviços
+            console.log('🔧 EDIT-FIX - Atualizando tabela de serviços...');
             this.updateServicesTable();
 
             // Mostrar formulário
+            console.log('🔧 EDIT-FIX - Mostrando formulário...');
             this.showFormProposta();
             
             // Definir título
@@ -1476,10 +1505,12 @@ class PropostasManager {
                 titleElement.textContent = 'Editar Proposta';
             }
 
-            console.log('🔧 EDIT-FIX - Edição carregada com sucesso');
+            console.log('🔧 EDIT-FIX - Edição carregada com sucesso!');
+            this.showNotification('Proposta carregada para edição!', 'success');
 
         } catch (error) {
-            console.error('🔧 EDIT-FIX - Erro ao carregar proposta para edição:', error);
+            console.error('🔧 EDIT-FIX - Erro FATAL ao carregar proposta:', error);
+            console.error('🔧 EDIT-FIX - Stack trace:', error.stack);
             this.showNotification('Erro ao carregar proposta: ' + error.message, 'error');
         }
     }
