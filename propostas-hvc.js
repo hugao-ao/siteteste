@@ -224,7 +224,7 @@ class PropostasManager {
         this.servicosAdicionados = [];
         this.clientes = [];
         this.servicos = [];
-        this.locais = []; // NOVO: Array para armazenar locais
+        this.locais = []; // Array para armazenar locais
         this.propostas = []; // Armazenar propostas para filtros
         
         this.init();
@@ -243,7 +243,7 @@ class PropostasManager {
             
             await this.loadClientes();
             await this.loadServicos();
-            await this.loadLocais(); // NOVO: Carregar locais
+            await this.loadLocais(); // Carregar locais
             await this.loadPropostas();
             this.setupEventListeners();
             this.setupMasks();
@@ -264,7 +264,6 @@ class PropostasManager {
             tableHead.innerHTML = `
                 <th>Número</th>
                 <th>Cliente</th>
-                <th>Local</th>
                 <th>Total</th>
                 <th>Prazo</th>
                 <th>Pagamento</th>
@@ -546,7 +545,7 @@ class PropostasManager {
         }
     }
 
-    // === NOVO: LOCAIS ===
+    // === LOCAIS ===
     async loadLocais() {
         try {
             if (!supabaseClient) {
@@ -566,7 +565,6 @@ class PropostasManager {
             }
 
             this.locais = data || [];
-            this.populateLocalSelect();
             
         } catch (error) {
             console.error('Erro ao carregar locais:', error);
@@ -574,18 +572,30 @@ class PropostasManager {
         }
     }
 
-    populateLocalSelect() {
-        const select = document.getElementById('local-select');
-        if (!select) return;
-
-        select.innerHTML = '<option value="">Selecione um local...</option>';
+    // NOVA FUNÇÃO: Criar select de locais para cada serviço
+    createLocalSelect(selectedLocalId = null) {
+        const select = document.createElement('select');
+        select.className = 'form-select local-select';
+        select.style.width = '100%';
         
+        // Opção vazia
+        const emptyOption = document.createElement('option');
+        emptyOption.value = '';
+        emptyOption.textContent = 'Nenhum';
+        select.appendChild(emptyOption);
+        
+        // Adicionar locais
         this.locais.forEach(local => {
             const option = document.createElement('option');
             option.value = local.id;
             option.textContent = local.nome;
+            if (selectedLocalId && local.id === selectedLocalId) {
+                option.selected = true;
+            }
             select.appendChild(option);
         });
+        
+        return select;
     }
 
     showModalLocal() {
@@ -633,11 +643,8 @@ class PropostasManager {
             this.hideModalLocal();
             await this.loadLocais();
             
-            // Selecionar o local recém-criado
-            const localSelect = document.getElementById('local-select');
-            if (localSelect) {
-                localSelect.value = data.id;
-            }
+            // Atualizar todos os selects de local na tabela
+            this.updateServicesTable();
             
             this.showNotification('Local criado com sucesso!', 'success');
             
@@ -738,22 +745,15 @@ class PropostasManager {
 
         // Criar checkboxes para todos os serviços
         const servicosCheckboxes = this.servicos.map(servico => {
-            const jaAdicionado = this.servicosAdicionados.find(s => s.servico_id === servico.id);
-            const disabled = jaAdicionado ? 'disabled' : '';
-            const checked = jaAdicionado ? 'checked' : '';
-            
             return `
-                <div style="display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid rgba(173, 216, 230, 0.1); ${jaAdicionado ? 'opacity: 0.5;' : ''}">
+                <div style="display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
                     <input type="checkbox" 
                            value="${servico.id}" 
                            id="servico-${servico.id}"
-                           ${disabled} 
-                           ${checked}
                            style="margin: 0;">
-                    <label for="servico-${servico.id}" style="flex: 1; margin: 0; cursor: ${jaAdicionado ? 'not-allowed' : 'pointer'};">
+                    <label for="servico-${servico.id}" style="flex: 1; margin: 0; cursor: pointer;">
                         <strong>${servico.codigo}</strong> - ${servico.descricao}
                         <br><small style="color: #add8e6;">${servico.unidade}${servico.detalhe ? ' | ' + servico.detalhe : ''}</small>
-                        ${jaAdicionado ? '<br><small style="color: #ffc107;">✓ Já adicionado</small>' : ''}
                     </label>
                 </div>
             `;
@@ -921,11 +921,7 @@ class PropostasManager {
                 return;
             }
 
-            // Verificar se já foi adicionado (dupla verificação)
-            if (this.servicosAdicionados.find(s => s.servico_id === servicoId)) {
-                return;
-            }
-
+            // CORREÇÃO: Permitir adicionar o mesmo serviço múltiplas vezes
             // Adicionar serviço à lista
             this.servicosAdicionados.push({
                 servico_id: servicoId,
@@ -933,7 +929,8 @@ class PropostasManager {
                 quantidade: 1,
                 preco_mao_obra: 0,
                 preco_material: 0,
-                preco_total: 0
+                preco_total: 0,
+                local_id: null // NOVO: Campo para local do serviço
             });
 
             servicosAdicionadosCount++;
@@ -964,6 +961,7 @@ class PropostasManager {
         this.showModalServico();
     }
 
+    // FUNÇÃO CORRIGIDA: updateServicesTable com local por serviço
     updateServicesTable() {
         const tbody = document.getElementById('services-tbody');
         if (!tbody) {
@@ -976,7 +974,7 @@ class PropostasManager {
         if (this.servicosAdicionados.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhum serviço adicionado. Clique em "Adicionar Serviço" para começar.
                     </td>
@@ -988,11 +986,21 @@ class PropostasManager {
 
         this.servicosAdicionados.forEach((item, index) => {
             const row = document.createElement('tr');
+            
+            // Criar select de local para este serviço
+            const localSelectContainer = document.createElement('td');
+            const localSelect = this.createLocalSelect(item.local_id);
+            localSelect.addEventListener('change', (e) => {
+                this.updateServicoLocal(index, e.target.value);
+            });
+            localSelectContainer.appendChild(localSelect);
+            
             row.innerHTML = `
                 <td>
                     <strong>${item.servico.codigo}</strong><br>
                     <small>${item.servico.descricao}</small>
                 </td>
+                <td></td>
                 <td>
                     <input type="number" 
                            value="${item.quantidade}" 
@@ -1025,10 +1033,23 @@ class PropostasManager {
                     </button>
                 </td>
             `;
+            
+            // Substituir a célula de local vazia pelo select
+            row.children[1].replaceWith(localSelectContainer);
+            
             tbody.appendChild(row);
         });
 
         this.updateTotal();
+    }
+
+    // NOVA FUNÇÃO: Atualizar local do serviço
+    updateServicoLocal(index, localId) {
+        const item = this.servicosAdicionados[index];
+        if (item) {
+            item.local_id = localId || null;
+            console.log(`Local do serviço ${index} atualizado para:`, localId);
+        }
     }
 
     updateServicoQuantidade(index, quantidade) {
@@ -1122,7 +1143,7 @@ class PropostasManager {
         this.currentPropostaId = null;
     }
 
-    // 🔧 FUNÇÃO CORRIGIDA: saveProposta com local_id
+    // FUNÇÃO CORRIGIDA: saveProposta sem local_id na proposta
     async saveProposta() {
         try {
             console.log('💾 CRONOGRAMA-FIX - Iniciando salvamento da proposta...');
@@ -1139,7 +1160,6 @@ class PropostasManager {
             const prazoExecucao = parseInt(document.getElementById('prazo-execucao').value);
             const tipoPrazo = getTipoPrazoSafe(); // Usar função ultra-segura
             const formaPagamento = document.getElementById('forma-pagamento').value;
-            const localId = document.getElementById('local-select').value || null; // NOVO: Campo local
             const observacoes = document.getElementById('observacoes').value;
 
             // Calcular total
@@ -1149,10 +1169,10 @@ class PropostasManager {
 
             console.log('💾 CRONOGRAMA-FIX - Dados coletados:', {
                 numeroProposta, clienteId, status, prazoExecucao, tipoPrazo, 
-                formaPagamento, localId, totalProposta
+                formaPagamento, totalProposta
             });
 
-            // Preparar dados para salvar
+            // Preparar dados para salvar (SEM local_id)
             const propostaData = {
                 numero_proposta: numeroProposta,
                 cliente_id: clienteId,
@@ -1160,7 +1180,6 @@ class PropostasManager {
                 prazo_execucao: prazoExecucao,
                 tipo_prazo: tipoPrazo,
                 forma_pagamento: formaPagamento,
-                local_id: localId, // NOVO: Incluir local_id
                 observacoes: observacoes,
                 total_proposta: ensureNumericValue(totalProposta)
             };
@@ -1222,7 +1241,7 @@ class PropostasManager {
         }
     }
 
-    // 💰 FUNÇÃO CORRIGIDA: saveItensProposta com valores garantidos
+    // FUNÇÃO CORRIGIDA: saveItensProposta com local_id nos itens
     async saveItensProposta(propostaId) {
         console.log('💰 CÁLCULO-FINAL-FIX - Iniciando saveItensProposta...');
         
@@ -1240,7 +1259,7 @@ class PropostasManager {
             const precoTotal = ensureNumericValue(quantidade * (precoMaoObra + precoMaterial));
             
             console.log(`💰 CÁLCULO-FINAL-FIX - Item ${index} para salvar:`, {
-                quantidade, precoMaoObra, precoMaterial, precoTotal
+                quantidade, precoMaoObra, precoMaterial, precoTotal, local_id: item.local_id
             });
             
             return {
@@ -1249,7 +1268,8 @@ class PropostasManager {
                 quantidade: quantidade,
                 preco_mao_obra: precoMaoObra,
                 preco_material: precoMaterial,
-                preco_total: precoTotal
+                preco_total: precoTotal,
+                local_id: item.local_id || null // NOVO: Salvar local_id do item
             };
         });
 
@@ -1310,8 +1330,7 @@ class PropostasManager {
                 .from('propostas_hvc')
                 .select(`
                     *,
-                    clientes_hvc (nome),
-                    locais_hvc (nome)
+                    clientes_hvc (nome)
                 `)
                 .order('created_at', { ascending: false });
 
@@ -1326,7 +1345,7 @@ class PropostasManager {
         }
     }
 
-    // 🎯 FUNÇÃO CORRIGIDA: renderPropostas com formatação correta do prazo e local
+    // FUNÇÃO CORRIGIDA: renderPropostas
     renderPropostas(propostas) {
         const tbody = document.getElementById('proposals-tbody');
         if (!tbody) return;
@@ -1336,7 +1355,7 @@ class PropostasManager {
         if (propostas.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="8" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-file-contract" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma proposta encontrada. Clique em "Nova Proposta" para começar.
                     </td>
@@ -1348,7 +1367,7 @@ class PropostasManager {
         propostas.forEach(proposta => {
             const row = document.createElement('tr');
             
-            // 🎯 CORREÇÃO: Formatar prazo usando a nova função
+            // Formatar prazo usando a nova função
             let prazoTexto = '-';
             if (proposta.prazo_execucao) {
                 prazoTexto = formatTipoPrazoDisplay(proposta.tipo_prazo, proposta.prazo_execucao);
@@ -1363,7 +1382,6 @@ class PropostasManager {
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td>${proposta.locais_hvc?.nome || '-'}</td>
                 <td><strong>${this.formatMoney(proposta.total_proposta || 0)}</strong></td>
                 <td>${prazoTexto}</td>
                 <td>${proposta.forma_pagamento || '-'}</td>
@@ -1386,23 +1404,31 @@ class PropostasManager {
         });
     }
 
-    // FUNÇÃO CORRIGIDA: editProposta com local
+    // FUNÇÃO CORRIGIDA: editProposta com carregamento dos itens
     async editProposta(propostaId) {
         try {
-            // Carregar dados da proposta
+            console.log('🔧 EDIT-FIX - Carregando proposta para edição:', propostaId);
+            
+            // Carregar dados da proposta COM os itens
             const { data: proposta, error } = await supabaseClient
                 .from('propostas_hvc')
                 .select(`
                     *,
                     itens_proposta_hvc (
                         *,
-                        servicos_hvc (*)
+                        servicos_hvc (*),
+                        locais_hvc (nome)
                     )
                 `)
                 .eq('id', propostaId)
                 .single();
 
-            if (error) throw error;
+            if (error) {
+                console.error('🔧 EDIT-FIX - Erro ao carregar proposta:', error);
+                throw error;
+            }
+
+            console.log('🔧 EDIT-FIX - Proposta carregada:', proposta);
 
             // Definir ID da proposta atual
             this.currentPropostaId = propostaId;
@@ -1415,16 +1441,12 @@ class PropostasManager {
             document.getElementById('tipo-prazo').value = proposta.tipo_prazo || 'corridos';
             document.getElementById('forma-pagamento').value = proposta.forma_pagamento || '';
             document.getElementById('observacoes').value = proposta.observacoes || '';
-            
-            // NOVO: Definir local
-            const localSelect = document.getElementById('local-select');
-            if (localSelect && proposta.local_id) {
-                localSelect.value = proposta.local_id;
-            }
 
-            // Carregar itens da proposta
+            // CORREÇÃO: Carregar itens da proposta
             this.servicosAdicionados = [];
-            if (proposta.itens_proposta_hvc) {
+            if (proposta.itens_proposta_hvc && proposta.itens_proposta_hvc.length > 0) {
+                console.log('🔧 EDIT-FIX - Carregando itens:', proposta.itens_proposta_hvc);
+                
                 proposta.itens_proposta_hvc.forEach(item => {
                     this.servicosAdicionados.push({
                         servico_id: item.servico_id,
@@ -1432,9 +1454,14 @@ class PropostasManager {
                         quantidade: item.quantidade,
                         preco_mao_obra: item.preco_mao_obra,
                         preco_material: item.preco_material,
-                        preco_total: item.preco_total
+                        preco_total: item.preco_total,
+                        local_id: item.local_id // NOVO: Carregar local_id do item
                     });
                 });
+                
+                console.log('🔧 EDIT-FIX - Serviços carregados:', this.servicosAdicionados);
+            } else {
+                console.log('🔧 EDIT-FIX - Nenhum item encontrado na proposta');
             }
 
             // Atualizar tabela de serviços
@@ -1449,8 +1476,10 @@ class PropostasManager {
                 titleElement.textContent = 'Editar Proposta';
             }
 
+            console.log('🔧 EDIT-FIX - Edição carregada com sucesso');
+
         } catch (error) {
-            console.error('Erro ao carregar proposta para edição:', error);
+            console.error('🔧 EDIT-FIX - Erro ao carregar proposta para edição:', error);
             this.showNotification('Erro ao carregar proposta: ' + error.message, 'error');
         }
     }
@@ -1519,12 +1548,6 @@ class PropostasManager {
             if (btnAddCliente) {
                 btnAddCliente.addEventListener('click', () => this.showModalCliente());
             }
-
-            // NOVO: Botão adicionar local
-            const btnAddLocal = document.getElementById('btn-add-local');
-            if (btnAddLocal) {
-                btnAddLocal.addEventListener('click', () => this.showModalLocal());
-            }
             
             // Modais - Serviço
             const closeModalServico = document.getElementById('close-modal-servico');
@@ -1556,7 +1579,7 @@ class PropostasManager {
                 clienteForm.addEventListener('submit', (e) => this.handleSubmitCliente(e));
             }
 
-            // NOVO: Modais - Local
+            // Modais - Local
             const closeModalLocal = document.getElementById('close-modal-local');
             const cancelLocal = document.getElementById('cancel-local');
             const localForm = document.getElementById('local-form');
@@ -1574,7 +1597,7 @@ class PropostasManager {
             // Fechar modal clicando fora
             const modalServico = document.getElementById('modal-servico');
             const modalCliente = document.getElementById('modal-cliente');
-            const modalLocal = document.getElementById('modal-local'); // NOVO
+            const modalLocal = document.getElementById('modal-local');
             
             if (modalServico) {
                 modalServico.addEventListener('click', (e) => {
@@ -1586,7 +1609,7 @@ class PropostasManager {
                     if (e.target.id === 'modal-cliente') this.hideModalCliente();
                 });
             }
-            if (modalLocal) { // NOVO
+            if (modalLocal) {
                 modalLocal.addEventListener('click', (e) => {
                     if (e.target.id === 'modal-local') this.hideModalLocal();
                 });
