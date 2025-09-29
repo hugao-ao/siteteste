@@ -257,7 +257,8 @@
       background: rgba(255, 255, 255, 0.05);
     }
 
-    .services-table input {
+    .services-table input,
+    .services-table select {
       background: transparent;
       border: 1px solid rgba(173, 216, 230, 0.3);
       border-radius: 4px;
@@ -538,23 +539,6 @@
           </div>
         </div>
 
-        <!-- NOVO: Campo Local de Aplicação -->
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="local-select">
-              Local de Aplicação
-            </label>
-            <div class="input-group">
-              <select id="local-select" class="form-select">
-                <option value="">Selecione um local...</option>
-              </select>
-              <button type="button" class="btn-add" id="btn-add-local">
-                <i class="fas fa-plus"></i>
-              </button>
-            </div>
-          </div>
-        </div>
-
         <!-- CORREÇÃO: Campos de Prazo reorganizados para evitar sobreposição -->
         <div class="prazo-container">
           <div class="form-group">
@@ -610,6 +594,7 @@
             <thead>
               <tr>
                 <th>Serviço</th>
+                <th>Local</th>
                 <th>Quantidade</th>
                 <th>Unidade</th>
                 <th>Mão de Obra (R$)</th>
@@ -666,7 +651,6 @@
           <tr>
             <th>Número</th>
             <th>Cliente</th>
-            <th>Local</th>
             <th>Total</th>
             <th>Prazo</th>
             <th>Pagamento</th>
