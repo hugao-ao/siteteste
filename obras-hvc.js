@@ -448,49 +448,32 @@ class ObrasManager {
             
             item.innerHTML = `
                 <input type="checkbox" 
+                       id="proposta-${proposta.id}" 
                        value="${proposta.id}" 
-                       id="proposta-${proposta.id}"
                        style="margin-right: 1rem; transform: scale(1.2);">
-                <label for="proposta-${proposta.id}" style="flex: 1; cursor: pointer; margin: 0;">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <div>
-                            <strong style="color: #2c3e50;">${proposta.numero_proposta}</strong>
-                            <br>
-                            <span style="color: #666;">${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</span>
-                        </div>
-                        <div style="text-align: right;">
-                            <strong style="color: #28a745;">${this.formatMoney(proposta.total_proposta)}</strong>
-                            <br>
-                            <small style="color: #ffc107;">${proposta.status}</small>
-                        </div>
+                <div style="flex: 1;">
+                    <div style="font-weight: 600; color: #2a5298;">
+                        ${proposta.numero_proposta} - ${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}
                     </div>
-                </label>
+                    <div style="color: #666; font-size: 0.9rem;">
+                        Total: ${this.formatMoney((proposta.total_proposta)/100)}
+                    </div>
+                </div>
             `;
             
-            item.addEventListener('mouseenter', () => {
-                item.style.background = '#f8f9fa';
-            });
-            item.addEventListener('mouseleave', () => {
-                item.style.background = 'white';
+            // Adicionar evento de mudança
+            const checkbox = item.querySelector('input[type="checkbox"]');
+            checkbox.addEventListener('change', () => {
+                this.atualizarContadorPropostas();
             });
             
             container.appendChild(item);
         });
-
-        this.updateContadorPropostas();
-        this.configurarEventosCheckboxesPropostas();
+        
+        this.atualizarContadorPropostas();
     }
 
-    configurarEventosCheckboxesPropostas() {
-        const checkboxes = document.querySelectorAll('#lista-propostas-modal input[type="checkbox"]');
-        checkboxes.forEach(checkbox => {
-            checkbox.addEventListener('change', () => {
-                this.updateContadorPropostas();
-            });
-        });
-    }
-
-    updateContadorPropostas() {
+    atualizarContadorPropostas() {
         const checkboxes = document.querySelectorAll('#lista-propostas-modal input[type="checkbox"]:checked');
         const contador = document.getElementById('contador-propostas');
         const btnAdicionar = document.getElementById('btn-adicionar-propostas');
@@ -528,7 +511,7 @@ class ObrasManager {
                 checkbox.checked = true;
             }
         });
-        this.updateContadorPropostas();
+        this.atualizarContadorPropostas();
     }
 
     limparSelecaoPropostas() {
@@ -536,10 +519,12 @@ class ObrasManager {
         checkboxes.forEach(checkbox => {
             checkbox.checked = false;
         });
-        this.updateContadorPropostas();
+        this.atualizarContadorPropostas();
     }
 
     addSelectedPropostas() {
+        console.log('Adicionando propostas selecionadas...');
+        
         const checkboxesSelecionados = document.querySelectorAll('#lista-propostas-modal input[type="checkbox"]:checked');
         
         if (checkboxesSelecionados.length === 0) {
@@ -547,20 +532,40 @@ class ObrasManager {
             return;
         }
 
+        let propostasAdicionadas = 0;
+
         checkboxesSelecionados.forEach(checkbox => {
             const propostaId = checkbox.value;
             const proposta = this.propostas.find(p => p.id === propostaId);
             
-            if (proposta && !this.propostasSelecionadas.find(p => p.id === propostaId)) {
-                this.propostasSelecionadas.push(proposta);
+            if (!proposta) {
+                console.error('Proposta não encontrada:', propostaId);
+                return;
             }
+
+            // Verificar se já foi adicionada
+            if (this.propostasSelecionadas.find(p => p.id === propostaId)) {
+                return;
+            }
+
+            // Adicionar proposta à lista
+            this.propostasSelecionadas.push(proposta);
+            propostasAdicionadas++;
+            console.log('Proposta adicionada:', proposta.numero_proposta);
         });
 
+        // Atualizar tabela e resumo
         this.updatePropostasTable();
         this.updateResumoObra();
+        
+        // Fechar modal
         this.hideModalPropostas();
         
-        this.showNotification(`${checkboxesSelecionados.length} proposta(s) adicionada(s) à obra!`, 'success');
+        // Mostrar notificação
+        this.showNotification(
+            `${propostasAdicionadas} proposta${propostasAdicionadas > 1 ? 's' : ''} adicionada${propostasAdicionadas > 1 ? 's' : ''} à obra!`, 
+            'success'
+        );
     }
 
     updatePropostasTable() {
@@ -583,19 +588,24 @@ class ObrasManager {
 
         this.propostasSelecionadas.forEach((proposta, index) => {
             const row = document.createElement('tr');
-            
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
-                <td><span class="status-badge status-${proposta.status.toLowerCase()}">${proposta.status}</span></td>
-                <td class="actions-cell">
-                    <button class="btn-danger" onclick="window.obrasManager.removeProposta(${index})" title="Remover proposta">
+                <td><strong>${this.formatMoney((proposta.total_proposta)/100)}</strong></td>
+                <td>
+                    <span class="status-badge status-${proposta.status.toLowerCase()}">
+                        ${proposta.status}
+                    </span>
+                </td>
+                <td>
+                    <button type="button" 
+                            class="btn btn-danger" 
+                            onclick="window.obrasManager.removeProposta(${index})"
+                            title="Remover proposta">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
             `;
-            
             tbody.appendChild(row);
         });
     }
@@ -605,352 +615,219 @@ class ObrasManager {
             this.propostasSelecionadas.splice(index, 1);
             this.updatePropostasTable();
             this.updateResumoObra();
-            this.showNotification('Proposta removida da obra!', 'success');
         }
     }
 
     async updateResumoObra() {
+        console.log('🎯 DUAS DATAS - Atualizando resumo da obra...');
+        
+        // Calcular totais
         const totalPropostas = this.propostasSelecionadas.length;
         const clientesUnicos = [...new Set(this.propostasSelecionadas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
-        const valorTotal = this.propostasSelecionadas.reduce((sum, p) => sum + (parseFloat(p.total_proposta) || 0), 0);
+        const totalClientes = clientesUnicos.length;
         
-        // Calcular progresso baseado no andamento dos serviços
-        let progressoGeral = 0;
-        if (this.currentObraId && this.servicosAndamento.length > 0) {
-            try {
-                const { data: andamentos, error } = await supabaseClient
-                    .from('servicos_andamento')
-                    .select('status')
-                    .eq('obra_id', this.currentObraId);
-                
-                if (!error && andamentos && andamentos.length > 0) {
-                    const totalServicos = andamentos.length;
-                    const servicosConcluidos = andamentos.filter(a => a.status === 'CONCLUIDO').length;
-                    const servicosIniciados = andamentos.filter(a => a.status === 'INICIADO').length;
-                    
-                    // Concluídos = 100%, Iniciados = 50%, Pendentes = 0%
-                    const pontuacaoTotal = (servicosConcluidos * 100) + (servicosIniciados * 50);
-                    progressoGeral = Math.round(pontuacaoTotal / (totalServicos * 100) * 100);
-                }
-            } catch (error) {
-                console.error('Erro ao calcular progresso:', error);
-            }
+        // Calcular valor total baseado na coluna preco_total
+        let valorTotal = 0;
+        if (this.propostasSelecionadas.length > 0) {
+            valorTotal = await this.calcularValorTotalCorreto();
         }
         
-        // Atualizar elementos do resumo
+        // Calcular percentual usando valores corretos
+        let percentualConclusao = 0;
+        if (this.currentObraId) {
+            percentualConclusao = await this.calcularPercentualCorrigido(this.currentObraId);
+            console.log('🎯 DUAS DATAS - Percentual calculado:', percentualConclusao);
+        }
+        
+        // Atualizar elementos
         const totalPropostasEl = document.getElementById('total-propostas');
         const totalClientesEl = document.getElementById('total-clientes');
         const valorTotalEl = document.getElementById('valor-total-obra');
         const progressoEl = document.getElementById('progresso-geral');
         
         if (totalPropostasEl) totalPropostasEl.textContent = totalPropostas;
-        if (totalClientesEl) totalClientesEl.textContent = clientesUnicos.length;
+        if (totalClientesEl) totalClientesEl.textContent = totalClientes;
         if (valorTotalEl) valorTotalEl.textContent = this.formatMoney(valorTotal);
-        if (progressoEl) progressoEl.textContent = `${progressoGeral}%`;
-    }
-
-    // === FORMULÁRIO DE OBRA ===
-    async handleSubmitObra(e) {
-        e.preventDefault();
-        
-        try {
-            const numeroObra = document.getElementById('numero-obra').value;
-            const statusObra = document.getElementById('status-obra').value;
-            const observacoes = document.getElementById('observacoes-obra').value;
-            
-            if (!numeroObra || !numeroObra.match(/^\d{4}\/\d{4}$/)) {
-                this.showNotification('Número da obra deve estar no formato XXXX/YYYY', 'error');
-                return;
-            }
-            
-            if (this.propostasSelecionadas.length === 0) {
-                this.showNotification('Adicione pelo menos uma proposta à obra', 'error');
-                return;
-            }
-            
-            const obraData = {
-                numero_obra: numeroObra,
-                status: statusObra,
-                observacoes: observacoes
-            };
-            
-            let obra;
-            
-            if (this.currentObraId) {
-                // Atualizar obra existente
-                const { data, error } = await supabaseClient
-                    .from('obras_hvc')
-                    .update(obraData)
-                    .eq('id', this.currentObraId)
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                obra = data;
-                
-            } else {
-                // Criar nova obra
-                const { data, error } = await supabaseClient
-                    .from('obras_hvc')
-                    .insert([obraData])
-                    .select()
-                    .single();
-                
-                if (error) throw error;
-                obra = data;
-                this.currentObraId = obra.id;
-            }
-            
-            // Salvar relação obras_propostas
-            await this.saveObrasPropostas(obra.id);
-            
-            this.hideFormObra();
-            await this.loadObras();
-            
-            this.showNotification('Obra salva com sucesso!', 'success');
-            
-        } catch (error) {
-            console.error('Erro ao salvar obra:', error);
-            this.showNotification('Erro ao salvar obra: ' + error.message, 'error');
+        if (progressoEl) {
+            progressoEl.textContent = `${percentualConclusao}%`;
+            console.log('🎯 DUAS DATAS - Elemento atualizado com:', `${percentualConclusao}%`);
         }
     }
 
-    async saveObrasPropostas(obraId) {
-        // Remover relações existentes
-        await supabaseClient
-            .from('obras_propostas')
-            .delete()
-            .eq('obra_id', obraId);
+    // Calcular valor total usando coluna preco_total
+    async calcularValorTotalCorreto() {
+        console.log('🎯 DUAS DATAS - Calculando valor total correto...');
         
-        // Inserir novas relações
-        const relacoes = this.propostasSelecionadas.map(proposta => ({
-            obra_id: obraId,
-            proposta_id: proposta.id
-        }));
+        try {
+            let valorTotalObra = 0;
+            
+            for (const proposta of this.propostasSelecionadas) {
+                // Buscar preco_total da tabela itens_proposta_hvc
+                const { data: itens, error } = await supabaseClient
+                    .from('itens_proposta_hvc')
+                    .select('preco_total')
+                    .eq('proposta_id', proposta.id);
+
+                if (error) {
+                    console.error('🎯 DUAS DATAS - Erro ao buscar itens:', error);
+                    continue;
+                }
+
+                if (itens && itens.length > 0) {
+                    for (const item of itens) {
+                        const precoTotal = parseFloat(item.preco_total) || 0;
+                        valorTotalObra += precoTotal;
+                        
+                        console.log(`🎯 DUAS DATAS - Item: R$ ${precoTotal.toFixed(2)}`);
+                    }
+                }
+            }
+            
+            console.log('🎯 DUAS DATAS - Valor total da obra:', valorTotalObra);
+            return valorTotalObra;
+            
+        } catch (error) {
+            console.error('🎯 DUAS DATAS - Erro no cálculo do valor total:', error);
+            return 0;
+        }
+    }
+
+    // Calcular percentual usando preco_total
+    async calcularPercentualCorrigido(obraId) {
+        console.log('🎯 DUAS DATAS - Calculando percentual para obra:', obraId);
         
-        if (relacoes.length > 0) {
-            const { error } = await supabaseClient
+        try {
+            // PASSO 1: Buscar propostas da obra
+            const { data: obrasPropostas, error: errorObrasPropostas } = await supabaseClient
                 .from('obras_propostas')
-                .insert(relacoes);
-            
-            if (error) throw error;
-        }
-    }
-
-    // === LISTA DE OBRAS ===
-    async loadObras() {
-        try {
-            console.log('Carregando obras...');
-            
-            const { data, error } = await supabaseClient
-                .from('obras_hvc')
-                .select(`
-                    *,
-                    obras_propostas (
-                        propostas_hvc (
-                            *,
-                            clientes_hvc (nome)
-                        )
-                    )
-                `)
-                .order('created_at', { ascending: false });
-
-            if (error) throw error;
-
-            this.obras = data || [];
-            this.renderObras(this.obras);
-            console.log('Obras carregadas:', this.obras.length);
-            
-        } catch (error) {
-            console.error('Erro ao carregar obras:', error);
-            this.showNotification('Erro ao carregar obras: ' + error.message, 'error');
-        }
-    }
-
-    renderObras(obras) {
-        const tbody = document.getElementById('obras-tbody');
-        if (!tbody) return;
-        
-        tbody.innerHTML = '';
-
-        if (obras.length === 0) {
-            tbody.innerHTML = `
-                <tr>
-                    <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
-                        <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                        Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
-                    </td>
-                </tr>
-            `;
-            return;
-        }
-
-        obras.forEach(obra => {
-            const propostas = obra.obras_propostas || [];
-            const clientesUnicos = [...new Set(propostas.map(op => op.propostas_hvc?.clientes_hvc?.nome).filter(Boolean))];
-            const valorTotal = propostas.reduce((sum, op) => sum + (parseFloat(op.propostas_hvc?.total_proposta) || 0), 0);
-            
-            const row = document.createElement('tr');
-            
-            row.innerHTML = `
-                <td><strong>${obra.numero_obra}</strong></td>
-                <td>${clientesUnicos.join(', ') || 'Nenhum cliente'}</td>
-                <td><strong>${this.formatMoney(valorTotal)}</strong></td>
-                <td class="percentual-cell">
-                    <div class="percentual-container">
-                        <div class="percentual-bar">
-                            <div class="percentual-fill" style="width: 50%;">50%</div>
-                        </div>
-                        <span class="percentual-text">50%</span>
-                    </div>
-                </td>
-                <td><span class="status-badge status-${obra.status.toLowerCase()}">${obra.status}</span></td>
-                <td class="actions-cell">
-                    <button class="btn-secondary" onclick="window.obrasManager.editObra('${obra.id}')" title="Editar obra">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-info" onclick="window.obrasManager.gerenciarAndamentoObra('${obra.id}')" title="Gerenciar andamento">
-                        <i class="fas fa-tasks"></i>
-                    </button>
-                    <button class="btn-danger" onclick="window.obrasManager.deleteObra('${obra.id}')" title="Excluir obra">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            `;
-            
-            tbody.appendChild(row);
-        });
-    }
-
-    async editObra(obraId) {
-        try {
-            const { data: obra, error } = await supabaseClient
-                .from('obras_hvc')
-                .select('*')
-                .eq('id', obraId)
-                .single();
-
-            if (error) throw error;
-
-            this.showFormObra(obra);
-            
-        } catch (error) {
-            console.error('Erro ao carregar obra:', error);
-            this.showNotification('Erro ao carregar obra: ' + error.message, 'error');
-        }
-    }
-
-    async gerenciarAndamentoObra(obraId) {
-        try {
-            // Carregar obra e suas propostas
-            const { data: obra, error } = await supabaseClient
-                .from('obras_hvc')
-                .select(`
-                    *,
-                    obras_propostas (
-                        propostas_hvc (
-                            *,
-                            clientes_hvc (nome)
-                        )
-                    )
-                `)
-                .eq('id', obraId)
-                .single();
-
-            if (error) throw error;
-
-            this.currentObraId = obraId;
-            this.propostasSelecionadas = obra.obras_propostas?.map(op => op.propostas_hvc) || [];
-            
-            this.showModalAndamento();
-            
-        } catch (error) {
-            console.error('Erro ao carregar obra para andamento:', error);
-            this.showNotification('Erro ao carregar obra: ' + error.message, 'error');
-        }
-    }
-
-    async deleteObra(obraId) {
-        if (!confirm('Tem certeza que deseja excluir esta obra? Esta ação não pode ser desfeita.')) {
-            return;
-        }
-
-        try {
-            // Remover relações obras_propostas
-            await supabaseClient
-                .from('obras_propostas')
-                .delete()
+                .select('proposta_id')
                 .eq('obra_id', obraId);
 
-            // Remover andamentos de serviços
-            await supabaseClient
+            if (errorObrasPropostas) {
+                console.error('🎯 DUAS DATAS - Erro ao buscar propostas da obra:', errorObrasPropostas);
+                return 0;
+            }
+
+            if (!obrasPropostas || obrasPropostas.length === 0) {
+                console.log('🎯 DUAS DATAS - Nenhuma proposta encontrada para a obra');
+                return 0;
+            }
+
+            const propostaIds = obrasPropostas.map(op => op.proposta_id);
+            console.log('🎯 DUAS DATAS - Propostas da obra:', propostaIds);
+
+            // PASSO 2: Buscar todos os itens das propostas com preco_total
+            const { data: itensPropostas, error: errorItens } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select('id, preco_total')
+                .in('proposta_id', propostaIds);
+
+            if (errorItens) {
+                console.error('🎯 DUAS DATAS - Erro ao buscar itens:', errorItens);
+                return 0;
+            }
+
+            if (!itensPropostas || itensPropostas.length === 0) {
+                console.log('🎯 DUAS DATAS - Nenhum item encontrado');
+                return 0;
+            }
+
+            console.log('🎯 DUAS DATAS - Itens encontrados:', itensPropostas.length);
+
+            // PASSO 3: Calcular valor total da obra e percentual de cada item
+            let valorTotalObra = 0;
+            const itensComValor = [];
+
+            for (const item of itensPropostas) {
+                const precoTotal = parseFloat(item.preco_total) || 0;
+                valorTotalObra += precoTotal;
+                
+                itensComValor.push({
+                    id: item.id,
+                    valorTotal: precoTotal,
+                    percentualObra: 0 // Será calculado depois
+                });
+            }
+
+            console.log('🎯 DUAS DATAS - Valor total da obra:', valorTotalObra);
+
+            if (valorTotalObra === 0) {
+                console.log('🎯 DUAS DATAS - Valor total da obra é zero');
+                return 0;
+            }
+
+            // PASSO 4: Calcular percentual de cada item em relação ao total da obra
+            itensComValor.forEach(item => {
+                item.percentualObra = (item.valorTotal / valorTotalObra) * 100;
+                console.log(`🎯 DUAS DATAS - Item ${item.id}: R$ ${item.valorTotal.toFixed(2)} = ${item.percentualObra.toFixed(2)}% da obra`);
+            });
+
+            // PASSO 5: Buscar status dos itens
+            const { data: andamentos, error: errorAndamentos } = await supabaseClient
                 .from('servicos_andamento')
-                .delete()
+                .select('item_proposta_id, status')
                 .eq('obra_id', obraId);
 
-            // Remover produções diárias
-            await supabaseClient
-                .from('producoes_diarias')
-                .delete()
-                .eq('obra_id', obraId);
+            if (errorAndamentos) {
+                console.error('🎯 DUAS DATAS - Erro ao buscar andamentos:', errorAndamentos);
+                return 0;
+            }
 
-            // Remover obra
-            const { error } = await supabaseClient
-                .from('obras_hvc')
-                .delete()
-                .eq('id', obraId);
+            // PASSO 6: Aplicar fórmula matemática
+            let somaPercentuais = 0;
 
-            if (error) throw error;
+            itensComValor.forEach(item => {
+                const andamento = andamentos?.find(a => a.item_proposta_id === item.id);
+                const status = andamento?.status || 'PENDENTE';
+                
+                // Aplicar multiplicadores conforme especificação
+                let multiplicador = 0;
+                switch (status) {
+                    case 'PENDENTE':
+                        multiplicador = 0;
+                        break;
+                    case 'INICIADO':
+                        multiplicador = 0.5;
+                        break;
+                    case 'CONCLUIDO':
+                        multiplicador = 1;
+                        break;
+                }
 
-            await this.loadObras();
-            this.showNotification('Obra excluída com sucesso!', 'success');
+                const contribuicao = item.percentualObra * multiplicador;
+                somaPercentuais += contribuicao;
+                
+                console.log(`🎯 DUAS DATAS - Item ${item.id}: ${item.percentualObra.toFixed(2)}% × ${multiplicador} = ${contribuicao.toFixed(2)}%`);
+            });
 
+            const percentualFinal = Math.round(somaPercentuais);
+            console.log('🎯 DUAS DATAS - Percentual final calculado:', percentualFinal);
+            
+            // Atualizar percentual na tabela obras_hvc
+            await this.atualizarPercentualNoBanco(obraId, percentualFinal);
+            
+            return percentualFinal;
+            
         } catch (error) {
-            console.error('Erro ao excluir obra:', error);
-            this.showNotification('Erro ao excluir obra: ' + error.message, 'error');
+            console.error('🎯 DUAS DATAS - Erro no cálculo:', error);
+            return 0;
         }
     }
 
-    // === FILTROS ===
-    filtrarObras() {
-        const busca = document.getElementById('filtro-busca-obra')?.value.toLowerCase() || '';
-        const status = document.getElementById('filtro-status-obra')?.value || '';
-
-        let obrasFiltradas = this.obras.filter(obra => {
-            if (busca) {
-                const propostas = obra.obras_propostas || [];
-                const clientes = propostas.map(op => op.propostas_hvc?.clientes_hvc?.nome || '').join(' ').toLowerCase();
-                const textoBusca = `${obra.numero_obra} ${clientes}`.toLowerCase();
-                if (!textoBusca.includes(busca)) return false;
-            }
-
-            if (status && obra.status !== status) return false;
-
-            return true;
-        });
-
-        this.renderObras(obrasFiltradas);
-    }
-
-    limparFiltros() {
-        document.getElementById('filtro-busca-obra').value = '';
-        document.getElementById('filtro-status-obra').value = '';
-        this.renderObras(this.obras);
-    }
-
-    // 🎯 DUAS DATAS - Atualizar percentual no banco
-    async atualizarPercentualObra(obraId, percentual) {
+    async atualizarPercentualNoBanco(obraId, percentual) {
+        console.log('🎯 DUAS DATAS - Atualizando percentual no banco:', obraId, percentual);
+        
         try {
-            console.log(`🎯 DUAS DATAS - Atualizando percentual da obra ${obraId} para ${percentual}%`);
-            
             const { error } = await supabaseClient
                 .from('obras_hvc')
                 .update({ percentual_conclusao: percentual })
                 .eq('id', obraId);
-            
-            if (error) throw error;
-            
-            console.log(`🎯 DUAS DATAS - Percentual atualizado com sucesso: ${percentual}%`);
+
+            if (error) {
+                console.error('🎯 DUAS DATAS - Erro ao atualizar banco:', error);
+            } else {
+                console.log('🎯 DUAS DATAS - Percentual atualizado no banco com sucesso');
+            }
         } catch (error) {
             console.error('🎯 DUAS DATAS - Erro na atualização do banco:', error);
         }
@@ -958,25 +835,24 @@ class ObrasManager {
 
     // === MODAL DE ANDAMENTO ===
     async showModalAndamento() {
-        if (!this.currentObraId) {
-            this.showNotification('Selecione uma obra primeiro', 'warning');
-            return;
-        }
-        
-        const modal = document.getElementById('modal-andamento');
-        if (modal) {
-            modal.classList.add('show');
-            
-            // 🎯 CORREÇÃO: Carregar produções diárias ANTES de renderizar serviços
-            await this.loadEquipesIntegrantes();
-            await this.loadProducoesDiarias();
-            await this.renderServicosAndamento();
-            
-            // Popular filtro de equipes/integrantes
-            await this.populateFiltroEquipeProducao();
-        }
+    if (!this.currentObraId) {
+        this.showNotification('Selecione uma obra primeiro', 'warning');
+        return;
     }
-
+    
+    const modal = document.getElementById('modal-andamento');
+    if (modal) {
+        modal.classList.add('show');
+        
+        // 🎯 CORREÇÃO: Carregar produções diárias ANTES de renderizar serviços
+        await this.loadEquipesIntegrantes();
+        await this.loadProducoesDiarias();
+        await this.renderServicosAndamento();
+        
+        // Popular filtro de equipes/integrantes
+        await this.populateFiltroEquipeProducao();
+    }
+}
     hideModalAndamento() {
         const modal = document.getElementById('modal-andamento');
         if (modal) {
@@ -991,8 +867,9 @@ class ObrasManager {
         container.innerHTML = '<div style="text-align: center; padding: 2rem;">Carregando serviços...</div>';
         
         try {
-            // ✅ MODIFICADO: Carregar todos os serviços das propostas selecionadas COM LOCAL
+            // Carregar todos os serviços das propostas selecionadas
             const servicosPromises = this.propostasSelecionadas.map(async (proposta) => {
+                // Buscar preco_total junto com outros dados
                 const { data, error } = await supabaseClient
                     .from('itens_proposta_hvc')
                     .select(`
@@ -1033,7 +910,7 @@ class ObrasManager {
                 return;
             }
             
-            // ✅ MODIFICADO: TABELA COM COLUNA LOCAL ADICIONADA
+            // 🎯 TABELA COM DUAS COLUNAS DE DATAS: INÍCIO E FINAL
             container.innerHTML = `
                 <table class="propostas-table" style="width: 100%; font-size: 0.9rem;">
                     <thead>
@@ -1056,7 +933,7 @@ class ObrasManager {
             
             const tbody = document.getElementById('servicos-andamento-tbody');
             
-            todosServicos.forEach((item, index) => {
+                     todosServicos.forEach((item, index) => {
                 // Buscar andamento existente para este item
                 const andamentoExistente = andamentosExistentes.find(a => a.item_proposta_id === item.id);
                 
@@ -1138,7 +1015,7 @@ class ObrasManager {
                 `;
                 tbody.appendChild(row);
             });
-            
+                        
             this.servicosAndamento = todosServicos;
             
             // Carregar serviços únicos da obra para as produções diárias
@@ -1212,7 +1089,7 @@ class ObrasManager {
         });
         
         try {
-            // Remover andamentos existentes desta obra
+            // Remover andamentos existentes
             await supabaseClient
                 .from('servicos_andamento')
                 .delete()
@@ -1227,28 +1104,423 @@ class ObrasManager {
                 if (error) throw error;
             }
             
-            // 🎯 DUAS DATAS - Calcular e atualizar percentual da obra
-            const totalServicos = andamentos.length;
-            const servicosConcluidos = andamentos.filter(a => a.status === 'CONCLUIDO').length;
-            const servicosIniciados = andamentos.filter(a => a.status === 'INICIADO').length;
+            // Recalcular percentual usando função corrigida
+            console.log('🎯 DUAS DATAS - Recalculando percentual após salvar andamento...');
+            const novoPercentual = await this.calcularPercentualCorrigido(this.currentObraId);
             
-            // Concluídos = 100%, Iniciados = 50%, Pendentes = 0%
-            const pontuacaoTotal = (servicosConcluidos * 100) + (servicosIniciados * 50);
-            const percentualFinal = totalServicos > 0 ? Math.round(pontuacaoTotal / (totalServicos * 100) * 100) : 0;
+            // Atualizar interface imediatamente
+            const progressoEl = document.getElementById('progresso-geral');
+            if (progressoEl) {
+                progressoEl.textContent = `${novoPercentual}%`;
+                console.log('🎯 DUAS DATAS - Interface atualizada com novo percentual:', `${novoPercentual}%`);
+            }
             
-            console.log(`🎯 DUAS DATAS - Percentual calculado: ${percentualFinal}% (${servicosConcluidos} concluídos, ${servicosIniciados} iniciados de ${totalServicos} total)`);
+            // Atualizar valor total da obra no banco
+            const valorTotalCorreto = await this.calcularValorTotalCorreto();
+            await this.atualizarValorTotalNoBanco(this.currentObraId, valorTotalCorreto);
             
-            // Atualizar percentual no banco
-            await this.atualizarPercentualObra(this.currentObraId, percentualFinal);
+            // Recarregar lista de obras para mostrar valores atualizados
+            await this.loadObras();
             
-            this.showNotification('Andamento dos serviços salvo com sucesso!', 'success');
-            await this.updateResumoObra(); // Atualizar progresso geral
-            await this.loadObras(); // Recarregar lista de obras para mostrar percentual atualizado
+            this.hideModalAndamento();
+            this.showNotification(`Andamento salvo! Percentual: ${novoPercentual}% | Valor: ${this.formatMoney(valorTotalCorreto)}`, 'success');
             
         } catch (error) {
-            console.error('Erro ao salvar andamento:', error);
+            console.error('🎯 DUAS DATAS - Erro ao salvar andamento:', error);
             this.showNotification('Erro ao salvar andamento: ' + error.message, 'error');
         }
+    }
+
+    // Atualizar valor total da obra no banco
+    async atualizarValorTotalNoBanco(obraId, valorTotal) {
+        console.log('🎯 DUAS DATAS - Atualizando valor total no banco:', obraId, valorTotal);
+        
+        try {
+            const { error } = await supabaseClient
+                .from('obras_hvc')
+                .update({ valor_total: Math.round(valorTotal * 100) }) // Salvar em centavos
+                .eq('id', obraId);
+
+            if (error) {
+                console.error('🎯 DUAS DATAS - Erro ao atualizar valor total:', error);
+            } else {
+                console.log('🎯 DUAS DATAS - Valor total atualizado no banco com sucesso');
+            }
+        } catch (error) {
+            console.error('🎯 DUAS DATAS - Erro na atualização do valor total:', error);
+        }
+    }
+
+    // === OBRAS ===
+    async loadObras() {
+        try {
+            console.log('Carregando obras...');
+            
+            const { data, error } = await supabaseClient
+                .from('obras_hvc')
+                .select(`
+                    *,
+                    obras_propostas (
+                        propostas_hvc (
+                            clientes_hvc (nome)
+                        )
+                    )
+                `)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+
+            this.obras = data || [];
+            this.renderObras(this.obras);
+            
+            console.log('Obras carregadas:', this.obras.length);
+        } catch (error) {
+            console.error('Erro ao carregar obras:', error);
+            this.showNotification('Erro ao carregar obras: ' + error.message, 'error');
+        }
+    }
+
+    renderObras(obras) {
+        const tbody = document.getElementById('obras-tbody');
+        if (!tbody) return;
+        
+        tbody.innerHTML = '';
+
+        if (obras.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
+                        <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                        Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        obras.forEach(obra => {
+            // Extrair clientes únicos
+            const clientesUnicos = [...new Set(
+                obra.obras_propostas?.map(op => op.propostas_hvc?.clientes_hvc?.nome).filter(Boolean) || []
+            )];
+            const clientesTexto = clientesUnicos.length > 0 ? clientesUnicos.join(', ') : '-';
+            
+            const percentualConclusao = obra.percentual_conclusao || 0;
+            
+            // Mostrar valor correto na lista
+            const valorObra = obra.valor_total ? (obra.valor_total) : 0;
+            
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td><strong>${obra.numero_obra}</strong></td>
+                <td>${clientesTexto}</td>
+                <td><strong>${this.formatMoney(valorObra)}</strong></td>
+                <td class="percentual-cell">
+                    <div class="percentual-container">
+                        <div class="percentual-bar">
+                            <div class="percentual-fill" style="width: ${percentualConclusao}%;">
+                                ${percentualConclusao > 15 ? percentualConclusao + '%' : ''}
+                            </div>
+                        </div>
+                        <span class="percentual-text">${percentualConclusao}%</span>
+                    </div>
+                </td>
+                <td>
+                    <span class="status-badge status-${obra.status.toLowerCase()}">
+                        ${obra.status}
+                    </span>
+                </td>
+                <td class="actions-cell">
+                    <button class="btn btn-secondary" 
+                            onclick="window.obrasManager.editObra('${obra.id}')"
+                            title="Editar obra">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-warning" 
+                            onclick="window.obrasManager.gerenciarAndamento('${obra.id}')"
+                            title="Gerenciar andamento">
+                        <i class="fas fa-tasks"></i>
+                    </button>
+                    <button class="btn btn-danger" 
+                            onclick="window.obrasManager.deleteObra('${obra.id}')"
+                            title="Excluir obra">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
+    }
+
+    // === FILTROS ===
+    filtrarObras() {
+        const termoBusca = document.getElementById('filtro-busca-obra')?.value.toLowerCase() || '';
+        const statusFiltro = document.getElementById('filtro-status-obra')?.value || '';
+        
+        const obrasFiltradas = this.obras.filter(obra => {
+            // Filtro de busca
+            const textoObra = `${obra.numero_obra} ${obra.observacoes || ''}`.toLowerCase();
+            const clientesObra = obra.obras_propostas?.map(op => op.propostas_hvc?.clientes_hvc?.nome).join(' ').toLowerCase() || '';
+            const passaBusca = !termoBusca || textoObra.includes(termoBusca) || clientesObra.includes(termoBusca);
+            
+            // Filtro de status
+            const passaStatus = !statusFiltro || obra.status === statusFiltro;
+            
+            return passaBusca && passaStatus;
+        });
+
+        this.renderObras(obrasFiltradas);
+    }
+
+    limparFiltros() {
+        document.getElementById('filtro-busca-obra').value = '';
+        document.getElementById('filtro-status-obra').value = '';
+        this.renderObras(this.obras);
+    }
+
+    // === CRUD OBRAS ===
+    async handleSubmitObra(e) {
+        e.preventDefault();
+
+        if (!this.validateFormObra()) return;
+
+        // Calcular valor total correto antes de salvar
+        const valorTotalCorreto = await this.calcularValorTotalCorreto();
+
+        const obraData = {
+            numero_obra: document.getElementById('numero-obra').value,
+            status: document.getElementById('status-obra').value,
+            observacoes: document.getElementById('observacoes-obra').value || null,
+            valor_total: Math.round(valorTotalCorreto * 100) // Salvar em centavos
+        };
+
+        console.log('Dados da obra para salvar:', obraData);
+
+        try {
+            let obra;
+            
+            if (this.currentObraId) {
+                // Atualizar obra existente
+                const { data, error } = await supabaseClient
+                    .from('obras_hvc')
+                    .update(obraData)
+                    .eq('id', this.currentObraId)
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                obra = data;
+                console.log('Obra atualizada:', obra);
+            } else {
+                // Criar nova obra
+                const { data, error } = await supabaseClient
+                    .from('obras_hvc')
+                    .insert([obraData])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+                obra = data;
+                console.log('Nova obra criada:', obra);
+                this.currentObraId = obra.id;
+            }
+
+            // Salvar propostas da obra
+            await this.savePropostasObra(obra.id);
+            
+            this.hideFormObra();
+            this.loadObras();
+            this.showNotification('Obra salva com sucesso!', 'success');
+
+        } catch (error) {
+            console.error('Erro ao salvar obra:', error);
+            this.showNotification('Erro ao salvar obra: ' + error.message, 'error');
+        }
+    }
+
+    async savePropostasObra(obraId) {
+        try {
+            // Remover propostas existentes
+            await supabaseClient
+                .from('obras_propostas')
+                .delete()
+                .eq('obra_id', obraId);
+
+            // Inserir novas propostas
+            if (this.propostasSelecionadas.length > 0) {
+                const propostasData = this.propostasSelecionadas.map(proposta => ({
+                    obra_id: obraId,
+                    proposta_id: proposta.id
+                }));
+
+                const { error } = await supabaseClient
+                    .from('obras_propostas')
+                    .insert(propostasData);
+
+                if (error) throw error;
+                console.log('Propostas da obra salvas com sucesso');
+            }
+        } catch (error) {
+            console.error('Erro ao salvar propostas da obra:', error);
+            throw error;
+        }
+    }
+
+    validateFormObra() {
+        const numeroObra = document.getElementById('numero-obra').value;
+        
+        if (!numeroObra || !numeroObra.match(/^\d{4}\/\d{4}$/)) {
+            this.showNotification('Número da obra deve estar no formato XXXX/YYYY', 'error');
+            return false;
+        }
+
+        if (this.propostasSelecionadas.length === 0) {
+            this.showNotification('Adicione pelo menos uma proposta à obra', 'error');
+            return false;
+        }
+
+        return true;
+    }
+
+    async editObra(obraId) {
+        try {
+            console.log('Editando obra:', obraId);
+            
+            const { data, error } = await supabaseClient
+                .from('obras_hvc')
+                .select('*')
+                .eq('id', obraId)
+                .single();
+
+            if (error) throw error;
+
+            this.showFormObra(data);
+        } catch (error) {
+            console.error('Erro ao carregar obra:', error);
+            this.showNotification('Erro ao carregar obra: ' + error.message, 'error');
+        }
+    }
+
+    async deleteObra(obraId) {
+        if (!confirm('Tem certeza que deseja excluir esta obra? Esta ação não pode ser desfeita.')) {
+            return;
+        }
+        
+        try {
+            console.log('Excluindo obra:', obraId);
+            
+            const { error } = await supabaseClient
+                .from('obras_hvc')
+                .delete()
+                .eq('id', obraId);
+
+            if (error) throw error;
+
+            this.loadObras();
+            this.showNotification('Obra excluída com sucesso!', 'success');
+            
+        } catch (error) {
+            console.error('Erro ao excluir obra:', error);
+            this.showNotification('Erro ao excluir obra: ' + error.message, 'error');
+        }
+    }
+
+    async gerenciarAndamento(obraId) {
+        try {
+            console.log('Gerenciando andamento da obra:', obraId);
+            
+            // Carregar obra e suas propostas
+            const { data, error } = await supabaseClient
+                .from('obras_hvc')
+                .select(`
+                    *,
+                    obras_propostas (
+                        propostas_hvc (
+                            *,
+                            clientes_hvc (nome)
+                        )
+                    )
+                `)
+                .eq('id', obraId)
+                .single();
+
+            if (error) throw error;
+
+            // Definir obra atual e propostas
+            this.currentObraId = obraId;
+            this.propostasSelecionadas = data.obras_propostas?.map(op => op.propostas_hvc) || [];
+            
+            // Mostrar modal de andamento
+            this.showModalAndamento();
+            
+        } catch (error) {
+            console.error('Erro ao carregar dados da obra:', error);
+            this.showNotification('Erro ao carregar dados da obra: ' + error.message, 'error');
+        }
+    }
+
+    // === NOTIFICAÇÕES ===
+    showNotification(message, type = 'info') {
+        console.log(`Notificação [${type}]: ${message}`);
+        
+        // Criar elemento de notificação
+        const notification = document.createElement('div');
+        notification.className = `notification notification-${type}`;
+        notification.innerHTML = `
+            <div class="notification-content">
+                <i class="fas fa-${this.getNotificationIcon(type)}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+
+        // Adicionar estilos se não existirem
+        if (!document.getElementById('notification-styles')) {
+            const styles = document.createElement('style');
+            styles.id = 'notification-styles';
+            styles.textContent = `
+                .notification {
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    z-index: 10000;
+                    padding: 1rem 1.5rem;
+                    border-radius: 8px;
+                    color: white;
+                    font-weight: 600;
+                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+                    animation: slideIn 0.3s ease-out;
+                    max-width: 400px;
+                }
+                .notification-success { background: linear-gradient(135deg, #28a745, #20c997); }
+                .notification-error { background: linear-gradient(135deg, #dc3545, #e74c3c); }
+                .notification-warning { background: linear-gradient(135deg, #ffc107, #f39c12); }
+                .notification-info { background: linear-gradient(135deg, #17a2b8, #3498db); }
+                .notification-content { display: flex; align-items: center; gap: 10px; }
+                @keyframes slideIn {
+                    from { transform: translateX(100%); opacity: 0; }
+                    to { transform: translateX(0); opacity: 1; }
+                }
+            `;
+            document.head.appendChild(styles);
+        }
+
+        document.body.appendChild(notification);
+
+        // Remover após 5 segundos
+         setTimeout(() => {
+            notification.style.animation = 'slideIn 0.3s ease-out reverse';
+            setTimeout(() => notification.remove(), 300);
+        }, 5000);
+    }
+    
+    getNotificationIcon(type) {
+        const icons = {
+            success: 'check-circle',
+            error: 'exclamation-circle',
+            warning: 'exclamation-triangle',
+            info: 'info-circle'
+        };
+        return icons[type] || 'info-circle';
     }
 
     // === FUNÇÕES PARA PRODUÇÕES DIÁRIAS ===
@@ -1258,27 +1530,27 @@ class ObrasManager {
         
         this.currentProducaoId = producaoId;
         
-        const modal = document.getElementById('modal-producao');
-        const titulo = document.getElementById('titulo-modal-producao');
+        // Carregar equipes e integrantes se ainda não carregou
+        if (this.equipesIntegrantes.length === 0) {
+            await this.loadEquipesIntegrantes();
+        }
         
+        // Limpar e popular formulário
+        this.clearFormProducao();
+        await this.populateFormProducao();
+        
+        if (producaoId) {
+            await this.loadProducaoData(producaoId);
+            document.getElementById('titulo-modal-producao').textContent = 'Editar Produção Diária';
+        } else {
+            document.getElementById('titulo-modal-producao').textContent = 'Nova Produção Diária';
+            // Definir data padrão como hoje
+            document.getElementById('data-producao').value = new Date().toISOString().split('T')[0];
+        }
+        
+        const modal = document.getElementById('modal-producao');
         if (modal) {
             modal.classList.add('show');
-            
-            if (producaoId) {
-                if (titulo) titulo.textContent = 'Editar Produção Diária';
-                await this.loadProducaoData(producaoId);
-            } else {
-                if (titulo) titulo.textContent = 'Nova Produção Diária';
-                this.clearFormProducao();
-            }
-            
-            // Carregar equipes/integrantes se ainda não carregou
-            if (this.equipesIntegrantes.length === 0) {
-                await this.loadEquipesIntegrantes();
-            }
-            
-            this.populateEquipeProducaoSelect();
-            this.renderServicosProducao();
         }
     }
     
@@ -1288,213 +1560,181 @@ class ObrasManager {
             modal.classList.remove('show');
         }
         this.currentProducaoId = null;
+        this.clearFormProducao();
     }
     
     clearFormProducao() {
-        const form = document.getElementById('form-producao');
-        if (form) form.reset();
+        document.getElementById('data-producao').value = '';
+        document.getElementById('equipe-producao').value = '';
+        document.getElementById('observacao-producao').value = '';
         
-        // Definir data atual como padrão
-        const dataInput = document.getElementById('data-producao');
-        if (dataInput) {
-            const hoje = new Date().toISOString().split('T')[0];
-            dataInput.value = hoje;
+        // Limpar quantidades dos serviços
+        const servicosContainer = document.getElementById('servicos-producao');
+        if (servicosContainer) {
+            const inputs = servicosContainer.querySelectorAll('input[type="number"]');
+            inputs.forEach(input => input.value = '');
         }
     }
     
-    async loadEquipesIntegrantes() {
-        try {
-            console.log('Carregando equipes e integrantes...');
-            
-            const { data, error } = await supabaseClient
-                .from('equipes_integrantes')
-                .select('*')
-                .eq('ativo', true)
-                .order('tipo, nome');
+                async populateFormProducao() {
+                console.log('=== POPULATE FORM PRODUCAO ===');
+                console.log('Equipes e integrantes disponíveis:', this.equipesIntegrantes);
+                
+                // Popular select de equipes/integrantes
+                const selectEquipe = document.getElementById('equipe-producao');
+                console.log('Select equipe encontrado:', selectEquipe);
+                
+                if (selectEquipe) {
+                    selectEquipe.innerHTML = '<option value="">Selecione...</option>';
+                    
+                    console.log('Populando select com', this.equipesIntegrantes.length, 'itens');
+                    
+                    this.equipesIntegrantes.forEach((item, index) => {
+                        console.log(`Item ${index}:`, item);
+                        const option = document.createElement('option');
+                        option.value = `${item.tipo}:${item.id}`;
+                        option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
+                        selectEquipe.appendChild(option);
+                    });
+                    
+                    console.log('Select populado. Total de options:', selectEquipe.options.length);
+                } else {
+                    console.error('Select equipe-producao não encontrado!');
+                }
+                
+                // Popular serviços da obra
+                await this.populateServicosProducao();
+                
+                console.log('=== FIM POPULATE FORM ===');
+            }
 
-            if (error) throw error;
-
-            this.equipesIntegrantes = data || [];
-            console.log('Equipes/Integrantes carregados:', this.equipesIntegrantes.length);
-            
-        } catch (error) {
-            console.error('Erro ao carregar equipes/integrantes:', error);
-            this.showNotification('Erro ao carregar equipes/integrantes: ' + error.message, 'error');
-        }
-    }
     
-    populateEquipeProducaoSelect() {
-        const select = document.getElementById('equipe-producao');
-        if (!select) return;
-
-        select.innerHTML = '<option value="">Selecione...</option>';
-        
-        // Agrupar por tipo
-        const equipes = this.equipesIntegrantes.filter(item => item.tipo === 'equipe');
-        const integrantes = this.equipesIntegrantes.filter(item => item.tipo === 'integrante');
-        
-        if (equipes.length > 0) {
-            const optgroupEquipes = document.createElement('optgroup');
-            optgroupEquipes.label = 'Equipes';
-            
-            equipes.forEach(equipe => {
-                const option = document.createElement('option');
-                option.value = `equipe:${equipe.id}`;
-                option.textContent = `Equipe ${equipe.nome}`;
-                optgroupEquipes.appendChild(option);
-            });
-            
-            select.appendChild(optgroupEquipes);
-        }
-        
-        if (integrantes.length > 0) {
-            const optgroupIntegrantes = document.createElement('optgroup');
-            optgroupIntegrantes.label = 'Integrantes Individuais';
-            
-            integrantes.forEach(integrante => {
-                const option = document.createElement('option');
-                option.value = `integrante:${integrante.id}`;
-                option.textContent = integrante.nome;
-                optgroupIntegrantes.appendChild(option);
-            });
-            
-            select.appendChild(optgroupIntegrantes);
-        }
-    }
-    
-    async populateFiltroEquipeProducao() {
-        const select = document.getElementById('filtro-equipe-producao');
-        if (!select) return;
-
-        select.innerHTML = '<option value="">Todos</option>';
-        
-        // Agrupar por tipo
-        const equipes = this.equipesIntegrantes.filter(item => item.tipo === 'equipe');
-        const integrantes = this.equipesIntegrantes.filter(item => item.tipo === 'integrante');
-        
-        if (equipes.length > 0) {
-            const optgroupEquipes = document.createElement('optgroup');
-            optgroupEquipes.label = 'Equipes';
-            
-            equipes.forEach(equipe => {
-                const option = document.createElement('option');
-                option.value = `equipe:${equipe.id}`;
-                option.textContent = `Equipe ${equipe.nome}`;
-                optgroupEquipes.appendChild(option);
-            });
-            
-            select.appendChild(optgroupEquipes);
-        }
-        
-        if (integrantes.length > 0) {
-            const optgroupIntegrantes = document.createElement('optgroup');
-            optgroupIntegrantes.label = 'Integrantes';
-            
-            integrantes.forEach(integrante => {
-                const option = document.createElement('option');
-                option.value = `integrante:${integrante.id}`;
-                option.textContent = integrante.nome;
-                optgroupIntegrantes.appendChild(option);
-            });
-            
-            select.appendChild(optgroupIntegrantes);
-        }
-    }
-    
-    renderServicosProducao() {
+    async populateServicosProducao() {
         const container = document.getElementById('servicos-producao');
-        if (!container) return;
+        if (!container || this.servicosObra.length === 0) return;
         
         container.innerHTML = '';
-
-        if (this.servicosObra.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; padding: 2rem; color: #c0c0c0;">
-                    <i class="fas fa-tools" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.5;"></i>
-                    <p>Nenhum serviço disponível na obra</p>
-                </div>
-            `;
-            return;
-        }
-
+        
         this.servicosObra.forEach(servico => {
-            const item = document.createElement('div');
-            item.style.cssText = `
-                display: flex;
-                align-items: center;
-                justify-content: space-between;
-                padding: 0.75rem;
-                border: 1px solid rgba(173, 216, 230, 0.3);
-                border-radius: 6px;
-                margin-bottom: 0.5rem;
-                background: rgba(173, 216, 230, 0.05);
-                transition: background-color 0.3s ease;
-            `;
+            const servicoDiv = document.createElement('div');
+            servicoDiv.style.cssText = 'display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem; padding: 0.5rem; border: 1px solid rgba(173, 216, 230, 0.1); border-radius: 4px; background: rgba(255, 255, 255, 0.02);';
             
-            item.addEventListener('mouseenter', () => {
-                item.style.backgroundColor = 'rgba(173, 216, 230, 0.1)';
-            });
-            item.addEventListener('mouseleave', () => {
-                item.style.backgroundColor = 'rgba(173, 216, 230, 0.05)';
-            });
-            
-            item.innerHTML = `
-                <div style="flex: 1;">
-                    <strong style="color: #add8e6;">${servico.codigo}</strong>
-                    <br>
-                    <small style="color: #c0c0c0;">${servico.descricao}</small>
+            servicoDiv.innerHTML = `
+                <div style="flex: 1; min-width: 0;">
+                    <strong style="color: #add8e6;">${servico.codigo || 'N/A'}</strong>
+                    <div style="font-size: 0.9em; color: #c0c0c0; margin-top: 0.2rem;">
+                        ${servico.descricao || 'Sem descrição'}
+                    </div>
+                    <div style="font-size: 0.8em; color: #a0a0a0;">
+                        Unidade: ${servico.unidade || 'N/A'}
+                    </div>
                 </div>
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <input type="number" 
-                           id="servico-${servico.id}"
-                           min="0" 
-                           step="0.01"
-                           placeholder="0"
-                           style="width: 80px; padding: 0.5rem; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 4px; background: rgba(255,255,255,0.1); color: #add8e6;">
-                    <span style="color: #c0c0c0; font-size: 0.9rem;">${servico.unidade}</span>
+                    <label style="color: #e0e0e0; font-size: 0.9em;">Qtd:</label>
+                    <input 
+                        type="number" 
+                        id="servico-${servico.id}" 
+                        min="0" 
+                        step="0.01" 
+                        placeholder="0.00"
+                        style="width: 100px; padding: 0.3rem; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 4px; background: rgba(0, 0, 128, 0.2); color: #e0e0e0;"
+                    />
                 </div>
             `;
             
-            container.appendChild(item);
+            container.appendChild(servicoDiv);
         });
     }
+    
+   async loadEquipesIntegrantes() {
+    try {
+        console.log('Carregando equipes e integrantes...');
+        
+        // Carregar equipes ativas (usando NUMERO em vez de NOME)
+        const { data: equipes, error: errorEquipes } = await supabaseClient
+            .from('equipes_hvc')
+            .select('id, numero, ativa')
+            .eq('ativa', true)
+            .order('numero');
+        
+        if (errorEquipes) throw errorEquipes;
+        
+        // Carregar integrantes ativos
+        const { data: integrantes, error: errorIntegrantes } = await supabaseClient
+            .from('integrantes_hvc')
+            .select('id, nome, ativo')
+            .eq('ativo', true)
+            .order('nome');
+        
+        if (errorIntegrantes) throw errorIntegrantes;
+        
+        // Carregar relacionamentos equipe-integrante
+        const { data: relacionamentos, error: errorRelacionamentos } = await supabaseClient
+            .from('equipe_integrantes')
+            .select('equipe_id, integrante_id');
+        
+        if (errorRelacionamentos) throw errorRelacionamentos;
+        
+        // Adicionar informação de equipe aos integrantes
+        const integrantesComEquipe = (integrantes || []).map(integrante => {
+            const relacionamento = relacionamentos?.find(r => r.integrante_id === integrante.id);
+            return {
+                ...integrante,
+                equipe_id: relacionamento?.equipe_id || null,
+                tipo: 'integrante'
+            };
+        });
+        
+        // Combinar em uma lista (usando numero para equipes e nome para integrantes)
+        this.equipesIntegrantes = [
+            ...(equipes || []).map(e => ({ 
+                ...e, 
+                tipo: 'equipe',
+                nome: e.numero // Usar numero como nome para exibição
+            })),
+            ...integrantesComEquipe
+        ];
+        
+        console.log('Equipes e integrantes carregados:', this.equipesIntegrantes.length);
+        
+    } catch (error) {
+        console.error('Erro ao carregar equipes e integrantes:', error);
+        this.showNotification('Erro ao carregar equipes e integrantes: ' + error.message, 'error');
+    }
+}
+
     
     async handleSubmitProducao(e) {
         e.preventDefault();
         
         try {
-            const dataProducao = document.getElementById('data-producao').value;
-            const equipeProducao = document.getElementById('equipe-producao').value;
+            // Validar formulário
+            const data = document.getElementById('data-producao').value;
+            const equipe = document.getElementById('equipe-producao').value;
             const observacao = document.getElementById('observacao-producao').value;
             
-            if (!dataProducao || !equipeProducao) {
-                this.showNotification('Preencha todos os campos obrigatórios', 'error');
+            if (!data || !equipe) {
+                this.showNotification('Preencha todos os campos obrigatórios', 'warning');
                 return;
             }
             
-            // Extrair tipo e ID da seleção
-            const [tipo, id] = equipeProducao.split(':');
-            
             // Coletar quantidades dos serviços
             const quantidades = {};
-            let temQuantidade = false;
             
             this.servicosObra.forEach(servico => {
                 const input = document.getElementById(`servico-${servico.id}`);
                 if (input && input.value && parseFloat(input.value) > 0) {
                     quantidades[servico.id] = parseFloat(input.value);
-                    temQuantidade = true;
                 }
             });
             
-            if (!temQuantidade) {
-                this.showNotification('Preencha pelo menos um serviço com quantidade maior que zero', 'error');
-                return;
-            }
+            // Separar tipo e ID da equipe/integrante
+            const [tipo, id] = equipe.split(':');
             
+            // Preparar dados para salvar
             const producaoData = {
                 obra_id: this.currentObraId,
-                data_producao: dataProducao,
+                data_producao: data,
                 tipo_responsavel: tipo,
                 responsavel_id: id, // Manter como string (UUID ou ID numérico)
                 observacoes: observacao || null,
@@ -1826,17 +2066,17 @@ class ObrasManager {
                                         // Se filtrar por integrante, mostrar:
                                         // 1. Produções onde ele é responsável individual
                                         // 2. Produções de equipes onde ele participa
-                                        const integrante = this.equipesIntegrantes.find(i => i.id === id);
+                                        const integrante = this.equipesIntegrantes.find(i => i.id == id && i.tipo === 'integrante');
                                         
                                         producoesFiltradas = producoesFiltradas.filter(p => {
-                                            // Caso 1: Integrante individual
+                                            // Caso 1: Integrante é responsável direto
                                             if (p.tipo_responsavel === 'integrante' && p.responsavel_id == id) {
                                                 return true;
                                             }
                                             
-                                            // Caso 2: Integrante faz parte de uma equipe
-                                            if (p.tipo_responsavel === 'equipe' && integrante && integrante.equipe_id) {
-                                                return p.responsavel_id == integrante.equipe_id;
+                                            // Caso 2: Integrante faz parte da equipe responsável
+                                            if (p.tipo_responsavel === 'equipe' && integrante && integrante.equipe_id === p.responsavel_id) {
+                                                return true;
                                             }
                                             
                                             return false;
@@ -1844,76 +2084,31 @@ class ObrasManager {
                                     }
                                 }
                                 
-                                // Renderizar apenas as produções filtradas
+                                // Temporariamente substituir para renderizar filtrado
                                 const originalProducoes = this.producoesDiarias;
                                 this.producoesDiarias = producoesFiltradas;
                                 this.renderProducoesDiarias();
                                 this.producoesDiarias = originalProducoes;
                             }
-                            
-                            limparFiltrosProducao() {
-                                document.getElementById('filtro-data-producao').value = '';
-                                document.getElementById('filtro-equipe-producao').value = '';
-                                this.renderProducoesDiarias();
-                            }
-
-    // === NOTIFICAÇÕES ===
-    showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification notification-${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <i class="fas fa-${this.getNotificationIcon(type)}"></i>
-                <span>${message}</span>
-            </div>
-        `;
-
-        if (!document.getElementById('notification-styles')) {
-            const styles = document.createElement('style');
-            styles.id = 'notification-styles';
-            styles.textContent = `
-                .notification {
-                    position: fixed;
-                    top: 20px;
-                    right: 20px;
-                    z-index: 10000;
-                    padding: 1rem 1.5rem;
-                    border-radius: 8px;
-                    color: white;
-                    font-weight: 600;
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.3);
-                    animation: slideIn 0.3s ease-out;
-                    max-width: 400px;
-                }
-                .notification-success { background: linear-gradient(135deg, #28a745, #20c997); }
-                .notification-error { background: linear-gradient(135deg, #dc3545, #e74c3c); }
-                .notification-warning { background: linear-gradient(135deg, #ffc107, #f39c12); }
-                .notification-info { background: linear-gradient(135deg, #17a2b8, #3498db); }
-                .notification-content { display: flex; align-items: center; gap: 10px; }
-                @keyframes slideIn {
-                    from { transform: translateX(100%); opacity: 0; }
-                    to { transform: translateX(0); opacity: 1; }
-                }
-            `;
-            document.head.appendChild(styles);
-        }
-
-        document.body.appendChild(notification);
-
-        setTimeout(() => {
-            notification.style.animation = 'slideIn 0.3s ease-out reverse';
-            setTimeout(() => notification.remove(), 300);
-        }, 5000);
+    
+    limparFiltrosProducao() {
+        document.getElementById('filtro-data-producao').value = '';
+        document.getElementById('filtro-equipe-producao').value = '';
+        this.renderProducoesDiarias();
     }
-
-    getNotificationIcon(type) {
-        const icons = {
-            success: 'check-circle',
-            error: 'exclamation-circle',
-            warning: 'exclamation-triangle',
-            info: 'info-circle'
-        };
-        return icons[type] || 'info-circle';
+    
+    async populateFiltroEquipeProducao() {
+        const select = document.getElementById('filtro-equipe-producao');
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">Todos</option>';
+        
+        this.equipesIntegrantes.forEach(item => {
+            const option = document.createElement('option');
+            option.value = `${item.tipo}:${item.id}`;
+            option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
+            select.appendChild(option);
+        });
     }
 }
 
@@ -1926,23 +2121,20 @@ class ObrasManager {
                                 console.log('1. ObrasManager:', window.obrasManager);
                                 
                                 if (!window.obrasManager) {
-                                    console.log('❌ ObrasManager não encontrado');
+                                    console.error('ObrasManager não encontrado!');
                                     return;
                                 }
                                 
                                 // 2. Verificar obra atual
                                 console.log('2. Obra atual ID:', window.obrasManager.currentObraId);
                                 
-                                if (!window.obrasManager.currentObraId) {
-                                    console.log('❌ Nenhuma obra selecionada');
-                                    return;
-                                }
-                                
-                                // 3. Verificar equipes/integrantes carregados
-                                console.log('3. Equipes/Integrantes:', window.obrasManager.equipesIntegrantes);
+                                // 3. Verificar container
+                                const container = document.getElementById('lista-producoes-diarias');
+                                console.log('3. Container encontrado:', container);
                                 
                                 // 4. Verificar produções carregadas
-                                console.log('4. Produções diárias:', window.obrasManager.producoesDiarias);
+                                console.log('4. Produções carregadas:', window.obrasManager.producoesDiarias);
+                                console.log('4.1. Quantidade:', window.obrasManager.producoesDiarias?.length || 0);
                                 
                                 // 5. Testar consulta direta
                                 try {
@@ -1954,27 +2146,24 @@ class ObrasManager {
                                     
                                     console.log('5.1. Dados:', data);
                                     console.log('5.2. Erro:', error);
+                                    
                                 } catch (err) {
-                                    console.log('5.3. Erro na consulta:', err);
+                                    console.error('Erro na consulta:', err);
                                 }
                                 
-                                // 6. Verificar tabela de equipes/integrantes
-                                try {
-                                    console.log('6. Testando consulta equipes/integrantes...');
-                                    const { data, error } = await supabaseClient
-                                        .from('equipes_integrantes')
-                                        .select('*')
-                                        .eq('ativo', true);
-                                    
-                                    console.log('6.1. Dados:', data);
-                                    console.log('6.2. Erro:', error);
-                                } catch (err) {
-                                    console.log('6.3. Erro na consulta:', err);
+                                // 6. Forçar renderização
+                                console.log('6. Forçando renderização...');
+                                if (window.obrasManager.renderProducoesDiarias) {
+                                    await window.obrasManager.renderProducoesDiarias();
                                 }
+                                
+                                console.log('=== FIM DEBUG ===');
                             }
                             
-                            // Expor função de debug globalmente
-                            window.debugProducoesDiarias = debugProducoesDiarias;
+                            // Executar
+                            debugProducoesDiarias();
 
-// Expor ObrasManager globalmente
-window.ObrasManager = ObrasManager;
+
+
+// Expor globalmente para uso nos event handlers inline
+window.obrasManager = null;
