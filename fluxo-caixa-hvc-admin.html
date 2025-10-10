@@ -9340,7 +9340,7 @@
                     });
                 }
             });
-        });
+        }); // ✅ CORREÇÃO: Fechamento do DOMContentLoaded que estava faltando
 
         // =================================================================
         // ✅ FUNCIONALIDADES DE EDIÇÃO DE ITENS REMOVIDAS (DUPLICAÇÃO)
@@ -9664,35 +9664,188 @@
         // ✅ REMOVIDO: Função duplicada que causava conflito
     </script>
 
-    <!-- Aguardar carregamento completo antes de carregar APIs do Google -->
+    <!-- Carregamento robusto das APIs Google com retry e fallback -->
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-        // Aguardar um pouco para garantir que todos os scripts estejam carregados
-        setTimeout(function() {
-            // Carregar GAPI
-            if (!window.gapiLoaded) {
-                const gapiScript = document.createElement('script');
-                gapiScript.src = 'https://apis.google.com/js/api.js';
-                gapiScript.onload = function() {
-                    if (typeof window.gapiLoaded === 'function') {
-                        window.gapiLoaded();
+        console.log('🚀 Iniciando carregamento robusto das APIs Google...');
+        
+        // Função para carregar script com retry
+        function carregarScript(url, nome, maxTentativas = 3) {
+            return new Promise((resolve, reject) => {
+                let tentativas = 0;
+                
+                function tentar() {
+                    tentativas++;
+                    console.log(`📥 Carregando ${nome} (tentativa ${tentativas}/${maxTentativas})...`);
+                    
+                    const script = document.createElement('script');
+                    script.src = url;
+                    script.async = true;
+                    script.defer = true;
+                    
+                    script.onload = function() {
+                        console.log(`✅ ${nome} carregado com sucesso!`);
+                        resolve();
+                    };
+                    
+                    script.onerror = function() {
+                        console.error(`❌ Erro ao carregar ${nome}`);
+                        if (tentativas < maxTentativas) {
+                            console.log(`⏳ Tentando novamente em 2 segundos...`);
+                            setTimeout(tentar, 2000);
+                        } else {
+                            reject(new Error(`Falha ao carregar ${nome} após ${maxTentativas} tentativas`));
+                        }
+                    };
+                    
+                    document.head.appendChild(script);
+                }
+                
+                tentar();
+            });
+        }
+        
+        // Carregar APIs sequencialmente com verificação
+        async function inicializarAPIs() {
+            try {
+                // Verificar se já estão carregadas
+                if (typeof gapi !== 'undefined' && typeof google !== 'undefined' && google.accounts) {
+                    console.log('✅ APIs Google já estavam carregadas!');
+                    return;
+                }
+                
+                // Carregar GAPI primeiro
+                if (typeof gapi === 'undefined') {
+                    await carregarScript('https://apis.google.com/js/api.js', 'GAPI');
+                    
+                    // Aguardar GAPI estar disponível globalmente
+                    let tentativasGapi = 0;
+                    while (typeof gapi === 'undefined' && tentativasGapi < 20) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        tentativasGapi++;
                     }
-                };
-                document.head.appendChild(gapiScript);
-            }
-            
-            // Carregar GIS
-            if (!window.gisLoaded) {
-                const gisScript = document.createElement('script');
-                gisScript.src = 'https://accounts.google.com/gsi/client';
-                gisScript.onload = function() {
-                    if (typeof window.gisLoaded === 'function') {
-                        window.gisLoaded();
+                    
+                    if (typeof gapi !== 'undefined') {
+                        console.log('✅ GAPI disponível globalmente');
+                        if (typeof window.gapiLoaded === 'function') {
+                            console.log('🔄 Chamando gapiLoaded...');
+                            window.gapiLoaded();
+                        }
+                    } else {
+                        throw new Error('GAPI não ficou disponível após carregamento');
                     }
-                };
-                document.head.appendChild(gisScript);
+                }
+                
+                // Carregar GIS
+                if (typeof google === 'undefined' || !google.accounts) {
+                    await carregarScript('https://accounts.google.com/gsi/client', 'Google Identity Services');
+                    
+                    // Aguardar GIS estar disponível globalmente
+                    let tentativasGis = 0;
+                    while ((typeof google === 'undefined' || !google.accounts) && tentativasGis < 20) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                        tentativasGis++;
+                    }
+                    
+                    if (typeof google !== 'undefined' && google.accounts) {
+                        console.log('✅ Google Identity Services disponível globalmente');
+                        if (typeof window.gisLoaded === 'function') {
+                            console.log('🔄 Chamando gisLoaded...');
+                            window.gisLoaded();
+                        }
+                    } else {
+                        throw new Error('Google Identity Services não ficou disponível após carregamento');
+                    }
+                }
+                
+                console.log('🎉 Todas as APIs Google carregadas e inicializadas com sucesso!');
+                
+                // Remover aviso se existir
+                const avisoElement = document.querySelector('.api-loading-warning');
+                if (avisoElement) {
+                    avisoElement.remove();
+                }
+                
+            } catch (error) {
+                console.error('❌ Erro ao carregar APIs Google:', error);
+                
+                // Mostrar mensagem de erro para o usuário
+                const errorDiv = document.createElement('div');
+                errorDiv.className = 'api-loading-error';
+                errorDiv.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    right: 20px;
+                    background: #dc3545;
+                    color: white;
+                    padding: 15px;
+                    border-radius: 8px;
+                    z-index: 9999;
+                    max-width: 350px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+                    font-family: Arial, sans-serif;
+                `;
+                errorDiv.innerHTML = `
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 18px; margin-right: 8px;">⚠️</span>
+                        <strong>Erro de Conectividade</strong>
+                    </div>
+                    <div style="font-size: 14px; line-height: 1.4;">
+                        Não foi possível carregar as APIs do Google.<br>
+                        <small style="opacity: 0.9;">
+                            • Verifique sua conexão com a internet<br>
+                            • Tente recarregar a página<br>
+                            • Verifique se não há bloqueios de firewall
+                        </small>
+                    </div>
+                    <button onclick="location.reload()" style="
+                        background: rgba(255,255,255,0.2);
+                        border: 1px solid rgba(255,255,255,0.3);
+                        color: white;
+                        padding: 6px 12px;
+                        border-radius: 4px;
+                        cursor: pointer;
+                        margin-top: 10px;
+                        font-size: 12px;
+                    ">🔄 Recarregar Página</button>
+                `;
+                document.body.appendChild(errorDiv);
+                
+                // Remover mensagem após 15 segundos
+                setTimeout(() => {
+                    if (errorDiv.parentNode) {
+                        errorDiv.parentNode.removeChild(errorDiv);
+                    }
+                }, 15000);
             }
-        }, 1000); // Aguardar 1 segundo
+        }
+        
+        // Mostrar aviso de carregamento
+        const avisoDiv = document.createElement('div');
+        avisoDiv.className = 'api-loading-warning';
+        avisoDiv.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ffc107;
+            color: #856404;
+            padding: 12px 16px;
+            border-radius: 8px;
+            z-index: 9999;
+            font-family: Arial, sans-serif;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+        `;
+        avisoDiv.innerHTML = `
+            <div style="display: flex; align-items: center;">
+                <span style="font-size: 16px; margin-right: 8px;">⏳</span>
+                <span>Carregando APIs do Google...</span>
+            </div>
+        `;
+        document.body.appendChild(avisoDiv);
+        
+        // Iniciar carregamento após 2 segundos
+        setTimeout(inicializarAPIs, 2000);
     });
     </script>
 </body>
