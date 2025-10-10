@@ -351,17 +351,35 @@ function updateCreateEventButton() {
  * Inicia o processo de adição de uma nova conta
  */
 window.addNewAccount = function() {
-    console.log('Iniciando processo de adição de nova conta');
+    console.log('🔄 Iniciando processo de adição de nova conta');
     
     // Marcar que estamos adicionando uma nova conta
     currentAuthAccount = null;
     
+    // ✅ CORREÇÃO: Verificar se as APIs estão carregadas
+    if (typeof gapiInited === 'undefined' || typeof gisInited === 'undefined' || !gapiInited || !gisInited) {
+        console.error('❌ APIs não carregadas');
+        alert('Aguarde as APIs do Google carregarem antes de adicionar uma nova conta.');
+        return;
+    }
+    
+    // ✅ CORREÇÃO: Verificar se tokenClient existe
+    if (typeof tokenClient === 'undefined' || !tokenClient) {
+        console.error('❌ TokenClient não inicializado');
+        alert('Sistema de autenticação não está pronto. Recarregue a página.');
+        return;
+    }
+    
     // Iniciar processo de autenticação
-    if (typeof handleAuthClick === 'function') {
-        handleAuthClick();
-    } else {
-        console.error('Função handleAuthClick não encontrada');
-        alert('Erro: Sistema de autenticação não carregado');
+    try {
+        console.log('🔄 Solicitando autenticação para nova conta...');
+        tokenClient.requestAccessToken({ 
+            prompt: 'select_account', // Força seleção de conta
+            include_granted_scopes: true
+        });
+    } catch (error) {
+        console.error('❌ Erro ao solicitar autenticação:', error);
+        alert('Erro ao tentar conectar nova conta. Tente novamente.');
     }
 };
 
