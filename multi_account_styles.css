@@ -1,254 +1,175 @@
-/* ===================================================================
-   ESTILOS PARA SISTEMA DE MÚLTIPLAS CONTAS
-   ================================================================== */
-
-/* Container principal das contas */
+/* Estilos para gerenciamento de múltiplas contas */
 .accounts-section {
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(25, 25, 112, 0.3);
     backdrop-filter: blur(10px);
-    border-radius: 15px;
-    padding: 20px;
-    margin: 20px 0;
     border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 15px;
+    padding: 30px;
+    margin-bottom: 30px;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
-.accounts-section h3 {
-    color: white;
-    margin-bottom: 15px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-}
-
-/* Conta atual */
-.current-account-section {
-    background: rgba(40, 167, 69, 0.2);
-    border: 1px solid rgba(40, 167, 69, 0.3);
-    border-radius: 10px;
-    padding: 15px;
+.accounts-section h2 {
+    color: #ffffff;
+    font-size: 1.8rem;
     margin-bottom: 20px;
-}
-
-.current-account-info {
     display: flex;
     align-items: center;
     gap: 12px;
+    flex-wrap: wrap;
 }
 
-.current-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    border: 2px solid rgba(255, 255, 255, 0.3);
+.accounts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-bottom: 20px;
 }
 
-.current-name {
-    font-weight: bold;
-    color: white;
-    font-size: 16px;
-}
-
-.current-email {
-    color: rgba(255, 255, 255, 0.8);
-    font-size: 14px;
-}
-
-/* Lista de contas salvas */
-.saved-accounts-section {
-    margin-top: 20px;
-}
-
-#saved-accounts-list {
-    max-height: 300px;
-    overflow-y: auto;
-    margin-bottom: 15px;
-}
-
-.saved-account-item {
+.account-item {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 10px;
+    padding: 20px;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 8px;
+    flex-wrap: wrap;
+    gap: 15px;
     transition: all 0.3s ease;
 }
 
-.saved-account-item:hover {
-    background: rgba(255, 255, 255, 0.1);
-    border-color: rgba(255, 255, 255, 0.2);
-}
-
-.saved-account-item.current {
-    background: rgba(40, 167, 69, 0.2);
-    border-color: rgba(40, 167, 69, 0.4);
+.account-item:hover {
+    background: rgba(255, 255, 255, 0.15);
 }
 
 .account-info {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 15px;
     flex: 1;
+    min-width: 200px;
 }
 
 .account-avatar {
-    width: 32px;
-    height: 32px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 16px;
 }
 
 .account-details {
     flex: 1;
 }
 
-.account-name {
-    font-weight: 500;
-    color: white;
-    font-size: 14px;
-    margin-bottom: 2px;
-}
-
 .account-email {
-    color: rgba(255, 255, 255, 0.7);
-    font-size: 12px;
-    margin-bottom: 2px;
+    color: #ffffff;
+    font-weight: 500;
+    font-size: 16px;
+    margin-bottom: 5px;
 }
 
-.account-last-sync {
-    color: rgba(255, 255, 255, 0.5);
-    font-size: 11px;
-}
-
-.account-actions {
+.account-status {
     display: flex;
     align-items: center;
     gap: 8px;
-}
-
-/* Botões */
-.btn-switch {
-    background: linear-gradient(45deg, #007bff, #0056b3);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 15px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-switch:hover {
-    background: linear-gradient(45deg, #0056b3, #004085);
-    transform: translateY(-1px);
-}
-
-.btn-remove {
-    background: rgba(220, 53, 69, 0.2);
-    color: #ff6b6b;
-    border: 1px solid rgba(220, 53, 69, 0.3);
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-.btn-remove:hover {
-    background: rgba(220, 53, 69, 0.4);
-    color: white;
-}
-
-.btn-add-account {
-    background: linear-gradient(45deg, #28a745, #20c997);
-    color: white;
-    border: none;
-    padding: 10px 20px;
-    border-radius: 20px;
     font-size: 14px;
+}
+
+.account-status.connected {
+    color: #34a853;
+}
+
+.account-status.disconnected {
+    color: #ea4335;
+}
+
+.account-status.syncing {
+    color: #ffc107;
+}
+
+.account-status.error {
+    color: #ea4335;
+}
+
+.account-controls {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.account-btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 6px;
     cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
     transition: all 0.3s ease;
-    width: 100%;
-    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
 }
 
-.btn-add-account:hover {
-    background: linear-gradient(45deg, #20c997, #17a2b8);
-    transform: translateY(-2px);
+.account-btn.sync {
+    background: rgba(66, 133, 244, 0.3);
+    border: 1px solid #4285f4;
+    color: #4285f4;
 }
 
-.current-label {
-    background: rgba(40, 167, 69, 0.3);
-    color: #28a745;
-    padding: 4px 8px;
-    border-radius: 10px;
-    font-size: 11px;
-    font-weight: bold;
+.account-btn.sync:hover {
+    background: rgba(66, 133, 244, 0.5);
+    color: #ffffff;
 }
 
-/* Contador de contas */
-.accounts-counter {
-    background: rgba(255, 255, 255, 0.2);
-    color: white;
-    padding: 2px 8px;
-    border-radius: 10px;
-    font-size: 12px;
-    font-weight: bold;
+.account-btn.disconnect {
+    background: rgba(234, 67, 53, 0.3);
+    border: 1px solid #ea4335;
+    color: #ea4335;
 }
 
-/* Estados vazios */
-.no-accounts-message {
+.account-btn.disconnect:hover {
+    background: rgba(234, 67, 53, 0.5);
+    color: #ffffff;
+}
+
+.account-btn.reconnect {
+    background: rgba(255, 193, 7, 0.3);
+    border: 1px solid #ffc107;
+    color: #ffc107;
+}
+
+.account-btn.reconnect:hover {
+    background: rgba(255, 193, 7, 0.5);
+    color: #ffffff;
+}
+
+.account-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.add-account-section {
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding-top: 20px;
+    margin-top: 20px;
+}
+
+.no-accounts {
     text-align: center;
+    padding: 40px;
     color: rgba(255, 255, 255, 0.6);
-    font-style: italic;
-    padding: 20px;
 }
 
-/* Animações */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
-.saved-account-item {
-    animation: fadeIn 0.3s ease;
-}
-
-/* Responsividade */
-@media (max-width: 768px) {
-    .saved-account-item {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 10px;
-    }
-    
-    .account-actions {
-        width: 100%;
-        justify-content: flex-end;
-    }
-    
-    .account-info {
-        width: 100%;
-    }
-}
-
-/* Scrollbar personalizada */
-#saved-accounts-list::-webkit-scrollbar {
-    width: 6px;
-}
-
-#saved-accounts-list::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.1);
-    border-radius: 3px;
-}
-
-#saved-accounts-list::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.3);
-    border-radius: 3px;
-}
-
-#saved-accounts-list::-webkit-scrollbar-thumb:hover {
-    background: rgba(255, 255, 255, 0.5);
+.no-accounts i {
+    font-size: 3rem;
+    margin-bottom: 15px;
+    display: block;
 }
