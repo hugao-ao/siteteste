@@ -5648,23 +5648,45 @@
             }
 
             try {
+                // Verificar se GAPI está disponível e inicializado
+                if (typeof gapi === 'undefined' || !gapi.client) {
+                    console.error('❌ GAPI não está disponível ou não foi inicializado');
+                    showMessage('Erro: Sistema de autenticação não carregado. Recarregue a página.', 'error');
+                    return;
+                }
+
+                // Verificar se o sistema de múltiplas contas está carregado
+                if (typeof window.onAuthSuccess !== 'function') {
+                    console.error('❌ Sistema de múltiplas contas não carregado');
+                    showMessage('Erro: Sistema de contas não carregado. Recarregue a página.', 'error');
+                    return;
+                }
+
                 // Definir token temporariamente para obter informações do usuário
                 gapi.client.setToken(resp);
                 
-                // Obter informações do usuário
-                const userInfoResponse = await gapi.client.request({
-                    path: 'https://www.googleapis.com/oauth2/v2/userinfo'
-                });
-                
-                const userInfo = userInfoResponse.result;
-                console.log('✅ Informações do usuário obtidas:', userInfo.email);
-                
-                // Chamar função do gerenciador de múltiplas contas
-                if (typeof window.onAuthSuccess === 'function') {
+                // Verificar se o token é válido fazendo uma requisição de teste
+                try {
+                    const userInfoResponse = await gapi.client.request({
+                        path: 'https://www.googleapis.com/oauth2/v2/userinfo'
+                    });
+                    
+                    const userInfo = userInfoResponse.result;
+                    console.log('✅ Informações do usuário obtidas:', userInfo.email);
+                    
+                    // Chamar função do gerenciador de múltiplas contas
                     window.onAuthSuccess(userInfo, resp.access_token);
-                } else {
-                    console.error('❌ Função onAuthSuccess não encontrada');
-                    showMessage('Erro interno: sistema de múltiplas contas não carregado', 'error');
+                    
+                } catch (apiError) {
+                    console.error('❌ Erro ao obter informações do usuário:', apiError);
+                    
+                    if (apiError.status === 401) {
+                        showMessage('Token de acesso inválido ou expirado. Tente fazer login novamente.', 'error');
+                    } else if (apiError.status === 403) {
+                        showMessage('Permissão negada. Verifique as permissões da aplicação.', 'error');
+                    } else {
+                        showMessage('Erro ao validar autenticação. Tente novamente.', 'error');
+                    }
                     return;
                 }
                 
@@ -9642,8 +9664,36 @@
         // ✅ REMOVIDO: Função duplicada que causava conflito
     </script>
 
-    <!-- Google APIs - Carregar DEPOIS das funções estarem definidas -->
-    <script async defer src="https://apis.google.com/js/api.js" onload="gapiLoaded()"></script>
-    <script async defer src="https://accounts.google.com/gsi/client" onload="gisLoaded()"></script>
+    <!-- Aguardar carregamento completo antes de carregar APIs do Google -->
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Aguardar um pouco para garantir que todos os scripts estejam carregados
+        setTimeout(function() {
+            // Carregar GAPI
+            if (!window.gapiLoaded) {
+                const gapiScript = document.createElement('script');
+                gapiScript.src = 'https://apis.google.com/js/api.js';
+                gapiScript.onload = function() {
+                    if (typeof window.gapiLoaded === 'function') {
+                        window.gapiLoaded();
+                    }
+                };
+                document.head.appendChild(gapiScript);
+            }
+            
+            // Carregar GIS
+            if (!window.gisLoaded) {
+                const gisScript = document.createElement('script');
+                gisScript.src = 'https://accounts.google.com/gsi/client';
+                gisScript.onload = function() {
+                    if (typeof window.gisLoaded === 'function') {
+                        window.gisLoaded();
+                    }
+                };
+                document.head.appendChild(gisScript);
+            }
+        }, 1000); // Aguardar 1 segundo
+    });
+    </script>
 </body>
 </html>
