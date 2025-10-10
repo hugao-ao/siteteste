@@ -5625,7 +5625,12 @@
             }
 
             try {
-                tokenClient.requestAccessToken({ prompt: 'consent' });
+                // ✅ CORREÇÃO: Sempre forçar seleção de conta para múltiplas contas
+                tokenClient.requestAccessToken({ 
+                    prompt: 'select_account', // Força seleção de conta
+                    include_granted_scopes: true,
+                    enable_granular_consent: true
+                });
             } catch (error) {
                 console.error('❌ Erro na autenticação:', error);
                 showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
@@ -5655,40 +5660,71 @@
                     return;
                 }
 
+                // ✅ CORREÇÃO: Aguardar um pouco antes de usar o token
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
+                // Definir token
+                gapi.client.setToken(resp);
+                
+                // ✅ CORREÇÃO: Verificar se o token foi definido corretamente
+                const currentToken = gapi.client.getToken();
+                if (!currentToken || !currentToken.access_token) {
+                    console.error('❌ Token não foi definido corretamente');
+                    showMessage('Erro ao definir token de acesso', 'error');
+                    return;
+                }
+
+                console.log('✅ Token definido com sucesso');
+                
+                // ✅ CORREÇÃO: Tentar obter informações do usuário com retry
+                let userInfo = null;
+                let tentativas = 0;
+                const maxTentativas = 3;
+                
+                while (!userInfo && tentativas < maxTentativas) {
+                    tentativas++;
+                    try {
+                        console.log(`🔄 Tentativa ${tentativas}/${maxTentativas} de obter informações do usuário...`);
+                        
+                        const userInfoResponse = await gapi.client.request({
+                            path: 'https://www.googleapis.com/oauth2/v2/userinfo'
+                        });
+                        
+                        userInfo = userInfoResponse.result;
+                        console.log('✅ Informações do usuário obtidas:', userInfo.email);
+                        break;
+                        
+                    } catch (apiError) {
+                        console.error(`❌ Tentativa ${tentativas} falhou:`, apiError);
+                        
+                        if (tentativas < maxTentativas) {
+                            console.log('⏳ Aguardando 2 segundos antes da próxima tentativa...');
+                            await new Promise(resolve => setTimeout(resolve, 2000));
+                        } else {
+                            console.error('❌ Todas as tentativas falharam');
+                            
+                            if (apiError.status === 401) {
+                                showMessage('Token de acesso inválido. Tente fazer login novamente.', 'error');
+                            } else if (apiError.status === 403) {
+                                showMessage('Permissão negada. Verifique as permissões da aplicação.', 'error');
+                            } else {
+                                showMessage('Erro ao validar autenticação. Tente novamente.', 'error');
+                            }
+                            return;
+                        }
+                    }
+                }
+                
                 // Verificar se o sistema de múltiplas contas está carregado
                 if (typeof window.onAuthSuccess !== 'function') {
                     console.error('❌ Sistema de múltiplas contas não carregado');
                     showMessage('Erro: Sistema de contas não carregado. Recarregue a página.', 'error');
                     return;
                 }
-
-                // Definir token temporariamente para obter informações do usuário
-                gapi.client.setToken(resp);
                 
-                // Verificar se o token é válido fazendo uma requisição de teste
-                try {
-                    const userInfoResponse = await gapi.client.request({
-                        path: 'https://www.googleapis.com/oauth2/v2/userinfo'
-                    });
-                    
-                    const userInfo = userInfoResponse.result;
-                    console.log('✅ Informações do usuário obtidas:', userInfo.email);
-                    
-                    // Chamar função do gerenciador de múltiplas contas
-                    window.onAuthSuccess(userInfo, resp.access_token);
-                    
-                } catch (apiError) {
-                    console.error('❌ Erro ao obter informações do usuário:', apiError);
-                    
-                    if (apiError.status === 401) {
-                        showMessage('Token de acesso inválido ou expirado. Tente fazer login novamente.', 'error');
-                    } else if (apiError.status === 403) {
-                        showMessage('Permissão negada. Verifique as permissões da aplicação.', 'error');
-                    } else {
-                        showMessage('Erro ao validar autenticação. Tente novamente.', 'error');
-                    }
-                    return;
-                }
+                // Chamar função do gerenciador de múltiplas contas
+                console.log('🔄 Chamando onAuthSuccess...');
+                window.onAuthSuccess(userInfo, resp.access_token);
                 
                 // Manter compatibilidade com sistema antigo se for a primeira conta
                 const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
