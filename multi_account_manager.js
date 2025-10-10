@@ -1,6 +1,46 @@
 // multi_account_manager.js - Gerenciador de Múltiplas Contas Google Calendar
 
 // ===================================================================
+// VERIFICAÇÃO DE DEPENDÊNCIAS
+// ===================================================================
+
+// Verificar se todas as dependências estão carregadas
+function checkDependencies() {
+    const dependencies = [
+        { name: 'gapi', obj: window.gapi },
+        { name: 'google', obj: window.google }
+    ];
+    
+    const missing = dependencies.filter(dep => typeof dep.obj === 'undefined');
+    
+    if (missing.length > 0) {
+        console.warn('⚠️ Dependências não carregadas:', missing.map(d => d.name));
+        return false;
+    }
+    
+    return true;
+}
+
+// Aguardar dependências antes de definir onAuthSuccess
+function waitForDependencies(callback, maxAttempts = 10) {
+    let attempts = 0;
+    
+    const check = () => {
+        attempts++;
+        
+        if (checkDependencies()) {
+            callback();
+        } else if (attempts < maxAttempts) {
+            setTimeout(check, 500);
+        } else {
+            console.error('❌ Timeout aguardando dependências');
+        }
+    };
+    
+    check();
+}
+
+// ===================================================================
 // VARIÁVEIS GLOBAIS PARA MÚLTIPLAS CONTAS
 // ===================================================================
 
@@ -464,46 +504,49 @@ window.syncAllAccounts = async function() {
  * Função chamada quando uma autenticação é bem-sucedida
  * Deve ser chamada pelo sistema de autenticação existente
  */
-window.onAuthSuccess = function(userInfo, accessToken) {
-    console.log('Autenticação bem-sucedida para:', userInfo.email);
-    
-    const accountInfo = {
-        email: userInfo.email,
-        name: userInfo.name || userInfo.email,
-        accessToken: accessToken,
-        status: 'connected',
-        lastSync: Date.now(),
-        addedAt: Date.now()
+// Definir onAuthSuccess apenas quando dependências estiverem prontas
+waitForDependencies(() => {
+    window.onAuthSuccess = function(userInfo, accessToken) {
+        console.log('Autenticação bem-sucedida para:', userInfo.email);
+        
+        const accountInfo = {
+            email: userInfo.email,
+            name: userInfo.name || userInfo.email,
+            accessToken: accessToken,
+            status: 'connected',
+            lastSync: Date.now(),
+            addedAt: Date.now()
+        };
+        
+        // Se estamos reconectando uma conta específica, atualizar apenas ela
+        if (currentAuthAccount && currentAuthAccount === userInfo.email) {
+            console.log('Reconectando conta existente:', userInfo.email);
+        } else {
+            console.log('Adicionando nova conta:', userInfo.email);
+        }
+        
+        addAccount(accountInfo);
+        
+        // Limpar variável de controle
+        currentAuthAccount = null;
+        
+        // ✅ NOVO: Atualizar interface e carregar eventos
+        updateConnectionStatus();
+        
+        // Carregar eventos após adicionar conta
+        if (typeof loadFilteredEvents === 'function') {
+            console.log('🔄 Carregando eventos após adicionar conta...');
+            loadFilteredEvents().catch(error => {
+                console.error('❌ Erro ao carregar eventos:', error);
+            });
+        }
+        
+        // Mostrar mensagem de sucesso
+        if (typeof showMessage === 'function') {
+            showMessage(`Conta ${userInfo.email} conectada com sucesso!`, 'success');
+        }
     };
-    
-    // Se estamos reconectando uma conta específica, atualizar apenas ela
-    if (currentAuthAccount && currentAuthAccount === userInfo.email) {
-        console.log('Reconectando conta existente:', userInfo.email);
-    } else {
-        console.log('Adicionando nova conta:', userInfo.email);
-    }
-    
-    addAccount(accountInfo);
-    
-    // Limpar variável de controle
-    currentAuthAccount = null;
-    
-    // ✅ NOVO: Atualizar interface e carregar eventos
-    updateConnectionStatus();
-    
-    // Carregar eventos após adicionar conta
-    if (typeof loadFilteredEvents === 'function') {
-        console.log('🔄 Carregando eventos após adicionar conta...');
-        loadFilteredEvents().catch(error => {
-            console.error('❌ Erro ao carregar eventos:', error);
-        });
-    }
-    
-    // Mostrar mensagem de sucesso
-    if (typeof showMessage === 'function') {
-        showMessage(`Conta ${userInfo.email} conectada com sucesso!`, 'success');
-    }
-};
+});
 
 /**
  * Função para obter todas as contas conectadas
