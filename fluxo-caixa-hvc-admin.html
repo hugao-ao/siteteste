@@ -5721,60 +5721,41 @@
                     return;
                 }
 
-                // ✅ CORREÇÃO: Aguardar um pouco antes de usar o token
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                // Definir token
-                gapi.client.setToken(resp);
+                console.log('🔄 Processando novo token de acesso...');
                 
-                // ✅ CORREÇÃO: Verificar se o token foi definido corretamente
-                const currentToken = gapi.client.getToken();
-                if (!currentToken || !currentToken.access_token) {
-                    console.error('❌ Token não foi definido corretamente');
-                    showMessage('Erro ao definir token de acesso', 'error');
-                    return;
-                }
-
-                console.log('✅ Token definido com sucesso');
+                // IMPORTANTE: Criar um novo token client temporário para esta autenticação
+                // Isso evita conflitos com tokens de outras contas
+                const tempToken = {
+                    access_token: resp.access_token,
+                    token_type: resp.token_type || 'Bearer',
+                    expires_in: resp.expires_in
+                };
                 
-                // ✅ CORREÇÃO: Tentar obter informações do usuário com retry e tratamento melhorado
+                // Definir token temporário
+                gapi.client.setToken(tempToken);
+                
+                console.log('✅ Token temporário definido para obter informações do usuário');
+                
+                // Obter informações do usuário com o token atual
                 let userInfo = null;
-                let tentativas = 0;
-                const maxTentativas = 3;
                 
-                while (!userInfo && tentativas < maxTentativas) {
-                    tentativas++;
-                    try {
-                        console.log(`🔄 Tentativa ${tentativas}/${maxTentativas} de obter informações do usuário...`);
-                        
-                        // Obter informações do usuário diretamente (sem makeAuthenticatedRequest para evitar loops)
-                        const userInfoResponse = await gapi.client.request({
-                            path: 'https://www.googleapis.com/oauth2/v2/userinfo'
-                        });
-                        
-                        userInfo = userInfoResponse.result;
-                        console.log('✅ Informações do usuário obtidas:', userInfo.email);
-                        break;
-                        
-                    } catch (apiError) {
-                        console.error(`❌ Tentativa ${tentativas} falhou:`, apiError);
-                        
-                        if (tentativas < maxTentativas) {
-                            console.log('⏳ Aguardando 2 segundos antes da próxima tentativa...');
-                            await new Promise(resolve => setTimeout(resolve, 2000));
-                        } else {
-                            console.error('❌ Todas as tentativas falharam');
-                            
-                            if (apiError.status === 401) {
-                                showMessage('Token de acesso inválido. Tente fazer login novamente.', 'error');
-                            } else if (apiError.status === 403) {
-                                showMessage('Permissão negada. Verifique as permissões da aplicação.', 'error');
-                            } else {
-                                showMessage('Erro ao validar autenticação. Tente novamente.', 'error');
-                            }
-                            return;
+                try {
+                    console.log('🔄 Obtendo informações do usuário...');
+                    
+                    const userInfoResponse = await gapi.client.request({
+                        path: 'https://www.googleapis.com/oauth2/v2/userinfo',
+                        headers: {
+                            'Authorization': `Bearer ${resp.access_token}`
                         }
-                    }
+                    });
+                    
+                    userInfo = userInfoResponse.result;
+                    console.log('✅ Informações do usuário obtidas:', userInfo.email);
+                    
+                } catch (apiError) {
+                    console.error('❌ Erro ao obter informações do usuário:', apiError);
+                    showMessage('Erro ao obter informações da conta. Tente novamente.', 'error');
+                    return;
                 }
                 
                 // Verificar se o sistema de múltiplas contas está carregado
@@ -5784,9 +5765,36 @@
                     return;
                 }
                 
-                // Chamar função do gerenciador de múltiplas contas
-                console.log('🔄 Chamando onAuthSuccess...');
-                window.onAuthSuccess(userInfo, resp.access_token);
+                // Verificar se a conta já existe
+                const existingAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
+                const accountExists = existingAccounts.some(acc => acc.email === userInfo.email);
+                
+                if (accountExists) {
+                    console.log('🔄 Conta já existe, atualizando token...');
+                    // Atualizar token da conta existente
+                    const existingAccount = existingAccounts.find(acc => acc.email === userInfo.email);
+                    if (existingAccount) {
+                        existingAccount.accessToken = resp.access_token;
+                        existingAccount.status = 'connected';
+                        existingAccount.lastSync = Date.now();
+                        
+                        // Salvar no localStorage
+                        if (typeof saveAccountsToStorage === 'function') {
+                            saveAccountsToStorage();
+                        }
+                        
+                        // Atualizar interface
+                        if (typeof updateAccountsDisplay === 'function') {
+                            updateAccountsDisplay();
+                        }
+                        
+                        showMessage(`Conta ${userInfo.email} reconectada com sucesso!`, 'success');
+                    }
+                } else {
+                    console.log('🔄 Nova conta, chamando onAuthSuccess...');
+                    // Chamar função do gerenciador de múltiplas contas para nova conta
+                    window.onAuthSuccess(userInfo, resp.access_token);
+                }
                 
                 // Manter compatibilidade com sistema antigo se for a primeira conta
                 const connectedAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
@@ -5796,6 +5804,10 @@
                     console.log('✅ Primeira conta conectada, ativando sistema legado');
                     
                     // Carregar eventos filtrados
+                    await loadFilteredEvents();
+                } else if (connectedAccounts.length > 1) {
+                    console.log('✅ Múltiplas contas conectadas, recarregando eventos...');
+                    // Recarregar eventos para incluir a nova conta
                     await loadFilteredEvents();
                 }
                 
