@@ -3195,6 +3195,57 @@
 
         // ✅ REMOVIDO: Função duplicada removida
 
+        // ===================================================================
+        // FUNÇÃO PARA TRATAR ERROS 401 AUTOMATICAMENTE
+        // ===================================================================
+        
+        /**
+         * Faz uma chamada autenticada para a API do Google com tratamento de erro 401
+         */
+        async function makeAuthenticatedRequest(requestFunction, accountEmail = null) {
+            try {
+                return await requestFunction();
+            } catch (error) {
+                console.error("Erro na requisição:", error);
+                
+                // Se for erro 401 (token expirado)
+                if (error.status === 401 || (error.result && error.result.error && error.result.error.code === 401)) {
+                    console.log("🔄 Token expirado detectado, tentando renovar...");
+                    
+                    if (accountEmail && window.connectedAccounts) {
+                        const account = window.connectedAccounts.find(acc => acc.email === accountEmail);
+                        if (account) {
+                            // Verificar se temos função de verificação de token
+                            if (typeof checkTokenExpiration === "function") {
+                                const tokenValid = await checkTokenExpiration(account);
+                                if (tokenValid) {
+                                    // Configurar novo token e tentar novamente
+                                    gapi.client.setToken({ access_token: account.accessToken });
+                                    console.log("🔄 Tentando novamente com token renovado...");
+                                    return await requestFunction();
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Se chegou aqui, não conseguiu renovar
+                    const errorMsg = accountEmail ? 
+                        `Token expirado para ${accountEmail}. Reconecte a conta.` : 
+                        "Token expirado. Reconecte sua conta Google.";
+                    
+                    if (typeof showMessage === "function") {
+                        showMessage(errorMsg, "error");
+                    }
+                    
+                    throw new Error(errorMsg);
+                }
+                
+                // Se não for erro 401, repassar o erro original
+                throw error;
+            }
+        }
+
+
         /**
          * Função pública para exclusão de eventos (wrapper que evita override)
          */
@@ -3795,10 +3846,13 @@
 
                 // Criar evento
                 console.log('📤 Enviando requisição para criar evento...');
-                const response = await gapi.client.calendar.events.insert({
+                const response = await makeAuthenticatedRequest(
+                    () => gapi.client.calendar.events.insert({
                     calendarId: 'primary',
                     resource: event
-                });
+                }),
+                    selectedAccount
+                );
 
                 console.log('📥 Resposta da API:', response);
 
@@ -3997,10 +4051,13 @@
 
                 // Excluir evento
                 console.log('📤 Enviando requisição para excluir evento...');
-                const response = await gapi.client.calendar.events.delete({
+                const response = await makeAuthenticatedRequest(
+                    () => gapi.client.calendar.events.delete({
                     calendarId: 'primary',
                     eventId: eventId
-                });
+                }),
+                    accountEmail
+                );
 
                 console.log('📥 Resposta da exclusão:', response);
 
@@ -5884,7 +5941,8 @@
                             // Definir token da conta atual
                             gapi.client.setToken({ access_token: account.accessToken });
                             
-                            const response = await gapi.client.calendar.events.list({
+                            const response = await makeAuthenticatedRequest(
+                            () => gapi.client.calendar.events.list({
                                 calendarId: 'primary',
                                 timeMin: startOfYear.toISOString(),
                                 timeMax: endOfYear.toISOString(),
@@ -5892,7 +5950,9 @@
                                 singleEvents: true,
                                 maxResults: 250,
                                 orderBy: 'startTime'
-                            });
+                            }),
+                            account.email
+                        );
 
                             const accountEvents = response.result.items || [];
                             totalEventsCount += accountEvents.length;
@@ -5935,7 +5995,8 @@
                     const account = connectedAccounts[0];
                     gapi.client.setToken({ access_token: account.accessToken });
                     
-                    const response = await gapi.client.calendar.events.list({
+                    const response = await makeAuthenticatedRequest(
+                            () => gapi.client.calendar.events.list({
                         calendarId: 'primary',
                         timeMin: startOfYear.toISOString(),
                         timeMax: endOfYear.toISOString(),
@@ -5943,7 +6004,9 @@
                         singleEvents: true,
                         maxResults: 250,
                         orderBy: 'startTime'
-                    });
+                    }),
+                        account.email
+                    );
 
                     const allEvents = response.result.items || [];
                     
@@ -5968,7 +6031,8 @@
                     if (isGoogleConnected && gapi.client.getToken()) {
                         console.log('📅 Usando sistema legado - nenhuma conta no gerenciador');
                         
-                        const response = await gapi.client.calendar.events.list({
+                        const response = await makeAuthenticatedRequest(
+                            () => gapi.client.calendar.events.list({
                             calendarId: 'primary',
                             timeMin: startOfYear.toISOString(),
                             timeMax: endOfYear.toISOString(),
@@ -5976,7 +6040,9 @@
                             singleEvents: true,
                             maxResults: 250,
                             orderBy: 'startTime'
-                        });
+                        }),
+                            "primary"
+                        );
 
                         const allEvents = response.result.items || [];
                         filteredEvents = filterEvents(allEvents);
@@ -6775,7 +6841,8 @@
         async function addAttachmentToEvent(eventId, attachment) {
             try {
                 // Buscar evento atual
-                const eventResponse = await gapi.client.calendar.events.get({
+                const eventResponse = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                     calendarId: 'primary',
                     eventId: eventId
                 });
@@ -6789,7 +6856,8 @@
                 event.attachments.push(attachment);
                 
                 // Atualizar evento
-                await gapi.client.calendar.events.update({
+                await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.update({
                     calendarId: 'primary',
                     eventId: eventId,
                     resource: event,
@@ -6829,7 +6897,8 @@
                 }
                 
                 // Buscar evento completo com anexos
-                const fullEventResponse = await gapi.client.calendar.events.get({
+                const fullEventResponse = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                     calendarId: 'primary',
                     eventId: event.id
                 });
@@ -6984,7 +7053,8 @@
                 }
                 
                 // Buscar evento atual
-                const eventResponse = await gapi.client.calendar.events.get({
+                const eventResponse = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                     calendarId: 'primary',
                     eventId: eventId
                 });
@@ -6997,7 +7067,8 @@
                 }
                 
                 // Atualizar evento
-                await gapi.client.calendar.events.update({
+                await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.update({
                     calendarId: 'primary',
                     eventId: eventId,
                     resource: event,
@@ -7036,7 +7107,8 @@
             
             try {
                 // Buscar detalhes completos do evento para verificar recorrência
-                const eventResponse = await gapi.client.calendar.events.get({
+                const eventResponse = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                     calendarId: 'primary',
                     eventId: eventId
                 });
@@ -7260,7 +7332,8 @@
                     // Excluir este e eventos seguintes
                     if (event.recurringEventId) {
                         // Buscar evento principal e modificar até esta data
-                        const masterEvent = await gapi.client.calendar.events.get({
+                        const masterEvent = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                             calendarId: 'primary',
                             eventId: event.recurringEventId
                         });
@@ -7350,7 +7423,8 @@
                     // Editar este e eventos seguintes
                     if (event.recurringEventId) {
                         // Buscar evento principal e modificar a partir desta data
-                        const masterEvent = await gapi.client.calendar.events.get({
+                        const masterEvent = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                             calendarId: 'primary',
                             eventId: event.recurringEventId
                         });
@@ -7445,7 +7519,8 @@
                         console.log('📌 Evento é uma instância, buscando master ID:', masterEventId);
                         
                         try {
-                            const masterResponse = await gapi.client.calendar.events.get({
+                            const masterResponse = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                                 calendarId: 'primary',
                                 eventId: masterEventId
                             });
@@ -7483,7 +7558,8 @@
                         await new Promise(resolve => setTimeout(resolve, 1000));
                         
                         console.log('🔄 Verificando se a atualização foi aplicada...');
-                        const verificationResponse = await gapi.client.calendar.events.get({
+                        const verificationResponse = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                             calendarId: 'primary',
                             eventId: masterEventId
                         });
@@ -7742,7 +7818,8 @@
                             console.log('🔄 Verificando se o evento é recorrente...');
                             
                             // Buscar detalhes completos do evento para verificar recorrência
-                            const eventResponse = await gapi.client.calendar.events.get({
+                            const eventResponse = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                                 calendarId: 'primary',
                                 eventId: eventId
                             });
@@ -8213,7 +8290,8 @@
                 }
                 
                 console.log('📤 Buscando evento...');
-                const response = await gapi.client.calendar.events.get({
+                const response = await makeAuthenticatedRequest(
+                        () => gapi.client.calendar.events.get({
                     calendarId: 'primary',
                     eventId: eventId
                 });
