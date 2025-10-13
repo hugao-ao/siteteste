@@ -382,12 +382,65 @@ window.addNewAccount = function() {
         alert('Erro ao tentar conectar nova conta. Tente novamente.');
     }
 };
+///////
 
+/**
+ * Verifica se o token de uma conta está expirado
+ */
+async function checkTokenExpiration(account) {
+    if (!account.expiresAt || Date.now() >= account.expiresAt) {
+        console.log('Token expirado para:', account.email);
+        
+        // Tentar renovar com refresh token
+        if (account.refreshToken) {
+            try {
+                const response = await fetch('https://oauth2.googleapis.com/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        client_id: CLIENT_ID,
+                        refresh_token: account.refreshToken,
+                        grant_type: 'refresh_token'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.access_token) {
+                    account.accessToken = data.access_token;
+                    account.expiresAt = Date.now() + (data.expires_in * 1000);
+                    saveAccountsToStorage();
+                    return true;
+                }
+            } catch (error) {
+                console.error('Erro ao renovar token:', error);
+            }
+        }
+        
+        // Se chegou aqui, precisa reautenticar
+        updateAccountStatus(account.email, 'error');
+        return false;
+    }
+    
+    return true;
+}
+
+///////
 /**
  * Sincroniza uma conta específica
  */
 window.syncAccount = async function(email) {
     console.log('Sincronizando conta:', email);
+    
+    const account = window.connectedAccounts.find(acc => acc.email === email);
+    if (!account) return;
+    
+    // Verificar se token está válido
+    const tokenValid = await checkTokenExpiration(account);
+    if (!tokenValid) {
+        showMessage(`Token expirado para ${email}. Reconecte a conta.`, 'error');
+        return;
+    }
     
     updateAccountStatus(email, 'syncing');
     
@@ -531,6 +584,8 @@ waitForDependencies(() => {
             email: userInfo.email,
             name: userInfo.name || userInfo.email,
             accessToken: accessToken,
+            refreshToken: userInfo.refreshToken || null,
+            expiresAt: Date.now() + (3600 * 1000), // 1 hora
             status: 'connected',
             lastSync: Date.now(),
             addedAt: Date.now()
