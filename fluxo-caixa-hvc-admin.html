@@ -5707,6 +5707,12 @@
         }
 
         async function handleTokenResponse(resp) {
+            console.log('🔄 handleTokenResponse chamado com:', {
+                access_token: resp.access_token ? 'presente' : 'ausente',
+                token_type: resp.token_type,
+                expires_in: resp.expires_in
+            });
+            
             if (resp.error) {
                 console.error('❌ Erro de autenticação:', resp.error);
                 showMessage(`Erro de autenticação: ${resp.error}`, 'error');
@@ -5741,6 +5747,7 @@
                 
                 try {
                     console.log('🔄 Obtendo informações do usuário...');
+                    console.log('🔑 Token sendo usado:', resp.access_token.substring(0, 20) + '...');
                     
                     const userInfoResponse = await gapi.client.request({
                         path: 'https://www.googleapis.com/oauth2/v2/userinfo',
@@ -5750,8 +5757,22 @@
                     });
                     
                     userInfo = userInfoResponse.result;
-                    console.log('✅ Informações do usuário obtidas:', userInfo.email);
+                    console.log('✅ Informações do usuário obtidas:');
+                    console.log('   - Email:', userInfo.email);
+                    console.log('   - Nome:', userInfo.name);
+                    console.log('   - ID:', userInfo.id);
                     
+
+                // Verificar estado do sistema antes de processar
+                console.log('🔍 Estado atual do sistema:');
+                console.log('   - window.connectedAccounts:', window.connectedAccounts);
+                console.log('   - localStorage contas:', localStorage.getItem('connectedAccounts'));
+                console.log('   - Função getConnectedAccounts disponível:', typeof window.getConnectedAccounts);
+                
+                if (typeof window.getConnectedAccounts === 'function') {
+                    const currentAccounts = window.getConnectedAccounts();
+                    console.log('   - Contas retornadas por getConnectedAccounts:', currentAccounts);
+                }
                 } catch (apiError) {
                     console.error('❌ Erro ao obter informações do usuário:', apiError);
                     showMessage('Erro ao obter informações da conta. Tente novamente.', 'error');
@@ -5767,10 +5788,16 @@
                 
                 // Verificar se a conta já existe
                 const existingAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
+                
+                console.log('🔍 DEBUG - Verificando contas existentes:');
+                console.log('   - Contas existentes:', existingAccounts.map(acc => acc.email));
+                console.log('   - Nova conta tentando conectar:', userInfo.email);
+                
                 const accountExists = existingAccounts.some(acc => acc.email === userInfo.email);
+                console.log('   - Conta já existe?', accountExists);
                 
                 if (accountExists) {
-                    console.log('🔄 Conta já existe, atualizando token...');
+                    console.log('🔄 Conta já existe, atualizando token para:', userInfo.email);
                     // Atualizar token da conta existente
                     const existingAccount = existingAccounts.find(acc => acc.email === userInfo.email);
                     if (existingAccount) {
@@ -5791,9 +5818,18 @@
                         showMessage(`Conta ${userInfo.email} reconectada com sucesso!`, 'success');
                     }
                 } else {
-                    console.log('🔄 Nova conta, chamando onAuthSuccess...');
-                    // Chamar função do gerenciador de múltiplas contas para nova conta
-                    window.onAuthSuccess(userInfo, resp.access_token);
+                    console.log('🆕 Nova conta detectada:', userInfo.email);
+                    console.log('🔄 Chamando onAuthSuccess para nova conta...');
+                    
+                    // Verificar se onAuthSuccess existe
+                    if (typeof window.onAuthSuccess === 'function') {
+                        // Chamar função do gerenciador de múltiplas contas para nova conta
+                        window.onAuthSuccess(userInfo, resp.access_token);
+                    } else {
+                        console.error('❌ Função onAuthSuccess não encontrada');
+                        showMessage('Erro: Sistema de múltiplas contas não carregado', 'error');
+                        return;
+                    }
                 }
                 
                 // Manter compatibilidade com sistema antigo se for a primeira conta
