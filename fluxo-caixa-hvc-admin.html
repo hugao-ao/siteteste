@@ -4378,6 +4378,9 @@
                         client_id: CLIENT_ID,
                         scope: SCOPES,
                         callback: handleTokenResponse,
+                        access_type: 'offline',
+                        include_granted_scopes: true,
+                        prompt: 'consent'
                     });
                     gisInited = true;
                     maybeEnableButtons();
@@ -4417,6 +4420,9 @@
                             client_id: CLIENT_ID,
                             scope: SCOPES,
                             callback: handleTokenResponse,
+                            access_type: 'offline',
+                            include_granted_scopes: true,
+                            prompt: 'consent'
                         });
                         gisInited = true;
                         maybeEnableButtons();
