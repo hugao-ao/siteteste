@@ -5710,8 +5710,20 @@
             console.log('🔄 handleTokenResponse chamado com:', {
                 access_token: resp.access_token ? 'presente' : 'ausente',
                 token_type: resp.token_type,
-                expires_in: resp.expires_in
+                expires_in: resp.expires_in,
+                state: resp.state || 'não informado'
             });
+            
+            // Verificar se este token é diferente do anterior
+            const currentAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
+            if (currentAccounts.length > 0) {
+                const lastToken = currentAccounts[currentAccounts.length - 1].accessToken;
+                if (lastToken && resp.access_token === lastToken) {
+                    console.error('❌ DETECTADO: Token idêntico ao anterior! Isso indica reutilização indevida.');
+                    showMessage('Erro: Sistema detectou reutilização de token. Tente desconectar todas as contas e conectar novamente.', 'error');
+                    return;
+                }
+            }
             
             if (resp.error) {
                 console.error('❌ Erro de autenticação:', resp.error);
@@ -10038,6 +10050,61 @@
                 console.error('❌ Erro ao reconectar:', error);
                 updateAccountStatus(email, 'error');
                 showMessage(`Erro ao reconectar ${email}`, 'error');
+            }
+        };
+
+        /**
+         * Desconecta todas as contas e limpa completamente o estado
+         */
+        window.disconnectAllAccounts = async function() {
+            console.log('🔄 Desconectando todas as contas...');
+            
+            try {
+                // 1. Limpar array de contas
+                if (window.connectedAccounts) {
+                    window.connectedAccounts = [];
+                }
+                
+                // 2. Limpar localStorage
+                localStorage.removeItem('connectedAccounts');
+                localStorage.removeItem('googleConnected');
+                
+                // 3. Limpar tokens do gapi
+                if (gapi && gapi.client) {
+                    gapi.client.setToken(null);
+                }
+                
+                // 4. Tentar revogar tokens (se possível)
+                if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+                    try {
+                        // Não há método direto, mas limpar estado
+                        console.log('🔄 Limpando estado OAuth2...');
+                    } catch (e) {
+                        console.log('⚠️ Aviso ao limpar OAuth2:', e.message);
+                    }
+                }
+                
+                // 5. Atualizar interface
+                if (typeof updateAccountsDisplay === 'function') {
+                    updateAccountsDisplay();
+                }
+                
+                // 6. Resetar variáveis globais
+                isGoogleConnected = false;
+                
+                console.log('✅ Todas as contas desconectadas com sucesso');
+                showMessage('Todas as contas foram desconectadas. Agora você pode conectar contas novas.', 'success');
+                
+                // 7. Recarregar página para garantir estado limpo
+                setTimeout(() => {
+                    if (confirm('Deseja recarregar a página para garantir limpeza completa?')) {
+                        location.reload();
+                    }
+                }, 2000);
+                
+            } catch (error) {
+                console.error('❌ Erro ao desconectar contas:', error);
+                showMessage('Erro ao desconectar contas. Recarregue a página.', 'error');
             }
         };
 </script>
