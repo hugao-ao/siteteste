@@ -3208,41 +3208,31 @@
                 
                 // Se for erro 401 (token expirado)
                 if (error.status === 401 || (error.result && error.result.error && error.result.error.code === 401)) {
-                    console.log('🔄 Token expirado detectado, tentando renovar...');
+                    console.log('🔄 Token expirado detectado para:', accountEmail || 'nova autenticação');
                     
                     if (accountEmail && window.connectedAccounts) {
+                        // Para contas já conectadas, marcar como erro e pedir reconexão
                         const account = window.connectedAccounts.find(acc => acc.email === accountEmail);
                         if (account) {
-                            // Verificar se temos função de verificação de token
-                            if (typeof checkTokenExpiration === 'function') {
-                                const tokenValid = await checkTokenExpiration(account);
-                                if (tokenValid) {
-                                    // Configurar novo token e tentar novamente
-                                    gapi.client.setToken({ access_token: account.accessToken });
-                                    console.log('🔄 Tentando novamente com token renovado...');
-                                    return await requestFunction();
-                                }
+                            console.log(`❌ Token expirado para conta existente: ${accountEmail}`);
+                            
+                            // Marcar conta como com erro
+                            if (typeof updateAccountStatus === 'function') {
+                                updateAccountStatus(accountEmail, 'error');
                             }
+                            
+                            const errorMsg = `Token expirado para ${accountEmail}. Clique em "Reconectar" para esta conta.`;
+                            if (typeof showMessage === 'function') {
+                                showMessage(errorMsg, 'error');
+                            }
+                            
+                            throw new Error(errorMsg);
                         }
-                    } else if (!accountEmail) {
-                        // Se não temos email, pode ser uma nova autenticação
-                        console.log('🔄 Erro 401 durante nova autenticação - solicitando nova autenticação...');
-                        
-                        // Para novos logins, não mostrar erro, apenas logar
-                        console.warn('Token inválido durante processo de autenticação inicial');
-                        throw error; // Repassar erro para que o processo de auth trate
+                    } else {
+                        // Para nova autenticação, apenas repassar o erro
+                        console.log('🔄 Erro 401 durante nova autenticação - processo normal');
+                        throw error;
                     }
-                    
-                    // Se chegou aqui, não conseguiu renovar
-                    const errorMsg = accountEmail ? 
-                        `Token expirado para ${accountEmail}. Reconecte a conta.` : 
-                        'Token expirado durante autenticação. Tente novamente.';
-                    
-                    if (typeof showMessage === 'function' && accountEmail) {
-                        showMessage(errorMsg, 'error');
-                    }
-                    
-                    throw new Error(errorMsg);
                 }
                 
                 // Se não for erro 401, repassar o erro original
@@ -5757,13 +5747,10 @@
                     try {
                         console.log(`🔄 Tentativa ${tentativas}/${maxTentativas} de obter informações do usuário...`);
                         
-                        // Usar makeAuthenticatedRequest para obter informações do usuário
-                        const userInfoResponse = await makeAuthenticatedRequest(
-                            () => gapi.client.request({
-                                path: 'https://www.googleapis.com/oauth2/v2/userinfo'
-                            }),
-                            null // Não temos email ainda, então passamos null
-                        );
+                        // Obter informações do usuário diretamente (sem makeAuthenticatedRequest para evitar loops)
+                        const userInfoResponse = await gapi.client.request({
+                            path: 'https://www.googleapis.com/oauth2/v2/userinfo'
+                        });
                         
                         userInfo = userInfoResponse.result;
                         console.log('✅ Informações do usuário obtidas:', userInfo.email);
@@ -9967,6 +9954,44 @@
         // Iniciar carregamento após 2 segundos
         setTimeout(inicializarAPIs, 2000);
     });
-    </script>
+    
+        /**
+         * Reconecta uma conta específica
+         */
+        window.reconnectAccount = function(email) {
+            console.log('🔄 Reconectando conta:', email);
+            
+            // Encontrar a conta
+            const account = window.connectedAccounts.find(acc => acc.email === email);
+            if (!account) {
+                console.error('❌ Conta não encontrada:', email);
+                return;
+            }
+            
+            // Marcar como reconectando
+            updateAccountStatus(email, 'connecting');
+            
+            // Limpar token anterior
+            if (gapi && gapi.client) {
+                gapi.client.setToken(null);
+            }
+            
+            // Definir que estamos reconectando esta conta específica
+            currentAuthAccount = email;
+            
+            // Solicitar nova autenticação
+            try {
+                tokenClient.requestAccessToken({ 
+                    prompt: 'select_account consent',
+                    include_granted_scopes: true,
+                    login_hint: email // Sugerir o email específico
+                });
+            } catch (error) {
+                console.error('❌ Erro ao reconectar:', error);
+                updateAccountStatus(email, 'error');
+                showMessage(`Erro ao reconectar ${email}`, 'error');
+            }
+        };
+</script>
 </body>
 </html>
