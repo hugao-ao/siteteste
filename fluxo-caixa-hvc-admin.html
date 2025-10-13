@@ -3224,14 +3224,21 @@
                                 }
                             }
                         }
+                    } else if (!accountEmail) {
+                        // Se não temos email, pode ser uma nova autenticação
+                        console.log('🔄 Erro 401 durante nova autenticação - solicitando nova autenticação...');
+                        
+                        // Para novos logins, não mostrar erro, apenas logar
+                        console.warn('Token inválido durante processo de autenticação inicial');
+                        throw error; // Repassar erro para que o processo de auth trate
                     }
                     
                     // Se chegou aqui, não conseguiu renovar
                     const errorMsg = accountEmail ? 
                         `Token expirado para ${accountEmail}. Reconecte a conta.` : 
-                        'Token expirado. Reconecte sua conta Google.';
+                        'Token expirado durante autenticação. Tente novamente.';
                     
-                    if (typeof showMessage === 'function') {
+                    if (typeof showMessage === 'function' && accountEmail) {
                         showMessage(errorMsg, 'error');
                     }
                     
@@ -4478,7 +4485,9 @@
                             callback: handleTokenResponse,
                             access_type: 'offline',
                             include_granted_scopes: true,
-                            prompt: 'consent'
+                            prompt: 'consent',
+                            enable_granular_consent: true,
+                            enable_serial_consent: true
                         });
                         gisInited = true;
                         maybeEnableButtons();
@@ -5738,7 +5747,7 @@
 
                 console.log('✅ Token definido com sucesso');
                 
-                // ✅ CORREÇÃO: Tentar obter informações do usuário com retry
+                // ✅ CORREÇÃO: Tentar obter informações do usuário com retry e tratamento melhorado
                 let userInfo = null;
                 let tentativas = 0;
                 const maxTentativas = 3;
@@ -5748,9 +5757,13 @@
                     try {
                         console.log(`🔄 Tentativa ${tentativas}/${maxTentativas} de obter informações do usuário...`);
                         
-                        const userInfoResponse = await gapi.client.request({
-                            path: 'https://www.googleapis.com/oauth2/v2/userinfo'
-                        });
+                        // Usar makeAuthenticatedRequest para obter informações do usuário
+                        const userInfoResponse = await makeAuthenticatedRequest(
+                            () => gapi.client.request({
+                                path: 'https://www.googleapis.com/oauth2/v2/userinfo'
+                            }),
+                            null // Não temos email ainda, então passamos null
+                        );
                         
                         userInfo = userInfoResponse.result;
                         console.log('✅ Informações do usuário obtidas:', userInfo.email);
