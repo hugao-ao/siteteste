@@ -10107,6 +10107,94 @@
                 showMessage('Erro ao desconectar contas. Recarregue a página.', 'error');
             }
         };
+
+        /**
+         * Método alternativo usando iframe para isolamento completo
+         */
+        window.addNewAccountIframe = function() {
+            console.log('🔄 Método alternativo: usando iframe...');
+            
+            // Criar iframe oculto
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = 'about:blank';
+            document.body.appendChild(iframe);
+            
+            // Aguardar iframe carregar
+            iframe.onload = function() {
+                console.log('✅ Iframe carregado');
+                
+                // Criar script no iframe
+                const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+                const script = iframeDoc.createElement('script');
+                script.src = 'https://apis.google.com/js/api.js';
+                
+                script.onload = function() {
+                    console.log('✅ GAPI carregado no iframe');
+                    
+                    // Inicializar GAPI no iframe
+                    const iframeGapi = iframe.contentWindow.gapi;
+                    
+                    iframeGapi.load('auth2', function() {
+                        const auth2 = iframeGapi.auth2.init({
+                            client_id: CLIENT_ID,
+                            scope: SCOPES
+                        });
+                        
+                        // Fazer logout primeiro
+                        if (auth2.isSignedIn.get()) {
+                            auth2.signOut().then(function() {
+                                console.log('✅ Logout realizado no iframe');
+                                
+                                // Agora fazer login com nova conta
+                                auth2.signIn({
+                                    prompt: 'select_account consent'
+                                }).then(function(googleUser) {
+                                    const authResponse = googleUser.getAuthResponse();
+                                    console.log('✅ Nova autenticação obtida:', authResponse.access_token.substring(0, 20) + '...');
+                                    
+                                    // Processar token
+                                    handleTokenResponse({
+                                        access_token: authResponse.access_token,
+                                        token_type: 'Bearer',
+                                        expires_in: authResponse.expires_in
+                                    });
+                                    
+                                    // Remover iframe
+                                    document.body.removeChild(iframe);
+                                    
+                                }).catch(function(error) {
+                                    console.error('❌ Erro na autenticação iframe:', error);
+                                    document.body.removeChild(iframe);
+                                });
+                            });
+                        } else {
+                            // Fazer login direto
+                            auth2.signIn({
+                                prompt: 'select_account consent'
+                            }).then(function(googleUser) {
+                                const authResponse = googleUser.getAuthResponse();
+                                console.log('✅ Autenticação obtida:', authResponse.access_token.substring(0, 20) + '...');
+                                
+                                handleTokenResponse({
+                                    access_token: authResponse.access_token,
+                                    token_type: 'Bearer',
+                                    expires_in: authResponse.expires_in
+                                });
+                                
+                                document.body.removeChild(iframe);
+                                
+                            }).catch(function(error) {
+                                console.error('❌ Erro na autenticação iframe:', error);
+                                document.body.removeChild(iframe);
+                            });
+                        }
+                    });
+                };
+                
+                iframeDoc.head.appendChild(script);
+            };
+        };
 </script>
 </body>
 </html>
