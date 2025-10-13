@@ -5827,6 +5827,23 @@
                             updateAccountsDisplay();
                         }
                         
+                        // FORÇAR ATUALIZAÇÃO COMPLETA DA INTERFACE
+                        console.log('🔄 Forçando atualização da interface para conta reconectada...');
+                        
+                        // Ativar sistema legado se for a primeira/única conta
+                        if (existingAccounts.length === 1) {
+                            isGoogleConnected = true;
+                            saveConnectionState();
+                            
+                            // Carregar eventos
+                            await loadFilteredEvents();
+                            
+                            // Forçar atualização da interface
+                            setTimeout(() => {
+                                forceInterfaceUpdate();
+                            }, 1000);
+                        }
+                        
                         showMessage(`Conta ${userInfo.email} reconectada com sucesso!`, 'success');
                     }
                 } else {
@@ -5853,10 +5870,59 @@
                     
                     // Carregar eventos filtrados
                     await loadFilteredEvents();
+                    
+                    // FORÇAR ATUALIZAÇÃO DA INTERFACE
+                    console.log('🔄 Forçando atualização da interface...');
+                    
+                    // Mostrar seções que devem aparecer após conexão
+                    const calendarSection = document.getElementById('calendar-section');
+                    const eventsSection = document.getElementById('events-section');
+                    const paymentsSection = document.getElementById('payments-section');
+                    
+                    if (calendarSection) {
+                        calendarSection.style.display = 'block';
+                        console.log('✅ Seção do calendário mostrada');
+                    }
+                    
+                    if (eventsSection) {
+                        eventsSection.style.display = 'block';
+                        console.log('✅ Seção de eventos mostrada');
+                    }
+                    
+                    if (paymentsSection) {
+                        paymentsSection.style.display = 'block';
+                        console.log('✅ Seção de pagamentos mostrada');
+                    }
+                    
+                    // Forçar renderização do calendário
+                    if (typeof renderCalendar === 'function') {
+                        console.log('🔄 Renderizando calendário...');
+                        renderCalendar();
+                    }
+                    
+                    // Forçar atualização de listas
+                    if (typeof updateEventsList === 'function') {
+                        console.log('🔄 Atualizando lista de eventos...');
+                        updateEventsList();
+                    }
+                    
+                    if (typeof updatePaymentsList === 'function') {
+                        console.log('🔄 Atualizando lista de pagamentos...');
+                        updatePaymentsList();
+                    }
+                    
                 } else if (connectedAccounts.length > 1) {
                     console.log('✅ Múltiplas contas conectadas, recarregando eventos...');
                     // Recarregar eventos para incluir a nova conta
                     await loadFilteredEvents();
+                    
+                    // Atualizar interface também para múltiplas contas
+                    if (typeof renderCalendar === 'function') {
+                        renderCalendar();
+                    }
+                    if (typeof updateEventsList === 'function') {
+                        updateEventsList();
+                    }
                 }
                 
             } catch (error) {
@@ -10195,6 +10261,114 @@
                 iframeDoc.head.appendChild(script);
             };
         };
+
+        /**
+         * Mostra todas as seções da interface após conexão bem-sucedida
+         */
+        function showAllSections() {
+            console.log('🔄 Mostrando todas as seções da interface...');
+            
+            // Lista de IDs de seções que devem aparecer
+            const sectionIds = [
+                'calendar-section',
+                'events-section', 
+                'payments-section',
+                'receivables-section',
+                'calendar-container',
+                'google-calendar',
+                'events-list',
+                'payments-list',
+                'receivables-list'
+            ];
+            
+            sectionIds.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.style.display = 'block';
+                    console.log(`✅ Seção ${id} mostrada`);
+                } else {
+                    console.log(`⚠️ Seção ${id} não encontrada`);
+                }
+            });
+            
+            // Mostrar elementos por classe também
+            const classNames = [
+                'calendar-section',
+                'events-section',
+                'payments-section',
+                'google-calendar-container'
+            ];
+            
+            classNames.forEach(className => {
+                const elements = document.getElementsByClassName(className);
+                for (let i = 0; i < elements.length; i++) {
+                    elements[i].style.display = 'block';
+                    console.log(`✅ Elemento da classe ${className} mostrado`);
+                }
+            });
+            
+            // Forçar reflow da página
+            document.body.offsetHeight;
+            
+            console.log('✅ Todas as seções foram processadas');
+        }
+        
+        /**
+         * Força atualização completa da interface
+         */
+        function forceInterfaceUpdate() {
+            console.log('🔄 Forçando atualização completa da interface...');
+            
+            // Mostrar seções
+            showAllSections();
+            
+            // Aguardar um pouco e tentar renderizar componentes
+            setTimeout(() => {
+                console.log('🔄 Tentando renderizar componentes...');
+                
+                // Tentar renderizar calendário
+                if (typeof renderCalendar === 'function') {
+                    try {
+                        renderCalendar();
+                        console.log('✅ Calendário renderizado');
+                    } catch (e) {
+                        console.error('❌ Erro ao renderizar calendário:', e);
+                    }
+                }
+                
+                // Tentar atualizar listas
+                if (typeof updateEventsList === 'function') {
+                    try {
+                        updateEventsList();
+                        console.log('✅ Lista de eventos atualizada');
+                    } catch (e) {
+                        console.error('❌ Erro ao atualizar lista de eventos:', e);
+                    }
+                }
+                
+                // Tentar inicializar Google Calendar se não estiver
+                if (typeof initializeGoogleCalendar === 'function') {
+                    try {
+                        initializeGoogleCalendar();
+                        console.log('✅ Google Calendar inicializado');
+                    } catch (e) {
+                        console.error('❌ Erro ao inicializar Google Calendar:', e);
+                    }
+                }
+                
+                // Recarregar página como último recurso (opcional)
+                // setTimeout(() => {
+                //     if (confirm('Interface não atualizou completamente. Deseja recarregar a página?')) {
+                //         location.reload();
+                //     }
+                // }, 5000);
+                
+            }, 1000);
+        }
+        
+        // Disponibilizar globalmente
+        window.showAllSections = showAllSections;
+        window.forceInterfaceUpdate = forceInterfaceUpdate;
 </script>
 </body>
 </html>
