@@ -8658,11 +8658,47 @@
                         ? ['RC', 'ADIADO', 'AGUARDANDO']
                         : ['PG', 'RECALCULADO', 'PENDENTE'];
                     
+                    // Extrair tipo, subtipo e categoria do nome do item (formato: TIPO - SUBTIPO - CATEGORIA - NOME)
+                    const nameParts = (item.name || '').split(' - ');
+                    let tipo = '', subtipo = '', categoria = '', nome = item.name || '';
+                    
+                    if (nameParts.length >= 4) {
+                        tipo = nameParts[0];
+                        subtipo = nameParts[1];
+                        categoria = nameParts[2];
+                        nome = nameParts.slice(3).join(' - ');
+                    } else if (nameParts.length === 3) {
+                        subtipo = nameParts[0];
+                        categoria = nameParts[1];
+                        nome = nameParts[2];
+                    } else if (nameParts.length === 2) {
+                        subtipo = nameParts[0];
+                        nome = nameParts[1];
+                    }
+                    
                     editHTML += `
                         <div class="edit-item-row">
+                            ${eventType === 'pagamento' ? `
+                            <div class="edit-item-field">
+                                <label>TIPO:</label>
+                                <select class="edit-item-tipo">
+                                    <option value="">Nenhum</option>
+                                    <option value="INTERNO" ${tipo === 'INTERNO' ? 'selected' : ''}>INTERNO</option>
+                                    <option value="EXTERNO" ${tipo === 'EXTERNO' ? 'selected' : ''}>EXTERNO</option>
+                                </select>
+                            </div>
+                            <div class="edit-item-field">
+                                <label>SUBTIPO:</label>
+                                <input type="text" class="edit-item-subtipo" value="${subtipo}" placeholder="Ex: OBRA, Fornecedor..." />
+                            </div>
+                            <div class="edit-item-field">
+                                <label>CATEGORIA:</label>
+                                <input type="text" class="edit-item-categoria" value="${categoria}" placeholder="Ex: Construção..." />
+                            </div>
+                            ` : ''}
                             <div class="edit-item-field">
                                 <label>NOME:</label>
-                                <input type="text" class="edit-item-name" value="${item.name || ''}" />
+                                <input type="text" class="edit-item-name" value="${nome}" />
                             </div>
                             <div class="edit-item-field">
                                 <label>VALOR:</label>
@@ -8739,14 +8775,30 @@
                 const updatedItems = [];
                 
                 editRows.forEach((row, itemIndex) => {
-                    const name = row.querySelector('.edit-item-name').value.trim();
+                    // Coletar todos os campos
+                    const tipoInput = row.querySelector('.edit-item-tipo');
+                    const subtipoInput = row.querySelector('.edit-item-subtipo');
+                    const categoriaInput = row.querySelector('.edit-item-categoria');
+                    
+                    const tipo = tipoInput ? tipoInput.value.trim() : '';
+                    const subtipo = subtipoInput ? subtipoInput.value.trim() : '';
+                    const categoria = categoriaInput ? categoriaInput.value.trim() : '';
+                    const nome = row.querySelector('.edit-item-name').value.trim();
                     const valueInput = row.querySelector('.edit-item-value').value;
                     const value = parseFloat(valueInput) || 0;
                     const status = row.querySelector('.edit-item-status').value;
                     const detail = row.querySelector('.edit-item-detail').value.trim();
                     
+                    // Montar o nome completo com tipo, subtipo e categoria
+                    const nameParts = [];
+                    if (tipo) nameParts.push(tipo);
+                    if (subtipo) nameParts.push(subtipo);
+                    if (categoria) nameParts.push(categoria);
+                    nameParts.push(nome);
+                    const fullName = nameParts.join(' - ');
+                    
                     updatedItems.push({
-                        name: name,
+                        name: fullName,
                         value: value,
                         status: status,
                         detail: detail,
