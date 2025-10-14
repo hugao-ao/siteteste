@@ -3171,7 +3171,7 @@
         // Configurações
         const CLIENT_ID = '314578730498-ghkttnk7g4729g206tk3gsac1qtghhme.apps.googleusercontent.com';
         const DISCOVERY_DOC = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
-        const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file';
+        const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
         let tokenClient;
         let gapiInited = false;
@@ -5714,6 +5714,16 @@
                 state: resp.state || 'não informado'
             });
             
+            // Verificar se este token é diferente do anterior
+            const currentAccounts = window.getConnectedAccounts ? window.getConnectedAccounts() : [];
+            if (currentAccounts.length > 0) {
+                const lastToken = currentAccounts[currentAccounts.length - 1].accessToken;
+                if (lastToken && resp.access_token === lastToken) {
+                    console.error('❌ DETECTADO: Token idêntico ao anterior! Isso indica reutilização indevida.');
+                    showMessage('Erro: Sistema detectou reutilização de token. Tente desconectar todas as contas e conectar novamente.', 'error');
+                    return;
+                }
+            }
             
             if (resp.error) {
                 console.error('❌ Erro de autenticação:', resp.error);
