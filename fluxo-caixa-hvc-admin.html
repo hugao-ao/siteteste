@@ -8689,11 +8689,25 @@
                             </div>
                             <div class="edit-item-field">
                                 <label>SUBTIPO:</label>
-                                <input type="text" class="edit-item-subtipo" value="${subtipo}" placeholder="Ex: OBRA, Fornecedor..." />
+                                <div class="field-with-manage">
+                                    <select class="edit-item-subtipo" data-item-index="${index}">
+                                        <option value="">Nenhum</option>
+                                    </select>
+                                    <button type="button" class="btn-manage-list" onclick="openManageSubtiposModal()">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                </div>
                             </div>
                             <div class="edit-item-field">
                                 <label>CATEGORIA:</label>
-                                <input type="text" class="edit-item-categoria" value="${categoria}" placeholder="Ex: Construção..." />
+                                <div class="field-with-manage">
+                                    <select class="edit-item-categoria" data-item-index="${index}">
+                                        <option value="">Selecione uma obra...</option>
+                                    </select>
+                                    <button type="button" class="btn-manage-list btn-manage-categorias" data-item-index="${index}" onclick="openManageCategoriasModal()">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                </div>
                             </div>
                             ` : ''}
                             <div class="edit-item-field">
@@ -8734,11 +8748,123 @@
                 editDiv.innerHTML = editHTML;
                 editDiv.style.display = 'block';
                 
+                // Popular selects de SUBTIPO e CATEGORIA
+                items.forEach((item, index) => {
+                    // Extrair tipo, subtipo e categoria do nome do item
+                    const nameParts = (item.name || '').split(' - ');
+                    let tipo = '', subtipo = '', categoria = '', nome = item.name || '';
+                    
+                    if (nameParts.length >= 4) {
+                        tipo = nameParts[0];
+                        subtipo = nameParts[1];
+                        categoria = nameParts[2];
+                        nome = nameParts.slice(3).join(' - ');
+                    } else if (nameParts.length === 3) {
+                        subtipo = nameParts[0];
+                        categoria = nameParts[1];
+                        nome = nameParts[2];
+                    } else if (nameParts.length === 2) {
+                        subtipo = nameParts[0];
+                        nome = nameParts[1];
+                    }
+                    
+                    setTimeout(() => {
+                        // Popular SUBTIPO
+                        const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
+                        if (subtipoSelect) {
+                            // Limpar e adicionar opções
+                            subtipoSelect.innerHTML = '<option value="">Nenhum</option><option value="OBRA">OBRA</option>';
+                            
+                            // Adicionar subtipos personalizados
+                            const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos') || '[]');
+                            customSubtipos.forEach(st => {
+                                subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                            });
+                            
+                            // Selecionar valor atual
+                            if (subtipo) {
+                                subtipoSelect.value = subtipo;
+                            }
+                            
+                            // Adicionar evento de mudança
+                            subtipoSelect.addEventListener('change', function() {
+                                updateCategoriaSelectInEdit(index, this.value);
+                            });
+                            
+                            // Popular CATEGORIA baseado no subtipo atual
+                            updateCategoriaSelectInEdit(index, subtipo);
+                        }
+                    }, 100);
+                });
+                
                 console.log('✅ Interface de edição criada');
                 
             } catch (error) {
                 console.error('❌ Erro ao iniciar edição:', error);
                 alert('Erro ao carregar dados para edição: ' + error.message);
+            }
+        };
+
+
+        // Função para atualizar select de categoria na edição
+        window.updateCategoriaSelectInEdit = async function(itemIndex, subtipo) {
+            const categoriaSelect = document.querySelector(`.edit-item-categoria[data-item-index="${itemIndex}"]`);
+            const btnManage = document.querySelector(`.btn-manage-categorias[data-item-index="${itemIndex}"]`);
+            
+            if (!categoriaSelect) return;
+            
+            // Salvar valor atual
+            const currentValue = categoriaSelect.value;
+            
+            if (subtipo === 'OBRA') {
+                // Carregar obras do Supabase
+                categoriaSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                btnManage.disabled = true;
+                btnManage.style.opacity = '0.5';
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    categoriaSelect.innerHTML = '<option value="">Selecione uma obra...</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            categoriaSelect.innerHTML += `<option value="${obraName}">${obraName}</option>`;
+                        });
+                    } else {
+                        categoriaSelect.innerHTML = '<option value="">Nenhuma obra cadastrada</option>';
+                    }
+                    
+                    // Restaurar valor se existir
+                    if (currentValue) {
+                        categoriaSelect.value = currentValue;
+                    }
+                    
+                } catch (error) {
+                    console.error('Erro ao carregar obras:', error);
+                    categoriaSelect.innerHTML = '<option value="">Erro ao carregar obras</option>';
+                }
+            } else {
+                // Usar lista personalizada
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                btnManage.disabled = false;
+                btnManage.style.opacity = '1';
+                
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+                
+                // Restaurar valor se existir
+                if (currentValue) {
+                    categoriaSelect.value = currentValue;
+                }
             }
         };
 
