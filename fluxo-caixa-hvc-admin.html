@@ -5875,9 +5875,9 @@
                     console.log('🔄 Forçando atualização da interface...');
                     
                     // Mostrar seções que devem aparecer após conexão
-                    const calendarSection = document.getElementById('calendar-section');
-                    const eventsSection = document.getElementById('events-section');
-                    const paymentsSection = document.getElementById('payments-section');
+                    const calendarSection = document.getElementById('calendarSection');
+                    const eventsSection = document.getElementById('monthlySummarySection');
+                    const paymentsSection = document.getElementById('paymentsListSection');
                     
                     if (calendarSection) {
                         calendarSection.style.display = 'block';
@@ -10270,15 +10270,12 @@
             
             // Lista de IDs de seções que devem aparecer
             const sectionIds = [
-                'calendar-section',
-                'events-section', 
-                'payments-section',
-                'receivables-section',
-                'calendar-container',
-                'google-calendar',
-                'events-list',
-                'payments-list',
-                'receivables-list'
+                'calendarSection',
+                'monthlySummarySection',
+                'paymentsListSection',
+                'receivingsListSection',
+                'paymentsList',
+                'receivingsList'
             ];
             
             sectionIds.forEach(id => {
@@ -10294,9 +10291,9 @@
             // Mostrar elementos por classe também
             const classNames = [
                 'calendar-section',
-                'events-section',
-                'payments-section',
-                'google-calendar-container'
+                'monthly-summary-container',
+                'payments-list-section',
+                'receivings-list-section'
             ];
             
             classNames.forEach(className => {
