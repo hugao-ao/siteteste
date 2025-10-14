@@ -10832,18 +10832,33 @@
             try {
                 const { data: obras, error } = await supabase
                     .from('obras_hvc')
-                    .select('id, nome')
-                    .order('nome');
-                if (error) throw error;
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    console.error('Erro ao carregar obras:', error);
+                    select.innerHTML = '<option value="">Nenhuma obra encontrada</option>';
+                    return;
+                }
+                
                 select.innerHTML = '<option value="">Selecione uma obra...</option>';
+                
+                if (!obras || obras.length === 0) {
+                    select.innerHTML = '<option value="">Nenhuma obra cadastrada</option>';
+                    return;
+                }
+                
                 obras.forEach(obra => {
                     const option = document.createElement('option');
-                    option.value = obra.nome;
-                    option.textContent = obra.nome;
+                    // Usar numero_obra se existir, senão usar id
+                    const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                    option.value = obraName;
+                    option.textContent = obraName;
                     select.appendChild(option);
                 });
             } catch (error) {
                 console.error('Erro ao carregar obras:', error);
+                select.innerHTML = '<option value="">Erro ao carregar obras</option>';
             }
         }
 
@@ -10985,18 +11000,32 @@
             try {
                 const { data: obras, error } = await supabase
                     .from('obras_hvc')
-                    .select('id, nome')
-                    .order('nome');
-                if (error) throw error;
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) {
+                    console.error('Erro ao carregar obras:', error);
+                    select.innerHTML = '<option value="">Nenhuma obra encontrada</option>';
+                    return;
+                }
+                
                 select.innerHTML = '<option value="">Selecione uma obra...</option>';
+                
+                if (!obras || obras.length === 0) {
+                    select.innerHTML = '<option value="">Nenhuma obra cadastrada</option>';
+                    return;
+                }
+                
                 obras.forEach(obra => {
                     const option = document.createElement('option');
-                    option.value = obra.nome;
-                    option.textContent = obra.nome;
+                    const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                    option.value = obraName;
+                    option.textContent = obraName;
                     select.appendChild(option);
                 });
             } catch (error) {
                 console.error('Erro ao carregar obras:', error);
+                select.innerHTML = '<option value="">Erro ao carregar obras</option>';
             }
         }
 
