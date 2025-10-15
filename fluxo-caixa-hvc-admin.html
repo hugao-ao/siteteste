@@ -5456,6 +5456,12 @@
             
             if (!selectedType) return;
             
+            // ✅ NOVO: Renderizar campos baseado no tipo de evento
+            const eventType = selectedType.value.toLowerCase();
+            if (typeof window.renderEventTypeFields === 'function') {
+                window.renderEventTypeFields(eventType);
+            }
+            
             // Atualizar título da seção
             if (itemsTitle) {
                 itemsTitle.textContent = selectedType.value === 'PAGAMENTO' ? 'Itens de Pagamento' : 'Itens de Recebimento';
