@@ -8928,6 +8928,8 @@
                 subtipoSelect.innerHTML = '<option value="">Carregando obras...</option>';
                 btnManageSubtipo.disabled = true;
                 btnManageSubtipo.style.opacity = '0.5';
+                btnManageSubtipo.style.pointerEvents = 'none';
+                btnManageSubtipo.style.cursor = 'not-allowed';
                 
                 try {
                     const { data: obras, error } = await supabase
@@ -8960,6 +8962,8 @@
                 subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
                 btnManageSubtipo.disabled = false;
                 btnManageSubtipo.style.opacity = '1';
+                btnManageSubtipo.style.pointerEvents = 'auto';
+                btnManageSubtipo.style.cursor = 'pointer';
                 
                 const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
                 customSubtipos.forEach(st => {
@@ -8969,6 +8973,8 @@
                 subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
                 btnManageSubtipo.disabled = true;
                 btnManageSubtipo.style.opacity = '0.5';
+                btnManageSubtipo.style.pointerEvents = 'none';
+                btnManageSubtipo.style.cursor = 'not-allowed';
             }
             
             // Limpar categoria
@@ -8997,8 +9003,10 @@
                 
                 if (obraId) {
                     categoriaSelect.innerHTML = '<option value="">Carregando medições...</option>';
-                    btnManageCategoria.disabled = false;
-                    btnManageCategoria.style.opacity = '1';
+                    btnManageCategoria.disabled = true;
+                    btnManageCategoria.style.opacity = '0.5';
+                    btnManageCategoria.style.pointerEvents = 'none';
+                    btnManageCategoria.style.cursor = 'not-allowed';
                     
                     try {
                         const { data: medicoes, error } = await supabase
@@ -9031,6 +9039,8 @@
                 categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
                 btnManageCategoria.disabled = false;
                 btnManageCategoria.style.opacity = '1';
+                btnManageCategoria.style.pointerEvents = 'auto';
+                btnManageCategoria.style.cursor = 'pointer';
                 
                 const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
                 customCategorias.forEach(cat => {
@@ -9040,17 +9050,29 @@
                 categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
                 btnManageCategoria.disabled = true;
                 btnManageCategoria.style.opacity = '0.5';
+                btnManageCategoria.style.pointerEvents = 'none';
+                btnManageCategoria.style.cursor = 'not-allowed';
             }
         };
         
         // Funções para abrir modais de gerenciamento (RECEBIMENTO)
         window.openManageSubtiposRecModal = function() {
+            const btn = document.getElementById('btn-manage-subtipo-rec');
+            if (btn && btn.disabled) {
+                console.log('⚠️ Botão de gerenciar subtipos está desabilitado');
+                return; // Não abre modal se botão está desabilitado
+            }
             openManageListModal('hvc_custom_subtipos_rec', 'Gerenciar Subtipos de Recebimento', function() {
                 updateSubtipoForReceiving();
             });
         };
         
         window.openManageCategoriasRecModal = function() {
+            const btn = document.getElementById('manageCategoriaBtn');
+            if (btn && btn.disabled) {
+                console.log('⚠️ Botão de gerenciar categorias está desabilitado');
+                return; // Não abre modal se botão está desabilitado
+            }
             openManageListModal('hvc_custom_categorias_rec', 'Gerenciar Categorias de Recebimento', function() {
                 updateCategoriaForReceiving();
             });
@@ -9411,6 +9433,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
                 
                 try {
@@ -9438,6 +9462,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
@@ -9479,6 +9505,8 @@
                     if (btnManage) {
                         btnManage.disabled = true;
                         btnManage.style.opacity = '0.5';
+                        btnManage.style.pointerEvents = 'none';
+                        btnManage.style.cursor = 'not-allowed';
                     }
                     
                     try {
@@ -9508,6 +9536,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
@@ -9519,6 +9549,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
             }
         };
@@ -10783,6 +10815,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
                 
                 try {
@@ -10810,6 +10844,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
@@ -10851,6 +10887,8 @@
                     if (btnManage) {
                         btnManage.disabled = true;
                         btnManage.style.opacity = '0.5';
+                        btnManage.style.pointerEvents = 'none';
+                        btnManage.style.cursor = 'not-allowed';
                     }
                     
                     try {
@@ -10880,6 +10918,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
@@ -10891,6 +10931,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
             }
         };
@@ -11446,6 +11488,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
                 
                 try {
@@ -11473,6 +11517,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
@@ -11514,6 +11560,8 @@
                     if (btnManage) {
                         btnManage.disabled = true;
                         btnManage.style.opacity = '0.5';
+                        btnManage.style.pointerEvents = 'none';
+                        btnManage.style.cursor = 'not-allowed';
                     }
                     
                     try {
@@ -11543,6 +11591,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
@@ -11554,6 +11604,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
             }
         };
@@ -12278,6 +12330,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
                 
                 try {
@@ -12305,6 +12359,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
@@ -12346,6 +12402,8 @@
                     if (btnManage) {
                         btnManage.disabled = true;
                         btnManage.style.opacity = '0.5';
+                        btnManage.style.pointerEvents = 'none';
+                        btnManage.style.cursor = 'not-allowed';
                     }
                     
                     try {
@@ -12375,6 +12433,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
@@ -12386,6 +12446,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
             }
         };
@@ -13410,7 +13472,7 @@
             listContainer.innerHTML = items.map(item => `
                 <div class="manage-list-item">
                     <span>${item}</span>
-                    <button onclick="removeItemFromManageList('${item.replace(/'/g, "\'")}');" class="remove-list-item-btn">
+                    <button onclick="removeItemFromManageList('${item.replace(/'/g, "'")}');" class="remove-list-item-btn">
                         <i class="fas fa-trash"></i>
                     </button>
                 </div>
@@ -13724,6 +13786,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
                 
                 try {
@@ -13751,6 +13815,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
@@ -13792,6 +13858,8 @@
                     if (btnManage) {
                         btnManage.disabled = true;
                         btnManage.style.opacity = '0.5';
+                        btnManage.style.pointerEvents = 'none';
+                        btnManage.style.cursor = 'not-allowed';
                     }
                     
                     try {
@@ -13821,6 +13889,8 @@
                 if (btnManage) {
                     btnManage.disabled = false;
                     btnManage.style.opacity = '1';
+                    btnManage.style.pointerEvents = 'auto';
+                    btnManage.style.cursor = 'pointer';
                 }
                 
                 const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
@@ -13832,6 +13902,8 @@
                 if (btnManage) {
                     btnManage.disabled = true;
                     btnManage.style.opacity = '0.5';
+                    btnManage.style.pointerEvents = 'none';
+                    btnManage.style.cursor = 'not-allowed';
                 }
             }
         };
