@@ -8868,6 +8868,12 @@
                     <option value="OUTROS">OUTROS</option>
                 `;
                 
+                // Adicionar evento onchange para atualizar SUBTIPO
+                tipoSelect.onchange = updateSubtipoForReceiving;
+                
+                // Adicionar evento onchange para atualizar SUBTIPO
+                tipoSelect.onchange = updateSubtipoForReceiving;
+                
                 subtipoContainer.innerHTML = `
                     <label>Subtipo</label>
                     <div class="select-with-manage">
@@ -8939,6 +8945,9 @@
                             const obraId = obra.id;
                             subtipoSelect.innerHTML += `<option value="${obraName}" data-obra-id="${obraId}">${obraName}</option>`;
                         });
+                        
+                        // Adicionar evento onchange para atualizar CATEGORIA
+                        subtipoSelect.onchange = updateCategoriaForReceiving;
                     } else {
                         subtipoSelect.innerHTML = '<option value="">Nenhuma obra cadastrada</option>';
                     }
