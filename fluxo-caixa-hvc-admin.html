@@ -3957,7 +3957,7 @@
         /**
          * Cria evento de pagamento na conta selecionada
          */
-        async window.createPaymentEvent = function createPaymentEvent() {
+        window.createPaymentEvent = async function createPaymentEvent() {
             // ✅ NOVO: Validar tipo de evento selecionado
             const eventType = document.querySelector('input[name="eventType"]:checked');
             if (!eventType) {
@@ -4588,7 +4588,7 @@
         }
 
         // Função para mostrar mensagens
-        function showMessage(message, type = 'info') {
+        window.showMessage = function showMessage(message, type = 'info') {
             let messagesContainer = document.getElementById('messagesContainer');
             if (!messagesContainer) {
                 // Criar container se não existir
@@ -13106,6 +13106,17 @@
             
             // Solicitar nova autenticação
             try {
+                if (!tokenClient) {
+                    console.error('❌ tokenClient não inicializado');
+                    updateAccountStatus(email, 'error');
+                    if (typeof showMessage === 'function') {
+                        showMessage(`Erro: Sistema de autenticação não inicializado`, 'error');
+                    } else {
+                        alert(`Erro: Sistema de autenticação não inicializado`);
+                    }
+                    return;
+                }
+                
                 tokenClient.requestAccessToken({ 
                     prompt: 'select_account consent',
                     include_granted_scopes: true,
@@ -13114,7 +13125,11 @@
             } catch (error) {
                 console.error('❌ Erro ao reconectar:', error);
                 updateAccountStatus(email, 'error');
-                showMessage(`Erro ao reconectar ${email}`, 'error');
+                if (typeof showMessage === 'function') {
+                    showMessage(`Erro ao reconectar ${email}`, 'error');
+                } else {
+                    alert(`Erro ao reconectar ${email}`);
+                }
             }
         };
 
