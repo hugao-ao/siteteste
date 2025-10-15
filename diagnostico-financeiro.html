@@ -907,6 +907,18 @@
               </button>
             </div>
           </div>
+
+          <!-- ========================================= -->
+          <!-- GRÁFICOS DE PATRIMÔNIO LÍQUIDO -->
+          <!-- ========================================= -->
+          <div class="form-container" style="margin-top: 1.5rem;">
+            <h3 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
+              <i class="fas fa-chart-pie"></i> Distribuição por Risco e Proprietário
+            </h3>
+            <div id="graficos-patrimonio-liquido">
+              <!-- Gráficos serão inseridos aqui dinamicamente -->
+            </div>
+          </div>
         </form>
       </div>
 
@@ -2625,7 +2637,8 @@ function voltarParaCliente() {
 window.voltarParaCliente = voltarParaCliente;
     
   </script>
-  <script src="patrimonio-liquido-module.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script type="module" src="patrimonio-liquido-module.js"></script>
 </body>
 </html>
 
