@@ -8687,7 +8687,7 @@
                             ${eventType === 'pagamento' ? `
                             <div class="edit-item-field">
                                 <label>TIPO:</label>
-                                <select class="edit-item-tipo">
+                                <select class="edit-item-tipo" data-item-index="${index}" onchange="updateEditTipoForPayment(${index})">
                                     <option value="">Nenhum</option>
                                     <option value="INTERNO" ${tipo === 'INTERNO' ? 'selected' : ''}>INTERNO</option>
                                     <option value="EXTERNO" ${tipo === 'EXTERNO' ? 'selected' : ''}>EXTERNO</option>
@@ -8696,7 +8696,7 @@
                             <div class="edit-item-field">
                                 <label>SUBTIPO:</label>
                                 <div class="field-with-manage">
-                                    <select class="edit-item-subtipo" data-item-index="${index}">
+                                    <select class="edit-item-subtipo" data-item-index="${index}" onchange="updateCategoriaSelectInEdit(${index}, this.value)">
                                         <option value="">Nenhum</option>
                                     </select>
                                     <button type="button" class="btn-manage-list" onclick="openManageListModal(\'subtipos\')">
@@ -8813,31 +8813,32 @@
                             const tipoSelect = document.querySelector(`.edit-item-tipo[data-item-index="${index}"]`);
                             if (tipoSelect && tipo) {
                                 tipoSelect.value = tipo;
-                            }
-                            
-                            const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
-                            if (subtipoSelect) {
-                                // Limpar e adicionar opções
-                                subtipoSelect.innerHTML = '<option value="">Nenhum</option><option value="OBRA">OBRA</option>';
+                                // Chamar função para popular SUBTIPO baseado no TIPO
+                                await updateEditTipoForPayment(index);
                                 
-                                // Adicionar subtipos personalizados
-                                const customSubtipos = await loadListFromSupabase('hvc_subtipos_pagamento');
-                                customSubtipos.forEach(st => {
-                                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
-                                });
-                                
-                                // Selecionar valor atual
-                                if (subtipo) {
-                                    subtipoSelect.value = subtipo;
-                                }
-                                
-                                // Adicionar evento de mudança
-                                subtipoSelect.addEventListener('change', function() {
-                                    updateCategoriaSelectInEdit(index, this.value);
-                                });
-                                
-                                // Popular CATEGORIA baseado no subtipo atual
-                                updateCategoriaSelectInEdit(index, subtipo);
+                                // Aguardar um pouco e selecionar SUBTIPO
+                                setTimeout(async () => {
+                                    const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
+                                    if (subtipoSelect && subtipo) {
+                                        subtipoSelect.value = subtipo;
+                                        
+                                        // Adicionar evento de mudança
+                                        subtipoSelect.addEventListener('change', function() {
+                                            updateCategoriaSelectInEdit(index, this.value);
+                                        });
+                                        
+                                        // Popular CATEGORIA baseado no SUBTIPO
+                                        await updateCategoriaSelectInEdit(index, subtipo);
+                                        
+                                        // Aguardar um pouco e selecionar CATEGORIA
+                                        setTimeout(() => {
+                                            const categoriaSelect = document.querySelector(`.edit-item-categoria[data-item-index="${index}"]`);
+                                            if (categoriaSelect && categoria) {
+                                                categoriaSelect.value = categoria;
+                                            }
+                                        }, 200);
+                                    }
+                                }, 300);
                             }
                         } else if (eventType === 'recebimento') {
                             // RECEBIMENTO: Popular TIPO, SUBTIPO e CATEGORIA
@@ -9544,6 +9545,55 @@ window.openManageCategoriasPayment = function() {
             });
         };
 
+
+        // Função para atualizar SUBTIPO e CATEGORIA quando TIPO muda (PAGAMENTO - na edição)
+        window.updateEditTipoForPayment = async function(index) {
+            const tipoSelect = document.querySelector(`.edit-item-tipo[data-item-index="${index}"]`);
+            const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
+            const categoriaSelect = document.querySelector(`.edit-item-categoria[data-item-index="${index}"]`);
+            const btnManageCategoria = document.querySelector(`.btn-manage-categorias[data-item-index="${index}"]`);
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            
+            // Salvar valores atuais
+            const currentSubtipo = subtipoSelect.value;
+            const currentCategoria = categoriaSelect.value;
+            
+            // Limpar selects
+            subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+            categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            
+            // Se TIPO = EXTERNO, adicionar OBRA
+            if (tipo === 'EXTERNO') {
+                subtipoSelect.innerHTML += '<option value="OBRA">OBRA</option>';
+            }
+            
+            // Adicionar subtipos personalizados
+            try {
+                const customSubtipos = await loadListFromSupabase('hvc_subtipos_pagamento');
+                customSubtipos.forEach(st => {
+                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+                
+                // Restaurar valor de subtipo se ainda existir
+                if (currentSubtipo) {
+                    subtipoSelect.value = currentSubtipo;
+                }
+            } catch (error) {
+                console.error('Erro ao carregar subtipos:', error);
+            }
+            
+            // Atualizar categoria baseado no subtipo atual
+            if (currentSubtipo) {
+                await updateCategoriaSelectInEdit(index, currentSubtipo);
+                // Tentar restaurar o valor de categoria
+                if (currentCategoria) {
+                    categoriaSelect.value = currentCategoria;
+                }
+            }
+        };
 
         // Função para atualizar select de categoria na edição
         window.updateCategoriaSelectInEdit = async function(itemIndex, subtipo) {
