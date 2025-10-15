@@ -13858,13 +13858,9 @@ window.openManageCategoriasPayment = function() {
         function closeManageListModal() {
             document.getElementById('manageListModal').style.display = 'none';
             
-            // Chamar callback se existir (para RECEBIMENTO)
+            // Chamar callback se existir
             if (currentManagingCallback && typeof currentManagingCallback === 'function') {
                 currentManagingCallback();
-            } else {
-                // Senão usar funções padrão (para PAGAMENTO)
-                populateSubtipoSelect();
-                populateCategoriaSelect();
             }
             
             currentManagingList = null;
