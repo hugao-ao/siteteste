@@ -8699,7 +8699,7 @@
                                     <select class="edit-item-subtipo" data-item-index="${index}">
                                         <option value="">Nenhum</option>
                                     </select>
-                                    <button type="button" class="btn-manage-list" onclick="openManageSubtiposModal()">
+                                    <button type="button" class="btn-manage-list" onclick="openManageListModal(\'subtipos\')">
                                         <i class="fas fa-cog"></i>
                                     </button>
                                 </div>
@@ -8710,7 +8710,7 @@
                                     <select class="edit-item-categoria" data-item-index="${index}">
                                         <option value="">Selecione uma obra...</option>
                                     </select>
-                                    <button type="button" class="btn-manage-list btn-manage-categorias" data-item-index="${index}" onclick="openManageCategoriasModal()">
+                                    <button type="button" class="btn-manage-list btn-manage-categorias" data-item-index="${index}" onclick="openManageListModal(\'categorias\')">
                                         <i class="fas fa-cog"></i>
                                     </button>
                                 </div>
@@ -8832,14 +8832,16 @@
                     <option value="EXTERNO">EXTERNO</option>
                 `;
                 
+                // Adicionar evento onchange para atualizar SUBTIPO baseado no TIPO
+                tipoSelect.onchange = updateSubtipoForPayment;
+                
                 subtipoContainer.innerHTML = `
                     <label>Subtipo</label>
                     <div class="select-with-manage">
                         <select id="itemSubtipo" onchange="updateCategoriaBasedOnSubtipo()">
                             <option value="">Nenhum</option>
-                            <option value="OBRA">OBRA</option>
                         </select>
-                        <button type="button" class="manage-list-btn" onclick="openManageSubtiposModal()" title="Gerenciar lista">
+                        <button type="button" class="manage-list-btn" onclick="openManageListModal('subtipos')" title="Gerenciar lista">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -8851,14 +8853,14 @@
                         <select id="itemCategoria">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="manage-list-btn" id="manageCategoriaBtn" onclick="openManageCategoriasModal()" title="Gerenciar lista">
+                        <button type="button" class="manage-list-btn" id="manageCategoriaBtn" onclick="openManageListModal('categorias')" title="Gerenciar lista">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
                 `;
                 
-                // Popular SUBTIPO para pagamento
-                populateSubtipoForPayment();
+                // Popular SUBTIPO para pagamento baseado no TIPO
+                updateSubtipoForPayment();
                 
             } else if (eventType === 'recebimento') {
                 // RECEBIMENTO: TIPO = OBRAS/OUTROS
@@ -8900,18 +8902,172 @@
             }
         };
         
-        // Função para popular SUBTIPO para PAGAMENTO
-        function populateSubtipoForPayment() {
+        // Função para atualizar SUBTIPO para PAGAMENTO baseado no TIPO
+        window.updateSubtipoForPayment = function() {
+            const tipoSelect = document.getElementById('itemTipo');
             const subtipoSelect = document.getElementById('itemSubtipo');
-            if (!subtipoSelect) return;
             
-            subtipoSelect.innerHTML = '<option value="">Nenhum</option><option value="OBRA">OBRA</option>';
+            if (!tipoSelect || !subtipoSelect) return;
             
-            const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos') || '[]');
+            const tipo = tipoSelect.value;
+            
+            // Limpar SUBTIPO
+            subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+            
+            // Se TIPO = EXTERNO, adicionar OBRA
+            if (tipo === 'EXTERNO') {
+                subtipoSelect.innerHTML += '<option value="OBRA">OBRA</option>';
+            }
+            
+            // Adicionar subtipos personalizados
+            const customSubtipos = JSON.parse(localStorage.getItem('hvc_subtipos_pagamento') || '[]');
             customSubtipos.forEach(st => {
                 subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
             });
-        }
+            
+            // Limpar CATEGORIA quando SUBTIPO muda
+            const categoriaSelect = document.getElementById('itemCategoria');
+            if (categoriaSelect) {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            }
+        };
+        
+        // Função para atualizar CATEGORIA baseado no SUBTIPO (PAGAMENTO)
+        window.updateCategoriaBasedOnSubtipo = async function() {
+            const subtipoSelect = document.getElementById('itemSubtipo');
+            const categoriaSelect = document.getElementById('itemCategoria');
+            
+            if (!subtipoSelect || !categoriaSelect) return;
+            
+            const subtipo = subtipoSelect.value;
+            
+            // Limpar CATEGORIA
+            categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            
+            // Se SUBTIPO = OBRA, carregar obras do Supabase
+            if (subtipo === 'OBRA') {
+                categoriaSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            categoriaSelect.innerHTML += `<option value="${obraName}">${obraName}</option>`;
+                        });
+                    } else {
+                        categoriaSelect.innerHTML = '<option value="">Nenhuma obra cadastrada</option>';
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar obras:', error);
+                    categoriaSelect.innerHTML = '<option value="">Erro ao carregar obras</option>';
+                }
+            } else {
+                // Senão, carregar categorias personalizadas
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_categorias_pagamento') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            }
+        };
+        
+        // Função para popular SUBTIPO no modal de edição (PAGAMENTO)
+        window.populateEditSubtipo = function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            
+            if (!tipoSelect || !subtipoSelect) return;
+            
+            const tipo = tipoSelect.value;
+            const currentValue = subtipoSelect.value;
+            
+            // Limpar SUBTIPO
+            subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+            
+            // Se TIPO = EXTERNO, adicionar OBRA
+            if (tipo === 'EXTERNO') {
+                subtipoSelect.innerHTML += '<option value="OBRA">OBRA</option>';
+            }
+            
+            // Adicionar subtipos personalizados
+            const customSubtipos = JSON.parse(localStorage.getItem('hvc_subtipos_pagamento') || '[]');
+            customSubtipos.forEach(st => {
+                subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+            });
+            
+            // Restaurar valor anterior se ainda existir
+            if (currentValue) {
+                subtipoSelect.value = currentValue;
+            }
+        };
+        
+        // Função para atualizar CATEGORIA baseado no SUBTIPO no modal de edição (PAGAMENTO)
+        window.updateEditCategoriaBasedOnSubtipo = async function() {
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const categoriaSelect = document.getElementById('edit-categoria');
+            
+            if (!subtipoSelect || !categoriaSelect) return;
+            
+            const subtipo = subtipoSelect.value;
+            const currentValue = categoriaSelect.value;
+            
+            // Limpar CATEGORIA
+            categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            
+            // Se SUBTIPO = OBRA, carregar obras do Supabase
+            if (subtipo === 'OBRA') {
+                categoriaSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            categoriaSelect.innerHTML += `<option value="${obraName}">${obraName}</option>`;
+                        });
+                    } else {
+                        categoriaSelect.innerHTML = '<option value="">Nenhuma obra cadastrada</option>';
+                    }
+                    
+                    // Restaurar valor anterior se ainda existir
+                    if (currentValue) {
+                        categoriaSelect.value = currentValue;
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar obras:', error);
+                    categoriaSelect.innerHTML = '<option value="">Erro ao carregar obras</option>';
+                }
+            } else {
+                // Senão, carregar categorias personalizadas
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_categorias_pagamento') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+                
+                // Restaurar valor anterior se ainda existir
+                if (currentValue) {
+                    categoriaSelect.value = currentValue;
+                }
+            }
+        };
+
+
         
         // Função para atualizar SUBTIPO quando TIPO muda (RECEBIMENTO)
         window.updateSubtipoForReceiving = async function() {
@@ -9343,7 +9499,7 @@
                         <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" onclick="openManageListModal(\'subtipos\'); setTimeout(() => populateEditSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -9355,7 +9511,7 @@
                         <select id="edit-categoria" class="form-control">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageListModal(\'categorias\'); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -10725,7 +10881,7 @@
                         <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" onclick="openManageListModal(\'subtipos\'); setTimeout(() => populateEditSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -10737,7 +10893,7 @@
                         <select id="edit-categoria" class="form-control">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageListModal(\'categorias\'); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -11398,7 +11554,7 @@
                         <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" onclick="openManageListModal(\'subtipos\'); setTimeout(() => populateEditSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -11410,7 +11566,7 @@
                         <select id="edit-categoria" class="form-control">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageListModal(\'categorias\'); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -12240,7 +12396,7 @@
                         <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" onclick="openManageListModal(\'subtipos\'); setTimeout(() => populateEditSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -12252,7 +12408,7 @@
                         <select id="edit-categoria" class="form-control">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageListModal(\'categorias\'); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -13736,7 +13892,7 @@
                         <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" onclick="openManageListModal(\'subtipos\'); setTimeout(() => populateEditSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -13748,7 +13904,7 @@
                         <select id="edit-categoria" class="form-control">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageListModal(\'categorias\'); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
