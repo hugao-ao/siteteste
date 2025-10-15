@@ -8787,8 +8787,13 @@
                         ? ['RC', 'ADIADO', 'AGUARDANDO']
                         : ['PG', 'RECALCULADO', 'PENDENTE'];
                     
+                    // DEBUG: Verificar o nome original do item
+                    console.log(`🔍 Item ${index} - Nome original:`, item.name);
+                    console.log(`🔍 Item ${index} - Original completo:`, item.original);
+                    
                     // Extrair tipo, subtipo e categoria do nome do item (formato: TIPO - SUBTIPO - CATEGORIA - NOME)
                     const nameParts = (item.name || '').split(' - ');
+                    console.log(`🔍 Item ${index} - Partes do nome:`, nameParts);
                     let tipo = '', subtipo = '', categoria = '', nome = item.name || '';
                     
                     if (nameParts.length >= 4) {
@@ -8804,6 +8809,8 @@
                         subtipo = nameParts[0];
                         nome = nameParts[1];
                     }
+                    
+                    console.log(`✅ Item ${index} - Extraído: TIPO="${tipo}", SUBTIPO="${subtipo}", CATEGORIA="${categoria}", NOME="${nome}"`);
                     
                     editHTML += `
                         <div class="edit-item-row">
