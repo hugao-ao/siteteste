@@ -1,0 +1,119 @@
+/* =========================================
+   PATRIMÔNIO LÍQUIDO - Estilos
+   ========================================= */
+
+.patrimonio-liquido-card {
+  background: var(--dark-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  padding: 1.2rem;
+  margin-bottom: 1rem;
+  position: relative;
+  transition: all 0.3s ease;
+}
+
+.patrimonio-liquido-card:hover {
+  border-color: var(--secondary-color);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px var(--shadow-color);
+}
+
+.patrimonio-liquido-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.patrimonio-liquido-title {
+  color: var(--accent-color);
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0;
+}
+
+.patrimonio-liquido-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.input-moeda {
+  text-align: right;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+}
+
+.badge-finalidade {
+  display: inline-block;
+  padding: 0.3rem 0.8rem;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  margin-left: 0.5rem;
+}
+
+.badge-sem-finalidade {
+  background: rgba(128, 128, 128, 0.2);
+  color: #999;
+  border: 1px solid #666;
+}
+
+.badge-reserva-emergencia {
+  background: rgba(220, 53, 69, 0.2);
+  color: #ff6b6b;
+  border: 1px solid #dc3545;
+}
+
+.badge-reserva-objetivos {
+  background: rgba(255, 193, 7, 0.2);
+  color: var(--accent-color);
+  border: 1px solid var(--secondary-color);
+}
+
+.badge-aposentadoria {
+  background: rgba(46, 139, 87, 0.2);
+  color: #90ee90;
+  border: 1px solid var(--success-color);
+}
+
+.info-row-pl {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.4rem 0;
+  border-bottom: 1px dashed rgba(46, 139, 87, 0.2);
+}
+
+.info-row-pl:last-child {
+  border-bottom: none;
+}
+
+.info-label-pl {
+  color: var(--text-gold);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.info-value-pl {
+  color: var(--text-light);
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.donos-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.dono-tag {
+  background: var(--primary-color);
+  color: var(--accent-color);
+  padding: 0.2rem 0.6rem;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  border: 1px solid var(--border-color);
+}
+
