@@ -3590,7 +3590,7 @@
                 }
                 
                 // Aguardar um pouco para garantir que o DOM foi atualizado
-                setTimeout(() => {
+                setTimeout(async () => {
                     populateAccountSelector();
                 }, 100);
                 
@@ -3764,7 +3764,7 @@
         }
 
         // ✅ NOVO: Funções para gerenciar itens de pagamento
-        function addPaymentItem() {
+        window.addPaymentItem = function addPaymentItem() {
             // ✅ NOVO: Validar tipo de evento selecionado
             const eventType = document.querySelector('input[name="eventType"]:checked');
             if (!eventType) {
@@ -3957,7 +3957,7 @@
         /**
          * Cria evento de pagamento na conta selecionada
          */
-        async function createPaymentEvent() {
+        async window.createPaymentEvent = function createPaymentEvent() {
             // ✅ NOVO: Validar tipo de evento selecionado
             const eventType = document.querySelector('input[name="eventType"]:checked');
             if (!eventType) {
@@ -4140,7 +4140,7 @@
                     // Método 4: Recarregar eventos manualmente
                     if (!syncSuccess) {
                         console.log('🔄 Método 4: Recarregamento manual...');
-                        setTimeout(() => {
+                        setTimeout(async () => {
                             // Tentar clicar no botão de sincronização se existir
                             const syncButtons = document.querySelectorAll('[onclick*="sync"], .sync-btn, .sincronizar-btn');
                             if (syncButtons.length > 0) {
@@ -4148,7 +4148,7 @@
                                 syncButtons[0].click();
                             } else {
                                 console.log('🔄 Recarregando página em 2 segundos...');
-                                setTimeout(() => {
+                                setTimeout(async () => {
                                     window.location.reload();
                                 }, 2000);
                             }
@@ -4295,7 +4295,7 @@
                         await syncAllAccounts();
                     } else {
                         // Fallback: recarregar a página após um delay
-                        setTimeout(() => {
+                        setTimeout(async () => {
                             window.location.reload();
                         }, 1500);
                     }
@@ -4331,7 +4331,7 @@
         /**
          * Intercepta o sistema de exclusão de eventos de forma mais direta
          */
-        function overrideDeleteSystem() {
+        window.overrideDeleteSystem = function overrideDeleteSystem() {
             console.log('🔧 Configurando override do sistema de exclusão...');
             
             // Override de possíveis funções de exclusão existentes
@@ -4522,7 +4522,7 @@
             }); // Fechamento do DOMContentLoaded
             
             // Reset da flag após processamento
-            setTimeout(() => {
+            setTimeout(async () => {
                 window.interceptingButtons = false;
             }, 1000);
         }
@@ -4623,7 +4623,7 @@
             messagesContainer.appendChild(messageDiv);
             
             // Remover mensagem após 5 segundos
-            setTimeout(() => {
+            setTimeout(async () => {
                 if (messageDiv.parentNode) {
                     messageDiv.parentNode.removeChild(messageDiv);
                 }
@@ -5885,7 +5885,7 @@
             container.appendChild(messageDiv);
             
             // Auto-remove após 5 segundos
-            setTimeout(() => {
+            setTimeout(async () => {
                 messageDiv.remove();
             }, 5000);
         }
@@ -6070,7 +6070,7 @@
                             await loadFilteredEvents();
                             
                             // Forçar atualização da interface
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 forceInterfaceUpdate();
                             }, 1000);
                         }
@@ -7578,7 +7578,7 @@
             }); // Fechamento do DOMContentLoaded
             
             // Reset da flag após processamento
-            setTimeout(() => {
+            setTimeout(async () => {
                 window.interceptingButtons = false;
             }, 1000);
         }
@@ -7652,7 +7652,7 @@
             }); // Fechamento do DOMContentLoaded
             
             // Reset da flag após processamento
-            setTimeout(() => {
+            setTimeout(async () => {
                 window.interceptingButtons = false;
             }, 1000);
         }
@@ -8064,7 +8064,7 @@
                         `;
                         
                         // Focar no textarea e posicionar cursor no final
-                        setTimeout(() => {
+                        setTimeout(async () => {
                             const textarea = document.getElementById('editDescriptionTextarea');
                             if (textarea) {
                                 textarea.focus();
@@ -8774,7 +8774,7 @@
                         nome = nameParts[1];
                     }
                     
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         // Popular SUBTIPO
                         const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
                         if (subtipoSelect) {
@@ -9518,13 +9518,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     populateEditSubtipo();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaBasedOnSubtipo();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -9569,13 +9569,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     updateEditSubtipoForReceiving();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaForReceiving();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -10900,13 +10900,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     populateEditSubtipo();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaBasedOnSubtipo();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -10951,13 +10951,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     updateEditSubtipoForReceiving();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaForReceiving();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -11464,12 +11464,12 @@
             overrideDeleteSystem();
             
             // ✅ NOVO: Interceptar botão de exclusão existente no modal
-            setTimeout(() => {
+            setTimeout(async () => {
                 interceptExistingDeleteButtons();
             }, 2000);
             
             // ✅ NOVO: Adicionar botões de exclusão aos eventos existentes
-            setTimeout(() => {
+            setTimeout(async () => {
                 if (typeof addDeleteButtonsToEvents === 'function') {
                     addDeleteButtonsToEvents();
                 }
@@ -11481,7 +11481,7 @@
                 // Debounce para evitar execuções excessivas
                 if (observerTimeout) clearTimeout(observerTimeout);
                 
-                observerTimeout = setTimeout(() => {
+                observerTimeout = setTimeout(async () => {
                     let hasNewNodes = false;
                     mutations.forEach(function(mutation) {
                         if (mutation.addedNodes.length > 0) {
@@ -11573,13 +11573,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     populateEditSubtipo();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaBasedOnSubtipo();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -11624,13 +11624,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     updateEditSubtipoForReceiving();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaForReceiving();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -12415,13 +12415,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     populateEditSubtipo();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaBasedOnSubtipo();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -12466,13 +12466,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     updateEditSubtipoForReceiving();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaForReceiving();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -13044,7 +13044,7 @@
                 document.body.appendChild(errorDiv);
                 
                 // Remover mensagem após 15 segundos
-                setTimeout(() => {
+                setTimeout(async () => {
                     if (errorDiv.parentNode) {
                         errorDiv.parentNode.removeChild(errorDiv);
                     }
@@ -13161,7 +13161,7 @@
                 showMessage('Todas as contas foram desconectadas. Agora você pode conectar contas novas.', 'success');
                 
                 // 7. Recarregar página para garantir estado limpo
-                setTimeout(() => {
+                setTimeout(async () => {
                     if (confirm('Deseja recarregar a página para garantir limpeza completa?')) {
                         location.reload();
                     }
@@ -13319,7 +13319,7 @@
             showAllSections();
             
             // Aguardar um pouco e tentar renderizar componentes
-            setTimeout(() => {
+            setTimeout(async () => {
                 console.log('🔄 Tentando renderizar componentes...');
                 
                 // Tentar renderizar calendário
@@ -13353,7 +13353,7 @@
                 }
                 
                 // Recarregar página como último recurso (opcional)
-                // setTimeout(() => {
+                // setTimeout(async () => {
                 //     if (confirm('Interface não atualizou completamente. Deseja recarregar a página?')) {
                 //         location.reload();
                 //     }
@@ -14011,13 +14011,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     populateEditSubtipo();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaBasedOnSubtipo();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
@@ -14062,13 +14062,13 @@
                 `;
                 
                 // Popular campos
-                setTimeout(() => {
+                setTimeout(async () => {
                     updateEditSubtipoForReceiving();
-                    setTimeout(() => {
+                    setTimeout(async () => {
                         if (itemData.subtipo) {
                             document.getElementById('edit-subtipo').value = itemData.subtipo;
                             updateEditCategoriaForReceiving();
-                            setTimeout(() => {
+                            setTimeout(async () => {
                                 if (itemData.categoria) {
                                     document.getElementById('edit-categoria').value = itemData.categoria;
                                 }
