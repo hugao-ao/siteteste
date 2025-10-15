@@ -9567,26 +9567,235 @@
             }
         }
         
+        // ===================================================================
+        // SISTEMA DE MEDIÇÕES INLINE
+        // ===================================================================
+        
+        // Variáveis globais para medições
+        window.obraSelecionadaMedicaoInline = null;
+        window.obraIdMedicaoInline = null;
+        
         // Função para abrir modal de Nova Medição do fluxo de caixa
         async function abrirNovaMedicaoDoFluxoCaixa() {
-            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
-            
-            // Verificar se o sistema de medições está disponível
-            if (typeof window.openMedicaoModalFromExternal === 'function') {
-                // Usar função do sistema de medições
-                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
-            } else {
-                // Abrir página de medições em nova aba com obra pré-selecionada
-                const obraId = window.obraIdSelecionadaFluxoCaixa;
-                if (obraId) {
-                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
-                } else {
-                    window.open('medicoes-hvc.html?action=nova', '_blank');
-                }
-            }
+            console.log('🚀 Abrindo modal de Nova Medição inline...');
             
             // Fechar modal de gerenciar listas
             closeManageListModal();
+            
+            // Abrir modal inline
+            await abrirModalMedicaoInline();
+        }
+        
+        // Abrir modal de medição inline
+        async function abrirModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (!modal) return;
+            
+            // Limpar formulário
+            document.getElementById('data-medicao-inline').value = new Date().toISOString().split('T')[0];
+            
+            const dataFutura = new Date();
+            dataFutura.setDate(dataFutura.getDate() + 30);
+            document.getElementById('data-recebimento-inline').value = dataFutura.toISOString().split('T')[0];
+            
+            document.getElementById('valor-medicao-inline').value = '';
+            document.getElementById('status-medicao-inline').value = 'pendente';
+            document.getElementById('observacoes-medicao-inline').value = '';
+            
+            // Resetar obra selecionada
+            window.obraSelecionadaMedicaoInline = null;
+            window.obraIdMedicaoInline = window.obraIdSelecionadaFluxoCaixa;
+            
+            // Se já tem obra selecionada do fluxo de caixa, pré-selecionar
+            if (window.obraIdSelecionadaFluxoCaixa) {
+                await preSelec ionarObraNoModal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                const container = document.getElementById('obra-selecionada-container-inline');
+                if (container) {
+                    container.innerHTML = `
+                        <button type="button" class="btn-secondary" onclick="abrirModalObrasInline()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-building"></i>
+                            Selecionar Obra
+                        </button>
+                    `;
+                }
+            }
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Pré-selecionar obra no modal
+        async function preSelec ionarObraNoModal(obraId) {
+            try {
+                const { data: obra, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .eq('id', obraId)
+                    .single();
+                
+                if (error) throw error;
+                
+                if (obra) {
+                    window.obraSelecionadaMedicaoInline = obra;
+                    window.obraIdMedicaoInline = obra.id;
+                    
+                    const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                    const container = document.getElementById('obra-selecionada-container-inline');
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="color: #4CAF50;">${obraName}</strong>
+                                </div>
+                                <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                                    Trocar
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao pré-selecionar obra:', error);
+            }
+        }
+        
+        // Fechar modal de medição
+        function fecharModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Abrir modal de obras
+        async function abrirModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (!modal) return;
+            
+            // Carregar obras
+            await carregarObrasParaModal();
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Fechar modal de obras
+        function fecharModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Carregar obras para o modal
+        async function carregarObrasParaModal() {
+            try {
+                const { data: obras, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const container = document.getElementById('obras-list-inline');
+                if (!container) return;
+                
+                if (obras && obras.length > 0) {
+                    container.innerHTML = obras.map(obra => {
+                        const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                        return `
+                            <div class="obras-list-item" onclick="selecionarObraInline(${obra.id}, '${obraName}')" style="padding: 15px; margin: 10px 0; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                <strong style="color: #fff;">${obraName}</strong>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p style="text-align: center; color: #b0c4de;">Nenhuma obra cadastrada</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar obras:', error);
+            }
+        }
+        
+        // Selecionar obra
+        function selecionarObraInline(obraId, obraName) {
+            window.obraIdMedicaoInline = obraId;
+            
+            const container = document.getElementById('obra-selecionada-container-inline');
+            if (container) {
+                container.innerHTML = `
+                    <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #4CAF50;">${obraName}</strong>
+                        </div>
+                        <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                            Trocar
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Fechar modal de obras
+            fecharModalObrasInline();
+        }
+        
+        // Salvar medição
+        async function salvarMedicaoInline(event) {
+            event.preventDefault();
+            
+            const dataMedicao = document.getElementById('data-medicao-inline').value;
+            const dataRecebimento = document.getElementById('data-recebimento-inline').value;
+            const valor = parseFloat(document.getElementById('valor-medicao-inline').value);
+            const status = document.getElementById('status-medicao-inline').value;
+            const observacoes = document.getElementById('observacoes-medicao-inline').value;
+            const obraId = window.obraIdMedicaoInline;
+            
+            if (!obraId) {
+                alert('Por favor, selecione uma obra');
+                return;
+            }
+            
+            try {
+                // Gerar número da medição
+                const { data: ultimaMedicao } = await supabase
+                    .from('medicoes_hvc')
+                    .select('numero')
+                    .order('numero', { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                const proximoNumero = ultimaMedicao ? parseInt(ultimaMedicao.numero.replace('MED-', '')) + 1 : 1;
+                const numeroMedicao = `MED-${String(proximoNumero).padStart(3, '0')}`;
+                
+                // Salvar no Supabase
+                const { data, error } = await supabase
+                    .from('medicoes_hvc')
+                    .insert([{
+                        numero: numeroMedicao,
+                        obra_id: obraId,
+                        data_medicao: dataMedicao,
+                        data_recebimento: dataRecebimento,
+                        valor: valor,
+                        status: status,
+                        observacoes: observacoes
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                alert('Medição criada com sucesso!');
+                fecharModalMedicaoInline();
+                
+                // Atualizar lista de categorias
+                if (typeof updateCategoriaForReceiving === 'function') {
+                    await updateCategoriaForReceiving();
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar medição:', error);
+                alert('Erro ao salvar medição: ' + error.message);
+            }
         }
         
     </script>
@@ -10731,26 +10940,235 @@
             }
         }
         
+        // ===================================================================
+        // SISTEMA DE MEDIÇÕES INLINE
+        // ===================================================================
+        
+        // Variáveis globais para medições
+        window.obraSelecionadaMedicaoInline = null;
+        window.obraIdMedicaoInline = null;
+        
         // Função para abrir modal de Nova Medição do fluxo de caixa
         async function abrirNovaMedicaoDoFluxoCaixa() {
-            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
-            
-            // Verificar se o sistema de medições está disponível
-            if (typeof window.openMedicaoModalFromExternal === 'function') {
-                // Usar função do sistema de medições
-                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
-            } else {
-                // Abrir página de medições em nova aba com obra pré-selecionada
-                const obraId = window.obraIdSelecionadaFluxoCaixa;
-                if (obraId) {
-                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
-                } else {
-                    window.open('medicoes-hvc.html?action=nova', '_blank');
-                }
-            }
+            console.log('🚀 Abrindo modal de Nova Medição inline...');
             
             // Fechar modal de gerenciar listas
             closeManageListModal();
+            
+            // Abrir modal inline
+            await abrirModalMedicaoInline();
+        }
+        
+        // Abrir modal de medição inline
+        async function abrirModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (!modal) return;
+            
+            // Limpar formulário
+            document.getElementById('data-medicao-inline').value = new Date().toISOString().split('T')[0];
+            
+            const dataFutura = new Date();
+            dataFutura.setDate(dataFutura.getDate() + 30);
+            document.getElementById('data-recebimento-inline').value = dataFutura.toISOString().split('T')[0];
+            
+            document.getElementById('valor-medicao-inline').value = '';
+            document.getElementById('status-medicao-inline').value = 'pendente';
+            document.getElementById('observacoes-medicao-inline').value = '';
+            
+            // Resetar obra selecionada
+            window.obraSelecionadaMedicaoInline = null;
+            window.obraIdMedicaoInline = window.obraIdSelecionadaFluxoCaixa;
+            
+            // Se já tem obra selecionada do fluxo de caixa, pré-selecionar
+            if (window.obraIdSelecionadaFluxoCaixa) {
+                await preSelec ionarObraNoModal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                const container = document.getElementById('obra-selecionada-container-inline');
+                if (container) {
+                    container.innerHTML = `
+                        <button type="button" class="btn-secondary" onclick="abrirModalObrasInline()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-building"></i>
+                            Selecionar Obra
+                        </button>
+                    `;
+                }
+            }
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Pré-selecionar obra no modal
+        async function preSelec ionarObraNoModal(obraId) {
+            try {
+                const { data: obra, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .eq('id', obraId)
+                    .single();
+                
+                if (error) throw error;
+                
+                if (obra) {
+                    window.obraSelecionadaMedicaoInline = obra;
+                    window.obraIdMedicaoInline = obra.id;
+                    
+                    const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                    const container = document.getElementById('obra-selecionada-container-inline');
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="color: #4CAF50;">${obraName}</strong>
+                                </div>
+                                <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                                    Trocar
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao pré-selecionar obra:', error);
+            }
+        }
+        
+        // Fechar modal de medição
+        function fecharModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Abrir modal de obras
+        async function abrirModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (!modal) return;
+            
+            // Carregar obras
+            await carregarObrasParaModal();
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Fechar modal de obras
+        function fecharModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Carregar obras para o modal
+        async function carregarObrasParaModal() {
+            try {
+                const { data: obras, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const container = document.getElementById('obras-list-inline');
+                if (!container) return;
+                
+                if (obras && obras.length > 0) {
+                    container.innerHTML = obras.map(obra => {
+                        const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                        return `
+                            <div class="obras-list-item" onclick="selecionarObraInline(${obra.id}, '${obraName}')" style="padding: 15px; margin: 10px 0; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                <strong style="color: #fff;">${obraName}</strong>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p style="text-align: center; color: #b0c4de;">Nenhuma obra cadastrada</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar obras:', error);
+            }
+        }
+        
+        // Selecionar obra
+        function selecionarObraInline(obraId, obraName) {
+            window.obraIdMedicaoInline = obraId;
+            
+            const container = document.getElementById('obra-selecionada-container-inline');
+            if (container) {
+                container.innerHTML = `
+                    <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #4CAF50;">${obraName}</strong>
+                        </div>
+                        <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                            Trocar
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Fechar modal de obras
+            fecharModalObrasInline();
+        }
+        
+        // Salvar medição
+        async function salvarMedicaoInline(event) {
+            event.preventDefault();
+            
+            const dataMedicao = document.getElementById('data-medicao-inline').value;
+            const dataRecebimento = document.getElementById('data-recebimento-inline').value;
+            const valor = parseFloat(document.getElementById('valor-medicao-inline').value);
+            const status = document.getElementById('status-medicao-inline').value;
+            const observacoes = document.getElementById('observacoes-medicao-inline').value;
+            const obraId = window.obraIdMedicaoInline;
+            
+            if (!obraId) {
+                alert('Por favor, selecione uma obra');
+                return;
+            }
+            
+            try {
+                // Gerar número da medição
+                const { data: ultimaMedicao } = await supabase
+                    .from('medicoes_hvc')
+                    .select('numero')
+                    .order('numero', { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                const proximoNumero = ultimaMedicao ? parseInt(ultimaMedicao.numero.replace('MED-', '')) + 1 : 1;
+                const numeroMedicao = `MED-${String(proximoNumero).padStart(3, '0')}`;
+                
+                // Salvar no Supabase
+                const { data, error } = await supabase
+                    .from('medicoes_hvc')
+                    .insert([{
+                        numero: numeroMedicao,
+                        obra_id: obraId,
+                        data_medicao: dataMedicao,
+                        data_recebimento: dataRecebimento,
+                        valor: valor,
+                        status: status,
+                        observacoes: observacoes
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                alert('Medição criada com sucesso!');
+                fecharModalMedicaoInline();
+                
+                // Atualizar lista de categorias
+                if (typeof updateCategoriaForReceiving === 'function') {
+                    await updateCategoriaForReceiving();
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar medição:', error);
+                alert('Erro ao salvar medição: ' + error.message);
+            }
         }
         
     </script>
@@ -11186,26 +11604,235 @@
             }
         }
         
+        // ===================================================================
+        // SISTEMA DE MEDIÇÕES INLINE
+        // ===================================================================
+        
+        // Variáveis globais para medições
+        window.obraSelecionadaMedicaoInline = null;
+        window.obraIdMedicaoInline = null;
+        
         // Função para abrir modal de Nova Medição do fluxo de caixa
         async function abrirNovaMedicaoDoFluxoCaixa() {
-            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
-            
-            // Verificar se o sistema de medições está disponível
-            if (typeof window.openMedicaoModalFromExternal === 'function') {
-                // Usar função do sistema de medições
-                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
-            } else {
-                // Abrir página de medições em nova aba com obra pré-selecionada
-                const obraId = window.obraIdSelecionadaFluxoCaixa;
-                if (obraId) {
-                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
-                } else {
-                    window.open('medicoes-hvc.html?action=nova', '_blank');
-                }
-            }
+            console.log('🚀 Abrindo modal de Nova Medição inline...');
             
             // Fechar modal de gerenciar listas
             closeManageListModal();
+            
+            // Abrir modal inline
+            await abrirModalMedicaoInline();
+        }
+        
+        // Abrir modal de medição inline
+        async function abrirModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (!modal) return;
+            
+            // Limpar formulário
+            document.getElementById('data-medicao-inline').value = new Date().toISOString().split('T')[0];
+            
+            const dataFutura = new Date();
+            dataFutura.setDate(dataFutura.getDate() + 30);
+            document.getElementById('data-recebimento-inline').value = dataFutura.toISOString().split('T')[0];
+            
+            document.getElementById('valor-medicao-inline').value = '';
+            document.getElementById('status-medicao-inline').value = 'pendente';
+            document.getElementById('observacoes-medicao-inline').value = '';
+            
+            // Resetar obra selecionada
+            window.obraSelecionadaMedicaoInline = null;
+            window.obraIdMedicaoInline = window.obraIdSelecionadaFluxoCaixa;
+            
+            // Se já tem obra selecionada do fluxo de caixa, pré-selecionar
+            if (window.obraIdSelecionadaFluxoCaixa) {
+                await preSelec ionarObraNoModal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                const container = document.getElementById('obra-selecionada-container-inline');
+                if (container) {
+                    container.innerHTML = `
+                        <button type="button" class="btn-secondary" onclick="abrirModalObrasInline()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-building"></i>
+                            Selecionar Obra
+                        </button>
+                    `;
+                }
+            }
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Pré-selecionar obra no modal
+        async function preSelec ionarObraNoModal(obraId) {
+            try {
+                const { data: obra, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .eq('id', obraId)
+                    .single();
+                
+                if (error) throw error;
+                
+                if (obra) {
+                    window.obraSelecionadaMedicaoInline = obra;
+                    window.obraIdMedicaoInline = obra.id;
+                    
+                    const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                    const container = document.getElementById('obra-selecionada-container-inline');
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="color: #4CAF50;">${obraName}</strong>
+                                </div>
+                                <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                                    Trocar
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao pré-selecionar obra:', error);
+            }
+        }
+        
+        // Fechar modal de medição
+        function fecharModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Abrir modal de obras
+        async function abrirModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (!modal) return;
+            
+            // Carregar obras
+            await carregarObrasParaModal();
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Fechar modal de obras
+        function fecharModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Carregar obras para o modal
+        async function carregarObrasParaModal() {
+            try {
+                const { data: obras, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const container = document.getElementById('obras-list-inline');
+                if (!container) return;
+                
+                if (obras && obras.length > 0) {
+                    container.innerHTML = obras.map(obra => {
+                        const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                        return `
+                            <div class="obras-list-item" onclick="selecionarObraInline(${obra.id}, '${obraName}')" style="padding: 15px; margin: 10px 0; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                <strong style="color: #fff;">${obraName}</strong>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p style="text-align: center; color: #b0c4de;">Nenhuma obra cadastrada</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar obras:', error);
+            }
+        }
+        
+        // Selecionar obra
+        function selecionarObraInline(obraId, obraName) {
+            window.obraIdMedicaoInline = obraId;
+            
+            const container = document.getElementById('obra-selecionada-container-inline');
+            if (container) {
+                container.innerHTML = `
+                    <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #4CAF50;">${obraName}</strong>
+                        </div>
+                        <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                            Trocar
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Fechar modal de obras
+            fecharModalObrasInline();
+        }
+        
+        // Salvar medição
+        async function salvarMedicaoInline(event) {
+            event.preventDefault();
+            
+            const dataMedicao = document.getElementById('data-medicao-inline').value;
+            const dataRecebimento = document.getElementById('data-recebimento-inline').value;
+            const valor = parseFloat(document.getElementById('valor-medicao-inline').value);
+            const status = document.getElementById('status-medicao-inline').value;
+            const observacoes = document.getElementById('observacoes-medicao-inline').value;
+            const obraId = window.obraIdMedicaoInline;
+            
+            if (!obraId) {
+                alert('Por favor, selecione uma obra');
+                return;
+            }
+            
+            try {
+                // Gerar número da medição
+                const { data: ultimaMedicao } = await supabase
+                    .from('medicoes_hvc')
+                    .select('numero')
+                    .order('numero', { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                const proximoNumero = ultimaMedicao ? parseInt(ultimaMedicao.numero.replace('MED-', '')) + 1 : 1;
+                const numeroMedicao = `MED-${String(proximoNumero).padStart(3, '0')}`;
+                
+                // Salvar no Supabase
+                const { data, error } = await supabase
+                    .from('medicoes_hvc')
+                    .insert([{
+                        numero: numeroMedicao,
+                        obra_id: obraId,
+                        data_medicao: dataMedicao,
+                        data_recebimento: dataRecebimento,
+                        valor: valor,
+                        status: status,
+                        observacoes: observacoes
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                alert('Medição criada com sucesso!');
+                fecharModalMedicaoInline();
+                
+                // Atualizar lista de categorias
+                if (typeof updateCategoriaForReceiving === 'function') {
+                    await updateCategoriaForReceiving();
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar medição:', error);
+                alert('Erro ao salvar medição: ' + error.message);
+            }
         }
         
     </script>
@@ -11415,6 +12042,82 @@
                 font-size: 14px;
             }
         }
+    
+        
+        /* ========================================
+           ESTILOS DO SISTEMA DE MEDIÇÕES (INLINE)
+           ======================================== */
+        /* Estilos adicionais para a página de medições */
+
+/* Estilo para a seção de preço */
+.preco-info {
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.preco-unitario {
+    font-weight: bold;
+    color: #2c3e50;
+}
+
+.preco-tipo {
+    font-size: 0.85em;
+    color: #7f8c8d;
+    font-style: italic;
+}
+
+/* Melhorias nos serviços selecionados */
+.servico-item {
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 10px;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.servico-info {
+    margin-bottom: 10px;
+}
+
+/* Animação quando o preço muda */
+@keyframes highlight {
+    0% { background-color: rgba(255, 255, 0, 0.3); }
+    100% { background-color: transparent; }
+}
+
+.price-changed {
+    animation: highlight 1.5s ease-out;
+}
+
+
+        
+        /* Ajustes para modal de medições no fluxo de caixa */
+        #modal-medicao-inline .modal-content {
+            max-width: 900px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        #modal-medicao-inline .servicos-container {
+            margin: 20px 0;
+        }
+        
+        #modal-medicao-inline .obras-list-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: rgba(255,255,255,0.05);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        #modal-medicao-inline .obras-list-item:hover {
+            background: rgba(255,255,255,0.1);
+            transform: translateX(5px);
+        }
+        
     </style>
     
     <script>
@@ -11808,26 +12511,235 @@
             }
         }
         
+        // ===================================================================
+        // SISTEMA DE MEDIÇÕES INLINE
+        // ===================================================================
+        
+        // Variáveis globais para medições
+        window.obraSelecionadaMedicaoInline = null;
+        window.obraIdMedicaoInline = null;
+        
         // Função para abrir modal de Nova Medição do fluxo de caixa
         async function abrirNovaMedicaoDoFluxoCaixa() {
-            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
-            
-            // Verificar se o sistema de medições está disponível
-            if (typeof window.openMedicaoModalFromExternal === 'function') {
-                // Usar função do sistema de medições
-                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
-            } else {
-                // Abrir página de medições em nova aba com obra pré-selecionada
-                const obraId = window.obraIdSelecionadaFluxoCaixa;
-                if (obraId) {
-                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
-                } else {
-                    window.open('medicoes-hvc.html?action=nova', '_blank');
-                }
-            }
+            console.log('🚀 Abrindo modal de Nova Medição inline...');
             
             // Fechar modal de gerenciar listas
             closeManageListModal();
+            
+            // Abrir modal inline
+            await abrirModalMedicaoInline();
+        }
+        
+        // Abrir modal de medição inline
+        async function abrirModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (!modal) return;
+            
+            // Limpar formulário
+            document.getElementById('data-medicao-inline').value = new Date().toISOString().split('T')[0];
+            
+            const dataFutura = new Date();
+            dataFutura.setDate(dataFutura.getDate() + 30);
+            document.getElementById('data-recebimento-inline').value = dataFutura.toISOString().split('T')[0];
+            
+            document.getElementById('valor-medicao-inline').value = '';
+            document.getElementById('status-medicao-inline').value = 'pendente';
+            document.getElementById('observacoes-medicao-inline').value = '';
+            
+            // Resetar obra selecionada
+            window.obraSelecionadaMedicaoInline = null;
+            window.obraIdMedicaoInline = window.obraIdSelecionadaFluxoCaixa;
+            
+            // Se já tem obra selecionada do fluxo de caixa, pré-selecionar
+            if (window.obraIdSelecionadaFluxoCaixa) {
+                await preSelec ionarObraNoModal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                const container = document.getElementById('obra-selecionada-container-inline');
+                if (container) {
+                    container.innerHTML = `
+                        <button type="button" class="btn-secondary" onclick="abrirModalObrasInline()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-building"></i>
+                            Selecionar Obra
+                        </button>
+                    `;
+                }
+            }
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Pré-selecionar obra no modal
+        async function preSelec ionarObraNoModal(obraId) {
+            try {
+                const { data: obra, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .eq('id', obraId)
+                    .single();
+                
+                if (error) throw error;
+                
+                if (obra) {
+                    window.obraSelecionadaMedicaoInline = obra;
+                    window.obraIdMedicaoInline = obra.id;
+                    
+                    const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                    const container = document.getElementById('obra-selecionada-container-inline');
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="color: #4CAF50;">${obraName}</strong>
+                                </div>
+                                <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                                    Trocar
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao pré-selecionar obra:', error);
+            }
+        }
+        
+        // Fechar modal de medição
+        function fecharModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Abrir modal de obras
+        async function abrirModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (!modal) return;
+            
+            // Carregar obras
+            await carregarObrasParaModal();
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Fechar modal de obras
+        function fecharModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Carregar obras para o modal
+        async function carregarObrasParaModal() {
+            try {
+                const { data: obras, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const container = document.getElementById('obras-list-inline');
+                if (!container) return;
+                
+                if (obras && obras.length > 0) {
+                    container.innerHTML = obras.map(obra => {
+                        const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                        return `
+                            <div class="obras-list-item" onclick="selecionarObraInline(${obra.id}, '${obraName}')" style="padding: 15px; margin: 10px 0; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                <strong style="color: #fff;">${obraName}</strong>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p style="text-align: center; color: #b0c4de;">Nenhuma obra cadastrada</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar obras:', error);
+            }
+        }
+        
+        // Selecionar obra
+        function selecionarObraInline(obraId, obraName) {
+            window.obraIdMedicaoInline = obraId;
+            
+            const container = document.getElementById('obra-selecionada-container-inline');
+            if (container) {
+                container.innerHTML = `
+                    <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #4CAF50;">${obraName}</strong>
+                        </div>
+                        <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                            Trocar
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Fechar modal de obras
+            fecharModalObrasInline();
+        }
+        
+        // Salvar medição
+        async function salvarMedicaoInline(event) {
+            event.preventDefault();
+            
+            const dataMedicao = document.getElementById('data-medicao-inline').value;
+            const dataRecebimento = document.getElementById('data-recebimento-inline').value;
+            const valor = parseFloat(document.getElementById('valor-medicao-inline').value);
+            const status = document.getElementById('status-medicao-inline').value;
+            const observacoes = document.getElementById('observacoes-medicao-inline').value;
+            const obraId = window.obraIdMedicaoInline;
+            
+            if (!obraId) {
+                alert('Por favor, selecione uma obra');
+                return;
+            }
+            
+            try {
+                // Gerar número da medição
+                const { data: ultimaMedicao } = await supabase
+                    .from('medicoes_hvc')
+                    .select('numero')
+                    .order('numero', { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                const proximoNumero = ultimaMedicao ? parseInt(ultimaMedicao.numero.replace('MED-', '')) + 1 : 1;
+                const numeroMedicao = `MED-${String(proximoNumero).padStart(3, '0')}`;
+                
+                // Salvar no Supabase
+                const { data, error } = await supabase
+                    .from('medicoes_hvc')
+                    .insert([{
+                        numero: numeroMedicao,
+                        obra_id: obraId,
+                        data_medicao: dataMedicao,
+                        data_recebimento: dataRecebimento,
+                        valor: valor,
+                        status: status,
+                        observacoes: observacoes
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                alert('Medição criada com sucesso!');
+                fecharModalMedicaoInline();
+                
+                // Atualizar lista de categorias
+                if (typeof updateCategoriaForReceiving === 'function') {
+                    await updateCategoriaForReceiving();
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar medição:', error);
+                alert('Erro ao salvar medição: ' + error.message);
+            }
         }
         
     </script>
@@ -13046,29 +13958,354 @@
             }
         }
         
+        // ===================================================================
+        // SISTEMA DE MEDIÇÕES INLINE
+        // ===================================================================
+        
+        // Variáveis globais para medições
+        window.obraSelecionadaMedicaoInline = null;
+        window.obraIdMedicaoInline = null;
+        
         // Função para abrir modal de Nova Medição do fluxo de caixa
         async function abrirNovaMedicaoDoFluxoCaixa() {
-            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
-            
-            // Verificar se o sistema de medições está disponível
-            if (typeof window.openMedicaoModalFromExternal === 'function') {
-                // Usar função do sistema de medições
-                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
-            } else {
-                // Abrir página de medições em nova aba com obra pré-selecionada
-                const obraId = window.obraIdSelecionadaFluxoCaixa;
-                if (obraId) {
-                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
-                } else {
-                    window.open('medicoes-hvc.html?action=nova', '_blank');
-                }
-            }
+            console.log('🚀 Abrindo modal de Nova Medição inline...');
             
             // Fechar modal de gerenciar listas
             closeManageListModal();
+            
+            // Abrir modal inline
+            await abrirModalMedicaoInline();
+        }
+        
+        // Abrir modal de medição inline
+        async function abrirModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (!modal) return;
+            
+            // Limpar formulário
+            document.getElementById('data-medicao-inline').value = new Date().toISOString().split('T')[0];
+            
+            const dataFutura = new Date();
+            dataFutura.setDate(dataFutura.getDate() + 30);
+            document.getElementById('data-recebimento-inline').value = dataFutura.toISOString().split('T')[0];
+            
+            document.getElementById('valor-medicao-inline').value = '';
+            document.getElementById('status-medicao-inline').value = 'pendente';
+            document.getElementById('observacoes-medicao-inline').value = '';
+            
+            // Resetar obra selecionada
+            window.obraSelecionadaMedicaoInline = null;
+            window.obraIdMedicaoInline = window.obraIdSelecionadaFluxoCaixa;
+            
+            // Se já tem obra selecionada do fluxo de caixa, pré-selecionar
+            if (window.obraIdSelecionadaFluxoCaixa) {
+                await preSelec ionarObraNoModal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                const container = document.getElementById('obra-selecionada-container-inline');
+                if (container) {
+                    container.innerHTML = `
+                        <button type="button" class="btn-secondary" onclick="abrirModalObrasInline()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-building"></i>
+                            Selecionar Obra
+                        </button>
+                    `;
+                }
+            }
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Pré-selecionar obra no modal
+        async function preSelec ionarObraNoModal(obraId) {
+            try {
+                const { data: obra, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .eq('id', obraId)
+                    .single();
+                
+                if (error) throw error;
+                
+                if (obra) {
+                    window.obraSelecionadaMedicaoInline = obra;
+                    window.obraIdMedicaoInline = obra.id;
+                    
+                    const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                    const container = document.getElementById('obra-selecionada-container-inline');
+                    if (container) {
+                        container.innerHTML = `
+                            <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                                <div>
+                                    <strong style="color: #4CAF50;">${obraName}</strong>
+                                </div>
+                                <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                                    Trocar
+                                </button>
+                            </div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao pré-selecionar obra:', error);
+            }
+        }
+        
+        // Fechar modal de medição
+        function fecharModalMedicaoInline() {
+            const modal = document.getElementById('modal-medicao-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Abrir modal de obras
+        async function abrirModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (!modal) return;
+            
+            // Carregar obras
+            await carregarObrasParaModal();
+            
+            // Mostrar modal
+            modal.style.display = 'block';
+        }
+        
+        // Fechar modal de obras
+        function fecharModalObrasInline() {
+            const modal = document.getElementById('modal-obras-inline');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+        
+        // Carregar obras para o modal
+        async function carregarObrasParaModal() {
+            try {
+                const { data: obras, error } = await supabase
+                    .from('obras_hvc')
+                    .select('*')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                const container = document.getElementById('obras-list-inline');
+                if (!container) return;
+                
+                if (obras && obras.length > 0) {
+                    container.innerHTML = obras.map(obra => {
+                        const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                        return `
+                            <div class="obras-list-item" onclick="selecionarObraInline(${obra.id}, '${obraName}')" style="padding: 15px; margin: 10px 0; background: rgba(255,255,255,0.05); border-radius: 8px; cursor: pointer; transition: all 0.3s;">
+                                <strong style="color: #fff;">${obraName}</strong>
+                            </div>
+                        `;
+                    }).join('');
+                } else {
+                    container.innerHTML = '<p style="text-align: center; color: #b0c4de;">Nenhuma obra cadastrada</p>';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar obras:', error);
+            }
+        }
+        
+        // Selecionar obra
+        function selecionarObraInline(obraId, obraName) {
+            window.obraIdMedicaoInline = obraId;
+            
+            const container = document.getElementById('obra-selecionada-container-inline');
+            if (container) {
+                container.innerHTML = `
+                    <div style="padding: 12px; background: rgba(76, 175, 80, 0.1); border: 1px solid #4CAF50; border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <strong style="color: #4CAF50;">${obraName}</strong>
+                        </div>
+                        <button type="button" onclick="abrirModalObrasInline()" style="padding: 6px 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 4px; cursor: pointer;">
+                            Trocar
+                        </button>
+                    </div>
+                `;
+            }
+            
+            // Fechar modal de obras
+            fecharModalObrasInline();
+        }
+        
+        // Salvar medição
+        async function salvarMedicaoInline(event) {
+            event.preventDefault();
+            
+            const dataMedicao = document.getElementById('data-medicao-inline').value;
+            const dataRecebimento = document.getElementById('data-recebimento-inline').value;
+            const valor = parseFloat(document.getElementById('valor-medicao-inline').value);
+            const status = document.getElementById('status-medicao-inline').value;
+            const observacoes = document.getElementById('observacoes-medicao-inline').value;
+            const obraId = window.obraIdMedicaoInline;
+            
+            if (!obraId) {
+                alert('Por favor, selecione uma obra');
+                return;
+            }
+            
+            try {
+                // Gerar número da medição
+                const { data: ultimaMedicao } = await supabase
+                    .from('medicoes_hvc')
+                    .select('numero')
+                    .order('numero', { ascending: false })
+                    .limit(1)
+                    .single();
+                
+                const proximoNumero = ultimaMedicao ? parseInt(ultimaMedicao.numero.replace('MED-', '')) + 1 : 1;
+                const numeroMedicao = `MED-${String(proximoNumero).padStart(3, '0')}`;
+                
+                // Salvar no Supabase
+                const { data, error } = await supabase
+                    .from('medicoes_hvc')
+                    .insert([{
+                        numero: numeroMedicao,
+                        obra_id: obraId,
+                        data_medicao: dataMedicao,
+                        data_recebimento: dataRecebimento,
+                        valor: valor,
+                        status: status,
+                        observacoes: observacoes
+                    }])
+                    .select();
+                
+                if (error) throw error;
+                
+                alert('Medição criada com sucesso!');
+                fecharModalMedicaoInline();
+                
+                // Atualizar lista de categorias
+                if (typeof updateCategoriaForReceiving === 'function') {
+                    await updateCategoriaForReceiving();
+                }
+                
+            } catch (error) {
+                console.error('Erro ao salvar medição:', error);
+                alert('Erro ao salvar medição: ' + error.message);
+            }
         }
         
     </script>
 
-</body>
+
+    <!-- ========================================
+         MODAL DE MEDIÇÕES (INLINE)
+         ======================================== -->
+    <div id="modal-medicao-inline" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-plus"></i>
+                    Nova Medição
+                </h2>
+                <button class="close" onclick="fecharModalMedicaoInline()">&times;</button>
+            </div>
+
+            <form id="form-medicao-inline" onsubmit="salvarMedicaoInline(event)">
+                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div class="form-group">
+                        <label for="data-medicao-inline" class="form-label">
+                            <i class="fas fa-calendar"></i>
+                            Data da Medição *
+                        </label>
+                        <input type="date" id="data-medicao-inline" class="form-input" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="data-recebimento-inline" class="form-label">
+                            <i class="fas fa-calendar-check"></i>
+                            Previsão de Recebimento *
+                        </label>
+                        <input type="date" id="data-recebimento-inline" class="form-input" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">
+                        <i class="fas fa-building"></i>
+                        Obra *
+                    </label>
+                    <div id="obra-selecionada-container-inline">
+                        <button type="button" class="btn-secondary" onclick="abrirModalObrasInline()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-building"></i>
+                            Selecionar Obra
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Container de Valor -->
+                <div class="form-group">
+                    <label for="valor-medicao-inline" class="form-label">
+                        <i class="fas fa-dollar-sign"></i>
+                        Valor da Medição *
+                    </label>
+                    <input type="number" id="valor-medicao-inline" class="form-input" step="0.01" min="0" required placeholder="R$ 0,00" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
+                </div>
+
+                <!-- Status -->
+                <div class="form-group">
+                    <label for="status-medicao-inline" class="form-label">
+                        <i class="fas fa-info-circle"></i>
+                        Status
+                    </label>
+                    <select id="status-medicao-inline" class="form-input" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
+                        <option value="pendente">Pendente</option>
+                        <option value="aprovada">Aprovada</option>
+                        <option value="paga">Paga</option>
+                    </select>
+                </div>
+
+                <!-- Observações -->
+                <div class="form-group">
+                    <label for="observacoes-medicao-inline" class="form-label">
+                        <i class="fas fa-sticky-note"></i>
+                        Observações
+                    </label>
+                    <textarea id="observacoes-medicao-inline" class="form-textarea" rows="3" placeholder="Observações sobre a medição..." style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);"></textarea>
+                </div>
+
+                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
+                    <button type="button" class="btn-secondary" onclick="fecharModalMedicaoInline()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-times"></i>
+                        Cancelar
+                    </button>
+                    <button type="submit" class="btn-primary" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-save"></i>
+                        Salvar Medição
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Selecionar Obra (Inline) -->
+    <div id="modal-obras-inline" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">
+                    <i class="fas fa-building"></i>
+                    Selecionar Obra
+                </h2>
+                <button class="close" onclick="fecharModalObrasInline()">&times;</button>
+            </div>
+
+            <div class="form-group">
+                <label for="search-obras-inline" class="form-label">
+                    <i class="fas fa-search"></i>
+                    Buscar Obra
+                </label>
+                <input type="text" id="search-obras-inline" class="form-input" placeholder="Digite o número da obra..." style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
+            </div>
+
+            <div id="obras-list-inline" style="max-height: 400px; overflow-y: auto;">
+                <!-- Lista de obras será carregada aqui -->
+            </div>
+        </div>
+    </div>
+    
+    </body>
 </html>
