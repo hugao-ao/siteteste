@@ -586,6 +586,7 @@ function addPatrimonioLiquido() {
     valor_atual: 0,
     tipo_produto: null,
     tipo_produto_nome: '',
+    nome_produto_customizado: '',
     classificacao_risco: '',
     instituicao: null,
     instituicao_nome: '',
@@ -695,7 +696,18 @@ function getPessoasCasa() {
     });
   }
   
-  return pessoas;
+  // Remover duplicatas baseado no nome
+  const pessoasUnicas = [];
+  const nomesVistos = new Set();
+  
+  pessoas.forEach(pessoa => {
+    if (!nomesVistos.has(pessoa.nome)) {
+      nomesVistos.add(pessoa.nome);
+      pessoasUnicas.push(pessoa);
+    }
+  });
+  
+  return pessoasUnicas;
 }
 
 function getFinalidadeLabel(finalidade) {
@@ -818,6 +830,18 @@ function renderPatrimoniosLiquidos() {
               </optgroup>
             `).join('')}
           </select>
+        </div>
+        
+        <div class="form-group">
+          <label>
+            <i class="fas fa-tag"></i> Nome do Produto (opcional)
+          </label>
+          <input 
+            type="text" 
+            placeholder="Ex: CDB XYZ 2025, Tesouro Selic 2027, etc."
+            value="${pl.nome_produto_customizado || ''}"
+            onchange="updatePatrimonioLiquidoField(${pl.id}, 'nome_produto_customizado', this.value)"
+          />
         </div>
         
         <div class="form-group">
@@ -959,7 +983,7 @@ function renderGraficos() {
     const canvasId = `grafico-${index}`;
     
     // Calcular total
-    const total = Object.values(dados).reduce((sum, val) => sum + val, 0);
+    const total = Object.values(dados).reduce((sum, val) => sum + val.valor, 0);
     
     return `
       <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.5rem;">
