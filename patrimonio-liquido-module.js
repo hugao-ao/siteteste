@@ -1,27 +1,29 @@
 // =========================================
-// PATRIMÔNIO LÍQUIDO - Módulo JavaScript
+// PATRIMÔNIO LÍQUIDO - Módulo JavaScript v2
+// Com classificação de risco e gráficos
 // =========================================
 
-// Array para armazenar os patrimônios líquidos
+import { supabase } from './supabase.js';
+
+// Arrays para armazenar os patrimônios líquidos
 let patrimoniosLiquidos = [];
 let patrimonioLiquidoCounter = 0;
+let tiposProdutos = [];
+let instituicoes = [];
 
-// Listas de tipos de produtos e instituições
-const tiposProdutosInvestimento = [
-  { categoria: 'Renda Fixa', items: ['Poupança', 'CDB', 'RDB', 'LCI', 'LCA', 'LCD', 'LH', 'LC', 'LF', 'Tesouro Selic', 'Tesouro Prefixado', 'Tesouro IPCA+', 'Tesouro RendA+', 'Tesouro Educa+', 'Debêntures', 'CRI', 'CRA'] },
-  { categoria: 'Renda Variável', items: ['Ações', 'FIIs', 'ETFs', 'BDRs', 'Opções', 'Futuros', 'Contratos a Termo'] },
-  { categoria: 'Fundos', items: ['Fundo DI', 'Fundo Renda Fixa', 'Fundo Multimercado', 'Fundo de Ações', 'Fundo Cambial', 'Fundo de Crédito Privado', 'Fundo Imobiliário'] },
-  { categoria: 'Previdência', items: ['PGBL', 'VGBL'] },
-  { categoria: 'Alternativos', items: ['Private Equity', 'Venture Capital', 'Criptomoedas', 'Ouro', 'COE'] }
-];
-
-const instituicoesFinanceiras = [
-  { tipo: 'Bancos', items: ['Banco do Brasil', 'Itaú Unibanco', 'Bradesco', 'Santander', 'Caixa Econômica Federal', 'Banco Inter', 'Nubank', 'C6 Bank', 'BTG Pactual', 'Safra', 'Sicredi', 'Sicoob', 'Banrisul', 'BRB'] },
-  { tipo: 'Corretoras', items: ['XP Investimentos', 'Rico', 'Clear', 'Ágora Investimentos', 'Modal', 'Órama', 'Guide Investimentos', 'Genial Investimentos', 'Toro Investimentos', 'Avenue'] },
-  { tipo: 'Gestoras', items: ['BlackRock', 'Vanguard', 'Verde Asset', 'Kapitalo', 'SPX Capital', 'Dynamo', 'JGP', 'Absolute'] },
-  { tipo: 'Previdência', items: ['Brasilprev', 'Icatu Seguros', 'SulAmérica', 'Porto Seguro'] },
-  { tipo: 'Outros', items: ['Tesouro Nacional', 'B3'] }
-];
+// Mapeamento de classificação de risco
+const CLASSIFICACAO_RISCO = {
+  'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label: 'Risco Muito Baixo (Garantia Soberana)', cor: '#006400', ordem: 1 },
+  'RISCO_MUITO_BAIXO_GARANTIA_FGC': { label: 'Risco Muito Baixo (Garantia FGC)', cor: '#228B22', ordem: 2 },
+  'RISCO_BAIXO_GARANTIA_FGC': { label: 'Risco Baixo (Garantia FGC)', cor: '#32CD32', ordem: 3 },
+  'RISCO_BAIXO_SEM_GARANTIA': { label: 'Risco Baixo', cor: '#90EE90', ordem: 4 },
+  'RISCO_MEDIO_SEM_GARANTIA': { label: 'Risco Médio', cor: '#FFD700', ordem: 5 },
+  'RISCO_ALTO_PROTECAO_MRP': { label: 'Risco Alto (Proteção MRP)', cor: '#FFA500', ordem: 6 },
+  'RISCO_ALTO_SEM_GARANTIA': { label: 'Risco Alto', cor: '#FF8C00', ordem: 7 },
+  'RISCO_MUITO_ALTO_PROTECAO_MRP': { label: 'Risco Muito Alto (Proteção MRP)', cor: '#FF6347', ordem: 8 },
+  'RISCO_MUITO_ALTO_SEM_GARANTIA': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 9 },
+  'RISCO_ABSOLUTO_SEM_GARANTIA': { label: 'Risco Absoluto', cor: '#8B0000', ordem: 10 }
+};
 
 // =========================================
 // FUNÇÕES DE FORMATAÇÃO
@@ -47,14 +49,99 @@ function desformatarMoeda(valorFormatado) {
   return parseFloat(valor) || 0;
 }
 
-function aplicarMascaraMoeda(input) {
+function aplicarMascaraMoeda(event) {
+  const input = event.target;
   let valor = input.value.replace(/\D/g, '');
+  
+  // Se está vazio, não fazer nada
   if (valor === '') {
-    input.value = 'R$ 0,00';
     return;
   }
-  valor = (parseInt(valor) / 100).toFixed(2);
-  input.value = formatarMoeda(valor);
+  
+  // Converter para número e formatar
+  const numeroEmCentavos = parseInt(valor);
+  const numeroEmReais = numeroEmCentavos / 100;
+  
+  input.value = formatarMoeda(numeroEmReais);
+}
+
+function limparCampoMoeda(event) {
+  const input = event.target;
+  if (input.value === 'R$ 0,00') {
+    input.value = '';
+  }
+}
+
+// =========================================
+// FUNÇÕES DE SUPABASE
+// =========================================
+
+async function carregarTiposProdutos() {
+  try {
+    const { data, error } = await supabase
+      .from('tipos_produtos_investimento')
+      .select('*')
+      .eq('ativo', true)
+      .order('categoria', { ascending: true })
+      .order('nome', { ascending: true });
+    
+    if (error) throw error;
+    tiposProdutos = data || [];
+  } catch (error) {
+    console.error('Erro ao carregar tipos de produtos:', error);
+    tiposProdutos = [];
+  }
+}
+
+async function carregarInstituicoes() {
+  try {
+    const { data, error } = await supabase
+      .from('instituicoes_financeiras')
+      .select('*')
+      .eq('ativo', true)
+      .order('tipo', { ascending: true })
+      .order('nome', { ascending: true });
+    
+    if (error) throw error;
+    instituicoes = data || [];
+  } catch (error) {
+    console.error('Erro ao carregar instituições:', error);
+    instituicoes = [];
+  }
+}
+
+async function adicionarTipoProduto(nome, categoria, classificacaoRisco) {
+  try {
+    const { data, error } = await supabase
+      .from('tipos_produtos_investimento')
+      .insert([{ nome, categoria, classificacao_risco: classificacaoRisco }])
+      .select();
+    
+    if (error) throw error;
+    await carregarTiposProdutos();
+    return data[0];
+  } catch (error) {
+    console.error('Erro ao adicionar tipo de produto:', error);
+    alert('Erro ao adicionar tipo de produto: ' + error.message);
+    return null;
+  }
+}
+
+async function adicionarInstituicao(nome, tipo) {
+  try {
+    const { data, error } = await supabase
+      .from('instituicoes_financeiras')
+      .insert([{ nome, tipo }])
+      .select();
+    
+    if (error) throw error;
+    await carregarInstituicoes();
+    return data[0];
+  } catch (error) {
+    console.error('Erro ao adicionar instituição:', error);
+    alert('Erro ao adicionar instituição: ' + error.message);
+    return null;
+  }
 }
 
 // =========================================
@@ -67,8 +154,11 @@ function addPatrimonioLiquido() {
   const patrimonioLiquido = {
     id: id,
     valor_atual: 0,
-    tipo_produto: '',
-    instituicao: '',
+    tipo_produto: null,
+    tipo_produto_nome: '',
+    classificacao_risco: '',
+    instituicao: null,
+    instituicao_nome: '',
     finalidade: 'SEM_FINALIDADE',
     aporte_valor: 0,
     aporte_frequencia: 'NENHUM',
@@ -79,27 +169,13 @@ function addPatrimonioLiquido() {
   renderPatrimoniosLiquidos();
 }
 
-function editPatrimonioLiquido(id) {
-  const patrimonioLiquido = patrimoniosLiquidos.find(p => p.id === id);
-  if (!patrimonioLiquido) return;
-  
-  // Scroll para o card
-  const card = document.querySelector(`[data-patrimonio-liquido-id="${id}"]`);
-  if (card) {
-    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    card.style.border = '3px solid var(--accent-color)';
-    setTimeout(() => {
-      card.style.border = '2px solid var(--border-color)';
-    }, 2000);
-  }
-}
-
 function deletePatrimonioLiquido(id) {
   if (!confirm('Tem certeza que deseja excluir este investimento?')) return;
   
   patrimoniosLiquidos = patrimoniosLiquidos.filter(p => p.id !== id);
   renderPatrimoniosLiquidos();
   updatePatrimonioLiquidoTotal();
+  renderGraficos();
 }
 
 function updatePatrimonioLiquidoField(id, field, value) {
@@ -108,6 +184,20 @@ function updatePatrimonioLiquidoField(id, field, value) {
   
   if (field === 'valor_atual' || field === 'aporte_valor') {
     patrimonioLiquido[field] = desformatarMoeda(value);
+  } else if (field === 'tipo_produto') {
+    const produto = tiposProdutos.find(p => p.id === value);
+    if (produto) {
+      patrimonioLiquido.tipo_produto = produto.id;
+      patrimonioLiquido.tipo_produto_nome = produto.nome;
+      patrimonioLiquido.classificacao_risco = produto.classificacao_risco;
+    }
+    renderPatrimoniosLiquidos();
+  } else if (field === 'instituicao') {
+    const inst = instituicoes.find(i => i.id === value);
+    if (inst) {
+      patrimonioLiquido.instituicao = inst.id;
+      patrimonioLiquido.instituicao_nome = inst.nome;
+    }
   } else if (field === 'donos') {
     const select = document.querySelector(`[data-patrimonio-liquido-id="${id}"] select[name="donos"]`);
     patrimonioLiquido.donos = Array.from(select.selectedOptions).map(opt => opt.value);
@@ -116,6 +206,7 @@ function updatePatrimonioLiquidoField(id, field, value) {
   }
   
   updatePatrimonioLiquidoTotal();
+  renderGraficos();
 }
 
 function updatePatrimonioLiquidoTotal() {
@@ -182,6 +273,10 @@ function getFinalidadeBadgeClass(finalidade) {
   return classes[finalidade] || 'badge-sem-finalidade';
 }
 
+function getRiscoInfo(classificacao) {
+  return CLASSIFICACAO_RISCO[classificacao] || { label: 'Não classificado', cor: '#999', ordem: 99 };
+}
+
 // =========================================
 // RENDERIZAÇÃO
 // =========================================
@@ -203,7 +298,28 @@ function renderPatrimoniosLiquidos() {
   
   const pessoasCasa = getPessoasCasa();
   
-  container.innerHTML = patrimoniosLiquidos.map(pl => `
+  // Agrupar tipos de produtos por categoria
+  const produtosPorCategoria = {};
+  tiposProdutos.forEach(produto => {
+    if (!produtosPorCategoria[produto.categoria]) {
+      produtosPorCategoria[produto.categoria] = [];
+    }
+    produtosPorCategoria[produto.categoria].push(produto);
+  });
+  
+  // Agrupar instituições por tipo
+  const instituicoesPorTipo = {};
+  instituicoes.forEach(inst => {
+    if (!instituicoesPorTipo[inst.tipo]) {
+      instituicoesPorTipo[inst.tipo] = [];
+    }
+    instituicoesPorTipo[inst.tipo].push(inst);
+  });
+  
+  container.innerHTML = patrimoniosLiquidos.map(pl => {
+    const riscoInfo = getRiscoInfo(pl.classificacao_risco);
+    
+    return `
     <div class="patrimonio-liquido-card" data-patrimonio-liquido-id="${pl.id}">
       <div class="patrimonio-liquido-header">
         <h4 class="patrimonio-liquido-title">
@@ -211,11 +327,13 @@ function renderPatrimoniosLiquidos() {
           <span class="badge-finalidade ${getFinalidadeBadgeClass(pl.finalidade)}">
             ${getFinalidadeLabel(pl.finalidade)}
           </span>
+          ${pl.classificacao_risco ? `
+            <span class="badge-risco" style="background-color: ${riscoInfo.cor}; color: white; padding: 0.3rem 0.8rem; border-radius: 15px; font-size: 0.75rem; margin-left: 0.5rem;">
+              ${riscoInfo.label}
+            </span>
+          ` : ''}
         </h4>
         <div class="patrimonio-liquido-actions">
-          <button type="button" class="edit-btn" onclick="editPatrimonioLiquido(${pl.id})" title="Editar">
-            <i class="fas fa-edit"></i>
-          </button>
           <button type="button" class="delete-btn" onclick="deletePatrimonioLiquido(${pl.id})" title="Excluir">
             <i class="fas fa-trash"></i>
           </button>
@@ -231,8 +349,8 @@ function renderPatrimoniosLiquidos() {
             type="text" 
             class="input-moeda" 
             value="${formatarMoeda(pl.valor_atual)}"
-            onblur="updatePatrimonioLiquidoField(${pl.id}, 'valor_atual', this.value)"
-            onfocus="if(this.value === 'R$ 0,00') this.value = ''"
+            data-pl-id="${pl.id}"
+            data-field="valor_atual"
           />
         </div>
         
@@ -242,10 +360,12 @@ function renderPatrimoniosLiquidos() {
           </label>
           <select onchange="updatePatrimonioLiquidoField(${pl.id}, 'tipo_produto', this.value)">
             <option value="">Selecione o tipo</option>
-            ${tiposProdutosInvestimento.map(cat => `
-              <optgroup label="${cat.categoria}">
-                ${cat.items.map(item => `
-                  <option value="${item}" ${pl.tipo_produto === item ? 'selected' : ''}>${item}</option>
+            ${Object.keys(produtosPorCategoria).map(categoria => `
+              <optgroup label="${categoria}">
+                ${produtosPorCategoria[categoria].map(produto => `
+                  <option value="${produto.id}" ${pl.tipo_produto === produto.id ? 'selected' : ''}>
+                    ${produto.nome}
+                  </option>
                 `).join('')}
               </optgroup>
             `).join('')}
@@ -258,10 +378,12 @@ function renderPatrimoniosLiquidos() {
           </label>
           <select onchange="updatePatrimonioLiquidoField(${pl.id}, 'instituicao', this.value)">
             <option value="">Selecione a instituição</option>
-            ${instituicoesFinanceiras.map(tipo => `
-              <optgroup label="${tipo.tipo}">
-                ${tipo.items.map(item => `
-                  <option value="${item}" ${pl.instituicao === item ? 'selected' : ''}>${item}</option>
+            ${Object.keys(instituicoesPorTipo).map(tipo => `
+              <optgroup label="${tipo}">
+                ${instituicoesPorTipo[tipo].map(inst => `
+                  <option value="${inst.id}" ${pl.instituicao === inst.id ? 'selected' : ''}>
+                    ${inst.nome}
+                  </option>
                 `).join('')}
               </optgroup>
             `).join('')}
@@ -288,8 +410,8 @@ function renderPatrimoniosLiquidos() {
             type="text" 
             class="input-moeda" 
             value="${formatarMoeda(pl.aporte_valor)}"
-            onblur="updatePatrimonioLiquidoField(${pl.id}, 'aporte_valor', this.value)"
-            onfocus="if(this.value === 'R$ 0,00') this.value = ''"
+            data-pl-id="${pl.id}"
+            data-field="aporte_valor"
           />
         </div>
         
@@ -323,54 +445,128 @@ function renderPatrimoniosLiquidos() {
           </select>
         </div>
       </div>
-      
-      ${pl.valor_atual > 0 || pl.tipo_produto || pl.instituicao ? `
-        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
-          <div class="info-row-pl">
-            <span class="info-label-pl">Valor Atual:</span>
-            <span class="info-value-pl" style="color: var(--accent-color); font-weight: 700; font-size: 1.1rem;">
-              ${formatarMoeda(pl.valor_atual)}
-            </span>
-          </div>
-          ${pl.tipo_produto ? `
-            <div class="info-row-pl">
-              <span class="info-label-pl">Produto:</span>
-              <span class="info-value-pl">${pl.tipo_produto}</span>
-            </div>
-          ` : ''}
-          ${pl.instituicao ? `
-            <div class="info-row-pl">
-              <span class="info-label-pl">Instituição:</span>
-              <span class="info-value-pl">${pl.instituicao}</span>
-            </div>
-          ` : ''}
-          ${pl.aporte_valor > 0 ? `
-            <div class="info-row-pl">
-              <span class="info-label-pl">Aporte ${pl.aporte_frequencia}:</span>
-              <span class="info-value-pl">${formatarMoeda(pl.aporte_valor)}</span>
-            </div>
-          ` : ''}
-          ${pl.donos.length > 0 ? `
-            <div class="info-row-pl">
-              <span class="info-label-pl">Proprietário(s):</span>
-              <div class="donos-list">
-                ${pl.donos.map(dono => `<span class="dono-tag">${dono}</span>`).join('')}
-              </div>
-            </div>
-          ` : ''}
-        </div>
-      ` : ''}
     </div>
-  `).join('');
+  `;
+  }).join('');
   
-  // Aplicar máscaras de moeda
+  // Aplicar event listeners para máscaras de moeda
   container.querySelectorAll('.input-moeda').forEach(input => {
-    input.addEventListener('input', function() {
-      aplicarMascaraMoeda(this);
+    input.addEventListener('input', aplicarMascaraMoeda);
+    input.addEventListener('focus', limparCampoMoeda);
+    input.addEventListener('blur', function() {
+      const plId = parseInt(this.dataset.plId);
+      const field = this.dataset.field;
+      updatePatrimonioLiquidoField(plId, field, this.value);
     });
   });
   
   updatePatrimonioLiquidoTotal();
+}
+
+// =========================================
+// GRÁFICOS
+// =========================================
+
+function renderGraficos() {
+  const container = document.getElementById('graficos-patrimonio-liquido');
+  if (!container) return;
+  
+  // Agrupar investimentos por proprietários
+  const gruposPorProprietarios = {};
+  
+  patrimoniosLiquidos.forEach(pl => {
+    if (!pl.classificacao_risco || pl.valor_atual <= 0) return;
+    
+    const chaveProprietarios = pl.donos.sort().join(' + ') || 'Sem proprietário';
+    
+    if (!gruposPorProprietarios[chaveProprietarios]) {
+      gruposPorProprietarios[chaveProprietarios] = {};
+    }
+    
+    const riscoInfo = getRiscoInfo(pl.classificacao_risco);
+    const riscoLabel = riscoInfo.label;
+    
+    if (!gruposPorProprietarios[chaveProprietarios][riscoLabel]) {
+      gruposPorProprietarios[chaveProprietarios][riscoLabel] = {
+        valor: 0,
+        cor: riscoInfo.cor,
+        ordem: riscoInfo.ordem
+      };
+    }
+    
+    gruposPorProprietarios[chaveProprietarios][riscoLabel].valor += parseFloat(pl.valor_atual);
+  });
+  
+  // Renderizar gráficos
+  if (Object.keys(gruposPorProprietarios).length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: var(--text-light); opacity: 0.7;">Adicione investimentos com proprietários e classificação de risco para ver os gráficos.</p>';
+    return;
+  }
+  
+  container.innerHTML = Object.keys(gruposPorProprietarios).map((proprietarios, index) => {
+    const dados = gruposPorProprietarios[proprietarios];
+    const canvasId = `grafico-${index}`;
+    
+    return `
+      <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
+        <h4 style="color: var(--accent-color); margin-bottom: 1rem; text-align: center;">
+          <i class="fas fa-user-circle"></i> ${proprietarios}
+        </h4>
+        <canvas id="${canvasId}" style="max-height: 300px;"></canvas>
+      </div>
+    `;
+  }).join('');
+  
+  // Criar gráficos com Chart.js
+  Object.keys(gruposPorProprietarios).forEach((proprietarios, index) => {
+    const dados = gruposPorProprietarios[proprietarios];
+    const canvasId = `grafico-${index}`;
+    const ctx = document.getElementById(canvasId);
+    
+    if (!ctx) return;
+    
+    // Ordenar por ordem de risco
+    const dadosOrdenados = Object.entries(dados).sort((a, b) => a[1].ordem - b[1].ordem);
+    
+    new Chart(ctx, {
+      type: 'pie',
+      data: {
+        labels: dadosOrdenados.map(([label]) => label),
+        datasets: [{
+          data: dadosOrdenados.map(([, info]) => info.valor),
+          backgroundColor: dadosOrdenados.map(([, info]) => info.cor),
+          borderColor: 'var(--dark-bg)',
+          borderWidth: 2
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          legend: {
+            position: 'bottom',
+            labels: {
+              color: 'var(--text-light)',
+              font: {
+                size: 11
+              }
+            }
+          },
+          tooltip: {
+            callbacks: {
+              label: function(context) {
+                const label = context.label || '';
+                const value = formatarMoeda(context.parsed);
+                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                const percentage = ((context.parsed / total) * 100).toFixed(1);
+                return `${label}: ${value} (${percentage}%)`;
+              }
+            }
+          }
+        }
+      }
+    });
+  });
 }
 
 // =========================================
@@ -387,19 +583,25 @@ function setPatrimoniosLiquidosData(data) {
   patrimoniosLiquidos = data;
   patrimonioLiquidoCounter = Math.max(...patrimoniosLiquidos.map(p => p.id), 0);
   renderPatrimoniosLiquidos();
+  renderGraficos();
 }
 
 // =========================================
 // INICIALIZAÇÃO
 // =========================================
 
-function initPatrimonioLiquido() {
+async function initPatrimonioLiquido() {
+  // Carregar dados do Supabase
+  await carregarTiposProdutos();
+  await carregarInstituicoes();
+  
   const addBtn = document.getElementById('add-patrimonio-liquido-btn');
   if (addBtn) {
     addBtn.addEventListener('click', addPatrimonioLiquido);
   }
   
   renderPatrimoniosLiquidos();
+  renderGraficos();
 }
 
 // Inicializar quando o DOM estiver pronto
@@ -409,11 +611,12 @@ if (document.readyState === 'loading') {
   initPatrimonioLiquido();
 }
 
-// Expor funções globalmente para uso no HTML
+// Expor funções globalmente
 window.addPatrimonioLiquido = addPatrimonioLiquido;
-window.editPatrimonioLiquido = editPatrimonioLiquido;
 window.deletePatrimonioLiquido = deletePatrimonioLiquido;
 window.updatePatrimonioLiquidoField = updatePatrimonioLiquidoField;
 window.getPatrimoniosLiquidosData = getPatrimoniosLiquidosData;
 window.setPatrimoniosLiquidosData = setPatrimoniosLiquidosData;
+window.adicionarTipoProduto = adicionarTipoProduto;
+window.adicionarInstituicao = adicionarInstituicao;
 
