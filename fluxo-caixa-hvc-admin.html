@@ -8815,30 +8815,31 @@
 
         // Função para renderizar campos TIPO, SUBTIPO e CATEGORIA baseado no tipo de evento
         window.renderEventTypeFields = function(eventType) {
-            const tipoContainer = document.querySelector('.payment-item-tipo');
-            const subtipoContainer = document.querySelector('.payment-item-subtipo');
-            const categoriaContainer = document.querySelector('.payment-item-categoria');
+            const tipoSelect = document.getElementById('itemTipo');
+            const subtipoContainer = document.getElementById('itemSubtipo')?.closest('.form-group');
+            const categoriaContainer = document.getElementById('itemCategoria')?.closest('.form-group');
             
-            if (!tipoContainer || !subtipoContainer || !categoriaContainer) return;
+            if (!tipoSelect || !subtipoContainer || !categoriaContainer) {
+                console.warn('Campos não encontrados para renderizar');
+                return;
+            }
             
             if (eventType === 'pagamento') {
                 // PAGAMENTO: TIPO = INTERNO/EXTERNO
-                tipoContainer.innerHTML = `
-                    <label>Tipo</label>
-                    <select id="payment-tipo" onchange="updateSubtipoBasedOnTipo()">
-                        <option value="">Nenhum</option>
-                        <option value="INTERNO">INTERNO</option>
-                        <option value="EXTERNO">EXTERNO</option>
-                    </select>
+                tipoSelect.innerHTML = `
+                    <option value="">Nenhum</option>
+                    <option value="INTERNO">INTERNO</option>
+                    <option value="EXTERNO">EXTERNO</option>
                 `;
                 
                 subtipoContainer.innerHTML = `
                     <label>Subtipo</label>
-                    <div class="field-with-manage">
-                        <select id="payment-subtipo" onchange="updateCategoriaBasedOnSubtipo()">
+                    <div class="select-with-manage">
+                        <select id="itemSubtipo" onchange="updateCategoriaBasedOnSubtipo()">
                             <option value="">Nenhum</option>
+                            <option value="OBRA">OBRA</option>
                         </select>
-                        <button type="button" class="btn-manage-list" onclick="openManageSubtiposModal()">
+                        <button type="button" class="manage-list-btn" onclick="openManageSubtiposModal()" title="Gerenciar lista">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -8846,11 +8847,11 @@
                 
                 categoriaContainer.innerHTML = `
                     <label>Categoria</label>
-                    <div class="field-with-manage">
-                        <select id="payment-categoria">
+                    <div class="select-with-manage">
+                        <select id="itemCategoria">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list" id="btn-manage-categoria" onclick="openManageCategoriasModal()">
+                        <button type="button" class="manage-list-btn" id="manageCategoriaBtn" onclick="openManageCategoriasModal()" title="Gerenciar lista">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -8861,22 +8862,19 @@
                 
             } else if (eventType === 'recebimento') {
                 // RECEBIMENTO: TIPO = OBRAS/OUTROS
-                tipoContainer.innerHTML = `
-                    <label>Tipo</label>
-                    <select id="payment-tipo" onchange="updateSubtipoForReceiving()">
-                        <option value="">Nenhum</option>
-                        <option value="OBRAS">OBRAS</option>
-                        <option value="OUTROS">OUTROS</option>
-                    </select>
+                tipoSelect.innerHTML = `
+                    <option value="">Nenhum</option>
+                    <option value="OBRAS">OBRAS</option>
+                    <option value="OUTROS">OUTROS</option>
                 `;
                 
                 subtipoContainer.innerHTML = `
                     <label>Subtipo</label>
-                    <div class="field-with-manage">
-                        <select id="payment-subtipo" onchange="updateCategoriaForReceiving()">
+                    <div class="select-with-manage">
+                        <select id="itemSubtipo" onchange="updateCategoriaForReceiving()">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list" id="btn-manage-subtipo-rec" onclick="openManageSubtiposRecModal()">
+                        <button type="button" class="manage-list-btn" id="btn-manage-subtipo-rec" onclick="openManageSubtiposRecModal()" title="Gerenciar lista">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -8884,11 +8882,11 @@
                 
                 categoriaContainer.innerHTML = `
                     <label>Categoria</label>
-                    <div class="field-with-manage">
-                        <select id="payment-categoria">
+                    <div class="select-with-manage">
+                        <select id="itemCategoria">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="btn-manage-list" id="btn-manage-categoria-rec" onclick="openManageCategoriasRecModal()">
+                        <button type="button" class="manage-list-btn" id="manageCategoriaBtn" onclick="openManageCategoriasRecModal()" title="Gerenciar lista">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -8898,7 +8896,7 @@
         
         // Função para popular SUBTIPO para PAGAMENTO
         function populateSubtipoForPayment() {
-            const subtipoSelect = document.getElementById('payment-subtipo');
+            const subtipoSelect = document.getElementById('itemSubtipo');
             if (!subtipoSelect) return;
             
             subtipoSelect.innerHTML = '<option value="">Nenhum</option><option value="OBRA">OBRA</option>';
@@ -8911,8 +8909,8 @@
         
         // Função para atualizar SUBTIPO quando TIPO muda (RECEBIMENTO)
         window.updateSubtipoForReceiving = async function() {
-            const tipoSelect = document.getElementById('payment-tipo');
-            const subtipoSelect = document.getElementById('payment-subtipo');
+            const tipoSelect = document.getElementById('itemTipo');
+            const subtipoSelect = document.getElementById('itemSubtipo');
             const btnManageSubtipo = document.getElementById('btn-manage-subtipo-rec');
             
             if (!tipoSelect || !subtipoSelect) return;
@@ -8965,7 +8963,7 @@
             }
             
             // Limpar categoria
-            const categoriaSelect = document.getElementById('payment-categoria');
+            const categoriaSelect = document.getElementById('itemCategoria');
             if (categoriaSelect) {
                 categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
             }
@@ -8973,10 +8971,10 @@
         
         // Função para atualizar CATEGORIA quando SUBTIPO muda (RECEBIMENTO)
         window.updateCategoriaForReceiving = async function() {
-            const tipoSelect = document.getElementById('payment-tipo');
-            const subtipoSelect = document.getElementById('payment-subtipo');
-            const categoriaSelect = document.getElementById('payment-categoria');
-            const btnManageCategoria = document.getElementById('btn-manage-categoria-rec');
+            const tipoSelect = document.getElementById('itemTipo');
+            const subtipoSelect = document.getElementById('itemSubtipo');
+            const categoriaSelect = document.getElementById('itemCategoria');
+            const btnManageCategoria = document.getElementById('manageCategoriaBtn');
             
             if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
             
