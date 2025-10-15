@@ -8806,6 +8806,244 @@
         };
 
 
+
+        // Função para renderizar campos TIPO, SUBTIPO e CATEGORIA baseado no tipo de evento
+        window.renderEventTypeFields = function(eventType) {
+            const tipoContainer = document.querySelector('.payment-item-tipo');
+            const subtipoContainer = document.querySelector('.payment-item-subtipo');
+            const categoriaContainer = document.querySelector('.payment-item-categoria');
+            
+            if (!tipoContainer || !subtipoContainer || !categoriaContainer) return;
+            
+            if (eventType === 'pagamento') {
+                // PAGAMENTO: TIPO = INTERNO/EXTERNO
+                tipoContainer.innerHTML = `
+                    <label>Tipo</label>
+                    <select id="payment-tipo" onchange="updateSubtipoBasedOnTipo()">
+                        <option value="">Nenhum</option>
+                        <option value="INTERNO">INTERNO</option>
+                        <option value="EXTERNO">EXTERNO</option>
+                    </select>
+                `;
+                
+                subtipoContainer.innerHTML = `
+                    <label>Subtipo</label>
+                    <div class="field-with-manage">
+                        <select id="payment-subtipo" onchange="updateCategoriaBasedOnSubtipo()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list" onclick="openManageSubtiposModal()">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaContainer.innerHTML = `
+                    <label>Categoria</label>
+                    <div class="field-with-manage">
+                        <select id="payment-categoria">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list" id="btn-manage-categoria" onclick="openManageCategoriasModal()">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular SUBTIPO para pagamento
+                populateSubtipoForPayment();
+                
+            } else if (eventType === 'recebimento') {
+                // RECEBIMENTO: TIPO = OBRAS/OUTROS
+                tipoContainer.innerHTML = `
+                    <label>Tipo</label>
+                    <select id="payment-tipo" onchange="updateSubtipoForReceiving()">
+                        <option value="">Nenhum</option>
+                        <option value="OBRAS">OBRAS</option>
+                        <option value="OUTROS">OUTROS</option>
+                    </select>
+                `;
+                
+                subtipoContainer.innerHTML = `
+                    <label>Subtipo</label>
+                    <div class="field-with-manage">
+                        <select id="payment-subtipo" onchange="updateCategoriaForReceiving()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list" id="btn-manage-subtipo-rec" onclick="openManageSubtiposRecModal()">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaContainer.innerHTML = `
+                    <label>Categoria</label>
+                    <div class="field-with-manage">
+                        <select id="payment-categoria">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list" id="btn-manage-categoria-rec" onclick="openManageCategoriasRecModal()">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+            }
+        };
+        
+        // Função para popular SUBTIPO para PAGAMENTO
+        function populateSubtipoForPayment() {
+            const subtipoSelect = document.getElementById('payment-subtipo');
+            if (!subtipoSelect) return;
+            
+            subtipoSelect.innerHTML = '<option value="">Nenhum</option><option value="OBRA">OBRA</option>';
+            
+            const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos') || '[]');
+            customSubtipos.forEach(st => {
+                subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+            });
+        }
+        
+        // Função para atualizar SUBTIPO quando TIPO muda (RECEBIMENTO)
+        window.updateSubtipoForReceiving = async function() {
+            const tipoSelect = document.getElementById('payment-tipo');
+            const subtipoSelect = document.getElementById('payment-subtipo');
+            const btnManageSubtipo = document.getElementById('btn-manage-subtipo-rec');
+            
+            if (!tipoSelect || !subtipoSelect) return;
+            
+            const tipo = tipoSelect.value;
+            
+            if (tipo === 'OBRAS') {
+                // Carregar obras do Supabase
+                subtipoSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                btnManageSubtipo.disabled = true;
+                btnManageSubtipo.style.opacity = '0.5';
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            const obraId = obra.id;
+                            subtipoSelect.innerHTML += `<option value="${obraName}" data-obra-id="${obraId}">${obraName}</option>`;
+                        });
+                    } else {
+                        subtipoSelect.innerHTML = '<option value="">Nenhuma obra cadastrada</option>';
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar obras:', error);
+                    subtipoSelect.innerHTML = '<option value="">Erro ao carregar obras</option>';
+                }
+            } else if (tipo === 'OUTROS') {
+                // Usar lista personalizada
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                btnManageSubtipo.disabled = false;
+                btnManageSubtipo.style.opacity = '1';
+                
+                const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
+                customSubtipos.forEach(st => {
+                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+            } else {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                btnManageSubtipo.disabled = true;
+                btnManageSubtipo.style.opacity = '0.5';
+            }
+            
+            // Limpar categoria
+            const categoriaSelect = document.getElementById('payment-categoria');
+            if (categoriaSelect) {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            }
+        };
+        
+        // Função para atualizar CATEGORIA quando SUBTIPO muda (RECEBIMENTO)
+        window.updateCategoriaForReceiving = async function() {
+            const tipoSelect = document.getElementById('payment-tipo');
+            const subtipoSelect = document.getElementById('payment-subtipo');
+            const categoriaSelect = document.getElementById('payment-categoria');
+            const btnManageCategoria = document.getElementById('btn-manage-categoria-rec');
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            const subtipo = subtipoSelect.value;
+            
+            if (tipo === 'OBRAS' && subtipo) {
+                // Carregar medições da obra selecionada
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                const obraId = selectedOption.getAttribute('data-obra-id');
+                
+                if (obraId) {
+                    categoriaSelect.innerHTML = '<option value="">Carregando medições...</option>';
+                    btnManageCategoria.disabled = true;
+                    btnManageCategoria.style.opacity = '0.5';
+                    
+                    try {
+                        const { data: medicoes, error } = await supabase
+                            .from('medicoes_hvc')
+                            .select('*')
+                            .eq('obra_id', obraId)
+                            .order('created_at', { ascending: false });
+                        
+                        if (error) throw error;
+                        
+                        categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                        
+                        if (medicoes && medicoes.length > 0) {
+                            medicoes.forEach(medicao => {
+                                const medicaoName = medicao.numero_medicao || `Medição ${medicao.id}`;
+                                categoriaSelect.innerHTML += `<option value="${medicaoName}">${medicaoName}</option>`;
+                            });
+                        } else {
+                            categoriaSelect.innerHTML = '<option value="">Nenhuma medição cadastrada</option>';
+                        }
+                    } catch (error) {
+                        console.error('Erro ao carregar medições:', error);
+                        categoriaSelect.innerHTML = '<option value="">Erro ao carregar medições</option>';
+                    }
+                } else {
+                    categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                }
+            } else if (tipo === 'OUTROS') {
+                // Usar lista personalizada
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                btnManageCategoria.disabled = false;
+                btnManageCategoria.style.opacity = '1';
+                
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            } else {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                btnManageCategoria.disabled = true;
+                btnManageCategoria.style.opacity = '0.5';
+            }
+        };
+        
+        // Funções para abrir modais de gerenciamento (RECEBIMENTO)
+        window.openManageSubtiposRecModal = function() {
+            openManageListModal('hvc_custom_subtipos_rec', 'Gerenciar Subtipos de Recebimento', function() {
+                updateSubtipoForReceiving();
+            });
+        };
+        
+        window.openManageCategoriasRecModal = function() {
+            openManageListModal('hvc_custom_categorias_rec', 'Gerenciar Categorias de Recebimento', function() {
+                updateCategoriaForReceiving();
+            });
+        };
+
+
         // Função para atualizar select de categoria na edição
         window.updateCategoriaSelectInEdit = async function(itemIndex, subtipo) {
             const categoriaSelect = document.querySelector(`.edit-item-categoria[data-item-index="${itemIndex}"]`);
@@ -9032,6 +9270,246 @@
         console.log('✅ Função startEditingEventItems declarada:', typeof window.startEditingEventItems);
         console.log('✅ Função saveEventItemsChanges declarada:', typeof window.saveEventItemsChanges);
         console.log('✅ Função rebuildEventDescription declarada:', typeof window.rebuildEventDescription);
+
+        // Função para renderizar campos TIPO, SUBTIPO e CATEGORIA na edição do modal
+        window.renderEditFieldsBasedOnEventType = function(eventType, itemData) {
+            const tipoInput = document.querySelector('#editItemForm input[placeholder*="Tipo"]')?.closest('.form-group');
+            const subtipoInput = document.querySelector('#editItemForm input[placeholder*="Subtipo"]')?.closest('.form-group');
+            const categoriaInput = document.querySelector('#editItemForm input[placeholder*="Categoria"]')?.closest('.form-group');
+            
+            if (!tipoInput || !subtipoInput || !categoriaInput) return;
+            
+            if (eventType === 'pagamento') {
+                // PAGAMENTO: mesma lógica atual
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control">
+                        <option value="">Nenhum</option>
+                        <option value="INTERNO" ${itemData.tipo === 'INTERNO' ? 'selected' : ''}>INTERNO</option>
+                        <option value="EXTERNO" ${itemData.tipo === 'EXTERNO' ? 'selected' : ''}>EXTERNO</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    populateEditSubtipo();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaBasedOnSubtipo();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+                
+            } else if (eventType === 'recebimento') {
+                // RECEBIMENTO: nova lógica
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control" onchange="updateEditSubtipoForReceiving()">
+                        <option value="">Nenhum</option>
+                        <option value="OBRAS" ${itemData.tipo === 'OBRAS' ? 'selected' : ''}>OBRAS</option>
+                        <option value="OUTROS" ${itemData.tipo === 'OUTROS' ? 'selected' : ''}>OUTROS</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaForReceiving()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-subtipo-rec" onclick="openManageSubtiposRecModal(); setTimeout(() => updateEditSubtipoForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria-rec" onclick="openManageCategoriasRecModal(); setTimeout(() => updateEditCategoriaForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    updateEditSubtipoForReceiving();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaForReceiving();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+            }
+        };
+        
+        // Funções auxiliares para edição (RECEBIMENTO)
+        window.updateEditSubtipoForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const btnManage = document.getElementById('btn-manage-edit-subtipo-rec');
+            
+            if (!tipoSelect || !subtipoSelect) return;
+            
+            const tipo = tipoSelect.value;
+            
+            if (tipo === 'OBRAS') {
+                subtipoSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            subtipoSelect.innerHTML += `<option value="${obraName}" data-obra-id="${obra.id}">${obraName}</option>`;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    subtipoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                }
+            } else if (tipo === 'OUTROS') {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
+                customSubtipos.forEach(st => {
+                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+            } else {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+            
+            // Limpar categoria
+            const categoriaSelect = document.getElementById('edit-categoria');
+            if (categoriaSelect) {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            }
+        };
+        
+        window.updateEditCategoriaForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const categoriaSelect = document.getElementById('edit-categoria');
+            const btnManage = document.getElementById('btn-manage-edit-categoria-rec');
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            const subtipo = subtipoSelect.value;
+            
+            if (tipo === 'OBRAS' && subtipo) {
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                const obraId = selectedOption.getAttribute('data-obra-id');
+                
+                if (obraId) {
+                    categoriaSelect.innerHTML = '<option value="">Carregando medições...</option>';
+                    if (btnManage) {
+                        btnManage.disabled = true;
+                        btnManage.style.opacity = '0.5';
+                    }
+                    
+                    try {
+                        const { data: medicoes, error } = await supabase
+                            .from('medicoes_hvc')
+                            .select('*')
+                            .eq('obra_id', obraId)
+                            .order('created_at', { ascending: false });
+                        
+                        if (error) throw error;
+                        
+                        categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                        
+                        if (medicoes && medicoes.length > 0) {
+                            medicoes.forEach(medicao => {
+                                const medicaoName = medicao.numero_medicao || `Medição ${medicao.id}`;
+                                categoriaSelect.innerHTML += `<option value="${medicaoName}">${medicaoName}</option>`;
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        categoriaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    }
+                }
+            } else if (tipo === 'OUTROS') {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            } else {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+        };
+
     </script>
 </head>
 
@@ -9890,6 +10368,246 @@
     <script type="module">
         import { injectSidebar } from './sidebar.js';
         injectSidebar("main-content-fluxo-caixa-hvc");
+
+        // Função para renderizar campos TIPO, SUBTIPO e CATEGORIA na edição do modal
+        window.renderEditFieldsBasedOnEventType = function(eventType, itemData) {
+            const tipoInput = document.querySelector('#editItemForm input[placeholder*="Tipo"]')?.closest('.form-group');
+            const subtipoInput = document.querySelector('#editItemForm input[placeholder*="Subtipo"]')?.closest('.form-group');
+            const categoriaInput = document.querySelector('#editItemForm input[placeholder*="Categoria"]')?.closest('.form-group');
+            
+            if (!tipoInput || !subtipoInput || !categoriaInput) return;
+            
+            if (eventType === 'pagamento') {
+                // PAGAMENTO: mesma lógica atual
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control">
+                        <option value="">Nenhum</option>
+                        <option value="INTERNO" ${itemData.tipo === 'INTERNO' ? 'selected' : ''}>INTERNO</option>
+                        <option value="EXTERNO" ${itemData.tipo === 'EXTERNO' ? 'selected' : ''}>EXTERNO</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    populateEditSubtipo();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaBasedOnSubtipo();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+                
+            } else if (eventType === 'recebimento') {
+                // RECEBIMENTO: nova lógica
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control" onchange="updateEditSubtipoForReceiving()">
+                        <option value="">Nenhum</option>
+                        <option value="OBRAS" ${itemData.tipo === 'OBRAS' ? 'selected' : ''}>OBRAS</option>
+                        <option value="OUTROS" ${itemData.tipo === 'OUTROS' ? 'selected' : ''}>OUTROS</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaForReceiving()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-subtipo-rec" onclick="openManageSubtiposRecModal(); setTimeout(() => updateEditSubtipoForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria-rec" onclick="openManageCategoriasRecModal(); setTimeout(() => updateEditCategoriaForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    updateEditSubtipoForReceiving();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaForReceiving();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+            }
+        };
+        
+        // Funções auxiliares para edição (RECEBIMENTO)
+        window.updateEditSubtipoForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const btnManage = document.getElementById('btn-manage-edit-subtipo-rec');
+            
+            if (!tipoSelect || !subtipoSelect) return;
+            
+            const tipo = tipoSelect.value;
+            
+            if (tipo === 'OBRAS') {
+                subtipoSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            subtipoSelect.innerHTML += `<option value="${obraName}" data-obra-id="${obra.id}">${obraName}</option>`;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    subtipoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                }
+            } else if (tipo === 'OUTROS') {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
+                customSubtipos.forEach(st => {
+                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+            } else {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+            
+            // Limpar categoria
+            const categoriaSelect = document.getElementById('edit-categoria');
+            if (categoriaSelect) {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            }
+        };
+        
+        window.updateEditCategoriaForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const categoriaSelect = document.getElementById('edit-categoria');
+            const btnManage = document.getElementById('btn-manage-edit-categoria-rec');
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            const subtipo = subtipoSelect.value;
+            
+            if (tipo === 'OBRAS' && subtipo) {
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                const obraId = selectedOption.getAttribute('data-obra-id');
+                
+                if (obraId) {
+                    categoriaSelect.innerHTML = '<option value="">Carregando medições...</option>';
+                    if (btnManage) {
+                        btnManage.disabled = true;
+                        btnManage.style.opacity = '0.5';
+                    }
+                    
+                    try {
+                        const { data: medicoes, error } = await supabase
+                            .from('medicoes_hvc')
+                            .select('*')
+                            .eq('obra_id', obraId)
+                            .order('created_at', { ascending: false });
+                        
+                        if (error) throw error;
+                        
+                        categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                        
+                        if (medicoes && medicoes.length > 0) {
+                            medicoes.forEach(medicao => {
+                                const medicaoName = medicao.numero_medicao || `Medição ${medicao.id}`;
+                                categoriaSelect.innerHTML += `<option value="${medicaoName}">${medicaoName}</option>`;
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        categoriaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    }
+                }
+            } else if (tipo === 'OUTROS') {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            } else {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+        };
+
     </script>
     
     <!-- ✅ NOVO: Event Listeners para criação de eventos -->
@@ -10039,6 +10757,246 @@
         // ✅ FUNCIONALIDADES DE EDIÇÃO DE ITENS REMOVIDAS (DUPLICAÇÃO)
         // As funções de edição estão implementadas anteriormente no código
         // =================================================================
+
+        // Função para renderizar campos TIPO, SUBTIPO e CATEGORIA na edição do modal
+        window.renderEditFieldsBasedOnEventType = function(eventType, itemData) {
+            const tipoInput = document.querySelector('#editItemForm input[placeholder*="Tipo"]')?.closest('.form-group');
+            const subtipoInput = document.querySelector('#editItemForm input[placeholder*="Subtipo"]')?.closest('.form-group');
+            const categoriaInput = document.querySelector('#editItemForm input[placeholder*="Categoria"]')?.closest('.form-group');
+            
+            if (!tipoInput || !subtipoInput || !categoriaInput) return;
+            
+            if (eventType === 'pagamento') {
+                // PAGAMENTO: mesma lógica atual
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control">
+                        <option value="">Nenhum</option>
+                        <option value="INTERNO" ${itemData.tipo === 'INTERNO' ? 'selected' : ''}>INTERNO</option>
+                        <option value="EXTERNO" ${itemData.tipo === 'EXTERNO' ? 'selected' : ''}>EXTERNO</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    populateEditSubtipo();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaBasedOnSubtipo();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+                
+            } else if (eventType === 'recebimento') {
+                // RECEBIMENTO: nova lógica
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control" onchange="updateEditSubtipoForReceiving()">
+                        <option value="">Nenhum</option>
+                        <option value="OBRAS" ${itemData.tipo === 'OBRAS' ? 'selected' : ''}>OBRAS</option>
+                        <option value="OUTROS" ${itemData.tipo === 'OUTROS' ? 'selected' : ''}>OUTROS</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaForReceiving()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-subtipo-rec" onclick="openManageSubtiposRecModal(); setTimeout(() => updateEditSubtipoForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria-rec" onclick="openManageCategoriasRecModal(); setTimeout(() => updateEditCategoriaForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    updateEditSubtipoForReceiving();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaForReceiving();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+            }
+        };
+        
+        // Funções auxiliares para edição (RECEBIMENTO)
+        window.updateEditSubtipoForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const btnManage = document.getElementById('btn-manage-edit-subtipo-rec');
+            
+            if (!tipoSelect || !subtipoSelect) return;
+            
+            const tipo = tipoSelect.value;
+            
+            if (tipo === 'OBRAS') {
+                subtipoSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            subtipoSelect.innerHTML += `<option value="${obraName}" data-obra-id="${obra.id}">${obraName}</option>`;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    subtipoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                }
+            } else if (tipo === 'OUTROS') {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
+                customSubtipos.forEach(st => {
+                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+            } else {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+            
+            // Limpar categoria
+            const categoriaSelect = document.getElementById('edit-categoria');
+            if (categoriaSelect) {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            }
+        };
+        
+        window.updateEditCategoriaForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const categoriaSelect = document.getElementById('edit-categoria');
+            const btnManage = document.getElementById('btn-manage-edit-categoria-rec');
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            const subtipo = subtipoSelect.value;
+            
+            if (tipo === 'OBRAS' && subtipo) {
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                const obraId = selectedOption.getAttribute('data-obra-id');
+                
+                if (obraId) {
+                    categoriaSelect.innerHTML = '<option value="">Carregando medições...</option>';
+                    if (btnManage) {
+                        btnManage.disabled = true;
+                        btnManage.style.opacity = '0.5';
+                    }
+                    
+                    try {
+                        const { data: medicoes, error } = await supabase
+                            .from('medicoes_hvc')
+                            .select('*')
+                            .eq('obra_id', obraId)
+                            .order('created_at', { ascending: false });
+                        
+                        if (error) throw error;
+                        
+                        categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                        
+                        if (medicoes && medicoes.length > 0) {
+                            medicoes.forEach(medicao => {
+                                const medicaoName = medicao.numero_medicao || `Medição ${medicao.id}`;
+                                categoriaSelect.innerHTML += `<option value="${medicaoName}">${medicaoName}</option>`;
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        categoriaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    }
+                }
+            } else if (tipo === 'OUTROS') {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            } else {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+        };
+
     </script>
     
     <style>
@@ -10355,6 +11313,246 @@
         }
 
         // ✅ REMOVIDO: Função duplicada que causava conflito
+
+        // Função para renderizar campos TIPO, SUBTIPO e CATEGORIA na edição do modal
+        window.renderEditFieldsBasedOnEventType = function(eventType, itemData) {
+            const tipoInput = document.querySelector('#editItemForm input[placeholder*="Tipo"]')?.closest('.form-group');
+            const subtipoInput = document.querySelector('#editItemForm input[placeholder*="Subtipo"]')?.closest('.form-group');
+            const categoriaInput = document.querySelector('#editItemForm input[placeholder*="Categoria"]')?.closest('.form-group');
+            
+            if (!tipoInput || !subtipoInput || !categoriaInput) return;
+            
+            if (eventType === 'pagamento') {
+                // PAGAMENTO: mesma lógica atual
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control">
+                        <option value="">Nenhum</option>
+                        <option value="INTERNO" ${itemData.tipo === 'INTERNO' ? 'selected' : ''}>INTERNO</option>
+                        <option value="EXTERNO" ${itemData.tipo === 'EXTERNO' ? 'selected' : ''}>EXTERNO</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    populateEditSubtipo();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaBasedOnSubtipo();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+                
+            } else if (eventType === 'recebimento') {
+                // RECEBIMENTO: nova lógica
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control" onchange="updateEditSubtipoForReceiving()">
+                        <option value="">Nenhum</option>
+                        <option value="OBRAS" ${itemData.tipo === 'OBRAS' ? 'selected' : ''}>OBRAS</option>
+                        <option value="OUTROS" ${itemData.tipo === 'OUTROS' ? 'selected' : ''}>OUTROS</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaForReceiving()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-subtipo-rec" onclick="openManageSubtiposRecModal(); setTimeout(() => updateEditSubtipoForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria-rec" onclick="openManageCategoriasRecModal(); setTimeout(() => updateEditCategoriaForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    updateEditSubtipoForReceiving();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaForReceiving();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+            }
+        };
+        
+        // Funções auxiliares para edição (RECEBIMENTO)
+        window.updateEditSubtipoForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const btnManage = document.getElementById('btn-manage-edit-subtipo-rec');
+            
+            if (!tipoSelect || !subtipoSelect) return;
+            
+            const tipo = tipoSelect.value;
+            
+            if (tipo === 'OBRAS') {
+                subtipoSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            subtipoSelect.innerHTML += `<option value="${obraName}" data-obra-id="${obra.id}">${obraName}</option>`;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    subtipoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                }
+            } else if (tipo === 'OUTROS') {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
+                customSubtipos.forEach(st => {
+                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+            } else {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+            
+            // Limpar categoria
+            const categoriaSelect = document.getElementById('edit-categoria');
+            if (categoriaSelect) {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            }
+        };
+        
+        window.updateEditCategoriaForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const categoriaSelect = document.getElementById('edit-categoria');
+            const btnManage = document.getElementById('btn-manage-edit-categoria-rec');
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            const subtipo = subtipoSelect.value;
+            
+            if (tipo === 'OBRAS' && subtipo) {
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                const obraId = selectedOption.getAttribute('data-obra-id');
+                
+                if (obraId) {
+                    categoriaSelect.innerHTML = '<option value="">Carregando medições...</option>';
+                    if (btnManage) {
+                        btnManage.disabled = true;
+                        btnManage.style.opacity = '0.5';
+                    }
+                    
+                    try {
+                        const { data: medicoes, error } = await supabase
+                            .from('medicoes_hvc')
+                            .select('*')
+                            .eq('obra_id', obraId)
+                            .order('created_at', { ascending: false });
+                        
+                        if (error) throw error;
+                        
+                        categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                        
+                        if (medicoes && medicoes.length > 0) {
+                            medicoes.forEach(medicao => {
+                                const medicaoName = medicao.numero_medicao || `Medição ${medicao.id}`;
+                                categoriaSelect.innerHTML += `<option value="${medicaoName}">${medicaoName}</option>`;
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        categoriaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    }
+                }
+            } else if (tipo === 'OUTROS') {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            } else {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+        };
+
     </script>
 
     <!-- Carregamento robusto das APIs Google com retry e fallback -->
@@ -11274,6 +12472,246 @@
                 });
             }
         });
+
+        // Função para renderizar campos TIPO, SUBTIPO e CATEGORIA na edição do modal
+        window.renderEditFieldsBasedOnEventType = function(eventType, itemData) {
+            const tipoInput = document.querySelector('#editItemForm input[placeholder*="Tipo"]')?.closest('.form-group');
+            const subtipoInput = document.querySelector('#editItemForm input[placeholder*="Subtipo"]')?.closest('.form-group');
+            const categoriaInput = document.querySelector('#editItemForm input[placeholder*="Categoria"]')?.closest('.form-group');
+            
+            if (!tipoInput || !subtipoInput || !categoriaInput) return;
+            
+            if (eventType === 'pagamento') {
+                // PAGAMENTO: mesma lógica atual
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control">
+                        <option value="">Nenhum</option>
+                        <option value="INTERNO" ${itemData.tipo === 'INTERNO' ? 'selected' : ''}>INTERNO</option>
+                        <option value="EXTERNO" ${itemData.tipo === 'EXTERNO' ? 'selected' : ''}>EXTERNO</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaBasedOnSubtipo()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" onclick="openManageSubtiposModal(); setTimeout(() => populateEditSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria" onclick="openManageCategoriasModal(); setTimeout(() => updateEditCategoriaBasedOnSubtipo(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    populateEditSubtipo();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaBasedOnSubtipo();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+                
+            } else if (eventType === 'recebimento') {
+                // RECEBIMENTO: nova lógica
+                tipoInput.innerHTML = `
+                    <label>TIPO:</label>
+                    <select id="edit-tipo" class="form-control" onchange="updateEditSubtipoForReceiving()">
+                        <option value="">Nenhum</option>
+                        <option value="OBRAS" ${itemData.tipo === 'OBRAS' ? 'selected' : ''}>OBRAS</option>
+                        <option value="OUTROS" ${itemData.tipo === 'OUTROS' ? 'selected' : ''}>OUTROS</option>
+                    </select>
+                `;
+                
+                subtipoInput.innerHTML = `
+                    <label>SUBTIPO:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-subtipo" class="form-control" onchange="updateEditCategoriaForReceiving()">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-subtipo-rec" onclick="openManageSubtiposRecModal(); setTimeout(() => updateEditSubtipoForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                categoriaInput.innerHTML = `
+                    <label>CATEGORIA:</label>
+                    <div class="field-with-manage">
+                        <select id="edit-categoria" class="form-control">
+                            <option value="">Nenhum</option>
+                        </select>
+                        <button type="button" class="btn-manage-list-small" id="btn-manage-edit-categoria-rec" onclick="openManageCategoriasRecModal(); setTimeout(() => updateEditCategoriaForReceiving(), 500);">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                `;
+                
+                // Popular campos
+                setTimeout(() => {
+                    updateEditSubtipoForReceiving();
+                    setTimeout(() => {
+                        if (itemData.subtipo) {
+                            document.getElementById('edit-subtipo').value = itemData.subtipo;
+                            updateEditCategoriaForReceiving();
+                            setTimeout(() => {
+                                if (itemData.categoria) {
+                                    document.getElementById('edit-categoria').value = itemData.categoria;
+                                }
+                            }, 300);
+                        }
+                    }, 200);
+                }, 100);
+            }
+        };
+        
+        // Funções auxiliares para edição (RECEBIMENTO)
+        window.updateEditSubtipoForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const btnManage = document.getElementById('btn-manage-edit-subtipo-rec');
+            
+            if (!tipoSelect || !subtipoSelect) return;
+            
+            const tipo = tipoSelect.value;
+            
+            if (tipo === 'OBRAS') {
+                subtipoSelect.innerHTML = '<option value="">Carregando obras...</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+                
+                try {
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
+                        .select('*')
+                        .order('created_at', { ascending: false });
+                    
+                    if (error) throw error;
+                    
+                    subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (obras && obras.length > 0) {
+                        obras.forEach(obra => {
+                            const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                            subtipoSelect.innerHTML += `<option value="${obraName}" data-obra-id="${obra.id}">${obraName}</option>`;
+                        });
+                    }
+                } catch (error) {
+                    console.error('Erro:', error);
+                    subtipoSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                }
+            } else if (tipo === 'OUTROS') {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
+                customSubtipos.forEach(st => {
+                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+            } else {
+                subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+            
+            // Limpar categoria
+            const categoriaSelect = document.getElementById('edit-categoria');
+            if (categoriaSelect) {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            }
+        };
+        
+        window.updateEditCategoriaForReceiving = async function() {
+            const tipoSelect = document.getElementById('edit-tipo');
+            const subtipoSelect = document.getElementById('edit-subtipo');
+            const categoriaSelect = document.getElementById('edit-categoria');
+            const btnManage = document.getElementById('btn-manage-edit-categoria-rec');
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            const subtipo = subtipoSelect.value;
+            
+            if (tipo === 'OBRAS' && subtipo) {
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                const obraId = selectedOption.getAttribute('data-obra-id');
+                
+                if (obraId) {
+                    categoriaSelect.innerHTML = '<option value="">Carregando medições...</option>';
+                    if (btnManage) {
+                        btnManage.disabled = true;
+                        btnManage.style.opacity = '0.5';
+                    }
+                    
+                    try {
+                        const { data: medicoes, error } = await supabase
+                            .from('medicoes_hvc')
+                            .select('*')
+                            .eq('obra_id', obraId)
+                            .order('created_at', { ascending: false });
+                        
+                        if (error) throw error;
+                        
+                        categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                        
+                        if (medicoes && medicoes.length > 0) {
+                            medicoes.forEach(medicao => {
+                                const medicaoName = medicao.numero_medicao || `Medição ${medicao.id}`;
+                                categoriaSelect.innerHTML += `<option value="${medicaoName}">${medicaoName}</option>`;
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Erro:', error);
+                        categoriaSelect.innerHTML = '<option value="">Erro ao carregar</option>';
+                    }
+                }
+            } else if (tipo === 'OUTROS') {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = false;
+                    btnManage.style.opacity = '1';
+                }
+                
+                const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
+                customCategorias.forEach(cat => {
+                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                });
+            } else {
+                categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                if (btnManage) {
+                    btnManage.disabled = true;
+                    btnManage.style.opacity = '0.5';
+                }
+            }
+        };
+
     </script>
 
 </body>
