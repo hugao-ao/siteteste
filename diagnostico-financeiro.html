@@ -2329,6 +2329,18 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           }
         }
         
+        // Carregar investimentos (patrimônios líquidos) se existirem
+        if (diagnostico.patrimonios_liquidos) {
+          try {
+            const investimentos = JSON.parse(diagnostico.patrimonios_liquidos);
+            if (window.setPatrimoniosLiquidosData) {
+              window.setPatrimoniosLiquidosData(investimentos);
+            }
+          } catch (e) {
+            console.log('Erro ao carregar investimentos:', e);
+          }
+        }
+        
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
         
@@ -2516,7 +2528,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           conjuge_email: conjugeEmailInput.value.trim(),
           pessoas_renda: JSON.stringify(pessoasRendaData), // Salvar como JSON
           dependentes: JSON.stringify(dependentesData), // Salvar como JSON
-          patrimonios: JSON.stringify(patrimoniosData) // Salvar como JSON
+          patrimonios: JSON.stringify(patrimoniosData), // Salvar como JSON
+          patrimonios_liquidos: JSON.stringify(window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : []) // Salvar investimentos
         };
         
         const { data, error } = await supabase
