@@ -1194,4 +1194,3 @@ window.editarInstituicao = editarInstituicao;
 window.excluirInstituicao = excluirInstituicao;
 window.salvarEdicaoProduto = salvarEdicaoProduto;
 window.salvarEdicaoInstituicao = salvarEdicaoInstituicao;
-
