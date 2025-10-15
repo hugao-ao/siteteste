@@ -11,6 +11,9 @@ let patrimonioLiquidoCounter = 0;
 let tiposProdutos = [];
 let instituicoes = [];
 
+// Dados do teste de suitability
+let respostasSuitability = {}; // { 'Nome da Pessoa': { A1: 3, A2: 4, ... } }
+
 // Mapeamento de classificação de risco
 const CLASSIFICACAO_RISCO = {
   'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label: 'Risco Muito Baixo (Garantia Soberana)', cor: '#006400', ordem: 1 },
@@ -607,6 +610,7 @@ function deletePatrimonioLiquido(id) {
   renderPatrimoniosLiquidos();
   updatePatrimonioLiquidoTotal();
   renderGraficos();
+  renderTesteSuitability();
 }
 
 function updatePatrimonioLiquidoField(id, field, value) {
@@ -638,6 +642,7 @@ function updatePatrimonioLiquidoField(id, field, value) {
   
   updatePatrimonioLiquidoTotal();
   renderGraficos();
+  renderTesteSuitability();
 }
 
 function updatePatrimonioLiquidoTotal() {
@@ -939,6 +944,267 @@ function renderPatrimoniosLiquidos() {
 }
 
 // =========================================
+// TESTE DE SUITABILITY
+// =========================================
+
+const QUESTOES_SUITABILITY = [
+  // SEÇÃO A: HORIZONTE TEMPORAL
+  {
+    id: 'A1',
+    secao: 'A',
+    texto: 'Qual é a sua idade atual e em quanto tempo você pretende parar de trabalhar?',
+    alternativas: [
+      { valor: 1, texto: 'Faltam 10 anos ou menos' },
+      { valor: 2, texto: 'Faltam entre 10 e 15 anos' },
+      { valor: 3, texto: 'Faltam entre 15 e 20 anos' },
+      { valor: 4, texto: 'Faltam entre 20 e 30 anos' },
+      { valor: 5, texto: 'Faltam mais de 30 anos' }
+    ]
+  },
+  {
+    id: 'A2',
+    secao: 'A',
+    texto: 'Por quanto tempo você conseguiria deixar a maior parte do patrimônio aplicado?',
+    alternativas: [
+      { valor: 1, texto: 'Menos de 1 ano' },
+      { valor: 2, texto: 'Entre 1 e 3 anos' },
+      { valor: 3, texto: 'Entre 3 e 10 anos' },
+      { valor: 4, texto: 'Entre 10 e 20 anos' },
+      { valor: 5, texto: 'Mais de 20 anos' }
+    ]
+  },
+  {
+    id: 'A3',
+    secao: 'A',
+    texto: 'Quanto tempo teria para esperar recuperação em cenário ruim?',
+    alternativas: [
+      { valor: 1, texto: 'Nenhum - precisaria resgatar' },
+      { valor: 2, texto: 'Até 2 anos' },
+      { valor: 3, texto: 'Entre 2 e 5 anos' },
+      { valor: 4, texto: 'Entre 5 e 10 anos' },
+      { valor: 5, texto: 'Mais de 10 anos' }
+    ]
+  },
+  
+  // SEÇÃO B: TOLERÂNCIA AO RISCO
+  {
+    id: 'B1',
+    secao: 'B',
+    texto: 'Como reagiria se investimentos perdessem 20% em um mês?',
+    alternativas: [
+      { valor: 1, texto: 'Resgataria tudo imediatamente' },
+      { valor: 2, texto: 'Consideraria resgatar parte' },
+      { valor: 3, texto: 'Aguardaria a recuperação' },
+      { valor: 4, texto: 'Ficaria tranquilo' },
+      { valor: 5, texto: 'Compraria mais com desconto' }
+    ]
+  },
+  {
+    id: 'B2',
+    secao: 'B',
+    texto: 'Qual sua atitude em relação a risco e retorno?',
+    alternativas: [
+      { valor: 1, texto: 'Não aceito risco algum' },
+      { valor: 2, texto: 'Aceito risco mínimo' },
+      { valor: 3, texto: 'Aceito risco moderado' },
+      { valor: 4, texto: 'Aceito risco alto' },
+      { valor: 5, texto: 'Aceito risco muito alto' }
+    ]
+  },
+  {
+    id: 'B3',
+    secao: 'B',
+    texto: 'Qual perda temporária conseguiria suportar?',
+    alternativas: [
+      { valor: 1, texto: 'Nenhuma perda' },
+      { valor: 2, texto: 'Até 5%' },
+      { valor: 3, texto: 'Até 10%' },
+      { valor: 4, texto: 'Até 20%' },
+      { valor: 5, texto: 'Mais de 20%' }
+    ]
+  },
+  
+  // SEÇÃO C: CONHECIMENTO
+  {
+    id: 'C1',
+    secao: 'C',
+    texto: 'Qual seu nível de conhecimento sobre investimentos?',
+    alternativas: [
+      { valor: 1, texto: 'Nenhum' },
+      { valor: 2, texto: 'Básico' },
+      { valor: 3, texto: 'Intermediário' },
+      { valor: 4, texto: 'Avançado' },
+      { valor: 5, texto: 'Especialista' }
+    ]
+  },
+  {
+    id: 'C2',
+    secao: 'C',
+    texto: 'Há quanto tempo investe no mercado financeiro?',
+    alternativas: [
+      { valor: 1, texto: 'Nunca investi' },
+      { valor: 2, texto: 'Menos de 2 anos' },
+      { valor: 3, texto: 'Entre 2 e 5 anos' },
+      { valor: 4, texto: 'Entre 5 e 10 anos' },
+      { valor: 5, texto: 'Mais de 10 anos' }
+    ]
+  },
+  {
+    id: 'C3',
+    secao: 'C',
+    texto: 'Já investiu em renda variável?',
+    alternativas: [
+      { valor: 1, texto: 'Não, nunca' },
+      { valor: 2, texto: 'Não, mas tenho interesse' },
+      { valor: 3, texto: 'Sim, valores pequenos' },
+      { valor: 4, texto: 'Sim, regularmente' },
+      { valor: 5, texto: 'Sim, significativamente' }
+    ]
+  }
+];
+
+const PERFIS_INVESTIDOR = [
+  { id: 1, nome: 'Ultra-Conservador', pfpMin: 0, pfpMax: 16.67, cor: '#006400' },
+  { id: 2, nome: 'Conservador', pfpMin: 16.68, pfpMax: 33.33, cor: '#228B22' },
+  { id: 3, nome: 'Conservador-Moderado', pfpMin: 33.34, pfpMax: 50.00, cor: '#90EE90' },
+  { id: 4, nome: 'Moderado', pfpMin: 50.01, pfpMax: 66.67, cor: '#FFD700' },
+  { id: 5, nome: 'Moderado-Arrojado', pfpMin: 66.68, pfpMax: 83.33, cor: '#FFA500' },
+  { id: 6, nome: 'Arrojado', pfpMin: 83.34, pfpMax: 91.67, cor: '#FF6347' },
+  { id: 7, nome: 'Ultra-Arrojado', pfpMin: 91.68, pfpMax: 100, cor: '#DC143C' }
+];
+
+function calcularPerfilInvestidor(respostas) {
+  const questoesObrigatorias = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
+  for (const q of questoesObrigatorias) {
+    if (!respostas[q] || respostas[q] === 0) {
+      return null;
+    }
+  }
+  
+  const PA = respostas.A1 + respostas.A2 + respostas.A3;
+  const PB = respostas.B1 + respostas.B2 + respostas.B3;
+  const PC = respostas.C1 + respostas.C2 + respostas.C3;
+  
+  const PAN = ((PA - 3) / 12) * 100;
+  const PBN = ((PB - 3) / 12) * 100;
+  const PCN = ((PC - 3) / 12) * 100;
+  
+  const PFP = (PAN * 0.25) + (PBN * 0.50) + (PCN * 0.25);
+  
+  let perfil = PERFIS_INVESTIDOR.find(p => PFP >= p.pfpMin && PFP <= p.pfpMax);
+  
+  // Regras de precedência
+  if (PA <= 4 && perfil.id > 2) perfil = PERFIS_INVESTIDOR[1];
+  if (PB <= 4 && perfil.id > 1) perfil = PERFIS_INVESTIDOR[0];
+  if (PC <= 4 && perfil.id > 3) perfil = PERFIS_INVESTIDOR[2];
+  if (PA <= 5 && PC <= 5 && perfil.id > 2) perfil = PERFIS_INVESTIDOR[1];
+  
+  return { perfil, PFP: PFP.toFixed(2) };
+}
+
+function obterPessoasComInvestimentos() {
+  const pessoas = new Set();
+  
+  patrimoniosLiquidos.forEach(pl => {
+    if (pl.donos && Array.isArray(pl.donos)) {
+      pl.donos.forEach(dono => pessoas.add(dono));
+    }
+  });
+  
+  return Array.from(pessoas).sort();
+}
+
+function renderTesteSuitability() {
+  const container = document.getElementById('teste-suitability-container');
+  if (!container) return;
+  
+  const pessoas = obterPessoasComInvestimentos();
+  
+  if (pessoas.length === 0) {
+    container.innerHTML = '<p style="text-align: center; color: var(--text-light); opacity: 0.7; padding: 2rem;">Adicione investimentos com proprietários para preencher o teste de suitability.</p>';
+    return;
+  }
+  
+  // Inicializar respostas para novas pessoas
+  pessoas.forEach(pessoa => {
+    if (!respostasSuitability[pessoa]) {
+      respostasSuitability[pessoa] = {};
+    }
+  });
+  
+  let html = '<div style="overflow-x: auto;"><table style="width: 100%; border-collapse: collapse; background: var(--dark-bg); border: 2px solid var(--border-color);">';
+  
+  // Cabeçalho
+  html += '<thead><tr style="background: var(--primary-color);">';
+  html += '<th style="padding: 1rem; text-align: left; color: var(--accent-color); border: 1px solid var(--border-color); min-width: 350px; font-size: 0.9rem;">PERGUNTA</th>';
+  pessoas.forEach(pessoa => {
+    html += `<th style="padding: 1rem; text-align: center; color: var(--accent-color); border: 1px solid var(--border-color); min-width: 200px; font-size: 0.9rem;">${pessoa.toUpperCase()}</th>`;
+  });
+  html += '</tr></thead><tbody>';
+  
+  // Questões
+  QUESTOES_SUITABILITY.forEach(questao => {
+    html += `<tr style="border-bottom: 1px solid var(--border-color);">`;
+    html += `<td style="padding: 0.8rem; color: var(--text-light); border: 1px solid var(--border-color); font-size: 0.85rem;"><strong style="color: var(--accent-color);">${questao.id}:</strong> ${questao.texto}</td>`;
+    
+    pessoas.forEach(pessoa => {
+      const valorSelecionado = respostasSuitability[pessoa][questao.id] || 0;
+      html += `<td style="padding: 0.5rem; border: 1px solid var(--border-color);">`;
+      html += `<select onchange="updateRespostaSuitability('${pessoa}', '${questao.id}', this.value)" style="width: 100%; padding: 0.5rem; background: var(--surface-bg); color: var(--text-light); border: 1px solid var(--border-color); border-radius: 5px; font-size: 0.85rem; cursor: pointer;">`;
+      html += `<option value="0" ${valorSelecionado == 0 ? 'selected' : ''}>Selecione...</option>`;
+      questao.alternativas.forEach(alt => {
+        html += `<option value="${alt.valor}" ${valorSelecionado == alt.valor ? 'selected' : ''}>${alt.valor} - ${alt.texto}</option>`;
+      });
+      html += `</select></td>`;
+    });
+    
+    html += '</tr>';
+  });
+  
+  // Linha vazia
+  html += '<tr style="height: 15px; background: var(--surface-bg);"><td colspan="' + (pessoas.length + 1) + '"></td></tr>';
+  
+  // Linha de resultado
+  html += '<tr style="background: var(--primary-color); font-weight: bold;">';
+  html += '<td style="padding: 1.2rem; color: var(--accent-color); border: 1px solid var(--border-color); font-size: 1rem;"><i class="fas fa-trophy"></i> PERFIL IDEAL</td>';
+  
+  pessoas.forEach(pessoa => {
+    const resultado = calcularPerfilInvestidor(respostasSuitability[pessoa]);
+    if (resultado) {
+      html += `<td style="padding: 1.2rem; text-align: center; border: 1px solid var(--border-color); background-color: ${resultado.perfil.cor}; color: white;">`;
+      html += `<div style="font-size: 1rem; font-weight: bold; margin-bottom: 0.3rem;">${resultado.perfil.nome}</div>`;
+      html += `<div style="font-size: 0.75rem; opacity: 0.9;">PFP: ${resultado.PFP}</div>`;
+      html += `</td>`;
+    } else {
+      html += `<td style="padding: 1.2rem; text-align: center; color: var(--text-light); border: 1px solid var(--border-color); font-style: italic; font-size: 0.85rem;">Preencha todas as questões</td>`;
+    }
+  });
+  
+  html += '</tr></tbody></table></div>';
+  
+  container.innerHTML = html;
+}
+
+function updateRespostaSuitability(pessoa, questaoId, valor) {
+  if (!respostasSuitability[pessoa]) {
+    respostasSuitability[pessoa] = {};
+  }
+  respostasSuitability[pessoa][questaoId] = parseInt(valor);
+  renderTesteSuitability();
+}
+
+function getRespostasSuitabilityData() {
+  return respostasSuitability;
+}
+
+function setRespostasSuitabilityData(data) {
+  if (data && typeof data === 'object') {
+    respostasSuitability = data;
+    renderTesteSuitability();
+  }
+}
+
+// =========================================
 // GRÁFICOS
 // =========================================
 
@@ -1140,6 +1406,7 @@ function setPatrimoniosLiquidosData(data) {
   patrimonioLiquidoCounter = Math.max(...patrimoniosLiquidos.map(p => p.id), 0);
   renderPatrimoniosLiquidos();
   renderGraficos();
+  renderTesteSuitability();
 }
 
 // =========================================
@@ -1158,6 +1425,7 @@ async function initPatrimonioLiquido() {
   
   renderPatrimoniosLiquidos();
   renderGraficos();
+  renderTesteSuitability();
   setupObservadoresDonos();
   
   // Observar adição/remoção de pessoas e dependentes
@@ -1182,6 +1450,10 @@ window.adicionarTipoProduto = adicionarTipoProduto;
 window.adicionarInstituicao = adicionarInstituicao;
 window.renderPatrimoniosLiquidos = renderPatrimoniosLiquidos;
 window.renderGraficos = renderGraficos;
+window.renderTesteSuitability = renderTesteSuitability;
+window.updateRespostaSuitability = updateRespostaSuitability;
+window.getRespostasSuitabilityData = getRespostasSuitabilityData;
+window.setRespostasSuitabilityData = setRespostasSuitabilityData;
 window.abrirModalGerenciarProdutos = abrirModalGerenciarProdutos;
 window.abrirModalGerenciarInstituicoes = abrirModalGerenciarInstituicoes;
 window.abrirModalNovoProduto = abrirModalNovoProduto;
