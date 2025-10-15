@@ -8926,10 +8926,12 @@
             if (tipo === 'OBRAS') {
                 // Carregar obras do Supabase
                 subtipoSelect.innerHTML = '<option value="">Carregando obras...</option>';
-                btnManageSubtipo.disabled = true;
-                btnManageSubtipo.style.opacity = '0.5';
-                btnManageSubtipo.style.pointerEvents = 'none';
-                btnManageSubtipo.style.cursor = 'not-allowed';
+                if (btnManageSubtipo) {
+                    btnManageSubtipo.disabled = true;
+                    btnManageSubtipo.style.opacity = '0.5';
+                    btnManageSubtipo.style.pointerEvents = 'none';
+                    btnManageSubtipo.style.cursor = 'not-allowed';
+                }
                 
                 try {
                     const { data: obras, error } = await supabase
@@ -8960,10 +8962,12 @@
             } else if (tipo === 'OUTROS') {
                 // Usar lista personalizada
                 subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
-                btnManageSubtipo.disabled = false;
-                btnManageSubtipo.style.opacity = '1';
-                btnManageSubtipo.style.pointerEvents = 'auto';
-                btnManageSubtipo.style.cursor = 'pointer';
+                if (btnManageSubtipo) {
+                    btnManageSubtipo.disabled = false;
+                    btnManageSubtipo.style.opacity = '1';
+                    btnManageSubtipo.style.pointerEvents = 'auto';
+                    btnManageSubtipo.style.cursor = 'pointer';
+                }
                 
                 const customSubtipos = JSON.parse(localStorage.getItem('hvc_custom_subtipos_rec') || '[]');
                 customSubtipos.forEach(st => {
@@ -8971,10 +8975,12 @@
                 });
             } else {
                 subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
-                btnManageSubtipo.disabled = true;
-                btnManageSubtipo.style.opacity = '0.5';
-                btnManageSubtipo.style.pointerEvents = 'none';
-                btnManageSubtipo.style.cursor = 'not-allowed';
+                if (btnManageSubtipo) {
+                    btnManageSubtipo.disabled = true;
+                    btnManageSubtipo.style.opacity = '0.5';
+                    btnManageSubtipo.style.pointerEvents = 'none';
+                    btnManageSubtipo.style.cursor = 'not-allowed';
+                }
             }
             
             // Limpar categoria
@@ -9003,10 +9009,12 @@
                 
                 if (obraId) {
                     categoriaSelect.innerHTML = '<option value="">Carregando medições...</option>';
-                    btnManageCategoria.disabled = true;
-                    btnManageCategoria.style.opacity = '0.5';
-                    btnManageCategoria.style.pointerEvents = 'none';
-                    btnManageCategoria.style.cursor = 'not-allowed';
+                    if (btnManageCategoria) {
+                        btnManageCategoria.disabled = true;
+                        btnManageCategoria.style.opacity = '0.5';
+                        btnManageCategoria.style.pointerEvents = 'none';
+                        btnManageCategoria.style.cursor = 'not-allowed';
+                    }
                     
                     try {
                         const { data: medicoes, error } = await supabase
@@ -9037,10 +9045,12 @@
             } else if (tipo === 'OUTROS') {
                 // Usar lista personalizada
                 categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
-                btnManageCategoria.disabled = false;
-                btnManageCategoria.style.opacity = '1';
-                btnManageCategoria.style.pointerEvents = 'auto';
-                btnManageCategoria.style.cursor = 'pointer';
+                if (btnManageCategoria) {
+                    btnManageCategoria.disabled = false;
+                    btnManageCategoria.style.opacity = '1';
+                    btnManageCategoria.style.pointerEvents = 'auto';
+                    btnManageCategoria.style.cursor = 'pointer';
+                }
                 
                 const customCategorias = JSON.parse(localStorage.getItem('hvc_custom_categorias_rec') || '[]');
                 customCategorias.forEach(cat => {
@@ -9048,10 +9058,12 @@
                 });
             } else {
                 categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
-                btnManageCategoria.disabled = true;
-                btnManageCategoria.style.opacity = '0.5';
-                btnManageCategoria.style.pointerEvents = 'none';
-                btnManageCategoria.style.cursor = 'not-allowed';
+                if (btnManageCategoria) {
+                    btnManageCategoria.disabled = true;
+                    btnManageCategoria.style.opacity = '0.5';
+                    btnManageCategoria.style.pointerEvents = 'none';
+                    btnManageCategoria.style.cursor = 'not-allowed';
+                }
             }
         };
         
