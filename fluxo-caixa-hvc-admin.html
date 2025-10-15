@@ -8841,7 +8841,7 @@
                         <select id="itemSubtipo" onchange="updateCategoriaBasedOnSubtipo()">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="manage-list-btn" onclick="openManageListModal('subtipos')" title="Gerenciar lista">
+                        <button type="button" class="manage-list-btn" onclick="openManageSubtiposPayment()" title="Gerenciar lista">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -8853,7 +8853,7 @@
                         <select id="itemCategoria">
                             <option value="">Nenhum</option>
                         </select>
-                        <button type="button" class="manage-list-btn" id="manageCategoriaBtn" onclick="openManageListModal('categorias')" title="Gerenciar lista">
+                        <button type="button" class="manage-list-btn" id="manageCategoriaBtn" onclick="openManageCategoriasPayment()" title="Gerenciar lista">
                             <i class="fas fa-cog"></i>
                         </button>
                     </div>
@@ -8914,16 +8914,24 @@
             // Limpar SUBTIPO
             subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
             
-            // Se TIPO = EXTERNO, adicionar OBRA
-            if (tipo === 'EXTERNO') {
+            // Determinar qual tabela usar baseado no TIPO
+            let tableKey = null;
+            
+            if (tipo === 'INTERNO') {
+                tableKey = 'pagamento_interno_subtipos';
+            } else if (tipo === 'EXTERNO') {
+                // Adicionar OBRA primeiro
                 subtipoSelect.innerHTML += '<option value="OBRA">OBRA</option>';
+                tableKey = 'pagamento_externo_subtipos';
             }
             
-            // Adicionar subtipos personalizados
-            const customSubtipos = await loadListFromSupabase('hvc_subtipos_pagamento');
-            customSubtipos.forEach(st => {
-                subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
-            });
+            // Adicionar subtipos personalizados se houver tabela definida
+            if (tableKey) {
+                const customSubtipos = await loadListFromSupabase(tableKey);
+                customSubtipos.forEach(st => {
+                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                });
+            }
             
             // Limpar CATEGORIA quando SUBTIPO muda
             const categoriaSelect = document.getElementById('itemCategoria');
@@ -8970,14 +8978,80 @@
                     console.error('Erro ao carregar obras:', error);
                     categoriaSelect.innerHTML = '<option value="">Erro ao carregar obras</option>';
                 }
-            } else {
-                // Senão, carregar categorias personalizadas
-                const customCategorias = await loadListFromSupabase('hvc_categorias_pagamento');
-                customCategorias.forEach(cat => {
-                    categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
-                });
+            } else if (subtipo) {
+                // Senão, carregar categorias personalizadas baseado no TIPO
+                const tipoSelect = document.getElementById('itemTipo');
+                const tipo = tipoSelect ? tipoSelect.value : null;
+                
+                let tableKey = null;
+                if (tipo === 'INTERNO') {
+                    tableKey = 'pagamento_interno_categorias';
+                } else if (tipo === 'EXTERNO') {
+                    tableKey = 'pagamento_externo_categorias';
+                }
+                
+                if (tableKey) {
+                    const customCategorias = await loadListFromSupabase(tableKey);
+                    customCategorias.forEach(cat => {
+                        categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+                    });
+                }
             }
+
         };
+        
+        // Funções wrapper para abrir modais de gerenciamento de PAGAMENTO
+
+// Abre modal de gerenciamento de SUBTIPOS de PAGAMENTO
+window.openManageSubtiposPayment = function() {
+    const tipoSelect = document.getElementById('itemTipo');
+    const tipo = tipoSelect ? tipoSelect.value : null;
+    
+    let tableKey = null;
+    let title = 'Gerenciar Subtipos';
+    
+    if (tipo === 'INTERNO') {
+        tableKey = 'pagamento_interno_subtipos';
+        title = 'Gerenciar Subtipos de Pagamento Interno';
+    } else if (tipo === 'EXTERNO') {
+        tableKey = 'pagamento_externo_subtipos';
+        title = 'Gerenciar Subtipos de Pagamento Externo';
+    } else {
+        alert('Selecione um TIPO (INTERNO ou EXTERNO) primeiro!');
+        return;
+    }
+    
+    openManageListModal(tableKey, title, function() {
+        updateSubtipoForPayment();
+    });
+};
+
+// Abre modal de gerenciamento de CATEGORIAS de PAGAMENTO
+window.openManageCategoriasPayment = function() {
+    const tipoSelect = document.getElementById('itemTipo');
+    const tipo = tipoSelect ? tipoSelect.value : null;
+    
+    let tableKey = null;
+    let title = 'Gerenciar Categorias';
+    
+    if (tipo === 'INTERNO') {
+        tableKey = 'pagamento_interno_categorias';
+        title = 'Gerenciar Categorias de Pagamento Interno';
+    } else if (tipo === 'EXTERNO') {
+        tableKey = 'pagamento_externo_categorias';
+        title = 'Gerenciar Categorias de Pagamento Externo';
+    } else {
+        alert('Selecione um TIPO (INTERNO ou EXTERNO) primeiro!');
+        return;
+    }
+    
+    openManageListModal(tableKey, title, function() {
+        updateCategoriaBasedOnSubtipo();
+    });
+};
+
+
+
         
         // Função para popular SUBTIPO no modal de edição (PAGAMENTO)
         window.populateEditSubtipo = async function() {
@@ -9125,7 +9199,7 @@
                     btnManageSubtipo.style.cursor = 'pointer';
                 }
                 
-                const customSubtipos = await loadListFromSupabase('hvc_custom_subtipos_rec');
+                const customSubtipos = await loadListFromSupabase('recebimento_outros_subtipos');
                 customSubtipos.forEach(st => {
                     subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
                 });
@@ -9208,7 +9282,7 @@
                     btnManageCategoria.style.cursor = 'pointer';
                 }
                 
-                const customCategorias = await loadListFromSupabase('hvc_custom_categorias_rec');
+                const customCategorias = await loadListFromSupabase('recebimento_outros_categorias');
                 customCategorias.forEach(cat => {
                     categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
@@ -9230,7 +9304,7 @@
                 console.log('⚠️ Botão de gerenciar subtipos está desabilitado');
                 return; // Não abre modal se botão está desabilitado
             }
-            openManageListModal('hvc_custom_subtipos_rec', 'Gerenciar Subtipos de Recebimento', function() {
+            openManageListModal('recebimento_outros_subtipos', 'Gerenciar Subtipos de Recebimento', function() {
                 updateSubtipoForReceiving();
             });
         };
@@ -9241,7 +9315,7 @@
                 console.log('⚠️ Botão de gerenciar categorias está desabilitado');
                 return; // Não abre modal se botão está desabilitado
             }
-            openManageListModal('hvc_custom_categorias_rec', 'Gerenciar Categorias de Recebimento', function() {
+            openManageListModal('recebimento_outros_categorias', 'Gerenciar Categorias de Recebimento', function() {
                 updateCategoriaForReceiving();
             });
         };
@@ -9634,7 +9708,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customSubtipos = await loadListFromSupabase('hvc_custom_subtipos_rec');
+                const customSubtipos = await loadListFromSupabase('recebimento_outros_subtipos');
                 customSubtipos.forEach(st => {
                     subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
                 });
@@ -9708,7 +9782,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customCategorias = await loadListFromSupabase('hvc_custom_categorias_rec');
+                const customCategorias = await loadListFromSupabase('recebimento_outros_categorias');
                 customCategorias.forEach(cat => {
                     categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
@@ -9741,7 +9815,7 @@
             // 1. Tipo de evento = RECEBIMENTO
             // 2. TIPO = OBRAS
             // 3. SUBTIPO = uma obra selecionada
-            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            // 4. listType = 'recebimento_outros_categorias' (gerenciando categorias de recebimento)
             
             const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
             const tipoSelect = document.getElementById('itemTipo');
@@ -9750,7 +9824,7 @@
             const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
             const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
             const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
-            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            const isCategoriasRec = listType === 'recebimento_outros_categorias';
             
             // Mostrar botão apenas se todas as condições forem atendidas
             if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
@@ -10082,7 +10156,7 @@
                                     <option value="">Nenhum</option>
                                     <option value="OBRA">OBRA</option>
                                 </select>
-                                <button type="button" class="manage-list-btn" onclick="openManageListModal('subtipos')" title="Gerenciar lista">
+                                <button type="button" class="manage-list-btn" onclick="openManageSubtiposPayment()" title="Gerenciar lista">
                                     <i class="fas fa-cog"></i>
                                 </button>
                             </div>
@@ -10093,7 +10167,7 @@
                                 <select id="itemCategoria">
                                     <option value="">Nenhum</option>
                                 </select>
-                                <button type="button" class="manage-list-btn" onclick="openManageListModal('categorias')" title="Gerenciar lista" id="manageCategoriaBtn">
+                                <button type="button" class="manage-list-btn" onclick="openManageCategoriasPayment()" title="Gerenciar lista" id="manageCategoriaBtn">
                                     <i class="fas fa-cog"></i>
                                 </button>
                             </div>
@@ -10244,7 +10318,7 @@
                                     <option value="">Nenhum</option>
                                     <option value="OBRA">OBRA</option>
                                 </select>
-                                <button type="button" class="manage-list-btn" onclick="openManageListModal('subtipos')" title="Gerenciar lista">
+                                <button type="button" class="manage-list-btn" onclick="openManageSubtiposPayment()" title="Gerenciar lista">
                                     <i class="fas fa-cog"></i>
                                 </button>
                             </div>
@@ -10255,7 +10329,7 @@
                                 <select id="itemCategoria">
                                     <option value="">Nenhum</option>
                                 </select>
-                                <button type="button" class="manage-list-btn" onclick="openManageListModal('categorias')" title="Gerenciar lista" id="manageCategoriaBtn">
+                                <button type="button" class="manage-list-btn" onclick="openManageCategoriasPayment()" title="Gerenciar lista" id="manageCategoriaBtn">
                                     <i class="fas fa-cog"></i>
                                 </button>
                             </div>
@@ -10596,7 +10670,7 @@
                                     <option value="">Nenhum</option>
                                     <option value="OBRA">OBRA</option>
                                 </select>
-                                <button type="button" class="manage-list-btn" onclick="openManageListModal('subtipos')" title="Gerenciar lista">
+                                <button type="button" class="manage-list-btn" onclick="openManageSubtiposPayment()" title="Gerenciar lista">
                                     <i class="fas fa-cog"></i>
                                 </button>
                             </div>
@@ -10607,7 +10681,7 @@
                                 <select id="itemCategoria">
                                     <option value="">Nenhum</option>
                                 </select>
-                                <button type="button" class="manage-list-btn" onclick="openManageListModal('categorias')" title="Gerenciar lista" id="manageCategoriaBtn">
+                                <button type="button" class="manage-list-btn" onclick="openManageCategoriasPayment()" title="Gerenciar lista" id="manageCategoriaBtn">
                                     <i class="fas fa-cog"></i>
                                 </button>
                             </div>
@@ -11016,7 +11090,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customSubtipos = await loadListFromSupabase('hvc_custom_subtipos_rec');
+                const customSubtipos = await loadListFromSupabase('recebimento_outros_subtipos');
                 customSubtipos.forEach(st => {
                     subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
                 });
@@ -11090,7 +11164,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customCategorias = await loadListFromSupabase('hvc_custom_categorias_rec');
+                const customCategorias = await loadListFromSupabase('recebimento_outros_categorias');
                 customCategorias.forEach(cat => {
                     categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
@@ -11123,7 +11197,7 @@
             // 1. Tipo de evento = RECEBIMENTO
             // 2. TIPO = OBRAS
             // 3. SUBTIPO = uma obra selecionada
-            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            // 4. listType = 'recebimento_outros_categorias' (gerenciando categorias de recebimento)
             
             const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
             const tipoSelect = document.getElementById('itemTipo');
@@ -11132,7 +11206,7 @@
             const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
             const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
             const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
-            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            const isCategoriasRec = listType === 'recebimento_outros_categorias';
             
             // Mostrar botão apenas se todas as condições forem atendidas
             if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
@@ -11689,7 +11763,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customSubtipos = await loadListFromSupabase('hvc_custom_subtipos_rec');
+                const customSubtipos = await loadListFromSupabase('recebimento_outros_subtipos');
                 customSubtipos.forEach(st => {
                     subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
                 });
@@ -11763,7 +11837,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customCategorias = await loadListFromSupabase('hvc_custom_categorias_rec');
+                const customCategorias = await loadListFromSupabase('recebimento_outros_categorias');
                 customCategorias.forEach(cat => {
                     categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
@@ -11796,7 +11870,7 @@
             // 1. Tipo de evento = RECEBIMENTO
             // 2. TIPO = OBRAS
             // 3. SUBTIPO = uma obra selecionada
-            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            // 4. listType = 'recebimento_outros_categorias' (gerenciando categorias de recebimento)
             
             const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
             const tipoSelect = document.getElementById('itemTipo');
@@ -11805,7 +11879,7 @@
             const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
             const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
             const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
-            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            const isCategoriasRec = listType === 'recebimento_outros_categorias';
             
             // Mostrar botão apenas se todas as condições forem atendidas
             if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
@@ -12531,7 +12605,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customSubtipos = await loadListFromSupabase('hvc_custom_subtipos_rec');
+                const customSubtipos = await loadListFromSupabase('recebimento_outros_subtipos');
                 customSubtipos.forEach(st => {
                     subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
                 });
@@ -12605,7 +12679,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customCategorias = await loadListFromSupabase('hvc_custom_categorias_rec');
+                const customCategorias = await loadListFromSupabase('recebimento_outros_categorias');
                 customCategorias.forEach(cat => {
                     categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
@@ -12638,7 +12712,7 @@
             // 1. Tipo de evento = RECEBIMENTO
             // 2. TIPO = OBRAS
             // 3. SUBTIPO = uma obra selecionada
-            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            // 4. listType = 'recebimento_outros_categorias' (gerenciando categorias de recebimento)
             
             const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
             const tipoSelect = document.getElementById('itemTipo');
@@ -12647,7 +12721,7 @@
             const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
             const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
             const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
-            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            const isCategoriasRec = listType === 'recebimento_outros_categorias';
             
             // Mostrar botão apenas se todas as condições forem atendidas
             if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
@@ -13492,12 +13566,25 @@
         // MAPEAMENTO DE TABELAS DO SUPABASE
         // ============================================
         const SUPABASE_TABLES = {
-            'subtipos': 'custom_subtipos_pagamento',
-            'categorias': 'custom_categorias_pagamento',
-            'hvc_custom_subtipos_rec': 'custom_subtipos_recebimento',
-            'hvc_custom_categorias_rec': 'custom_categorias_recebimento',
-            'hvc_subtipos_pagamento': 'custom_subtipos_pagamento',
-            'hvc_categorias_pagamento': 'custom_categorias_pagamento'
+            // PAGAMENTO - INTERNO
+            'pagamento_interno_subtipos': 'custom_subtipos_pagamento_interno',
+            'pagamento_interno_categorias': 'custom_categorias_pagamento_interno',
+            
+            // PAGAMENTO - EXTERNO
+            'pagamento_externo_subtipos': 'custom_subtipos_pagamento_externo',
+            'pagamento_externo_categorias': 'custom_categorias_pagamento_externo',
+            
+            // RECEBIMENTO - OUTROS
+            'recebimento_outros_subtipos': 'custom_subtipos_recebimento_outros',
+            'recebimento_outros_categorias': 'custom_categorias_recebimento_outros',
+            
+            // Compatibilidade com código antigo (será removido)
+            'subtipos': 'custom_subtipos_pagamento_interno',
+            'categorias': 'custom_categorias_pagamento_interno',
+            'recebimento_outros_subtipos': 'custom_subtipos_recebimento_outros',
+            'recebimento_outros_categorias': 'custom_categorias_recebimento_outros',
+            'hvc_subtipos_pagamento': 'custom_subtipos_pagamento_interno',
+            'hvc_categorias_pagamento': 'custom_categorias_pagamento_interno'
         };
 
         // ============================================
@@ -14142,7 +14229,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customSubtipos = await loadListFromSupabase('hvc_custom_subtipos_rec');
+                const customSubtipos = await loadListFromSupabase('recebimento_outros_subtipos');
                 customSubtipos.forEach(st => {
                     subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
                 });
@@ -14216,7 +14303,7 @@
                     btnManage.style.cursor = 'pointer';
                 }
                 
-                const customCategorias = await loadListFromSupabase('hvc_custom_categorias_rec');
+                const customCategorias = await loadListFromSupabase('recebimento_outros_categorias');
                 customCategorias.forEach(cat => {
                     categoriaSelect.innerHTML += `<option value="${cat}">${cat}</option>`;
                 });
@@ -14249,7 +14336,7 @@
             // 1. Tipo de evento = RECEBIMENTO
             // 2. TIPO = OBRAS
             // 3. SUBTIPO = uma obra selecionada
-            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            // 4. listType = 'recebimento_outros_categorias' (gerenciando categorias de recebimento)
             
             const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
             const tipoSelect = document.getElementById('itemTipo');
@@ -14258,7 +14345,7 @@
             const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
             const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
             const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
-            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            const isCategoriasRec = listType === 'recebimento_outros_categorias';
             
             // Mostrar botão apenas se todas as condições forem atendidas
             if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
