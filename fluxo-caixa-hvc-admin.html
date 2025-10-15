@@ -8715,6 +8715,39 @@
                                     </button>
                                 </div>
                             </div>
+                            ` : eventType === 'recebimento' ? `
+                            <div class="edit-item-field">
+                                <label>TIPO:</label>
+                                <select class="edit-item-tipo" data-item-index="${index}" onchange="updateEditTipoForReceiving(${index})">
+                                    <option value="">Nenhum</option>
+                                    <option value="OBRAS" ${tipo === 'OBRAS' ? 'selected' : ''}>OBRAS</option>
+                                    <option value="OUTROS" ${tipo === 'OUTROS' ? 'selected' : ''}>OUTROS</option>
+                                </select>
+                            </div>
+                            <div class="edit-item-field">
+                                <label>SUBTIPO:</label>
+                                <div class="field-with-manage">
+                                    <select class="edit-item-subtipo" data-item-index="${index}" onchange="updateEditCategoriaForReceivingByIndex(${index})">
+                                        <option value="">Nenhum</option>
+                                    </select>
+                                    <button type="button" class="btn-manage-list btn-manage-subtipo-rec" data-item-index="${index}" id="btn-manage-subtipo-rec-${index}">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="edit-item-field">
+                                <label>CATEGORIA:</label>
+                                <div class="field-with-manage">
+                                    <select class="edit-item-categoria" data-item-index="${index}">
+                                        <option value="">Nenhum</option>
+                                    </select>
+                                    <button type="button" class="btn-manage-list btn-manage-categoria-rec" data-item-index="${index}" id="btn-manage-categoria-rec-${index}">
+                                        <i class="fas fa-cog"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+
                             ` : ''}
                             <div class="edit-item-field">
                                 <label>NOME:</label>
@@ -8754,7 +8787,7 @@
                 editDiv.innerHTML = editHTML;
                 editDiv.style.display = 'block';
                 
-                // Popular selects de SUBTIPO e CATEGORIA
+                // Popular selects de TIPO, SUBTIPO e CATEGORIA
                 items.forEach((item, index) => {
                     // Extrair tipo, subtipo e categoria do nome do item
                     const nameParts = (item.name || '').split(' - ');
@@ -8775,32 +8808,65 @@
                     }
                     
                     setTimeout(async () => {
-                        // Popular SUBTIPO
-                        const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
-                        if (subtipoSelect) {
-                            // Limpar e adicionar opções
-                            subtipoSelect.innerHTML = '<option value="">Nenhum</option><option value="OBRA">OBRA</option>';
-                            
-                            // Adicionar subtipos personalizados
-                            const customSubtipos = await loadListFromSupabase('hvc_subtipos_pagamento');
-                            customSubtipos.forEach(st => {
-                                subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
-                            });
-                            
-                            // Selecionar valor atual
-                            if (subtipo) {
-                                subtipoSelect.value = subtipo;
+                        if (eventType === 'pagamento') {
+                            // PAGAMENTO: Popular TIPO, SUBTIPO e CATEGORIA
+                            const tipoSelect = document.querySelector(`.edit-item-tipo[data-item-index="${index}"]`);
+                            if (tipoSelect && tipo) {
+                                tipoSelect.value = tipo;
                             }
                             
-                            // Adicionar evento de mudança
-                            subtipoSelect.addEventListener('change', function() {
-                                updateCategoriaSelectInEdit(index, this.value);
-                            });
-                            
-                            // Popular CATEGORIA baseado no subtipo atual
-                            updateCategoriaSelectInEdit(index, subtipo);
+                            const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
+                            if (subtipoSelect) {
+                                // Limpar e adicionar opções
+                                subtipoSelect.innerHTML = '<option value="">Nenhum</option><option value="OBRA">OBRA</option>';
+                                
+                                // Adicionar subtipos personalizados
+                                const customSubtipos = await loadListFromSupabase('hvc_subtipos_pagamento');
+                                customSubtipos.forEach(st => {
+                                    subtipoSelect.innerHTML += `<option value="${st}">${st}</option>`;
+                                });
+                                
+                                // Selecionar valor atual
+                                if (subtipo) {
+                                    subtipoSelect.value = subtipo;
+                                }
+                                
+                                // Adicionar evento de mudança
+                                subtipoSelect.addEventListener('change', function() {
+                                    updateCategoriaSelectInEdit(index, this.value);
+                                });
+                                
+                                // Popular CATEGORIA baseado no subtipo atual
+                                updateCategoriaSelectInEdit(index, subtipo);
+                            }
+                        } else if (eventType === 'recebimento') {
+                            // RECEBIMENTO: Popular TIPO, SUBTIPO e CATEGORIA
+                            const tipoSelect = document.querySelector(`.edit-item-tipo[data-item-index="${index}"]`);
+                            if (tipoSelect && tipo) {
+                                tipoSelect.value = tipo;
+                                // Chamar função para popular SUBTIPO baseado no TIPO
+                                await updateEditTipoForReceiving(index);
+                                
+                                // Aguardar um pouco e selecionar SUBTIPO
+                                setTimeout(async () => {
+                                    const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
+                                    if (subtipoSelect && subtipo) {
+                                        subtipoSelect.value = subtipo;
+                                        // Popular CATEGORIA baseado no SUBTIPO
+                                        await updateEditCategoriaForReceivingByIndex(index);
+                                        
+                                        // Aguardar um pouco e selecionar CATEGORIA
+                                        setTimeout(() => {
+                                            const categoriaSelect = document.querySelector(`.edit-item-categoria[data-item-index="${index}"]`);
+                                            if (categoriaSelect && categoria) {
+                                                categoriaSelect.value = categoria;
+                                            }
+                                        }, 200);
+                                    }
+                                }, 300);
+                            }
                         }
-                    }, 100);
+                    }, 100 * (index + 1)); // Escalonar para evitar conflitos
                 });
                 
                 console.log('✅ Interface de edição criada');
@@ -9140,6 +9206,164 @@ window.openManageCategoriasPayment = function() {
                 }
             }
         };
+
+        // Funções auxiliares para edição de RECEBIMENTO
+        window.updateEditTipoForReceiving = async function(index) {
+            const tipoSelect = document.querySelector(`.edit-item-tipo[data-item-index="${index}"]`);
+            const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
+            const categoriaSelect = document.querySelector(`.edit-item-categoria[data-item-index="${index}"]`);
+            const btnManageSubtipo = document.getElementById(`btn-manage-subtipo-rec-${index}`);
+            const btnManageCategoria = document.getElementById(`btn-manage-categoria-rec-${index}`);
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            
+            // Limpar selects
+            subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
+            categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            
+            if (tipo === 'OBRAS') {
+                // Carregar obras do Supabase
+                try {
+                    const { data: obras, error } = await supabaseClient
+                        .from('obras')
+                        .select('*')
+                        .order('nome', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    obras.forEach(obra => {
+                        const option = document.createElement('option');
+                        option.value = obra.nome;
+                        option.textContent = obra.nome;
+                        subtipoSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar obras:', error);
+                }
+                
+                // Desabilitar botões de gerenciamento
+                if (btnManageSubtipo) {
+                    btnManageSubtipo.disabled = true;
+                    btnManageSubtipo.style.opacity = '0.5';
+                    btnManageSubtipo.style.cursor = 'not-allowed';
+                    btnManageSubtipo.style.pointerEvents = 'none';
+                }
+                if (btnManageCategoria) {
+                    btnManageCategoria.disabled = true;
+                    btnManageCategoria.style.opacity = '0.5';
+                    btnManageCategoria.style.cursor = 'not-allowed';
+                    btnManageCategoria.style.pointerEvents = 'none';
+                }
+                
+            } else if (tipo === 'OUTROS') {
+                // Carregar subtipos personalizados
+                try {
+                    const { data: subtipos, error } = await supabaseClient
+                        .from('custom_subtipos_recebimento_outros')
+                        .select('*')
+                        .order('nome', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    subtipos.forEach(subtipo => {
+                        const option = document.createElement('option');
+                        option.value = subtipo.nome;
+                        option.textContent = subtipo.nome;
+                        subtipoSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar subtipos:', error);
+                }
+                
+                // Habilitar botões de gerenciamento
+                if (btnManageSubtipo) {
+                    btnManageSubtipo.disabled = false;
+                    btnManageSubtipo.style.opacity = '1';
+                    btnManageSubtipo.style.cursor = 'pointer';
+                    btnManageSubtipo.style.pointerEvents = 'auto';
+                    btnManageSubtipo.onclick = function() {
+                        openManageListModal(
+                            'recebimento_outros_subtipos',
+                            'Gerenciar Subtipos de Recebimento (Outros)',
+                            () => updateEditTipoForReceiving(index)
+                        );
+                    };
+                }
+                if (btnManageCategoria) {
+                    btnManageCategoria.disabled = false;
+                    btnManageCategoria.style.opacity = '1';
+                    btnManageCategoria.style.cursor = 'pointer';
+                    btnManageCategoria.style.pointerEvents = 'auto';
+                    btnManageCategoria.onclick = function() {
+                        openManageListModal(
+                            'recebimento_outros_categorias',
+                            'Gerenciar Categorias de Recebimento (Outros)',
+                            () => updateEditCategoriaForReceivingByIndex(index)
+                        );
+                    };
+                }
+            }
+        };
+        
+        window.updateEditCategoriaForReceivingByIndex = async function(index) {
+            const tipoSelect = document.querySelector(`.edit-item-tipo[data-item-index="${index}"]`);
+            const subtipoSelect = document.querySelector(`.edit-item-subtipo[data-item-index="${index}"]`);
+            const categoriaSelect = document.querySelector(`.edit-item-categoria[data-item-index="${index}"]`);
+            
+            if (!tipoSelect || !subtipoSelect || !categoriaSelect) return;
+            
+            const tipo = tipoSelect.value;
+            const subtipo = subtipoSelect.value;
+            
+            // Limpar select de categoria
+            categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+            
+            if (tipo === 'OBRAS' && subtipo) {
+                // Carregar medições da obra
+                try {
+                    const { data: medicoes, error } = await supabaseClient
+                        .from('medicoes')
+                        .select('*')
+                        .eq('obra', subtipo)
+                        .order('numero', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    medicoes.forEach(medicao => {
+                        const option = document.createElement('option');
+                        option.value = medicao.numero;
+                        option.textContent = `Medição ${medicao.numero}`;
+                        categoriaSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar medições:', error);
+                }
+                
+            } else if (tipo === 'OUTROS') {
+                // Carregar categorias personalizadas
+                try {
+                    const { data: categorias, error } = await supabaseClient
+                        .from('custom_categorias_recebimento_outros')
+                        .select('*')
+                        .order('nome', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    categorias.forEach(categoria => {
+                        const option = document.createElement('option');
+                        option.value = categoria.nome;
+                        option.textContent = categoria.nome;
+                        categoriaSelect.appendChild(option);
+                    });
+                } catch (error) {
+                    console.error('Erro ao carregar categorias:', error);
+                }
+            }
+        };
+
+
 
 
         
