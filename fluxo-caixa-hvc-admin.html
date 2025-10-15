@@ -1817,6 +1817,45 @@
             color: white;
         }
 
+        /* Estilos para TIPO, SUBTIPO e CATEGORIA */
+        .item-metadata {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 4px;
+            font-style: italic;
+        }
+
+        .item-tipo,
+        .item-subtipo,
+        .item-categoria {
+            padding: 2px 6px;
+            border-radius: 3px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 0 2px;
+        }
+
+        .item-tipo.error,
+        .item-subtipo.error,
+        .item-categoria.error {
+            background: rgba(234, 67, 53, 0.3);
+            color: #ff6b6b;
+        }
+
+        .item-name-main {
+            font-size: 14px;
+            margin-top: 2px;
+        }
+
+        .item-value-line {
+            margin-top: 4px;
+            color: #ffc107;
+        }
+
+        .item-detail {
+            margin-top: 4px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
         /* Modal */
         .modal {
             display: none;
@@ -6821,6 +6860,82 @@
             }); // Fechamento do DOMContentLoaded
         }
 
+        // Função para extrair TIPO, SUBTIPO e CATEGORIA do nome e formatar para exibição
+        window.extractAndFormatItemName = function(fullName) {
+            try {
+                const nameParts = (fullName || '').split(' - ');
+                
+                if (nameParts.length >= 4) {
+                    // Formato completo: TIPO - SUBTIPO - CATEGORIA - NOME
+                    const tipo = nameParts[0].trim();
+                    const subtipo = nameParts[1].trim();
+                    const categoria = nameParts[2].trim();
+                    const nome = nameParts.slice(3).join(' - ').trim();
+                    
+                    return {
+                        tipo,
+                        subtipo,
+                        categoria,
+                        nome,
+                        displayName: nome,
+                        hasTipoSubtipoCategoria: true,
+                        formatted: `<div class="item-metadata"><span class="item-tipo">${tipo}</span> - <span class="item-subtipo">${subtipo}</span> - <span class="item-categoria">${categoria}</span></div><div class="item-name-main">${nome}</div>`
+                    };
+                } else if (nameParts.length === 3) {
+                    // Formato: SUBTIPO - CATEGORIA - NOME (sem TIPO)
+                    const subtipo = nameParts[0].trim();
+                    const categoria = nameParts[1].trim();
+                    const nome = nameParts[2].trim();
+                    
+                    return {
+                        tipo: '',
+                        subtipo,
+                        categoria,
+                        nome,
+                        displayName: nome,
+                        hasTipoSubtipoCategoria: true,
+                        formatted: `<div class="item-metadata"><span class="item-tipo">Nenhum</span> - <span class="item-subtipo">${subtipo}</span> - <span class="item-categoria">${categoria}</span></div><div class="item-name-main">${nome}</div>`
+                    };
+                } else if (nameParts.length === 2) {
+                    // Formato: SUBTIPO - NOME (sem TIPO e CATEGORIA)
+                    const subtipo = nameParts[0].trim();
+                    const nome = nameParts[1].trim();
+                    
+                    return {
+                        tipo: '',
+                        subtipo,
+                        categoria: '',
+                        nome,
+                        displayName: nome,
+                        hasTipoSubtipoCategoria: true,
+                        formatted: `<div class="item-metadata"><span class="item-tipo">Nenhum</span> - <span class="item-subtipo">${subtipo}</span> - <span class="item-categoria">Nenhum</span></div><div class="item-name-main">${nome}</div>`
+                    };
+                } else {
+                    // Formato: NOME (sem TIPO, SUBTIPO e CATEGORIA)
+                    return {
+                        tipo: '',
+                        subtipo: '',
+                        categoria: '',
+                        nome: fullName.trim(),
+                        displayName: fullName.trim(),
+                        hasTipoSubtipoCategoria: false,
+                        formatted: `<div class="item-name-main">${fullName.trim()}</div>`
+                    };
+                }
+            } catch (error) {
+                console.error('Erro ao extrair TIPO/SUBTIPO/CATEGORIA:', error);
+                return {
+                    tipo: 'Erro',
+                    subtipo: 'Erro',
+                    categoria: 'Erro',
+                    nome: fullName || 'Erro',
+                    displayName: fullName || 'Erro',
+                    hasTipoSubtipoCategoria: true,
+                    formatted: `<div class="item-metadata"><span class="item-tipo error">Erro</span> - <span class="item-subtipo error">Erro</span> - <span class="item-categoria error">Erro</span></div><div class="item-name-main">${fullName || 'Erro'}</div>`
+                };
+            }
+        };
+
         async function showEventDetails(event) {
             const modal = document.getElementById('eventModal');
             const title = document.getElementById('eventModalTitle');
@@ -6888,11 +7003,13 @@
                             <div id="payments-display" class="payments-display">
                     `;
                     eventCalc.payments.forEach((payment, index) => {
+                        const itemInfo = extractAndFormatItemName(payment.name);
                         detailsHTML += `
                             <div class="value-item" data-item-index="${index}">
                                 <div>
-                                    <strong>${payment.name}</strong> - ${payment.formattedValue}
-                                    ${payment.detail ? `<br><small>${payment.detail}</small>` : ''}
+                                    <strong>${itemInfo.formatted}</strong>
+                                    <div class="item-value-line">${payment.formattedValue}</div>
+                                    ${payment.detail ? `<div class="item-detail"><small>${payment.detail}</small></div>` : ''}
                                 </div>
                                 <div class="value-item-status ${payment.status.toLowerCase()}">
                                     ${payment.status}
@@ -9224,20 +9341,21 @@ window.openManageCategoriasPayment = function() {
             subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
             categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
             
-            if (tipo === 'OBRAS') {
+                if (tipo === 'OBRAS') {
                 // Carregar obras do Supabase
                 try {
-                    const { data: obras, error } = await supabaseClient
-                        .from('obras')
+                    const { data: obras, error } = await supabase
+                        .from('obras_hvc')
                         .select('*')
-                        .order('nome', { ascending: true });
+                        .order('created_at', { ascending: false });
                     
                     if (error) throw error;
                     
                     obras.forEach(obra => {
                         const option = document.createElement('option');
-                        option.value = obra.nome;
-                        option.textContent = obra.nome;
+                        const obraName = obra.numero_obra || obra.nome || `Obra ${obra.id}`;
+                        option.value = obraName;
+                        option.textContent = obraName;
                         subtipoSelect.appendChild(option);
                     });
                 } catch (error) {
@@ -9261,10 +9379,10 @@ window.openManageCategoriasPayment = function() {
             } else if (tipo === 'OUTROS') {
                 // Carregar subtipos personalizados
                 try {
-                    const { data: subtipos, error } = await supabaseClient
-                        .from('custom_subtipos_recebimento_outros')
+                    const { data: subtipos, error } = await supabase
+                        .from('recebimento_outros_subtipos')
                         .select('*')
-                        .order('nome', { ascending: true });
+                        .order('created_at', { ascending: false });
                     
                     if (error) throw error;
                     
@@ -9324,18 +9442,19 @@ window.openManageCategoriasPayment = function() {
             if (tipo === 'OBRAS' && subtipo) {
                 // Carregar medições da obra
                 try {
-                    const { data: medicoes, error } = await supabaseClient
-                        .from('medicoes')
+                    const { data: medicoes, error } = await supabase
+                        .from('medicoes_hvc')
                         .select('*')
-                        .eq('obra', subtipo)
-                        .order('numero', { ascending: true });
+                        .eq('obra_numero', subtipo)
+                        .order('numero_medicao', { ascending: true });
                     
                     if (error) throw error;
                     
                     medicoes.forEach(medicao => {
                         const option = document.createElement('option');
-                        option.value = medicao.numero;
-                        option.textContent = `Medição ${medicao.numero}`;
+                        const medicaoNum = medicao.numero_medicao || medicao.numero || medicao.id;
+                        option.value = medicaoNum;
+                        option.textContent = `Medição ${medicaoNum}`;
                         categoriaSelect.appendChild(option);
                     });
                 } catch (error) {
@@ -9345,10 +9464,10 @@ window.openManageCategoriasPayment = function() {
             } else if (tipo === 'OUTROS') {
                 // Carregar categorias personalizadas
                 try {
-                    const { data: categorias, error } = await supabaseClient
-                        .from('custom_categorias_recebimento_outros')
+                    const { data: categorias, error } = await supabase
+                        .from('recebimento_outros_categorias')
                         .select('*')
-                        .order('nome', { ascending: true });
+                        .order('created_at', { ascending: false});
                     
                     if (error) throw error;
                     
@@ -9705,10 +9824,17 @@ window.openManageCategoriasPayment = function() {
                     const detail = row.querySelector('.edit-item-detail').value.trim();
                     
                     // Montar o nome completo com tipo, subtipo e categoria
+                    // Lógica: Se pelo menos um campo (tipo, subtipo ou categoria) estiver preenchido,
+                    // incluir todos os três (usando "Nenhum" para os vazios)
                     const nameParts = [];
-                    if (tipo) nameParts.push(tipo);
-                    if (subtipo) nameParts.push(subtipo);
-                    if (categoria) nameParts.push(categoria);
+                    const hasTipoSubtipoCategoria = tipo || subtipo || categoria;
+                    
+                    if (hasTipoSubtipoCategoria) {
+                        nameParts.push(tipo || 'Nenhum');
+                        nameParts.push(subtipo || 'Nenhum');
+                        nameParts.push(categoria || 'Nenhum');
+                    }
+                    
                     nameParts.push(nome);
                     const fullName = nameParts.join(' - ');
                     
