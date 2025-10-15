@@ -212,3 +212,54 @@
   color: var(--accent-color);
 }
 
+}
+
+/* =========================================
+   SELECT MÚLTIPLO DE DONOS
+   ========================================= */
+
+select[multiple] {
+  background: var(--dark-bg);
+  border: 2px solid var(--border-color);
+  border-radius: 8px;
+  color: var(--text-light);
+  padding: 0.5rem;
+  font-size: 0.95rem;
+  min-height: 80px;
+  cursor: pointer;
+}
+
+select[multiple]:focus {
+  outline: none;
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+}
+
+select[multiple] option {
+  padding: 0.5rem;
+  border-radius: 4px;
+  margin: 2px 0;
+  cursor: pointer;
+  background: var(--dark-bg);
+  color: var(--text-light);
+}
+
+select[multiple] option:hover {
+  background: var(--primary-color);
+  color: var(--accent-color);
+}
+
+select[multiple] option:checked {
+  background: linear-gradient(135deg, var(--secondary-color), var(--warning-color));
+  color: var(--dark-bg);
+  font-weight: 600;
+}
+
+/* Melhorar visibilidade no Firefox */
+@-moz-document url-prefix() {
+  select[multiple] option:checked {
+    background: var(--secondary-color) !important;
+    color: var(--dark-bg) !important;
+  }
+}
+
