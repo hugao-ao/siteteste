@@ -9523,6 +9523,72 @@
             }
         };
 
+
+        // ===================================================================
+        // INTEGRAÇÃO COM SISTEMA DE MEDIÇÕES
+        // ===================================================================
+        
+        // Variável global para armazenar obra selecionada
+        window.obraIdSelecionadaFluxoCaixa = null;
+        
+        // Função para verificar se deve mostrar botão Nova Medição
+        function checkAndShowNovaMedicaoButton(listType) {
+            const novaMedicaoSection = document.getElementById('novaMedicaoSection');
+            
+            if (!novaMedicaoSection) return;
+            
+            // Verificar condições:
+            // 1. Tipo de evento = RECEBIMENTO
+            // 2. TIPO = OBRAS
+            // 3. SUBTIPO = uma obra selecionada
+            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            
+            const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
+            const tipoSelect = document.getElementById('itemTipo');
+            const subtipoSelect = document.getElementById('itemSubtipo');
+            
+            const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
+            const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
+            const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
+            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            
+            // Mostrar botão apenas se todas as condições forem atendidas
+            if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
+                novaMedicaoSection.style.display = 'block';
+                
+                // Armazenar obra_id para uso posterior
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                window.obraIdSelecionadaFluxoCaixa = selectedOption.getAttribute('data-obra-id');
+                
+                console.log('✅ Botão Nova Medição habilitado para obra:', window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                novaMedicaoSection.style.display = 'none';
+                window.obraIdSelecionadaFluxoCaixa = null;
+            }
+        }
+        
+        // Função para abrir modal de Nova Medição do fluxo de caixa
+        async function abrirNovaMedicaoDoFluxoCaixa() {
+            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
+            
+            // Verificar se o sistema de medições está disponível
+            if (typeof window.openMedicaoModalFromExternal === 'function') {
+                // Usar função do sistema de medições
+                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                // Abrir página de medições em nova aba com obra pré-selecionada
+                const obraId = window.obraIdSelecionadaFluxoCaixa;
+                if (obraId) {
+                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
+                } else {
+                    window.open('medicoes-hvc.html?action=nova', '_blank');
+                }
+            }
+            
+            // Fechar modal de gerenciar listas
+            closeManageListModal();
+        }
+        
     </script>
 </head>
 
@@ -10621,6 +10687,72 @@
             }
         };
 
+
+        // ===================================================================
+        // INTEGRAÇÃO COM SISTEMA DE MEDIÇÕES
+        // ===================================================================
+        
+        // Variável global para armazenar obra selecionada
+        window.obraIdSelecionadaFluxoCaixa = null;
+        
+        // Função para verificar se deve mostrar botão Nova Medição
+        function checkAndShowNovaMedicaoButton(listType) {
+            const novaMedicaoSection = document.getElementById('novaMedicaoSection');
+            
+            if (!novaMedicaoSection) return;
+            
+            // Verificar condições:
+            // 1. Tipo de evento = RECEBIMENTO
+            // 2. TIPO = OBRAS
+            // 3. SUBTIPO = uma obra selecionada
+            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            
+            const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
+            const tipoSelect = document.getElementById('itemTipo');
+            const subtipoSelect = document.getElementById('itemSubtipo');
+            
+            const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
+            const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
+            const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
+            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            
+            // Mostrar botão apenas se todas as condições forem atendidas
+            if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
+                novaMedicaoSection.style.display = 'block';
+                
+                // Armazenar obra_id para uso posterior
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                window.obraIdSelecionadaFluxoCaixa = selectedOption.getAttribute('data-obra-id');
+                
+                console.log('✅ Botão Nova Medição habilitado para obra:', window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                novaMedicaoSection.style.display = 'none';
+                window.obraIdSelecionadaFluxoCaixa = null;
+            }
+        }
+        
+        // Função para abrir modal de Nova Medição do fluxo de caixa
+        async function abrirNovaMedicaoDoFluxoCaixa() {
+            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
+            
+            // Verificar se o sistema de medições está disponível
+            if (typeof window.openMedicaoModalFromExternal === 'function') {
+                // Usar função do sistema de medições
+                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                // Abrir página de medições em nova aba com obra pré-selecionada
+                const obraId = window.obraIdSelecionadaFluxoCaixa;
+                if (obraId) {
+                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
+                } else {
+                    window.open('medicoes-hvc.html?action=nova', '_blank');
+                }
+            }
+            
+            // Fechar modal de gerenciar listas
+            closeManageListModal();
+        }
+        
     </script>
     
     <!-- ✅ NOVO: Event Listeners para criação de eventos -->
@@ -11010,6 +11142,72 @@
             }
         };
 
+
+        // ===================================================================
+        // INTEGRAÇÃO COM SISTEMA DE MEDIÇÕES
+        // ===================================================================
+        
+        // Variável global para armazenar obra selecionada
+        window.obraIdSelecionadaFluxoCaixa = null;
+        
+        // Função para verificar se deve mostrar botão Nova Medição
+        function checkAndShowNovaMedicaoButton(listType) {
+            const novaMedicaoSection = document.getElementById('novaMedicaoSection');
+            
+            if (!novaMedicaoSection) return;
+            
+            // Verificar condições:
+            // 1. Tipo de evento = RECEBIMENTO
+            // 2. TIPO = OBRAS
+            // 3. SUBTIPO = uma obra selecionada
+            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            
+            const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
+            const tipoSelect = document.getElementById('itemTipo');
+            const subtipoSelect = document.getElementById('itemSubtipo');
+            
+            const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
+            const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
+            const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
+            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            
+            // Mostrar botão apenas se todas as condições forem atendidas
+            if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
+                novaMedicaoSection.style.display = 'block';
+                
+                // Armazenar obra_id para uso posterior
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                window.obraIdSelecionadaFluxoCaixa = selectedOption.getAttribute('data-obra-id');
+                
+                console.log('✅ Botão Nova Medição habilitado para obra:', window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                novaMedicaoSection.style.display = 'none';
+                window.obraIdSelecionadaFluxoCaixa = null;
+            }
+        }
+        
+        // Função para abrir modal de Nova Medição do fluxo de caixa
+        async function abrirNovaMedicaoDoFluxoCaixa() {
+            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
+            
+            // Verificar se o sistema de medições está disponível
+            if (typeof window.openMedicaoModalFromExternal === 'function') {
+                // Usar função do sistema de medições
+                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                // Abrir página de medições em nova aba com obra pré-selecionada
+                const obraId = window.obraIdSelecionadaFluxoCaixa;
+                if (obraId) {
+                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
+                } else {
+                    window.open('medicoes-hvc.html?action=nova', '_blank');
+                }
+            }
+            
+            // Fechar modal de gerenciar listas
+            closeManageListModal();
+        }
+        
     </script>
     
     <style>
@@ -11566,6 +11764,72 @@
             }
         };
 
+
+        // ===================================================================
+        // INTEGRAÇÃO COM SISTEMA DE MEDIÇÕES
+        // ===================================================================
+        
+        // Variável global para armazenar obra selecionada
+        window.obraIdSelecionadaFluxoCaixa = null;
+        
+        // Função para verificar se deve mostrar botão Nova Medição
+        function checkAndShowNovaMedicaoButton(listType) {
+            const novaMedicaoSection = document.getElementById('novaMedicaoSection');
+            
+            if (!novaMedicaoSection) return;
+            
+            // Verificar condições:
+            // 1. Tipo de evento = RECEBIMENTO
+            // 2. TIPO = OBRAS
+            // 3. SUBTIPO = uma obra selecionada
+            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            
+            const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
+            const tipoSelect = document.getElementById('itemTipo');
+            const subtipoSelect = document.getElementById('itemSubtipo');
+            
+            const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
+            const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
+            const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
+            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            
+            // Mostrar botão apenas se todas as condições forem atendidas
+            if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
+                novaMedicaoSection.style.display = 'block';
+                
+                // Armazenar obra_id para uso posterior
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                window.obraIdSelecionadaFluxoCaixa = selectedOption.getAttribute('data-obra-id');
+                
+                console.log('✅ Botão Nova Medição habilitado para obra:', window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                novaMedicaoSection.style.display = 'none';
+                window.obraIdSelecionadaFluxoCaixa = null;
+            }
+        }
+        
+        // Função para abrir modal de Nova Medição do fluxo de caixa
+        async function abrirNovaMedicaoDoFluxoCaixa() {
+            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
+            
+            // Verificar se o sistema de medições está disponível
+            if (typeof window.openMedicaoModalFromExternal === 'function') {
+                // Usar função do sistema de medições
+                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                // Abrir página de medições em nova aba com obra pré-selecionada
+                const obraId = window.obraIdSelecionadaFluxoCaixa;
+                if (obraId) {
+                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
+                } else {
+                    window.open('medicoes-hvc.html?action=nova', '_blank');
+                }
+            }
+            
+            // Fechar modal de gerenciar listas
+            closeManageListModal();
+        }
+        
     </script>
 
     <!-- Carregamento robusto das APIs Google com retry e fallback -->
@@ -12048,6 +12312,17 @@
                     <i class="fas fa-times"></i>
                 </button>
             </div>
+            <!-- Botão Nova Medição (condicional) -->
+            <div id="novaMedicaoSection" style="display: none; padding: 15px; background: rgba(76, 175, 80, 0.1); border-radius: 8px; margin-bottom: 15px;">
+                <button class="btn-primary" onclick="abrirNovaMedicaoDoFluxoCaixa()" style="width: 100%; padding: 12px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-plus"></i>
+                    Nova Medição
+                </button>
+                <p style="margin: 10px 0 0 0; font-size: 12px; color: #b0c4de; text-align: center;">
+                    Criar nova medição para esta obra
+                </p>
+            </div>
+            
             <div class="add-list-item-section">
                 <div class="add-list-item-form">
                     <input type="text" id="newListItemInput" placeholder="Digite o nome do novo item..." onkeypress="if(event.key==='Enter') addItemToManageList()">
@@ -12273,6 +12548,8 @@
         let currentManagingList = null;
 
         function openManageListModal(listType) {
+            // Verificar se deve mostrar botão Nova Medição
+            checkAndShowNovaMedicaoButton(listType);
             currentManagingList = listType;
             const modal = document.getElementById('manageListModal');
             const title = document.getElementById('manageListTitle');
@@ -12725,6 +13002,72 @@
             }
         };
 
+
+        // ===================================================================
+        // INTEGRAÇÃO COM SISTEMA DE MEDIÇÕES
+        // ===================================================================
+        
+        // Variável global para armazenar obra selecionada
+        window.obraIdSelecionadaFluxoCaixa = null;
+        
+        // Função para verificar se deve mostrar botão Nova Medição
+        function checkAndShowNovaMedicaoButton(listType) {
+            const novaMedicaoSection = document.getElementById('novaMedicaoSection');
+            
+            if (!novaMedicaoSection) return;
+            
+            // Verificar condições:
+            // 1. Tipo de evento = RECEBIMENTO
+            // 2. TIPO = OBRAS
+            // 3. SUBTIPO = uma obra selecionada
+            // 4. listType = 'hvc_custom_categorias_rec' (gerenciando categorias de recebimento)
+            
+            const eventTypeRadio = document.querySelector('input[name="eventType"]:checked');
+            const tipoSelect = document.getElementById('itemTipo');
+            const subtipoSelect = document.getElementById('itemSubtipo');
+            
+            const isRecebimento = eventTypeRadio && eventTypeRadio.value === 'RECEBIMENTO';
+            const isTipoObras = tipoSelect && tipoSelect.value === 'OBRAS';
+            const obraSelecionada = subtipoSelect && subtipoSelect.value !== '';
+            const isCategoriasRec = listType === 'hvc_custom_categorias_rec';
+            
+            // Mostrar botão apenas se todas as condições forem atendidas
+            if (isRecebimento && isTipoObras && obraSelecionada && isCategoriasRec) {
+                novaMedicaoSection.style.display = 'block';
+                
+                // Armazenar obra_id para uso posterior
+                const selectedOption = subtipoSelect.options[subtipoSelect.selectedIndex];
+                window.obraIdSelecionadaFluxoCaixa = selectedOption.getAttribute('data-obra-id');
+                
+                console.log('✅ Botão Nova Medição habilitado para obra:', window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                novaMedicaoSection.style.display = 'none';
+                window.obraIdSelecionadaFluxoCaixa = null;
+            }
+        }
+        
+        // Função para abrir modal de Nova Medição do fluxo de caixa
+        async function abrirNovaMedicaoDoFluxoCaixa() {
+            console.log('🚀 Abrindo modal de Nova Medição do fluxo de caixa...');
+            
+            // Verificar se o sistema de medições está disponível
+            if (typeof window.openMedicaoModalFromExternal === 'function') {
+                // Usar função do sistema de medições
+                window.openMedicaoModalFromExternal(window.obraIdSelecionadaFluxoCaixa);
+            } else {
+                // Abrir página de medições em nova aba com obra pré-selecionada
+                const obraId = window.obraIdSelecionadaFluxoCaixa;
+                if (obraId) {
+                    window.open(`medicoes-hvc.html?obra_id=${obraId}&action=nova`, '_blank');
+                } else {
+                    window.open('medicoes-hvc.html?action=nova', '_blank');
+                }
+            }
+            
+            // Fechar modal de gerenciar listas
+            closeManageListModal();
+        }
+        
     </script>
 
 </body>
