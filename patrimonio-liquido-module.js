@@ -320,20 +320,186 @@ async function salvarNovaInstituicao() {
   }
 }
 
-function editarProduto(id) {
-  alert('Função de edição em desenvolvimento');
+async function editarProduto(id) {
+  const produto = tiposProdutos.find(p => p.id === id);
+  if (!produto) return;
+  
+  // Fechar modal anterior
+  document.querySelector('.modal-overlay')?.remove();
+  
+  const conteudo = `
+    <div class="form-group">
+      <label>Nome do Produto *</label>
+      <input type="text" id="edit-produto-nome" class="form-control" value="${produto.nome}">
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label>Categoria *</label>
+      <select id="edit-produto-categoria" class="form-control">
+        <option value="Renda Fixa" ${produto.categoria === 'Renda Fixa' ? 'selected' : ''}>Renda Fixa</option>
+        <option value="Renda Variável" ${produto.categoria === 'Renda Variável' ? 'selected' : ''}>Renda Variável</option>
+        <option value="Fundos" ${produto.categoria === 'Fundos' ? 'selected' : ''}>Fundos</option>
+        <option value="Previdência" ${produto.categoria === 'Previdência' ? 'selected' : ''}>Previdência</option>
+        <option value="Alternativos" ${produto.categoria === 'Alternativos' ? 'selected' : ''}>Alternativos</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label>Classificação de Risco *</label>
+      <select id="edit-produto-risco" class="form-control">
+        ${Object.keys(CLASSIFICACAO_RISCO).map(key => {
+          const info = CLASSIFICACAO_RISCO[key];
+          return `<option value="${key}" ${produto.classificacao_risco === key ? 'selected' : ''}>${info.label}</option>`;
+        }).join('')}
+      </select>
+    </div>
+    <div class="modal-footer" style="margin-top: 1.5rem;">
+      <button class="btn-modal btn-modal-secondary" onclick="this.closest('.modal-overlay').remove()">
+        Cancelar
+      </button>
+      <button class="btn-modal btn-modal-primary" onclick="salvarEdicaoProduto('${id}')">
+        <i class="fas fa-save"></i> Salvar Alterações
+      </button>
+    </div>
+  `;
+  
+  const modal = criarModal('Editar Produto', conteudo);
+  document.body.appendChild(modal);
 }
 
-function excluirProduto(id) {
-  alert('Função de exclusão em desenvolvimento');
+async function salvarEdicaoProduto(id) {
+  const nome = document.getElementById('edit-produto-nome').value.trim();
+  const categoria = document.getElementById('edit-produto-categoria').value;
+  const risco = document.getElementById('edit-produto-risco').value;
+  
+  if (!nome || !categoria || !risco) {
+    alert('Preencha todos os campos obrigatórios!');
+    return;
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('tipos_produtos_investimento')
+      .update({ nome, categoria, classificacao_risco: risco })
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    await carregarTiposProdutos();
+    document.querySelector('.modal-overlay')?.remove();
+    abrirModalGerenciarProdutos();
+    renderPatrimoniosLiquidos();
+  } catch (error) {
+    console.error('Erro ao editar produto:', error);
+    alert('Erro ao editar produto: ' + error.message);
+  }
 }
 
-function editarInstituicao(id) {
-  alert('Função de edição em desenvolvimento');
+async function excluirProduto(id) {
+  if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+  
+  try {
+    const { error } = await supabase
+      .from('tipos_produtos_investimento')
+      .update({ ativo: false })
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    await carregarTiposProdutos();
+    document.querySelector('.modal-overlay')?.remove();
+    abrirModalGerenciarProdutos();
+    renderPatrimoniosLiquidos();
+  } catch (error) {
+    console.error('Erro ao excluir produto:', error);
+    alert('Erro ao excluir produto: ' + error.message);
+  }
 }
 
-function excluirInstituicao(id) {
-  alert('Função de exclusão em desenvolvimento');
+async function editarInstituicao(id) {
+  const inst = instituicoes.find(i => i.id === id);
+  if (!inst) return;
+  
+  // Fechar modal anterior
+  document.querySelector('.modal-overlay')?.remove();
+  
+  const conteudo = `
+    <div class="form-group">
+      <label>Nome da Instituição *</label>
+      <input type="text" id="edit-instituicao-nome" class="form-control" value="${inst.nome}">
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label>Tipo *</label>
+      <select id="edit-instituicao-tipo" class="form-control">
+        <option value="Banco" ${inst.tipo === 'Banco' ? 'selected' : ''}>Banco</option>
+        <option value="Banco Digital" ${inst.tipo === 'Banco Digital' ? 'selected' : ''}>Banco Digital</option>
+        <option value="Banco Cooperativo" ${inst.tipo === 'Banco Cooperativo' ? 'selected' : ''}>Banco Cooperativo</option>
+        <option value="Corretora" ${inst.tipo === 'Corretora' ? 'selected' : ''}>Corretora</option>
+        <option value="Gestora" ${inst.tipo === 'Gestora' ? 'selected' : ''}>Gestora</option>
+        <option value="Previdência" ${inst.tipo === 'Previdência' ? 'selected' : ''}>Previdência</option>
+        <option value="Governo" ${inst.tipo === 'Governo' ? 'selected' : ''}>Governo</option>
+        <option value="Bolsa" ${inst.tipo === 'Bolsa' ? 'selected' : ''}>Bolsa</option>
+        <option value="Outro" ${inst.tipo === 'Outro' ? 'selected' : ''}>Outro</option>
+      </select>
+    </div>
+    <div class="modal-footer" style="margin-top: 1.5rem;">
+      <button class="btn-modal btn-modal-secondary" onclick="this.closest('.modal-overlay').remove()">
+        Cancelar
+      </button>
+      <button class="btn-modal btn-modal-primary" onclick="salvarEdicaoInstituicao('${id}')">
+        <i class="fas fa-save"></i> Salvar Alterações
+      </button>
+    </div>
+  `;
+  
+  const modal = criarModal('Editar Instituição', conteudo);
+  document.body.appendChild(modal);
+}
+
+async function salvarEdicaoInstituicao(id) {
+  const nome = document.getElementById('edit-instituicao-nome').value.trim();
+  const tipo = document.getElementById('edit-instituicao-tipo').value;
+  
+  if (!nome || !tipo) {
+    alert('Preencha todos os campos obrigatórios!');
+    return;
+  }
+  
+  try {
+    const { error } = await supabase
+      .from('instituicoes_financeiras')
+      .update({ nome, tipo })
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    await carregarInstituicoes();
+    document.querySelector('.modal-overlay')?.remove();
+    abrirModalGerenciarInstituicoes();
+    renderPatrimoniosLiquidos();
+  } catch (error) {
+    console.error('Erro ao editar instituição:', error);
+    alert('Erro ao editar instituição: ' + error.message);
+  }
+}
+
+async function excluirInstituicao(id) {
+  if (!confirm('Tem certeza que deseja excluir esta instituição?')) return;
+  
+  try {
+    const { error } = await supabase
+      .from('instituicoes_financeiras')
+      .update({ ativo: false })
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    await carregarInstituicoes();
+    document.querySelector('.modal-overlay')?.remove();
+    abrirModalGerenciarInstituicoes();
+    renderPatrimoniosLiquidos();
+  } catch (error) {
+    console.error('Erro ao excluir instituição:', error);
+    alert('Erro ao excluir instituição: ' + error.message);
+  }
 }
 
 // =========================================
@@ -584,7 +750,7 @@ function renderPatrimoniosLiquidos() {
     const riscoInfo = getRiscoInfo(pl.classificacao_risco);
     
     return `
-    <div class="patrimonio-liquido-card" data-patrimonio-liquido-id="${pl.id}">
+    <div class="patrimonio-liquido-card" data-patrimonio-liquido-id="${pl.id}" style="margin-bottom: 2rem; padding-bottom: 1.5rem; border-bottom: 3px solid var(--border-color);">
       <div class="patrimonio-liquido-header">
         <h4 class="patrimonio-liquido-title">
           <i class="fas fa-chart-line"></i> Investimento #${pl.id}
@@ -778,7 +944,7 @@ function renderGraficos() {
     const canvasId = `grafico-${index}`;
     
     return `
-      <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
+      <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.5rem;">
         <h4 style="color: var(--accent-color); margin-bottom: 1rem; text-align: center;">
           <i class="fas fa-user-circle"></i> ${proprietarios}
         </h4>
@@ -858,8 +1024,40 @@ function setupObservadoresDonos() {
     const campo = document.getElementById(campoId);
     if (campo) {
       campo.addEventListener('blur', atualizarListaDonos);
+      campo.addEventListener('input', atualizarListaDonos);
     }
   });
+  
+  // Observar mudanças em outras pessoas com renda e dependentes
+  // Usar MutationObserver para detectar quando novos campos são adicionados
+  const observarContainer = (containerId) => {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    
+    const observer = new MutationObserver(() => {
+      atualizarListaDonos();
+    });
+    
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      characterData: true,
+      attributes: false
+    });
+    
+    // Também observar inputs existentes
+    const inputs = container.querySelectorAll('input[type="text"]');
+    inputs.forEach(input => {
+      if (input.id && input.id.includes('nome')) {
+        input.addEventListener('input', atualizarListaDonos);
+        input.addEventListener('blur', atualizarListaDonos);
+      }
+    });
+  };
+  
+  // Observar containers de pessoas e dependentes
+  observarContainer('pessoas-renda-container');
+  observarContainer('dependentes-container');
 }
 
 // =========================================
@@ -929,4 +1127,6 @@ window.editarProduto = editarProduto;
 window.excluirProduto = excluirProduto;
 window.editarInstituicao = editarInstituicao;
 window.excluirInstituicao = excluirInstituicao;
+window.salvarEdicaoProduto = salvarEdicaoProduto;
+window.salvarEdicaoInstituicao = salvarEdicaoInstituicao;
 
