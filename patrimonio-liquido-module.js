@@ -662,20 +662,35 @@ function getPessoasCasa() {
     pessoas.push({ id: 'conjuge', nome: nomeConjuge });
   }
   
-  // Outras pessoas com renda
-  if (typeof pessoasRenda !== 'undefined' && Array.isArray(pessoasRenda)) {
-    pessoasRenda.forEach((pessoa, index) => {
-      if (pessoa.nome) {
-        pessoas.push({ id: `pessoa_${index}`, nome: pessoa.nome });
+  // Outras pessoas com renda - buscar do DOM
+  const pessoasContainer = document.getElementById('pessoas-renda-container');
+  if (pessoasContainer) {
+    const inputsNomePessoas = pessoasContainer.querySelectorAll('input[id$="_nome"]');
+    inputsNomePessoas.forEach((input, index) => {
+      const nome = input.value?.trim();
+      if (nome) {
+        pessoas.push({ id: `pessoa_${index}`, nome: nome });
+      }
+    });
+    
+    // Cônjuges das outras pessoas
+    const inputsConjugePessoas = pessoasContainer.querySelectorAll('input[id$="_conjuge_nome"]');
+    inputsConjugePessoas.forEach((input, index) => {
+      const nome = input.value?.trim();
+      if (nome) {
+        pessoas.push({ id: `pessoa_conjuge_${index}`, nome: nome });
       }
     });
   }
   
-  // Dependentes
-  if (typeof dependentes !== 'undefined' && Array.isArray(dependentes)) {
-    dependentes.forEach((dep, index) => {
-      if (dep.nome) {
-        pessoas.push({ id: `dependente_${index}`, nome: dep.nome });
+  // Dependentes - buscar do DOM
+  const dependentesContainer = document.getElementById('dependentes-container');
+  if (dependentesContainer) {
+    const inputsNomeDependentes = dependentesContainer.querySelectorAll('input[id$="_nome"]');
+    inputsNomeDependentes.forEach((input, index) => {
+      const nome = input.value?.trim();
+      if (nome) {
+        pessoas.push({ id: `dependente_${index}`, nome: nome });
       }
     });
   }
@@ -943,11 +958,17 @@ function renderGraficos() {
     const dados = gruposPorProprietarios[proprietarios];
     const canvasId = `grafico-${index}`;
     
+    // Calcular total
+    const total = Object.values(dados).reduce((sum, val) => sum + val, 0);
+    
     return `
       <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.5rem;">
-        <h4 style="color: var(--accent-color); margin-bottom: 1rem; text-align: center;">
+        <h4 style="color: var(--accent-color); margin-bottom: 0.5rem; text-align: center;">
           <i class="fas fa-user-circle"></i> ${proprietarios}
         </h4>
+        <p style="color: var(--accent-color); margin-bottom: 1rem; text-align: center; font-size: 1.2rem; font-weight: bold;">
+          Total: ${formatarMoeda(total)}
+        </p>
         <canvas id="${canvasId}" style="max-height: 300px;"></canvas>
       </div>
     `;
@@ -985,6 +1006,23 @@ function renderGraficos() {
               color: 'var(--text-light)',
               font: {
                 size: 11
+              },
+              generateLabels: function(chart) {
+                const data = chart.data;
+                if (data.labels.length && data.datasets.length) {
+                  const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
+                  return data.labels.map((label, i) => {
+                    const value = data.datasets[0].data[i];
+                    const percentage = ((value / total) * 100).toFixed(1);
+                    return {
+                      text: `${label}: ${formatarMoeda(value)} (${percentage}%)`,
+                      fillStyle: data.datasets[0].backgroundColor[i],
+                      hidden: false,
+                      index: i
+                    };
+                  });
+                }
+                return [];
               }
             }
           },
@@ -1058,6 +1096,9 @@ function setupObservadoresDonos() {
   // Observar containers de pessoas e dependentes
   observarContainer('pessoas-renda-container');
   observarContainer('dependentes-container');
+  
+  // Forçar atualização inicial
+  setTimeout(() => atualizarListaDonos(), 500);
 }
 
 // =========================================
