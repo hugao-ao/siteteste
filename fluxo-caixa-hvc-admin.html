@@ -13311,6 +13311,16 @@
         };
 
         function loadCustomLists() {
+            // Se currentManagingList é uma chave específica (ex: hvc_custom_subtipos_rec)
+            // retornar diretamente os dados dessa chave
+            if (currentManagingList && currentManagingList.includes('_')) {
+                const data = localStorage.getItem(currentManagingList);
+                return {
+                    [currentManagingList]: data ? JSON.parse(data) : []
+                };
+            }
+            
+            // Senão usar comportamento padrão (PAGAMENTO)
             const subtipos = localStorage.getItem(STORAGE_KEYS.SUBTIPOS);
             const categorias = localStorage.getItem(STORAGE_KEYS.CATEGORIAS);
             return {
@@ -13330,10 +13340,17 @@
             if (!list.includes(value) && value.trim() !== '') {
                 list.push(value.trim());
                 list.sort();
-                if (listType === 'subtipos') {
-                    saveCustomLists(list, lists.categorias);
+                
+                // Se é uma chave específica (ex: hvc_custom_subtipos_rec)
+                if (listType && listType.includes('_')) {
+                    localStorage.setItem(listType, JSON.stringify(list));
                 } else {
-                    saveCustomLists(lists.subtipos, list);
+                    // Senão usar comportamento padrão (PAGAMENTO)
+                    if (listType === 'subtipos') {
+                        saveCustomLists(list, lists.categorias);
+                    } else {
+                        saveCustomLists(lists.subtipos, list);
+                    }
                 }
                 return true;
             }
@@ -13346,10 +13363,17 @@
             const index = list.indexOf(value);
             if (index > -1) {
                 list.splice(index, 1);
-                if (listType === 'subtipos') {
-                    saveCustomLists(list, lists.categorias);
+                
+                // Se é uma chave específica (ex: hvc_custom_subtipos_rec)
+                if (listType && listType.includes('_')) {
+                    localStorage.setItem(listType, JSON.stringify(list));
                 } else {
-                    saveCustomLists(lists.subtipos, list);
+                    // Senão usar comportamento padrão (PAGAMENTO)
+                    if (listType === 'subtipos') {
+                        saveCustomLists(list, lists.categorias);
+                    } else {
+                        saveCustomLists(lists.subtipos, list);
+                    }
                 }
                 return true;
             }
@@ -13442,23 +13466,39 @@
 
         // Modal de gerenciamento
         let currentManagingList = null;
+        let currentManagingCallback = null;
 
-        function openManageListModal(listType) {
+        function openManageListModal(listType, customTitle, callback) {
             // Verificar se deve mostrar botão Nova Medição
             checkAndShowNovaMedicaoButton(listType);
             currentManagingList = listType;
+            currentManagingCallback = callback || null;
             const modal = document.getElementById('manageListModal');
             const title = document.getElementById('manageListTitle');
-            title.textContent = listType === 'subtipos' ? 'Gerenciar Subtipos' : 'Gerenciar Categorias';
+            // Usar título personalizado se fornecido, senão usar padrão
+            if (customTitle) {
+                title.textContent = customTitle;
+            } else {
+                title.textContent = listType === 'subtipos' ? 'Gerenciar Subtipos' : 'Gerenciar Categorias';
+            }
             refreshManageListItems();
             modal.style.display = 'flex';
         }
 
         function closeManageListModal() {
             document.getElementById('manageListModal').style.display = 'none';
+            
+            // Chamar callback se existir (para RECEBIMENTO)
+            if (currentManagingCallback && typeof currentManagingCallback === 'function') {
+                currentManagingCallback();
+            } else {
+                // Senão usar funções padrão (para PAGAMENTO)
+                populateSubtipoSelect();
+                populateCategoriaSelect();
+            }
+            
             currentManagingList = null;
-            populateSubtipoSelect();
-            populateCategoriaSelect();
+            currentManagingCallback = null;
         }
 
         function refreshManageListItems() {
