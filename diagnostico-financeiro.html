@@ -7,6 +7,7 @@
   <title>Diagnóstico Financeiro</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="patrimonio-liquido-styles.css" />
   <!-- SISTEMA DE SEGURANÇA - Importar middleware de autenticação -->
   <script src="auth-middleware.js"></script>
   <style>
@@ -879,6 +880,30 @@
             <div style="text-align: center; margin-top: 1rem;">
               <button type="button" id="add-patrimonio-btn" class="add-btn">
                 <i class="fas fa-plus"></i> Adicionar Patrimônio
+              </button>
+            </div>
+          </div>
+
+          <!-- ========================================= -->
+          <!-- SEÇÃO: PATRIMÔNIO LÍQUIDO -->
+          <!-- ========================================= -->
+          <div class="form-container" id="secao-patrimonio-liquido" style="margin-top: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+                <i class="fas fa-wallet"></i> Patrimônio Líquido (Investimentos)
+              </h3>
+              <div id="patrimonio-liquido-total" class="patrimonio-total">
+                Total: R$ 0,00
+              </div>
+            </div>
+            
+            <div id="patrimonios-liquidos-container">
+              <!-- Patrimônios líquidos serão inseridos aqui dinamicamente -->
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+              <button type="button" id="add-patrimonio-liquido-btn" class="add-btn">
+                <i class="fas fa-plus"></i> Adicionar Investimento
               </button>
             </div>
           </div>
@@ -2600,6 +2625,7 @@ function voltarParaCliente() {
 window.voltarParaCliente = voltarParaCliente;
     
   </script>
+  <script src="patrimonio-liquido-module.js"></script>
 </body>
 </html>
 
