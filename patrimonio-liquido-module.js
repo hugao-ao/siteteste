@@ -73,6 +73,270 @@ function limparCampoMoeda(event) {
 }
 
 // =========================================
+// MODAIS DE GERENCIAMENTO
+// =========================================
+
+function abrirModalGerenciarProdutos() {
+  const modal = criarModal('Gerenciar Tipos de Produtos', renderListaProdutos());
+  document.body.appendChild(modal);
+}
+
+function abrirModalGerenciarInstituicoes() {
+  const modal = criarModal('Gerenciar Instituições Financeiras', renderListaInstituicoes());
+  document.body.appendChild(modal);
+}
+
+function criarModal(titulo, conteudo) {
+  const overlay = document.createElement('div');
+  overlay.className = 'modal-overlay';
+  overlay.onclick = (e) => { if (e.target === overlay) fecharModal(overlay); };
+  
+  overlay.innerHTML = `
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title"><i class="fas fa-cog"></i> ${titulo}</h3>
+        <button class="modal-close" onclick="this.closest('.modal-overlay').remove()">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        ${conteudo}
+      </div>
+    </div>
+  `;
+  
+  return overlay;
+}
+
+function fecharModal(modal) {
+  modal.remove();
+}
+
+function renderListaProdutos() {
+  const produtosPorCategoria = {};
+  tiposProdutos.forEach(produto => {
+    if (!produtosPorCategoria[produto.categoria]) {
+      produtosPorCategoria[produto.categoria] = [];
+    }
+    produtosPorCategoria[produto.categoria].push(produto);
+  });
+  
+  let html = '<div class="item-list">';
+  
+  Object.keys(produtosPorCategoria).sort().forEach(categoria => {
+    html += `<h4 style="color: var(--accent-color); margin: 1rem 0 0.5rem 0;">${categoria}</h4>`;
+    produtosPorCategoria[categoria].forEach(produto => {
+      const riscoInfo = getRiscoInfo(produto.classificacao_risco);
+      html += `
+        <div class="item-card">
+          <div class="item-info">
+            <div class="item-nome">${produto.nome}</div>
+            <div class="item-detalhes">
+              <span class="badge-risco" style="background-color: ${riscoInfo.cor}; color: white; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.7rem;">
+                ${riscoInfo.label}
+              </span>
+            </div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-icon" onclick="editarProduto('${produto.id}')" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn-icon delete" onclick="excluirProduto('${produto.id}')" title="Excluir">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+  });
+  
+  html += '</div>';
+  html += `
+    <button class="btn-modal btn-modal-primary" onclick="abrirModalNovoProduto()">
+      <i class="fas fa-plus"></i> Adicionar Novo Produto
+    </button>
+  `;
+  
+  return html;
+}
+
+function renderListaInstituicoes() {
+  const instituicoesPorTipo = {};
+  instituicoes.forEach(inst => {
+    if (!instituicoesPorTipo[inst.tipo]) {
+      instituicoesPorTipo[inst.tipo] = [];
+    }
+    instituicoesPorTipo[inst.tipo].push(inst);
+  });
+  
+  let html = '<div class="item-list">';
+  
+  Object.keys(instituicoesPorTipo).sort().forEach(tipo => {
+    html += `<h4 style="color: var(--accent-color); margin: 1rem 0 0.5rem 0;">${tipo}</h4>`;
+    instituicoesPorTipo[tipo].forEach(inst => {
+      html += `
+        <div class="item-card">
+          <div class="item-info">
+            <div class="item-nome">${inst.nome}</div>
+            <div class="item-detalhes">${inst.tipo}</div>
+          </div>
+          <div class="item-actions">
+            <button class="btn-icon" onclick="editarInstituicao('${inst.id}')" title="Editar">
+              <i class="fas fa-edit"></i>
+            </button>
+            <button class="btn-icon delete" onclick="excluirInstituicao('${inst.id}')" title="Excluir">
+              <i class="fas fa-trash"></i>
+            </button>
+          </div>
+        </div>
+      `;
+    });
+  });
+  
+  html += '</div>';
+  html += `
+    <button class="btn-modal btn-modal-primary" onclick="abrirModalNovaInstituicao()">
+      <i class="fas fa-plus"></i> Adicionar Nova Instituição
+    </button>
+  `;
+  
+  return html;
+}
+
+function abrirModalNovoProduto() {
+  // Fechar modal anterior
+  document.querySelector('.modal-overlay')?.remove();
+  
+  const conteudo = `
+    <div class="form-group">
+      <label>Nome do Produto *</label>
+      <input type="text" id="novo-produto-nome" class="form-control" placeholder="Ex: CDB Prefixado">
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label>Categoria *</label>
+      <select id="novo-produto-categoria" class="form-control">
+        <option value="">Selecione...</option>
+        <option value="Renda Fixa">Renda Fixa</option>
+        <option value="Renda Variável">Renda Variável</option>
+        <option value="Fundos">Fundos</option>
+        <option value="Previdência">Previdência</option>
+        <option value="Alternativos">Alternativos</option>
+      </select>
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label>Classificação de Risco *</label>
+      <select id="novo-produto-risco" class="form-control">
+        <option value="">Selecione...</option>
+        ${Object.keys(CLASSIFICACAO_RISCO).map(key => {
+          const info = CLASSIFICACAO_RISCO[key];
+          return `<option value="${key}">${info.label}</option>`;
+        }).join('')}
+      </select>
+    </div>
+    <div class="modal-footer" style="margin-top: 1.5rem;">
+      <button class="btn-modal btn-modal-secondary" onclick="this.closest('.modal-overlay').remove()">
+        Cancelar
+      </button>
+      <button class="btn-modal btn-modal-primary" onclick="salvarNovoProduto()">
+        <i class="fas fa-save"></i> Salvar
+      </button>
+    </div>
+  `;
+  
+  const modal = criarModal('Novo Produto de Investimento', conteudo);
+  document.body.appendChild(modal);
+}
+
+function abrirModalNovaInstituicao() {
+  // Fechar modal anterior
+  document.querySelector('.modal-overlay')?.remove();
+  
+  const conteudo = `
+    <div class="form-group">
+      <label>Nome da Instituição *</label>
+      <input type="text" id="nova-instituicao-nome" class="form-control" placeholder="Ex: Banco XYZ">
+    </div>
+    <div class="form-group" style="margin-top: 1rem;">
+      <label>Tipo *</label>
+      <select id="nova-instituicao-tipo" class="form-control">
+        <option value="">Selecione...</option>
+        <option value="Banco">Banco</option>
+        <option value="Banco Digital">Banco Digital</option>
+        <option value="Banco Cooperativo">Banco Cooperativo</option>
+        <option value="Corretora">Corretora</option>
+        <option value="Gestora">Gestora</option>
+        <option value="Previdência">Previdência</option>
+        <option value="Governo">Governo</option>
+        <option value="Bolsa">Bolsa</option>
+        <option value="Outro">Outro</option>
+      </select>
+    </div>
+    <div class="modal-footer" style="margin-top: 1.5rem;">
+      <button class="btn-modal btn-modal-secondary" onclick="this.closest('.modal-overlay').remove()">
+        Cancelar
+      </button>
+      <button class="btn-modal btn-modal-primary" onclick="salvarNovaInstituicao()">
+        <i class="fas fa-save"></i> Salvar
+      </button>
+    </div>
+  `;
+  
+  const modal = criarModal('Nova Instituição Financeira', conteudo);
+  document.body.appendChild(modal);
+}
+
+async function salvarNovoProduto() {
+  const nome = document.getElementById('novo-produto-nome').value.trim();
+  const categoria = document.getElementById('novo-produto-categoria').value;
+  const risco = document.getElementById('novo-produto-risco').value;
+  
+  if (!nome || !categoria || !risco) {
+    alert('Preencha todos os campos obrigatórios!');
+    return;
+  }
+  
+  const resultado = await adicionarTipoProduto(nome, categoria, risco);
+  if (resultado) {
+    document.querySelector('.modal-overlay')?.remove();
+    abrirModalGerenciarProdutos();
+    renderPatrimoniosLiquidos();
+  }
+}
+
+async function salvarNovaInstituicao() {
+  const nome = document.getElementById('nova-instituicao-nome').value.trim();
+  const tipo = document.getElementById('nova-instituicao-tipo').value;
+  
+  if (!nome || !tipo) {
+    alert('Preencha todos os campos obrigatórios!');
+    return;
+  }
+  
+  const resultado = await adicionarInstituicao(nome, tipo);
+  if (resultado) {
+    document.querySelector('.modal-overlay')?.remove();
+    abrirModalGerenciarInstituicoes();
+    renderPatrimoniosLiquidos();
+  }
+}
+
+function editarProduto(id) {
+  alert('Função de edição em desenvolvimento');
+}
+
+function excluirProduto(id) {
+  alert('Função de exclusão em desenvolvimento');
+}
+
+function editarInstituicao(id) {
+  alert('Função de edição em desenvolvimento');
+}
+
+function excluirInstituicao(id) {
+  alert('Função de exclusão em desenvolvimento');
+}
+
+// =========================================
 // FUNÇÕES DE SUPABASE
 // =========================================
 
@@ -357,6 +621,9 @@ function renderPatrimoniosLiquidos() {
         <div class="form-group">
           <label>
             <i class="fas fa-chart-pie"></i> Tipo de Produto *
+            <button type="button" class="btn-gerenciar" onclick="abrirModalGerenciarProdutos()">
+              <i class="fas fa-cog"></i> Gerenciar
+            </button>
           </label>
           <select onchange="updatePatrimonioLiquidoField(${pl.id}, 'tipo_produto', this.value)">
             <option value="">Selecione o tipo</option>
@@ -375,6 +642,9 @@ function renderPatrimoniosLiquidos() {
         <div class="form-group">
           <label>
             <i class="fas fa-building"></i> Instituição *
+            <button type="button" class="btn-gerenciar" onclick="abrirModalGerenciarInstituicoes()">
+              <i class="fas fa-cog"></i> Gerenciar
+            </button>
           </label>
           <select onchange="updatePatrimonioLiquidoField(${pl.id}, 'instituicao', this.value)">
             <option value="">Selecione a instituição</option>
@@ -570,6 +840,29 @@ function renderGraficos() {
 }
 
 // =========================================
+// ATUALIZAÇÃO AUTOMÁTICA DE DONOS
+// =========================================
+
+function atualizarListaDonos() {
+  renderPatrimoniosLiquidos();
+}
+
+// Observar mudanças nos campos de nomes
+function setupObservadoresDonos() {
+  const camposParaObservar = [
+    'nome_diagnostico',
+    'conjuge_nome'
+  ];
+  
+  camposParaObservar.forEach(campoId => {
+    const campo = document.getElementById(campoId);
+    if (campo) {
+      campo.addEventListener('blur', atualizarListaDonos);
+    }
+  });
+}
+
+// =========================================
 // INTEGRAÇÃO COM O FORMULÁRIO PRINCIPAL
 // =========================================
 
@@ -602,6 +895,11 @@ async function initPatrimonioLiquido() {
   
   renderPatrimoniosLiquidos();
   renderGraficos();
+  setupObservadoresDonos();
+  
+  // Observar adição/remoção de pessoas e dependentes
+  window.addEventListener('pessoasRendaUpdated', atualizarListaDonos);
+  window.addEventListener('dependentesUpdated', atualizarListaDonos);
 }
 
 // Inicializar quando o DOM estiver pronto
@@ -619,4 +917,16 @@ window.getPatrimoniosLiquidosData = getPatrimoniosLiquidosData;
 window.setPatrimoniosLiquidosData = setPatrimoniosLiquidosData;
 window.adicionarTipoProduto = adicionarTipoProduto;
 window.adicionarInstituicao = adicionarInstituicao;
+window.renderPatrimoniosLiquidos = renderPatrimoniosLiquidos;
+window.renderGraficos = renderGraficos;
+window.abrirModalGerenciarProdutos = abrirModalGerenciarProdutos;
+window.abrirModalGerenciarInstituicoes = abrirModalGerenciarInstituicoes;
+window.abrirModalNovoProduto = abrirModalNovoProduto;
+window.abrirModalNovaInstituicao = abrirModalNovaInstituicao;
+window.salvarNovoProduto = salvarNovoProduto;
+window.salvarNovaInstituicao = salvarNovaInstituicao;
+window.editarProduto = editarProduto;
+window.excluirProduto = excluirProduto;
+window.editarInstituicao = editarInstituicao;
+window.excluirInstituicao = excluirInstituicao;
 
