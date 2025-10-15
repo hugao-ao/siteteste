@@ -8766,6 +8766,12 @@
                 console.log('✅ Evento encontrado:', response.result);
                 currentEditingEventData = response.result;
                 
+                // Extrair linhas da descrição do evento
+                const eventDescription = currentEditingEventData.description || '';
+                console.log('📄 Descrição do evento:', eventDescription);
+                const descriptionLines = eventDescription.split('\n').filter(line => line.trim());
+                console.log('📋 Linhas da descrição:', descriptionLines);
+                
                 // Calcular itens do evento
                 const eventCalc = calculateEventTotal(currentEditingEventData);
                 const items = eventType === 'recebimento' ? eventCalc.receivingItems : eventCalc.paymentItems;
@@ -8791,8 +8797,24 @@
                     console.log(`🔍 Item ${index} - Nome original:`, item.name);
                     console.log(`🔍 Item ${index} - Original completo:`, item.original);
                     
-                    // Extrair tipo, subtipo e categoria do nome do item (formato: TIPO - SUBTIPO - CATEGORIA - NOME)
-                    const nameParts = (item.name || '').split(' - ');
+                    // Buscar a linha correspondente na descrição
+                    let fullItemLine = '';
+                    for (const line of descriptionLines) {
+                        // Verificar se a linha contém o nome do item e o valor
+                        if (line.includes(item.name) && line.includes(item.formattedValue)) {
+                            fullItemLine = line;
+                            break;
+                        }
+                    }
+                    
+                    console.log(`🔍 Item ${index} - Linha completa da descrição:`, fullItemLine);
+                    
+                    // Extrair tipo, subtipo e categoria da linha completa (formato: TIPO - SUBTIPO - CATEGORIA - NOME - VALOR - STATUS)
+                    // Primeiro, remover a parte do valor e status
+                    const beforeValue = fullItemLine.split(' - R$')[0];
+                    console.log(`🔍 Item ${index} - Antes do valor:`, beforeValue);
+                    
+                    const nameParts = beforeValue.split(' - ');
                     console.log(`🔍 Item ${index} - Partes do nome:`, nameParts);
                     let tipo = '', subtipo = '', categoria = '', nome = item.name || '';
                     
@@ -9390,19 +9412,14 @@ window.openManageCategoriasPayment = function() {
                 }
                 
             } else if (tipo === 'OUTROS') {
-                // Carregar subtipos personalizados
+                // Carregar subtipos personalizados usando a função correta
                 try {
-                    const { data: subtipos, error } = await supabase
-                        .from('recebimento_outros_subtipos')
-                        .select('*')
-                        .order('created_at', { ascending: false });
-                    
-                    if (error) throw error;
+                    const subtipos = await loadListFromSupabase('recebimento_outros_subtipos');
                     
                     subtipos.forEach(subtipo => {
                         const option = document.createElement('option');
-                        option.value = subtipo.nome;
-                        option.textContent = subtipo.nome;
+                        option.value = subtipo;
+                        option.textContent = subtipo;
                         subtipoSelect.appendChild(option);
                     });
                 } catch (error) {
