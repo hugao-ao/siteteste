@@ -8903,7 +8903,7 @@
         };
         
         // Função para atualizar SUBTIPO para PAGAMENTO baseado no TIPO
-        window.updateSubtipoForPayment = function() {
+        window.updateSubtipoForPayment = async function() {
             const tipoSelect = document.getElementById('itemTipo');
             const subtipoSelect = document.getElementById('itemSubtipo');
             
@@ -8980,7 +8980,7 @@
         };
         
         // Função para popular SUBTIPO no modal de edição (PAGAMENTO)
-        window.populateEditSubtipo = function() {
+        window.populateEditSubtipo = async function() {
             const tipoSelect = document.getElementById('edit-tipo');
             const subtipoSelect = document.getElementById('edit-subtipo');
             
