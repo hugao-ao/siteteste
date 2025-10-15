@@ -9567,8 +9567,7 @@
             }
         }
         
-        // ===================================================================
-        // SISTEMA DE MEDIÇÕES INLINE
+        
         // ===================================================================
         
         // Variáveis globais para medições
@@ -10940,8 +10939,7 @@
             }
         }
         
-        // ===================================================================
-        // SISTEMA DE MEDIÇÕES INLINE
+        
         // ===================================================================
         
         // Variáveis globais para medições
@@ -11604,8 +11602,7 @@
             }
         }
         
-        // ===================================================================
-        // SISTEMA DE MEDIÇÕES INLINE
+        
         // ===================================================================
         
         // Variáveis globais para medições
@@ -12044,81 +12041,7 @@
         }
     
         
-        /* ========================================
-           ESTILOS DO SISTEMA DE MEDIÇÕES (INLINE)
-           ======================================== */
-        /* Estilos adicionais para a página de medições */
-
-/* Estilo para a seção de preço */
-.preco-info {
-    margin-top: 5px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.preco-unitario {
-    font-weight: bold;
-    color: #2c3e50;
-}
-
-.preco-tipo {
-    font-size: 0.85em;
-    color: #7f8c8d;
-    font-style: italic;
-}
-
-/* Melhorias nos serviços selecionados */
-.servico-item {
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 10px;
-    background-color: rgba(255, 255, 255, 0.05);
-}
-
-.servico-info {
-    margin-bottom: 10px;
-}
-
-/* Animação quando o preço muda */
-@keyframes highlight {
-    0% { background-color: rgba(255, 255, 0, 0.3); }
-    100% { background-color: transparent; }
-}
-
-.price-changed {
-    animation: highlight 1.5s ease-out;
-}
-
-
-        
-        /* Ajustes para modal de medições no fluxo de caixa */
-        #modal-medicao-inline .modal-content {
-            max-width: 900px;
-            max-height: 90vh;
-            overflow-y: auto;
-        }
-        
-        #modal-medicao-inline .servicos-container {
-            margin: 20px 0;
-        }
-        
-        #modal-medicao-inline .obras-list-item {
-            padding: 15px;
-            margin: 10px 0;
-            background: rgba(255,255,255,0.05);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        
-        #modal-medicao-inline .obras-list-item:hover {
-            background: rgba(255,255,255,0.1);
-            transform: translateX(5px);
-        }
-        
-    </style>
+        </style>
     
     <script>
         // ✅ NOVO: Funções para Saldo da Conta Corrente
@@ -12511,8 +12434,7 @@
             }
         }
         
-        // ===================================================================
-        // SISTEMA DE MEDIÇÕES INLINE
+        
         // ===================================================================
         
         // Variáveis globais para medições
@@ -13958,8 +13880,7 @@
             }
         }
         
-        // ===================================================================
-        // SISTEMA DE MEDIÇÕES INLINE
+        
         // ===================================================================
         
         // Variáveis globais para medições
@@ -14192,120 +14113,5 @@
     </script>
 
 
-    <!-- ========================================
-         MODAL DE MEDIÇÕES (INLINE)
-         ======================================== -->
-    <div id="modal-medicao-inline" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">
-                    <i class="fas fa-plus"></i>
-                    Nova Medição
-                </h2>
-                <button class="close" onclick="fecharModalMedicaoInline()">&times;</button>
-            </div>
-
-            <form id="form-medicao-inline" onsubmit="salvarMedicaoInline(event)">
-                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div class="form-group">
-                        <label for="data-medicao-inline" class="form-label">
-                            <i class="fas fa-calendar"></i>
-                            Data da Medição *
-                        </label>
-                        <input type="date" id="data-medicao-inline" class="form-input" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="data-recebimento-inline" class="form-label">
-                            <i class="fas fa-calendar-check"></i>
-                            Previsão de Recebimento *
-                        </label>
-                        <input type="date" id="data-recebimento-inline" class="form-input" required style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">
-                        <i class="fas fa-building"></i>
-                        Obra *
-                    </label>
-                    <div id="obra-selecionada-container-inline">
-                        <button type="button" class="btn-secondary" onclick="abrirModalObrasInline()" style="width: 100%; padding: 12px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; cursor: pointer;">
-                            <i class="fas fa-building"></i>
-                            Selecionar Obra
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Container de Valor -->
-                <div class="form-group">
-                    <label for="valor-medicao-inline" class="form-label">
-                        <i class="fas fa-dollar-sign"></i>
-                        Valor da Medição *
-                    </label>
-                    <input type="number" id="valor-medicao-inline" class="form-input" step="0.01" min="0" required placeholder="R$ 0,00" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
-                </div>
-
-                <!-- Status -->
-                <div class="form-group">
-                    <label for="status-medicao-inline" class="form-label">
-                        <i class="fas fa-info-circle"></i>
-                        Status
-                    </label>
-                    <select id="status-medicao-inline" class="form-input" style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
-                        <option value="pendente">Pendente</option>
-                        <option value="aprovada">Aprovada</option>
-                        <option value="paga">Paga</option>
-                    </select>
-                </div>
-
-                <!-- Observações -->
-                <div class="form-group">
-                    <label for="observacoes-medicao-inline" class="form-label">
-                        <i class="fas fa-sticky-note"></i>
-                        Observações
-                    </label>
-                    <textarea id="observacoes-medicao-inline" class="form-textarea" rows="3" placeholder="Observações sobre a medição..." style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);"></textarea>
-                </div>
-
-                <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
-                    <button type="button" class="btn-secondary" onclick="fecharModalMedicaoInline()" style="padding: 10px 20px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-times"></i>
-                        Cancelar
-                    </button>
-                    <button type="submit" class="btn-primary" style="padding: 10px 20px; background: #4CAF50; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-save"></i>
-                        Salvar Medição
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Modal Selecionar Obra (Inline) -->
-    <div id="modal-obras-inline" class="modal" style="display: none;">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">
-                    <i class="fas fa-building"></i>
-                    Selecionar Obra
-                </h2>
-                <button class="close" onclick="fecharModalObrasInline()">&times;</button>
-            </div>
-
-            <div class="form-group">
-                <label for="search-obras-inline" class="form-label">
-                    <i class="fas fa-search"></i>
-                    Buscar Obra
-                </label>
-                <input type="text" id="search-obras-inline" class="form-input" placeholder="Digite o número da obra..." style="width: 100%; padding: 10px; border-radius: 6px; background: rgba(255,255,255,0.1); color: #fff; border: 1px solid rgba(255,255,255,0.3);">
-            </div>
-
-            <div id="obras-list-inline" style="max-height: 400px; overflow-y: auto;">
-                <!-- Lista de obras será carregada aqui -->
-            </div>
-        </div>
-    </div>
-    
     </body>
 </html>
