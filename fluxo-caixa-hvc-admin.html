@@ -5620,10 +5620,12 @@
                 return;
             }
             
-            paymentsListElement.innerHTML = filteredPaymentsList.map(payment => `
+            paymentsListElement.innerHTML = filteredPaymentsList.map(payment => {
+                const itemInfo = extractAndFormatItemName(payment.name);
+                return `
                 <div class="payment-item" onclick="showPaymentEvent('${payment.eventId}')">
                     <div class="payment-header">
-                        <div class="payment-name">${payment.name}</div>
+                        <div class="payment-name">${itemInfo.displayName}</div>
                         <div class="payment-value">${payment.formattedValue}</div>
                     </div>
                     <div class="payment-details">
@@ -5647,7 +5649,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function updateReceivingsList() {
@@ -5665,10 +5668,12 @@
                 return;
             }
             
-            receivingsListElement.innerHTML = filteredReceivingsList.map(receiving => `
+            receivingsListElement.innerHTML = filteredReceivingsList.map(receiving => {
+                const itemInfo = extractAndFormatItemName(receiving.name);
+                return `
                 <div class="receiving-item" onclick="showReceivingEvent('${receiving.eventId}')">
                     <div class="payment-header">
-                        <div class="payment-name">${receiving.name}</div>
+                        <div class="payment-name">${itemInfo.displayName}</div>
                         <div class="payment-value">${receiving.formattedValue}</div>
                     </div>
                     <div class="payment-details">
@@ -5692,7 +5697,8 @@
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+            }).join('');
         }
 
         function showPaymentEvent(eventId) {
@@ -9442,10 +9448,27 @@ window.openManageCategoriasPayment = function() {
             if (tipo === 'OBRAS' && subtipo) {
                 // Carregar medições da obra
                 try {
+                    // Primeiro, buscar o ID da obra pelo numero_obra
+                    const { data: obras, error: obraError } = await supabase
+                        .from('obras_hvc')
+                        .select('id')
+                        .eq('numero_obra', subtipo)
+                        .limit(1);
+                    
+                    if (obraError) throw obraError;
+                    
+                    if (!obras || obras.length === 0) {
+                        console.warn('Obra não encontrada:', subtipo);
+                        return;
+                    }
+                    
+                    const obraId = obras[0].id;
+                    
+                    // Agora buscar medições usando o obra_id
                     const { data: medicoes, error } = await supabase
                         .from('medicoes_hvc')
                         .select('*')
-                        .eq('obra_numero', subtipo)
+                        .eq('obra_id', obraId)
                         .order('numero_medicao', { ascending: true });
                     
                     if (error) throw error;
