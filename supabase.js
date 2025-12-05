@@ -1,5 +1,5 @@
 // supabase.js - Configuração do Supabase (VERSÃO CORRIGIDA)
-import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // Configurações do projeto Supabase
 const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
@@ -123,4 +123,3 @@ window.supabase = supabase;
 
 // Log de inicialização
 console.log('📦 Módulo Supabase carregado');
-
