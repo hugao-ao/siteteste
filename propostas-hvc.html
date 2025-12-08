@@ -594,7 +594,16 @@
             <thead>
               <tr>
                 <th>Serviço</th>
-                <th>Local</th>
+                <th>
+                  Local
+                  <button type="button" 
+                          class="btn-secondary" 
+                          onclick="window.propostasManager.showModalGerenciarLocais()" 
+                          style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.8rem;"
+                          title="Gerenciar Locais">
+                    <i class="fas fa-cog"></i>
+                  </button>
+                </th>
                 <th>Quantidade</th>
                 <th>Unidade</th>
                 <th>Mão de Obra (R$)</th>
@@ -827,7 +836,7 @@
     <div class="modal" id="modal-local">
       <div class="modal-content">
         <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Local</h3>
+          <h3 class="modal-title" id="modal-local-title">Adicionar Novo Local</h3>
           <button class="close-modal" id="close-modal-local">
             <i class="fas fa-times"></i>
           </button>
@@ -869,6 +878,73 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- Modal Gerenciar Locais -->
+    <div class="modal" id="modal-gerenciar-locais">
+      <div class="modal-content" style="max-width: 800px;">
+        <div class="modal-header">
+          <h3 class="modal-title">
+            <i class="fas fa-map-marker-alt"></i> Gerenciar Locais
+          </h3>
+          <button class="close-modal" id="close-modal-gerenciar-locais">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div style="margin-bottom: 1.5rem;">
+          <button type="button" class="btn-primary" onclick="window.propostasManager.showModalLocal()">
+            <i class="fas fa-plus"></i> Novo Local
+          </button>
+        </div>
+
+        <div style="max-height: 500px; overflow-y: auto;">
+          <table class="services-table" id="locais-gerenciar-table">
+            <thead>
+              <tr>
+                <th>Nome</th>
+                <th>Descrição</th>
+                <th>Status</th>
+                <th style="width: 120px;">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Preenchido via JavaScript -->
+            </tbody>
+          </table>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="close-gerenciar-locais-btn">
+            <i class="fas fa-times"></i> Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal de Confirmação de Exclusão de Local -->
+    <div class="modal" id="modal-delete-local-confirm">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Confirmar Exclusão</h3>
+          <button class="close-modal" id="close-modal-delete-local">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div id="delete-local-message" style="margin: 1.5rem 0; color: #e0e0e0;">
+          <!-- Mensagem preenchida via JavaScript -->
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn-secondary" id="cancel-delete-local">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+          <button type="button" class="btn-danger" id="confirm-delete-local">
+            <i class="fas fa-trash"></i> Excluir
+          </button>
+        </div>
       </div>
     </div>
   </main>
