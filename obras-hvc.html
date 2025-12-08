@@ -1016,6 +1016,121 @@
         </div>
       </div>
       
+      <!-- Seção de Medições -->
+      <div id="secao-medicoes" style="margin-top: 2rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+          <h4 style="color: #add8e6; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-file-invoice-dollar"></i>
+            Medições
+          </h4>
+          <button type="button" class="btn-primary" id="btn-gerar-medicao" style="padding: 0.5rem 1rem; font-size: 0.9rem;">
+            <i class="fas fa-plus"></i>
+            Gerar Medição
+          </button>
+        </div>
+        
+        <!-- Lista de Medições -->
+        <div id="lista-medicoes-obra" style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 10px; background: rgba(255, 255, 255, 0.05);">
+          <!-- Medições serão carregadas aqui -->
+        </div>
+      </div>
+      
+      <!-- Modal para Gerar Medição -->
+      <div id="modal-gerar-medicao" class="modal" style="z-index: 1001;">
+        <div class="modal-content" style="max-width: 1000px; max-height: 90vh;">
+          <div class="modal-header">
+            <h3 class="modal-title">
+              <i class="fas fa-file-invoice-dollar"></i>
+              Gerar Medição
+            </h3>
+            <button class="close-modal" id="close-modal-gerar-medicao">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          
+          <form id="form-gerar-medicao">
+            <!-- Informações da Medição -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(173, 216, 230, 0.1); border-radius: 8px;">
+              <h5 style="color: #add8e6; margin-bottom: 1rem;">Informações da Medição</h5>
+              <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+                <div>
+                  <label for="numero-medicao-gerada">Número da Medição *</label>
+                  <input type="text" id="numero-medicao-gerada" class="form-input" readonly style="width: 100%; background: rgba(255,255,255,0.1);">
+                </div>
+                <div>
+                  <label for="data-medicao">Data da Medição *</label>
+                  <input type="date" id="data-medicao" class="form-input" required style="width: 100%;">
+                </div>
+                <div>
+                  <label for="previsao-pagamento-medicao">Previsão de Pagamento</label>
+                  <input type="date" id="previsao-pagamento-medicao" class="form-input" style="width: 100%;">
+                </div>
+              </div>
+            </div>
+            
+            <!-- Seleção de Produções Diárias -->
+            <div style="margin-bottom: 1.5rem;">
+              <h5 style="color: #add8e6; margin-bottom: 1rem;">Selecionar Produções Diárias *</h5>
+              <div id="producoes-para-medicao" style="max-height: 250px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; padding: 1rem; background: rgba(255, 255, 255, 0.05);">
+                <!-- Produções disponíveis serão carregadas aqui -->
+              </div>
+              <small style="color: #c0c0c0; margin-top: 0.5rem; display: block;">
+                * Selecione pelo menos uma produção diária para gerar a medição
+              </small>
+            </div>
+            
+            <!-- Resumo dos Serviços Medidos -->
+            <div style="margin-bottom: 1.5rem;">
+              <h5 style="color: #add8e6; margin-bottom: 1rem;">Resumo dos Serviços Medidos</h5>
+              <div id="resumo-servicos-medicao" style="max-height: 200px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.05);">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead style="background: rgba(173, 216, 230, 0.1); position: sticky; top: 0;">
+                    <tr>
+                      <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Serviço</th>
+                      <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Quantidade</th>
+                      <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Preço Unitário</th>
+                      <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Valor Total</th>
+                    </tr>
+                  </thead>
+                  <tbody id="tbody-resumo-servicos">
+                    <tr>
+                      <td colspan="4" style="padding: 2rem; text-align: center; color: #888;">
+                        Selecione produções para ver o resumo
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            
+            <!-- Valor Total -->
+            <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(40, 167, 69, 0.2); border-radius: 8px; border: 2px solid rgba(40, 167, 69, 0.5);">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 1.2rem; font-weight: 600; color: #add8e6;">Valor Total da Medição:</span>
+                <span id="valor-total-medicao" style="font-size: 1.5rem; font-weight: bold; color: #20c997;">R$ 0,00</span>
+              </div>
+            </div>
+            
+            <!-- Observações -->
+            <div style="margin-bottom: 1.5rem;">
+              <label for="observacoes-medicao">Observações</label>
+              <textarea id="observacoes-medicao" class="form-textarea" rows="3" placeholder="Observações sobre a medição..." style="width: 100%; resize: vertical;"></textarea>
+            </div>
+            
+            <div class="modal-footer">
+              <button type="button" class="btn-secondary" id="cancel-gerar-medicao">
+                <i class="fas fa-times"></i>
+                Cancelar
+              </button>
+              <button type="submit" class="btn-success">
+                <i class="fas fa-save"></i>
+                Salvar Medição
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+      
       <!-- Modal para Adicionar/Editar Produção -->
       <div id="modal-producao" class="modal" style="z-index: 1001;">
         <div class="modal-content" style="max-width: 800px; max-height: 90vh;">
