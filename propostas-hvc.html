@@ -167,6 +167,13 @@
       cursor: pointer;
     }
 
+    /* Cor preta para as opções do select */
+    .form-select option {
+      background: #ffffff;
+      color: #000000;
+      padding: 8px;
+    }
+
     .input-group {
       display: flex;
       gap: 10px;
@@ -358,6 +365,16 @@
       height: 100%;
       background: rgba(0, 0, 0, 0.7);
       backdrop-filter: blur(5px);
+    }
+
+    /* Modal de edição/criação de local fica na frente */
+    #modal-local {
+      z-index: 1100;
+    }
+
+    /* Modal de confirmação de exclusão fica na frente */
+    #modal-delete-local-confirm {
+      z-index: 1100;
     }
 
     .modal.show {
