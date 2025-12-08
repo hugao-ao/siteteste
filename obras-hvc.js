@@ -224,6 +224,33 @@ class ObrasManager {
                 });
             }
             
+            // Event listeners para Medições
+            const btnGerarMedicao = document.getElementById('btn-gerar-medicao');
+            const closeModalGerarMedicao = document.getElementById('close-modal-gerar-medicao');
+            const cancelGerarMedicao = document.getElementById('cancel-gerar-medicao');
+            const formGerarMedicao = document.getElementById('form-gerar-medicao');
+            
+            if (btnGerarMedicao) {
+                btnGerarMedicao.addEventListener('click', () => this.showModalGerarMedicao());
+            }
+            if (closeModalGerarMedicao) {
+                closeModalGerarMedicao.addEventListener('click', () => this.hideModalGerarMedicao());
+            }
+            if (cancelGerarMedicao) {
+                cancelGerarMedicao.addEventListener('click', () => this.hideModalGerarMedicao());
+            }
+            if (formGerarMedicao) {
+                formGerarMedicao.addEventListener('submit', (e) => this.handleSubmitGerarMedicao(e));
+            }
+            
+            // Fechar modal de gerar medição clicando fora
+            const modalGerarMedicao = document.getElementById('modal-gerar-medicao');
+            if (modalGerarMedicao) {
+                modalGerarMedicao.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-gerar-medicao') this.hideModalGerarMedicao();
+                });
+            }
+            
         } catch (error) {
         }
     }
@@ -797,6 +824,7 @@ class ObrasManager {
         // 🎯 CORREÇÃO: Carregar produções diárias ANTES de renderizar serviços
         await this.loadEquipesIntegrantes();
         await this.loadProducoesDiarias();
+        await this.loadMedicoesObra();
         await this.renderServicosAndamento();
         
         // Popular filtro de equipes/integrantes
@@ -1139,8 +1167,8 @@ class ObrasManager {
             
             const percentualConclusao = obra.percentual_conclusao || 0;
             
-            // Mostrar valor correto na lista
-            const valorObra = obra.valor_total ? (obra.valor_total) : 0;
+            // Mostrar valor correto na lista (dividir por 100 pois está em centavos)
+            const valorObra = obra.valor_total ? (obra.valor_total / 100) : 0;
             
             const row = document.createElement('tr');
             row.innerHTML = `
@@ -2003,6 +2031,430 @@ class ObrasManager {
             option.textContent = `${item.tipo === 'equipe' ? 'Equipe' : 'Integrante'}: ${item.nome}`;
             select.appendChild(option);
         });
+    }
+    
+    // === FUNÇÕES PARA MEDIÇÕES ===
+    
+    async loadMedicoesObra() {
+        try {
+            if (!this.currentObraId) return;
+            
+            const { data: medicoes, error } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('*')
+                .eq('obra_id', this.currentObraId)
+                .order('created_at', { ascending: false });
+            
+            if (error) throw error;
+            
+            this.renderMedicoesObra(medicoes || []);
+            
+        } catch (error) {
+            this.showNotification('Erro ao carregar medições: ' + error.message, 'error');
+        }
+    }
+    
+    renderMedicoesObra(medicoes) {
+        const container = document.getElementById('lista-medicoes-obra');
+        if (!container) return;
+        
+        if (medicoes.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: #888;">
+                    <i class="fas fa-file-invoice-dollar" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                    Nenhuma medição gerada para esta obra.
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = '';
+        
+        medicoes.forEach(medicao => {
+            const statusColors = {
+                'pendente': '#ffc107',
+                'aprovada': '#28a745',
+                'paga': '#20c997',
+                'cancelada': '#dc3545'
+            };
+            
+            const statusColor = statusColors[medicao.status] || '#6c757d';
+            
+            const card = document.createElement('div');
+            card.style.cssText = `
+                padding: 1rem;
+                border-bottom: 1px solid rgba(173, 216, 230, 0.1);
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                transition: background 0.2s;
+            `;
+            card.onmouseenter = () => card.style.background = 'rgba(173, 216, 230, 0.05)';
+            card.onmouseleave = () => card.style.background = 'transparent';
+            
+            card.innerHTML = `
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                        <strong style="color: #add8e6; font-size: 1.1rem;">${medicao.numero_medicao}</strong>
+                        <span style="padding: 0.25rem 0.75rem; background: ${statusColor}; color: white; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">
+                            ${medicao.status.toUpperCase()}
+                        </span>
+                    </div>
+                    <div style="color: #c0c0c0; font-size: 0.9rem;">
+                        <i class="fas fa-dollar-sign"></i> Valor: <strong style="color: #20c997;">${this.formatMoney(medicao.valor_total || 0)}</strong>
+                        ${medicao.previsao_pagamento ? `<span style="margin-left: 1rem;"><i class="fas fa-calendar"></i> Previsão: ${new Date(medicao.previsao_pagamento).toLocaleDateString('pt-BR')}</span>` : ''}
+                    </div>
+                </div>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-secondary" onclick="window.obrasManager.verDetalhesMedicao('${medicao.id}')" title="Ver detalhes">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            `;
+            
+            container.appendChild(card);
+        });
+    }
+    
+    async showModalGerarMedicao() {
+        const modal = document.getElementById('modal-gerar-medicao');
+        if (!modal) return;
+        
+        // Gerar número da medição
+        await this.gerarNumeroMedicao();
+        
+        // Definir data de hoje
+        const hoje = new Date().toISOString().split('T')[0];
+        document.getElementById('data-medicao').value = hoje;
+        
+        // Carregar produções disponíveis
+        await this.loadProducoesParaMedicao();
+        
+        // Limpar seleção
+        this.producoesSelecionadasMedicao = [];
+        this.atualizarResumoMedicao();
+        
+        modal.classList.add('show');
+    }
+    
+    hideModalGerarMedicao() {
+        const modal = document.getElementById('modal-gerar-medicao');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+    
+    async gerarNumeroMedicao() {
+        try {
+            const { data: ultimaMedicao, error } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('numero_medicao')
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (error) throw error;
+            
+            let proximoNumero = 1;
+            const anoAtual = new Date().getFullYear();
+            
+            if (ultimaMedicao && ultimaMedicao.length > 0) {
+                const ultimoNumero = ultimaMedicao[0].numero_medicao;
+                const match = ultimoNumero.match(/(\d+)\/(\d+)/);
+                
+                if (match) {
+                    const [, num, ano] = match;
+                    if (parseInt(ano) === anoAtual) {
+                        proximoNumero = parseInt(num) + 1;
+                    }
+                }
+            }
+            
+            const numeroMedicao = `${String(proximoNumero).padStart(3, '0')}/${anoAtual}`;
+            document.getElementById('numero-medicao-gerada').value = numeroMedicao;
+            
+        } catch (error) {
+            this.showNotification('Erro ao gerar número da medição: ' + error.message, 'error');
+        }
+    }
+    
+    async loadProducoesParaMedicao() {
+        try {
+            if (!this.currentObraId) return;
+            
+            // Buscar produções que ainda não foram medidas
+            const { data: producoes, error } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select(`
+                    *,
+                    equipes_hvc(nome),
+                    integrantes_hvc(nome)
+                `)
+                .eq('obra_id', this.currentObraId)
+                .order('data_producao', { ascending: false });
+            
+            if (error) throw error;
+            
+            this.renderProducoesParaMedicao(producoes || []);
+            
+        } catch (error) {
+            this.showNotification('Erro ao carregar produções: ' + error.message, 'error');
+        }
+    }
+    
+    renderProducoesParaMedicao(producoes) {
+        const container = document.getElementById('producoes-para-medicao');
+        if (!container) return;
+        
+        if (producoes.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: #888;">
+                    Nenhuma produção diária disponível.
+                </div>
+            `;
+            return;
+        }
+        
+        container.innerHTML = '';
+        this.producoesSelecionadasMedicao = [];
+        
+        producoes.forEach(producao => {
+            const nomeEquipe = producao.equipes_hvc?.nome || producao.integrantes_hvc?.nome || 'N/A';
+            const dataFormatada = new Date(producao.data_producao).toLocaleDateString('pt-BR');
+            
+            const card = document.createElement('div');
+            card.style.cssText = `
+                padding: 0.75rem;
+                border: 1px solid rgba(173, 216, 230, 0.2);
+                border-radius: 6px;
+                margin-bottom: 0.5rem;
+                display: flex;
+                align-items: center;
+                gap: 1rem;
+                transition: all 0.2s;
+                cursor: pointer;
+            `;
+            
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.value = producao.id;
+            checkbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
+            checkbox.addEventListener('change', () => {
+                if (checkbox.checked) {
+                    this.producoesSelecionadasMedicao.push(producao);
+                    card.style.background = 'rgba(40, 167, 69, 0.2)';
+                    card.style.borderColor = 'rgba(40, 167, 69, 0.5)';
+                } else {
+                    this.producoesSelecionadasMedicao = this.producoesSelecionadasMedicao.filter(p => p.id !== producao.id);
+                    card.style.background = 'transparent';
+                    card.style.borderColor = 'rgba(173, 216, 230, 0.2)';
+                }
+                this.atualizarResumoMedicao();
+            });
+            
+            const info = document.createElement('div');
+            info.style.flex = '1';
+            info.innerHTML = `
+                <div style="font-weight: 600; color: #add8e6; margin-bottom: 0.25rem;">
+                    ${dataFormatada} - ${nomeEquipe}
+                </div>
+                <div style="font-size: 0.85rem; color: #c0c0c0;">
+                    ${producao.observacao || 'Sem observações'}
+                </div>
+            `;
+            
+            card.appendChild(checkbox);
+            card.appendChild(info);
+            card.onclick = (e) => {
+                if (e.target !== checkbox) {
+                    checkbox.checked = !checkbox.checked;
+                    checkbox.dispatchEvent(new Event('change'));
+                }
+            };
+            
+            container.appendChild(card);
+        });
+    }
+    
+    async atualizarResumoMedicao() {
+        const tbody = document.getElementById('tbody-resumo-servicos');
+        const valorTotalEl = document.getElementById('valor-total-medicao');
+        
+        if (!tbody || !valorTotalEl) return;
+        
+        if (this.producoesSelecionadasMedicao.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="padding: 2rem; text-align: center; color: #888;">
+                        Selecione produções para ver o resumo
+                    </td>
+                </tr>
+            `;
+            valorTotalEl.textContent = 'R$ 0,00';
+            return;
+        }
+        
+        // Agrupar serviços das produções selecionadas
+        const servicosAgrupados = {};
+        
+        for (const producao of this.producoesSelecionadasMedicao) {
+            const quantidades = JSON.parse(producao.quantidades || '{}');
+            
+            for (const [itemPropostaId, quantidade] of Object.entries(quantidades)) {
+                if (!servicosAgrupados[itemPropostaId]) {
+                    servicosAgrupados[itemPropostaId] = {
+                        itemPropostaId,
+                        quantidade: 0
+                    };
+                }
+                servicosAgrupados[itemPropostaId].quantidade += parseFloat(quantidade);
+            }
+        }
+        
+        // Buscar informações dos serviços
+        tbody.innerHTML = '';
+        let valorTotal = 0;
+        
+        for (const servicoData of Object.values(servicosAgrupados)) {
+            try {
+                const { data: itemProposta, error } = await supabaseClient
+                    .from('itens_proposta_hvc')
+                    .select(`
+                        *,
+                        servicos_hvc(nome, unidade)
+                    `)
+                    .eq('id', servicoData.itemPropostaId)
+                    .single();
+                
+                if (error) throw error;
+                
+                const precoUnitario = itemProposta.preco_unitario || 0;
+                const valorServico = servicoData.quantidade * precoUnitario;
+                valorTotal += valorServico;
+                
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid rgba(173, 216, 230, 0.1)';
+                row.innerHTML = `
+                    <td style="padding: 0.75rem;">${itemProposta.servicos_hvc?.nome || 'N/A'}</td>
+                    <td style="padding: 0.75rem; text-align: center;">${servicoData.quantidade.toFixed(2)} ${itemProposta.servicos_hvc?.unidade || ''}</td>
+                    <td style="padding: 0.75rem; text-align: right;">${this.formatMoney(precoUnitario)}</td>
+                    <td style="padding: 0.75rem; text-align: right; font-weight: 600; color: #20c997;">${this.formatMoney(valorServico)}</td>
+                `;
+                tbody.appendChild(row);
+                
+            } catch (error) {
+                console.error('Erro ao buscar serviço:', error);
+            }
+        }
+        
+        valorTotalEl.textContent = this.formatMoney(valorTotal);
+    }
+    
+    async handleSubmitGerarMedicao(e) {
+        e.preventDefault();
+        
+        if (this.producoesSelecionadasMedicao.length === 0) {
+            this.showNotification('Selecione pelo menos uma produção diária', 'warning');
+            return;
+        }
+        
+        try {
+            const numeroMedicao = document.getElementById('numero-medicao-gerada').value;
+            const dataMedicao = document.getElementById('data-medicao').value;
+            const previsaoPagamento = document.getElementById('previsao-pagamento-medicao').value;
+            const observacoes = document.getElementById('observacoes-medicao').value;
+            
+            // Calcular serviços e valor total
+            const servicosAgrupados = {};
+            
+            for (const producao of this.producoesSelecionadasMedicao) {
+                const quantidades = JSON.parse(producao.quantidades || '{}');
+                
+                for (const [itemPropostaId, quantidade] of Object.entries(quantidades)) {
+                    if (!servicosAgrupados[itemPropostaId]) {
+                        servicosAgrupados[itemPropostaId] = 0;
+                    }
+                    servicosAgrupados[itemPropostaId] += parseFloat(quantidade);
+                }
+            }
+            
+            let valorTotal = 0;
+            const servicosMedicao = [];
+            
+            for (const [itemPropostaId, quantidade] of Object.entries(servicosAgrupados)) {
+                const { data: itemProposta, error } = await supabaseClient
+                    .from('itens_proposta_hvc')
+                    .select('preco_unitario')
+                    .eq('id', itemPropostaId)
+                    .single();
+                
+                if (error) throw error;
+                
+                const precoUnitario = itemProposta.preco_unitario || 0;
+                const valorServico = quantidade * precoUnitario;
+                valorTotal += valorServico;
+                
+                servicosMedicao.push({
+                    item_proposta_id: itemPropostaId,
+                    quantidade_medida: quantidade,
+                    preco_unitario: precoUnitario,
+                    valor_total: valorServico
+                });
+            }
+            
+            // Criar medição
+            const { data: medicao, error: medicaoError } = await supabaseClient
+                .from('medicoes_hvc')
+                .insert([{
+                    numero_medicao: numeroMedicao,
+                    obra_id: this.currentObraId,
+                    valor_total: valorTotal,
+                    valor_bruto: valorTotal,
+                    status: 'pendente',
+                    previsao_pagamento: previsaoPagamento || null,
+                    observacoes: observacoes
+                }])
+                .select()
+                .single();
+            
+            if (medicaoError) throw medicaoError;
+            
+            // Inserir serviços da medição
+            for (const servico of servicosMedicao) {
+                const { error: servicoError } = await supabaseClient
+                    .from('medicoes_servicos')
+                    .insert([{
+                        medicao_id: medicao.id,
+                        ...servico
+                    }]);
+                
+                if (servicoError) throw servicoError;
+            }
+            
+            // Inserir previsão de pagamento se houver
+            if (previsaoPagamento) {
+                const { error: previsaoError } = await supabaseClient
+                    .from('medicoes_previsoes_pagamento')
+                    .insert([{
+                        medicao_id: medicao.id,
+                        data_previsao: previsaoPagamento,
+                        ativa: true
+                    }]);
+                
+                if (previsaoError) throw previsaoError;
+            }
+            
+            this.showNotification('Medição gerada com sucesso!', 'success');
+            this.hideModalGerarMedicao();
+            await this.loadMedicoesObra();
+            
+        } catch (error) {
+            this.showNotification('Erro ao gerar medição: ' + error.message, 'error');
+        }
+    }
+    
+    async verDetalhesMedicao(medicaoId) {
+        // Redirecionar para página de medições (implementar depois se necessário)
+        this.showNotification('Funcionalidade em desenvolvimento', 'info');
     }
 }
 
