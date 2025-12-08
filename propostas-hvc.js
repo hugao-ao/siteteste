@@ -1698,7 +1698,7 @@ class PropostasManager {
             // VALIDAÇÃO: Verificar se o local está sendo usado em propostas APROVADAS
             const { data: propostasComLocal, error: errorPropostas } = await supabaseClient
                 .from('propostas_hvc')
-                .select('numero, status, cliente_id, clientes_hvc(nome)')
+                .select('numero_proposta, status, cliente_id, clientes_hvc(nome)')
                 .eq('local_id', localId)
                 .eq('status', 'Aprovada');
 
@@ -1710,7 +1710,7 @@ class PropostasManager {
                 .select(`
                     id,
                     proposta_id,
-                    propostas_hvc(numero, status, cliente_id, clientes_hvc(nome))
+                    propostas_hvc(numero_proposta, status, cliente_id, clientes_hvc(nome))
                 `)
                 .eq('local_id', localId);
 
@@ -1726,8 +1726,8 @@ class PropostasManager {
             
             (propostasComLocal || []).forEach(prop => {
                 const clienteNome = prop.clientes_hvc?.nome || 'Cliente não identificado';
-                propostasUsandoLocal.set(prop.numero, {
-                    numero: prop.numero,
+                propostasUsandoLocal.set(prop.numero_proposta, {
+                    numero: prop.numero_proposta,
                     cliente: clienteNome,
                     status: prop.status
                 });
@@ -1737,8 +1737,8 @@ class PropostasManager {
                 if (item.propostas_hvc) {
                     const prop = item.propostas_hvc;
                     const clienteNome = prop.clientes_hvc?.nome || 'Cliente não identificado';
-                    propostasUsandoLocal.set(prop.numero, {
-                        numero: prop.numero,
+                    propostasUsandoLocal.set(prop.numero_proposta, {
+                        numero: prop.numero_proposta,
                         cliente: clienteNome,
                         status: prop.status
                     });
