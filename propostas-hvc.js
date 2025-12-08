@@ -504,7 +504,10 @@ class PropostasManager {
         emptyOption.textContent = 'Nenhum';
         select.appendChild(emptyOption);
         
-        this.locais.forEach(local => {
+        // Usar Set para garantir IDs únicos e evitar duplicatas
+        const locaisUnicos = Array.from(new Map(this.locais.map(local => [local.id, local])).values());
+        
+        locaisUnicos.forEach(local => {
             const option = document.createElement('option');
             option.value = local.id;
             option.textContent = local.nome;
@@ -539,35 +542,70 @@ class PropostasManager {
         e.preventDefault();
         
         try {
-            const nome = document.getElementById('local-nome').value;
-            const descricao = document.getElementById('local-descricao').value;
+            const nome = document.getElementById('local-nome').value.trim();
+            const descricao = document.getElementById('local-descricao').value.trim();
             
             if (!nome) {
                 this.showNotification('Nome do local é obrigatório', 'error');
                 return;
             }
 
-            const { data, error } = await supabaseClient
-                .from('locais_hvc')
-                .insert([{
-                    nome: nome,
-                    descricao: descricao,
-                    ativo: true
-                }])
-                .select()
-                .single();
-
-            if (error) throw error;
-
-            this.hideModalLocal();
-            await this.loadLocais();
-            this.forceUpdateServicesTable();
+            // VALIDAÇÃO: Verificar se já existe local com mesmo nome (exceto o atual em edição)
+            const localDuplicado = this.locais.find(l => 
+                l.nome.toLowerCase() === nome.toLowerCase() && 
+                l.id !== this.currentLocalId
+            );
             
-            this.showNotification('Local criado com sucesso!', 'success');
+            if (localDuplicado) {
+                this.showNotification('Já existe um local com este nome', 'error');
+                return;
+            }
+
+            if (this.currentLocalId) {
+                // EDITAR LOCAL EXISTENTE
+                const { error } = await supabaseClient
+                    .from('locais_hvc')
+                    .update({
+                        nome: nome,
+                        descricao: descricao || null
+                    })
+                    .eq('id', this.currentLocalId);
+
+                if (error) throw error;
+
+                this.hideModalLocal();
+                await this.loadLocais();
+                this.forceUpdateServicesTable();
+                this.renderLocaisGerenciar();
+                
+                this.showNotification('Local atualizado com sucesso! As alterações foram aplicadas em todas as propostas vinculadas.', 'success');
+                this.currentLocalId = null;
+                
+            } else {
+                // CRIAR NOVO LOCAL
+                const { data, error } = await supabaseClient
+                    .from('locais_hvc')
+                    .insert([{
+                        nome: nome,
+                        descricao: descricao || null,
+                        ativo: true
+                    }])
+                    .select()
+                    .single();
+
+                if (error) throw error;
+
+                this.hideModalLocal();
+                await this.loadLocais();
+                this.forceUpdateServicesTable();
+                this.renderLocaisGerenciar();
+                
+                this.showNotification('Local criado com sucesso!', 'success');
+            }
             
         } catch (error) {
-            console.error('Erro ao criar local:', error);
-            this.showNotification('Erro ao criar local: ' + error.message, 'error');
+            console.error('Erro ao salvar local:', error);
+            this.showNotification('Erro ao salvar local: ' + error.message, 'error');
         }
     }
 
@@ -1446,6 +1484,44 @@ class PropostasManager {
                 });
             }
             
+            // Modal de Gerenciar Locais
+            const closeModalGerenciarLocais = document.getElementById('close-modal-gerenciar-locais');
+            const closeGerenciarLocaisBtn = document.getElementById('close-gerenciar-locais-btn');
+            const modalGerenciarLocais = document.getElementById('modal-gerenciar-locais');
+            
+            if (closeModalGerenciarLocais) {
+                closeModalGerenciarLocais.addEventListener('click', () => this.hideModalGerenciarLocais());
+            }
+            if (closeGerenciarLocaisBtn) {
+                closeGerenciarLocaisBtn.addEventListener('click', () => this.hideModalGerenciarLocais());
+            }
+            if (modalGerenciarLocais) {
+                modalGerenciarLocais.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-gerenciar-locais') this.hideModalGerenciarLocais();
+                });
+            }
+            
+            // Modal de Confirmação de Exclusão de Local
+            const closeModalDeleteLocal = document.getElementById('close-modal-delete-local');
+            const cancelDeleteLocal = document.getElementById('cancel-delete-local');
+            const confirmDeleteLocal = document.getElementById('confirm-delete-local');
+            const modalDeleteLocalConfirm = document.getElementById('modal-delete-local-confirm');
+            
+            if (closeModalDeleteLocal) {
+                closeModalDeleteLocal.addEventListener('click', () => this.hideModalDeleteLocal());
+            }
+            if (cancelDeleteLocal) {
+                cancelDeleteLocal.addEventListener('click', () => this.hideModalDeleteLocal());
+            }
+            if (confirmDeleteLocal) {
+                confirmDeleteLocal.addEventListener('click', () => this.executeDeleteLocal());
+            }
+            if (modalDeleteLocalConfirm) {
+                modalDeleteLocalConfirm.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-delete-local-confirm') this.hideModalDeleteLocal();
+                });
+            }
+            
         } catch (error) {
             console.error('Erro ao configurar event listeners:', error);
         }
@@ -1529,5 +1605,238 @@ class PropostasManager {
             info: 'info-circle'
         };
         return icons[type] || 'info-circle';
+    }
+
+    // === GERENCIAMENTO DE LOCAIS ===
+    
+    showModalGerenciarLocais() {
+        const modal = document.getElementById('modal-gerenciar-locais');
+        if (modal) {
+            this.renderLocaisGerenciar();
+            modal.classList.add('show');
+        }
+    }
+
+    hideModalGerenciarLocais() {
+        const modal = document.getElementById('modal-gerenciar-locais');
+        if (modal) modal.classList.remove('show');
+    }
+
+    renderLocaisGerenciar() {
+        const tbody = document.querySelector('#locais-gerenciar-table tbody');
+        if (!tbody) return;
+
+        tbody.innerHTML = '';
+
+        if (this.locais.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="4" style="text-align: center; padding: 2rem; color: #add8e6;">
+                        <i class="fas fa-map-marker-alt" style="font-size: 2rem; opacity: 0.5; display: block; margin-bottom: 0.5rem;"></i>
+                        Nenhum local cadastrado
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        this.locais.forEach(local => {
+            const row = document.createElement('tr');
+            
+            const statusBadge = local.ativo 
+                ? '<span style="display: inline-block; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(40, 167, 69, 0.3); color: #28a745; border: 1px solid #28a745;">Ativo</span>' 
+                : '<span style="display: inline-block; padding: 0.3rem 0.8rem; border-radius: 12px; font-size: 0.85rem; font-weight: 600; background: rgba(220, 53, 69, 0.3); color: #dc3545; border: 1px solid #dc3545;">Inativo</span>';
+            
+            row.innerHTML = `
+                <td>${local.nome}</td>
+                <td>${local.descricao || '-'}</td>
+                <td>${statusBadge}</td>
+                <td>
+                    <button class="btn-secondary" onclick="window.propostasManager.editLocalGerenciar(${local.id})" title="Editar" style="margin-right: 0.5rem;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn-danger" onclick="window.propostasManager.confirmDeleteLocalGerenciar(${local.id})" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            `;
+            
+            tbody.appendChild(row);
+        });
+    }
+
+    editLocalGerenciar(localId) {
+        const local = this.locais.find(l => l.id === localId);
+        if (!local) {
+            this.showNotification('Local não encontrado', 'error');
+            return;
+        }
+
+        this.currentLocalId = localId;
+        
+        const modal = document.getElementById('modal-local');
+        const title = document.getElementById('modal-local-title');
+        const nomeInput = document.getElementById('local-nome');
+        const descricaoInput = document.getElementById('local-descricao');
+        
+        if (title) title.textContent = 'Editar Local';
+        if (nomeInput) nomeInput.value = local.nome;
+        if (descricaoInput) descricaoInput.value = local.descricao || '';
+        if (modal) modal.classList.add('show');
+        
+        if (nomeInput) nomeInput.focus();
+    }
+
+    async confirmDeleteLocalGerenciar(localId) {
+        try {
+            const local = this.locais.find(l => l.id === localId);
+            if (!local) {
+                this.showNotification('Local não encontrado', 'error');
+                return;
+            }
+
+            // VALIDAÇÃO: Verificar se o local está sendo usado em propostas APROVADAS
+            const { data: propostasComLocal, error: errorPropostas } = await supabaseClient
+                .from('propostas_hvc')
+                .select('numero, status, cliente_id, clientes_hvc(nome)')
+                .eq('local_id', localId)
+                .eq('status', 'Aprovada');
+
+            if (errorPropostas) throw errorPropostas;
+
+            // VALIDAÇÃO: Verificar se o local está sendo usado em ITENS de propostas APROVADAS
+            const { data: itensComLocal, error: errorItens } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select(`
+                    id,
+                    proposta_id,
+                    propostas_hvc(numero, status, cliente_id, clientes_hvc(nome))
+                `)
+                .eq('local_id', localId);
+
+            if (errorItens) throw errorItens;
+
+            // Filtrar apenas itens de propostas aprovadas
+            const itensPropostasAprovadas = (itensComLocal || []).filter(item => 
+                item.propostas_hvc && item.propostas_hvc.status === 'Aprovada'
+            );
+
+            // Combinar propostas que usam o local
+            const propostasUsandoLocal = new Map();
+            
+            (propostasComLocal || []).forEach(prop => {
+                const clienteNome = prop.clientes_hvc?.nome || 'Cliente não identificado';
+                propostasUsandoLocal.set(prop.numero, {
+                    numero: prop.numero,
+                    cliente: clienteNome,
+                    status: prop.status
+                });
+            });
+            
+            itensPropostasAprovadas.forEach(item => {
+                if (item.propostas_hvc) {
+                    const prop = item.propostas_hvc;
+                    const clienteNome = prop.clientes_hvc?.nome || 'Cliente não identificado';
+                    propostasUsandoLocal.set(prop.numero, {
+                        numero: prop.numero,
+                        cliente: clienteNome,
+                        status: prop.status
+                    });
+                }
+            });
+
+            const propostas = Array.from(propostasUsandoLocal.values());
+
+            if (propostas.length > 0) {
+                // NÃO PODE EXCLUIR - Mostrar lista de propostas
+                const listaPropostas = propostas.map(p => 
+                    `<li><strong>${p.numero}</strong> - ${p.cliente}</li>`
+                ).join('');
+                
+                const mensagem = `
+                    <p style="color: #dc3545; font-weight: bold; margin-bottom: 1rem;">
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        Não é possível excluir este local!
+                    </p>
+                    <p style="margin-bottom: 1rem;">
+                        O local "<strong>${local.nome}</strong>" está sendo usado nas seguintes propostas aprovadas:
+                    </p>
+                    <ul style="list-style: none; padding: 0; margin: 1rem 0;">
+                        ${listaPropostas}
+                    </ul>
+                    <p style="color: #add8e6; font-size: 0.9rem;">
+                        Para excluir este local, primeiro remova-o dessas propostas ou altere o status delas.
+                    </p>
+                `;
+                
+                const deleteMessage = document.getElementById('delete-local-message');
+                if (deleteMessage) deleteMessage.innerHTML = mensagem;
+                
+                // Esconder botão de confirmar exclusão
+                const confirmBtn = document.getElementById('confirm-delete-local');
+                if (confirmBtn) confirmBtn.style.display = 'none';
+                
+                const modal = document.getElementById('modal-delete-local-confirm');
+                if (modal) modal.classList.add('show');
+                
+                return;
+            }
+
+            // PODE EXCLUIR - Mostrar confirmação normal
+            const mensagem = `
+                <p style="margin-bottom: 1rem;">
+                    Tem certeza que deseja excluir o local "<strong>${local.nome}</strong>"?
+                </p>
+                <p style="color: #add8e6; font-size: 0.9rem;">
+                    Esta ação não pode ser desfeita.
+                </p>
+            `;
+            
+            const deleteMessage = document.getElementById('delete-local-message');
+            if (deleteMessage) deleteMessage.innerHTML = mensagem;
+            
+            // Mostrar botão de confirmar exclusão
+            const confirmBtn = document.getElementById('confirm-delete-local');
+            if (confirmBtn) confirmBtn.style.display = 'inline-flex';
+            
+            this.localToDelete = localId;
+            
+            const modal = document.getElementById('modal-delete-local-confirm');
+            if (modal) modal.classList.add('show');
+            
+        } catch (error) {
+            console.error('Erro ao verificar local:', error);
+            this.showNotification('Erro ao verificar local: ' + error.message, 'error');
+        }
+    }
+
+    async executeDeleteLocal() {
+        if (!this.localToDelete) return;
+        
+        try {
+            // Desativar o local ao invés de excluir (soft delete)
+            const { error } = await supabaseClient
+                .from('locais_hvc')
+                .update({ ativo: false })
+                .eq('id', this.localToDelete);
+
+            if (error) throw error;
+
+            this.hideModalDeleteLocal();
+            await this.loadLocais();
+            this.renderLocaisGerenciar();
+            this.showNotification('Local excluído com sucesso!', 'success');
+            this.localToDelete = null;
+            
+        } catch (error) {
+            console.error('Erro ao excluir local:', error);
+            this.showNotification('Erro ao excluir local: ' + error.message, 'error');
+        }
+    }
+
+    hideModalDeleteLocal() {
+        const modal = document.getElementById('modal-delete-local-confirm');
+        if (modal) modal.classList.remove('show');
+        this.localToDelete = null;
     }
 }
