@@ -435,7 +435,7 @@ class ObrasManager {
                         ${proposta.numero_proposta} - ${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}
                     </div>
                     <div style="color: #666; font-size: 0.9rem;">
-                        Total: ${this.formatMoney((proposta.total_proposta)/100)}
+                        Total: ${this.formatMoney(proposta.total_proposta)}
                     </div>
                 </div>
             `;
@@ -567,7 +567,7 @@ class ObrasManager {
             row.innerHTML = `
                 <td><strong>${proposta.numero_proposta}</strong></td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
-                <td><strong>${this.formatMoney((proposta.total_proposta)/100)}</strong></td>
+                <td><strong>${this.formatMoney(proposta.total_proposta)}</strong></td>
                 <td>
                     <span class="status-badge status-${proposta.status.toLowerCase()}">
                         ${proposta.status}
