@@ -1200,6 +1200,32 @@
     </div>
   </div>
 
+  <!-- Modal: Detalhes da Medição -->
+  <div id="modal-detalhes-medicao" class="modal">
+    <div class="modal-content" style="max-width: 900px; max-height: 90vh; overflow-y: auto;">
+      <div class="modal-header">
+        <h2>
+          <i class="fas fa-file-invoice-dollar"></i>
+          Detalhes da Medição
+        </h2>
+        <button class="modal-close" id="close-modal-detalhes-medicao">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body" id="conteudo-detalhes-medicao">
+        <!-- Conteúdo será preenchido dinamicamente -->
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="fechar-detalhes-medicao">
+          <i class="fas fa-times"></i>
+          Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
   <script type="module" src="sidebar.js"></script>
   <script type="module" src="obras-hvc.js"></script>
