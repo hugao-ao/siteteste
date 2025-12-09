@@ -2166,6 +2166,9 @@ class ObrasManager {
         const modal = document.getElementById('modal-gerar-medicao');
         if (!modal) return;
         
+        // Inicializar array de serviços para medição
+        this.servicosMedicao = [];
+        
         // Gerar número da medição
         await this.gerarNumeroMedicao();
         
@@ -2183,6 +2186,8 @@ class ObrasManager {
         const modal = document.getElementById('modal-gerar-medicao');
         if (modal) {
             modal.classList.remove('show');
+            // Limpar array de serviços ao fechar
+            this.servicosMedicao = [];
         }
     }
     
@@ -2363,7 +2368,7 @@ class ObrasManager {
     }
     
     container.innerHTML = '';
-    this.servicosMedicao = [];
+    // NÃO reinicializar servicosMedicao aqui - ele é gerenciado por confirmarQuantidade()
     
     // Filtrar serviços disponíveis
     const servicosDisponiveis = servicos.filter(s => s.quantidadeDisponivel > 0);
@@ -2642,34 +2647,22 @@ atualizarDisplaysModal() {
 }
 
 confirmarQuantidade(servicoId) {
-    console.log('[CONFIRMAR] Iniciando confirmarQuantidade');
-    console.log('[CONFIRMAR] servicoId:', servicoId);
-    
     const input = document.getElementById('input-quantidade-manual');
-    console.log('[CONFIRMAR] input:', input);
-    console.log('[CONFIRMAR] servicoAtualModal:', this.servicoAtualModal);
     
     if (!input || !this.servicoAtualModal) {
-        console.error('[CONFIRMAR] Input ou servicoAtualModal não encontrado!');
+        console.error('Input ou servicoAtualModal não encontrado!');
         return;
     }
     
     const quantidade = parseFloat(input.value) || 0;
-    console.log('[CONFIRMAR] quantidade:', quantidade);
     
     // Atualizar serviço no array
     const index = this.servicosMedicao.findIndex(s => s.servico_id === servicoId);
-    console.log('[CONFIRMAR] index no servicosMedicao:', index);
     
     if (quantidade > 0) {
-        console.log('[CONFIRMAR] servico:', this.servicoAtualModal.servico);
-        console.log('[CONFIRMAR] servico.itens:', this.servicoAtualModal.servico?.itens);
-        
         const itemPropostaId = this.servicoAtualModal.servico.itens && this.servicoAtualModal.servico.itens.length > 0 
             ? this.servicoAtualModal.servico.itens[0].id 
             : null;
-        
-        console.log('[CONFIRMAR] itemPropostaId:', itemPropostaId);
         
         const servicoData = {
             index: servicoId,
@@ -2695,16 +2688,11 @@ confirmarQuantidade(servicoId) {
         }
     }
     
-    console.log('[CONFIRMAR] servicosMedicao atualizado:', this.servicosMedicao);
-    
     // Fechar modal
     this.fecharModalAjustarQuantidade();
     
-    console.log('[CONFIRMAR] Chamando renderServicosParaMedicao...');
     // Atualizar interface
     this.renderServicosParaMedicao(this.servicosParaMedicao);
-    
-    console.log('[CONFIRMAR] Chamando atualizarResumoMedicao...');
     this.atualizarResumoMedicao();
 }
 
@@ -2718,22 +2706,15 @@ fecharModalAjustarQuantidade() {
 
     
     async atualizarResumoMedicao() {
-        console.log('[RESUMO] Iniciando atualizarResumoMedicao');
-        console.log('[RESUMO] servicosMedicao:', this.servicosMedicao);
-        
         const tbody = document.getElementById('tbody-resumo-servicos');
         const valorTotalEl = document.getElementById('valor-total-medicao');
         
-        console.log('[RESUMO] tbody:', tbody);
-        console.log('[RESUMO] valorTotalEl:', valorTotalEl);
-        
         if (!tbody || !valorTotalEl) {
-            console.error('[RESUMO] tbody ou valorTotalEl não encontrado!');
+            console.error('Elementos de resumo não encontrados');
             return;
         }
         
         if (!this.servicosMedicao || this.servicosMedicao.length === 0) {
-            console.log('[RESUMO] servicosMedicao vazio, mostrando mensagem');
             tbody.innerHTML = `
                 <tr>
                     <td colspan="4" style="padding: 2rem; text-align: center; color: #888;">
@@ -2745,12 +2726,10 @@ fecharModalAjustarQuantidade() {
             return;
         }
         
-        console.log('[RESUMO] Renderizando', this.servicosMedicao.length, 'serviços');
         tbody.innerHTML = '';
         let valorTotal = 0;
         
         this.servicosMedicao.forEach((servico, index) => {
-            console.log('[RESUMO] Renderizando serviço', index, ':', servico);
             valorTotal += servico.valor_total;
             
             const row = document.createElement('tr');
@@ -2771,12 +2750,9 @@ fecharModalAjustarQuantidade() {
                 </td>
             `;
             tbody.appendChild(row);
-            console.log('[RESUMO] Row adicionada ao tbody');
         });
         
-        console.log('[RESUMO] Valor total:', valorTotal);
         valorTotalEl.textContent = this.formatMoney(valorTotal);
-        console.log('[RESUMO] Resumo atualizado com sucesso!');
     }
     
     
