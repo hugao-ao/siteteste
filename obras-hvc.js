@@ -2365,15 +2365,12 @@ class ObrasManager {
     container.innerHTML = '';
     this.servicosMedicao = [];
     
-    // Agrupar serviços por código (para mostrar resumo)
-    const servicosMap = new Map();
-    servicos.forEach(servico => {
-        if (servico.quantidadeDisponivel <= 0) return;
-        servicosMap.set(servico.servicoId, servico);
-    });
+    // Filtrar serviços disponíveis
+    const servicosDisponiveis = servicos.filter(s => s.quantidadeDisponivel > 0);
     
     // Renderizar lista de serviços (SEM sliders, apenas resumo)
-    servicosMap.forEach((servico, servicoId) => {
+    servicosDisponiveis.forEach((servico, index) => {
+        const servicoId = servico.servicoId;
         const card = document.createElement('div');
         card.style.cssText = `
             padding: 1rem;
@@ -2435,8 +2432,7 @@ class ObrasManager {
                     <button 
                         type="button"
                         class="btn-ajustar-medicao"
-                        data-servico-id="${servicoId}"
-                        data-index="${servicoId}"
+                        data-index="${index}"
                         style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #000080 0%, #191970 100%); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
                         onmouseover="this.style.background='linear-gradient(135deg, #191970 0%, #000080 100%)'"
                         onmouseout="this.style.background='linear-gradient(135deg, #000080 0%, #191970 100%)'"
@@ -2458,10 +2454,10 @@ class ObrasManager {
     botoes.forEach(botao => {
         botao.addEventListener('click', () => {
             console.log('[DEBUG] Botão clicado!');
-            const servicoId = parseInt(botao.dataset.servicoId);
-            console.log('[DEBUG] servicoId:', servicoId);
+            const index = parseInt(botao.dataset.index);
+            console.log('[DEBUG] index:', index);
             
-            const servico = this.servicosParaMedicao.find(s => s.servicoId === servicoId);
+            const servico = this.servicosParaMedicao[index];
             console.log('[DEBUG] servico encontrado:', servico);
             
             if (!servico) {
@@ -2469,11 +2465,11 @@ class ObrasManager {
                 return;
             }
             
-            const quantidadeAtual = this.servicosMedicao.find(s => s.servico_id === servicoId)?.quantidade_medida || 0;
+            const quantidadeAtual = this.servicosMedicao.find(s => s.servico_id === servico.servicoId)?.quantidade_medida || 0;
             console.log('[DEBUG] Chamando abrirModalAjustarQuantidade...');
             
             this.abrirModalAjustarQuantidade(
-                servicoId,
+                servico.servicoId,
                 servico.codigo,
                 servico.nome,
                 servico.unidade,
