@@ -2270,7 +2270,9 @@ class ObrasManager {
                 const servicoCodigo = item.servicos_hvc?.codigo;
                 const servicoNome = item.servicos_hvc?.descricao;
                 const unidade = item.servicos_hvc?.unidade || 'un';
-                const precoUnitario = parseFloat(item.preco_unitario) || 0;
+                const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
+                const precoMaterial = parseFloat(item.preco_material) || 0;
+                const precoUnitario = precoMaoObra + precoMaterial;
                 const quantidade = parseFloat(item.quantidade) || 0;
                 const precoTotal = parseFloat(item.preco_total) || 0;
                 
@@ -2338,8 +2340,9 @@ class ObrasManager {
                 );
             });
             
-            // 8. Renderizar serviços
-            this.renderServicosParaMedicao(Object.values(servicosAgrupados));
+            // 8. Guardar e renderizar serviços
+            this.servicosParaMedicao = Object.values(servicosAgrupados);
+            this.renderServicosParaMedicao(this.servicosParaMedicao);
             
         } catch (error) {
             this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
@@ -2347,50 +2350,59 @@ class ObrasManager {
     }
     
     renderServicosParaMedicao(servicos) {
-        const container = document.getElementById('producoes-para-medicao');
-        if (!container) return;
+    const container = document.getElementById('producoes-para-medicao');
+    if (!container) return;
+    
+    if (servicos.length === 0) {
+        container.innerHTML = `
+            <div style="padding: 2rem; text-align: center; color: #888;">
+                Nenhum serviço disponível para medição.
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = '';
+    this.servicosMedicao = [];
+    
+    // Agrupar serviços por código (para mostrar resumo)
+    const servicosMap = new Map();
+    servicos.forEach(servico => {
+        if (servico.quantidadeDisponivel <= 0) return;
+        servicosMap.set(servico.servicoId, servico);
+    });
+    
+    // Renderizar lista de serviços (SEM sliders, apenas resumo)
+    servicosMap.forEach((servico, servicoId) => {
+        const card = document.createElement('div');
+        card.style.cssText = `
+            padding: 1rem;
+            border: 1px solid rgba(173, 216, 230, 0.2);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            background: rgba(173, 216, 230, 0.05);
+            cursor: pointer;
+            transition: all 0.3s;
+        `;
         
-        if (servicos.length === 0) {
-            container.innerHTML = `
-                <div style="padding: 2rem; text-align: center; color: #888;">
-                    Nenhum serviço disponível para medição.
-                </div>
-            `;
-            return;
-        }
+        card.onmouseenter = () => card.style.background = 'rgba(173, 216, 230, 0.1)';
+        card.onmouseleave = () => card.style.background = 'rgba(173, 216, 230, 0.05)';
         
-        container.innerHTML = '';
-        this.servicosMedicao = [];
+        const valorUnitario = this.formatMoney(servico.precoUnitario);
+        const quantidadeSelecionada = this.servicosMedicao.find(s => s.servico_id === servicoId)?.quantidade_medida || 0;
+        const valorSelecionado = quantidadeSelecionada * servico.precoUnitario;
         
-        servicos.forEach((servico, index) => {
-            // Só mostrar serviços que têm quantidade disponível
-            if (servico.quantidadeDisponivel <= 0) return;
-            
-            const card = document.createElement('div');
-            card.style.cssText = `
-                padding: 1rem;
-                border: 1px solid rgba(173, 216, 230, 0.2);
-                border-radius: 8px;
-                margin-bottom: 1rem;
-                background: rgba(173, 216, 230, 0.05);
-            `;
-            
-            const valorUnitario = this.formatMoney(servico.precoUnitario);
-            
-            card.innerHTML = `
-                <div style="margin-bottom: 0.75rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
-                        <div>
-                            <strong style="color: #add8e6; font-size: 1.1em;">
-                                ${servico.codigo} - ${servico.nome}
-                            </strong>
-                        </div>
-                        <div style="text-align: right;">
-                            <span style="color: #20c997; font-weight: 600;">${valorUnitario}/${servico.unidade}</span>
-                        </div>
+        card.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="margin-bottom: 0.5rem;">
+                        <strong style="color: #add8e6; font-size: 1.1em;">
+                            ${servico.codigo} - ${servico.nome}
+                        </strong>
+                        <span style="color: #20c997; font-weight: 600; margin-left: 1rem;">${valorUnitario}/${servico.unidade}</span>
                     </div>
                     
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; font-size: 0.9em; color: #c0c0c0; margin-bottom: 1rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; font-size: 0.9em; color: #c0c0c0;">
                         <div>
                             <i class="fas fa-file-contract"></i>
                             <strong>Contratado:</strong> ${servico.quantidadeContratada.toFixed(2)} ${servico.unidade}
@@ -2409,96 +2421,240 @@ class ObrasManager {
                         </div>
                     </div>
                     
-                    ${servico.itens.length > 1 ? `
-                        <details style="margin-bottom: 0.75rem; font-size: 0.85em;">
-                            <summary style="cursor: pointer; color: #add8e6; margin-bottom: 0.25rem;">
-                                <i class="fas fa-info-circle"></i> Ver detalhes das propostas (${servico.itens.length} itens)
-                            </summary>
-                            <div style="padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px; margin-top: 0.5rem;">
-                                ${servico.itens.map(item => `
-                                    <div style="padding: 0.25rem 0; color: #c0c0c0;">
-                                        • Proposta ${item.propostas_hvc?.numero_proposta}: ${item.quantidade} ${servico.unidade} × ${this.formatMoney(item.preco_unitario)} = ${this.formatMoney(item.preco_total)}
-                                    </div>
-                                `).join('')}
-                            </div>
-                        </details>
-                    ` : ''}
-                    
-                    <div style="margin-top: 1rem;">
-                        <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
-                            <i class="fas fa-ruler"></i> Quantidade a Medir: 
-                            <span id="valor-slider-${index}" style="color: #20c997; font-size: 1.1em; margin-left: 0.5rem;">0 ${servico.unidade}</span>
-                        </label>
-                        
-                        <input 
-                            type="range" 
-                            id="slider-${index}" 
-                            min="0" 
-                            max="${servico.quantidadeDisponivel}" 
-                            step="0.01" 
-                            value="0"
-                            style="width: 100%; height: 8px; border-radius: 5px; background: linear-gradient(to right, #000080 0%, #add8e6 100%); outline: none; -webkit-appearance: none;"
-                        />
-                        
-                        <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #888; margin-top: 0.25rem;">
-                            <span>0</span>
-                            <span>${servico.quantidadeDisponivel.toFixed(2)} ${servico.unidade}</span>
+                    ${quantidadeSelecionada > 0 ? `
+                        <div style="margin-top: 0.75rem; padding: 0.5rem; background: rgba(32, 201, 151, 0.15); border-radius: 4px; border-left: 3px solid #20c997;">
+                            <strong style="color: #20c997;">✓ Quantidade a Medir:</strong>
+                            <span style="color: #20c997; font-weight: 600; margin-left: 0.5rem;">${quantidadeSelecionada.toFixed(2)} ${servico.unidade}</span>
+                            <strong style="color: #20c997; margin-left: 1rem;">Valor:</strong>
+                            <span style="color: #20c997; font-weight: 600; margin-left: 0.5rem;">${this.formatMoney(valorSelecionado)}</span>
                         </div>
-                        
-                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(32, 201, 151, 0.1); border-radius: 4px; border-left: 3px solid #20c997;">
-                            <strong style="color: #20c997;">Valor a Medir:</strong>
-                            <span id="valor-total-${index}" style="color: #20c997; font-size: 1.1em; font-weight: 600; margin-left: 0.5rem;">R$ 0,00</span>
+                    ` : ''}
+                </div>
+                
+                <div style="margin-left: 1rem;">
+                    <button 
+                        onclick="obrasManager.abrirModalAjustarQuantidade(${servicoId}, '${servico.codigo}', '${servico.nome}', '${servico.unidade}', ${servico.precoUnitario}, ${servico.quantidadeDisponivel}, ${quantidadeSelecionada})"
+                        style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #000080 0%, #191970 100%); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
+                        onmouseover="this.style.background='linear-gradient(135deg, #191970 0%, #000080 100%)'"
+                        onmouseout="this.style.background='linear-gradient(135deg, #000080 0%, #191970 100%)'"
+                    >
+                        <i class="fas fa-edit"></i> ${quantidadeSelecionada > 0 ? 'Ajustar' : 'Adicionar'}
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+abrirModalAjustarQuantidade(servicoId, codigo, nome, unidade, precoUnitario, quantidadeDisponivel, quantidadeAtual) {
+    // Encontrar o serviço completo
+    const servico = this.servicosParaMedicao.find(s => s.servicoId === servicoId);
+    if (!servico) return;
+    
+    // Criar modal
+    const modalHTML = `
+        <div id="modal-ajustar-quantidade" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+            <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 12px; padding: 2rem; max-width: 600px; width: 90%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(173, 216, 230, 0.2);">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.2);">
+                    <h3 style="color: #add8e6; margin: 0;">
+                        <i class="fas fa-ruler"></i> Ajustar Quantidade
+                    </h3>
+                    <button onclick="obrasManager.fecharModalAjustarQuantidade()" style="background: none; border: none; color: #ff6b6b; font-size: 1.5rem; cursor: pointer; padding: 0; width: 30px; height: 30px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <div style="color: #add8e6; font-size: 1.1em; font-weight: 600; margin-bottom: 0.5rem;">
+                        ${codigo} - ${nome}
+                    </div>
+                    <div style="color: #20c997; font-weight: 600;">
+                        Preço: ${this.formatMoney(precoUnitario)}/${unidade}
+                    </div>
+                    <div style="color: #ffc107; font-size: 0.9em; margin-top: 0.5rem;">
+                        <i class="fas fa-info-circle"></i> Disponível: ${quantidadeDisponivel.toFixed(2)} ${unidade}
+                    </div>
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.75rem; color: #add8e6; font-weight: 600;">
+                        <i class="fas fa-keyboard"></i> Digite a quantidade:
+                    </label>
+                    <input 
+                        type="number" 
+                        id="input-quantidade-manual" 
+                        min="0" 
+                        max="${quantidadeDisponivel}" 
+                        step="0.01" 
+                        value="${quantidadeAtual}"
+                        style="width: 100%; padding: 0.75rem; background: rgba(173, 216, 230, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #add8e6; font-size: 1.1em; font-weight: 600;"
+                        oninput="obrasManager.atualizarSliderDeInput()"
+                    />
+                </div>
+                
+                <div style="margin-bottom: 1.5rem;">
+                    <label style="display: block; margin-bottom: 0.75rem; color: #add8e6; font-weight: 600;">
+                        <i class="fas fa-sliders-h"></i> Ou ajuste com o slider:
+                    </label>
+                    <input 
+                        type="range" 
+                        id="slider-quantidade-modal" 
+                        min="0" 
+                        max="${quantidadeDisponivel}" 
+                        step="0.01" 
+                        value="${quantidadeAtual}"
+                        style="width: 100%; height: 10px; border-radius: 5px; background: linear-gradient(to right, #000080 0%, #add8e6 100%); outline: none; -webkit-appearance: none; cursor: pointer;"
+                        oninput="obrasManager.atualizarInputDeSlider()"
+                    />
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #888; margin-top: 0.5rem;">
+                        <span>0</span>
+                        <span>${quantidadeDisponivel.toFixed(2)} ${unidade}</span>
+                    </div>
+                </div>
+                
+                <div style="padding: 1rem; background: rgba(32, 201, 151, 0.15); border-radius: 8px; border-left: 4px solid #20c997; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div>
+                            <div style="color: #c0c0c0; font-size: 0.9em; margin-bottom: 0.25rem;">Quantidade a Medir:</div>
+                            <div style="color: #20c997; font-size: 1.3em; font-weight: 700;">
+                                <span id="quantidade-display-modal">0</span> ${unidade}
+                            </div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="color: #c0c0c0; font-size: 0.9em; margin-bottom: 0.25rem;">Valor Total:</div>
+                            <div style="color: #20c997; font-size: 1.5em; font-weight: 700;">
+                                <span id="valor-display-modal">R$ 0,00</span>
+                            </div>
                         </div>
                     </div>
                 </div>
-            `;
-            
-            container.appendChild(card);
-            
-            // Adicionar event listener ao slider
-            const slider = document.getElementById(`slider-${index}`);
-            const valorSlider = document.getElementById(`valor-slider-${index}`);
-            const valorTotal = document.getElementById(`valor-total-${index}`);
-            
-            slider.addEventListener('input', () => {
-                const quantidade = parseFloat(slider.value);
-                const valor = quantidade * servico.precoUnitario;
                 
-                valorSlider.textContent = `${quantidade.toFixed(2)} ${servico.unidade}`;
-                valorTotal.textContent = this.formatMoney(valor);
-                
-                // Atualizar array de serviços selecionados
-                this.atualizarServicoMedicao(index, servico, quantidade);
-            });
-        });
-    }
+                <div style="display: flex; gap: 1rem;">
+                    <button 
+                        onclick="obrasManager.fecharModalAjustarQuantidade()"
+                        style="flex: 1; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); color: #c0c0c0; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; cursor: pointer; font-weight: 600;"
+                    >
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button 
+                        onclick="obrasManager.confirmarQuantidade(${servicoId})"
+                        style="flex: 2; padding: 0.75rem; background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1.05em;"
+                    >
+                        <i class="fas fa-check"></i> Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    `;
     
-    atualizarServicoMedicao(index, servico, quantidade) {
-        // Remover entrada anterior se existir
-        this.servicosMedicao = this.servicosMedicao.filter(s => s.index !== index);
+    // Adicionar modal ao body
+    const modalContainer = document.createElement('div');
+    modalContainer.innerHTML = modalHTML;
+    document.body.appendChild(modalContainer);
+    
+    // Guardar dados do serviço atual
+    this.servicoAtualModal = {
+        servicoId,
+        codigo,
+        nome,
+        unidade,
+        precoUnitario,
+        quantidadeDisponivel,
+        servico
+    };
+    
+    // Atualizar displays iniciais
+    this.atualizarDisplaysModal();
+}
+
+atualizarSliderDeInput() {
+    const input = document.getElementById('input-quantidade-manual');
+    const slider = document.getElementById('slider-quantidade-modal');
+    if (input && slider) {
+        slider.value = input.value;
+        this.atualizarDisplaysModal();
+    }
+}
+
+atualizarInputDeSlider() {
+    const input = document.getElementById('input-quantidade-manual');
+    const slider = document.getElementById('slider-quantidade-modal');
+    if (input && slider) {
+        input.value = slider.value;
+        this.atualizarDisplaysModal();
+    }
+}
+
+atualizarDisplaysModal() {
+    const input = document.getElementById('input-quantidade-manual');
+    const quantidadeDisplay = document.getElementById('quantidade-display-modal');
+    const valorDisplay = document.getElementById('valor-display-modal');
+    
+    if (!input || !quantidadeDisplay || !valorDisplay || !this.servicoAtualModal) return;
+    
+    const quantidade = parseFloat(input.value) || 0;
+    const valor = quantidade * this.servicoAtualModal.precoUnitario;
+    
+    quantidadeDisplay.textContent = quantidade.toFixed(2);
+    valorDisplay.textContent = this.formatMoney(valor);
+}
+
+confirmarQuantidade(servicoId) {
+    const input = document.getElementById('input-quantidade-manual');
+    if (!input || !this.servicoAtualModal) return;
+    
+    const quantidade = parseFloat(input.value) || 0;
+    
+    // Atualizar serviço no array
+    const index = this.servicosMedicao.findIndex(s => s.servico_id === servicoId);
+    
+    if (quantidade > 0) {
+        const itemPropostaId = this.servicoAtualModal.servico.itens && this.servicoAtualModal.servico.itens.length > 0 
+            ? this.servicoAtualModal.servico.itens[0].id 
+            : null;
         
-        // Adicionar nova entrada se quantidade > 0
-        if (quantidade > 0) {
-            // Pegar o primeiro item_proposta_id disponível (ou distribuir proporcionalmente se necessário)
-            const itemPropostaId = servico.itens && servico.itens.length > 0 ? servico.itens[0].id : null;
-            
-            this.servicosMedicao.push({
-                index,
-                item_proposta_id: itemPropostaId,
-                servico_id: servico.servicoId,
-                codigo_servico: servico.codigo,
-                nome_servico: servico.nome,
-                unidade: servico.unidade,
-                quantidade_medida: quantidade,
-                preco_unitario: servico.precoUnitario,
-                valor_total: quantidade * servico.precoUnitario
-            });
+        const servicoData = {
+            index: servicoId,
+            servico_id: servicoId,
+            item_proposta_id: itemPropostaId,
+            codigo_servico: this.servicoAtualModal.codigo,
+            nome_servico: this.servicoAtualModal.nome,
+            unidade: this.servicoAtualModal.unidade,
+            quantidade_medida: quantidade,
+            preco_unitario: this.servicoAtualModal.precoUnitario,
+            valor_total: quantidade * this.servicoAtualModal.precoUnitario
+        };
+        
+        if (index >= 0) {
+            this.servicosMedicao[index] = servicoData;
+        } else {
+            this.servicosMedicao.push(servicoData);
         }
-        
-        // Atualizar resumo
-        this.atualizarResumoMedicao();
+    } else {
+        // Remover se quantidade = 0
+        if (index >= 0) {
+            this.servicosMedicao.splice(index, 1);
+        }
     }
     
+    // Fechar modal
+    this.fecharModalAjustarQuantidade();
+    
+    // Atualizar interface
+    this.renderServicosParaMedicao(this.servicosParaMedicao);
+    this.atualizarResumoMedicao();
+}
+
+fecharModalAjustarQuantidade() {
+    const modal = document.getElementById('modal-ajustar-quantidade');
+    if (modal && modal.parentElement) {
+        modal.parentElement.remove();
+    }
+    this.servicoAtualModal = null;
+}
+
     
     async atualizarResumoMedicao() {
         const tbody = document.getElementById('tbody-resumo-servicos');
