@@ -2452,13 +2452,25 @@ class ObrasManager {
     
     // Adicionar event listeners aos botões
     const botoes = container.querySelectorAll('.btn-ajustar-medicao');
+    console.log('[DEBUG] Botões encontrados:', botoes.length);
+    console.log('[DEBUG] servicosParaMedicao:', this.servicosParaMedicao);
+    
     botoes.forEach(botao => {
         botao.addEventListener('click', () => {
+            console.log('[DEBUG] Botão clicado!');
             const servicoId = parseInt(botao.dataset.servicoId);
+            console.log('[DEBUG] servicoId:', servicoId);
+            
             const servico = this.servicosParaMedicao.find(s => s.servicoId === servicoId);
-            if (!servico) return;
+            console.log('[DEBUG] servico encontrado:', servico);
+            
+            if (!servico) {
+                console.error('[DEBUG] Serviço não encontrado!');
+                return;
+            }
             
             const quantidadeAtual = this.servicosMedicao.find(s => s.servico_id === servicoId)?.quantidade_medida || 0;
+            console.log('[DEBUG] Chamando abrirModalAjustarQuantidade...');
             
             this.abrirModalAjustarQuantidade(
                 servicoId,
