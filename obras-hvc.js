@@ -2479,8 +2479,12 @@ class ObrasManager {
         
         // Adicionar nova entrada se quantidade > 0
         if (quantidade > 0) {
+            // Pegar o primeiro item_proposta_id disponível (ou distribuir proporcionalmente se necessário)
+            const itemPropostaId = servico.itens && servico.itens.length > 0 ? servico.itens[0].id : null;
+            
             this.servicosMedicao.push({
                 index,
+                item_proposta_id: itemPropostaId,
                 servico_id: servico.servicoId,
                 codigo_servico: servico.codigo,
                 nome_servico: servico.nome,
@@ -2583,18 +2587,20 @@ class ObrasManager {
             
             // Inserir serviços da medição
             for (const servico of this.servicosMedicao) {
+                if (!servico.item_proposta_id) {
+                    console.warn('Serviço sem item_proposta_id:', servico);
+                    continue;
+                }
+                
                 const { error: servicoError } = await supabaseClient
                     .from('medicoes_servicos')
                     .insert([{
                         medicao_id: medicao.id,
-                        servico_id: servico.servico_id,
-                        codigo_servico: servico.codigo_servico,
-                        nome_servico: servico.nome_servico,
-                        unidade: servico.unidade,
+                        item_proposta_id: servico.item_proposta_id,
                         quantidade_medida: servico.quantidade_medida,
                         preco_unitario: servico.preco_unitario,
                         valor_total: servico.valor_total
-                    }]);
+                    }])
                 
                 if (servicoError) throw servicoError;
             }
@@ -2633,10 +2639,19 @@ class ObrasManager {
             
             if (medicaoError) throw medicaoError;
             
-            // Buscar serviços da medição
+            // Buscar serviços da medição com dados do item da proposta e serviço
             const { data: servicos, error: servicosError } = await supabaseClient
                 .from('medicoes_servicos')
-                .select('*')
+                .select(`
+                    *,
+                    itens_proposta_hvc (
+                        servicos_hvc (
+                            codigo,
+                            descricao,
+                            unidade
+                        )
+                    )
+                `)
                 .eq('medicao_id', medicaoId);
             
             if (servicosError) throw servicosError;
@@ -2703,9 +2718,10 @@ class ObrasManager {
         `;
         
         servicos.forEach(servico => {
-            const nomeServico = servico.nome_servico || servico.servico_nome || 'Serviço';
-            const codigoServico = servico.codigo_servico || servico.servico_codigo || '-';
-            const unidade = servico.unidade || 'un';
+            const servicoData = servico.itens_proposta_hvc?.servicos_hvc;
+            const nomeServico = servicoData?.descricao || 'Serviço';
+            const codigoServico = servicoData?.codigo || '-';
+            const unidade = servicoData?.unidade || 'un';
             
             html += `
                 <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
