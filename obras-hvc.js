@@ -2642,18 +2642,34 @@ atualizarDisplaysModal() {
 }
 
 confirmarQuantidade(servicoId) {
+    console.log('[CONFIRMAR] Iniciando confirmarQuantidade');
+    console.log('[CONFIRMAR] servicoId:', servicoId);
+    
     const input = document.getElementById('input-quantidade-manual');
-    if (!input || !this.servicoAtualModal) return;
+    console.log('[CONFIRMAR] input:', input);
+    console.log('[CONFIRMAR] servicoAtualModal:', this.servicoAtualModal);
+    
+    if (!input || !this.servicoAtualModal) {
+        console.error('[CONFIRMAR] Input ou servicoAtualModal não encontrado!');
+        return;
+    }
     
     const quantidade = parseFloat(input.value) || 0;
+    console.log('[CONFIRMAR] quantidade:', quantidade);
     
     // Atualizar serviço no array
     const index = this.servicosMedicao.findIndex(s => s.servico_id === servicoId);
+    console.log('[CONFIRMAR] index no servicosMedicao:', index);
     
     if (quantidade > 0) {
+        console.log('[CONFIRMAR] servico:', this.servicoAtualModal.servico);
+        console.log('[CONFIRMAR] servico.itens:', this.servicoAtualModal.servico?.itens);
+        
         const itemPropostaId = this.servicoAtualModal.servico.itens && this.servicoAtualModal.servico.itens.length > 0 
             ? this.servicoAtualModal.servico.itens[0].id 
             : null;
+        
+        console.log('[CONFIRMAR] itemPropostaId:', itemPropostaId);
         
         const servicoData = {
             index: servicoId,
@@ -2679,11 +2695,16 @@ confirmarQuantidade(servicoId) {
         }
     }
     
+    console.log('[CONFIRMAR] servicosMedicao atualizado:', this.servicosMedicao);
+    
     // Fechar modal
     this.fecharModalAjustarQuantidade();
     
+    console.log('[CONFIRMAR] Chamando renderServicosParaMedicao...');
     // Atualizar interface
     this.renderServicosParaMedicao(this.servicosParaMedicao);
+    
+    console.log('[CONFIRMAR] Chamando atualizarResumoMedicao...');
     this.atualizarResumoMedicao();
 }
 
