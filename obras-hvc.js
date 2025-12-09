@@ -2448,25 +2448,18 @@ class ObrasManager {
     
     // Adicionar event listeners aos botões
     const botoes = container.querySelectorAll('.btn-ajustar-medicao');
-    console.log('[DEBUG] Botões encontrados:', botoes.length);
-    console.log('[DEBUG] servicosParaMedicao:', this.servicosParaMedicao);
     
     botoes.forEach(botao => {
         botao.addEventListener('click', () => {
-            console.log('[DEBUG] Botão clicado!');
             const index = parseInt(botao.dataset.index);
-            console.log('[DEBUG] index:', index);
-            
             const servico = this.servicosParaMedicao[index];
-            console.log('[DEBUG] servico encontrado:', servico);
             
             if (!servico) {
-                console.error('[DEBUG] Serviço não encontrado!');
+                console.error('Serviço não encontrado!');
                 return;
             }
             
             const quantidadeAtual = this.servicosMedicao.find(s => s.servico_id === servico.servicoId)?.quantidade_medida || 0;
-            console.log('[DEBUG] Chamando abrirModalAjustarQuantidade...');
             
             this.abrirModalAjustarQuantidade(
                 servico.servicoId,
@@ -2567,14 +2560,14 @@ abrirModalAjustarQuantidade(servicoId, codigo, nome, unidade, precoUnitario, qua
                 <div style="display: flex; gap: 1rem;">
                     <button 
                         type="button"
-                        onclick="obrasManager.fecharModalAjustarQuantidade()"
+                        id="btn-cancelar-modal-quantidade"
                         style="flex: 1; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); color: #c0c0c0; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; cursor: pointer; font-weight: 600;"
                     >
                         <i class="fas fa-times"></i> Cancelar
                     </button>
                     <button 
                         type="button"
-                        onclick="obrasManager.confirmarQuantidade(${servicoId})"
+                        id="btn-confirmar-modal-quantidade"
                         style="flex: 2; padding: 0.75rem; background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1.05em;"
                     >
                         <i class="fas fa-check"></i> Confirmar
@@ -2599,6 +2592,18 @@ abrirModalAjustarQuantidade(servicoId, codigo, nome, unidade, precoUnitario, qua
         quantidadeDisponivel,
         servico
     };
+    
+    // Adicionar event listeners aos botões
+    const btnCancelar = document.getElementById('btn-cancelar-modal-quantidade');
+    const btnConfirmar = document.getElementById('btn-confirmar-modal-quantidade');
+    
+    if (btnCancelar) {
+        btnCancelar.addEventListener('click', () => this.fecharModalAjustarQuantidade());
+    }
+    
+    if (btnConfirmar) {
+        btnConfirmar.addEventListener('click', () => this.confirmarQuantidade(servicoId));
+    }
     
     // Atualizar displays iniciais
     this.atualizarDisplaysModal();
