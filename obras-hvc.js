@@ -2327,9 +2327,10 @@ class ObrasManager {
                 (medicoes || []).forEach(medicao => {
                     const servicosMedicao = medicao.medicoes_servicos || [];
                     servicosMedicao.forEach(sm => {
-                        // Verificar se é o mesmo serviço e mesmo preço
-                        if (sm.servico_id === servico.servicoId && 
-                            parseFloat(sm.preco_unitario) === servico.precoUnitario) {
+                        // Verificar se o item_proposta_id está na lista de itens deste serviço agrupado
+                        const itemPertenceAoServico = servico.itens.some(item => item.id === sm.item_proposta_id);
+                        
+                        if (itemPertenceAoServico) {
                             totalMedido += parseFloat(sm.quantidade_medida) || 0;
                         }
                     });
