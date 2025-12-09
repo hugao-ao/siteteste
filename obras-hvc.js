@@ -1017,8 +1017,12 @@ class ObrasManager {
                         id: item.servicos_hvc.id,
                         codigo: item.servicos_hvc.codigo,
                         descricao: item.servicos_hvc.descricao,
-                        unidade: item.servicos_hvc.unidade
+                        unidade: item.servicos_hvc.unidade,
+                        preco_unitario: item.preco_unitario || 0
                     });
+                } else if (servicoExistente && !servicoExistente.preco_unitario && item.preco_unitario) {
+                    // Atualizar preço se ainda não tiver
+                    servicoExistente.preco_unitario = item.preco_unitario;
                 }
                 return unique;
             }, []);
@@ -1907,6 +1911,17 @@ class ObrasManager {
                         ? servicosExecutados.join(' • ') 
                         : 'Nenhum serviço executado';
                     
+                    // Calcular valor total da produção
+                    let valorTotalProducao = 0;
+                    Object.entries(quantidadesObj).forEach(([servicoId, quantidade]) => {
+                        if (quantidade > 0) {
+                            const servico = this.servicosObra.find(s => s.id == servicoId);
+                            if (servico && servico.preco_unitario) {
+                                valorTotalProducao += quantidade * parseFloat(servico.preco_unitario);
+                            }
+                        }
+                    });
+                    
                     producaoDiv.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: start; gap: 1rem;">
                             <div style="flex: 1;">
@@ -1922,6 +1937,13 @@ class ObrasManager {
                                     <i class="fas fa-tools"></i>
                                     <strong>Serviços:</strong> ${servicosTexto}
                                 </div>
+                                
+                                ${valorTotalProducao > 0 ? `
+                                    <div style="color: #20c997; font-size: 0.95em; font-weight: 600; margin: 0.5rem 0;">
+                                        <i class="fas fa-dollar-sign"></i>
+                                        <strong>Valor Total Produzido:</strong> ${this.formatMoney(valorTotalProducao)}
+                                    </div>
+                                ` : ''}
                                 
                                 ${producao.observacoes ? `
                                     <div style="color: #a0a0a0; font-size: 0.9em; font-style: italic; margin-top: 0.5rem;">
@@ -2136,6 +2158,11 @@ class ObrasManager {
     }
     
     async showModalGerarMedicao() {
+        if (!this.currentObraId) {
+            this.showNotification('Selecione uma obra primeiro', 'warning');
+            return;
+        }
+        
         const modal = document.getElementById('modal-gerar-medicao');
         if (!modal) return;
         
@@ -2146,12 +2173,8 @@ class ObrasManager {
         const hoje = new Date().toISOString().split('T')[0];
         document.getElementById('data-medicao').value = hoje;
         
-        // Carregar produções disponíveis
-        await this.loadProducoesParaMedicao();
-        
-        // Limpar seleção
-        this.producoesSelecionadasMedicao = [];
-        this.atualizarResumoMedicao();
+        // Carregar serviços contratados com informações completas
+        await this.loadServicosParaMedicao();
         
         modal.classList.add('show');
     }
@@ -2196,125 +2219,282 @@ class ObrasManager {
         }
     }
     
-    async loadProducoesParaMedicao() {
+    async loadServicosParaMedicao() {
         try {
             if (!this.currentObraId) return;
             
-            // Buscar produções diárias da obra
-            const { data: producoes, error } = await supabaseClient
+            // 1. Buscar todos os itens das propostas da obra
+            const servicosPromises = this.propostasSelecionadas.map(async (proposta) => {
+                const { data, error } = await supabaseClient
+                    .from('itens_proposta_hvc')
+                    .select(`
+                        *,
+                        servicos_hvc (*),
+                        propostas_hvc (numero_proposta),
+                        locais_hvc (nome)
+                    `)
+                    .eq('proposta_id', proposta.id);
+                
+                if (error) throw error;
+                return data || [];
+            });
+            
+            const servicosArrays = await Promise.all(servicosPromises);
+            const todosItens = servicosArrays.flat();
+            
+            // 2. Buscar todas as produções diárias da obra
+            const { data: producoes, error: prodError } = await supabaseClient
                 .from('producoes_diarias_hvc')
                 .select('*')
+                .eq('obra_id', this.currentObraId);
+            
+            if (prodError) throw prodError;
+            
+            // 3. Buscar todas as medições anteriores
+            const { data: medicoes, error: medError } = await supabaseClient
+                .from('medicoes_hvc')
+                .select(`
+                    id,
+                    medicoes_servicos (*)
+                `)
                 .eq('obra_id', this.currentObraId)
-                .order('data_producao', { ascending: false });
+                .neq('status', 'cancelada');
             
-            if (error) throw error;
+            if (medError) throw medError;
             
-            // Buscar nomes de equipes e integrantes
-            const producoesComNomes = await Promise.all((producoes || []).map(async (producao) => {
-                let nomeResponsavel = 'N/A';
+            // 4. Agrupar serviços por código e preço
+            const servicosAgrupados = {};
+            
+            todosItens.forEach(item => {
+                const servicoId = item.servicos_hvc?.id;
+                const servicoCodigo = item.servicos_hvc?.codigo;
+                const servicoNome = item.servicos_hvc?.descricao;
+                const unidade = item.servicos_hvc?.unidade || 'un';
+                const precoUnitario = parseFloat(item.preco_unitario) || 0;
+                const quantidade = parseFloat(item.quantidade) || 0;
+                const precoTotal = parseFloat(item.preco_total) || 0;
                 
-                if (producao.tipo_responsavel === 'equipe') {
-                    const { data: equipe } = await supabaseClient
-                        .from('equipes_hvc')
-                        .select('nome')
-                        .eq('id', producao.responsavel_id)
-                        .single();
-                    nomeResponsavel = equipe?.nome || 'Equipe não encontrada';
-                } else if (producao.tipo_responsavel === 'integrante') {
-                    const { data: integrante } = await supabaseClient
-                        .from('integrantes_hvc')
-                        .select('nome')
-                        .eq('id', producao.responsavel_id)
-                        .single();
-                    nomeResponsavel = integrante?.nome || 'Integrante não encontrado';
+                if (!servicoId || !servicoCodigo) return;
+                
+                // Chave única: servicoId + precoUnitario
+                const chave = `${servicoId}_${precoUnitario}`;
+                
+                if (!servicosAgrupados[chave]) {
+                    servicosAgrupados[chave] = {
+                        servicoId,
+                        codigo: servicoCodigo,
+                        nome: servicoNome,
+                        unidade,
+                        precoUnitario,
+                        quantidadeContratada: 0,
+                        valorTotalContratado: 0,
+                        quantidadeProduzida: 0,
+                        quantidadeMedida: 0,
+                        itens: []
+                    };
                 }
                 
-                return {
-                    ...producao,
-                    nome_responsavel: nomeResponsavel
-                };
-            }));
+                servicosAgrupados[chave].quantidadeContratada += quantidade;
+                servicosAgrupados[chave].valorTotalContratado += precoTotal;
+                servicosAgrupados[chave].itens.push(item);
+            });
             
-            this.renderProducoesParaMedicao(producoesComNomes);
+            // 5. Calcular quantidades produzidas
+            Object.values(servicosAgrupados).forEach(servico => {
+                let totalProduzido = 0;
+                
+                (producoes || []).forEach(producao => {
+                    const quantidades = producao.quantidades_servicos || {};
+                    if (quantidades[servico.servicoId]) {
+                        totalProduzido += parseFloat(quantidades[servico.servicoId]) || 0;
+                    }
+                });
+                
+                servico.quantidadeProduzida = totalProduzido;
+            });
+            
+            // 6. Calcular quantidades já medidas
+            Object.values(servicosAgrupados).forEach(servico => {
+                let totalMedido = 0;
+                
+                (medicoes || []).forEach(medicao => {
+                    const servicosMedicao = medicao.medicoes_servicos || [];
+                    servicosMedicao.forEach(sm => {
+                        // Verificar se é o mesmo serviço e mesmo preço
+                        if (sm.servico_id === servico.servicoId && 
+                            parseFloat(sm.preco_unitario) === servico.precoUnitario) {
+                            totalMedido += parseFloat(sm.quantidade_medida) || 0;
+                        }
+                    });
+                });
+                
+                servico.quantidadeMedida = totalMedido;
+            });
+            
+            // 7. Calcular quantidade disponível para medição
+            Object.values(servicosAgrupados).forEach(servico => {
+                servico.quantidadeDisponivel = Math.max(0, 
+                    servico.quantidadeProduzida - servico.quantidadeMedida
+                );
+            });
+            
+            // 8. Renderizar serviços
+            this.renderServicosParaMedicao(Object.values(servicosAgrupados));
             
         } catch (error) {
-            this.showNotification('Erro ao carregar produções: ' + error.message, 'error');
+            this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
         }
     }
     
-    renderProducoesParaMedicao(producoes) {
+    renderServicosParaMedicao(servicos) {
         const container = document.getElementById('producoes-para-medicao');
         if (!container) return;
         
-        if (producoes.length === 0) {
+        if (servicos.length === 0) {
             container.innerHTML = `
                 <div style="padding: 2rem; text-align: center; color: #888;">
-                    Nenhuma produção diária disponível.
+                    Nenhum serviço disponível para medição.
                 </div>
             `;
             return;
         }
         
         container.innerHTML = '';
-        this.producoesSelecionadasMedicao = [];
+        this.servicosMedicao = [];
         
-        producoes.forEach(producao => {
-            const nomeResponsavel = producao.nome_responsavel || 'N/A';
-            const dataFormatada = new Date(producao.data_producao).toLocaleDateString('pt-BR');
+        servicos.forEach((servico, index) => {
+            // Só mostrar serviços que têm quantidade disponível
+            if (servico.quantidadeDisponivel <= 0) return;
             
             const card = document.createElement('div');
             card.style.cssText = `
-                padding: 0.75rem;
+                padding: 1rem;
                 border: 1px solid rgba(173, 216, 230, 0.2);
-                border-radius: 6px;
-                margin-bottom: 0.5rem;
-                display: flex;
-                align-items: center;
-                gap: 1rem;
-                transition: all 0.2s;
-                cursor: pointer;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+                background: rgba(173, 216, 230, 0.05);
             `;
             
-            const checkbox = document.createElement('input');
-            checkbox.type = 'checkbox';
-            checkbox.value = producao.id;
-            checkbox.style.cssText = 'width: 18px; height: 18px; cursor: pointer;';
-            checkbox.addEventListener('change', () => {
-                if (checkbox.checked) {
-                    this.producoesSelecionadasMedicao.push(producao);
-                    card.style.background = 'rgba(40, 167, 69, 0.2)';
-                    card.style.borderColor = 'rgba(40, 167, 69, 0.5)';
-                } else {
-                    this.producoesSelecionadasMedicao = this.producoesSelecionadasMedicao.filter(p => p.id !== producao.id);
-                    card.style.background = 'transparent';
-                    card.style.borderColor = 'rgba(173, 216, 230, 0.2)';
-                }
-                this.atualizarResumoMedicao();
-            });
+            const valorUnitario = this.formatMoney(servico.precoUnitario);
             
-            const info = document.createElement('div');
-            info.style.flex = '1';
-            info.innerHTML = `
-                <div style="font-weight: 600; color: #add8e6; margin-bottom: 0.25rem;">
-                    ${dataFormatada} - ${nomeResponsavel}
-                </div>
-                <div style="font-size: 0.85rem; color: #c0c0c0;">
-                    ${producao.observacao || 'Sem observações'}
+            card.innerHTML = `
+                <div style="margin-bottom: 0.75rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <div>
+                            <strong style="color: #add8e6; font-size: 1.1em;">
+                                ${servico.codigo} - ${servico.nome}
+                            </strong>
+                        </div>
+                        <div style="text-align: right;">
+                            <span style="color: #20c997; font-weight: 600;">${valorUnitario}/${servico.unidade}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; font-size: 0.9em; color: #c0c0c0; margin-bottom: 1rem;">
+                        <div>
+                            <i class="fas fa-file-contract"></i>
+                            <strong>Contratado:</strong> ${servico.quantidadeContratada.toFixed(2)} ${servico.unidade}
+                        </div>
+                        <div>
+                            <i class="fas fa-tools"></i>
+                            <strong>Produzido:</strong> <span style="color: #90EE90;">${servico.quantidadeProduzida.toFixed(2)} ${servico.unidade}</span>
+                        </div>
+                        <div>
+                            <i class="fas fa-check-circle"></i>
+                            <strong>Já Medido:</strong> ${servico.quantidadeMedida.toFixed(2)} ${servico.unidade}
+                        </div>
+                        <div>
+                            <i class="fas fa-arrow-right"></i>
+                            <strong>Disponível:</strong> <span style="color: #ffc107; font-weight: 600;">${servico.quantidadeDisponivel.toFixed(2)} ${servico.unidade}</span>
+                        </div>
+                    </div>
+                    
+                    ${servico.itens.length > 1 ? `
+                        <details style="margin-bottom: 0.75rem; font-size: 0.85em;">
+                            <summary style="cursor: pointer; color: #add8e6; margin-bottom: 0.25rem;">
+                                <i class="fas fa-info-circle"></i> Ver detalhes das propostas (${servico.itens.length} itens)
+                            </summary>
+                            <div style="padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px; margin-top: 0.5rem;">
+                                ${servico.itens.map(item => `
+                                    <div style="padding: 0.25rem 0; color: #c0c0c0;">
+                                        • Proposta ${item.propostas_hvc?.numero_proposta}: ${item.quantidade} ${servico.unidade} × ${this.formatMoney(item.preco_unitario)} = ${this.formatMoney(item.preco_total)}
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </details>
+                    ` : ''}
+                    
+                    <div style="margin-top: 1rem;">
+                        <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">
+                            <i class="fas fa-ruler"></i> Quantidade a Medir: 
+                            <span id="valor-slider-${index}" style="color: #20c997; font-size: 1.1em; margin-left: 0.5rem;">0 ${servico.unidade}</span>
+                        </label>
+                        
+                        <input 
+                            type="range" 
+                            id="slider-${index}" 
+                            min="0" 
+                            max="${servico.quantidadeDisponivel}" 
+                            step="0.01" 
+                            value="0"
+                            style="width: 100%; height: 8px; border-radius: 5px; background: linear-gradient(to right, #000080 0%, #add8e6 100%); outline: none; -webkit-appearance: none;"
+                        />
+                        
+                        <div style="display: flex; justify-content: space-between; font-size: 0.85em; color: #888; margin-top: 0.25rem;">
+                            <span>0</span>
+                            <span>${servico.quantidadeDisponivel.toFixed(2)} ${servico.unidade}</span>
+                        </div>
+                        
+                        <div style="margin-top: 0.5rem; padding: 0.5rem; background: rgba(32, 201, 151, 0.1); border-radius: 4px; border-left: 3px solid #20c997;">
+                            <strong style="color: #20c997;">Valor a Medir:</strong>
+                            <span id="valor-total-${index}" style="color: #20c997; font-size: 1.1em; font-weight: 600; margin-left: 0.5rem;">R$ 0,00</span>
+                        </div>
+                    </div>
                 </div>
             `;
-            
-            card.appendChild(checkbox);
-            card.appendChild(info);
-            card.onclick = (e) => {
-                if (e.target !== checkbox) {
-                    checkbox.checked = !checkbox.checked;
-                    checkbox.dispatchEvent(new Event('change'));
-                }
-            };
             
             container.appendChild(card);
+            
+            // Adicionar event listener ao slider
+            const slider = document.getElementById(`slider-${index}`);
+            const valorSlider = document.getElementById(`valor-slider-${index}`);
+            const valorTotal = document.getElementById(`valor-total-${index}`);
+            
+            slider.addEventListener('input', () => {
+                const quantidade = parseFloat(slider.value);
+                const valor = quantidade * servico.precoUnitario;
+                
+                valorSlider.textContent = `${quantidade.toFixed(2)} ${servico.unidade}`;
+                valorTotal.textContent = this.formatMoney(valor);
+                
+                // Atualizar array de serviços selecionados
+                this.atualizarServicoMedicao(index, servico, quantidade);
+            });
         });
     }
+    
+    atualizarServicoMedicao(index, servico, quantidade) {
+        // Remover entrada anterior se existir
+        this.servicosMedicao = this.servicosMedicao.filter(s => s.index !== index);
+        
+        // Adicionar nova entrada se quantidade > 0
+        if (quantidade > 0) {
+            this.servicosMedicao.push({
+                index,
+                servico_id: servico.servicoId,
+                codigo_servico: servico.codigo,
+                nome_servico: servico.nome,
+                unidade: servico.unidade,
+                quantidade_medida: quantidade,
+                preco_unitario: servico.precoUnitario,
+                valor_total: quantidade * servico.precoUnitario
+            });
+        }
+        
+        // Atualizar resumo
+        this.atualizarResumoMedicao();
+    }
+    
     
     async atualizarResumoMedicao() {
         const tbody = document.getElementById('tbody-resumo-servicos');
@@ -2322,11 +2502,11 @@ class ObrasManager {
         
         if (!tbody || !valorTotalEl) return;
         
-        if (this.producoesSelecionadasMedicao.length === 0) {
+        if (!this.servicosMedicao || this.servicosMedicao.length === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="4" style="padding: 2rem; text-align: center; color: #888;">
-                        Selecione produções para ver o resumo
+                        Ajuste os sliders para selecionar quantidades a medir
                     </td>
                 </tr>
             `;
@@ -2334,67 +2514,41 @@ class ObrasManager {
             return;
         }
         
-        // Agrupar serviços das produções selecionadas
-        const servicosAgrupados = {};
-        
-        for (const producao of this.producoesSelecionadasMedicao) {
-            const quantidades = JSON.parse(producao.quantidades || '{}');
-            
-            for (const [itemPropostaId, quantidade] of Object.entries(quantidades)) {
-                if (!servicosAgrupados[itemPropostaId]) {
-                    servicosAgrupados[itemPropostaId] = {
-                        itemPropostaId,
-                        quantidade: 0
-                    };
-                }
-                servicosAgrupados[itemPropostaId].quantidade += parseFloat(quantidade);
-            }
-        }
-        
-        // Buscar informações dos serviços
         tbody.innerHTML = '';
         let valorTotal = 0;
         
-        for (const servicoData of Object.values(servicosAgrupados)) {
-            try {
-                const { data: itemProposta, error } = await supabaseClient
-                    .from('itens_proposta_hvc')
-                    .select(`
-                        *,
-                        servicos_hvc(nome, unidade)
-                    `)
-                    .eq('id', servicoData.itemPropostaId)
-                    .single();
-                
-                if (error) throw error;
-                
-                const precoUnitario = itemProposta.preco_unitario || 0;
-                const valorServico = servicoData.quantidade * precoUnitario;
-                valorTotal += valorServico;
-                
-                const row = document.createElement('tr');
-                row.style.borderBottom = '1px solid rgba(173, 216, 230, 0.1)';
-                row.innerHTML = `
-                    <td style="padding: 0.75rem;">${itemProposta.servicos_hvc?.nome || 'N/A'}</td>
-                    <td style="padding: 0.75rem; text-align: center;">${servicoData.quantidade.toFixed(2)} ${itemProposta.servicos_hvc?.unidade || ''}</td>
-                    <td style="padding: 0.75rem; text-align: right;">${this.formatMoney(precoUnitario)}</td>
-                    <td style="padding: 0.75rem; text-align: right; font-weight: 600; color: #20c997;">${this.formatMoney(valorServico)}</td>
-                `;
-                tbody.appendChild(row);
-                
-            } catch (error) {
-                console.error('Erro ao buscar serviço:', error);
-            }
-        }
+        this.servicosMedicao.forEach(servico => {
+            valorTotal += servico.valor_total;
+            
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid rgba(173, 216, 230, 0.1)';
+            row.innerHTML = `
+                <td style="padding: 0.75rem;">
+                    <strong style="color: #add8e6;">${servico.codigo_servico}</strong><br>
+                    <small style="color: #c0c0c0;">${servico.nome_servico}</small>
+                </td>
+                <td style="padding: 0.75rem; text-align: center;">
+                    ${servico.quantidade_medida.toFixed(2)} ${servico.unidade}
+                </td>
+                <td style="padding: 0.75rem; text-align: right;">
+                    ${this.formatMoney(servico.preco_unitario)}
+                </td>
+                <td style="padding: 0.75rem; text-align: right; font-weight: 600; color: #20c997;">
+                    ${this.formatMoney(servico.valor_total)}
+                </td>
+            `;
+            tbody.appendChild(row);
+        });
         
         valorTotalEl.textContent = this.formatMoney(valorTotal);
     }
     
+    
     async handleSubmitGerarMedicao(e) {
         e.preventDefault();
         
-        if (this.producoesSelecionadasMedicao.length === 0) {
-            this.showNotification('Selecione pelo menos uma produção diária', 'warning');
+        if (!this.servicosMedicao || this.servicosMedicao.length === 0) {
+            this.showNotification('Selecione pelo menos um serviço para medir', 'warning');
             return;
         }
         
@@ -2404,43 +2558,11 @@ class ObrasManager {
             const previsaoPagamento = document.getElementById('previsao-pagamento-medicao').value;
             const observacoes = document.getElementById('observacoes-medicao').value;
             
-            // Calcular serviços e valor total
-            const servicosAgrupados = {};
-            
-            for (const producao of this.producoesSelecionadasMedicao) {
-                const quantidades = JSON.parse(producao.quantidades || '{}');
-                
-                for (const [itemPropostaId, quantidade] of Object.entries(quantidades)) {
-                    if (!servicosAgrupados[itemPropostaId]) {
-                        servicosAgrupados[itemPropostaId] = 0;
-                    }
-                    servicosAgrupados[itemPropostaId] += parseFloat(quantidade);
-                }
-            }
-            
+            // Calcular valor total
             let valorTotal = 0;
-            const servicosMedicao = [];
-            
-            for (const [itemPropostaId, quantidade] of Object.entries(servicosAgrupados)) {
-                const { data: itemProposta, error } = await supabaseClient
-                    .from('itens_proposta_hvc')
-                    .select('preco_unitario')
-                    .eq('id', itemPropostaId)
-                    .single();
-                
-                if (error) throw error;
-                
-                const precoUnitario = itemProposta.preco_unitario || 0;
-                const valorServico = quantidade * precoUnitario;
-                valorTotal += valorServico;
-                
-                servicosMedicao.push({
-                    item_proposta_id: itemPropostaId,
-                    quantidade_medida: quantidade,
-                    preco_unitario: precoUnitario,
-                    valor_total: valorServico
-                });
-            }
+            this.servicosMedicao.forEach(servico => {
+                valorTotal += servico.valor_total;
+            });
             
             // Criar medição
             const { data: medicao, error: medicaoError } = await supabaseClient
@@ -2460,12 +2582,18 @@ class ObrasManager {
             if (medicaoError) throw medicaoError;
             
             // Inserir serviços da medição
-            for (const servico of servicosMedicao) {
+            for (const servico of this.servicosMedicao) {
                 const { error: servicoError } = await supabaseClient
                     .from('medicoes_servicos')
                     .insert([{
                         medicao_id: medicao.id,
-                        ...servico
+                        servico_id: servico.servico_id,
+                        codigo_servico: servico.codigo_servico,
+                        nome_servico: servico.nome_servico,
+                        unidade: servico.unidade,
+                        quantidade_medida: servico.quantidade_medida,
+                        preco_unitario: servico.preco_unitario,
+                        valor_total: servico.valor_total
                     }]);
                 
                 if (servicoError) throw servicoError;
@@ -2493,6 +2621,7 @@ class ObrasManager {
         }
     }
     
+    
     async verDetalhesMedicao(medicaoId) {
         try {
             // Buscar dados da medição
@@ -2507,12 +2636,7 @@ class ObrasManager {
             // Buscar serviços da medição
             const { data: servicos, error: servicosError } = await supabaseClient
                 .from('medicoes_servicos')
-                .select(`
-                    *,
-                    itens_proposta_hvc (
-                        servicos_hvc (codigo, nome, unidade)
-                    )
-                `)
+                .select('*')
                 .eq('medicao_id', medicaoId);
             
             if (servicosError) throw servicosError;
@@ -2579,9 +2703,9 @@ class ObrasManager {
         `;
         
         servicos.forEach(servico => {
-            const nomeServico = servico.itens_proposta_hvc?.servicos_hvc?.nome || 'Serviço não encontrado';
-            const codigoServico = servico.itens_proposta_hvc?.servicos_hvc?.codigo || '-';
-            const unidade = servico.itens_proposta_hvc?.servicos_hvc?.unidade || 'un';
+            const nomeServico = servico.nome_servico || servico.servico_nome || 'Serviço';
+            const codigoServico = servico.codigo_servico || servico.servico_codigo || '-';
+            const unidade = servico.unidade || 'un';
             
             html += `
                 <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
