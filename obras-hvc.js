@@ -2718,12 +2718,22 @@ fecharModalAjustarQuantidade() {
 
     
     async atualizarResumoMedicao() {
+        console.log('[RESUMO] Iniciando atualizarResumoMedicao');
+        console.log('[RESUMO] servicosMedicao:', this.servicosMedicao);
+        
         const tbody = document.getElementById('tbody-resumo-servicos');
         const valorTotalEl = document.getElementById('valor-total-medicao');
         
-        if (!tbody || !valorTotalEl) return;
+        console.log('[RESUMO] tbody:', tbody);
+        console.log('[RESUMO] valorTotalEl:', valorTotalEl);
+        
+        if (!tbody || !valorTotalEl) {
+            console.error('[RESUMO] tbody ou valorTotalEl não encontrado!');
+            return;
+        }
         
         if (!this.servicosMedicao || this.servicosMedicao.length === 0) {
+            console.log('[RESUMO] servicosMedicao vazio, mostrando mensagem');
             tbody.innerHTML = `
                 <tr>
                     <td colspan="4" style="padding: 2rem; text-align: center; color: #888;">
@@ -2735,10 +2745,12 @@ fecharModalAjustarQuantidade() {
             return;
         }
         
+        console.log('[RESUMO] Renderizando', this.servicosMedicao.length, 'serviços');
         tbody.innerHTML = '';
         let valorTotal = 0;
         
-        this.servicosMedicao.forEach(servico => {
+        this.servicosMedicao.forEach((servico, index) => {
+            console.log('[RESUMO] Renderizando serviço', index, ':', servico);
             valorTotal += servico.valor_total;
             
             const row = document.createElement('tr');
@@ -2759,9 +2771,12 @@ fecharModalAjustarQuantidade() {
                 </td>
             `;
             tbody.appendChild(row);
+            console.log('[RESUMO] Row adicionada ao tbody');
         });
         
+        console.log('[RESUMO] Valor total:', valorTotal);
         valorTotalEl.textContent = this.formatMoney(valorTotal);
+        console.log('[RESUMO] Resumo atualizado com sucesso!');
     }
     
     
