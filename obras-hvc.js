@@ -2433,7 +2433,9 @@ class ObrasManager {
                 
                 <div style="margin-left: 1rem;">
                     <button 
-                        onclick="obrasManager.abrirModalAjustarQuantidade(${servicoId}, '${servico.codigo}', '${servico.nome}', '${servico.unidade}', ${servico.precoUnitario}, ${servico.quantidadeDisponivel}, ${quantidadeSelecionada})"
+                        class="btn-ajustar-medicao"
+                        data-servico-id="${servicoId}"
+                        data-index="${servicoId}"
                         style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #000080 0%, #191970 100%); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
                         onmouseover="this.style.background='linear-gradient(135deg, #191970 0%, #000080 100%)'"
                         onmouseout="this.style.background='linear-gradient(135deg, #000080 0%, #191970 100%)'"
@@ -2445,6 +2447,28 @@ class ObrasManager {
         `;
         
         container.appendChild(card);
+    });
+    
+    // Adicionar event listeners aos botões
+    const botoes = container.querySelectorAll('.btn-ajustar-medicao');
+    botoes.forEach(botao => {
+        botao.addEventListener('click', () => {
+            const servicoId = parseInt(botao.dataset.servicoId);
+            const servico = this.servicosParaMedicao.find(s => s.servicoId === servicoId);
+            if (!servico) return;
+            
+            const quantidadeAtual = this.servicosMedicao.find(s => s.servico_id === servicoId)?.quantidade_medida || 0;
+            
+            this.abrirModalAjustarQuantidade(
+                servicoId,
+                servico.codigo,
+                servico.nome,
+                servico.unidade,
+                servico.precoUnitario,
+                servico.quantidadeDisponivel,
+                quantidadeAtual
+            );
+        });
     });
 }
 
