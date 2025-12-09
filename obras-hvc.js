@@ -2433,6 +2433,7 @@ class ObrasManager {
                 
                 <div style="margin-left: 1rem;">
                     <button 
+                        type="button"
                         class="btn-ajustar-medicao"
                         data-servico-id="${servicoId}"
                         data-index="${servicoId}"
@@ -2557,12 +2558,14 @@ abrirModalAjustarQuantidade(servicoId, codigo, nome, unidade, precoUnitario, qua
                 
                 <div style="display: flex; gap: 1rem;">
                     <button 
+                        type="button"
                         onclick="obrasManager.fecharModalAjustarQuantidade()"
                         style="flex: 1; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); color: #c0c0c0; border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px; cursor: pointer; font-weight: 600;"
                     >
                         <i class="fas fa-times"></i> Cancelar
                     </button>
                     <button 
+                        type="button"
                         onclick="obrasManager.confirmarQuantidade(${servicoId})"
                         style="flex: 2; padding: 0.75rem; background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 1.05em;"
                     >
