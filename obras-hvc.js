@@ -776,26 +776,17 @@ class ObrasManager {
                 return 0;
             }
 
-            // PASSO 6: Aplicar fórmula matemática
+            // PASSO 6: Aplicar fórmula matemática usando percentual real
             let somaPercentuais = 0;
 
             itensComValor.forEach(item => {
                 const andamento = andamentos?.find(a => a.item_proposta_id === item.id);
-                const status = andamento?.status || 'PENDENTE';
                 
-                // Aplicar multiplicadores conforme especificação
-                let multiplicador = 0;
-                switch (status) {
-                    case 'PENDENTE':
-                        multiplicador = 0;
-                        break;
-                    case 'INICIADO':
-                        multiplicador = 0.5;
-                        break;
-                    case 'CONCLUIDO':
-                        multiplicador = 1;
-                        break;
-                }
+                // Usar percentual_real se existir, senão usar 0
+                const percentualReal = andamento?.percentual_real || 0;
+                
+                // Converter percentual para multiplicador (75% = 0.75)
+                const multiplicador = Math.min(percentualReal / 100, 1);
 
                 const contribuicao = item.percentualObra * multiplicador;
                 somaPercentuais += contribuicao;
@@ -950,11 +941,46 @@ class ObrasManager {
                     });
                 }
                 
-                // Formatar quantidade: "executado / total unidade"
+                // Calcular quantidades já medidas para este item de proposta
+                let quantidadeMedida = 0;
+                if (this.medicoesObra && this.medicoesObra.length > 0) {
+                    this.medicoesObra.forEach(medicao => {
+                        if (medicao.medicoes_servicos && medicao.medicoes_servicos.length > 0) {
+                            medicao.medicoes_servicos.forEach(ms => {
+                                if (ms.item_proposta_id === item.id) {
+                                    quantidadeMedida += parseFloat(ms.quantidade_medida) || 0;
+                                }
+                            });
+                        }
+                    });
+                }
+                
+                // Formatar quantidade: "medido / executado / total unidade"
                 const unidade = item.servicos_hvc?.unidade || '';
                 const quantidadeTexto = quantidadeExecutada > 0 
-                    ? `${quantidadeExecutada} / ${quantidade} ${unidade}`.trim()
+                    ? `${quantidadeMedida} / ${quantidadeExecutada} / ${quantidade} ${unidade}`.trim()
                     : `${quantidade} ${unidade}`.trim();
+                
+                // Calcular status automático baseado em produção
+                let statusTexto = '';
+                let statusCor = '';
+                let percentualServico = 0;
+                
+                if (quantidadeExecutada === 0) {
+                    statusTexto = 'PENDENTE (0,0%)';
+                    statusCor = '#6c757d';
+                    percentualServico = 0;
+                } else {
+                    percentualServico = (quantidadeExecutada / quantidade) * 100;
+                    
+                    if (percentualServico >= 100) {
+                        statusTexto = `CONCLUÍDO (${percentualServico.toFixed(1)}%)`;
+                        statusCor = '#28a745';
+                    } else {
+                        statusTexto = `INICIADO (${percentualServico.toFixed(1)}%)`;
+                        statusCor = '#ffc107';
+                    }
+                }
                 
                 // ✅ ADICIONADO: Obter nome do local
                 const localNome = this.getLocalNome(item.local_id);
@@ -976,11 +1002,9 @@ class ObrasManager {
                     </td>
                     <td><strong style="color: #20c997;">${this.formatMoney(precoTotal)}</strong></td>
                     <td>
-                        <select class="form-select status-servico" data-index="${index}" style="width: 160px; padding: 8px; font-size: 0.85rem;">
-                            <option value="PENDENTE" ${andamentoExistente?.status === 'PENDENTE' ? 'selected' : ''}>Pendente (0%)</option>
-                            <option value="INICIADO" ${andamentoExistente?.status === 'INICIADO' ? 'selected' : ''}>Iniciado (50%)</option>
-                            <option value="CONCLUIDO" ${andamentoExistente?.status === 'CONCLUIDO' ? 'selected' : ''}>Concluído (100%)</option>
-                        </select>
+                        <span class="status-badge" data-index="${index}" data-percentual="${percentualServico.toFixed(1)}" style="display: inline-block; padding: 6px 12px; border-radius: 4px; background-color: ${statusCor}; color: white; font-weight: 600; font-size: 0.85rem;">
+                            ${statusTexto}
+                        </span>
                     </td>
                     <td>
                         <input type="date" 
@@ -1056,24 +1080,34 @@ class ObrasManager {
             return;
         }
         
-        const statusSelects = document.querySelectorAll('.status-servico');
+        const statusBadges = document.querySelectorAll('.status-badge');
         const dataInicioInputs = document.querySelectorAll('.data-inicio-servico');
         const dataFinalInputs = document.querySelectorAll('.data-final-servico');
         const observacoesTextareas = document.querySelectorAll('.observacoes-servico');
         
         const andamentos = [];
         
-        statusSelects.forEach((select, index) => {
+        statusBadges.forEach((badge, index) => {
             const dataInicioInput = dataInicioInputs[index];
             const dataFinalInput = dataFinalInputs[index];
             const observacoesTextarea = observacoesTextareas[index];
             const servico = this.servicosAndamento[index];
+            const percentual = parseFloat(badge.dataset.percentual) || 0;
+            
+            // Determinar status baseado no percentual
+            let status = 'PENDENTE';
+            if (percentual >= 100) {
+                status = 'CONCLUIDO';
+            } else if (percentual > 0) {
+                status = 'INICIADO';
+            }
             
             if (servico) {
                 andamentos.push({
                     obra_id: this.currentObraId,
                     item_proposta_id: servico.id,
-                    status: select.value,
+                    status: status,
+                    percentual_real: percentual,
                     data_inicio: dataInicioInput.value || null,
                     data_final: dataFinalInput.value || null,
                     observacoes: observacoesTextarea.value || null
@@ -2082,12 +2116,17 @@ class ObrasManager {
             
             const { data: medicoes, error } = await supabaseClient
                 .from('medicoes_hvc')
-                .select('*')
+                .select(`
+                    *,
+                    medicoes_servicos (*)
+                `)
                 .eq('obra_id', this.currentObraId)
+                .neq('status', 'cancelada')
                 .order('created_at', { ascending: false });
             
             if (error) throw error;
             
+            this.medicoesObra = medicoes || [];
             this.renderMedicoesObra(medicoes || []);
             
         } catch (error) {
