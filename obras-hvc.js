@@ -251,6 +251,25 @@ class ObrasManager {
                 });
             }
             
+            // Event listeners para Modal de Detalhes da Medição
+            const closeModalDetalhesMedicao = document.getElementById('close-modal-detalhes-medicao');
+            const fecharDetalhesMedicao = document.getElementById('fechar-detalhes-medicao');
+            
+            if (closeModalDetalhesMedicao) {
+                closeModalDetalhesMedicao.addEventListener('click', () => this.hideModalDetalhesMedicao());
+            }
+            if (fecharDetalhesMedicao) {
+                fecharDetalhesMedicao.addEventListener('click', () => this.hideModalDetalhesMedicao());
+            }
+            
+            // Fechar modal de detalhes clicando fora
+            const modalDetalhesMedicao = document.getElementById('modal-detalhes-medicao');
+            if (modalDetalhesMedicao) {
+                modalDetalhesMedicao.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-detalhes-medicao') this.hideModalDetalhesMedicao();
+                });
+            }
+            
         } catch (error) {
         }
     }
@@ -2181,20 +2200,42 @@ class ObrasManager {
         try {
             if (!this.currentObraId) return;
             
-            // Buscar produções que ainda não foram medidas
+            // Buscar produções diárias da obra
             const { data: producoes, error } = await supabaseClient
                 .from('producoes_diarias_hvc')
-                .select(`
-                    *,
-                    equipes_hvc(nome),
-                    integrantes_hvc(nome)
-                `)
+                .select('*')
                 .eq('obra_id', this.currentObraId)
                 .order('data_producao', { ascending: false });
             
             if (error) throw error;
             
-            this.renderProducoesParaMedicao(producoes || []);
+            // Buscar nomes de equipes e integrantes
+            const producoesComNomes = await Promise.all((producoes || []).map(async (producao) => {
+                let nomeResponsavel = 'N/A';
+                
+                if (producao.tipo_responsavel === 'equipe') {
+                    const { data: equipe } = await supabaseClient
+                        .from('equipes_hvc')
+                        .select('nome')
+                        .eq('id', producao.responsavel_id)
+                        .single();
+                    nomeResponsavel = equipe?.nome || 'Equipe não encontrada';
+                } else if (producao.tipo_responsavel === 'integrante') {
+                    const { data: integrante } = await supabaseClient
+                        .from('integrantes_hvc')
+                        .select('nome')
+                        .eq('id', producao.responsavel_id)
+                        .single();
+                    nomeResponsavel = integrante?.nome || 'Integrante não encontrado';
+                }
+                
+                return {
+                    ...producao,
+                    nome_responsavel: nomeResponsavel
+                };
+            }));
+            
+            this.renderProducoesParaMedicao(producoesComNomes);
             
         } catch (error) {
             this.showNotification('Erro ao carregar produções: ' + error.message, 'error');
@@ -2218,7 +2259,7 @@ class ObrasManager {
         this.producoesSelecionadasMedicao = [];
         
         producoes.forEach(producao => {
-            const nomeEquipe = producao.equipes_hvc?.nome || producao.integrantes_hvc?.nome || 'N/A';
+            const nomeResponsavel = producao.nome_responsavel || 'N/A';
             const dataFormatada = new Date(producao.data_producao).toLocaleDateString('pt-BR');
             
             const card = document.createElement('div');
@@ -2255,7 +2296,7 @@ class ObrasManager {
             info.style.flex = '1';
             info.innerHTML = `
                 <div style="font-weight: 600; color: #add8e6; margin-bottom: 0.25rem;">
-                    ${dataFormatada} - ${nomeEquipe}
+                    ${dataFormatada} - ${nomeResponsavel}
                 </div>
                 <div style="font-size: 0.85rem; color: #c0c0c0;">
                     ${producao.observacao || 'Sem observações'}
@@ -2453,8 +2494,140 @@ class ObrasManager {
     }
     
     async verDetalhesMedicao(medicaoId) {
-        // Redirecionar para página de medições (implementar depois se necessário)
-        this.showNotification('Funcionalidade em desenvolvimento', 'info');
+        try {
+            // Buscar dados da medição
+            const { data: medicao, error: medicaoError } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('*')
+                .eq('id', medicaoId)
+                .single();
+            
+            if (medicaoError) throw medicaoError;
+            
+            // Buscar serviços da medição
+            const { data: servicos, error: servicosError } = await supabaseClient
+                .from('medicoes_servicos')
+                .select(`
+                    *,
+                    itens_proposta_hvc (
+                        servicos_hvc (codigo, nome, unidade)
+                    )
+                `)
+                .eq('medicao_id', medicaoId);
+            
+            if (servicosError) throw servicosError;
+            
+            // Renderizar detalhes
+            this.renderDetalhesMedicao(medicao, servicos || []);
+            
+            // Mostrar modal
+            const modal = document.getElementById('modal-detalhes-medicao');
+            if (modal) modal.classList.add('show');
+            
+        } catch (error) {
+            this.showNotification('Erro ao carregar detalhes da medição: ' + error.message, 'error');
+        }
+    }
+    
+    renderDetalhesMedicao(medicao, servicos) {
+        const container = document.getElementById('conteudo-detalhes-medicao');
+        if (!container) return;
+        
+        const statusColors = {
+            'pendente': '#ffc107',
+            'aprovada': '#28a745',
+            'paga': '#20c997',
+            'cancelada': '#dc3545'
+        };
+        
+        const statusColor = statusColors[medicao.status] || '#6c757d';
+        
+        let html = `
+            <div style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.2);">
+                    <div>
+                        <h3 style="color: #add8e6; margin-bottom: 0.5rem;">${medicao.numero_medicao}</h3>
+                        <span style="padding: 0.35rem 1rem; background: ${statusColor}; color: white; border-radius: 15px; font-size: 0.9rem; font-weight: 600;">
+                            ${medicao.status.toUpperCase()}
+                        </span>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-size: 0.9rem; color: #c0c0c0; margin-bottom: 0.25rem;">
+                            <i class="fas fa-calendar"></i> Criada em: ${new Date(medicao.created_at).toLocaleDateString('pt-BR')}
+                        </div>
+                        ${medicao.previsao_pagamento ? `
+                            <div style="font-size: 0.9rem; color: #c0c0c0;">
+                                <i class="fas fa-calendar-check"></i> Previsão: ${new Date(medicao.previsao_pagamento).toLocaleDateString('pt-BR')}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <div style="background: rgba(173, 216, 230, 0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                    <h4 style="color: #add8e6; margin-bottom: 1rem;"><i class="fas fa-list"></i> Serviços Medidos</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid rgba(173, 216, 230, 0.2);">
+                                <th style="padding: 0.75rem; text-align: left; color: #add8e6; font-weight: 600;">CÓDIGO</th>
+                                <th style="padding: 0.75rem; text-align: left; color: #add8e6; font-weight: 600;">SERVIÇO</th>
+                                <th style="padding: 0.75rem; text-align: center; color: #add8e6; font-weight: 600;">QUANTIDADE</th>
+                                <th style="padding: 0.75rem; text-align: right; color: #add8e6; font-weight: 600;">PREÇO UNIT.</th>
+                                <th style="padding: 0.75rem; text-align: right; color: #add8e6; font-weight: 600;">VALOR TOTAL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+        `;
+        
+        servicos.forEach(servico => {
+            const nomeServico = servico.itens_proposta_hvc?.servicos_hvc?.nome || 'Serviço não encontrado';
+            const codigoServico = servico.itens_proposta_hvc?.servicos_hvc?.codigo || '-';
+            const unidade = servico.itens_proposta_hvc?.servicos_hvc?.unidade || 'un';
+            
+            html += `
+                <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
+                    <td style="padding: 0.75rem; color: #c0c0c0;">${codigoServico}</td>
+                    <td style="padding: 0.75rem; color: #ffffff;">${nomeServico}</td>
+                    <td style="padding: 0.75rem; text-align: center; color: #c0c0c0;">${servico.quantidade_medida} ${unidade}</td>
+                    <td style="padding: 0.75rem; text-align: right; color: #c0c0c0;">${this.formatMoney(servico.preco_unitario)}</td>
+                    <td style="padding: 0.75rem; text-align: right; color: #20c997; font-weight: 600;">${this.formatMoney(servico.valor_total)}</td>
+                </tr>
+            `;
+        });
+        
+        html += `
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div style="background: linear-gradient(135deg, #000080 0%, #191970 100%); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <span style="color: #add8e6; font-size: 1.1rem; font-weight: 600;">
+                            <i class="fas fa-dollar-sign"></i> Valor Total da Medição:
+                        </span>
+                        <span style="color: #20c997; font-size: 1.5rem; font-weight: 700;">
+                            ${this.formatMoney(medicao.valor_total || 0)}
+                        </span>
+                    </div>
+                </div>
+        `;
+        
+        if (medicao.observacoes) {
+            html += `
+                <div style="background: rgba(173, 216, 230, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid #add8e6;">
+                    <h4 style="color: #add8e6; margin-bottom: 0.5rem;"><i class="fas fa-comment"></i> Observações</h4>
+                    <p style="color: #c0c0c0; line-height: 1.6; margin: 0;">${medicao.observacoes}</p>
+                </div>
+            `;
+        }
+        
+        html += `</div>`;
+        
+        container.innerHTML = html;
+    }
+    
+    hideModalDetalhesMedicao() {
+        const modal = document.getElementById('modal-detalhes-medicao');
+        if (modal) modal.classList.remove('show');
     }
 }
 
