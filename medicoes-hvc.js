@@ -511,6 +511,7 @@ class MedicoesManager {
 
                 return {
                     servico_id: servico.id,
+                    item_proposta_id: itemProposta?.id || null,
                     servico_codigo: servico.codigo,
                     servico_descricao: servico.descricao,
                     unidade: servico.unidade,
@@ -1045,9 +1046,10 @@ class MedicoesManager {
                     const quantidade = parseFloat(input.value);
                     if (quantidade > 0) {
                         servicosParaMedir.push({
+                            item_proposta_id: servico.item_proposta_id,
                             servico_id: servico.servico_id,
                             quantidade_medida: quantidade,
-                            valor_unitario: servico.valor_unitario_contratado,
+                            preco_unitario: servico.valor_unitario_contratado,
                             valor_total: quantidade * servico.valor_unitario_contratado
                         });
                         temServicos = true;
@@ -1071,12 +1073,6 @@ class MedicoesManager {
             // Gerar número da medição
             const numeroMedicao = await this.gerarNumeroMedicao();
 
-            // Salvar dados dos serviços no campo observacoes como JSON
-            const dadosServicos = {
-                servicos: servicosParaMedir,
-                observacoes_usuario: observacoes ? observacoes.value : ''
-            };
-
             const dadosMedicao = {
                 numero_medicao: numeroMedicao,
                 obra_id: this.obraSelecionada.id,
@@ -1087,7 +1083,7 @@ class MedicoesManager {
                 previsao_pagamento: dataRecebimento.value,
                 emitir_boleto: false,
                 status: status,
-                observacoes: JSON.stringify(dadosServicos)
+                observacoes: observacoes ? observacoes.value : ''
             };
 
             console.log('📋 Dados da medição:', dadosMedicao);
@@ -1095,13 +1091,36 @@ class MedicoesManager {
             this.showLoading();
 
             // Criar nova medição
-            const { data, error } = await supabaseClient
+            const { data: medicao, error: medicaoError } = await supabaseClient
                 .from('medicoes_hvc')
                 .insert([dadosMedicao])
                 .select()
                 .single();
 
-            if (error) throw error;
+            if (medicaoError) throw medicaoError;
+            
+            // Inserir serviços na tabela medicoes_servicos
+            for (const servico of servicosParaMedir) {
+                if (!servico.item_proposta_id) {
+                    console.warn('Serviço sem item_proposta_id:', servico);
+                    continue;
+                }
+                
+                const { error: servicoError } = await supabaseClient
+                    .from('medicoes_servicos')
+                    .insert([{
+                        medicao_id: medicao.id,
+                        item_proposta_id: servico.item_proposta_id,
+                        quantidade_medida: servico.quantidade_medida,
+                        preco_unitario: servico.preco_unitario,
+                        valor_total: servico.valor_total
+                    }]);
+                
+                if (servicoError) {
+                    console.error('Erro ao inserir serviço:', servicoError);
+                    throw servicoError;
+                }
+            }
 
             this.hideLoading();
 
