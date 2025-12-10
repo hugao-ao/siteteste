@@ -1116,7 +1116,6 @@ class ObrasManager {
             
             // Atualizar valor total da obra no banco
             const valorTotalCorreto = await this.calcularValorTotalCorreto();
-            console.log('[SALVAR] Chamando atualizarValorTotalNoBanco com:', valorTotalCorreto);
             await this.atualizarValorTotalNoBanco(this.currentObraId, valorTotalCorreto);
             
             // Recarregar lista de obras para mostrar valores atualizados
@@ -1135,9 +1134,6 @@ class ObrasManager {
         
         try {
             const valorEmCentavos = Math.round(valorTotal * 100);
-            console.log('[SALVAR VALOR] obraId:', obraId);
-            console.log('[SALVAR VALOR] valorTotal (reais):', valorTotal);
-            console.log('[SALVAR VALOR] valorEmCentavos:', valorEmCentavos);
             
             const { error } = await supabaseClient
                 .from('obras_hvc')
@@ -1145,19 +1141,16 @@ class ObrasManager {
                 .eq('id', obraId);
 
             if (error) {
-                console.error('[SALVAR VALOR] Erro:', error);
-            } else {
-                console.log('[SALVAR VALOR] Sucesso!');
+                console.error('Erro ao atualizar valor total:', error);
             }
         } catch (error) {
-            console.error('[SALVAR VALOR] Exception:', error);
+            console.error('Erro ao atualizar valor total:', error);
         }
     }
 
     // === OBRAS ===
     async loadObras() {
         try {
-            console.log('[LOAD OBRAS] Carregando obras...');
             
             const { data, error } = await supabaseClient
                 .from('obras_hvc')
@@ -1172,11 +1165,6 @@ class ObrasManager {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-
-            console.log('[LOAD OBRAS] Obras carregadas:', data?.length);
-            if (data && data.length > 0) {
-                console.log('[LOAD OBRAS] Primeira obra - valor_total:', data[0].valor_total);
-            }
 
             this.obras = data || [];
             this.renderObras(this.obras);
