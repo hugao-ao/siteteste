@@ -2609,7 +2609,7 @@ abrirModalAjustarQuantidade(chaveUnica, codigo, nome, unidade, precoUnitario, qu
     
     // Guardar dados do serviço atual
     this.servicoAtualModal = {
-        servicoId,
+        chaveUnica,
         codigo,
         nome,
         unidade,
