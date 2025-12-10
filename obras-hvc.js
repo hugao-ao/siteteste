@@ -679,8 +679,6 @@ class ObrasManager {
         try {
             let valorTotalObra = 0;
             
-            console.log('[VALOR] Calculando valor total. Propostas:', this.propostasSelecionadas.length);
-            
             for (const proposta of this.propostasSelecionadas) {
                 // Buscar preco_total da tabela itens_proposta_hvc
                 const { data: itens, error } = await supabaseClient
@@ -689,21 +687,16 @@ class ObrasManager {
                     .eq('proposta_id', proposta.id);
 
                 if (error) {
-                    console.error('[VALOR] Erro ao buscar itens:', error);
                     continue;
                 }
 
                 if (itens && itens.length > 0) {
-                    console.log(`[VALOR] Proposta ${proposta.numero_proposta}: ${itens.length} itens`);
                     for (const item of itens) {
                         const precoTotal = parseFloat(item.preco_total) || 0;
                         valorTotalObra += precoTotal;
-                        console.log(`[VALOR] + R$ ${precoTotal.toFixed(2)}`);
                     }
                 }
             }
-            
-            console.log('[VALOR] Total calculado: R$', valorTotalObra.toFixed(2));
             return valorTotalObra;
             
         } catch (error) {
@@ -751,8 +744,6 @@ class ObrasManager {
             let totalContratado = 0;
             let totalProduzido = 0;
 
-            console.log('[PERCENTUAL] Itens:', itensPropostas.length, 'Produções:', producoes?.length || 0);
-
             itensPropostas.forEach(item => {
                 const quantidadeContratada = parseFloat(item.quantidade) || 0;
                 totalContratado += quantidadeContratada;
@@ -771,16 +762,11 @@ class ObrasManager {
                 totalProduzido += quantidadeProduzida;
             });
 
-            console.log('[PERCENTUAL] Total contratado:', totalContratado);
-            console.log('[PERCENTUAL] Total produzido:', totalProduzido);
-
             // PASSO 5: Calcular percentual
             let percentualFinal = 0;
             if (totalContratado > 0) {
                 percentualFinal = Math.round((totalProduzido / totalContratado) * 100);
             }
-            
-            console.log('[PERCENTUAL] Percentual final:', percentualFinal + '%');
             
             // Atualizar percentual na tabela obras_hvc
             await this.atualizarPercentualNoBanco(obraId, percentualFinal);
