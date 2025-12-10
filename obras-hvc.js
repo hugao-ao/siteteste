@@ -2309,6 +2309,7 @@ class ObrasManager {
                         nome: servicoNome,
                         unidade,
                         precoUnitario,
+                        local: item.locais_hvc?.nome || '', // ✅ Adicionar local
                         quantidadeContratada: 0,
                         valorTotalContratado: 0,
                         quantidadeProduzida: 0,
@@ -2878,6 +2879,9 @@ fecharModalAjustarQuantidade() {
                     *,
                     itens_proposta_hvc (
                         local_id,
+                        locais_hvc (
+                            nome
+                        ),
                         servicos_hvc (
                             codigo,
                             descricao,
@@ -2955,7 +2959,7 @@ fecharModalAjustarQuantidade() {
             const nomeServico = servicoData?.descricao || 'Serviço';
             const codigoServico = servicoData?.codigo || '-';
             const unidade = servicoData?.unidade || 'un';
-            const local = servico.itens_proposta_hvc?.local_id || '';
+            const local = servico.itens_proposta_hvc?.locais_hvc?.nome || '';
             
             html += `
                 <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
