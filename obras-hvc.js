@@ -2303,6 +2303,7 @@ class ObrasManager {
                 
                 if (!servicosAgrupados[chave]) {
                     servicosAgrupados[chave] = {
+                        chaveUnica: chave, // ✅ Adicionar chave única
                         servicoId,
                         codigo: servicoCodigo,
                         nome: servicoNome,
@@ -2394,7 +2395,7 @@ class ObrasManager {
     
     // Renderizar lista de serviços (SEM sliders, apenas resumo)
     servicosDisponiveis.forEach((servico, index) => {
-        const servicoId = servico.servicoId;
+        const chaveUnica = servico.chaveUnica; // ✅ Usar chave única
         const card = document.createElement('div');
         card.style.cssText = `
             padding: 1rem;
@@ -2410,7 +2411,7 @@ class ObrasManager {
         card.onmouseleave = () => card.style.background = 'rgba(173, 216, 230, 0.05)';
         
         const valorUnitario = this.formatMoney(servico.precoUnitario);
-        const quantidadeSelecionada = this.servicosMedicao.find(s => s.servico_id === servicoId)?.quantidade_medida || 0;
+        const quantidadeSelecionada = this.servicosMedicao.find(s => s.chave_unica === chaveUnica)?.quantidade_medida || 0;
         const valorSelecionado = quantidadeSelecionada * servico.precoUnitario;
         
         card.innerHTML = `
@@ -2483,10 +2484,10 @@ class ObrasManager {
                 return;
             }
             
-            const quantidadeAtual = this.servicosMedicao.find(s => s.servico_id === servico.servicoId)?.quantidade_medida || 0;
+            const quantidadeAtual = this.servicosMedicao.find(s => s.chave_unica === servico.chaveUnica)?.quantidade_medida || 0;
             
             this.abrirModalAjustarQuantidade(
-                servico.servicoId,
+                servico.chaveUnica,
                 servico.codigo,
                 servico.nome,
                 servico.unidade,
@@ -2498,9 +2499,9 @@ class ObrasManager {
     });
 }
 
-abrirModalAjustarQuantidade(servicoId, codigo, nome, unidade, precoUnitario, quantidadeDisponivel, quantidadeAtual) {
+abrirModalAjustarQuantidade(chaveUnica, codigo, nome, unidade, precoUnitario, quantidadeDisponivel, quantidadeAtual) {
     // Encontrar o serviço completo
-    const servico = this.servicosParaMedicao.find(s => s.servicoId === servicoId);
+    const servico = this.servicosParaMedicao.find(s => s.chaveUnica === chaveUnica);
     if (!servico) return;
     
     // Criar modal
@@ -2626,7 +2627,7 @@ abrirModalAjustarQuantidade(servicoId, codigo, nome, unidade, precoUnitario, qua
     }
     
     if (btnConfirmar) {
-        btnConfirmar.addEventListener('click', () => this.confirmarQuantidade(servicoId));
+        btnConfirmar.addEventListener('click', () => this.confirmarQuantidade(chaveUnica));
     }
     
     // Atualizar displays iniciais
@@ -2665,7 +2666,7 @@ atualizarDisplaysModal() {
     valorDisplay.textContent = this.formatMoney(valor);
 }
 
-confirmarQuantidade(servicoId) {
+confirmarQuantidade(chaveUnica) {
     const input = document.getElementById('input-quantidade-manual');
     
     if (!input || !this.servicoAtualModal) {
@@ -2675,8 +2676,8 @@ confirmarQuantidade(servicoId) {
     
     const quantidade = parseFloat(input.value) || 0;
     
-    // Atualizar serviço no array
-    const index = this.servicosMedicao.findIndex(s => s.servico_id === servicoId);
+    // Atualizar serviço no array usando chaveUnica
+    const index = this.servicosMedicao.findIndex(s => s.chave_unica === chaveUnica);
     
     if (quantidade > 0) {
         const itemPropostaId = this.servicoAtualModal.servico.itens && this.servicoAtualModal.servico.itens.length > 0 
@@ -2684,8 +2685,8 @@ confirmarQuantidade(servicoId) {
             : null;
         
         const servicoData = {
-            index: servicoId,
-            servico_id: servicoId,
+            chave_unica: chaveUnica, // ✅ Usar chave única
+            servico_id: this.servicoAtualModal.servico.servicoId,
             item_proposta_id: itemPropostaId,
             codigo_servico: this.servicoAtualModal.codigo,
             nome_servico: this.servicoAtualModal.nome,
@@ -2755,7 +2756,8 @@ fecharModalAjustarQuantidade() {
             row.style.borderBottom = '1px solid rgba(173, 216, 230, 0.1)';
             row.innerHTML = `
                 <td style="padding: 0.75rem;">
-                    <strong style="color: #add8e6;">${servico.codigo_servico}</strong><br>
+                    <strong style="color: #add8e6;">${servico.codigo_servico}</strong>
+                    <span style="color: #20c997; font-size: 0.85em; margin-left: 0.5rem;">(${this.formatMoney(servico.preco_unitario)}/${servico.unidade})</span><br>
                     <small style="color: #c0c0c0;">${servico.nome_servico}</small>
                 </td>
                 <td style="padding: 0.75rem; text-align: center;">
