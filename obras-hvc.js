@@ -1116,6 +1116,7 @@ class ObrasManager {
             
             // Atualizar valor total da obra no banco
             const valorTotalCorreto = await this.calcularValorTotalCorreto();
+            console.log('[SALVAR] Chamando atualizarValorTotalNoBanco com:', valorTotalCorreto);
             await this.atualizarValorTotalNoBanco(this.currentObraId, valorTotalCorreto);
             
             // Recarregar lista de obras para mostrar valores atualizados
@@ -1133,15 +1134,23 @@ class ObrasManager {
     async atualizarValorTotalNoBanco(obraId, valorTotal) {
         
         try {
+            const valorEmCentavos = Math.round(valorTotal * 100);
+            console.log('[SALVAR VALOR] obraId:', obraId);
+            console.log('[SALVAR VALOR] valorTotal (reais):', valorTotal);
+            console.log('[SALVAR VALOR] valorEmCentavos:', valorEmCentavos);
+            
             const { error } = await supabaseClient
                 .from('obras_hvc')
-                .update({ valor_total: Math.round(valorTotal * 100) }) // Salvar em centavos
+                .update({ valor_total: valorEmCentavos })
                 .eq('id', obraId);
 
             if (error) {
+                console.error('[SALVAR VALOR] Erro:', error);
             } else {
+                console.log('[SALVAR VALOR] Sucesso!');
             }
         } catch (error) {
+            console.error('[SALVAR VALOR] Exception:', error);
         }
     }
 
