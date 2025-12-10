@@ -2422,6 +2422,7 @@ class ObrasManager {
                             ${servico.codigo} - ${servico.nome}
                         </strong>
                         <span style="color: #20c997; font-weight: 600; margin-left: 1rem;">${valorUnitario}/${servico.unidade}</span>
+                        ${servico.local ? `<br><small style="color: #888; font-size: 0.85em; margin-top: 0.25rem; display: inline-block;"><i class="fas fa-map-marker-alt" style="font-size: 0.8em;"></i> ${servico.local}</small>` : ''}
                     </div>
                     
                     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; font-size: 0.9em; color: #c0c0c0;">
@@ -2693,7 +2694,8 @@ confirmarQuantidade(chaveUnica) {
             unidade: this.servicoAtualModal.unidade,
             quantidade_medida: quantidade,
             preco_unitario: this.servicoAtualModal.precoUnitario,
-            valor_total: quantidade * this.servicoAtualModal.precoUnitario
+            valor_total: quantidade * this.servicoAtualModal.precoUnitario,
+            local: this.servicoAtualModal.servico.local || ''
         };
         
         if (index >= 0) {
@@ -2759,6 +2761,7 @@ fecharModalAjustarQuantidade() {
                     <strong style="color: #add8e6;">${servico.codigo_servico}</strong>
                     <span style="color: #20c997; font-size: 0.85em; margin-left: 0.5rem;">(${this.formatMoney(servico.preco_unitario)}/${servico.unidade})</span><br>
                     <small style="color: #c0c0c0;">${servico.nome_servico}</small>
+                    ${servico.local ? `<br><small style="color: #888; font-size: 0.8em;"><i class="fas fa-map-marker-alt" style="font-size: 0.75em;"></i> ${servico.local}</small>` : ''}
                 </td>
                 <td style="padding: 0.75rem; text-align: center;">
                     ${servico.quantidade_medida.toFixed(2)} ${servico.unidade}
@@ -2874,6 +2877,7 @@ fecharModalAjustarQuantidade() {
                 .select(`
                     *,
                     itens_proposta_hvc (
+                        local_id,
                         servicos_hvc (
                             codigo,
                             descricao,
@@ -2951,11 +2955,15 @@ fecharModalAjustarQuantidade() {
             const nomeServico = servicoData?.descricao || 'Serviço';
             const codigoServico = servicoData?.codigo || '-';
             const unidade = servicoData?.unidade || 'un';
+            const local = servico.itens_proposta_hvc?.local_id || '';
             
             html += `
                 <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
                     <td style="padding: 0.75rem; color: #c0c0c0;">${codigoServico}</td>
-                    <td style="padding: 0.75rem; color: #ffffff;">${nomeServico}</td>
+                    <td style="padding: 0.75rem; color: #ffffff;">
+                        ${nomeServico}
+                        ${local ? `<br><small style="color: #888; font-size: 0.85em;"><i class="fas fa-map-marker-alt" style="font-size: 0.8em;"></i> ${local}</small>` : ''}
+                    </td>
                     <td style="padding: 0.75rem; text-align: center; color: #c0c0c0;">${servico.quantidade_medida} ${unidade}</td>
                     <td style="padding: 0.75rem; text-align: right; color: #c0c0c0;">${this.formatMoney(servico.preco_unitario)}</td>
                     <td style="padding: 0.75rem; text-align: right; color: #20c997; font-weight: 600;">${this.formatMoney(servico.valor_total)}</td>
