@@ -1016,7 +1016,7 @@ class ObrasManager {
                     servico_id: item.servicos_hvc.id,
                     codigo: item.servicos_hvc.codigo,
                     descricao: item.servicos_hvc.descricao,
-                    local: item.local_id || '-', // ✅ Local do item
+                    local: item.locais_hvc?.nome || '-', // ✅ Local do item
                     unidade: item.servicos_hvc.unidade,
                     preco_unitario: item.preco_unitario || 0,
                     quantidade: item.quantidade || 0
