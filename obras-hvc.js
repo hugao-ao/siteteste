@@ -748,13 +748,14 @@ class ObrasManager {
                 const quantidadeContratada = parseFloat(item.quantidade) || 0;
                 totalContratado += quantidadeContratada;
 
-                // Calcular quanto foi produzido deste serviço
+                // Calcular quanto foi produzido deste ITEM específico
                 let quantidadeProduzida = 0;
                 if (producoes && producoes.length > 0) {
                     producoes.forEach(producao => {
                         const quantidades = producao.quantidades_servicos || {};
-                        if (quantidades[item.servico_id]) {
-                            quantidadeProduzida += parseFloat(quantidades[item.servico_id]) || 0;
+                        // ✅ Usar item.id (item_proposta_id) ao invés de servico_id
+                        if (quantidades[item.id]) {
+                            quantidadeProduzida += parseFloat(quantidades[item.id]) || 0;
                         }
                     });
                 }
@@ -903,14 +904,14 @@ class ObrasManager {
                 const precoTotal = parseFloat(item.preco_total) || 0;
                 const quantidade = parseFloat(item.quantidade) || 1;
                 
-                // Calcular quantidades executadas nas produções diárias para este serviço
+                // Calcular quantidades executadas nas produções diárias para este ITEM específico
                 let quantidadeExecutada = 0;
                 if (this.producoesDiarias && this.producoesDiarias.length > 0) {
                     this.producoesDiarias.forEach(producao => {
                         const quantidades = producao.quantidades_servicos || {};
-                        const servicoId = item.servicos_hvc?.id;
-                        if (servicoId && quantidades[servicoId]) {
-                            quantidadeExecutada += parseFloat(quantidades[servicoId]) || 0;
+                        // ✅ Usar item.id (item_proposta_id) ao invés de servico_id
+                        if (quantidades[item.id]) {
+                            quantidadeExecutada += parseFloat(quantidades[item.id]) || 0;
                         }
                     });
                 }
@@ -1007,23 +1008,19 @@ class ObrasManager {
                         
             this.servicosAndamento = todosServicos;
             
-            // Carregar serviços únicos da obra para as produções diárias
-            this.servicosObra = todosServicos.reduce((unique, item) => {
-                const servicoExistente = unique.find(s => s.id === item.servicos_hvc?.id);
-                if (!servicoExistente && item.servicos_hvc) {
-                    unique.push({
-                        id: item.servicos_hvc.id,
-                        codigo: item.servicos_hvc.codigo,
-                        descricao: item.servicos_hvc.descricao,
-                        unidade: item.servicos_hvc.unidade,
-                        preco_unitario: item.preco_unitario || 0
-                    });
-                } else if (servicoExistente && !servicoExistente.preco_unitario && item.preco_unitario) {
-                    // Atualizar preço se ainda não tiver
-                    servicoExistente.preco_unitario = item.preco_unitario;
-                }
-                return unique;
-            }, []);
+            // Carregar TODOS os itens da obra (incluindo serviços repetidos em locais diferentes)
+            this.servicosObra = todosServicos
+                .filter(item => item.servicos_hvc) // Apenas itens com serviço válido
+                .map(item => ({
+                    id: item.id, // ✅ ID do item (único)
+                    servico_id: item.servicos_hvc.id,
+                    codigo: item.servicos_hvc.codigo,
+                    descricao: item.servicos_hvc.descricao,
+                    local: item.local_id || '-', // ✅ Local do item
+                    unidade: item.servicos_hvc.unidade,
+                    preco_unitario: item.preco_unitario || 0,
+                    quantidade: item.quantidade || 0
+                }));
             
             // Carregar equipes e integrantes para os filtros
             if (this.equipesIntegrantes.length === 0) {
@@ -1594,6 +1591,7 @@ class ObrasManager {
             servicoDiv.innerHTML = `
                 <div style="flex: 1; min-width: 0;">
                     <strong style="color: #add8e6;">${servico.codigo || 'N/A'}</strong>
+                    ${servico.local && servico.local !== '-' ? `<span style="color: #90ee90; margin-left: 0.5rem; font-size: 0.85em;">(${servico.local})</span>` : ''}
                     <div style="font-size: 0.9em; color: #c0c0c0; margin-top: 0.2rem;">
                         ${servico.descricao || 'Sem descrição'}
                     </div>
@@ -1910,12 +1908,13 @@ class ObrasManager {
                     const quantidadesObj = producao.quantidades_servicos || {};
                     const servicosExecutados = Object.entries(quantidadesObj)
                         .filter(([servicoId, quantidade]) => quantidade > 0)
-                        .map(([servicoId, quantidade]) => {
-                            // Buscar informações do serviço
-                            const servico = this.servicosObra.find(s => s.id == servicoId);
-                            const codigo = servico ? servico.codigo : `ID:${servicoId}`;
-                            const unidade = servico ? servico.unidade : '';
-                            return `${codigo}: ${quantidade}${unidade ? ' ' + unidade : ''}`;
+                        .map(([itemId, quantidade]) => {
+                            // Buscar informações do item
+                            const item = this.servicosObra.find(s => s.id == itemId);
+                            const codigo = item ? item.codigo : `ID:${itemId}`;
+                            const local = item && item.local && item.local !== '-' ? ` (${item.local})` : '';
+                            const unidade = item ? item.unidade : '';
+                            return `${codigo}${local}: ${quantidade}${unidade ? ' ' + unidade : ''}`;
                         });
                     
                     const servicosTexto = servicosExecutados.length > 0 
@@ -2322,15 +2321,18 @@ class ObrasManager {
                 servicosAgrupados[chave].itens.push(item);
             });
             
-            // 5. Calcular quantidades produzidas
+            // 5. Calcular quantidades produzidas (somando TODOS os itens do serviço agrupado)
             Object.values(servicosAgrupados).forEach(servico => {
                 let totalProduzido = 0;
                 
                 (producoes || []).forEach(producao => {
                     const quantidades = producao.quantidades_servicos || {};
-                    if (quantidades[servico.servicoId]) {
-                        totalProduzido += parseFloat(quantidades[servico.servicoId]) || 0;
-                    }
+                    // ✅ Somar produções de TODOS os itens deste serviço (incluindo diferentes locais)
+                    servico.itens.forEach(item => {
+                        if (quantidades[item.id]) {
+                            totalProduzido += parseFloat(quantidades[item.id]) || 0;
+                        }
+                    });
                 });
                 
                 servico.quantidadeProduzida = totalProduzido;
