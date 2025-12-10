@@ -1157,6 +1157,7 @@ class ObrasManager {
     // === OBRAS ===
     async loadObras() {
         try {
+            console.log('[LOAD OBRAS] Carregando obras...');
             
             const { data, error } = await supabaseClient
                 .from('obras_hvc')
@@ -1171,6 +1172,11 @@ class ObrasManager {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
+
+            console.log('[LOAD OBRAS] Obras carregadas:', data?.length);
+            if (data && data.length > 0) {
+                console.log('[LOAD OBRAS] Primeira obra - valor_total:', data[0].valor_total);
+            }
 
             this.obras = data || [];
             this.renderObras(this.obras);
