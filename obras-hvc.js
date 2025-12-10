@@ -1081,7 +1081,7 @@ class ObrasManager {
                     obra_id: this.currentObraId,
                     item_proposta_id: servico.id,
                     status: status,
-                    percentual_real: percentual,
+                    // percentual_real: percentual, // Será adicionado após criar coluna no banco
                     data_inicio: dataInicioInput.value || null,
                     data_final: dataFinalInput.value || null,
                     observacoes: observacoesTextarea.value || null
