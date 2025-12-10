@@ -679,6 +679,8 @@ class ObrasManager {
         try {
             let valorTotalObra = 0;
             
+            console.log('[VALOR] Calculando valor total. Propostas:', this.propostasSelecionadas.length);
+            
             for (const proposta of this.propostasSelecionadas) {
                 // Buscar preco_total da tabela itens_proposta_hvc
                 const { data: itens, error } = await supabaseClient
@@ -687,18 +689,21 @@ class ObrasManager {
                     .eq('proposta_id', proposta.id);
 
                 if (error) {
+                    console.error('[VALOR] Erro ao buscar itens:', error);
                     continue;
                 }
 
                 if (itens && itens.length > 0) {
+                    console.log(`[VALOR] Proposta ${proposta.numero_proposta}: ${itens.length} itens`);
                     for (const item of itens) {
                         const precoTotal = parseFloat(item.preco_total) || 0;
                         valorTotalObra += precoTotal;
-                        
+                        console.log(`[VALOR] + R$ ${precoTotal.toFixed(2)}`);
                     }
                 }
             }
             
+            console.log('[VALOR] Total calculado: R$', valorTotalObra.toFixed(2));
             return valorTotalObra;
             
         } catch (error) {
@@ -706,7 +711,7 @@ class ObrasManager {
         }
     }
 
-    // Calcular percentual usando preco_total
+    // Calcular percentual baseado em quantidades produzidas
     async calcularPercentualCorrigido(obraId) {
         
         try {
@@ -716,84 +721,66 @@ class ObrasManager {
                 .select('proposta_id')
                 .eq('obra_id', obraId);
 
-            if (errorObrasPropostas) {
-                return 0;
-            }
-
-            if (!obrasPropostas || obrasPropostas.length === 0) {
+            if (errorObrasPropostas || !obrasPropostas || obrasPropostas.length === 0) {
                 return 0;
             }
 
             const propostaIds = obrasPropostas.map(op => op.proposta_id);
 
-            // PASSO 2: Buscar todos os itens das propostas com preco_total
+            // PASSO 2: Buscar todos os itens das propostas com quantidade e servico_id
             const { data: itensPropostas, error: errorItens } = await supabaseClient
                 .from('itens_proposta_hvc')
-                .select('id, preco_total')
+                .select('id, quantidade, servico_id')
                 .in('proposta_id', propostaIds);
 
-            if (errorItens) {
+            if (errorItens || !itensPropostas || itensPropostas.length === 0) {
                 return 0;
             }
 
-            if (!itensPropostas || itensPropostas.length === 0) {
-                return 0;
-            }
-
-
-            // PASSO 3: Calcular valor total da obra e percentual de cada item
-            let valorTotalObra = 0;
-            const itensComValor = [];
-
-            for (const item of itensPropostas) {
-                const precoTotal = parseFloat(item.preco_total) || 0;
-                valorTotalObra += precoTotal;
-                
-                itensComValor.push({
-                    id: item.id,
-                    valorTotal: precoTotal,
-                    percentualObra: 0 // Será calculado depois
-                });
-            }
-
-
-            if (valorTotalObra === 0) {
-                return 0;
-            }
-
-            // PASSO 4: Calcular percentual de cada item em relação ao total da obra
-            itensComValor.forEach(item => {
-                item.percentualObra = (item.valorTotal / valorTotalObra) * 100;
-            });
-
-            // PASSO 5: Buscar status dos itens
-            const { data: andamentos, error: errorAndamentos } = await supabaseClient
-                .from('servicos_andamento')
-                .select('item_proposta_id, status')
+            // PASSO 3: Buscar produções diárias da obra
+            const { data: producoes, error: prodError } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('quantidades_servicos')
                 .eq('obra_id', obraId);
 
-            if (errorAndamentos) {
+            if (prodError) {
                 return 0;
             }
 
-            // PASSO 6: Aplicar fórmula matemática usando percentual real
-            let somaPercentuais = 0;
+            // PASSO 4: Calcular totais de contratado e produzido
+            let totalContratado = 0;
+            let totalProduzido = 0;
 
-            itensComValor.forEach(item => {
-                const andamento = andamentos?.find(a => a.item_proposta_id === item.id);
-                
-                // Usar percentual_real se existir, senão usar 0
-                const percentualReal = andamento?.percentual_real || 0;
-                
-                // Converter percentual para multiplicador (75% = 0.75)
-                const multiplicador = Math.min(percentualReal / 100, 1);
+            console.log('[PERCENTUAL] Itens:', itensPropostas.length, 'Produções:', producoes?.length || 0);
 
-                const contribuicao = item.percentualObra * multiplicador;
-                somaPercentuais += contribuicao;
-                
+            itensPropostas.forEach(item => {
+                const quantidadeContratada = parseFloat(item.quantidade) || 0;
+                totalContratado += quantidadeContratada;
+
+                // Calcular quanto foi produzido deste serviço
+                let quantidadeProduzida = 0;
+                if (producoes && producoes.length > 0) {
+                    producoes.forEach(producao => {
+                        const quantidades = producao.quantidades_servicos || {};
+                        if (quantidades[item.servico_id]) {
+                            quantidadeProduzida += parseFloat(quantidades[item.servico_id]) || 0;
+                        }
+                    });
+                }
+
+                totalProduzido += quantidadeProduzida;
             });
 
-            const percentualFinal = Math.round(somaPercentuais);
+            console.log('[PERCENTUAL] Total contratado:', totalContratado);
+            console.log('[PERCENTUAL] Total produzido:', totalProduzido);
+
+            // PASSO 5: Calcular percentual
+            let percentualFinal = 0;
+            if (totalContratado > 0) {
+                percentualFinal = Math.round((totalProduzido / totalContratado) * 100);
+            }
+            
+            console.log('[PERCENTUAL] Percentual final:', percentualFinal + '%');
             
             // Atualizar percentual na tabela obras_hvc
             await this.atualizarPercentualNoBanco(obraId, percentualFinal);
@@ -801,6 +788,7 @@ class ObrasManager {
             return percentualFinal;
             
         } catch (error) {
+            console.error('Erro ao calcular percentual:', error);
             return 0;
         }
     }
