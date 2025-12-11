@@ -4136,16 +4136,21 @@
                         try {
                             // Extrair informações dos itens para identificar medição
                             for (const item of window.paymentItems) {
-                                const info = extractPaymentInfo(item);
+                                // ✅ CORRIGIDO: Usar campos do objeto diretamente
+                                const categoria = item.categoria || '';
+                                const subtipo = item.subtipo || '';
+                                const valor = item.valor || 0;
+                                
+                                console.log('🔍 Item:', { tipo: item.tipo, subtipo, categoria, nome: item.nome, valor });
                                 
                                 // Verificar se CATEGORIA é número de medição e SUBTIPO é obra
-                                if (info.categoria && info.subtipo) {
-                                    console.log('🏛️ Detectada medição:', info.categoria, 'da obra:', info.subtipo);
+                                if (categoria && subtipo) {
+                                    console.log('🏛️ Detectada medição:', categoria, 'da obra:', subtipo);
                                     
                                     await window.registrarRecebimentoNaMedicao(
-                                        info.categoria,  // número da medição
-                                        info.subtipo,    // número da obra
-                                        info.value,      // valor recebido
+                                        categoria,       // número da medição
+                                        subtipo,         // número da obra
+                                        valor,           // valor recebido
                                         eventDate,       // data do recebimento
                                         createdEvent.id  // ID do evento
                                     );
@@ -9949,7 +9954,11 @@ window.openManageCategoriasPayment = function() {
                         status: status,
                         detail: detail,
                         formattedValue: formatCurrency(value),
-                        originalIndex: itemIndex
+                        originalIndex: itemIndex,
+                        // ✅ NOVO: Adicionar campos separados para integração
+                        tipo: tipo,
+                        subtipo: subtipo,
+                        categoria: categoria
                     });
                 });
                 
@@ -9988,17 +9997,21 @@ window.openManageCategoriasPayment = function() {
                 // ✅ NOVO: Atualizar medição se for RECEBIMENTO
                 if (eventType === 'RECEBIMENTO' && typeof window.atualizarRecebimentoNaMedicao === 'function') {
                     try {
-                        // Extrair informações dos itens atualizados
+                        // ✅ CORRIGIDO: Usar campos do objeto diretamente
                         for (const item of updatedItems) {
-                            const info = extractPaymentInfo(item.name + ' - ' + formatCurrency(item.value) + ' (' + item.status + ')');
+                            const categoria = item.categoria || '';
+                            const subtipo = item.subtipo || '';
+                            const valor = item.value || 0;
+                            
+                            console.log('🔍 Item editado:', { tipo: item.tipo, subtipo, categoria, valor });
                             
                             // Verificar se CATEGORIA é número de medição
-                            if (info.categoria && info.subtipo) {
-                                console.log('🏛️ Atualizando medição:', info.categoria);
+                            if (categoria && subtipo) {
+                                console.log('🏛️ Atualizando medição:', categoria);
                                 
                                 await window.atualizarRecebimentoNaMedicao(
                                     eventId,        // ID do evento
-                                    info.value,     // novo valor
+                                    valor,          // novo valor
                                     currentEditingEventData.start.dateTime || currentEditingEventData.start.date  // data
                                 );
                                 
