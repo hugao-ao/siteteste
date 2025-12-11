@@ -1121,36 +1121,43 @@ class MedicoesManager {
 
     async visualizarMedicao(medicaoId) {
         try {
-            // Buscar dados completos da medição
+            // Buscar dados da medição
             const { data: medicao, error: medicaoError } = await supabaseClient
                 .from('medicoes_hvc')
-                .select(`
-                    *,
-                    obras_hvc (
-                        numero_obra,
-                        clientes_hvc (nome)
-                    )
-                `)
+                .select('*')
                 .eq('id', medicaoId)
                 .single();
 
             if (medicaoError) throw medicaoError;
 
+            // Buscar obra
+            const { data: obra, error: obraError } = await supabaseClient
+                .from('obras_hvc')
+                .select('numero_obra, cliente_id')
+                .eq('id', medicao.obra_id)
+                .single();
+
+            // Buscar cliente
+            let nomeCliente = 'Cliente não definido';
+            if (obra && obra.cliente_id) {
+                const { data: cliente } = await supabaseClient
+                    .from('clientes_hvc')
+                    .select('nome')
+                    .eq('id', obra.cliente_id)
+                    .single();
+                if (cliente) nomeCliente = cliente.nome;
+            }
+
             // Buscar serviços da medição
             const { data: servicos, error: servicosError } = await supabaseClient
                 .from('medicoes_servicos_hvc')
-                .select(`
-                    *,
-                    servicos_hvc (codigo, descricao, unidade),
-                    locais_hvc (nome)
-                `)
+                .select('*')
                 .eq('medicao_id', medicaoId);
 
             if (servicosError) throw servicosError;
 
             // Montar HTML do modal
-            const nomeCliente = medicao.obras_hvc?.clientes_hvc?.nome || 'Cliente não definido';
-            const numeroObra = medicao.obras_hvc?.numero_obra || 'N/A';
+            const numeroObra = obra?.numero_obra || 'N/A';
 
             let servicosHtml = '';
             let valorTotal = 0;
@@ -1159,17 +1166,21 @@ class MedicoesManager {
                 servicosHtml = servicos.map(s => {
                     const valorServico = s.quantidade_medida * s.valor_unitario;
                     valorTotal += valorServico;
-                    const local = s.locais_hvc?.nome || '';
+                    // Buscar dados do serviço e local
+                    let codigoServico = s.codigo_servico || 'N/A';
+                    let descricaoServico = s.descricao_servico || 'N/A';
+                    let unidadeServico = s.unidade || '';
+                    let nomeLocal = s.local || '';
                     
                     return `
                         <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
                             <td style="padding: 0.75rem;">
-                                <strong style="color: #add8e6;">${s.servicos_hvc?.codigo || 'N/A'}</strong><br>
-                                <small style="color: #c0c0c0;">${s.servicos_hvc?.descricao || 'N/A'}</small>
-                                ${local ? `<br><small style="color: #888; font-size: 0.8em;"><i class="fas fa-map-marker-alt" style="font-size: 0.75em;"></i> ${local}</small>` : ''}
+                                <strong style="color: #add8e6;">${codigoServico}</strong><br>
+                                <small style="color: #c0c0c0;">${descricaoServico}</small>
+                                ${nomeLocal ? `<br><small style="color: #888; font-size: 0.8em;"><i class="fas fa-map-marker-alt" style="font-size: 0.75em;"></i> ${nomeLocal}</small>` : ''}
                             </td>
                             <td style="padding: 0.75rem; text-align: center; color: #e0e0e0;">
-                                ${s.quantidade_medida.toFixed(2)} ${s.servicos_hvc?.unidade || ''}
+                                ${s.quantidade_medida.toFixed(2)} ${unidadeServico}
                             </td>
                             <td style="padding: 0.75rem; text-align: right; color: #20c997;">
                                 ${this.formatarMoeda(s.valor_unitario)}
