@@ -4147,11 +4147,14 @@
                                 if (categoria && subtipo) {
                                     console.log('🏛️ Detectada medição:', categoria, 'da obra:', subtipo);
                                     
+                                    // ✅ CORRIGIDO: Formatar data corretamente (YYYY-MM-DD)
+                                    const dataFormatada = eventDate.includes('-') ? eventDate : eventDate.split('/').reverse().join('-');
+                                    
                                     await window.registrarRecebimentoNaMedicao(
                                         categoria,       // número da medição
                                         subtipo,         // número da obra
                                         valor,           // valor recebido
-                                        eventDate,       // data do recebimento
+                                        dataFormatada,   // data do recebimento (YYYY-MM-DD)
                                         createdEvent.id  // ID do evento
                                     );
                                     
@@ -10007,19 +10010,44 @@ window.openManageCategoriasPayment = function() {
                             
                             // Verificar se CATEGORIA é número de medição
                             if (categoria && subtipo) {
+                                console.log('🏛️ Detectada edição de recebimento vinculado à medição:', categoria);
+                                
+                                // ✅ NOVO: Mostrar modal de confirmação
+                                const confirmar = confirm(
+                                    `⚠️ ATENÇÃO: Edição de Recebimento Vinculado\n\n` +
+                                    `Este recebimento está vinculado à medição ${categoria} da obra ${subtipo}.\n\n` +
+                                    `O valor registrado na medição será atualizado para R$ ${valor.toFixed(2).replace('.', ',')}.\n\n` +
+                                    `Os totais (RECEBIDO, RETENÇÃO e STATUS) serão recalculados automaticamente.\n\n` +
+                                    `Deseja continuar?`
+                                );
+                                
+                                if (!confirmar) {
+                                    console.log('ℹ️ Usuário cancelou a atualização da medição');
+                                    continue;
+                                }
+                                
                                 console.log('🏛️ Atualizando medição:', categoria);
+                                
+                                // ✅ CORRIGIDO: Extrair e formatar data corretamente
+                                let dataEvento = currentEditingEventData.start.dateTime || currentEditingEventData.start.date;
+                                // Converter para YYYY-MM-DD
+                                if (dataEvento.includes('T')) {
+                                    dataEvento = dataEvento.split('T')[0]; // Pega apenas a parte da data
+                                }
                                 
                                 await window.atualizarRecebimentoNaMedicao(
                                     eventId,        // ID do evento
                                     valor,          // novo valor
-                                    currentEditingEventData.start.dateTime || currentEditingEventData.start.date  // data
+                                    dataEvento      // data (YYYY-MM-DD)
                                 );
                                 
                                 console.log('✅ Medição atualizada!');
+                                alert('✅ Medição atualizada com sucesso!\n\nAtualize a página de medições para ver as mudanças.');
                             }
                         }
                     } catch (error) {
                         console.error('❌ Erro ao atualizar medição:', error);
+                        alert('❌ Erro ao atualizar medição: ' + error.message);
                     }
                 }
                 
