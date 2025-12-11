@@ -8975,7 +8975,10 @@
                 // Popular selects de TIPO, SUBTIPO e CATEGORIA
                 items.forEach((item, index) => {
                     // Extrair tipo, subtipo e categoria do nome do item
-                    const nameParts = (item.name || '').split(' - ');
+                    const tipo = item.tipo || '';        // "EXTERNO"
+                    const subtipo = item.subtipo || '';  // "OBRA"
+                    const categoria = item.categoria || ''; // "0001/2025"
+                    const nome = item.name || '';        // "MUNDO DA IMPERMEABILIZAÇÃO"
                     let tipo = '', subtipo = '', categoria = '', nome = item.name || '';
                     
                     if (nameParts.length >= 4) {
