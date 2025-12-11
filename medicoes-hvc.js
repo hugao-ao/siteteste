@@ -1447,6 +1447,7 @@ class MedicoesManager {
                         servico_descricao: servicoNome,
                         unidade,
                         valor_unitario_contratado: precoUnitario,
+                        local: item.locais_hvc?.nome || '',
                         quantidade_contratada: 0,
                         valor_total_contratado: 0,
                         quantidade_produzida: 0,
@@ -1560,6 +1561,7 @@ class MedicoesManager {
                                 ${servico.servico_codigo} - ${servico.servico_descricao}
                             </strong>
                             <span style="color: #20c997; font-weight: 600; margin-left: 1rem;">${valorUnitario}/${servico.unidade}</span>
+                            ${servico.local ? `<br><small style="color: #888; font-size: 0.85em; margin-top: 0.25rem; display: inline-block;"><i class="fas fa-map-marker-alt" style="font-size: 0.8em;"></i> ${servico.local}</small>` : ''}
                         </div>
                         
                         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.5rem; font-size: 0.9em; color: #c0c0c0;">
