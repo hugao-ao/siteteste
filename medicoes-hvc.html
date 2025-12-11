@@ -696,47 +696,86 @@
 
   <!-- Modal Nova Medição -->
   <div id="modal-medicao" class="modal">
-    <div class="modal-content">
+    <div class="modal-content" style="max-width: 1000px; max-height: 90vh;">
       <div class="modal-header">
         <h2 class="modal-title">
-          <i class="fas fa-plus"></i>
+          <i class="fas fa-file-invoice-dollar"></i>
           Nova Medição
         </h2>
         <button class="close" onclick="fecharModalMedicao()">&times;</button>
       </div>
 
       <form id="form-medicao" onsubmit="salvarMedicao(event)">
-        <div class="form-row">
-          <div class="form-group">
-            <label for="data-medicao" class="form-label">
-              <i class="fas fa-calendar"></i>
-              Data da Medição *
-            </label>
-            <input type="date" id="data-medicao" class="form-input" required>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label">
-              <i class="fas fa-building"></i>
-              Obra *
-            </label>
-            <div id="obra-selecionada-container">
-              <button type="button" class="btn-secondary" onclick="abrirModalObras()">
-                <i class="fas fa-building"></i>
-                Selecionar Obra
-              </button>
+        <!-- Informações da Medição -->
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(173, 216, 230, 0.1); border-radius: 8px;">
+          <h5 style="color: #add8e6; margin-bottom: 1rem;">Informações da Medição</h5>
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+            <div>
+              <label for="numero-medicao-gerada">Número da Medição *</label>
+              <input type="text" id="numero-medicao-gerada" class="form-input" readonly style="width: 100%; background: rgba(255,255,255,0.1);">
+            </div>
+            <div>
+              <label for="data-medicao">Data da Medição *</label>
+              <input type="date" id="data-medicao" class="form-input" required style="width: 100%;">
+            </div>
+            <div>
+              <label for="previsao-pagamento-medicao">Previsão de Pagamento</label>
+              <input type="date" id="previsao-pagamento-medicao" class="form-input" style="width: 100%;">
             </div>
           </div>
         </div>
 
-        <!-- Container de Serviços -->
-        <div id="servicos-container" class="servicos-container" style="display: none;">
-          <div class="form-title">
-            <i class="fas fa-tools"></i>
-            Serviços da Obra
+        <!-- Seleção de Obra -->
+        <div style="margin-bottom: 1.5rem; padding: 1rem; background: rgba(173, 216, 230, 0.1); border-radius: 8px;">
+          <h5 style="color: #add8e6; margin-bottom: 1rem;">Obra *</h5>
+          <div id="obra-selecionada-container">
+            <button type="button" class="btn-secondary" onclick="abrirModalObras()">
+              <i class="fas fa-building"></i>
+              Selecionar Obra
+            </button>
           </div>
-          <div id="servicos-list">
-            <!-- Serviços serão carregados aqui -->
+        </div>
+
+        <!-- Seleção de Serviços -->
+        <div id="servicos-container" style="display: none; margin-bottom: 1.5rem;">
+          <h5 style="color: #add8e6; margin-bottom: 1rem;">Selecionar Serviços *</h5>
+          <div id="servicos-para-medicao" style="max-height: 250px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; padding: 1rem; background: rgba(255, 255, 255, 0.05);">
+            <!-- Serviços disponíveis serão carregados aqui -->
+          </div>
+          <small style="color: #c0c0c0; margin-top: 0.5rem; display: block;">
+            * Selecione pelo menos um serviço para gerar a medição
+          </small>
+        </div>
+
+        <!-- Resumo dos Serviços Medidos -->
+        <div id="resumo-container" style="display: none; margin-bottom: 1.5rem;">
+          <h5 style="color: #add8e6; margin-bottom: 1rem;">Resumo dos Serviços Medidos</h5>
+          <div id="resumo-servicos-medicao" style="max-height: 200px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.05);">
+            <table style="width: 100%; border-collapse: collapse;">
+              <thead style="background: rgba(173, 216, 230, 0.1); position: sticky; top: 0;">
+                <tr>
+                  <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Serviço</th>
+                  <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Quantidade</th>
+                  <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Preço Unitário</th>
+                  <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid rgba(173, 216, 230, 0.2);">Valor Total</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-resumo-servicos">
+                <tr>
+                  <td colspan="4" style="padding: 2rem; text-align: center; color: #888;">
+                    Selecione serviços para ver o resumo
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Valor Total -->
+        <div id="valor-total-container" style="display: none; margin-bottom: 1.5rem; padding: 1rem; background: rgba(40, 167, 69, 0.2); border-radius: 8px; border: 2px solid rgba(40, 167, 69, 0.5);">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="font-size: 1.2rem; font-weight: 600; color: #add8e6;">Valor Total da Medição:</span>
+            <span id="valor-total-medicao" style="font-size: 1.5rem; font-weight: bold; color: #20c997;">R$ 0,00</span>
           </div>
         </div>
 
@@ -746,7 +785,7 @@
             <i class="fas fa-sticky-note"></i>
             Observações
           </label>
-          <textarea id="observacoes-medicao" class="form-textarea" rows="3" placeholder="Observações sobre a medição..."></textarea>
+          <textarea id="observacoes-medicao" class="form-textarea" rows="3" placeholder="Observações sobre a medição..." style="width: 100%; resize: vertical;"></textarea>
         </div>
 
         <div style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 2rem;">
