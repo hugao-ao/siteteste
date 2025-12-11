@@ -12,6 +12,8 @@
   bottom: 0;
   z-index: 1000; /* Ensure sidebar is on top */
   border-right: 1px solid var(--theme-border-color); /* USA VARIÁVEL DE TEMA */
+  overflow-y: auto; /* Permite scroll vertical quando conteúdo é maior que altura */
+  overflow-x: hidden; /* Esconde scroll horizontal */
 }
 
 #sidebar.collapsed {
