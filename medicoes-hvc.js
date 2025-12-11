@@ -1055,7 +1055,6 @@ class MedicoesManager {
             const dadosMedicao = {
                 numero_medicao: numeroMedicaoInput.value,
                 obra_id: this.obraSelecionada.id,
-                data_medicao: dataMedicao.value,
                 desconto_valor: 0,
                 valor_total: this.valorTotalCalculado,
                 valor_bruto: this.valorTotalCalculado,
@@ -1063,10 +1062,7 @@ class MedicoesManager {
                 previsao_pagamento: previsaoPagamento?.value || null,
                 emitir_boleto: false,
                 status: 'pendente',
-                observacoes: JSON.stringify({
-                    texto: observacoes?.value || '',
-                    servicos: servicosComDetalhes
-                })
+                observacoes: observacoes?.value || ''
             };
 
             console.log('📋 Dados da medição:', dadosMedicao);
@@ -1821,8 +1817,10 @@ class MedicoesManager {
             return `
                 <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
                     <td style="padding: 0.75rem;">
-                        <strong style="color: #add8e6;">${servico.servico_codigo}</strong><br>
+                        <strong style="color: #add8e6;">${servico.servico_codigo}</strong>
+                        <span style="color: #20c997; font-size: 0.85em; margin-left: 0.5rem;">(${this.formatarMoeda(item.valor_unitario)}/${servico.unidade})</span><br>
                         <small style="color: #c0c0c0;">${servico.servico_descricao}</small>
+                        ${servico.local ? `<br><small style="color: #888; font-size: 0.8em;"><i class="fas fa-map-marker-alt" style="font-size: 0.75em;"></i> ${servico.local}</small>` : ''}
                     </td>
                     <td style="padding: 0.75rem; text-align: center; color: #e0e0e0;">
                         ${item.quantidade_medida.toFixed(2)} ${servico.unidade}
