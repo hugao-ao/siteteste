@@ -1121,20 +1121,43 @@ class MedicoesManager {
 
     async visualizarMedicao(medicaoId) {
         try {
-            // Buscar dados da medição com obra e cliente
+            // Buscar dados da medição
             const { data: medicao, error: medicaoError } = await supabaseClient
                 .from('medicoes_hvc')
-                .select(`
-                    *,
-                    obras_hvc (
-                        numero_obra,
-                        clientes_hvc (nome)
-                    )
-                `)
+                .select('*')
                 .eq('id', medicaoId)
                 .single();
             
             if (medicaoError) throw medicaoError;
+            
+            // Buscar obra
+            let numeroObra = 'N/A';
+            let nomeCliente = 'Cliente não definido';
+            
+            if (medicao.obra_id) {
+                const { data: obra, error: obraError } = await supabaseClient
+                    .from('obras_hvc')
+                    .select('numero_obra, cliente_id')
+                    .eq('id', medicao.obra_id)
+                    .single();
+                
+                if (!obraError && obra) {
+                    numeroObra = obra.numero_obra || 'N/A';
+                    
+                    // Buscar cliente
+                    if (obra.cliente_id) {
+                        const { data: cliente, error: clienteError } = await supabaseClient
+                            .from('clientes_hvc')
+                            .select('nome')
+                            .eq('id', obra.cliente_id)
+                            .single();
+                        
+                        if (!clienteError && cliente) {
+                            nomeCliente = cliente.nome;
+                        }
+                    }
+                }
+            }
             
             // Buscar serviços da medição com dados do item da proposta e serviço
             const { data: servicos, error: servicosError } = await supabaseClient
@@ -1156,10 +1179,6 @@ class MedicoesManager {
                 .eq('medicao_id', medicaoId);
             
             if (servicosError) throw servicosError;
-            
-            // Extrair dados de obra e cliente
-            const numeroObra = medicao.obras_hvc?.numero_obra || 'N/A';
-            const nomeCliente = medicao.obras_hvc?.clientes_hvc?.nome || 'Cliente não definido';
             
             const statusColors = {
                 'pendente': '#ffc107',
