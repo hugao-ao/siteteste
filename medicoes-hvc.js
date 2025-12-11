@@ -1,5 +1,20 @@
-// Gerenciamento completo de medições com obras, serviços e cálculos automáticos
-// VERSÃO CORRIGIDA - Cliente via propostas e cabeçalho corrigido
+/*
+********************************************************************************
+* MEDIÇÕES HVC - VERSÃO FINAL COM RECEBIMENTOS E ANOTAÇÕES
+* Data: 11/12/2025
+* 
+* MODIFICAÇÕES IMPLEMENTADAS:
+* ✅ Colunas RECEBIDO e RETENÇÃO na tabela
+* ✅ Sistema de anotações com modal
+* ✅ Status automático baseado em recebimentos (PENDENTE / RC c/ RET / RECEBIDO)
+* ✅ Integração com fluxo de caixa
+* 
+* VERIFICAÇÃO RÁPIDA:
+* - Total de linhas: 2088 (vs 1363 da versão antiga)
+* - Funções de anotações: 11 ocorrências
+* - window.abrirModalAnotacoes DEVE existir (linha 45)
+********************************************************************************
+*/
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -40,6 +55,11 @@ function initializeApp() {
         window.excluirMedicao = (medicaoId) => medicoesManager.excluirMedicao(medicaoId);
         window.limparFiltros = () => medicoesManager.limparFiltros();
         window.atualizarCalculos = () => medicoesManager.atualizarCalculos();
+        
+        // ✅ NOVO: Funções de anotações
+        window.abrirModalAnotacoes = (medicaoId) => medicoesManager.abrirModalAnotacoes(medicaoId);
+        window.fecharModalAnotacoes = () => medicoesManager.fecharModalAnotacoes();
+        window.salvarAnotacoes = (medicaoId) => medicoesManager.salvarAnotacoes(medicaoId);
         
     } else {
         showNotification('Erro de conexão com o banco de dados', 'error');
