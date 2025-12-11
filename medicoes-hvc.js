@@ -8,16 +8,13 @@ let medicoesManager = null;
 
 // Inicializar quando a página carregar
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM carregado, iniciando aplicação de medições...');
     initializeApp();
 });
 
 function initializeApp() {
-    console.log('Inicializando aplicação de medições...');
     
     // Verificar se o Supabase está disponível
     if (supabaseClient) {
-        console.log('Supabase conectado com sucesso!');
         
         // Inicializar o gerenciador de medições
         medicoesManager = new MedicoesManager();
@@ -40,14 +37,12 @@ function initializeApp() {
         window.atualizarCalculos = () => medicoesManager.atualizarCalculos();
         
     } else {
-        console.error('Erro: Supabase não disponível');
         showNotification('Erro de conexão com o banco de dados', 'error');
     }
 }
 
 class MedicoesManager {
     constructor() {
-        console.log('Inicializando MedicoesManager...');
         this.obras = [];
         this.medicoes = [];
         this.servicosObra = [];
@@ -62,15 +57,12 @@ class MedicoesManager {
             await this.loadObras();
             await this.loadMedicoes();
             this.setupEventListeners();
-            console.log('MedicoesManager inicializado com sucesso!');
         } catch (error) {
-            console.error('Erro ao inicializar MedicoesManager:', error);
             this.showNotification('Erro ao inicializar aplicação: ' + error.message, 'error');
         }
     }
 
     setupEventListeners() {
-        console.log('Configurando event listeners...');
         
         // Filtros
         const filtroObra = document.getElementById('filtro-obra');
@@ -95,7 +87,6 @@ class MedicoesManager {
     getElement(id) {
         const element = document.getElementById(id);
         if (!element) {
-            console.warn(`Elemento com ID '${id}' não encontrado`);
         }
         return element;
     }
@@ -106,7 +97,6 @@ class MedicoesManager {
 
     async buscarClienteViaPropostas(obraId) {
         try {
-            console.log('🔍 Buscando cliente via propostas para obra:', obraId);
             
             // 1. Buscar propostas da obra
             const { data: obrasPropostas, error: opError } = await supabaseClient
@@ -115,11 +105,8 @@ class MedicoesManager {
                 .eq('obra_id', obraId);
 
             if (opError || !obrasPropostas || obrasPropostas.length === 0) {
-                console.log('❌ Nenhuma proposta encontrada para a obra');
                 return null;
             }
-
-            console.log('📋 Propostas encontradas:', obrasPropostas.length);
 
             // 2. Buscar dados das propostas
             const propostaIds = obrasPropostas.map(op => op.proposta_id);
@@ -129,18 +116,13 @@ class MedicoesManager {
                 .in('id', propostaIds);
 
             if (propError || !propostas || propostas.length === 0) {
-                console.log('❌ Dados das propostas não encontrados');
                 return null;
             }
 
-            console.log('📋 Dados das propostas:', propostas.length);
-
             // 3. Buscar cliente da primeira proposta (assumindo que todas são do mesmo cliente)
             const primeiraProposta = propostas[0];
-            console.log('👤 Cliente ID da proposta:', primeiraProposta.cliente_id);
 
             if (!primeiraProposta.cliente_id) {
-                console.log('❌ Proposta não tem cliente_id definido');
                 return null;
             }
 
@@ -152,15 +134,12 @@ class MedicoesManager {
                 .single();
 
             if (clienteError || !cliente) {
-                console.log('❌ Cliente não encontrado na tabela clientes_hvc');
                 return null;
             }
 
-            console.log('✅ Cliente encontrado via propostas:', cliente.nome);
             return cliente;
 
         } catch (error) {
-            console.error('❌ Erro ao buscar cliente via propostas:', error);
             return null;
         }
     }
@@ -171,7 +150,6 @@ class MedicoesManager {
 
     async loadObras() {
         try {
-            console.log('🏗️ Carregando obras...');
             
             // Buscar obras simples primeiro
             const { data: obras, error: obrasError } = await supabaseClient
@@ -189,15 +167,10 @@ class MedicoesManager {
 
             if (clientesError) throw clientesError;
 
-            console.log('👥 Clientes encontrados:', clientes?.length || 0);
-            console.log('🏗️ Obras encontradas:', obras?.length || 0);
-
             // Combinar dados manualmente com busca via propostas
             this.obras = [];
             
             for (const obra of obras || []) {
-                console.log(`\n🔍 Processando obra ${obra.numero_obra} (ID: ${obra.id})`);
-                console.log(`👤 Cliente ID direto da obra: ${obra.cliente_id || 'undefined'}`);
                 
                 let cliente = null;
                 let nomeCliente = 'Cliente não encontrado';
@@ -207,23 +180,18 @@ class MedicoesManager {
                     cliente = clientes.find(c => c.id === obra.cliente_id);
                     if (cliente) {
                         nomeCliente = cliente.nome;
-                        console.log(`✅ Cliente encontrado diretamente: ${cliente.nome}`);
                     } else {
-                        console.log(`❌ Cliente com ID ${obra.cliente_id} não encontrado na tabela clientes_hvc`);
                     }
                 }
                 
                 // Se não encontrou cliente direto, buscar via propostas
                 if (!cliente) {
-                    console.log('🔍 Tentando buscar cliente via propostas...');
                     cliente = await this.buscarClienteViaPropostas(obra.id);
                     
                     if (cliente) {
                         nomeCliente = cliente.nome;
-                        console.log(`✅ Cliente encontrado via propostas: ${cliente.nome}`);
                     } else {
                         nomeCliente = 'Cliente não definido';
-                        console.log(`⚠️ Obra ${obra.numero_obra} não tem cliente definido nem via obra nem via propostas`);
                     }
                 }
                 
@@ -236,20 +204,17 @@ class MedicoesManager {
                 });
             }
 
-            console.log('✅ Obras carregadas:', this.obras.length);
             
             this.populateObrasFilter();
             this.renderObrasModal();
             
         } catch (error) {
-            console.error('❌ Erro ao carregar obras:', error);
             this.showNotification('Erro ao carregar obras: ' + error.message, 'error');
         }
     }
 
     async loadMedicoes() {
         try {
-            console.log('📋 Carregando medições...');
             
             // Buscar medições da tabela medicoes_hvc
             const { data: medicoes, error: medicoesError } = await supabaseClient
@@ -258,10 +223,8 @@ class MedicoesManager {
                 .order('created_at', { ascending: false });
 
             if (medicoesError) {
-                console.log('❌ Erro ao carregar medições:', medicoesError);
                 this.medicoes = [];
             } else {
-                console.log('📋 Medições encontradas:', medicoes?.length || 0);
                 
                 // Buscar obras e clientes separadamente
                 const { data: obras, error: obrasError } = await supabaseClient
@@ -276,47 +239,35 @@ class MedicoesManager {
 
                 if (clientesError) throw clientesError;
 
-                console.log('🏗️ Obras para relacionamento:', obras?.length || 0);
-                console.log('👥 Clientes para relacionamento:', clientes?.length || 0);
-
                 // Combinar dados manualmente com busca via propostas
                 this.medicoes = [];
                 
                 for (const medicao of medicoes || []) {
-                    console.log(`\n📋 Processando medição ${medicao.numero_medicao}`);
-                    console.log(`🏗️ Obra ID da medição: ${medicao.obra_id}`);
                     
                     const obra = obras.find(o => o.id === medicao.obra_id);
-                    console.log(`🏗️ Obra encontrada:`, obra ? obra.numero_obra : 'NÃO ENCONTRADA');
                     
                     let cliente = null;
                     let nomeCliente = 'Cliente não encontrado';
                     
                     if (obra) {
-                        console.log(`👤 Cliente ID direto da obra: ${obra.cliente_id || 'undefined'}`);
                         
                         // Tentar buscar cliente direto da obra primeiro
                         if (obra.cliente_id) {
                             cliente = clientes.find(c => c.id === obra.cliente_id);
                             if (cliente) {
                                 nomeCliente = cliente.nome;
-                                console.log(`✅ Cliente encontrado diretamente: ${cliente.nome}`);
                             } else {
-                                console.log(`❌ Cliente com ID ${obra.cliente_id} não encontrado`);
                             }
                         }
                         
                         // Se não encontrou cliente direto, buscar via propostas
                         if (!cliente) {
-                            console.log('🔍 Tentando buscar cliente via propostas...');
                             cliente = await this.buscarClienteViaPropostas(obra.id);
                             
                             if (cliente) {
                                 nomeCliente = cliente.nome;
-                                console.log(`✅ Cliente encontrado via propostas: ${cliente.nome}`);
                             } else {
                                 nomeCliente = 'Cliente não definido';
-                                console.log(`⚠️ Obra ${obra.numero_obra} não tem cliente definido`);
                             }
                         }
                     }
@@ -334,34 +285,26 @@ class MedicoesManager {
                 }
             }
 
-            console.log('✅ Medições processadas:', this.medicoes.length);
             
             this.renderMedicoes();
             
         } catch (error) {
-            console.error('❌ Erro ao carregar medições:', error);
             this.showNotification('Erro ao carregar medições: ' + error.message, 'error');
         }
     }
 
     async loadServicosObra(obraId) {
         try {
-            console.log('🚀 ===== INICIANDO BUSCA DE SERVIÇOS =====');
-            console.log('🏗️ Obra ID:', obraId);
             
             // 1. Buscar produções diárias para encontrar TODOS os serviços com produção
-            console.log('📊 Passo 1: Buscando produções diárias...');
             const { data: producoes, error: prodError } = await supabaseClient
                 .from('producoes_diarias_hvc')
                 .select('quantidades_servicos')
                 .eq('obra_id', obraId);
 
             if (prodError) {
-                console.error('❌ Erro ao buscar produções:', prodError);
                 return [];
             }
-
-            console.log('📊 Produções encontradas:', producoes?.length || 0);
 
             if (!producoes || producoes.length === 0) {
                 this.showNotification('Nenhuma produção encontrada para esta obra', 'warning');
@@ -369,12 +312,10 @@ class MedicoesManager {
             }
 
             // 2. Extrair TODOS os IDs de serviços que têm produção
-            console.log('🔍 Passo 2: Extraindo serviços das produções...');
             const servicosComProducao = new Set();
             const quantidadesPorServico = {};
 
             producoes.forEach((producao, index) => {
-                console.log(`📋 Produção ${index + 1}:`, producao.quantidades_servicos);
                 const quantidades = producao.quantidades_servicos || {};
                 Object.keys(quantidades).forEach(servicoId => {
                     servicosComProducao.add(servicoId);
@@ -385,16 +326,12 @@ class MedicoesManager {
                 });
             });
 
-            console.log('🎯 Serviços com produção:', Array.from(servicosComProducao));
-            console.log('📊 Quantidades por serviço:', quantidadesPorServico);
-
             if (servicosComProducao.size === 0) {
                 this.showNotification('Nenhum serviço com produção encontrado', 'warning');
                 return [];
             }
 
             // 3. Buscar dados dos serviços
-            console.log('🔍 Passo 3: Buscando dados dos serviços...');
             const servicoIds = Array.from(servicosComProducao);
             const { data: servicos, error: servicosError } = await supabaseClient
                 .from('servicos_hvc')
@@ -402,29 +339,22 @@ class MedicoesManager {
                 .in('id', servicoIds);
 
             if (servicosError) throw servicosError;
-            console.log('📋 Serviços encontrados:', servicos?.length || 0);
 
             // 4. Buscar valores das propostas
-            console.log('🔍 Passo 4: Buscando valores das propostas...');
             const { data: obrasPropostas, error: opError } = await supabaseClient
                 .from('obras_propostas')
                 .select('proposta_id')
                 .eq('obra_id', obraId);
 
-            console.log('📋 Obras-propostas encontradas:', obrasPropostas?.length || 0);
-
             let itensPropostas = [];
             if (!opError && obrasPropostas && obrasPropostas.length > 0) {
                 const propostaIds = obrasPropostas.map(op => op.proposta_id);
-                console.log('🎯 IDs das propostas:', propostaIds);
                 
                 const { data: propostas, error: propError } = await supabaseClient
                     .from('propostas_hvc')
                     .select('*')
                     .in('id', propostaIds)
                     .in('status', ['Aprovada', 'contratada']);
-
-                console.log('📋 Propostas aprovadas:', propostas?.length || 0);
 
                 if (!propError && propostas && propostas.length > 0) {
                     const propostasAprovadas = propostas.map(p => p.id);
@@ -436,13 +366,11 @@ class MedicoesManager {
 
                     if (!itensError) {
                         itensPropostas = itens || [];
-                        console.log('📋 Itens de proposta encontrados:', itensPropostas.length);
                     }
                 }
             }
 
             // 5. BUSCAR MEDIÇÕES ANTERIORES
-            console.log('🔍 ===== PASSO 5: BUSCANDO MEDIÇÕES ANTERIORES =====');
             let quantidadesMedidas = {};
             
             try {
@@ -451,7 +379,6 @@ class MedicoesManager {
                     .select('*')
                     .eq('obra_id', obraId);
 
-                console.log('📊 Quantidade de medições encontradas:', medicoesAnteriores?.length || 0);
                 
                 if (medicoesAnteriores && medicoesAnteriores.length > 0) {
                     medicoesAnteriores.forEach((medicao, index) => {
@@ -473,17 +400,14 @@ class MedicoesManager {
                                 }
                             }
                         } catch (parseError) {
-                            console.log('❌ Erro ao fazer parse das observações:', parseError.message);
                         }
                     });
                 }
                 
             } catch (e) {
-                console.error('❌ Erro geral ao buscar medições anteriores:', e);
             }
 
             // 6. Combinar TODOS os dados
-            console.log('\n🔧 ===== PASSO 6: COMBINANDO DADOS =====');
             const servicosCompletos = servicos.map(servico => {
                 // Buscar valores da proposta
                 const itemProposta = itensPropostas.find(ip => ip.servico_id === servico.id);
@@ -524,12 +448,9 @@ class MedicoesManager {
                 };
             });
 
-            console.log('🎉 ===== PROCESSAMENTO CONCLUÍDO =====');
-            console.log('📊 Total de serviços processados:', servicosCompletos.length);
             return servicosCompletos || [];
             
         } catch (error) {
-            console.error('❌ Erro geral ao carregar serviços da obra:', error);
             this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
             return [];
         }
@@ -540,7 +461,6 @@ class MedicoesManager {
     // ========================================
 
     abrirModalNovaMedicao() {
-        console.log('Abrindo modal de nova medição...');
         
         // Resetar arrays
         this.servicosMedicao = [];
@@ -595,7 +515,6 @@ class MedicoesManager {
         const modal = this.getElement('modal-medicao');
         if (modal) {
             modal.style.display = 'block';
-            console.log('✅ Modal aberto com sucesso');
         }
     }
 
@@ -662,7 +581,6 @@ class MedicoesManager {
 
     async selecionarObra(obraId) {
         try {
-            console.log('Selecionando obra:', obraId);
             
             // Encontrar a obra
             const obra = this.obras.find(o => o.id === obraId);
@@ -709,7 +627,6 @@ class MedicoesManager {
             this.showNotification('Obra selecionada com sucesso!', 'success');
             
         } catch (error) {
-            console.error('Erro ao selecionar obra:', error);
             this.showNotification('Erro ao selecionar obra: ' + error.message, 'error');
             this.hideLoading();
         }
@@ -960,7 +877,6 @@ class MedicoesManager {
         // Atualizar valor total inicial
         this.atualizarExibicaoValorTotal();
         
-        console.log('✅ Todos os serviços renderizados com sucesso!');
     }
 
     // ========================================
@@ -986,7 +902,6 @@ class MedicoesManager {
     atualizarCalculos() {
         this.calcularValorTotal();
         this.atualizarExibicaoValorTotal();
-        console.log('Valor total calculado:', this.valorTotalCalculado);
     }
 
     atualizarExibicaoValorTotal() {
@@ -1011,7 +926,6 @@ class MedicoesManager {
         event.preventDefault();
         
         try {
-            console.log('💾 Iniciando salvamento da medição...');
             
             // Validações
             if (!this.obraSelecionada) {
@@ -1065,8 +979,6 @@ class MedicoesManager {
                 observacoes: observacoes?.value || ''
             };
 
-            console.log('📋 Dados da medição:', dadosMedicao);
-
             this.showLoading();
 
             // Criar nova medição
@@ -1081,7 +993,6 @@ class MedicoesManager {
             // Inserir serviços na tabela medicoes_servicos
             for (const servico of this.servicosMedicao) {
                 if (!servico.item_proposta_id) {
-                    console.warn('Serviço sem item_proposta_id:', servico);
                     continue;
                 }
                 
@@ -1096,7 +1007,6 @@ class MedicoesManager {
                     }]);
                 
                 if (servicoError) {
-                    console.error('Erro ao inserir serviço:', servicoError);
                     throw servicoError;
                 }
             }
@@ -1113,18 +1023,14 @@ class MedicoesManager {
             this.fecharModalMedicao();
 
         } catch (error) {
-            console.error('❌ Erro ao salvar medição:', error);
             this.hideLoading();
             this.showNotification('Erro ao salvar medição: ' + error.message, 'error');
         }
     }
 
-
-
     async confirmarESalvarMedicao() {
         // Esta função pode ser usada para confirmar valores antes de salvar
         this.fecharModalValor();
-        console.log('Medição confirmada e pronta para salvar');
     }
 
     // ========================================
@@ -1142,11 +1048,9 @@ class MedicoesManager {
     }
 
     aplicarFiltros() {
-        console.log('Aplicando filtros...');
     }
 
     limparFiltros() {
-        console.log('Limpando filtros...');
     }
 
     filtrarObras(termo) {
@@ -1222,7 +1126,6 @@ class MedicoesManager {
                 await this.loadMedicoes();
 
             } catch (error) {
-                console.error('Erro ao excluir medição:', error);
                 this.showNotification('Erro ao excluir medição: ' + error.message, 'error');
             }
         }
@@ -1265,15 +1168,12 @@ class MedicoesManager {
     }
 
     showLoading() {
-        console.log('Loading...');
     }
 
     hideLoading() {
-        console.log('Loading finished');
     }
 
     showNotification(message, type = 'info') {
-        console.log(`${type.toUpperCase()}: ${message}`);
         
         // Criar elemento de notificação
         const notification = document.createElement('div');
@@ -1346,7 +1246,6 @@ class MedicoesManager {
             }
             
         } catch (error) {
-            console.error('Erro ao gerar número da medição:', error);
             this.showNotification('Erro ao gerar número da medição: ' + error.message, 'error');
         }
     }
@@ -1357,7 +1256,6 @@ class MedicoesManager {
             
             const obraId = this.obraSelecionada.id;
             
-            console.log('🚀 Obra ID:', obraId);
             
             // 1. Buscar todos os itens das propostas da obra
             const { data: obrasPropostas, error: opError } = await supabaseClient
@@ -1375,7 +1273,6 @@ class MedicoesManager {
             }
             
             const propostaIds = obrasPropostas.map(op => op.proposta_id);
-            console.log('📋 IDs das propostas:', propostaIds);
             
             // Buscar itens de todas as propostas
             const { data: todosItens, error: itensError } = await supabaseClient
@@ -1390,7 +1287,6 @@ class MedicoesManager {
             
             if (itensError) throw itensError;
             
-            console.log('📋 Itens encontrados:', todosItens?.length || 0);
             
             // 2. Buscar todas as produções diárias da obra
             const { data: producoes, error: prodError } = await supabaseClient
@@ -1400,7 +1296,6 @@ class MedicoesManager {
             
             if (prodError) throw prodError;
             
-            console.log('📋 Produções encontradas:', producoes?.length || 0);
             
             // 3. Buscar todas as medições anteriores
             const { data: medicoes, error: medError } = await supabaseClient
@@ -1414,7 +1309,6 @@ class MedicoesManager {
             
             if (medError) throw medError;
             
-            console.log('📋 Medições encontradas:', medicoes?.length || 0);
             
             // 4. Agrupar serviços por código e preço
             const servicosAgrupados = {};
@@ -1504,13 +1398,11 @@ class MedicoesManager {
             // 8. Filtrar apenas serviços com quantidade disponível > 0
             this.servicosParaMedicao = Object.values(servicosAgrupados).filter(s => s.quantidade_disponivel > 0);
             
-            console.log('🎉 Serviços disponíveis:', this.servicosParaMedicao.length);
             
             // 9. Renderizar cards de serviços
             this.renderServicosParaMedicao(this.servicosParaMedicao);
             
         } catch (error) {
-            console.error('❌ Erro ao carregar serviços para medição:', error);
             this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
         }
     }
@@ -1851,4 +1743,3 @@ class MedicoesManager {
 }
 
 // Finalizar tarefa
-console.log('✅ Aplicação de medições carregada e pronta para uso!');
