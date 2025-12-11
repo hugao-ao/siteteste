@@ -1545,8 +1545,9 @@ class MedicoesManager {
             card.onmouseenter = () => card.style.background = 'rgba(173, 216, 230, 0.1)';
             card.onmouseleave = () => card.style.background = 'rgba(173, 216, 230, 0.05)';
             
+            const chaveUnica = servico.chaveUnica;
             const valorUnitario = this.formatarMoeda(servico.valor_unitario_contratado);
-            const quantidadeSelecionada = this.servicosMedicao.find(s => s.servico_id === servico.servico_id)?.quantidade_medida || 0;
+            const quantidadeSelecionada = this.servicosMedicao.find(s => s.chave_unica === chaveUnica)?.quantidade_medida || 0;
             const valorSelecionado = quantidadeSelecionada * servico.valor_unitario_contratado;
             
             card.innerHTML = `
@@ -1758,18 +1759,24 @@ class MedicoesManager {
         if (!this.servicoAtualModal) return;
         
         const servico = this.servicoAtualModal;
+        const chaveUnica = servico.chaveUnica;
         
-        // Remover serviço se já existir
-        this.servicosMedicao = this.servicosMedicao.filter(s => s.servico_id !== servico.servico_id);
+        // Remover serviço se já existir (usando chave_unica)
+        this.servicosMedicao = this.servicosMedicao.filter(s => s.chave_unica !== chaveUnica);
         
         // Adicionar se quantidade > 0
         if (quantidade > 0) {
             this.servicosMedicao.push({
+                chave_unica: chaveUnica,
                 servico_id: servico.servico_id,
                 item_proposta_id: servico.item_proposta_id,
+                codigo_servico: servico.servico_codigo,
+                nome_servico: servico.servico_descricao,
+                unidade: servico.unidade,
                 quantidade_medida: quantidade,
                 valor_unitario: servico.valor_unitario_contratado,
-                valor_total: quantidade * servico.valor_unitario_contratado
+                valor_total: quantidade * servico.valor_unitario_contratado,
+                local: servico.local || ''
             });
         }
         
@@ -1809,7 +1816,7 @@ class MedicoesManager {
         let valorTotal = 0;
         
         tbody.innerHTML = this.servicosMedicao.map(item => {
-            const servico = this.servicosParaMedicao.find(s => s.servico_id === item.servico_id);
+            const servico = this.servicosParaMedicao.find(s => s.chaveUnica === item.chave_unica);
             if (!servico) return '';
             
             valorTotal += item.valor_total;
