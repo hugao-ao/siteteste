@@ -1127,17 +1127,37 @@ class MedicoesManager {
                 .select('*')
                 .eq('id', medicaoId)
                 .single();
-
+            
             if (medicaoError) throw medicaoError;
-
-            // Buscar obra
-            const { data: obra, error: obraError } = await supabaseClient
+            
+            // Buscar serviços da medição com dados do item da proposta e serviço
+            const { data: servicos, error: servicosError } = await supabaseClient
+                .from('medicoes_servicos')
+                .select(`
+                    *,
+                    itens_proposta_hvc (
+                        local_id,
+                        locais_hvc (
+                            nome
+                        ),
+                        servicos_hvc (
+                            codigo,
+                            descricao,
+                            unidade
+                        )
+                    )
+                `)
+                .eq('medicao_id', medicaoId);
+            
+            if (servicosError) throw servicosError;
+            
+            // Buscar obra e cliente
+            const { data: obra } = await supabaseClient
                 .from('obras_hvc')
                 .select('numero_obra, cliente_id')
                 .eq('id', medicao.obra_id)
                 .single();
-
-            // Buscar cliente
+            
             let nomeCliente = 'Cliente não definido';
             if (obra && obra.cliente_id) {
                 const { data: cliente } = await supabaseClient
@@ -1147,54 +1167,44 @@ class MedicoesManager {
                     .single();
                 if (cliente) nomeCliente = cliente.nome;
             }
-
-            // Buscar serviços da medição
-            const { data: servicos, error: servicosError } = await supabaseClient
-                .from('medicoes_servicos_hvc')
-                .select('*')
-                .eq('medicao_id', medicaoId);
-
-            if (servicosError) throw servicosError;
-
+            
             // Montar HTML do modal
             const numeroObra = obra?.numero_obra || 'N/A';
-
+            
+            const statusColors = {
+                'pendente': '#ffc107',
+                'aprovada': '#28a745',
+                'paga': '#20c997',
+                'cancelada': '#dc3545'
+            };
+            const statusColor = statusColors[medicao.status] || '#6c757d';
+            
             let servicosHtml = '';
-            let valorTotal = 0;
-
             if (servicos && servicos.length > 0) {
-                servicosHtml = servicos.map(s => {
-                    const valorServico = s.quantidade_medida * s.valor_unitario;
-                    valorTotal += valorServico;
-                    // Buscar dados do serviço e local
-                    let codigoServico = s.codigo_servico || 'N/A';
-                    let descricaoServico = s.descricao_servico || 'N/A';
-                    let unidadeServico = s.unidade || '';
-                    let nomeLocal = s.local || '';
+                servicos.forEach(servico => {
+                    const servicoData = servico.itens_proposta_hvc?.servicos_hvc;
+                    const nomeServico = servicoData?.descricao || 'Serviço';
+                    const codigoServico = servicoData?.codigo || '-';
+                    const unidade = servicoData?.unidade || 'un';
+                    const local = servico.itens_proposta_hvc?.locais_hvc?.nome || '';
                     
-                    return `
+                    servicosHtml += `
                         <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
-                            <td style="padding: 0.75rem;">
-                                <strong style="color: #add8e6;">${codigoServico}</strong><br>
-                                <small style="color: #c0c0c0;">${descricaoServico}</small>
-                                ${nomeLocal ? `<br><small style="color: #888; font-size: 0.8em;"><i class="fas fa-map-marker-alt" style="font-size: 0.75em;"></i> ${nomeLocal}</small>` : ''}
+                            <td style="padding: 0.75rem; color: #c0c0c0;">${codigoServico}</td>
+                            <td style="padding: 0.75rem; color: #ffffff;">
+                                ${nomeServico}
+                                ${local ? `<br><small style="color: #888; font-size: 0.85em;"><i class="fas fa-map-marker-alt" style="font-size: 0.8em;"></i> ${local}</small>` : ''}
                             </td>
-                            <td style="padding: 0.75rem; text-align: center; color: #e0e0e0;">
-                                ${s.quantidade_medida.toFixed(2)} ${unidadeServico}
-                            </td>
-                            <td style="padding: 0.75rem; text-align: right; color: #20c997;">
-                                ${this.formatarMoeda(s.valor_unitario)}
-                            </td>
-                            <td style="padding: 0.75rem; text-align: right; color: #20c997; font-weight: 600;">
-                                ${this.formatarMoeda(valorServico)}
-                            </td>
+                            <td style="padding: 0.75rem; text-align: center; color: #c0c0c0;">${servico.quantidade_medida} ${unidade}</td>
+                            <td style="padding: 0.75rem; text-align: right; color: #c0c0c0;">${this.formatarMoeda(servico.preco_unitario)}</td>
+                            <td style="padding: 0.75rem; text-align: right; color: #20c997; font-weight: 600;">${this.formatarMoeda(servico.valor_total)}</td>
                         </tr>
                     `;
-                }).join('');
+                });
             } else {
                 servicosHtml = `
                     <tr>
-                        <td colspan="4" style="text-align: center; padding: 2rem; color: #888;">
+                        <td colspan="5" style="text-align: center; padding: 2rem; color: #888;">
                             Nenhum serviço encontrado nesta medição
                         </td>
                     </tr>
@@ -1203,24 +1213,22 @@ class MedicoesManager {
 
             const modalHtml = `
                 <div style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 9999; display: flex; align-items: center; justify-content: center;">
-                    <div style="background: #1a1a2e; border-radius: 12px; width: 90%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
+                    <div style="background: #1a1a2e; border-radius: 12px; width: 90%; max-width: 1000px; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.5);">
                         <div style="padding: 1.5rem; border-bottom: 1px solid rgba(173, 216, 230, 0.2); display: flex; justify-content: space-between; align-items: center;">
-                            <h3 style="color: #add8e6; margin: 0;">
-                                <i class="fas fa-eye"></i> Visualizar Medição
-                            </h3>
+                            <div>
+                                <h3 style="color: #add8e6; margin: 0 0 0.5rem 0;">${medicao.numero_medicao}</h3>
+                                <span style="padding: 0.35rem 1rem; background: ${statusColor}; color: white; border-radius: 15px; font-size: 0.9rem; font-weight: 600;">
+                                    ${medicao.status.toUpperCase()}
+                                </span>
+                            </div>
                             <button onclick="fecharModalVisualizacao()" style="background: none; border: none; color: #add8e6; font-size: 1.5rem; cursor: pointer;">
                                 <i class="fas fa-times"></i>
                             </button>
                         </div>
                         
                         <div style="padding: 1.5rem;">
-                            <!-- Informações da Medição -->
                             <div style="background: rgba(173, 216, 230, 0.05); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
                                 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
-                                    <div>
-                                        <label style="color: #888; font-size: 0.85em;">Número da Medição</label>
-                                        <div style="color: #add8e6; font-weight: 600; font-size: 1.1em;">${medicao.numero_medicao}</div>
-                                    </div>
                                     <div>
                                         <label style="color: #888; font-size: 0.85em;">Obra</label>
                                         <div style="color: #e0e0e0;">${numeroObra}</div>
@@ -1235,42 +1243,46 @@ class MedicoesManager {
                                     </div>
                                     <div>
                                         <label style="color: #888; font-size: 0.85em;">Previsão de Pagamento</label>
-                                        <div style="color: #e0e0e0;">${this.formatarData(medicao.previsao_pagamento)}</div>
-                                    </div>
-                                    <div>
-                                        <label style="color: #888; font-size: 0.85em;">Status</label>
-                                        <div><span class="badge badge-${this.getStatusColor(medicao.status)}">${this.getStatusText(medicao.status)}</span></div>
+                                        <div style="color: #e0e0e0;">${medicao.previsao_pagamento ? this.formatarData(medicao.previsao_pagamento) : 'N/A'}</div>
                                     </div>
                                 </div>
-                                ${medicao.observacoes ? `
-                                    <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(173, 216, 230, 0.1);">
-                                        <label style="color: #888; font-size: 0.85em;">Observações</label>
-                                        <div style="color: #e0e0e0;">${medicao.observacoes}</div>
-                                    </div>
-                                ` : ''}
                             </div>
 
-                            <!-- Serviços Medidos -->
-                            <h4 style="color: #add8e6; margin-bottom: 1rem;">Serviços Medidos</h4>
-                            <table style="width: 100%; border-collapse: collapse;">
-                                <thead>
-                                    <tr style="background: rgba(173, 216, 230, 0.1); border-bottom: 2px solid rgba(173, 216, 230, 0.2);">
-                                        <th style="padding: 0.75rem; text-align: left; color: #add8e6; font-weight: 600;">SERVIÇO</th>
-                                        <th style="padding: 0.75rem; text-align: center; color: #add8e6; font-weight: 600;">QUANTIDADE</th>
-                                        <th style="padding: 0.75rem; text-align: right; color: #add8e6; font-weight: 600;">PREÇO UNITÁRIO</th>
-                                        <th style="padding: 0.75rem; text-align: right; color: #add8e6; font-weight: 600;">VALOR TOTAL</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${servicosHtml}
-                                </tbody>
-                            </table>
-
-                            <!-- Valor Total -->
-                            <div style="background: rgba(32, 201, 151, 0.1); padding: 1rem; border-radius: 8px; margin-top: 1.5rem; text-align: right;">
-                                <span style="color: #888; margin-right: 1rem;">Valor Total da Medição:</span>
-                                <strong style="color: #20c997; font-size: 1.5em;">${this.formatarMoeda(valorTotal)}</strong>
+                            <div style="background: rgba(173, 216, 230, 0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                                <h4 style="color: #add8e6; margin-bottom: 1rem;"><i class="fas fa-list"></i> Serviços Medidos</h4>
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        <tr style="border-bottom: 2px solid rgba(173, 216, 230, 0.2);">
+                                            <th style="padding: 0.75rem; text-align: left; color: #add8e6; font-weight: 600;">CÓDIGO</th>
+                                            <th style="padding: 0.75rem; text-align: left; color: #add8e6; font-weight: 600;">SERVIÇO</th>
+                                            <th style="padding: 0.75rem; text-align: center; color: #add8e6; font-weight: 600;">QUANTIDADE</th>
+                                            <th style="padding: 0.75rem; text-align: right; color: #add8e6; font-weight: 600;">PREÇO UNIT.</th>
+                                            <th style="padding: 0.75rem; text-align: right; color: #add8e6; font-weight: 600;">VALOR TOTAL</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${servicosHtml}
+                                    </tbody>
+                                </table>
                             </div>
+                            
+                            <div style="background: linear-gradient(135deg, #000080 0%, #191970 100%); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                                <div style="display: flex; justify-content: space-between; align-items: center;">
+                                    <span style="color: #add8e6; font-size: 1.1rem; font-weight: 600;">
+                                        <i class="fas fa-dollar-sign"></i> Valor Total da Medição:
+                                    </span>
+                                    <span style="color: #20c997; font-size: 1.5rem; font-weight: 700;">
+                                        ${this.formatarMoeda(medicao.valor_total || 0)}
+                                    </span>
+                                </div>
+                            </div>
+                            
+                            ${medicao.observacoes ? `
+                                <div style="background: rgba(173, 216, 230, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid #add8e6;">
+                                    <h4 style="color: #add8e6; margin-bottom: 0.5rem;"><i class="fas fa-comment"></i> Observações</h4>
+                                    <p style="color: #c0c0c0; line-height: 1.6; margin: 0;">${medicao.observacoes}</p>
+                                </div>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
