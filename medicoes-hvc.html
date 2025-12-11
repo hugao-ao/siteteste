@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+<!--
+********************************************************************************
+* MEDIÇÕES HVC - VERSÃO FINAL COM RECEBIMENTOS E ANOTAÇÕES
+* Data: 11/12/2025
+* 
+* VERIFICAÇÃO RÁPIDA:
+* - Abra o código fonte (Ctrl+U) e procure por "VERSÃO FINAL"
+* - Cabeçalho da tabela DEVE ter 9 colunas (incluindo RECEBIDO e RETENÇÃO)
+* - Botão de anotações (amarelo) deve estar visível
+********************************************************************************
+-->
 <head>
+  <!-- VERSÃO COM RECEBIMENTOS E ANOTAÇÕES - 11/12/2025 -->
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
@@ -678,13 +690,15 @@
             <th>Data</th>
             <th>Previsão</th>
             <th>Valor</th>
+            <th>Recebido</th>
+            <th>Retenção</th>
             <th>Status</th>
             <th>Ações</th>
           </tr>
         </thead>
         <tbody id="medicoes-list">
           <tr>
-            <td colspan="7" style="text-align: center; color: #b0c4de; padding: 2rem;">
+            <td colspan="9" style="text-align: center; color: #b0c4de; padding: 2rem;">
               <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
               Nenhuma medição cadastrada
             </td>
