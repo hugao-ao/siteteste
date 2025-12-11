@@ -2872,6 +2872,52 @@ fecharModalAjustarQuantidade() {
             
             if (medicaoError) throw medicaoError;
             
+            // Buscar obra e clientes
+            let numeroObra = 'N/A';
+            let clientes = [];
+            
+            if (medicao.obra_id) {
+                const { data: obra, error: obraError } = await supabaseClient
+                    .from('obras_hvc')
+                    .select('numero_obra')
+                    .eq('id', medicao.obra_id)
+                    .single();
+                
+                if (!obraError && obra) {
+                    numeroObra = obra.numero_obra || 'N/A';
+                }
+                
+                // Buscar propostas da obra
+                const { data: obrasPropostas, error: opError } = await supabaseClient
+                    .from('obras_propostas')
+                    .select('proposta_id')
+                    .eq('obra_id', medicao.obra_id);
+                
+                if (!opError && obrasPropostas && obrasPropostas.length > 0) {
+                    const propostaIds = obrasPropostas.map(op => op.proposta_id);
+                    
+                    // Buscar propostas com clientes
+                    const { data: propostas, error: propError } = await supabaseClient
+                        .from('propostas_hvc')
+                        .select('cliente_id, clientes_hvc(nome)')
+                        .in('id', propostaIds);
+                    
+                    if (!propError && propostas) {
+                        // Extrair nomes de clientes únicos
+                        const clientesUnicos = new Set();
+                        propostas.forEach(prop => {
+                            if (prop.clientes_hvc?.nome) {
+                                clientesUnicos.add(prop.clientes_hvc.nome);
+                            }
+                        });
+                        clientes = Array.from(clientesUnicos);
+                    }
+                }
+            }
+            
+            // Formatar exibição de clientes
+            let nomeCliente = clientes.length > 0 ? clientes.join(', ') : 'Cliente não definido';
+            
             // Buscar serviços da medição com dados do item da proposta e serviço
             const { data: servicos, error: servicosError } = await supabaseClient
                 .from('medicoes_servicos')
@@ -2894,7 +2940,7 @@ fecharModalAjustarQuantidade() {
             if (servicosError) throw servicosError;
             
             // Renderizar detalhes
-            this.renderDetalhesMedicao(medicao, servicos || []);
+            this.renderDetalhesMedicao(medicao, servicos || [], numeroObra, nomeCliente);
             
             // Mostrar modal
             const modal = document.getElementById('modal-detalhes-medicao');
@@ -2905,7 +2951,7 @@ fecharModalAjustarQuantidade() {
         }
     }
     
-    renderDetalhesMedicao(medicao, servicos) {
+    renderDetalhesMedicao(medicao, servicos, numeroObra, nomeCliente) {
         const container = document.getElementById('conteudo-detalhes-medicao');
         if (!container) return;
         
@@ -2919,7 +2965,7 @@ fecharModalAjustarQuantidade() {
         const statusColor = statusColors[medicao.status] || '#6c757d';
         
         let html = `
-            <div style="margin-bottom: 2rem;">
+                <div style="margin-bottom: 2rem;">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.2);">
                     <div>
                         <h3 style="color: #add8e6; margin-bottom: 0.5rem;">${medicao.numero_medicao}</h3>
@@ -2936,6 +2982,19 @@ fecharModalAjustarQuantidade() {
                                 <i class="fas fa-calendar-check"></i> Previsão: ${new Date(medicao.previsao_pagamento).toLocaleDateString('pt-BR')}
                             </div>
                         ` : ''}
+                    </div>
+                </div>
+                
+                <div style="background: rgba(173, 216, 230, 0.05); padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem;">
+                        <div>
+                            <label style="color: #888; font-size: 0.85em;">Obra</label>
+                            <div style="color: #e0e0e0;">${numeroObra}</div>
+                        </div>
+                        <div>
+                            <label style="color: #888; font-size: 0.85em;">Cliente</label>
+                            <div style="color: #e0e0e0;">${nomeCliente}</div>
+                        </div>
                     </div>
                 </div>
                 
