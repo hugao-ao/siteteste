@@ -9994,11 +9994,22 @@ window.openManageCategoriasPayment = function() {
                 
                 console.log('✅ Evento atualizado:', updateResponse);
                 
+                // ✅ DEBUG: Verificar eventType
+                console.log('🔍 DEBUG - eventType recebido:', eventType);
+                console.log('🔍 DEBUG - Título do evento:', currentEditingEventData.summary);
+                
+                // ✅ CORRIGIDO: Detectar RECEBIMENTO (case-insensitive) pelo eventType ou título
+                const eventTypeUpper = (eventType || '').toUpperCase();
+                const isRecebimento = eventTypeUpper === 'RECEBIMENTO' || 
+                                     (currentEditingEventData.summary && currentEditingEventData.summary.includes('RECEBIMENTO'));
+                
+                console.log('🔍 DEBUG - isRecebimento:', isRecebimento);
+                
                 // Mostrar mensagem de sucesso
                 alert('Alterações salvas com sucesso!');
                 
                 // ✅ NOVO: Atualizar medição se for RECEBIMENTO
-                if (eventType === 'RECEBIMENTO' && typeof window.atualizarRecebimentoNaMedicao === 'function') {
+                if (isRecebimento && typeof window.atualizarRecebimentoNaMedicao === 'function') {
                     try {
                         // ✅ CORRIGIDO: Usar campos do objeto diretamente
                         for (const item of updatedItems) {
