@@ -1132,32 +1132,49 @@ class MedicoesManager {
             
             // Buscar obra
             let numeroObra = 'N/A';
-            let nomeCliente = 'Cliente não definido';
+            let clientes = [];
             
             if (medicao.obra_id) {
                 const { data: obra, error: obraError } = await supabaseClient
                     .from('obras_hvc')
-                    .select('numero_obra, cliente_id')
+                    .select('numero_obra')
                     .eq('id', medicao.obra_id)
                     .single();
                 
                 if (!obraError && obra) {
                     numeroObra = obra.numero_obra || 'N/A';
+                }
+                
+                // Buscar propostas da obra
+                const { data: obrasPropostas, error: opError } = await supabaseClient
+                    .from('obras_propostas')
+                    .select('proposta_id')
+                    .eq('obra_id', medicao.obra_id);
+                
+                if (!opError && obrasPropostas && obrasPropostas.length > 0) {
+                    const propostaIds = obrasPropostas.map(op => op.proposta_id);
                     
-                    // Buscar cliente
-                    if (obra.cliente_id) {
-                        const { data: cliente, error: clienteError } = await supabaseClient
-                            .from('clientes_hvc')
-                            .select('nome')
-                            .eq('id', obra.cliente_id)
-                            .single();
-                        
-                        if (!clienteError && cliente) {
-                            nomeCliente = cliente.nome;
-                        }
+                    // Buscar propostas com clientes
+                    const { data: propostas, error: propError } = await supabaseClient
+                        .from('propostas_hvc')
+                        .select('cliente_id, clientes_hvc(nome)')
+                        .in('id', propostaIds);
+                    
+                    if (!propError && propostas) {
+                        // Extrair nomes de clientes únicos
+                        const clientesUnicos = new Set();
+                        propostas.forEach(prop => {
+                            if (prop.clientes_hvc?.nome) {
+                                clientesUnicos.add(prop.clientes_hvc.nome);
+                            }
+                        });
+                        clientes = Array.from(clientesUnicos);
                     }
                 }
             }
+            
+            // Formatar exibição de clientes
+            let nomeCliente = clientes.length > 0 ? clientes.join(', ') : 'Cliente não definido';
             
             // Buscar serviços da medição com dados do item da proposta e serviço
             const { data: servicos, error: servicosError } = await supabaseClient
