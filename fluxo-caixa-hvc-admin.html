@@ -8974,26 +8974,13 @@
                 
                 // Popular selects de TIPO, SUBTIPO e CATEGORIA
                 items.forEach((item, index) => {
-                    // Extrair tipo, subtipo e categoria do nome do item
-                    const tipo = item.tipo || '';        // "EXTERNO"
-                    const subtipo = item.subtipo || '';  // "OBRA"
-                    const categoria = item.categoria || ''; // "0001/2025"
-                    const nome = item.name || '';        // "MUNDO DA IMPERMEABILIZAÇÃO"
-                    let tipo = '', subtipo = '', categoria = '', nome = item.name || '';
+                    // ✅ CORRIGIDO: Usar os campos já extraídos pela função extractPaymentInfo
+                    const tipo = item.tipo || '';
+                    const subtipo = item.subtipo || '';
+                    const categoria = item.categoria || '';
+                    const nome = item.name || '';
                     
-                    if (nameParts.length >= 4) {
-                        tipo = nameParts[0];
-                        subtipo = nameParts[1];
-                        categoria = nameParts[2];
-                        nome = nameParts.slice(3).join(' - ');
-                    } else if (nameParts.length === 3) {
-                        subtipo = nameParts[0];
-                        categoria = nameParts[1];
-                        nome = nameParts[2];
-                    } else if (nameParts.length === 2) {
-                        subtipo = nameParts[0];
-                        nome = nameParts[1];
-                    }
+                    console.log(`🔍 Item ${index} - Valores extraídos:`, { tipo, subtipo, categoria, nome });
                     
                     setTimeout(async () => {
                         if (eventType === 'pagamento') {
