@@ -2995,6 +2995,14 @@ fecharModalAjustarQuantidade() {
                             <label style="color: #888; font-size: 0.85em;">Cliente</label>
                             <div style="color: #e0e0e0;">${nomeCliente}</div>
                         </div>
+                        <div>
+                            <label style="color: #888; font-size: 0.85em;">Data de Criação</label>
+                            <div style="color: #e0e0e0;">${new Date(medicao.created_at).toLocaleDateString('pt-BR')}</div>
+                        </div>
+                        <div>
+                            <label style="color: #888; font-size: 0.85em;">Previsão de Pagamento</label>
+                            <div style="color: #e0e0e0;">${medicao.previsao_pagamento ? new Date(medicao.previsao_pagamento).toLocaleDateString('pt-BR') : 'N/A'}</div>
+                        </div>
                     </div>
                 </div>
                 
