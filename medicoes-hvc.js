@@ -1121,10 +1121,16 @@ class MedicoesManager {
 
     async visualizarMedicao(medicaoId) {
         try {
-            // Buscar dados da medição
+            // Buscar dados da medição com obra e cliente
             const { data: medicao, error: medicaoError } = await supabaseClient
                 .from('medicoes_hvc')
-                .select('*')
+                .select(`
+                    *,
+                    obras_hvc (
+                        numero_obra,
+                        clientes_hvc (nome)
+                    )
+                `)
                 .eq('id', medicaoId)
                 .single();
             
@@ -1151,25 +1157,9 @@ class MedicoesManager {
             
             if (servicosError) throw servicosError;
             
-            // Buscar obra e cliente
-            const { data: obra } = await supabaseClient
-                .from('obras_hvc')
-                .select('numero_obra, cliente_id')
-                .eq('id', medicao.obra_id)
-                .single();
-            
-            let nomeCliente = 'Cliente não definido';
-            if (obra && obra.cliente_id) {
-                const { data: cliente } = await supabaseClient
-                    .from('clientes_hvc')
-                    .select('nome')
-                    .eq('id', obra.cliente_id)
-                    .single();
-                if (cliente) nomeCliente = cliente.nome;
-            }
-            
-            // Montar HTML do modal
-            const numeroObra = obra?.numero_obra || 'N/A';
+            // Extrair dados de obra e cliente
+            const numeroObra = medicao.obras_hvc?.numero_obra || 'N/A';
+            const nomeCliente = medicao.obras_hvc?.clientes_hvc?.nome || 'Cliente não definido';
             
             const statusColors = {
                 'pendente': '#ffc107',
