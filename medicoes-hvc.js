@@ -1361,17 +1361,159 @@ class MedicoesManager {
             
             const obraId = this.obraSelecionada.id;
             
-            // Buscar serviços da obra (reutilizando função existente)
-            const servicos = await this.loadServicosObra(obraId);
+            console.log('🚀 Obra ID:', obraId);
             
-            // Filtrar apenas serviços com quantidade disponível > 0
-            this.servicosParaMedicao = servicos.filter(s => s.quantidade_disponivel > 0);
+            // 1. Buscar todos os itens das propostas da obra
+            const { data: obrasPropostas, error: opError } = await supabaseClient
+                .from('obras_propostas')
+                .select('proposta_id')
+                .eq('obra_id', obraId);
             
-            // Renderizar cards de serviços
+            if (opError) throw opError;
+            
+            if (!obrasPropostas || obrasPropostas.length === 0) {
+                this.showNotification('Nenhuma proposta vinculada a esta obra', 'warning');
+                this.servicosParaMedicao = [];
+                this.renderServicosParaMedicao([]);
+                return;
+            }
+            
+            const propostaIds = obrasPropostas.map(op => op.proposta_id);
+            console.log('📋 IDs das propostas:', propostaIds);
+            
+            // Buscar itens de todas as propostas
+            const { data: todosItens, error: itensError } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select(`
+                    *,
+                    servicos_hvc (*),
+                    propostas_hvc (numero_proposta),
+                    locais_hvc (nome)
+                `)
+                .in('proposta_id', propostaIds);
+            
+            if (itensError) throw itensError;
+            
+            console.log('📋 Itens encontrados:', todosItens?.length || 0);
+            
+            // 2. Buscar todas as produções diárias da obra
+            const { data: producoes, error: prodError } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('*')
+                .eq('obra_id', obraId);
+            
+            if (prodError) throw prodError;
+            
+            console.log('📋 Produções encontradas:', producoes?.length || 0);
+            
+            // 3. Buscar todas as medições anteriores
+            const { data: medicoes, error: medError } = await supabaseClient
+                .from('medicoes_hvc')
+                .select(`
+                    id,
+                    medicoes_servicos (*)
+                `)
+                .eq('obra_id', obraId)
+                .neq('status', 'cancelada');
+            
+            if (medError) throw medError;
+            
+            console.log('📋 Medições encontradas:', medicoes?.length || 0);
+            
+            // 4. Agrupar serviços por código e preço
+            const servicosAgrupados = {};
+            
+            (todosItens || []).forEach(item => {
+                const servicoId = item.servicos_hvc?.id;
+                const servicoCodigo = item.servicos_hvc?.codigo;
+                const servicoNome = item.servicos_hvc?.descricao;
+                const unidade = item.servicos_hvc?.unidade || 'un';
+                const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
+                const precoMaterial = parseFloat(item.preco_material) || 0;
+                const precoUnitario = precoMaoObra + precoMaterial;
+                const quantidade = parseFloat(item.quantidade) || 0;
+                const precoTotal = parseFloat(item.preco_total) || 0;
+                
+                if (!servicoId || !servicoCodigo) return;
+                
+                // Chave única: servicoId + precoUnitario
+                const chave = `${servicoId}_${precoUnitario}`;
+                
+                if (!servicosAgrupados[chave]) {
+                    servicosAgrupados[chave] = {
+                        chaveUnica: chave,
+                        servico_id: servicoId,
+                        servico_codigo: servicoCodigo,
+                        servico_descricao: servicoNome,
+                        unidade,
+                        valor_unitario_contratado: precoUnitario,
+                        quantidade_contratada: 0,
+                        valor_total_contratado: 0,
+                        quantidade_produzida: 0,
+                        quantidade_ja_medida: 0,
+                        quantidade_disponivel: 0,
+                        itens: []
+                    };
+                }
+                
+                servicosAgrupados[chave].quantidade_contratada += quantidade;
+                servicosAgrupados[chave].valor_total_contratado += precoTotal;
+                servicosAgrupados[chave].itens.push(item);
+            });
+            
+            // 5. Calcular quantidades produzidas
+            Object.values(servicosAgrupados).forEach(servico => {
+                let totalProduzido = 0;
+                
+                (producoes || []).forEach(producao => {
+                    const quantidades = producao.quantidades_servicos || {};
+                    servico.itens.forEach(item => {
+                        if (quantidades[item.id]) {
+                            totalProduzido += parseFloat(quantidades[item.id]) || 0;
+                        }
+                    });
+                });
+                
+                servico.quantidade_produzida = totalProduzido;
+            });
+            
+            // 6. Calcular quantidades já medidas
+            Object.values(servicosAgrupados).forEach(servico => {
+                let totalMedido = 0;
+                
+                (medicoes || []).forEach(medicao => {
+                    const servicosMedicao = medicao.medicoes_servicos || [];
+                    servicosMedicao.forEach(sm => {
+                        const itemPertenceAoServico = servico.itens.some(item => item.id === sm.item_proposta_id);
+                        
+                        if (itemPertenceAoServico) {
+                            totalMedido += parseFloat(sm.quantidade_medida) || 0;
+                        }
+                    });
+                });
+                
+                servico.quantidade_ja_medida = totalMedido;
+            });
+            
+            // 7. Calcular quantidade disponível para medição
+            Object.values(servicosAgrupados).forEach(servico => {
+                servico.quantidade_disponivel = Math.max(0, 
+                    servico.quantidade_produzida - servico.quantidade_ja_medida
+                );
+                // Guardar item_proposta_id do primeiro item para usar ao salvar
+                servico.item_proposta_id = servico.itens[0]?.id || null;
+            });
+            
+            // 8. Filtrar apenas serviços com quantidade disponível > 0
+            this.servicosParaMedicao = Object.values(servicosAgrupados).filter(s => s.quantidade_disponivel > 0);
+            
+            console.log('🎉 Serviços disponíveis:', this.servicosParaMedicao.length);
+            
+            // 9. Renderizar cards de serviços
             this.renderServicosParaMedicao(this.servicosParaMedicao);
             
         } catch (error) {
-            console.error('Erro ao carregar serviços para medição:', error);
+            console.error('❌ Erro ao carregar serviços para medição:', error);
             this.showNotification('Erro ao carregar serviços: ' + error.message, 'error');
         }
     }
