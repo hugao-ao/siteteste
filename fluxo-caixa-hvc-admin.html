@@ -4131,6 +4131,33 @@
                     
                     console.log('📅 Evento criado:', window.lastCreatedEvent);
                     
+                    // ✅ NOVO: Integrar com medições se for RECEBIMENTO
+                    if (eventType.value === 'RECEBIMENTO' && typeof window.registrarRecebimentoNaMedicao === 'function') {
+                        try {
+                            // Extrair informações dos itens para identificar medição
+                            for (const item of window.paymentItems) {
+                                const info = extractPaymentInfo(item);
+                                
+                                // Verificar se CATEGORIA é número de medição e SUBTIPO é obra
+                                if (info.categoria && info.subtipo) {
+                                    console.log('🏛️ Detectada medição:', info.categoria, 'da obra:', info.subtipo);
+                                    
+                                    await window.registrarRecebimentoNaMedicao(
+                                        info.categoria,  // número da medição
+                                        info.subtipo,    // número da obra
+                                        info.value,      // valor recebido
+                                        eventDate,       // data do recebimento
+                                        createdEvent.id  // ID do evento
+                                    );
+                                    
+                                    console.log('✅ Recebimento registrado na medição!');
+                                }
+                            }
+                        } catch (error) {
+                            console.error('❌ Erro ao registrar recebimento na medição:', error);
+                        }
+                    }
+                    
                     // Limpar formulário
                     clearEventForm();
                     
@@ -4324,6 +4351,17 @@
                 if (response.status === 204 || response.status === 200) {
                     console.log('✅ Evento excluído com sucesso!');
                     showMessage('Evento excluído com sucesso!', 'success');
+                    
+                    // ✅ NOVO: Remover recebimento da medição
+                    if (typeof window.removerRecebimentoDaMedicao === 'function') {
+                        try {
+                            console.log('🏛️ Removendo recebimento da medição...');
+                            await window.removerRecebimentoDaMedicao(eventId);
+                            console.log('✅ Recebimento removido da medição!');
+                        } catch (error) {
+                            console.error('❌ Erro ao remover recebimento da medição:', error);
+                        }
+                    }
                     
                     // Recarregar eventos se a função existir
                     if (typeof loadEvents === 'function') {
@@ -9947,6 +9985,31 @@ window.openManageCategoriasPayment = function() {
                 // Mostrar mensagem de sucesso
                 alert('Alterações salvas com sucesso!');
                 
+                // ✅ NOVO: Atualizar medição se for RECEBIMENTO
+                if (eventType === 'RECEBIMENTO' && typeof window.atualizarRecebimentoNaMedicao === 'function') {
+                    try {
+                        // Extrair informações dos itens atualizados
+                        for (const item of updatedItems) {
+                            const info = extractPaymentInfo(item.name + ' - ' + formatCurrency(item.value) + ' (' + item.status + ')');
+                            
+                            // Verificar se CATEGORIA é número de medição
+                            if (info.categoria && info.subtipo) {
+                                console.log('🏛️ Atualizando medição:', info.categoria);
+                                
+                                await window.atualizarRecebimentoNaMedicao(
+                                    eventId,        // ID do evento
+                                    info.value,     // novo valor
+                                    currentEditingEventData.start.dateTime || currentEditingEventData.start.date  // data
+                                );
+                                
+                                console.log('✅ Medição atualizada!');
+                            }
+                        }
+                    } catch (error) {
+                        console.error('❌ Erro ao atualizar medição:', error);
+                    }
+                }
+                
                 // Recarregar eventos
                 if (typeof loadFilteredEvents === 'function') {
                     await loadFilteredEvents();
@@ -15057,6 +15120,16 @@ window.openManageCategoriasPayment = function() {
         
     </script>
 
+    <!-- ✅ INTEGRAÇÃO COM SISTEMA DE MEDIÇÕES -->
+    <script src="integracao-medicoes.js"></script>
+    <script>
+        console.log('✅ Script de integração com medições carregado');
+        console.log('Funções disponíveis:', {
+            registrarRecebimentoNaMedicao: typeof window.registrarRecebimentoNaMedicao,
+            removerRecebimentoDaMedicao: typeof window.removerRecebimentoDaMedicao,
+            atualizarRecebimentoNaMedicao: typeof window.atualizarRecebimentoNaMedicao
+        });
+    </script>
 
     </body>
 </html>
