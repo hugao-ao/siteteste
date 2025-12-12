@@ -374,8 +374,6 @@ class ObrasManager {
             // 4. Calcular valor produzido
             let valorTotalProduzido = 0;
 
-            console.log('🔍 DEBUG PRODUZIDO - Itens encontrados:', itens.length);
-            console.log('🔍 DEBUG PRODUZIDO - Produções encontradas:', producoes?.length || 0);
 
             for (const item of itens) {
                 // Calcular valor unitário: preco_total / quantidade
@@ -383,41 +381,30 @@ class ObrasManager {
                 const precoTotal = parseFloat(item.preco_total) || 0;
                 const valorUnitario = quantidade > 0 ? (precoTotal / quantidade) : 0;
 
-                console.log(`🔍 Item ${item.id}:`);
-                console.log(`   - Quantidade contratada: ${quantidade}`);
-                console.log(`   - Preço total: R$ ${precoTotal.toFixed(2)}`);
-                console.log(`   - Valor unitário: R$ ${valorUnitario.toFixed(2)}`);
 
                 // Somar quantidades produzidas deste item
                 let quantidadeProduzida = 0;
                 producoes?.forEach(producao => {
                     const quantidades = producao.quantidades_servicos || {};
                     const qtd = parseFloat(quantidades[item.id]) || 0;
-                    if (qtd > 0) {
-                        console.log(`   - Produção encontrada: +${qtd}`);
-                    }
+
                     quantidadeProduzida += qtd;
                 });
 
-                console.log(`   - Total produzido: ${quantidadeProduzida}`);
 
                 // Calcular valor: quantidade_produzida × valor_unitário
                 const valorItem = quantidadeProduzida * valorUnitario;
                 
-                if (quantidadeProduzida > 0) {
-                    console.log(`   💰 Valor produzido: ${quantidadeProduzida.toFixed(2)} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorItem.toFixed(2)}`);
-                } else {
-                    console.log(`   ⚠️ Nenhuma produção encontrada para este item`);
-                }
+
                 
                 valorTotalProduzido += valorItem;
             }
 
-            console.log('📊 TOTAL PRODUZIDO:', valorTotalProduzido.toFixed(2));
+
             return valorTotalProduzido;
 
         } catch (error) {
-            console.error('Erro ao calcular valor produzido:', error);
+
             return 0;
         }
     }
@@ -444,7 +431,7 @@ class ObrasManager {
             return valorTotal;
 
         } catch (error) {
-            console.error('Erro ao calcular valor medido:', error);
+
             return 0;
         }
     }
@@ -479,7 +466,7 @@ class ObrasManager {
             return valorTotalRecebido;
 
         } catch (error) {
-            console.error('Erro ao calcular valor recebido:', error);
+
             return 0;
         }
     }
@@ -927,7 +914,7 @@ class ObrasManager {
             return percentualFinal;
             
         } catch (error) {
-            console.error('Erro ao calcular percentual:', error);
+
             return 0;
         }
     }
@@ -1297,10 +1284,10 @@ class ObrasManager {
                 .eq('id', obraId);
 
             if (error) {
-                console.error('Erro ao atualizar valor total:', error);
+
             }
         } catch (error) {
-            console.error('Erro ao atualizar valor total:', error);
+
         }
     }
 
@@ -2415,7 +2402,14 @@ class ObrasManager {
                 const { data, error } = await supabaseClient
                     .from('itens_proposta_hvc')
                     .select(`
-                        *,
+                        id,
+                        proposta_id,
+                        servico_id,
+                        local_id,
+                        quantidade,
+                        preco_mao_obra,
+                        preco_material,
+                        preco_total,
                         servicos_hvc (*),
                         propostas_hvc (numero_proposta),
                         locais_hvc (nome)
@@ -2649,7 +2643,7 @@ class ObrasManager {
             const servico = this.servicosParaMedicao[index];
             
             if (!servico) {
-                console.error('Serviço não encontrado!');
+
                 return;
             }
             
@@ -2839,7 +2833,7 @@ confirmarQuantidade(chaveUnica) {
     const input = document.getElementById('input-quantidade-manual');
     
     if (!input || !this.servicoAtualModal) {
-        console.error('Input ou servicoAtualModal não encontrado!');
+
         return;
     }
     
@@ -2900,7 +2894,7 @@ fecharModalAjustarQuantidade() {
         const valorTotalEl = document.getElementById('valor-total-medicao');
         
         if (!tbody || !valorTotalEl) {
-            console.error('Elementos de resumo não encontrados');
+
             return;
         }
         
@@ -2988,7 +2982,7 @@ fecharModalAjustarQuantidade() {
             // Inserir serviços da medição
             for (const servico of this.servicosMedicao) {
                 if (!servico.item_proposta_id) {
-                    console.warn('Serviço sem item_proposta_id:', servico);
+
                     continue;
                 }
                 
