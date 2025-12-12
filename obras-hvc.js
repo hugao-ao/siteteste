@@ -344,34 +344,64 @@ class ObrasManager {
      */
     async calcularValorProduzido(obraId) {
         try {
-            // 1. Buscar todos os serviços da obra
-            const { data: servicos, error: servicosError } = await supabaseClient
-                .from('servicos_andamento_hvc')
-                .select('id, valor_unitario')
+            // 1. Buscar propostas da obra
+            const { data: obrasPropostas, error: obrasError } = await supabaseClient
+                .from('obras_propostas')
+                .select('proposta_id')
                 .eq('obra_id', obraId);
 
-            if (servicosError) throw servicosError;
-            if (!servicos || servicos.length === 0) return 0;
+            if (obrasError) throw obrasError;
+            if (!obrasPropostas || obrasPropostas.length === 0) return 0;
 
+            // 2. Buscar itens das propostas (serviços contratados)
+            const propostaIds = obrasPropostas.map(op => op.proposta_id);
+            const { data: itens, error: itensError } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select('id, valor_unitario')
+                .in('proposta_id', propostaIds);
+
+            if (itensError) throw itensError;
+            if (!itens || itens.length === 0) return 0;
+
+            // 3. Buscar produções diárias da obra
+            const { data: producoes, error: producoesError } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('quantidades_servicos')
+                .eq('obra_id', obraId);
+
+            if (producoesError) throw producoesError;
+
+            // 4. Calcular valor produzido
             let valorTotalProduzido = 0;
 
-            // 2. Para cada serviço, buscar produções diárias e somar quantidades
-            for (const servico of servicos) {
-                const { data: producoes, error: producoesError } = await supabaseClient
-                    .from('producoes_diarias_hvc')
-                    .select('quantidade')
-                    .eq('servico_id', servico.id);
+            console.log('\ud83d\udd0d DEBUG PRODUZIDO - Itens encontrados:', itens.length);
+            console.log('\ud83d\udd0d DEBUG PRODUZIDO - Produ\u00e7\u00f5es encontradas:', producoes?.length || 0);
 
-                if (producoesError) throw producoesError;
+            for (const item of itens) {
+                let quantidadeTotal = 0;
 
-                // Somar todas as quantidades produzidas deste serviço
-                const quantidadeTotal = producoes?.reduce((sum, prod) => sum + (prod.quantidade || 0), 0) || 0;
+                // Somar quantidades produzidas deste servi\u00e7o
+                producoes?.forEach(producao => {
+                    const quantidades = producao.quantidades_servicos || {};
+                    const qtd = quantidades[item.id] || 0;
+                    if (qtd > 0) {
+                        console.log(`  \u2705 Item ${item.id}: +${qtd}`);
+                    }
+                    quantidadeTotal += qtd;
+                });
 
-                // Calcular valor: quantidade × valor unitário
-                const valorUnitario = servico.valor_unitario ? (servico.valor_unitario / 100) : 0;
-                valorTotalProduzido += quantidadeTotal * valorUnitario;
+                // Calcular valor: quantidade \u00d7 valor unit\u00e1rio
+                const valorUnitario = item.valor_unitario ? (item.valor_unitario / 100) : 0;
+                const valorItem = quantidadeTotal * valorUnitario;
+                
+                if (quantidadeTotal > 0) {
+                    console.log(`  \ud83d\udcb0 Item ${item.id}: ${quantidadeTotal} \u00d7 R$ ${valorUnitario.toFixed(2)} = R$ ${valorItem.toFixed(2)}`);
+                }
+                
+                valorTotalProduzido += valorItem;
             }
 
+            console.log('\ud83d\udcca TOTAL PRODUZIDO:', valorTotalProduzido.toFixed(2));
             return valorTotalProduzido;
 
         } catch (error) {
@@ -393,9 +423,9 @@ class ObrasManager {
 
             if (error) throw error;
 
-            // Somar todos os valores das medições (converter de centavos)
+            // Somar todos os valores das medições
             const valorTotal = medicoes?.reduce((sum, medicao) => {
-                const valor = medicao.valor_total ? (medicao.valor_total / 100) : 0;
+                const valor = medicao.valor_total || 0;
                 return sum + valor;
             }, 0) || 0;
 
