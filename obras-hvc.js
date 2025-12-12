@@ -2329,6 +2329,12 @@ class ObrasManager {
                     <button class="btn btn-secondary" onclick="window.obrasManager.verDetalhesMedicao('${medicao.id}')" title="Ver detalhes">
                         <i class="fas fa-eye"></i>
                     </button>
+                    <button class="btn btn-warning" onclick="window.obrasManager.abrirModalAnotacoesMedicao('${medicao.id}')" title="Anotações" style="background: #ffc107; border-color: #ffc107;">
+                        <i class="fas fa-sticky-note"></i>
+                    </button>
+                    <button class="btn btn-danger" onclick="window.obrasManager.excluirMedicaoObra('${medicao.id}')" title="Excluir">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </div>
             `;
             
@@ -3325,6 +3331,125 @@ fecharModalAjustarQuantidade() {
     hideModalDetalhesMedicao() {
         const modal = document.getElementById('modal-detalhes-medicao');
         if (modal) modal.classList.remove('show');
+    }
+    
+    // === FUNÇÕES DE MEDIÇÕES ===
+    
+    async excluirMedicaoObra(medicaoId) {
+        if (!confirm('Tem certeza que deseja excluir esta medição?')) {
+            return;
+        }
+        
+        try {
+            // 1. Excluir serviços da medição
+            const { error: servicosError } = await supabaseClient
+                .from('medicoes_servicos')
+                .delete()
+                .eq('medicao_id', medicaoId);
+            
+            if (servicosError) throw servicosError;
+            
+            // 2. Excluir medição
+            const { error: medicaoError } = await supabaseClient
+                .from('medicoes_hvc')
+                .delete()
+                .eq('id', medicaoId);
+            
+            if (medicaoError) throw medicaoError;
+            
+            this.showNotification('Medição excluída com sucesso!', 'success');
+            
+            // Recarregar lista de medições
+            await this.loadMedicoesObra();
+            
+        } catch (error) {
+            this.showNotification('Erro ao excluir medição: ' + error.message, 'error');
+        }
+    }
+    
+    async abrirModalAnotacoesMedicao(medicaoId) {
+        try {
+            // Buscar medição
+            const { data: medicao, error } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('*')
+                .eq('id', medicaoId)
+                .single();
+            
+            if (error) throw error;
+            
+            const modalHTML = `
+                <div id="modal-anotacoes-medicao" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.8); display: flex; align-items: center; justify-content: center; z-index: 10000;">
+                    <div style="background: linear-gradient(135deg, #000080, #191970); padding: 2rem; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); border: 1px solid rgba(173, 216, 230, 0.3);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; border-bottom: 2px solid rgba(173, 216, 230, 0.3); padding-bottom: 1rem;">
+                            <h3 style="color: #add8e6; margin: 0; font-size: 1.5rem;">
+                                <i class="fas fa-sticky-note"></i> Anotações - Medição ${medicao.numero_medicao}
+                            </h3>
+                            <button onclick="window.obrasManager.fecharModalAnotacoesMedicao()" style="background: none; border: none; color: #ff6b6b; font-size: 1.5rem; cursor: pointer;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        
+                        <div style="margin-bottom: 1.5rem;">
+                            <label style="display: block; color: #add8e6; margin-bottom: 0.5rem; font-weight: 600;">
+                                Anotações:
+                            </label>
+                            <textarea 
+                                id="textarea-anotacoes-medicao" 
+                                style="width: 100%; min-height: 200px; padding: 1rem; background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 8px; color: #e0e0e0; font-family: inherit; resize: vertical;"
+                                placeholder="Digite suas anotações aqui..."
+                            >${medicao.anotacoes || ''}</textarea>
+                        </div>
+                        
+                        <div style="display: flex; gap: 1rem;">
+                            <button 
+                                onclick="window.obrasManager.fecharModalAnotacoesMedicao()" 
+                                style="flex: 1; padding: 0.75rem; background: #6c757d; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                Cancelar
+                            </button>
+                            <button 
+                                onclick="window.obrasManager.salvarAnotacoesMedicao('${medicaoId}')" 
+                                style="flex: 1; padding: 0.75rem; background: #28a745; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                Salvar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+        } catch (error) {
+            this.showNotification('Erro ao abrir anotações: ' + error.message, 'error');
+        }
+    }
+    
+    fecharModalAnotacoesMedicao() {
+        const modal = document.getElementById('modal-anotacoes-medicao');
+        if (modal) modal.remove();
+    }
+    
+    async salvarAnotacoesMedicao(medicaoId) {
+        try {
+            const textarea = document.getElementById('textarea-anotacoes-medicao');
+            const anotacoes = textarea.value;
+            
+            const { error } = await supabaseClient
+                .from('medicoes_hvc')
+                .update({ anotacoes: anotacoes })
+                .eq('id', medicaoId);
+            
+            if (error) throw error;
+            
+            this.showNotification('Anotações salvas com sucesso!', 'success');
+            this.fecharModalAnotacoesMedicao();
+            
+            // Recarregar lista de medições
+            await this.loadMedicoesObra();
+            
+        } catch (error) {
+            this.showNotification('Erro ao salvar anotações: ' + error.message, 'error');
+        }
     }
 }
 
