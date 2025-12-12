@@ -357,7 +357,7 @@ class ObrasManager {
             const propostaIds = obrasPropostas.map(op => op.proposta_id);
             const { data: itens, error: itensError } = await supabaseClient
                 .from('itens_proposta_hvc')
-                .select('id, quantidade, preco_total')
+                .select('id, valor_unitario')
                 .in('proposta_id', propostaIds);
 
             if (itensError) throw itensError;
@@ -374,46 +374,34 @@ class ObrasManager {
             // 4. Calcular valor produzido
             let valorTotalProduzido = 0;
 
-            console.log('🔍 DEBUG PRODUZIDO - Itens encontrados:', itens.length);
-            console.log('🔍 DEBUG PRODUZIDO - Produções encontradas:', producoes?.length || 0);
+            console.log('\ud83d\udd0d DEBUG PRODUZIDO - Itens encontrados:', itens.length);
+            console.log('\ud83d\udd0d DEBUG PRODUZIDO - Produ\u00e7\u00f5es encontradas:', producoes?.length || 0);
 
             for (const item of itens) {
-                // Calcular valor unitário: preco_total / quantidade
-                const quantidade = parseFloat(item.quantidade) || 0;
-                const precoTotal = parseFloat(item.preco_total) || 0;
-                const valorUnitario = quantidade > 0 ? (precoTotal / quantidade) : 0;
+                let quantidadeTotal = 0;
 
-                console.log(`🔍 Item ${item.id}:`);
-                console.log(`   - Quantidade contratada: ${quantidade}`);
-                console.log(`   - Preço total: R$ ${precoTotal.toFixed(2)}`);
-                console.log(`   - Valor unitário: R$ ${valorUnitario.toFixed(2)}`);
-
-                // Somar quantidades produzidas deste item
-                let quantidadeProduzida = 0;
+                // Somar quantidades produzidas deste servi\u00e7o
                 producoes?.forEach(producao => {
                     const quantidades = producao.quantidades_servicos || {};
-                    const qtd = parseFloat(quantidades[item.id]) || 0;
+                    const qtd = quantidades[item.id] || 0;
                     if (qtd > 0) {
-                        console.log(`   - Produção encontrada: +${qtd}`);
+                        console.log(`  \u2705 Item ${item.id}: +${qtd}`);
                     }
-                    quantidadeProduzida += qtd;
+                    quantidadeTotal += qtd;
                 });
 
-                console.log(`   - Total produzido: ${quantidadeProduzida}`);
-
-                // Calcular valor: quantidade_produzida × valor_unitário
-                const valorItem = quantidadeProduzida * valorUnitario;
+                // Calcular valor: quantidade \u00d7 valor unit\u00e1rio
+                const valorUnitario = item.valor_unitario ? (item.valor_unitario / 100) : 0;
+                const valorItem = quantidadeTotal * valorUnitario;
                 
-                if (quantidadeProduzida > 0) {
-                    console.log(`   💰 Valor produzido: ${quantidadeProduzida.toFixed(2)} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorItem.toFixed(2)}`);
-                } else {
-                    console.log(`   ⚠️ Nenhuma produção encontrada para este item`);
+                if (quantidadeTotal > 0) {
+                    console.log(`  \ud83d\udcb0 Item ${item.id}: ${quantidadeTotal} \u00d7 R$ ${valorUnitario.toFixed(2)} = R$ ${valorItem.toFixed(2)}`);
                 }
                 
                 valorTotalProduzido += valorItem;
             }
 
-            console.log('📊 TOTAL PRODUZIDO:', valorTotalProduzido.toFixed(2));
+            console.log('\ud83d\udcca TOTAL PRODUZIDO:', valorTotalProduzido.toFixed(2));
             return valorTotalProduzido;
 
         } catch (error) {
