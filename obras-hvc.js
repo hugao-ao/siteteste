@@ -739,7 +739,7 @@ class ObrasManager {
                 </td>
             `;
             tbody.appendChild(row);
-        }
+        });
     }
 
     removeProposta(index) {
