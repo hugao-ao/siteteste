@@ -4150,12 +4150,16 @@
                                     // ✅ CORRIGIDO: Formatar data corretamente (YYYY-MM-DD)
                                     const dataFormatada = eventDate.includes('-') ? eventDate : eventDate.split('/').reverse().join('-');
                                     
+                                    // ✅ NOVO: Obter status do item
+                                    const status = item.status || 'RC';
+                                    
                                     await window.registrarRecebimentoNaMedicao(
                                         categoria,       // número da medição
                                         subtipo,         // número da obra
                                         valor,           // valor recebido
                                         dataFormatada,   // data do recebimento (YYYY-MM-DD)
-                                        createdEvent.id  // ID do evento
+                                        createdEvent.id, // ID do evento
+                                        status           // status do recebimento
                                     );
                                     
                                     console.log('✅ Recebimento registrado na medição!');
@@ -10016,8 +10020,9 @@ window.openManageCategoriasPayment = function() {
                             const categoria = item.categoria || '';
                             const subtipo = item.subtipo || '';
                             const valor = item.value || 0;
+                            const status = item.status || 'RC';
                             
-                            console.log('🔍 Item editado:', { tipo: item.tipo, subtipo, categoria, valor });
+                            console.log('🔍 Item editado:', { tipo: item.tipo, subtipo, categoria, valor, status });
                             
                             // Verificar se CATEGORIA é número de medição
                             if (categoria && subtipo) {
@@ -10049,7 +10054,8 @@ window.openManageCategoriasPayment = function() {
                                 await window.atualizarRecebimentoNaMedicao(
                                     eventId,        // ID do evento
                                     valor,          // novo valor
-                                    dataEvento      // data (YYYY-MM-DD)
+                                    dataEvento,     // data (YYYY-MM-DD)
+                                    status          // status do recebimento (já definido acima)
                                 );
                                 
                                 console.log('✅ Medição atualizada!');
