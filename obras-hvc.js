@@ -357,7 +357,7 @@ class ObrasManager {
             const propostaIds = obrasPropostas.map(op => op.proposta_id);
             const { data: itens, error: itensError } = await supabaseClient
                 .from('itens_proposta_hvc')
-                .select('id, valor_unitario')
+                .select('id, quantidade, preco_total')
                 .in('proposta_id', propostaIds);
 
             if (itensError) throw itensError;
@@ -374,34 +374,46 @@ class ObrasManager {
             // 4. Calcular valor produzido
             let valorTotalProduzido = 0;
 
-            console.log('\ud83d\udd0d DEBUG PRODUZIDO - Itens encontrados:', itens.length);
-            console.log('\ud83d\udd0d DEBUG PRODUZIDO - Produ\u00e7\u00f5es encontradas:', producoes?.length || 0);
+            console.log('🔍 DEBUG PRODUZIDO - Itens encontrados:', itens.length);
+            console.log('🔍 DEBUG PRODUZIDO - Produções encontradas:', producoes?.length || 0);
 
             for (const item of itens) {
-                let quantidadeTotal = 0;
+                // Calcular valor unitário: preco_total / quantidade
+                const quantidade = parseFloat(item.quantidade) || 0;
+                const precoTotal = parseFloat(item.preco_total) || 0;
+                const valorUnitario = quantidade > 0 ? (precoTotal / quantidade) : 0;
 
-                // Somar quantidades produzidas deste servi\u00e7o
+                console.log(`🔍 Item ${item.id}:`);
+                console.log(`   - Quantidade contratada: ${quantidade}`);
+                console.log(`   - Preço total: R$ ${precoTotal.toFixed(2)}`);
+                console.log(`   - Valor unitário: R$ ${valorUnitario.toFixed(2)}`);
+
+                // Somar quantidades produzidas deste item
+                let quantidadeProduzida = 0;
                 producoes?.forEach(producao => {
                     const quantidades = producao.quantidades_servicos || {};
-                    const qtd = quantidades[item.id] || 0;
+                    const qtd = parseFloat(quantidades[item.id]) || 0;
                     if (qtd > 0) {
-                        console.log(`  \u2705 Item ${item.id}: +${qtd}`);
+                        console.log(`   - Produção encontrada: +${qtd}`);
                     }
-                    quantidadeTotal += qtd;
+                    quantidadeProduzida += qtd;
                 });
 
-                // Calcular valor: quantidade \u00d7 valor unit\u00e1rio
-                const valorUnitario = item.valor_unitario ? (item.valor_unitario / 100) : 0;
-                const valorItem = quantidadeTotal * valorUnitario;
+                console.log(`   - Total produzido: ${quantidadeProduzida}`);
+
+                // Calcular valor: quantidade_produzida × valor_unitário
+                const valorItem = quantidadeProduzida * valorUnitario;
                 
-                if (quantidadeTotal > 0) {
-                    console.log(`  \ud83d\udcb0 Item ${item.id}: ${quantidadeTotal} \u00d7 R$ ${valorUnitario.toFixed(2)} = R$ ${valorItem.toFixed(2)}`);
+                if (quantidadeProduzida > 0) {
+                    console.log(`   💰 Valor produzido: ${quantidadeProduzida.toFixed(2)} × R$ ${valorUnitario.toFixed(2)} = R$ ${valorItem.toFixed(2)}`);
+                } else {
+                    console.log(`   ⚠️ Nenhuma produção encontrada para este item`);
                 }
                 
                 valorTotalProduzido += valorItem;
             }
 
-            console.log('\ud83d\udcca TOTAL PRODUZIDO:', valorTotalProduzido.toFixed(2));
+            console.log('📊 TOTAL PRODUZIDO:', valorTotalProduzido.toFixed(2));
             return valorTotalProduzido;
 
         } catch (error) {
@@ -976,7 +988,14 @@ class ObrasManager {
                 const { data, error } = await supabaseClient
                     .from('itens_proposta_hvc')
                     .select(`
-                        *,
+                        id,
+                        proposta_id,
+                        servico_id,
+                        local_id,
+                        quantidade,
+                        preco_mao_obra,
+                        preco_material,
+                        preco_total,
                         servicos_hvc (*),
                         propostas_hvc (numero_proposta),
                         locais_hvc (nome)
@@ -3103,14 +3122,25 @@ fecharModalAjustarQuantidade() {
         const container = document.getElementById('conteudo-detalhes-medicao');
         if (!container) return;
         
-        const statusColors = {
-            'pendente': '#ffc107',
-            'aprovada': '#28a745',
-            'paga': '#20c997',
-            'cancelada': '#dc3545'
-        };
+        // ✅ Calcular status dinâmico baseado nos recebimentos (igual à página de medições)
+        const recebimentos = medicao.recebimentos || [];
+        const totalRecebido = recebimentos.reduce((sum, rec) => sum + (rec.valor || 0), 0);
+        const valorTotal = medicao.valor_bruto || medicao.valor_total || 0;
+        const retencao = valorTotal - totalRecebido;
         
-        const statusColor = statusColors[medicao.status] || '#6c757d';
+        let statusMedicao = 'PENDENTE';
+        let statusColor = '#ffc107';
+        
+        if (totalRecebido === 0) {
+            statusMedicao = 'PENDENTE';
+            statusColor = '#ffc107';
+        } else if (totalRecebido < valorTotal) {
+            statusMedicao = 'RC c/ RET';
+            statusColor = '#17a2b8';
+        } else if (totalRecebido >= valorTotal) {
+            statusMedicao = 'RECEBIDO';
+            statusColor = '#28a745';
+        }
         
         let html = `
                 <div style="margin-bottom: 2rem;">
@@ -3118,7 +3148,7 @@ fecharModalAjustarQuantidade() {
                     <div>
                         <h3 style="color: #add8e6; margin-bottom: 0.5rem;">${medicao.numero_medicao}</h3>
                         <span style="padding: 0.35rem 1rem; background: ${statusColor}; color: white; border-radius: 15px; font-size: 0.9rem; font-weight: 600;">
-                            ${medicao.status.toUpperCase()}
+                            ${statusMedicao}
                         </span>
                     </div>
                     <div style="text-align: right;">
@@ -3209,12 +3239,79 @@ fecharModalAjustarQuantidade() {
         
         if (medicao.observacoes) {
             html += `
-                <div style="background: rgba(173, 216, 230, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid #add8e6;">
+                <div style="background: rgba(173, 216, 230, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid #add8e6; margin-bottom: 1.5rem;">
                     <h4 style="color: #add8e6; margin-bottom: 0.5rem;"><i class="fas fa-comment"></i> Observações</h4>
                     <p style="color: #c0c0c0; line-height: 1.6; margin: 0;">${medicao.observacoes}</p>
                 </div>
             `;
         }
+        
+        // ✅ Adicionar histórico de recebimentos (igual à página de medições)
+        if (recebimentos.length > 0) {
+            html += `
+                <div style="background: rgba(40, 167, 69, 0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                    <h4 style="color: #28a745; margin-bottom: 1rem;"><i class="fas fa-money-bill-wave"></i> Histórico de Recebimentos</h4>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 2px solid rgba(40, 167, 69, 0.2);">
+                                <th style="padding: 0.75rem; text-align: left; color: #28a745; font-weight: 600;">#</th>
+                                <th style="padding: 0.75rem; text-align: left; color: #28a745; font-weight: 600;">DATA</th>
+                                <th style="padding: 0.75rem; text-align: right; color: #28a745; font-weight: 600;">VALOR</th>
+                                <th style="padding: 0.75rem; text-align: left; color: #28a745; font-weight: 600;">EVENTO ID</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            recebimentos.forEach((rec, index) => {
+                // Formatar data corretamente (evitar problema de fuso horário)
+                let dataFormatada = 'Data não informada';
+                if (rec.data) {
+                    const dataStr = String(rec.data);
+                    if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                        const [ano, mes, dia] = dataStr.split('-');
+                        dataFormatada = `${dia}/${mes}/${ano}`;
+                    } else {
+                        dataFormatada = new Date(rec.data).toLocaleDateString('pt-BR');
+                    }
+                }
+                
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(40, 167, 69, 0.1);">
+                        <td style="padding: 0.75rem; color: #c0c0c0;">${index + 1}</td>
+                        <td style="padding: 0.75rem; color: #c0c0c0;">${dataFormatada}</td>
+                        <td style="padding: 0.75rem; text-align: right; color: #28a745; font-weight: 600;">${this.formatMoney(rec.valor)}</td>
+                        <td style="padding: 0.75rem; color: #888; font-size: 0.85em;">${rec.evento_id || '-'}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+        
+        // ✅ Adicionar rodapé com totais (igual à página de medições)
+        html += `
+            <div style="background: rgba(173, 216, 230, 0.05); padding: 1.5rem; border-radius: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+                <div>
+                    <label style="color: #888; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Total Recebido</label>
+                    <div style="color: #28a745; font-size: 1.3rem; font-weight: 700;">${this.formatMoney(totalRecebido)}</div>
+                </div>
+                <div>
+                    <label style="color: #888; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Retenção</label>
+                    <div style="color: #ffc107; font-size: 1.3rem; font-weight: 700;">${this.formatMoney(retencao)}</div>
+                </div>
+                <div>
+                    <label style="color: #888; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Status</label>
+                    <span style="padding: 0.5rem 1rem; background: ${statusColor}; color: white; border-radius: 15px; font-size: 1rem; font-weight: 600; display: inline-block;">
+                        ${statusMedicao}
+                    </span>
+                </div>
+            </div>
+        `;
         
         html += `</div>`;
         
