@@ -333,7 +333,117 @@ class ObrasManager {
         }
     }
 
-    // === OBRAS ===
+
+    // ========================================
+    // ✅ NOVO: CÁLCULOS PARA COLUNAS PRODUZIDO, MEDIDO E RECEBIDO
+    // ========================================
+    
+    /**
+     * Calcula o valor total produzido da obra
+     * Soma: (quantidade produzida × valor unitário) de cada serviço
+     */
+    async calcularValorProduzido(obraId) {
+        try {
+            // 1. Buscar todos os serviços da obra
+            const { data: servicos, error: servicosError } = await supabaseClient
+                .from('servicos_andamento_hvc')
+                .select('id, valor_unitario')
+                .eq('obra_id', obraId);
+
+            if (servicosError) throw servicosError;
+            if (!servicos || servicos.length === 0) return 0;
+
+            let valorTotalProduzido = 0;
+
+            // 2. Para cada serviço, buscar produções diárias e somar quantidades
+            for (const servico of servicos) {
+                const { data: producoes, error: producoesError } = await supabaseClient
+                    .from('producoes_diarias_hvc')
+                    .select('quantidade')
+                    .eq('servico_id', servico.id);
+
+                if (producoesError) throw producoesError;
+
+                // Somar todas as quantidades produzidas deste serviço
+                const quantidadeTotal = producoes?.reduce((sum, prod) => sum + (prod.quantidade || 0), 0) || 0;
+
+                // Calcular valor: quantidade × valor unitário
+                const valorUnitario = servico.valor_unitario ? (servico.valor_unitario / 100) : 0;
+                valorTotalProduzido += quantidadeTotal * valorUnitario;
+            }
+
+            return valorTotalProduzido;
+
+        } catch (error) {
+            console.error('Erro ao calcular valor produzido:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Calcula o valor total medido da obra
+     * Soma de todas as medições da obra
+     */
+    async calcularValorMedido(obraId) {
+        try {
+            const { data: medicoes, error } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('valor_total')
+                .eq('obra_id', obraId);
+
+            if (error) throw error;
+
+            // Somar todos os valores das medições (converter de centavos)
+            const valorTotal = medicoes?.reduce((sum, medicao) => {
+                const valor = medicao.valor_total ? (medicao.valor_total / 100) : 0;
+                return sum + valor;
+            }, 0) || 0;
+
+            return valorTotal;
+
+        } catch (error) {
+            console.error('Erro ao calcular valor medido:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Calcula o valor total recebido da obra
+     * Soma dos recebimentos com status "RC" de todas as medições
+     */
+    async calcularValorRecebido(obraId) {
+        try {
+            const { data: medicoes, error } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('recebimentos')
+                .eq('obra_id', obraId);
+
+            if (error) throw error;
+
+            let valorTotalRecebido = 0;
+
+            // Para cada medição, somar recebimentos com status RC
+            medicoes?.forEach(medicao => {
+                const recebimentos = medicao.recebimentos || [];
+                
+                // Filtrar apenas recebimentos com status RC
+                const recebimentosRC = recebimentos.filter(rec => rec.status === 'RC');
+                
+                // Somar valores
+                const valorMedicao = recebimentosRC.reduce((sum, rec) => sum + (rec.valor || 0), 0);
+                valorTotalRecebido += valorMedicao;
+            });
+
+            return valorTotalRecebido;
+
+        } catch (error) {
+            console.error('Erro ao calcular valor recebido:', error);
+            return 0;
+        }
+    }
+
+
+        // === OBRAS ===
     showFormObra(obra = null) {
         
         this.currentObraId = obra?.id || null;
@@ -629,7 +739,7 @@ class ObrasManager {
                 </td>
             `;
             tbody.appendChild(row);
-        });
+        }
     }
 
     removeProposta(index) {
@@ -1171,7 +1281,7 @@ class ObrasManager {
         }
     }
 
-    renderObras(obras) {
+    async renderObras(obras) {
         const tbody = document.getElementById('obras-tbody');
         if (!tbody) return;
         
@@ -1180,7 +1290,7 @@ class ObrasManager {
         if (obras.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="9" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
                     </td>
@@ -1189,7 +1299,7 @@ class ObrasManager {
             return;
         }
 
-        obras.forEach(obra => {
+        for (const obra of obras) {
             // Extrair clientes únicos
             const clientesUnicos = [...new Set(
                 obra.obras_propostas?.map(op => op.propostas_hvc?.clientes_hvc?.nome).filter(Boolean) || []
@@ -1201,11 +1311,19 @@ class ObrasManager {
             // Mostrar valor correto na lista (dividir por 100 pois está em centavos)
             const valorObra = obra.valor_total ? (obra.valor_total / 100) : 0;
             
+            // ✅ NOVO: Calcular PRODUZIDO, MEDIDO e RECEBIDO
+            const valorProduzido = await this.calcularValorProduzido(obra.id);
+            const valorMedido = await this.calcularValorMedido(obra.id);
+            const valorRecebido = await this.calcularValorRecebido(obra.id);
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td><strong>${obra.numero_obra}</strong></td>
                 <td>${clientesTexto}</td>
                 <td><strong>${this.formatMoney(valorObra)}</strong></td>
+                <td><strong style="color: #add8e6;">${this.formatMoney(valorProduzido)}</strong></td>
+                <td><strong style="color: #ffc107;">${this.formatMoney(valorMedido)}</strong></td>
+                <td><strong style="color: #28a745;">${this.formatMoney(valorRecebido)}</strong></td>
                 <td class="percentual-cell">
                     <div class="percentual-container">
                         <div class="percentual-bar">
