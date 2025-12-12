@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google Agenda - Gerenciar Conexões</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .modal-header {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+
+        .modal-header h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .modal-header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+
+        .modal-body {
+            padding: 30px;
+        }
+
+        .info-box {
+            background: #e8f0fe;
+            border-left: 4px solid #4285f4;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 25px;
+        }
+
+        .info-box p {
+            color: #1967d2;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .accounts-section {
+            margin-bottom: 25px;
+        }
+
+        .accounts-section h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .accounts-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .account-item {
+            background: #f8f9fa;
+            border: 1px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .account-item:hover {
+            background: #f1f3f4;
+            border-color: #4285f4;
+        }
+
+        .account-avatar {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #4285f4;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .account-avatar img {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+
+        .account-info {
+            flex: 1;
+        }
+
+        .account-name {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .account-email {
+            font-size: 13px;
+            color: #666;
+        }
+
+        .account-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn-disconnect {
+            background: #ea4335;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-disconnect:hover {
+            background: #d33828;
+            transform: translateY(-2px);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .btn-connect {
+            background: linear-gradient(135deg, #4285f4 0%, #34a853 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .btn-connect:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(66, 133, 244, 0.4);
+        }
+
+        .btn-connect:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .loading.active {
+            display: block;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4285f4;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .modal-footer {
+            background: #f8f9fa;
+            padding: 20px 30px;
+            text-align: center;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .btn-close {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-close:hover {
+            background: #555;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-connected {
+            background: #e6f4ea;
+            color: #1e8e3e;
+        }
+
+        @media (max-width: 600px) {
+            .modal-container {
+                border-radius: 0;
+            }
+
+            .modal-header h1 {
+                font-size: 22px;
+            }
+
+            .account-item {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .account-actions {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="modal-container">
+        <div class="modal-header">
+            <h1>
+                <i class="fab fa-google"></i>
+                Google Agenda
+            </h1>
+            <p>Gerencie suas conexões com o Google Calendar</p>
+        </div>
+
+        <div class="modal-body">
+            <div class="info-box">
+                <p>
+                    <strong>ℹ️ Como funciona:</strong><br>
+                    Conecte sua conta do Google para sincronizar eventos do Google Calendar com o sistema de Fluxo de Caixa.
+                    Suas conexões permanecerão ativas enquanto você navega pelo sistema.
+                </p>
+            </div>
+
+            <div class="loading" id="loadingIndicator">
+                <div class="spinner"></div>
+                <p>Carregando APIs do Google...</p>
+            </div>
+
+            <div class="accounts-section" id="accountsSection">
+                <h3>
+                    <i class="fas fa-users"></i>
+                    Contas Conectadas
+                </h3>
+                <div class="accounts-list" id="accountsList">
+                    <!-- Contas serão inseridas aqui via JavaScript -->
+                </div>
+            </div>
+
+            <button class="btn-connect" id="btnConnect" disabled>
+                <i class="fab fa-google"></i>
+                Conectar Nova Conta
+            </button>
+        </div>
+
+        <div class="modal-footer">
+            <button class="btn-close" onclick="window.close()">
+                <i class="fas fa-times"></i>
+                Fechar
+            </button>
+        </div>
+    </div>
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Calendar Auth Module -->
+    <script src="google-calendar-auth.js"></script>
+
+    <script>
+        // Elementos do DOM
+        const accountsList = document.getElementById('accountsList');
+        const btnConnect = document.getElementById('btnConnect');
+        const loadingIndicator = document.getElementById('loadingIndicator');
+
+        // Mostrar loading inicial
+        loadingIndicator.classList.add('active');
+
+        // Aguardar carregamento das APIs
+        let checkInterval = setInterval(() => {
+            if (typeof googleAuth !== 'undefined' && typeof gapiInited !== 'undefined' && gapiInited && gisInited) {
+                clearInterval(checkInterval);
+                loadingIndicator.classList.remove('active');
+                btnConnect.disabled = false;
+                renderAccounts();
+            }
+        }, 500);
+
+        // Timeout de 10 segundos
+        setTimeout(() => {
+            if (loadingIndicator.classList.contains('active')) {
+                clearInterval(checkInterval);
+                loadingIndicator.innerHTML = '<p style="color: #ea4335;">❌ Erro ao carregar APIs do Google. Recarregue a página.</p>';
+            }
+        }, 10000);
+
+        // Renderizar lista de contas
+        function renderAccounts() {
+            const accounts = googleAuth.getAccounts();
+            
+            if (accounts.length === 0) {
+                accountsList.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-user-slash"></i>
+                        <p>Nenhuma conta conectada.<br>Clique no botão abaixo para conectar sua primeira conta.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            accountsList.innerHTML = accounts.map(account => {
+                const initials = account.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+                
+                return `
+                    <div class="account-item">
+                        <div class="account-avatar">
+                            ${account.picture ? `<img src="${account.picture}" alt="${account.name}">` : initials}
+                        </div>
+                        <div class="account-info">
+                            <div class="account-name">${account.name}</div>
+                            <div class="account-email">${account.email}</div>
+                            <span class="status-badge status-connected">Conectado</span>
+                        </div>
+                        <div class="account-actions">
+                            <button class="btn-disconnect" onclick="handleDisconnect('${account.email}')">
+                                <i class="fas fa-unlink"></i>
+                                Desconectar
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        // Conectar nova conta
+        btnConnect.addEventListener('click', () => {
+            try {
+                connectGoogleAccount();
+            } catch (error) {
+                console.error('Erro ao conectar:', error);
+                alert('Erro ao conectar conta. Tente novamente.');
+            }
+        });
+
+        // Desconectar conta
+        function handleDisconnect(email) {
+            if (confirm(`Deseja realmente desconectar a conta ${email}?`)) {
+                disconnectGoogleAccount(email);
+                renderAccounts();
+            }
+        }
+
+        // Ouvir eventos de conexão/desconexão
+        window.addEventListener('googleAccountConnected', () => {
+            renderAccounts();
+        });
+
+        window.addEventListener('googleAccountDisconnected', () => {
+            renderAccounts();
+        });
+
+        window.addEventListener('googleAccountsCleared', () => {
+            renderAccounts();
+        });
+    </script>
+</body>
+</html>
