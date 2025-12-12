@@ -4153,16 +4153,22 @@
                                     // ✅ NOVO: Obter status do item
                                     const status = item.status || 'RC';
                                     
-                                    await window.registrarRecebimentoNaMedicao(
-                                        categoria,       // número da medição
-                                        subtipo,         // número da obra
-                                        valor,           // valor recebido
-                                        dataFormatada,   // data do recebimento (YYYY-MM-DD)
-                                        createdEvent.id, // ID do evento
-                                        status           // status do recebimento
-                                    );
-                                    
-                                    console.log('✅ Recebimento registrado na medição!');
+                                    // ✅ NOVO: Verificar status antes de registrar
+                                    if (status === 'RC') {
+                                        await window.registrarRecebimentoNaMedicao(
+                                            categoria,       // número da medição
+                                            subtipo,         // número da obra
+                                            valor,           // valor recebido
+                                            dataFormatada,   // data do recebimento (YYYY-MM-DD)
+                                            createdEvent.id, // ID do evento
+                                            status           // status do recebimento
+                                        );
+                                        
+                                        console.log('✅ Recebimento registrado na medição!');
+                                    } else {
+                                        console.log('⚠️ Recebimento com status "' + status + '" não será contabilizado na medição');
+                                        alert('⚠️ Atenção!\n\nO recebimento foi criado com status "' + status + '".\n\nEste recebimento NÃO SERÁ CONTABILIZADO na medição ' + categoria + '.\n\nApenas recebimentos com status "RC" são contabilizados.');
+                                    }
                                 }
                             }
                         } catch (error) {
@@ -10028,14 +10034,29 @@ window.openManageCategoriasPayment = function() {
                             if (categoria && subtipo) {
                                 console.log('🏛️ Detectada edição de recebimento vinculado à medição:', categoria);
                                 
-                                // ✅ NOVO: Mostrar modal de confirmação
-                                const confirmar = confirm(
-                                    `⚠️ ATENÇÃO: Edição de Recebimento Vinculado\n\n` +
-                                    `Este recebimento está vinculado à medição ${categoria} da obra ${subtipo}.\n\n` +
-                                    `O valor registrado na medição será atualizado para R$ ${valor.toFixed(2).replace('.', ',')}.\n\n` +
-                                    `Os totais (RECEBIDO, RETENÇÃO e STATUS) serão recalculados automaticamente.\n\n` +
-                                    `Deseja continuar?`
-                                );
+                                // ✅ NOVO: Mostrar modal de confirmação diferenciado por status
+                                let mensagemModal = '';
+                                
+                                if (status === 'RC') {
+                                    // Status continua RC: apenas atualiza valor
+                                    mensagemModal = 
+                                        `⚠️ ATENÇÃO: Edição de Recebimento Vinculado\n\n` +
+                                        `Este recebimento está vinculado à medição ${categoria} da obra ${subtipo}.\n\n` +
+                                        `O valor registrado na medição será atualizado para R$ ${valor.toFixed(2).replace('.', ',')}.\n\n` +
+                                        `Os totais (RECEBIDO, RETENÇÃO e STATUS) serão recalculados automaticamente.\n\n` +
+                                        `Deseja continuar?`;
+                                } else {
+                                    // Status mudou para não-RC: remove da medição
+                                    mensagemModal = 
+                                        `⚠️ ATENÇÃO: Mudança de Status de Recebimento\n\n` +
+                                        `Este recebimento está vinculado à medição ${categoria} da obra ${subtipo}.\n\n` +
+                                        `O status foi alterado para "${status}" (diferente de "RC").\n\n` +
+                                        `❌ Este recebimento NÃO SERÁ MAIS CONTABILIZADO na medição.\n\n` +
+                                        `O valor será REMOVIDO dos totais (RECEBIDO, RETENÇÃO e STATUS).\n\n` +
+                                        `Deseja continuar?`;
+                                }
+                                
+                                const confirmar = confirm(mensagemModal);
                                 
                                 if (!confirmar) {
                                     console.log('ℹ️ Usuário cancelou a atualização da medição');
@@ -10059,7 +10080,13 @@ window.openManageCategoriasPayment = function() {
                                 );
                                 
                                 console.log('✅ Medição atualizada!');
-                                alert('✅ Medição atualizada com sucesso!\n\nAtualize a página de medições para ver as mudanças.');
+                                
+                                // ✅ NOVO: Mensagem diferenciada por status
+                                if (status === 'RC') {
+                                    alert('✅ Medição atualizada com sucesso!\n\nO valor do recebimento foi atualizado.\n\nAtualize a página de medições para ver as mudanças.');
+                                } else {
+                                    alert('✅ Recebimento removido da medição!\n\nO recebimento com status "' + status + '" não é mais contabilizado.\n\nAtualize a página de medições para ver as mudanças.');
+                                }
                             }
                         }
                     } catch (error) {
