@@ -1358,7 +1358,7 @@ class ObrasManager {
                 </td>
             `;
             tbody.appendChild(row);
-        });
+        }
     }
 
     // === FILTROS ===
