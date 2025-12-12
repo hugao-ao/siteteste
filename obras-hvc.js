@@ -2281,14 +2281,24 @@ class ObrasManager {
         container.innerHTML = '';
         
         medicoes.forEach(medicao => {
-            const statusColors = {
-                'pendente': '#ffc107',
-                'aprovada': '#28a745',
-                'paga': '#20c997',
-                'cancelada': '#dc3545'
-            };
+            // ✅ Calcular status dinâmico baseado nos recebimentos
+            const recebimentos = medicao.recebimentos || [];
+            const totalRecebido = recebimentos.reduce((sum, rec) => sum + (rec.valor || 0), 0);
+            const valorTotal = medicao.valor_bruto || medicao.valor_total || 0;
             
-            const statusColor = statusColors[medicao.status] || '#6c757d';
+            let statusMedicao = 'PENDENTE';
+            let statusColor = '#ffc107';
+            
+            if (totalRecebido === 0) {
+                statusMedicao = 'PENDENTE';
+                statusColor = '#ffc107';
+            } else if (totalRecebido < valorTotal) {
+                statusMedicao = 'RC c/ RET';
+                statusColor = '#17a2b8';
+            } else if (totalRecebido >= valorTotal) {
+                statusMedicao = 'RECEBIDO';
+                statusColor = '#28a745';
+            }
             
             const card = document.createElement('div');
             card.style.cssText = `
@@ -2307,7 +2317,7 @@ class ObrasManager {
                     <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
                         <strong style="color: #add8e6; font-size: 1.1rem;">${medicao.numero_medicao}</strong>
                         <span style="padding: 0.25rem 0.75rem; background: ${statusColor}; color: white; border-radius: 12px; font-size: 0.85rem; font-weight: 600;">
-                            ${medicao.status.toUpperCase()}
+                            ${statusMedicao}
                         </span>
                     </div>
                     <div style="color: #c0c0c0; font-size: 0.9rem;">
