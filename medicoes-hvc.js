@@ -1,20 +1,6 @@
-/*
-********************************************************************************
-* MEDIÇÕES HVC - VERSÃO FINAL COM RECEBIMENTOS E ANOTAÇÕES
-* Data: 11/12/2025
-* 
-* MODIFICAÇÕES IMPLEMENTADAS:
-* ✅ Colunas RECEBIDO e RETENÇÃO na tabela
-* ✅ Sistema de anotações com modal
-* ✅ Status automático baseado em recebimentos (PENDENTE / RC c/ RET / RECEBIDO)
-* ✅ Integração com fluxo de caixa
-* 
-* VERIFICAÇÃO RÁPIDA:
-* - Total de linhas: 2088 (vs 1363 da versão antiga)
-* - Funções de anotações: 11 ocorrências
-* - window.abrirModalAnotacoes DEVE existir (linha 45)
-********************************************************************************
-*/
+// Gerenciamento completo de medições com obras, serviços e// MedicoesManager.js
+// VERSÃO COM RECEBIMENTOS E ANOTAÇÕES - 11/12/2025
+// VERSÃO CORRIGIDA - Cliente via propostas e cabeçalho corrigido
 
 // Importar Supabase do arquivo existente
 import { supabase as supabaseClient } from './supabase.js';
@@ -703,6 +689,11 @@ class MedicoesManager {
                 statusColor = 'success';
             }
             
+            // Formatar recebimentos com datas
+            const recebidosFormatados = recebimentos.map(rec => 
+                `${this.formatarMoeda(rec.valor)} (${this.formatarData(rec.data)})`
+            ).join('<br>');
+            
             return `
             <tr>
                 <td><strong>${medicao.numero_medicao || 'N/A'}</strong></td>
@@ -714,10 +705,10 @@ class MedicoesManager {
                 <td><strong>${this.formatarData(medicao.previsao_pagamento)}</strong></td>
                 <td><strong>${this.formatarMoeda(valorTotal)}</strong></td>
                 <td>
-                    ${totalRecebido > 0 ? `<strong style="color: #28a745;">${this.formatarMoeda(totalRecebido)}</strong>` : '<span style="color: #6c757d;">-</span>'}
+                    ${totalRecebido > 0 ? `<strong style="color: #28a745;">${this.formatarMoeda(totalRecebido)}</strong><br><small style="color: #b0c4de;">${recebidosFormatados}</small>` : '<span style="color: #6c757d;">-</span>'}
                 </td>
                 <td>
-                    ${totalRecebido > 0 ? (retencao > 0 ? `<strong style="color: #ffc107;">${this.formatarMoeda(retencao)}</strong>` : '<span style="color: #28a745;">-</span>') : '<span style="color: #6c757d;">-</span>'}
+                    ${retencao > 0 ? `<strong style="color: #ffc107;">${this.formatarMoeda(retencao)}</strong>` : '<span style="color: #28a745;">-</span>'}
                 </td>
                 <td>
                     <span class="badge badge-${statusColor}">
@@ -1247,13 +1238,25 @@ class MedicoesManager {
             
             if (servicosError) throw servicosError;
             
-            const statusColors = {
-                'pendente': '#ffc107',
-                'aprovada': '#28a745',
-                'paga': '#20c997',
-                'cancelada': '#dc3545'
-            };
-            const statusColor = statusColors[medicao.status] || '#6c757d';
+            // ✅ Calcular status dinâmico baseado nos recebimentos
+            const recebimentos = medicao.recebimentos || [];
+            const totalRecebido = recebimentos.reduce((sum, rec) => sum + (rec.valor || 0), 0);
+            const valorTotal = medicao.valor_bruto || medicao.valor_total || 0;
+            const retencao = valorTotal - totalRecebido;
+            
+            let statusMedicao = 'PENDENTE';
+            let statusColor = '#ffc107';
+            
+            if (totalRecebido === 0) {
+                statusMedicao = 'PENDENTE';
+                statusColor = '#ffc107';
+            } else if (totalRecebido < valorTotal) {
+                statusMedicao = 'RC c/ RET';
+                statusColor = '#17a2b8';
+            } else if (totalRecebido >= valorTotal) {
+                statusMedicao = 'RECEBIDO';
+                statusColor = '#28a745';
+            }
             
             let servicosHtml = '';
             if (servicos && servicos.length > 0) {
@@ -1294,7 +1297,7 @@ class MedicoesManager {
                             <div>
                                 <h3 style="color: #add8e6; margin: 0 0 0.5rem 0;">${medicao.numero_medicao}</h3>
                                 <span style="padding: 0.35rem 1rem; background: ${statusColor}; color: white; border-radius: 15px; font-size: 0.9rem; font-weight: 600;">
-                                    ${medicao.status.toUpperCase()}
+                                    ${statusMedicao}
                                 </span>
                             </div>
                             <button onclick="fecharModalVisualizacao()" style="background: none; border: none; color: #add8e6; font-size: 1.5rem; cursor: pointer;">
@@ -1353,14 +1356,55 @@ class MedicoesManager {
                                 </div>
                             </div>
                             
-                            ${this.renderHistoricoRecebimentos(medicao)}
-                            
                             ${medicao.observacoes ? `
-                                <div style="background: rgba(173, 216, 230, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid #add8e6;">
+                                <div style="background: rgba(173, 216, 230, 0.05); padding: 1rem; border-radius: 8px; border-left: 3px solid #add8e6; margin-bottom: 1.5rem;">
                                     <h4 style="color: #add8e6; margin-bottom: 0.5rem;"><i class="fas fa-comment"></i> Observações</h4>
                                     <p style="color: #c0c0c0; line-height: 1.6; margin: 0;">${medicao.observacoes}</p>
                                 </div>
                             ` : ''}
+                            
+                            ${recebimentos.length > 0 ? `
+                                <div style="background: rgba(40, 167, 69, 0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
+                                    <h4 style="color: #28a745; margin-bottom: 1rem;"><i class="fas fa-money-bill-wave"></i> Histórico de Recebimentos</h4>
+                                    <table style="width: 100%; border-collapse: collapse;">
+                                        <thead>
+                                            <tr style="border-bottom: 2px solid rgba(40, 167, 69, 0.2);">
+                                                <th style="padding: 0.75rem; text-align: left; color: #28a745; font-weight: 600;">#</th>
+                                                <th style="padding: 0.75rem; text-align: left; color: #28a745; font-weight: 600;">DATA</th>
+                                                <th style="padding: 0.75rem; text-align: right; color: #28a745; font-weight: 600;">VALOR</th>
+                                                <th style="padding: 0.75rem; text-align: left; color: #28a745; font-weight: 600;">EVENTO ID</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            ${recebimentos.map((rec, index) => `
+                                                <tr style="border-bottom: 1px solid rgba(40, 167, 69, 0.1);">
+                                                    <td style="padding: 0.75rem; color: #c0c0c0;">${index + 1}</td>
+                                                    <td style="padding: 0.75rem; color: #c0c0c0;">${this.formatarData(rec.data)}</td>
+                                                    <td style="padding: 0.75rem; text-align: right; color: #28a745; font-weight: 600;">${this.formatarMoeda(rec.valor)}</td>
+                                                    <td style="padding: 0.75rem; color: #888; font-size: 0.85em;">${rec.evento_id || '-'}</td>
+                                                </tr>
+                                            `).join('')}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ` : ''}
+                            
+                            <div style="background: rgba(173, 216, 230, 0.05); padding: 1.5rem; border-radius: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.5rem;">
+                                <div>
+                                    <label style="color: #888; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Total Recebido</label>
+                                    <div style="color: #28a745; font-size: 1.3rem; font-weight: 700;">${this.formatarMoeda(totalRecebido)}</div>
+                                </div>
+                                <div>
+                                    <label style="color: #888; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Retenção</label>
+                                    <div style="color: #ffc107; font-size: 1.3rem; font-weight: 700;">${this.formatarMoeda(retencao)}</div>
+                                </div>
+                                <div>
+                                    <label style="color: #888; font-size: 0.9rem; display: block; margin-bottom: 0.5rem;">Status</label>
+                                    <span style="padding: 0.5rem 1rem; background: ${statusColor}; color: white; border-radius: 15px; font-size: 1rem; font-weight: 600; display: inline-block;">
+                                        ${statusMedicao}
+                                    </span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1375,69 +1419,6 @@ class MedicoesManager {
         } catch (error) {
             this.showNotification('Erro ao visualizar medição: ' + error.message, 'error');
         }
-    }
-
-    renderHistoricoRecebimentos(medicao) {
-        const recebimentos = medicao.recebimentos || [];
-        
-        if (recebimentos.length === 0) {
-            return '';
-        }
-        
-        const totalRecebido = recebimentos.reduce((sum, rec) => sum + (rec.valor || 0), 0);
-        const valorTotal = medicao.valor_bruto || medicao.valor_total || 0;
-        const retencao = valorTotal - totalRecebido;
-        
-        let recebimentosHtml = recebimentos.map((rec, index) => `
-            <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
-                <td style="padding: 0.75rem; color: #c0c0c0;">${index + 1}</td>
-                <td style="padding: 0.75rem; color: #e0e0e0;">${this.formatarData(rec.data)}</td>
-                <td style="padding: 0.75rem; text-align: right; color: #28a745; font-weight: 600;">${this.formatarMoeda(rec.valor)}</td>
-                <td style="padding: 0.75rem; color: #888; font-size: 0.85em;">${rec.evento_id || '-'}</td>
-            </tr>
-        `).join('');
-        
-        return `
-            <div style="background: rgba(173, 216, 230, 0.05); padding: 1.5rem; border-radius: 8px; margin-bottom: 1.5rem;">
-                <h4 style="color: #add8e6; margin-bottom: 1rem;">
-                    <i class="fas fa-money-bill-wave"></i> Histórico de Recebimentos
-                </h4>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 1rem;">
-                    <thead>
-                        <tr style="border-bottom: 2px solid rgba(173, 216, 230, 0.2);">
-                            <th style="padding: 0.75rem; text-align: left; color: #add8e6; font-weight: 600; width: 60px;">#</th>
-                            <th style="padding: 0.75rem; text-align: left; color: #add8e6; font-weight: 600;">DATA</th>
-                            <th style="padding: 0.75rem; text-align: right; color: #add8e6; font-weight: 600;">VALOR</th>
-                            <th style="padding: 0.75rem; text-align: left; color: #add8e6; font-weight: 600;">EVENTO ID</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${recebimentosHtml}
-                    </tbody>
-                </table>
-                
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding-top: 1rem; border-top: 1px solid rgba(173, 216, 230, 0.2);">
-                    <div>
-                        <label style="color: #888; font-size: 0.85em;">Total Recebido</label>
-                        <div style="color: #28a745; font-size: 1.2rem; font-weight: 600;">${this.formatarMoeda(totalRecebido)}</div>
-                    </div>
-                    <div>
-                        <label style="color: #888; font-size: 0.85em;">Retenção</label>
-                        <div style="color: ${retencao > 0 ? '#ffc107' : '#28a745'}; font-size: 1.2rem; font-weight: 600;">
-                            ${retencao > 0 ? this.formatarMoeda(retencao) : '-'}
-                        </div>
-                    </div>
-                    <div>
-                        <label style="color: #888; font-size: 0.85em;">Status</label>
-                        <div>
-                            <span style="padding: 0.35rem 1rem; background: ${totalRecebido >= valorTotal ? '#28a745' : '#ffc107'}; color: white; border-radius: 15px; font-size: 0.9rem; font-weight: 600;">
-                                ${totalRecebido >= valorTotal ? 'RECEBIDO' : 'RC c/ RET'}
-                            </span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
     }
 
     async excluirMedicao(medicaoId) {
@@ -1473,6 +1454,13 @@ class MedicoesManager {
 
     formatarData(data) {
         if (!data) return 'Data não informada';
+        // ✅ Corrigir problema de fuso horário
+        // Se a data está no formato YYYY-MM-DD, adicionar 'T00:00:00' para forçar local
+        const dataStr = String(data);
+        if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+            const [ano, mes, dia] = dataStr.split('-');
+            return `${dia}/${mes}/${ano}`;
+        }
         return new Date(data).toLocaleDateString('pt-BR');
     }
 
