@@ -360,14 +360,16 @@ async function removerRecebimentoDaMedicao(eventoId) {
  * @param {number} novoValor - Novo valor do recebimento
  * @param {string} novaData - Nova data do recebimento
  * @param {string} novoStatus - Novo status do recebimento (ex: "RC", "PA", "PE")
+ * @param {string} numeroMedicao - Número da medição (opcional, usado para adicionar se não existir)
+ * @param {string} numeroObra - Número da obra (opcional, usado para adicionar se não existir)
  */
-async function atualizarRecebimentoNaMedicao(eventoId, novoValor, novaData, novoStatus = 'RC') {
+async function atualizarRecebimentoNaMedicao(eventoId, novoValor, novaData, novoStatus = 'RC', numeroMedicao = null, numeroObra = null) {
     try {
         console.log('🔄 Atualizando recebimento na medição:', { eventoId, novoValor, novaData, novoStatus });
         
         // ✅ NOVO: Verificar se novo status é RC
         if (novoStatus !== 'RC') {
-            console.log('⚠️ Atualização ignorada: status não é RC (status atual: ' + novoStatus + ')');
+            console.log('⚠️ Status mudou para não-RC: removendo da medição');
             // Se mudou para status diferente de RC, remover da medição
             return await removerRecebimentoDaMedicao(eventoId);
         }
@@ -379,6 +381,8 @@ async function atualizarRecebimentoNaMedicao(eventoId, novoValor, novaData, novo
 
         if (medicaoError) throw medicaoError;
 
+        let recebimentoEncontrado = false;
+
         for (const medicao of medicoes) {
             const recebimentos = medicao.recebimentos || [];
             let houveMudanca = false;
@@ -386,6 +390,7 @@ async function atualizarRecebimentoNaMedicao(eventoId, novoValor, novaData, novo
             const recebimentosAtualizados = recebimentos.map(rec => {
                 if (rec.evento_id === eventoId) {
                     houveMudanca = true;
+                    recebimentoEncontrado = true;
                     return {
                         ...rec,
                         valor: novoValor,
@@ -409,6 +414,29 @@ async function atualizarRecebimentoNaMedicao(eventoId, novoValor, novaData, novo
 
                 if (updateError) throw updateError;
                 console.log('✅ Recebimento atualizado na medição:', medicao.numero_medicao);
+            }
+        }
+
+        // ✅ NOVO: Se não encontrou o recebimento E status é RC, precisa adicionar
+        if (!recebimentoEncontrado && novoStatus === 'RC') {
+            console.log('🔍 Recebimento não existe na medição. Tentando adicionar...');
+            
+            // Se temos as informações de medição e obra, adicionar
+            if (numeroMedicao && numeroObra) {
+                console.log('✅ Informações disponíveis. Adicionando recebimento na medição...');
+                return await registrarRecebimentoNaMedicao(
+                    numeroMedicao,
+                    numeroObra,
+                    novoValor,
+                    novaData,
+                    eventoId,
+                    novoStatus
+                );
+            } else {
+                console.warn('⚠️ Recebimento com status RC mas não encontrado na medição.');
+                console.warn('💡 Para adicionar, é necessário saber o número da medição e obra.');
+                console.warn('💡 Considere excluir e recriar o recebimento com status RC.');
+                return false;
             }
         }
         
