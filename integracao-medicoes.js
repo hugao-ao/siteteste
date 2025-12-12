@@ -166,16 +166,24 @@ function mostrarModalSubstituirSomar(medicao, novoValor, dataRecebimento, evento
  * @param {number} valorRecebido - Valor do recebimento
  * @param {string} dataRecebimento - Data do recebimento (formato: YYYY-MM-DD)
  * @param {string} eventoId - ID do evento no fluxo de caixa
+ * @param {string} status - Status do recebimento (ex: "RC", "PA", "PE")
  */
-async function registrarRecebimentoNaMedicao(numeroMedicao, numeroObra, valorRecebido, dataRecebimento, eventoId) {
+async function registrarRecebimentoNaMedicao(numeroMedicao, numeroObra, valorRecebido, dataRecebimento, eventoId, status = 'RC') {
     try {
         console.log('🔄 Registrando recebimento na medição:', {
             numeroMedicao,
             numeroObra,
             valorRecebido,
             dataRecebimento,
-            eventoId
+            eventoId,
+            status
         });
+        
+        // ✅ NOVO: Verificar se status é RC
+        if (status !== 'RC') {
+            console.log('⚠️ Recebimento ignorado: status não é RC (status atual: ' + status + ')');
+            return false;
+        }
 
         // 1. Buscar a obra pelo número
         const { data: obras, error: obraError } = await supabaseClient
@@ -227,6 +235,7 @@ async function registrarRecebimentoNaMedicao(numeroMedicao, numeroObra, valorRec
                     valor: valorRecebido,
                     data: dataRecebimento,
                     evento_id: eventoId,
+                    status: status,
                     registrado_em: new Date().toISOString()
                 }];
                 console.log('🔄 Substituindo recebimentos anteriores');
@@ -238,6 +247,7 @@ async function registrarRecebimentoNaMedicao(numeroMedicao, numeroObra, valorRec
                         valor: valorRecebido,
                         data: dataRecebimento,
                         evento_id: eventoId,
+                        status: status,
                         registrado_em: new Date().toISOString()
                     }
                 ];
@@ -261,6 +271,7 @@ async function registrarRecebimentoNaMedicao(numeroMedicao, numeroObra, valorRec
                 valor: valorRecebido,
                 data: dataRecebimento,
                 evento_id: eventoId,
+                status: status,
                 registrado_em: new Date().toISOString()
             }];
             
@@ -348,10 +359,18 @@ async function removerRecebimentoDaMedicao(eventoId) {
  * @param {string} eventoId - ID do evento no fluxo de caixa
  * @param {number} novoValor - Novo valor do recebimento
  * @param {string} novaData - Nova data do recebimento
+ * @param {string} novoStatus - Novo status do recebimento (ex: "RC", "PA", "PE")
  */
-async function atualizarRecebimentoNaMedicao(eventoId, novoValor, novaData) {
+async function atualizarRecebimentoNaMedicao(eventoId, novoValor, novaData, novoStatus = 'RC') {
     try {
-        console.log('🔄 Atualizando recebimento na medição:', eventoId);
+        console.log('🔄 Atualizando recebimento na medição:', { eventoId, novoValor, novaData, novoStatus });
+        
+        // ✅ NOVO: Verificar se novo status é RC
+        if (novoStatus !== 'RC') {
+            console.log('⚠️ Atualização ignorada: status não é RC (status atual: ' + novoStatus + ')');
+            // Se mudou para status diferente de RC, remover da medição
+            return await removerRecebimentoDaMedicao(eventoId);
+        }
 
         // Buscar todas as medições que tenham este evento_id nos recebimentos
         const { data: medicoes, error: medicaoError } = await supabaseClient
@@ -371,6 +390,7 @@ async function atualizarRecebimentoNaMedicao(eventoId, novoValor, novaData) {
                         ...rec,
                         valor: novoValor,
                         data: novaData,
+                        status: novoStatus,
                         atualizado_em: new Date().toISOString()
                     };
                 }
