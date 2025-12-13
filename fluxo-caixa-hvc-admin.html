@@ -6199,7 +6199,7 @@
                 }
                 
                 // Manter compatibilidade com sistema antigo se for a primeira conta
-                const connectedAccounts = googleAuth ? googleAuth.getAccounts() : [];
+                const connectedAccounts = (typeof googleAuth !== 'undefined' && googleAuth) ? googleAuth.getAccounts() : [];
                 if (connectedAccounts.length === 1) {
                     isGoogleConnected = true;
                     saveConnectionState();
@@ -6278,21 +6278,13 @@
 
         // handleSignoutClick removido - usar modal da sidebar
 
-        /**
-         * Função pública para exclusão de eventos (wrapper que evita override)
-         */
-        async function deleteCalendarEvent(eventId, accountEmail = null) {
-            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
-            return await realDeleteCalendarEvent(eventId, accountEmail);
-        }
-
         // =================================================================
         // CONNECTION STATUS
         // =================================================================
         function updateConnectionStatus(connected) {
             // ✅ NOVO: Para múltiplas contas, não usar mais esta função
             // A interface será controlada pelo gerenciador de múltiplas contas
-            const connectedAccounts = googleAuth ? googleAuth.getAccounts() : [];
+            const connectedAccounts = (typeof googleAuth !== 'undefined' && googleAuth) ? googleAuth.getAccounts() : [];
             
             if (connectedAccounts.length > 0) {
                 // Mostrar seções quando há contas conectadas
@@ -6364,7 +6356,7 @@
                 const endOfYear = new Date(now.getFullYear(), 11, 31);
 
                 // ✅ NOVO: Verificar se há múltiplas contas conectadas
-                const connectedAccounts = googleAuth ? googleAuth.getAccounts() : [];
+                const connectedAccounts = (typeof googleAuth !== 'undefined' && googleAuth) ? googleAuth.getAccounts() : [];
                 
                 if (connectedAccounts.length > 1) {
                     console.log(`🔄 Carregando eventos de ${connectedAccounts.length} contas conectadas`);
@@ -7414,7 +7406,7 @@
             try {
                 // ✅ NOVO: Garantir que estamos usando o token correto da conta do evento
                 if (event._accountEmail) {
-                    const connectedAccounts = googleAuth ? googleAuth.getAccounts() : [];
+                    const connectedAccounts = (typeof googleAuth !== 'undefined' && googleAuth) ? googleAuth.getAccounts() : [];
                     const eventAccount = connectedAccounts.find(acc => acc.email === event._accountEmail);
                     
                     if (eventAccount && eventAccount.accessToken) {
@@ -7502,7 +7494,7 @@
                 
                 // Tentar usar o token da conta específica
                 if (accountEmail) {
-                    const connectedAccounts = googleAuth ? googleAuth.getAccounts() : [];
+                    const connectedAccounts = (typeof googleAuth !== 'undefined' && googleAuth) ? googleAuth.getAccounts() : [];
                     const eventAccount = connectedAccounts.find(acc => acc.email === accountEmail);
                     
                     if (eventAccount && eventAccount.accessToken) {
@@ -7569,7 +7561,7 @@
             try {
                 // ✅ NOVO: Garantir que estamos usando o token correto da conta do evento
                 if (accountEmail) {
-                    const connectedAccounts = googleAuth ? googleAuth.getAccounts() : [];
+                    const connectedAccounts = (typeof googleAuth !== 'undefined' && googleAuth) ? googleAuth.getAccounts() : [];
                     const eventAccount = connectedAccounts.find(acc => acc.email === accountEmail);
                     
                     if (eventAccount && eventAccount.accessToken) {
@@ -12041,7 +12033,9 @@ window.openManageCategoriasPayment = function() {
             
             // ✅ NOVO: Interceptar botão de exclusão existente no modal
             setTimeout(async () => {
-                interceptExistingDeleteButtons();
+                if (typeof interceptExistingDeleteButtons === 'function') {
+                    interceptExistingDeleteButtons();
+                }
             }, 2000);
             
             // ✅ NOVO: Adicionar botões de exclusão aos eventos existentes
@@ -12069,7 +12063,9 @@ window.openManageCategoriasPayment = function() {
                         console.log('🔄 Novos elementos detectados, interceptando botões...');
                         
                         // Interceptar novos botões de exclusão
-                        interceptExistingDeleteButtons();
+                        if (typeof interceptExistingDeleteButtons === 'function') {
+                            interceptExistingDeleteButtons();
+                        }
                         
                         // Adicionar nossos botões
                         if (typeof addDeleteButtonsToEvents === 'function') {
