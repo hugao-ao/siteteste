@@ -437,6 +437,43 @@
     </div>
   </main>
 
+  <!-- Modal para Editar Cliente -->
+  <div id="edit-cliente-modal" class="hvc-modal">
+    <div class="hvc-modal-content">
+      <span class="hvc-modal-close" id="modal-close-edit-cliente">&times;</span>
+      <h2 class="hvc-title">
+        <i class="fas fa-edit"></i> Editar Cliente
+      </h2>
+      
+      <form id="edit-cliente-form" class="hvc-form">
+        <input type="hidden" id="edit-cliente-id" />
+        
+        <label for="edit-cliente-documento" style="color: #add8e6; display: block; margin-bottom: 0.5rem;">
+          Documento (CPF/CNPJ)
+        </label>
+        <input type="text" id="edit-cliente-documento" class="hvc-input" placeholder="CPF ou CNPJ" required />
+        
+        <label for="edit-cliente-tipo-documento" style="color: #add8e6; display: block; margin-bottom: 0.5rem; margin-top: 1rem;">
+          Tipo de Documento
+        </label>
+        <select id="edit-cliente-tipo-documento" class="hvc-input" required>
+          <option value="">Selecione...</option>
+          <option value="CPF">CPF</option>
+          <option value="CNPJ">CNPJ</option>
+        </select>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+          <button type="submit" class="hvc-btn" style="flex: 1;">
+            <i class="fas fa-save"></i> Salvar Alterações
+          </button>
+          <button type="button" class="hvc-btn hvc-btn-danger" id="cancel-edit-cliente" style="flex: 1;">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- Modal para Gerenciar Responsáveis -->
   <div id="responsaveis-modal" class="hvc-modal">
     <div class="hvc-modal-content">
