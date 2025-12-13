@@ -404,3 +404,8 @@ window.connectGoogleAccount = connectGoogleAccount;
 window.disconnectGoogleAccount = disconnectGoogleAccount;
 window.disconnectAllGoogleAccounts = disconnectAllGoogleAccounts;
 window.loadGoogleScripts = loadGoogleScripts;
+
+// Exportar getters para variáveis de estado (somente leitura)
+window.isGapiInited = () => gapiInited;
+window.isGisInited = () => gisInited;
+window.getTokenClient = () => tokenClient;
