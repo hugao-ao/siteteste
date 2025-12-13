@@ -371,7 +371,7 @@ class MedicoesManager {
                     const propostasAprovadas = propostas.map(p => p.id);
                     const { data: itens, error: itensError } = await supabaseClient
                         .from('itens_proposta_hvc')
-                        .select('*')
+                        .select('id, proposta_id, servico_id, local_id, quantidade, preco_mao_obra, preco_material, preco_total')
                         .in('proposta_id', propostasAprovadas)
                         .in('servico_id', servicoIds);
 
@@ -689,11 +689,6 @@ class MedicoesManager {
                 statusColor = 'success';
             }
             
-            // Formatar recebimentos com datas
-            const recebidosFormatados = recebimentos.map(rec => 
-                `${this.formatarMoeda(rec.valor)} (${this.formatarData(rec.data)})`
-            ).join('<br>');
-            
             return `
             <tr>
                 <td><strong>${medicao.numero_medicao || 'N/A'}</strong></td>
@@ -705,7 +700,7 @@ class MedicoesManager {
                 <td><strong>${this.formatarData(medicao.previsao_pagamento)}</strong></td>
                 <td><strong>${this.formatarMoeda(valorTotal)}</strong></td>
                 <td>
-                    ${totalRecebido > 0 ? `<strong style="color: #28a745;">${this.formatarMoeda(totalRecebido)}</strong><br><small style="color: #b0c4de;">${recebidosFormatados}</small>` : '<span style="color: #6c757d;">-</span>'}
+                    ${totalRecebido > 0 ? `<strong style="color: #28a745;">${this.formatarMoeda(totalRecebido)}</strong>` : '<span style="color: #6c757d;">-</span>'}
                 </td>
                 <td>
                     ${retencao > 0 ? `<strong style="color: #ffc107;">${this.formatarMoeda(retencao)}</strong>` : '<span style="color: #28a745;">-</span>'}
@@ -1595,7 +1590,14 @@ class MedicoesManager {
             const { data: todosItens, error: itensError } = await supabaseClient
                 .from('itens_proposta_hvc')
                 .select(`
-                    *,
+                    id,
+                    proposta_id,
+                    servico_id,
+                    local_id,
+                    quantidade,
+                    preco_mao_obra,
+                    preco_material,
+                    preco_total,
                     servicos_hvc (*),
                     propostas_hvc (numero_proposta),
                     locais_hvc (nome)
