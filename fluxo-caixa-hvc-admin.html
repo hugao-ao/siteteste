@@ -9941,38 +9941,89 @@ window.openManageCategoriasPayment = function() {
                 // Mostrar mensagem de sucesso
                 alert('Alterações salvas com sucesso!');
                 
+                // ✅ CORRIGIDO: Detectar RECEBIMENTO (case-insensitive) pelo eventType ou título
+                const eventTypeUpper = (eventType || '').toUpperCase();
+                const isRecebimento = eventTypeUpper === 'RECEBIMENTO' || 
+                                     (currentEditingEventData.summary && currentEditingEventData.summary.includes('RECEBIMENTO'));
+                
+                console.log('🔍 DEBUG - isRecebimento:', isRecebimento);
+                
                 // ✅ NOVO: Atualizar medição se for RECEBIMENTO
-                if (eventType === 'RECEBIMENTO' && typeof window.atualizarRecebimentoNaMedicao === 'function') {
+                if (isRecebimento && typeof window.atualizarRecebimentoNaMedicao === 'function') {
                     try {
-                        console.log('🔄 Verificando se precisa atualizar medição...');
-                        console.log('   - Itens editados:', updatedItems);
-                        
-                        // Verificar se algum item é do tipo OBRAS com medição
+                        // ✅ CORRIGIDO: Usar campos do objeto diretamente
                         for (const item of updatedItems) {
-                            const tipo = item.tipo || '';
-                            const subtipo = item.subtipo || '';
                             const categoria = item.categoria || '';
-                            const valor = item.valor || item.value || 0;
+                            const subtipo = item.subtipo || '';
+                            const valor = item.value || 0;
+                            const status = item.status || 'RC';
                             
-                            console.log('🔍 Item:', { tipo, subtipo, categoria, valor });
+                            console.log('🔍 Item editado:', { tipo: item.tipo, subtipo, categoria, valor, status });
                             
-                            // Verificar se é OBRAS e tem medição (categoria começa com MED-)
-                            if (tipo === 'OBRAS' && categoria && categoria.startsWith('MED-')) {
+                            // Verificar se CATEGORIA é número de medição
+                            if (categoria && subtipo) {
+                                console.log('🏛️ Detectada edição de recebimento vinculado à medição:', categoria);
+                                
+                                // ✅ NOVO: Mostrar modal de confirmação diferenciado por status
+                                let mensagemModal = '';
+                                
+                                if (status === 'RC') {
+                                    // Status continua RC: apenas atualiza valor
+                                    mensagemModal = 
+                                        `⚠️ ATENÇÃO: Edição de Recebimento Vinculado\n\n` +
+                                        `Este recebimento está vinculado à medição ${categoria} da obra ${subtipo}.\n\n` +
+                                        `O valor registrado na medição será atualizado para R$ ${valor.toFixed(2).replace('.', ',')}.\n\n` +
+                                        `Os totais (RECEBIDO, RETENÇÃO e STATUS) serão recalculados automaticamente.\n\n` +
+                                        `Deseja continuar?`;
+                                } else {
+                                    // Status mudou para não-RC: remove da medição
+                                    mensagemModal = 
+                                        `⚠️ ATENÇÃO: Mudança de Status de Recebimento\n\n` +
+                                        `Este recebimento está vinculado à medição ${categoria} da obra ${subtipo}.\n\n` +
+                                        `O status foi alterado para "${status}" (diferente de "RC").\n\n` +
+                                        `❌ Este recebimento NÃO SERÁ MAIS CONTABILIZADO na medição.\n\n` +
+                                        `O valor será REMOVIDO dos totais (RECEBIDO, RETENÇÃO e STATUS).\n\n` +
+                                        `Deseja continuar?`;
+                                }
+                                
+                                const confirmar = confirm(mensagemModal);
+                                
+                                if (!confirmar) {
+                                    console.log('ℹ️ Usuário cancelou a atualização da medição');
+                                    continue;
+                                }
+                                
                                 console.log('🏛️ Atualizando medição:', categoria);
+                                
+                                // ✅ CORRIGIDO: Extrair e formatar data corretamente
+                                let dataEvento = currentEditingEventData.start.dateTime || currentEditingEventData.start.date;
+                                // Converter para YYYY-MM-DD
+                                if (dataEvento.includes('T')) {
+                                    dataEvento = dataEvento.split('T')[0]; // Pega apenas a parte da data
+                                }
                                 
                                 await window.atualizarRecebimentoNaMedicao(
                                     eventId,        // ID do evento
                                     valor,          // novo valor
-                                    currentEditingEventData.start.dateTime || currentEditingEventData.start.date  // data
+                                    dataEvento,     // data (YYYY-MM-DD)
+                                    status,         // status do recebimento (já definido acima)
+                                    categoria,      // número da medição
+                                    subtipo         // número da obra
                                 );
                                 
                                 console.log('✅ Medição atualizada!');
-                                break; // Atualizar apenas uma vez
+                                
+                                // ✅ NOVO: Mensagem diferenciada por status
+                                if (status === 'RC') {
+                                    alert('✅ Medição atualizada com sucesso!\n\nO valor do recebimento foi atualizado.\n\nAtualize a página de medições para ver as mudanças.');
+                                } else {
+                                    alert('✅ Recebimento removido da medição!\n\nO recebimento com status "' + status + '" não é mais contabilizado.\n\nAtualize a página de medições para ver as mudanças.');
+                                }
                             }
                         }
                     } catch (error) {
                         console.error('❌ Erro ao atualizar medição:', error);
-                        // Não bloquear o salvamento se houver erro na atualização da medição
+                        alert('❌ Erro ao atualizar medição: ' + error.message);
                     }
                 }
                 
@@ -10566,64 +10617,6 @@ window.openManageCategoriasPayment = function() {
                 alert('Erro ao salvar medição: ' + error.message);
             }
         }
-        
-        /**
-         * Atualiza medição no Supabase quando evento de recebimento é editado
-         */
-        window.atualizarRecebimentoNaMedicao = async function(eventId, novoValor, novaData) {
-            try {
-                console.log('🔄 Atualizando medição no Supabase...');
-                console.log('   - Event ID:', eventId);
-                console.log('   - Novo Valor:', novoValor);
-                console.log('   - Nova Data:', novaData);
-                
-                // Buscar medição pelo event_id
-                const { data: medicoes, error: searchError } = await supabase
-                    .from('medicoes_hvc')
-                    .select('*')
-                    .eq('event_id', eventId)
-                    .limit(1);
-                
-                if (searchError) {
-                    console.error('❌ Erro ao buscar medição:', searchError);
-                    throw searchError;
-                }
-                
-                if (!medicoes || medicoes.length === 0) {
-                    console.warn('⚠️ Nenhuma medição encontrada com event_id:', eventId);
-                    return;
-                }
-                
-                const medicao = medicoes[0];
-                console.log('✅ Medição encontrada:', medicao);
-                
-                // Preparar dados para atualização
-                const updateData = {
-                    valor: novoValor,
-                    data_recebimento: novaData.split('T')[0], // Extrair apenas a data
-                    updated_at: new Date().toISOString()
-                };
-                
-                // Atualizar no Supabase
-                const { data: updated, error: updateError } = await supabase
-                    .from('medicoes_hvc')
-                    .update(updateData)
-                    .eq('id', medicao.id)
-                    .select();
-                
-                if (updateError) {
-                    console.error('❌ Erro ao atualizar medição:', updateError);
-                    throw updateError;
-                }
-                
-                console.log('✅ Medição atualizada com sucesso:', updated);
-                return updated;
-                
-            } catch (error) {
-                console.error('❌ Erro em atualizarRecebimentoNaMedicao:', error);
-                throw error;
-            }
-        };
         
     </script>
 </head>
