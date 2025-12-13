@@ -25,6 +25,15 @@ const responsavelWhatsappInput = document.getElementById("responsavel-whatsapp")
 const responsavelEmailInput = document.getElementById("responsavel-email");
 const responsaveisList = document.getElementById("responsaveis-list");
 
+// Modal de edição de cliente
+const editClienteModal = document.getElementById("edit-cliente-modal");
+const modalCloseEditCliente = document.getElementById("modal-close-edit-cliente");
+const editClienteForm = document.getElementById("edit-cliente-form");
+const editClienteIdInput = document.getElementById("edit-cliente-id");
+const editClienteDocumentoInput = document.getElementById("edit-cliente-documento");
+const editClienteTipoDocumentoSelect = document.getElementById("edit-cliente-tipo-documento");
+const cancelEditClienteBtn = document.getElementById("cancel-edit-cliente");
+
 // Variáveis globais
 let currentClienteId = null;
 let clientes = [];
@@ -363,6 +372,9 @@ function renderClientes() {
                 </button>
             </td>
             <td data-label="Ações">
+                <button class="hvc-btn hvc-btn-warning" onclick="editCliente('${cliente.id}', '${cliente.documento || ''}', '${cliente.tipo_documento || ''}')" style="padding: 0.5rem 1rem; margin-right: 0.5rem;">
+                    <i class="fas fa-edit"></i> Editar
+                </button>
                 <button class="hvc-btn hvc-btn-danger" onclick="deleteCliente('${cliente.id}')" style="padding: 0.5rem 1rem;">
                     <i class="fas fa-trash"></i> Excluir
                 </button>
@@ -502,6 +514,68 @@ window.deleteCliente = async (clienteId) => {
         alert('Erro ao excluir cliente. Verifique se não há propostas ou obras associadas.');
     }
 };
+
+// Editar cliente
+window.editCliente = (clienteId, documento, tipoDocumento) => {
+    if (editClienteIdInput) editClienteIdInput.value = clienteId;
+    if (editClienteDocumentoInput) editClienteDocumentoInput.value = documento;
+    if (editClienteTipoDocumentoSelect) editClienteTipoDocumentoSelect.value = tipoDocumento;
+    if (editClienteModal) editClienteModal.style.display = 'block';
+};
+
+// Fechar modal de edição
+if (modalCloseEditCliente) {
+    modalCloseEditCliente.addEventListener('click', () => {
+        if (editClienteModal) editClienteModal.style.display = 'none';
+    });
+}
+
+if (cancelEditClienteBtn) {
+    cancelEditClienteBtn.addEventListener('click', () => {
+        if (editClienteModal) editClienteModal.style.display = 'none';
+    });
+}
+
+window.addEventListener('click', (e) => {
+    if (e.target === editClienteModal) {
+        if (editClienteModal) editClienteModal.style.display = 'none';
+    }
+});
+
+// Salvar edição de cliente
+if (editClienteForm) {
+    editClienteForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const clienteId = editClienteIdInput.value;
+        const documento = editClienteDocumentoInput.value.trim();
+        const tipoDocumento = editClienteTipoDocumentoSelect.value;
+        
+        if (!documento || !tipoDocumento) {
+            alert('Por favor, preencha todos os campos.');
+            return;
+        }
+        
+        try {
+            const { error } = await supabase
+                .from('clientes_hvc')
+                .update({
+                    documento: documento,
+                    tipo_documento: tipoDocumento
+                })
+                .eq('id', clienteId);
+            
+            if (error) throw error;
+            
+            await loadClientes();
+            if (editClienteModal) editClienteModal.style.display = 'none';
+            alert('Cliente atualizado com sucesso!');
+        } catch (error) {
+            console.error('Erro ao atualizar cliente:', error);
+            alert('Erro ao atualizar cliente.');
+        }
+    });
+}
 
 // Modal de responsáveis
 window.openResponsaveisModal = (clienteId, clienteNome) => {
