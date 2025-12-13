@@ -58,6 +58,76 @@ async function checkAccess() {
     return true;
 }
 
+// FUNÇÕES DE FORMATAÇÃO DE DOCUMENTOS
+
+/**
+ * Formata CPF: xxx.xxx.xxx-xx
+ */
+function formatarCPF(cpf) {
+    const numeros = cpf.replace(/\D/g, '');
+    if (numeros.length !== 11) return cpf;
+    return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+}
+
+/**
+ * Formata CNPJ: xx.xxx.xxx/xxxx-xx
+ */
+function formatarCNPJ(cnpj) {
+    const numeros = cnpj.replace(/\D/g, '');
+    if (numeros.length !== 14) return cnpj;
+    return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+}
+
+/**
+ * Formata documento (CPF ou CNPJ) automaticamente
+ */
+function formatarDocumento(documento) {
+    if (!documento) return '';
+    const numeros = documento.replace(/\D/g, '');
+    
+    if (numeros.length === 11) {
+        return formatarCPF(numeros);
+    } else if (numeros.length === 14) {
+        return formatarCNPJ(numeros);
+    }
+    
+    return documento; // Retorna sem formatação se não for CPF nem CNPJ
+}
+
+/**
+ * Aplica máscara enquanto digita
+ */
+function aplicarMascaraDocumento(input) {
+    let valor = input.value.replace(/\D/g, '');
+    
+    if (valor.length <= 11) {
+        // Máscara de CPF
+        valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+        valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+        valor = valor.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+    } else {
+        // Máscara de CNPJ
+        valor = valor.replace(/(\d{2})(\d)/, '$1.$2');
+        valor = valor.replace(/(\d{3})(\d)/, '$1.$2');
+        valor = valor.replace(/(\d{3})(\d)/, '$1/$2');
+        valor = valor.replace(/(\d{4})(\d{1,2})$/, '$1-$2');
+    }
+    
+    input.value = valor;
+}
+
+/**
+ * Detecta tipo de documento pelo tamanho
+ */
+function detectarTipoDocumento(documento) {
+    const numeros = documento.replace(/\D/g, '');
+    
+    if (numeros.length === 11) return 'CPF';
+    if (numeros.length === 14) return 'CNPJ';
+    
+    return '';
+}
+
 // FUNCIONALIDADE DE REDIMENSIONAMENTO DE COLUNAS
 
 function setupColumnResizing() {
@@ -361,7 +431,7 @@ function renderClientes() {
             </td>
             <td data-label="Documento">
                 <div style="display: flex; align-items: center; gap: 0.5rem;">
-                    <span>${cliente.documento || 'Não informado'}</span>
+                    <span>${cliente.documento ? formatarDocumento(cliente.documento) : 'Não informado'}</span>
                     ${cliente.tipo_documento ? `<small style="color: #c0c0c0;">(${cliente.tipo_documento})</small>` : ''}
                 </div>
             </td>
@@ -419,18 +489,19 @@ if (addClienteForm) {
         }
         
         try {
-            // Determinar tipo de documento se preenchido
+            // Remover formatação e determinar tipo de documento se preenchido
+            let documentoLimpo = null;
             let tipoDocumento = null;
             if (documento) {
-                const numbers = documento.replace(/\D/g, '');
-                tipoDocumento = numbers.length === 11 ? 'CPF' : 'CNPJ';
+                documentoLimpo = documento.replace(/\D/g, '');
+                tipoDocumento = documentoLimpo.length === 11 ? 'CPF' : 'CNPJ';
             }
             
             const { data, error } = await supabase
                 .from('clientes_hvc')
                 .insert([{
                     nome,
-                    documento: documento || null,
+                    documento: documentoLimpo || null,
                     tipo_documento: tipoDocumento
                 }])
                 .select();
@@ -518,7 +589,10 @@ window.deleteCliente = async (clienteId) => {
 // Editar cliente
 window.editCliente = (clienteId, documento, tipoDocumento) => {
     if (editClienteIdInput) editClienteIdInput.value = clienteId;
-    if (editClienteDocumentoInput) editClienteDocumentoInput.value = documento;
+    if (editClienteDocumentoInput) {
+        // Formatar documento ao preencher o campo
+        editClienteDocumentoInput.value = documento ? formatarDocumento(documento) : '';
+    }
     if (editClienteTipoDocumentoSelect) editClienteTipoDocumentoSelect.value = tipoDocumento;
     if (editClienteModal) editClienteModal.style.display = 'block';
 };
@@ -548,13 +622,16 @@ if (editClienteForm) {
         e.preventDefault();
         
         const clienteId = editClienteIdInput.value;
-        const documento = editClienteDocumentoInput.value.trim();
+        const documentoFormatado = editClienteDocumentoInput.value.trim();
         const tipoDocumento = editClienteTipoDocumentoSelect.value;
         
-        if (!documento || !tipoDocumento) {
+        if (!documentoFormatado || !tipoDocumento) {
             alert('Por favor, preencha todos os campos.');
             return;
         }
+        
+        // Remover formatação para salvar apenas números
+        const documento = documentoFormatado.replace(/\D/g, '');
         
         try {
             const { error } = await supabase
@@ -741,7 +818,37 @@ document.addEventListener('DOMContentLoaded', async () => {
         await loadClientes();
         setupFilterListeners(); // Configurar listeners de filtro
         setupColumnResizing(); // Configurar redimensionamento de colunas
+        setupDocumentoMasks(); // Configurar máscaras de documento
         console.log('Aplicação iniciada com sucesso'); // Debug
     }
 });
+
+// Configurar máscaras de documento
+function setupDocumentoMasks() {
+    // Máscara no campo de criação
+    if (clienteDocumentoInput) {
+        clienteDocumentoInput.addEventListener('input', function() {
+            aplicarMascaraDocumento(this);
+            
+            // Detectar e atualizar tipo automaticamente
+            const tipo = detectarTipoDocumento(this.value);
+            if (tipo && documentoTipoSpan) {
+                documentoTipoSpan.textContent = tipo;
+            }
+        });
+    }
+    
+    // Máscara no campo de edição
+    if (editClienteDocumentoInput) {
+        editClienteDocumentoInput.addEventListener('input', function() {
+            aplicarMascaraDocumento(this);
+            
+            // Detectar e atualizar tipo automaticamente
+            const tipo = detectarTipoDocumento(this.value);
+            if (tipo && editClienteTipoDocumentoSelect) {
+                editClienteTipoDocumentoSelect.value = tipo;
+            }
+        });
+    }
+}
 
