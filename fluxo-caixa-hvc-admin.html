@@ -3436,9 +3436,7 @@
         const DISCOVERY_DOC = ['https://www.googleapis.com/discovery/v1/apis/calendar/v3/rest', 'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'];
         const SCOPES = 'https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile';
 
-        // tokenClient já declarado em google-calendar-auth.js
-        let gapiInited = false;
-        let gisInited = false;
+        // tokenClient, gapiInited e gisInited já declarados em google-calendar-auth.js
         let isGoogleConnected = false;
         let filteredEvents = [];
         let currentDate = new Date();
