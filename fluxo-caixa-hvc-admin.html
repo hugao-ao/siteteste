@@ -6041,20 +6041,7 @@
         // =================================================================
         // GOOGLE AUTHENTICATION
         // =================================================================
-        // handleAuthClick removido - usar modal da sidebar);
-            } catch (error) {
-                console.error('❌ Erro na autenticação:', error);
-                showMessage('Erro ao tentar conectar com o Google Calendar', 'error');
-            }
-        }
-
-        /**
-         * Função pública para exclusão de eventos (wrapper que evita override)
-         */
-        async function deleteCalendarEvent(eventId, accountEmail = null) {
-            console.log(`🗑️ deleteCalendarEvent chamada com ID: ${eventId}`);
-            return await realDeleteCalendarEvent(eventId, accountEmail);
-        }
+        // handleAuthClick removido - usar modal da sidebar
 
         async function handleTokenResponse(resp) {
             console.log('🔄 handleTokenResponse chamado com:', {
@@ -11439,7 +11426,6 @@ window.openManageCategoriasPayment = function() {
     
     <script type="module" src="supabase.js"></script>
     <script type="module" src="dashboard-hvc.js"></script>
-    <script src="multi_account_manager.js"></script>
     <script type="module">
         import { injectSidebar } from './sidebar.js';
         injectSidebar("main-content-fluxo-caixa-hvc");
@@ -11978,16 +11964,20 @@ window.openManageCategoriasPayment = function() {
             const cancelEventBtn = document.getElementById('cancelEventBtn');
             const refreshAccountsBtn = document.getElementById('refreshAccountsBtn');
             
-            if (addItemBtn && typeof addPaymentItem === 'function') {
-                addItemBtn.addEventListener('click', addPaymentItem);
-            } else if (addItemBtn) {
-                console.warn('⚠️ addPaymentItem function not found');
+            if (addItemBtn) {
+                addItemBtn.addEventListener('click', function() {
+                    if (typeof addPaymentItem === 'function') {
+                        addPaymentItem();
+                    }
+                });
             }
             
-            if (createEventBtn && typeof createPaymentEvent === 'function') {
-                createEventBtn.addEventListener('click', createPaymentEvent);
-            } else if (createEventBtn) {
-                console.warn('⚠️ createPaymentEvent function not found');
+            if (createEventBtn) {
+                createEventBtn.addEventListener('click', function() {
+                    if (typeof createPaymentEvent === 'function') {
+                        createPaymentEvent();
+                    }
+                });
             }
             
             if (cancelEventBtn) {
@@ -12049,7 +12039,9 @@ window.openManageCategoriasPayment = function() {
             }
             
             // ✅ NOVO: Configurar override do sistema de exclusão imediatamente
-            overrideDeleteSystem();
+            if (typeof overrideDeleteSystem === 'function') {
+                overrideDeleteSystem();
+            }
             
             // ✅ NOVO: Interceptar botão de exclusão existente no modal
             setTimeout(async () => {
