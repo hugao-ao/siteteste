@@ -3658,15 +3658,18 @@
          */
         function updateCreateEventButtonVisibility() {
             const button = document.getElementById('createEventButton');
+            const syncButton = document.getElementById('syncButton');
             if (!button) return;
             
-            const hasConnectedAccounts = googleAuth.getAccounts() && 
-                                        window.connectedAccounts.some(account => account.isConnected);
+            const connectedAccounts = window.googleAuth ? window.googleAuth.getAccounts() : [];
+            const hasConnectedAccounts = connectedAccounts.length > 0;
             
             if (hasConnectedAccounts) {
                 button.style.display = 'inline-flex';
+                if (syncButton) syncButton.style.display = 'inline-flex';
             } else {
                 button.style.display = 'none';
+                if (syncButton) syncButton.style.display = 'none';
                 // Fechar criador se estiver aberto
                 const section = document.getElementById('eventCreatorSection');
                 if (section && section.style.display === 'block') {
@@ -10592,6 +10595,16 @@ window.openManageCategoriasPayment = function() {
             </p>
         </div>
 
+        <!-- Action Buttons -->
+        <div class="action-buttons" style="display: flex; gap: 15px; margin: 20px 0; justify-content: center;">
+            <button id="syncButton" onclick="syncGoogleCalendar()" class="btn btn-primary" style="display: none;">
+                <i class="fas fa-sync-alt"></i> Sincronizar
+            </button>
+            <button id="createEventButton" onclick="toggleEventCreator()" class="btn btn-success" style="display: none;">
+                <i class="fas fa-plus-circle"></i> Criar Evento
+            </button>
+        </div>
+
 <!-- ✅ NOVO: Seção de Criação de Eventos -->
         <div id="eventCreatorSection" class="event-creator-section" style="display: none;">
             <h3><i class="fas fa-plus-circle"></i> Criar Evento</h3>
@@ -13546,6 +13559,11 @@ window.openManageCategoriasPayment = function() {
                         renderCalendar();
                     }
                     
+                    // Mostrar botões de ação
+                    if (typeof updateCreateEventButtonVisibility === 'function') {
+                        updateCreateEventButtonVisibility();
+                    }
+                    
                     avisoDiv.style.background = '#28a745';
                     avisoDiv.style.color = 'white';
                     avisoDiv.innerHTML = `
@@ -13593,6 +13611,11 @@ window.openManageCategoriasPayment = function() {
                     renderCalendar();
                 }
                 
+                // Mostrar botões de ação
+                if (typeof updateCreateEventButtonVisibility === 'function') {
+                    updateCreateEventButtonVisibility();
+                }
+                
                 console.log('✅ Eventos carregados após conexão!');
             }
         } catch (error) {
@@ -13614,6 +13637,11 @@ window.openManageCategoriasPayment = function() {
                 if (typeof renderCalendar === 'function') {
                     renderCalendar();
                 }
+                
+                // Atualizar botões
+                if (typeof updateCreateEventButtonVisibility === 'function') {
+                    updateCreateEventButtonVisibility();
+                }
             }
         } else {
             console.log('ℹ️ Nenhuma conta conectada - limpando eventos');
@@ -13621,6 +13649,11 @@ window.openManageCategoriasPayment = function() {
             filteredEvents = [];
             if (typeof renderCalendar === 'function') {
                 renderCalendar();
+            }
+            
+            // Ocultar botões
+            if (typeof updateCreateEventButtonVisibility === 'function') {
+                updateCreateEventButtonVisibility();
             }
         }
     });
