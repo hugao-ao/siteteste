@@ -3658,7 +3658,6 @@
          */
         function updateCreateEventButtonVisibility() {
             const button = document.getElementById('createEventButton');
-            const syncButton = document.getElementById('syncButton');
             if (!button) return;
             
             const connectedAccounts = window.googleAuth ? window.googleAuth.getAccounts() : [];
@@ -3666,10 +3665,8 @@
             
             if (hasConnectedAccounts) {
                 button.style.display = 'inline-flex';
-                if (syncButton) syncButton.style.display = 'inline-flex';
             } else {
                 button.style.display = 'none';
-                if (syncButton) syncButton.style.display = 'none';
                 // Fechar criador se estiver aberto
                 const section = document.getElementById('eventCreatorSection');
                 if (section && section.style.display === 'block') {
@@ -9947,16 +9944,20 @@ window.openManageCategoriasPayment = function() {
                 // ✅ NOVO: Atualizar medição se for RECEBIMENTO
                 if (eventType === 'RECEBIMENTO' && typeof window.atualizarRecebimentoNaMedicao === 'function') {
                     try {
-                        // ✅ CORRIGIDO: Usar campos do objeto diretamente
+                        console.log('🔄 Verificando se precisa atualizar medição...');
+                        console.log('   - Itens editados:', updatedItems);
+                        
+                        // Verificar se algum item é do tipo OBRAS com medição
                         for (const item of updatedItems) {
-                            const categoria = item.categoria || '';
+                            const tipo = item.tipo || '';
                             const subtipo = item.subtipo || '';
-                            const valor = item.value || 0;
+                            const categoria = item.categoria || '';
+                            const valor = item.valor || item.value || 0;
                             
-                            console.log('🔍 Item editado:', { tipo: item.tipo, subtipo, categoria, valor });
+                            console.log('🔍 Item:', { tipo, subtipo, categoria, valor });
                             
-                            // Verificar se CATEGORIA é número de medição
-                            if (categoria && subtipo) {
+                            // Verificar se é OBRAS e tem medição (categoria começa com MED-)
+                            if (tipo === 'OBRAS' && categoria && categoria.startsWith('MED-')) {
                                 console.log('🏛️ Atualizando medição:', categoria);
                                 
                                 await window.atualizarRecebimentoNaMedicao(
@@ -9966,10 +9967,12 @@ window.openManageCategoriasPayment = function() {
                                 );
                                 
                                 console.log('✅ Medição atualizada!');
+                                break; // Atualizar apenas uma vez
                             }
                         }
                     } catch (error) {
                         console.error('❌ Erro ao atualizar medição:', error);
+                        // Não bloquear o salvamento se houver erro na atualização da medição
                     }
                 }
                 
@@ -10564,6 +10567,64 @@ window.openManageCategoriasPayment = function() {
             }
         }
         
+        /**
+         * Atualiza medição no Supabase quando evento de recebimento é editado
+         */
+        window.atualizarRecebimentoNaMedicao = async function(eventId, novoValor, novaData) {
+            try {
+                console.log('🔄 Atualizando medição no Supabase...');
+                console.log('   - Event ID:', eventId);
+                console.log('   - Novo Valor:', novoValor);
+                console.log('   - Nova Data:', novaData);
+                
+                // Buscar medição pelo event_id
+                const { data: medicoes, error: searchError } = await supabase
+                    .from('medicoes_hvc')
+                    .select('*')
+                    .eq('event_id', eventId)
+                    .limit(1);
+                
+                if (searchError) {
+                    console.error('❌ Erro ao buscar medição:', searchError);
+                    throw searchError;
+                }
+                
+                if (!medicoes || medicoes.length === 0) {
+                    console.warn('⚠️ Nenhuma medição encontrada com event_id:', eventId);
+                    return;
+                }
+                
+                const medicao = medicoes[0];
+                console.log('✅ Medição encontrada:', medicao);
+                
+                // Preparar dados para atualização
+                const updateData = {
+                    valor: novoValor,
+                    data_recebimento: novaData.split('T')[0], // Extrair apenas a data
+                    updated_at: new Date().toISOString()
+                };
+                
+                // Atualizar no Supabase
+                const { data: updated, error: updateError } = await supabase
+                    .from('medicoes_hvc')
+                    .update(updateData)
+                    .eq('id', medicao.id)
+                    .select();
+                
+                if (updateError) {
+                    console.error('❌ Erro ao atualizar medição:', updateError);
+                    throw updateError;
+                }
+                
+                console.log('✅ Medição atualizada com sucesso:', updated);
+                return updated;
+                
+            } catch (error) {
+                console.error('❌ Erro em atualizarRecebimentoNaMedicao:', error);
+                throw error;
+            }
+        };
+        
     </script>
 </head>
 
@@ -10597,9 +10658,6 @@ window.openManageCategoriasPayment = function() {
 
         <!-- Action Buttons -->
         <div class="action-buttons" style="display: flex; gap: 15px; margin: 20px 0; justify-content: center;">
-            <button id="syncButton" onclick="syncGoogleCalendar()" class="btn btn-primary" style="display: none;">
-                <i class="fas fa-sync-alt"></i> Sincronizar
-            </button>
             <button id="createEventButton" onclick="toggleEventCreator()" class="btn btn-success" style="display: none;">
                 <i class="fas fa-plus-circle"></i> Criar Evento
             </button>
