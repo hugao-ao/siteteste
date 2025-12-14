@@ -1266,6 +1266,9 @@ class PropostasManager {
                 <td><span class="status-badge status-${proposta.status.toLowerCase()}">${proposta.status}</span></td>
                 <td>${new Date(proposta.created_at).toLocaleDateString('pt-BR')}</td>
                 <td class="actions-cell">
+                    <button class="btn-info" onclick="window.propostasManager.viewProposta('${proposta.id}')" title="Visualizar proposta" style="margin-right: 0.5rem;">
+                        <i class="fas fa-eye"></i>
+                    </button>
                     <button class="btn-secondary" ${editButtonOnclick} title="Editar proposta">
                         <i class="fas fa-edit"></i>
                     </button>
@@ -1387,6 +1390,183 @@ class PropostasManager {
         }
     }
 
+    // === VISUALIZAR PROPOSTA ===
+    async viewProposta(propostaId) {
+        try {
+            // Carregar proposta com cliente
+            const { data: proposta, error: propostaError } = await supabaseClient
+                .from('propostas_hvc')
+                .select(`
+                    *,
+                    clientes_hvc (
+                        id,
+                        nome,
+                        documento,
+                        tipo_documento
+                    )
+                `)
+                .eq('id', propostaId)
+                .single();
+
+            if (propostaError) throw propostaError;
+
+            // Carregar responsáveis do cliente
+            const { data: responsaveis, error: responsaveisError } = await supabaseClient
+                .from('responsaveis_cliente_hvc')
+                .select('*')
+                .eq('cliente_id', proposta.cliente_id);
+
+            if (responsaveisError) throw responsaveisError;
+
+            // Carregar itens da proposta
+            const { data: itens, error: itensError } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select(`
+                    *,
+                    servico:servicos_hvc(*),
+                    local:locais_hvc(nome)
+                `)
+                .eq('proposta_id', propostaId);
+
+            if (itensError) throw itensError;
+
+            // Preencher modal
+            this.populateViewModal(proposta, responsaveis, itens);
+
+            // Abrir modal
+            const modal = document.getElementById('modal-view-proposta');
+            if (modal) modal.classList.add('show');
+
+        } catch (error) {
+            console.error('Erro ao carregar proposta:', error);
+            this.showNotification('Erro ao carregar proposta: ' + error.message, 'error');
+        }
+    }
+
+    populateViewModal(proposta, responsaveis, itens) {
+        // Número e data
+        document.getElementById('view-numero-proposta').textContent = proposta.numero_proposta || 'N/A';
+        document.getElementById('view-data-criacao').textContent = new Date(proposta.created_at).toLocaleDateString('pt-BR');
+
+        // Status badge
+        const statusBadge = document.getElementById('view-status-badge');
+        const statusColors = {
+            'Pendente': { bg: 'rgba(255, 193, 7, 0.2)', border: '#ffc107', color: '#ffc107' },
+            'Aprovada': { bg: 'rgba(40, 167, 69, 0.2)', border: '#28a745', color: '#28a745' },
+            'Rejeitada': { bg: 'rgba(220, 53, 69, 0.2)', border: '#dc3545', color: '#dc3545' },
+            'Em Análise': { bg: 'rgba(23, 162, 184, 0.2)', border: '#17a2b8', color: '#17a2b8' }
+        };
+        const statusStyle = statusColors[proposta.status] || statusColors['Pendente'];
+        statusBadge.style.background = statusStyle.bg;
+        statusBadge.style.border = `2px solid ${statusStyle.border}`;
+        statusBadge.style.color = statusStyle.color;
+        statusBadge.textContent = proposta.status;
+
+        // Cliente
+        const cliente = proposta.clientes_hvc;
+        document.getElementById('view-cliente-nome').textContent = cliente?.nome || 'Não informado';
+        
+        // Documento formatado
+        const documentoElement = document.getElementById('view-cliente-documento');
+        if (cliente?.documento) {
+            const docFormatado = this.formatarDocumento(cliente.documento);
+            const tipoDoc = cliente.tipo_documento ? ` (${cliente.tipo_documento})` : '';
+            documentoElement.innerHTML = `${docFormatado}<small style="color: #808080; margin-left: 0.5rem;">${tipoDoc}</small>`;
+        } else {
+            documentoElement.textContent = 'Não informado';
+        }
+
+        // Responsáveis
+        const responsaveisList = document.getElementById('view-responsaveis-list');
+        if (responsaveis && responsaveis.length > 0) {
+            responsaveisList.innerHTML = responsaveis.map(resp => `
+                <div style="background: rgba(42, 82, 152, 0.3); border: 1px solid #2a5298; border-radius: 20px; padding: 0.5rem 1rem; display: inline-flex; align-items: center; gap: 0.5rem;">
+                    <i class="fas fa-user" style="color: #add8e6; font-size: 0.85rem;"></i>
+                    <span style="color: #e0e0e0; font-size: 0.9rem;">${resp.nome}</span>
+                    ${resp.whatsapp ? `<i class="fab fa-whatsapp" style="color: #25d366; font-size: 0.9rem;" title="${resp.whatsapp}"></i>` : ''}
+                    ${resp.email ? `<i class="fas fa-envelope" style="color: #add8e6; font-size: 0.85rem;" title="${resp.email}"></i>` : ''}
+                </div>
+            `).join('');
+        } else {
+            responsaveisList.innerHTML = '<span style="color: #808080; font-style: italic;">Nenhum responsável cadastrado</span>';
+        }
+
+        // Detalhes
+        document.getElementById('view-total-proposta').textContent = this.formatMoney(proposta.total_proposta || 0);
+        
+        const prazoTexto = proposta.prazo_execucao 
+            ? `${proposta.prazo_execucao} ${proposta.tipo_prazo || 'dias'}` 
+            : 'Não informado';
+        document.getElementById('view-prazo').textContent = prazoTexto;
+        document.getElementById('view-forma-pagamento').textContent = proposta.forma_pagamento || 'Não informado';
+
+        // Serviços
+        const servicosList = document.getElementById('view-servicos-list');
+        if (itens && itens.length > 0) {
+            servicosList.innerHTML = itens.map((item, index) => `
+                <div style="background: rgba(255, 255, 255, 0.03); border-left: 3px solid #2a5298; padding: 1rem; margin-bottom: 0.8rem; border-radius: 4px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 0.5rem;">
+                        <div style="flex: 1;">
+                            <p style="color: #add8e6; margin: 0 0 0.3rem 0; font-weight: 600;">
+                                ${index + 1}. ${item.servico?.codigo || 'N/A'} - ${item.servico?.descricao || 'N/A'}
+                            </p>
+                            ${item.local ? `<p style="color: #808080; margin: 0; font-size: 0.85rem;"><i class="fas fa-map-marker-alt"></i> ${item.local.nome}</p>` : ''}
+                        </div>
+                        <div style="text-align: right;">
+                            <p style="color: #28a745; margin: 0; font-size: 1.1rem; font-weight: 700;">${this.formatMoney(item.preco_total || 0)}</p>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                        <div>
+                            <p style="color: #808080; margin: 0; font-size: 0.75rem;">Quantidade</p>
+                            <p style="color: #e0e0e0; margin: 0; font-size: 0.9rem;">${item.quantidade || 0} ${item.servico?.unidade || ''}</p>
+                        </div>
+                        <div>
+                            <p style="color: #808080; margin: 0; font-size: 0.75rem;">Mão de Obra</p>
+                            <p style="color: #e0e0e0; margin: 0; font-size: 0.9rem;">${this.formatMoney(item.preco_mao_obra || 0)}</p>
+                        </div>
+                        <div>
+                            <p style="color: #808080; margin: 0; font-size: 0.75rem;">Material</p>
+                            <p style="color: #e0e0e0; margin: 0; font-size: 0.9rem;">${this.formatMoney(item.preco_material || 0)}</p>
+                        </div>
+                        <div>
+                            <p style="color: #808080; margin: 0; font-size: 0.75rem;">Preço Unitário</p>
+                            <p style="color: #e0e0e0; margin: 0; font-size: 0.9rem;">${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            servicosList.innerHTML = '<p style="color: #808080; font-style: italic; text-align: center;">Nenhum serviço adicionado</p>';
+        }
+
+        // Observações
+        const observacoesElement = document.getElementById('view-observacoes');
+        observacoesElement.textContent = proposta.observacoes || 'Nenhuma observação registrada.';
+        if (!proposta.observacoes) {
+            observacoesElement.style.fontStyle = 'italic';
+            observacoesElement.style.color = '#808080';
+        } else {
+            observacoesElement.style.fontStyle = 'normal';
+            observacoesElement.style.color = '#e0e0e0';
+        }
+    }
+
+    formatarDocumento(documento) {
+        if (!documento) return '';
+        const numeros = documento.replace(/\D/g, '');
+        
+        if (numeros.length === 11) {
+            // CPF: xxx.xxx.xxx-xx
+            return numeros.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+        } else if (numeros.length === 14) {
+            // CNPJ: xx.xxx.xxx/xxxx-xx
+            return numeros.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+        }
+        
+        return documento;
+    }
+
     // === EVENT LISTENERS ===
     setupEventListeners() {
         try {
@@ -1462,6 +1642,17 @@ class PropostasManager {
             if (localForm) {
                 localForm.addEventListener('submit', (e) => this.handleSubmitLocal(e));
             }
+
+            // Modais - Visualizar Proposta
+            const closeModalViewProposta = document.getElementById('close-modal-view-proposta');
+            const closeViewPropostaBtn = document.getElementById('close-view-proposta-btn');
+            
+            if (closeModalViewProposta) {
+                closeModalViewProposta.addEventListener('click', () => this.hideModalViewProposta());
+            }
+            if (closeViewPropostaBtn) {
+                closeViewPropostaBtn.addEventListener('click', () => this.hideModalViewProposta());
+            }
             
             // Fechar modal clicando fora
             const modalServico = document.getElementById('modal-servico');
@@ -1519,6 +1710,14 @@ class PropostasManager {
             if (modalDeleteLocalConfirm) {
                 modalDeleteLocalConfirm.addEventListener('click', (e) => {
                     if (e.target.id === 'modal-delete-local-confirm') this.hideModalDeleteLocal();
+                });
+            }
+
+            // Modal de Visualizar Proposta - Fechar clicando fora
+            const modalViewProposta = document.getElementById('modal-view-proposta');
+            if (modalViewProposta) {
+                modalViewProposta.addEventListener('click', (e) => {
+                    if (e.target.id === 'modal-view-proposta') this.hideModalViewProposta();
                 });
             }
             
@@ -1838,5 +2037,10 @@ class PropostasManager {
         const modal = document.getElementById('modal-delete-local-confirm');
         if (modal) modal.classList.remove('show');
         this.localToDelete = null;
+    }
+
+    hideModalViewProposta() {
+        const modal = document.getElementById('modal-view-proposta');
+        if (modal) modal.classList.remove('show');
     }
 }
