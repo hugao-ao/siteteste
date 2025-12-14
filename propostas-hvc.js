@@ -1435,7 +1435,10 @@ class PropostasManager {
 
             // Abrir modal
             const modal = document.getElementById('modal-view-proposta');
-            if (modal) modal.classList.add('show');
+            if (modal) {
+                modal.classList.add('show');
+                this.setupModalDragging();
+            }
 
         } catch (error) {
             console.error('Erro ao carregar proposta:', error);
@@ -2041,6 +2044,70 @@ class PropostasManager {
 
     hideModalViewProposta() {
         const modal = document.getElementById('modal-view-proposta');
+        const modalContent = document.getElementById('modal-view-proposta-content');
+        
         if (modal) modal.classList.remove('show');
+        
+        // Resetar posição e tamanho ao fechar
+        if (modalContent) {
+            modalContent.style.transform = 'translate(0, 0)';
+            modalContent.style.width = '900px';
+            modalContent.style.height = 'auto';
+        }
+    }
+
+    setupModalDragging() {
+        const modalContent = document.getElementById('modal-view-proposta-content');
+        const modalHeader = document.getElementById('modal-view-proposta-header');
+        
+        if (!modalContent || !modalHeader) return;
+
+        let isDragging = false;
+        let currentX;
+        let currentY;
+        let initialX;
+        let initialY;
+        let xOffset = 0;
+        let yOffset = 0;
+
+        modalHeader.addEventListener('mousedown', dragStart);
+        document.addEventListener('mousemove', drag);
+        document.addEventListener('mouseup', dragEnd);
+
+        function dragStart(e) {
+            // Não arrastar se clicar no botão de fechar
+            if (e.target.closest('.close-modal')) return;
+            
+            initialX = e.clientX - xOffset;
+            initialY = e.clientY - yOffset;
+
+            if (e.target === modalHeader || e.target.closest('.modal-title')) {
+                isDragging = true;
+            }
+        }
+
+        function drag(e) {
+            if (isDragging) {
+                e.preventDefault();
+                
+                currentX = e.clientX - initialX;
+                currentY = e.clientY - initialY;
+
+                xOffset = currentX;
+                yOffset = currentY;
+
+                setTranslate(currentX, currentY, modalContent);
+            }
+        }
+
+        function dragEnd(e) {
+            initialX = currentX;
+            initialY = currentY;
+            isDragging = false;
+        }
+
+        function setTranslate(xPos, yPos, el) {
+            el.style.transform = `translate(${xPos}px, ${yPos}px)`;
+        }
     }
 }
