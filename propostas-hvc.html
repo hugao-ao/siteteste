@@ -967,9 +967,9 @@
 
     <!-- Modal Visualizar Proposta -->
     <div class="modal" id="modal-view-proposta">
-      <div class="modal-content" style="max-width: 900px;">
-        <div class="modal-header" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 1.5rem;">
-          <h3 class="modal-title" style="font-size: 1.5rem; font-weight: 600;">
+      <div class="modal-content" id="modal-view-proposta-content" style="max-width: 900px; width: 900px; max-height: 90vh; display: flex; flex-direction: column; resize: both; overflow: hidden; position: relative;">
+        <div class="modal-header" id="modal-view-proposta-header" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 1.5rem; cursor: move; flex-shrink: 0;">
+          <h3 class="modal-title" style="font-size: 1.5rem; font-weight: 600; user-select: none;">
             <i class="fas fa-file-invoice"></i> Visualização de Proposta
           </h3>
           <button class="close-modal" id="close-modal-view-proposta" style="color: white;">
@@ -977,7 +977,7 @@
           </button>
         </div>
 
-        <div style="padding: 2rem; background: #0a1628;">
+        <div id="modal-view-proposta-body" style="padding: 2rem; background: #0a1628; overflow-y: auto; flex: 1;">
           <!-- Cabeçalho da Proposta -->
           <div style="background: linear-gradient(135deg, rgba(30, 60, 114, 0.3) 0%, rgba(42, 82, 152, 0.3) 100%); border-left: 4px solid #2a5298; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
             <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
@@ -1062,7 +1062,7 @@
           </div>
         </div>
 
-        <div class="modal-footer" style="background: rgba(255, 255, 255, 0.03); padding: 1rem 2rem;">
+        <div class="modal-footer" style="background: rgba(255, 255, 255, 0.03); padding: 1rem 2rem; flex-shrink: 0;">
           <button type="button" class="btn-secondary" id="close-view-proposta-btn">
             <i class="fas fa-times"></i> Fechar
           </button>
