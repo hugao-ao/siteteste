@@ -1,6 +1,12 @@
 /**
  * Módulo Centralizado de Autenticação OneDrive
  * Mantém a conexão persistente entre páginas usando localStorage
+ * 
+ * ========================================
+ * VERSÃO CORRIGIDA - 15/12/2024 10:15
+ * - Integrity REMOVIDO (linha 428)
+ * - MSAL carrega sem erros
+ * ========================================
  */
 
 // Configurações do Microsoft OneDrive
