@@ -383,14 +383,12 @@ function injectSidebarWithAutoDetection(mainContentElementId) {
     injectSidebar(mainContentElementId, project);
 }
 
-// Exporta as funções principais para uso como módulo ES6
-export { 
-    injectSidebar, 
-    injectSidebarWithAutoDetection, 
-    applyProjectTheme,
-    createAdminSidebarHTML,
-    createUserSidebarHTML,
-    createAdminViewingUserSidebarHTML,
-    injectSidebarCSS,
-    initializeSidebar
-};
+// Exporta as funções para uso global (sem ES6 modules)
+window.injectSidebar = injectSidebar;
+window.injectSidebarWithAutoDetection = injectSidebarWithAutoDetection;
+window.applyProjectTheme = applyProjectTheme;
+window.createAdminSidebarHTML = createAdminSidebarHTML;
+window.createUserSidebarHTML = createUserSidebarHTML;
+window.createAdminViewingUserSidebarHTML = createAdminViewingUserSidebarHTML;
+window.injectSidebarCSS = injectSidebarCSS;
+window.initializeSidebar = initializeSidebar;
