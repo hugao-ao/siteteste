@@ -29,7 +29,6 @@ function createAdminSidebarHTML(projectContext = null) {
             <li class="sub-menu"><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
             <li class="sub-menu"><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
             <li class="sub-menu"><a href="#" id="nav-google-agenda-hvc" onclick="if(typeof openGoogleCalendarModal === 'function') { openGoogleCalendarModal(); } else { console.error('openGoogleCalendarModal não está definida'); alert('Módulo do Google Calendar ainda não foi carregado. Recarregue a página.'); } return false;"><i class="fab fa-google"></i> <span>Google Agenda</span></a></li>
-            <li class="sub-menu"><a href="onedrive-browser.html" id="nav-onedrive-hvc"><i class="fab fa-microsoft"></i> <span>OneDrive</span></a></li>
         `;
     } else if (projectContext === 'Argos') {
         projectSpecificLinks = `
@@ -89,7 +88,6 @@ function createUserSidebarHTML(userProject) {
             <li><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
             <li><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
             <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
-            <li><a href="onedrive-browser.html" id="nav-onedrive-hvc"><i class="fab fa-microsoft"></i> <span>OneDrive</span></a></li>
         `;
     } else if (userProject === 'Argos') {
         projectSpecificLinks = `
@@ -139,7 +137,6 @@ function createAdminViewingUserSidebarHTML(viewedUserProject) {
             <li><a href="obras-hvc.html" id="nav-obras-hvc"><i class="fas fa-building"></i> <span>Obras HVC</span></a></li>
             <li><a href="medicoes-hvc.html" id="nav-medicoes-hvc"><i class="fas fa-ruler-combined"></i> <span>Medições HVC</span></a></li>
             <li><a href="fluxo-caixa-hvc.html" id="nav-fluxo-caixa-hvc"><i class="fas fa-money-bill-wave"></i> <span>Fluxo de Caixa HVC</span></a></li>
-            <li><a href="onedrive-browser.html" id="nav-onedrive-hvc"><i class="fab fa-microsoft"></i> <span>OneDrive</span></a></li>
         `;
     } else if (viewedUserProject === 'Argos') {
         projectSpecificLinks = `
@@ -383,33 +380,7 @@ function injectSidebarWithAutoDetection(mainContentElementId) {
     injectSidebar(mainContentElementId, project);
 }
 
-// Exporta as funções para uso global (window) E como módulo ES6
-if (typeof window !== 'undefined') {
-    window.injectSidebar = injectSidebar;
-    window.injectSidebarWithAutoDetection = injectSidebarWithAutoDetection;
-    window.applyProjectTheme = applyProjectTheme;
-    window.createAdminSidebarHTML = createAdminSidebarHTML;
-    window.createUserSidebarHTML = createUserSidebarHTML;
-    window.createAdminViewingUserSidebarHTML = createAdminViewingUserSidebarHTML;
-    window.injectSidebarCSS = injectSidebarCSS;
-    window.initializeSidebar = initializeSidebar;
-}
-
-// Exporta também como ES6 module para compatibilidade
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = {
-        injectSidebar,
-        injectSidebarWithAutoDetection,
-        applyProjectTheme,
-        createAdminSidebarHTML,
-        createUserSidebarHTML,
-        createAdminViewingUserSidebarHTML,
-        injectSidebarCSS,
-        initializeSidebar
-    };
-}
-
-// Export ES6 (para páginas que usam import)
+// Exporta as funções principais para uso como módulo ES6
 export { 
     injectSidebar, 
     injectSidebarWithAutoDetection, 
