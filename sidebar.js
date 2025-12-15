@@ -383,12 +383,40 @@ function injectSidebarWithAutoDetection(mainContentElementId) {
     injectSidebar(mainContentElementId, project);
 }
 
-// Exporta as funções para uso global (sem ES6 modules)
-window.injectSidebar = injectSidebar;
-window.injectSidebarWithAutoDetection = injectSidebarWithAutoDetection;
-window.applyProjectTheme = applyProjectTheme;
-window.createAdminSidebarHTML = createAdminSidebarHTML;
-window.createUserSidebarHTML = createUserSidebarHTML;
-window.createAdminViewingUserSidebarHTML = createAdminViewingUserSidebarHTML;
-window.injectSidebarCSS = injectSidebarCSS;
-window.initializeSidebar = initializeSidebar;
+// Exporta as funções para uso global (window) E como módulo ES6
+if (typeof window !== 'undefined') {
+    window.injectSidebar = injectSidebar;
+    window.injectSidebarWithAutoDetection = injectSidebarWithAutoDetection;
+    window.applyProjectTheme = applyProjectTheme;
+    window.createAdminSidebarHTML = createAdminSidebarHTML;
+    window.createUserSidebarHTML = createUserSidebarHTML;
+    window.createAdminViewingUserSidebarHTML = createAdminViewingUserSidebarHTML;
+    window.injectSidebarCSS = injectSidebarCSS;
+    window.initializeSidebar = initializeSidebar;
+}
+
+// Exporta também como ES6 module para compatibilidade
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+        injectSidebar,
+        injectSidebarWithAutoDetection,
+        applyProjectTheme,
+        createAdminSidebarHTML,
+        createUserSidebarHTML,
+        createAdminViewingUserSidebarHTML,
+        injectSidebarCSS,
+        initializeSidebar
+    };
+}
+
+// Export ES6 (para páginas que usam import)
+export { 
+    injectSidebar, 
+    injectSidebarWithAutoDetection, 
+    applyProjectTheme,
+    createAdminSidebarHTML,
+    createUserSidebarHTML,
+    createAdminViewingUserSidebarHTML,
+    injectSidebarCSS,
+    initializeSidebar
+};
