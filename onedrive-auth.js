@@ -425,7 +425,6 @@ async function loadMSALScript() {
         await new Promise((resolve, reject) => {
             const script = document.createElement('script');
             script.src = 'https://alcdn.msauth.net/browser/2.38.1/js/msal-browser.min.js';
-            script.integrity = 'sha384-/nXu16s9W7PlhqOm/y3iLmLxJvqYvJ5PvFMKVoYXqJzZqFqPpKIxXaGKLHgKXVmC';
             script.crossOrigin = 'anonymous';
             script.onload = async () => {
                 console.log('✅ MSAL script carregado');
