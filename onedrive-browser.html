@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OneDrive - Navegador de Arquivos</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="sidebar.css">
+    <style>
+        .onedrive-container {
+            padding: 20px;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .onedrive-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .onedrive-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .onedrive-title h1 {
+            margin: 0;
+            font-size: 28px;
+            color: #0078d4;
+        }
+
+        .onedrive-logo {
+            width: 40px;
+            height: 40px;
+        }
+
+        .account-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 10px 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+
+        .account-email {
+            font-weight: 600;
+            color: #333;
+        }
+
+        .btn-disconnect {
+            padding: 8px 16px;
+            background: #d13438;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-disconnect:hover {
+            background: #a82a2d;
+        }
+
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            flex-wrap: wrap;
+        }
+
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            color: #0078d4;
+            font-weight: 500;
+        }
+
+        .breadcrumb-item:hover {
+            text-decoration: underline;
+        }
+
+        .breadcrumb-separator {
+            color: #999;
+        }
+
+        .toolbar {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .btn-toolbar {
+            padding: 10px 20px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-toolbar:hover {
+            background: #005a9e;
+        }
+
+        .btn-toolbar:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+
+        .files-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .file-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+        }
+
+        .file-item:hover {
+            border-color: #0078d4;
+            box-shadow: 0 2px 8px rgba(0,120,212,0.2);
+            transform: translateY(-2px);
+        }
+
+        .file-item.selected {
+            border-color: #0078d4;
+            background: #e7f3ff;
+        }
+
+        .file-icon {
+            font-size: 48px;
+            margin-bottom: 10px;
+        }
+
+        .file-name {
+            text-align: center;
+            font-size: 13px;
+            word-break: break-word;
+            color: #333;
+        }
+
+        .file-size {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+        }
+
+        .files-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .files-table th {
+            background: #0078d4;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .files-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .files-table tr:hover {
+            background: #f5f5f5;
+        }
+
+        .files-table tr.selected {
+            background: #e7f3ff;
+        }
+
+        .table-file-name {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+
+        .table-file-icon {
+            font-size: 24px;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 5px;
+            margin-bottom: 20px;
+        }
+
+        .btn-view {
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+
+        .btn-view.active {
+            background: #0078d4;
+            color: white;
+            border-color: #0078d4;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #666;
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 20px;
+            opacity: 0.5;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        .error-message {
+            padding: 15px;
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            max-width: 500px;
+            width: 90%;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+        }
+
+        .modal-header {
+            margin-bottom: 20px;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            color: #333;
+        }
+
+        .modal-body {
+            margin-bottom: 20px;
+        }
+
+        .modal-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        .btn-modal {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .btn-modal-primary {
+            background: #0078d4;
+            color: white;
+        }
+
+        .btn-modal-primary:hover {
+            background: #005a9e;
+        }
+
+        .btn-modal-secondary {
+            background: #6c757d;
+            color: white;
+        }
+
+        .btn-modal-secondary:hover {
+            background: #5a6268;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar -->
+    <div id="sidebar"></div>
+
+    <!-- Conteúdo Principal -->
+    <div class="main-content">
+        <div class="onedrive-container">
+            <!-- Cabeçalho -->
+            <div class="onedrive-header">
+                <div class="onedrive-title">
+                    <svg class="onedrive-logo" viewBox="0 0 24 24" fill="#0078d4">
+                        <path d="M13.5 2C10.5 2 8 4.5 8 7.5c0 .3 0 .6.1.9C5.8 9 4 11 4 13.5 4 16.5 6.5 19 9.5 19h11c2.5 0 4.5-2 4.5-4.5 0-2.2-1.6-4.1-3.7-4.4-.3-3.9-3.6-7.1-7.8-7.1z"/>
+                    </svg>
+                    <h1>OneDrive</h1>
+                </div>
+                <div class="account-info">
+                    <span class="account-email" id="accountEmail">Não conectado</span>
+                    <button class="btn-disconnect" id="btnDisconnect" style="display: none;">
+                        Desconectar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mensagem de erro -->
+            <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+            <!-- Breadcrumb -->
+            <div class="breadcrumb" id="breadcrumb"></div>
+
+            <!-- Barra de ferramentas -->
+            <div class="toolbar">
+                <button class="btn-toolbar" id="btnNewFolder">
+                    📁 Nova Pasta
+                </button>
+                <button class="btn-toolbar" id="btnUpload">
+                    ⬆️ Upload
+                </button>
+                <button class="btn-toolbar btn-secondary" id="btnDownload" disabled>
+                    ⬇️ Baixar
+                </button>
+                <button class="btn-toolbar btn-secondary" id="btnDelete" disabled>
+                    🗑️ Excluir
+                </button>
+                <button class="btn-toolbar btn-secondary" id="btnRefresh">
+                    🔄 Atualizar
+                </button>
+            </div>
+
+            <!-- Alternador de visualização -->
+            <div class="view-toggle">
+                <button class="btn-view active" id="btnViewGrid">🔲 Grade</button>
+                <button class="btn-view" id="btnViewList">📋 Lista</button>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="loading" style="display: none;">
+                Carregando arquivos...
+            </div>
+
+            <!-- Visualização em grade -->
+            <div id="filesGrid" class="files-grid"></div>
+
+            <!-- Visualização em lista -->
+            <div id="filesTable" style="display: none;">
+                <table class="files-table">
+                    <thead>
+                        <tr>
+                            <th>Nome</th>
+                            <th>Tamanho</th>
+                            <th>Modificado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="filesTableBody"></tbody>
+                </table>
+            </div>
+
+            <!-- Estado vazio -->
+            <div id="emptyState" class="empty-state" style="display: none;">
+                <div class="empty-state-icon">📂</div>
+                <p>Esta pasta está vazia</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Nova Pasta -->
+    <div class="modal-overlay" id="modalNewFolder">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Nova Pasta</h2>
+            </div>
+            <div class="modal-body">
+                <input type="text" class="modal-input" id="inputFolderName" placeholder="Nome da pasta">
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-secondary" id="btnCancelFolder">Cancelar</button>
+                <button class="btn-modal btn-modal-primary" id="btnCreateFolder">Criar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="supabase.js"></script>
+    <script src="sidebar.js"></script>
+    <script src="onedrive-auth.js"></script>
+    <script src="onedrive-browser.js"></script>
+</body>
+</html>
