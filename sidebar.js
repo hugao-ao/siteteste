@@ -1,3 +1,12 @@
+/**
+ * ========================================
+ * SIDEBAR.JS - VERSÃO CORRIGIDA - 15/12/2024 10:15
+ * - Export ES6 REMOVIDO (linha 413+)
+ * - Funciona via window.injectSidebar()
+ * - Link OneDrive no projeto HVC
+ * ========================================
+ */
+
 // Função para injetar o HTML da Sidebar do Admin (MODIFICADA com destaque de projeto ativo e ícones apropriados)
 function createAdminSidebarHTML(projectContext = null) {
     // Se houver contexto de projeto, aplica tema do projeto, senão usa theme-admin
@@ -409,14 +418,10 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
-// Export ES6 (para páginas que usam import)
-export { 
-    injectSidebar, 
-    injectSidebarWithAutoDetection, 
-    applyProjectTheme,
-    createAdminSidebarHTML,
-    createUserSidebarHTML,
-    createAdminViewingUserSidebarHTML,
-    injectSidebarCSS,
-    initializeSidebar
-};
+// Export ES6 removido para evitar erro "Unexpected token 'export'"
+// Se precisar usar import, adicione type="module" no script tag:
+// <script type="module" src="sidebar.js"></script>
+//
+// Para usar normalmente (sem module):
+// <script src="sidebar.js"></script>
+// As funções estão disponíveis via window.injectSidebar(), etc.
