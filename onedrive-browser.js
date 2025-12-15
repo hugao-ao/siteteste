@@ -22,6 +22,7 @@ function initElements() {
     
     elements = {
         accountEmail: document.getElementById('accountEmail'),
+        btnConnect: document.getElementById('btnConnect'),
         btnDisconnect: document.getElementById('btnDisconnect'),
         errorMessage: document.getElementById('errorMessage'),
         breadcrumb: document.getElementById('breadcrumb'),
@@ -57,9 +58,16 @@ async function initPage() {
     
     // Verificar se está conectado
     if (!oneDriveAuth.isConnected()) {
-        showError('Você precisa estar conectado ao OneDrive. Conecte-se através da sidebar.');
+        // Mostrar botão de conectar
+        elements.btnConnect.style.display = 'inline-block';
+        elements.btnDisconnect.style.display = 'none';
+        showError('Você precisa estar conectado ao OneDrive. Clique em "Conectar OneDrive" acima.');
         return;
     }
+    
+    // Ocultar botão de conectar e mostrar desconectar
+    elements.btnConnect.style.display = 'none';
+    elements.btnDisconnect.style.display = 'inline-block';
     
     // Atualizar informações da conta
     updateAccountInfo();
@@ -72,6 +80,17 @@ async function initPage() {
  * Configura event listeners
  */
 function setupEventListeners() {
+    // Conectar
+    elements.btnConnect.addEventListener('click', async () => {
+        try {
+            await connectOneDriveAccount();
+            // Recarregar a página após conectar
+            window.location.reload();
+        } catch (error) {
+            showError('Erro ao conectar: ' + error.message);
+        }
+    });
+    
     // Desconectar
     elements.btnDisconnect.addEventListener('click', async () => {
         if (confirm('Deseja realmente desconectar sua conta OneDrive?')) {
