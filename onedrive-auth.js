@@ -3,18 +3,18 @@
  * Mantém a conexão persistente entre páginas usando localStorage
  * 
  * ========================================
- * VERSÃO CORRIGIDA - 15/12/2024 11:30
- * - Integrity REMOVIDO (linha 428)
+ * VERSÃO FINAL - 15/12/2024 12:00
+ * - Integrity REMOVIDO
  * - MSAL carrega sem erros
- * - Client Secret adicionado (linha 15)
- * - offline_access scope adicionado (linha 24)
+ * - Client Secret REMOVIDO (usa PKCE)
+ * - Configurado para SPA (Single Page Application)
+ * - offline_access scope adicionado
  * ========================================
  */
 
 // Configurações do Microsoft OneDrive
 const ONEDRIVE_CONFIG = {
     CLIENT_ID: '0d73f929-0839-4435-bb68-9a29a2143473',
-    CLIENT_SECRET: 'GhB8Q~Bx0yZg6C41u5n-ZOCS5g9s6uLQeqyJBbTe',
     REDIRECT_URI: 'https://siteteste-flame.vercel.app',
     AUTHORITY: 'https://login.microsoftonline.com/common',
     SCOPES: [
