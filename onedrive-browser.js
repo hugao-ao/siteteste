@@ -108,7 +108,7 @@ function setupEventListeners() {
             const account = oneDriveAuth.getCurrentAccount();
             if (account) {
                 await disconnectOneDriveAccount(account.email);
-                window.location.href = 'index.html';
+                // NÃO redirecionar - disconnectOneDriveAccount já faz reload
             }
         }
     });
