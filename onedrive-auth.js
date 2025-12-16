@@ -311,6 +311,10 @@ async function initializeMSAL() {
         }
 
         isInitialized = true;
+        
+        // Exportar msalInstance globalmente
+        window.msalInstance = msalInstance;
+        
         console.log('✅ MSAL inicializado com sucesso!');
         
         // Restaurar contas
