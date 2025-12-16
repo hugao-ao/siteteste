@@ -499,14 +499,45 @@ class PropostaPDFGenerator {
         try {
             // Verificar se oneDriveAuth existe
             if (typeof window.oneDriveAuth === 'undefined') {
-                alert('Módulo OneDrive não carregado. Por favor, acesse a página OneDrive Browser primeiro.');
+                alert('Módulo OneDrive não carregado. Por favor, recarregue a página.');
                 return;
             }
 
             // Verificar se MSAL está inicializado
             if (typeof window.msalInstance === 'undefined' || !window.msalInstance) {
-                alert('OneDrive não inicializado. Por favor, acesse a página OneDrive Browser primeiro.');
-                return;
+                console.log('⏳ MSAL não inicializado, aguardando...');
+                
+                // Aguardar até 10 segundos pela inicialização do MSAL
+                const maxWait = 10000; // 10 segundos
+                const startTime = Date.now();
+                
+                while (!window.msalInstance && (Date.now() - startTime) < maxWait) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    console.log('⏳ Aguardando MSAL... ' + Math.floor((Date.now() - startTime) / 1000) + 's');
+                }
+                
+                // Se ainda não inicializou, tentar inicializar manualmente
+                if (!window.msalInstance) {
+                    console.log('⏳ MSAL não inicializou automaticamente, tentando inicializar manualmente...');
+                    
+                    if (typeof window.loadMSALScript === 'function') {
+                        await window.loadMSALScript();
+                        
+                        // Aguardar mais 5 segundos após carregar
+                        const initStartTime = Date.now();
+                        while (!window.msalInstance && (Date.now() - initStartTime) < 5000) {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                    }
+                }
+                
+                // Verificar novamente
+                if (!window.msalInstance) {
+                    alert('OneDrive não inicializado. Por favor, acesse a página OneDrive Browser e conecte sua conta primeiro.');
+                    return;
+                }
+                
+                console.log('✅ MSAL inicializado com sucesso!');
             }
 
             // Verificar se há conta conectada
