@@ -5,6 +5,7 @@ class PropostaPDFGenerator {
     constructor() {
         this.currentPropostaId = null;
         this.propostaData = null;
+        this.currentProposta = null;
         this.responsaveis = [];
         this.itens = [];
         this.currentFolderId = null;
@@ -91,6 +92,7 @@ class PropostaPDFGenerator {
 
         if (propostaError) throw propostaError;
         this.propostaData = proposta;
+        this.currentProposta = proposta;
 
         // Carregar responsáveis do cliente
         const { data: responsaveis, error: responsaveisError } = await supabaseClient
@@ -557,6 +559,14 @@ class PropostaPDFGenerator {
             this.currentFolderId = null;
             this.folderPath = [];
 
+            // Preencher nome do arquivo padrão
+            const filenameInput = document.getElementById('pdf-filename-input');
+            if (filenameInput && this.currentProposta) {
+                const numero = this.currentProposta.numero_proposta || 'XXXX';
+                const ano = new Date().getFullYear();
+                filenameInput.value = `Proposta_${numero}_${ano}`;
+            }
+
             // Abrir modal
             const modal = document.getElementById('modal-onedrive-folder');
             if (modal) {
@@ -714,17 +724,38 @@ class PropostaPDFGenerator {
         breadcrumb.innerHTML = html;
     }
 
-    async uploadPDFToOneDrive() {
+    async uploadPDFToOneDrive(overwrite = false) {
         try {
             if (!this.currentPDFBlob) {
                 throw new Error('Nenhum PDF gerado');
             }
 
+            // Obter nome do arquivo do input
+            const filenameInput = document.getElementById('pdf-filename-input');
+            let fileName = filenameInput ? filenameInput.value.trim() : '';
+            
+            if (!fileName) {
+                alert('Por favor, insira um nome para o arquivo.');
+                return;
+            }
+            
+            // Adicionar .pdf se não tiver
+            if (!fileName.toLowerCase().endsWith('.pdf')) {
+                fileName += '.pdf';
+            }
+
             // Obter token
             const accessToken = await window.oneDriveAuth.getAccessToken();
 
-            // Nome do arquivo
-            const fileName = `Proposta_${this.propostaData.numero_proposta}.pdf`;
+            // Verificar se arquivo já existe (apenas se não for sobrescrita)
+            if (!overwrite) {
+                const exists = await this.checkFileExists(fileName, accessToken);
+                if (exists) {
+                    // Mostrar modal de confirmação
+                    this.showOverwriteConfirmation(fileName);
+                    return;
+                }
+            }
 
             // URL de upload
             let uploadUrl;
@@ -745,6 +776,8 @@ class PropostaPDFGenerator {
             });
 
             if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Erro ao fazer upload:', errorText);
                 throw new Error('Falha ao fazer upload do PDF');
             }
 
@@ -763,6 +796,70 @@ class PropostaPDFGenerator {
         } catch (error) {
             console.error('❌ Erro ao fazer upload:', error);
             alert('Erro ao salvar PDF no OneDrive: ' + error.message);
+        }
+    }
+
+    async checkFileExists(fileName, accessToken) {
+        try {
+            let checkUrl;
+            if (this.currentFolderId) {
+                checkUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${this.currentFolderId}/children?$filter=name eq '${fileName}'`;
+            } else {
+                checkUrl = `https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=name eq '${fileName}'`;
+            }
+
+            const response = await fetch(checkUrl, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (!response.ok) return false;
+
+            const data = await response.json();
+            return data.value && data.value.length > 0;
+        } catch (error) {
+            console.error('Erro ao verificar arquivo:', error);
+            return false;
+        }
+    }
+
+    showOverwriteConfirmation(fileName) {
+        const modal = document.getElementById('modal-confirm-overwrite');
+        const filenameSpan = document.getElementById('existing-filename');
+        
+        if (filenameSpan) {
+            filenameSpan.textContent = fileName;
+        }
+        
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+
+        // Event listeners para os botões
+        const cancelBtn = document.getElementById('cancel-overwrite-btn');
+        const confirmBtn = document.getElementById('confirm-overwrite-btn');
+
+        const closeOverwriteModal = () => {
+            if (modal) modal.style.display = 'none';
+        };
+
+        const handleConfirm = async () => {
+            closeOverwriteModal();
+            await this.uploadPDFToOneDrive(true); // Sobrescrever
+        };
+
+        // Remover listeners antigos
+        if (cancelBtn) {
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            newCancelBtn.addEventListener('click', closeOverwriteModal);
+        }
+
+        if (confirmBtn) {
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            newConfirmBtn.addEventListener('click', handleConfirm);
         }
     }
 
