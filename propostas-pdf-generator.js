@@ -268,8 +268,8 @@ class PropostaPDFGenerator {
                 </div>
 
                 ${proposta.observacoes && formato === 'tabela' ? `
-                <div style="background: #FFFF00; padding: 10px; margin-bottom: 20px; border: 1px solid #000;">
-                    <h3 style="font-size: 10pt; font-weight: bold; margin-bottom: 5px;">OBS:</h3>
+                <div style="background: #E6F2FF; padding: 10px; margin-bottom: 20px; border: 1px solid #000080;">
+                    <h3 style="font-size: 10pt; font-weight: bold; margin-bottom: 5px; color: #000080;">OBS:</h3>
                     <p style="font-size: 9pt; line-height: 1.4; margin: 0;">${proposta.observacoes}</p>
                 </div>
                 ` : ''}
@@ -278,7 +278,8 @@ class PropostaPDFGenerator {
                 <div style="margin-top: 40px; text-align: right;">
                     <p style="margin-bottom: 10px;">Recife, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.</p>
                     <p style="margin-bottom: 40px;">Atenciosamente,</p>
-                    <p style="font-weight: bold;">${assinante}</p>
+                    <p style="font-weight: bold; margin-bottom: 5px;">${assinante}</p>
+                    <p style="font-size: 9pt;">${assinante.includes('Hugo') ? 'ENGENHEIRO CIVIL – CREA: 1818793830' : 'ENGENHEIRO CIVIL – CREA: 1805287389'}</p>
                 </div>
 
                 <!-- Rodapé -->
@@ -312,7 +313,7 @@ class PropostaPDFGenerator {
             // Cabeçalho do grupo
             linhasTabela += `
                 <tr>
-                    <td colspan="6" style="background: #e0e0e0; font-weight: bold; text-align: center; padding: 8px;">
+                    <td colspan="6" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 8px; font-size: 10pt; border: 1px solid #000;">
                         ${localNome}
                     </td>
                 </tr>
@@ -326,14 +327,13 @@ class PropostaPDFGenerator {
                     : servico.descricao;
 
                 linhasTabela += `
-                    <tr>
-                        <td style="text-align: center;">${itemIndex}</td>
-                        <td>${localNome !== 'SEM LOCAL' ? localNome : '-'}</td>
-                        <td>${descricaoCompleta}</td>
-                        <td style="text-align: center;">${servico.unidade}</td>
-                        <td style="text-align: right;">${this.formatNumber(item.quantidade)}</td>
-                        <td style="text-align: right;">R$ ${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))}</td>
-                        <td style="text-align: right;">R$ ${this.formatMoney(item.preco_total || 0)}</td>
+                    <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
+                        <td style="text-align: center; padding: 6px 5px; border: 1px solid #000;">${itemIndex}</td>
+                        <td style="padding: 6px 5px; border: 1px solid #000;">${descricaoCompleta}</td>
+                        <td style="text-align: center; padding: 6px 5px; border: 1px solid #000;">${servico.unidade}</td>
+                        <td style="text-align: right; padding: 6px 5px; border: 1px solid #000;">${this.formatNumber(item.quantidade)}</td>
+                        <td style="text-align: right; padding: 6px 5px; border: 1px solid #000;">R$ ${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))}</td>
+                        <td style="text-align: right; padding: 6px 5px; border: 1px solid #000; font-weight: bold;">R$ ${this.formatMoney(item.preco_total || 0)}</td>
                     </tr>
                 `;
                 itemIndex++;
@@ -342,7 +342,10 @@ class PropostaPDFGenerator {
 
         return `
             <!-- Info Box -->
-            <div style="border: 2px solid #000; padding: 15px; margin-bottom: 20px; background: #f9f9f9; font-size: 10pt;">
+            <div style="border: 2px solid #000080; padding: 15px; margin-bottom: 20px; background: #F0F8FF; font-size: 10pt;">
+                <div style="margin-bottom: 8px;">
+                    <strong>CLIENTE:</strong> ${cliente.nome}
+                </div>
                 <div style="margin-bottom: 8px;">
                     <strong>PROPOSTA:</strong> ${proposta.numero_proposta}${opcao ? ` - ${opcao}` : ''}
                 </div>
@@ -359,15 +362,14 @@ class PropostaPDFGenerator {
 
             <!-- Tabela de Serviços -->
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9pt;">
-                <thead style="background: #000080; color: white;">
+                <thead style="background: #4A4A4A; color: white;">
                     <tr>
-                        <th style="padding: 8px 5px; border: 1px solid #000; font-size: 8pt;">ITEM</th>
-                        <th style="padding: 8px 5px; border: 1px solid #000; font-size: 8pt;">LOCAL</th>
-                        <th style="padding: 8px 5px; border: 1px solid #000; font-size: 8pt;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
-                        <th style="padding: 8px 5px; border: 1px solid #000; font-size: 8pt;">UND</th>
-                        <th style="padding: 8px 5px; border: 1px solid #000; font-size: 8pt;">QUANT.</th>
-                        <th style="padding: 8px 5px; border: 1px solid #000; font-size: 8pt;">VALOR UNIT.</th>
-                        <th style="padding: 8px 5px; border: 1px solid #000; font-size: 8pt;">P. TOTAL</th>
+                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 40px;">ITEM</th>
+                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
+                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 50px;">UND</th>
+                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 80px;">QUANT.</th>
+                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 100px;">VALOR UNIT.</th>
+                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 100px;">P. TOTAL</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -384,6 +386,7 @@ class PropostaPDFGenerator {
         let itensHTML = '';
         this.itens.forEach((item, index) => {
             const servico = item.servico;
+            const localNome = item.local?.nome || 'SEM LOCAL';
             const descricaoCompleta = servico.detalhe 
                 ? `${servico.descricao} ${servico.detalhe}`
                 : servico.descricao;
@@ -391,7 +394,7 @@ class PropostaPDFGenerator {
             itensHTML += `
                 <div style="margin-bottom: 15px;">
                     <p style="font-weight: bold; margin-bottom: 5px;">
-                        ${index + 1}. ${descricaoCompleta}
+                        ${index + 1}. ${localNome} - ${descricaoCompleta}
                     </p>
                     <p style="margin-left: 20px; margin-bottom: 5px;">
                         ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))} = R$ ${this.formatMoney(item.preco_total || 0)}
@@ -403,14 +406,14 @@ class PropostaPDFGenerator {
         return `
             <!-- Destinatário -->
             <div style="margin-bottom: 20px;">
-                <p style="margin-bottom: 5px;"><strong>Ao</strong></p>
+                <p style="margin-bottom: 5px;"><strong>Cliente:</strong> ${cliente.nome}</p>
                 <p style="margin-bottom: 5px;"><strong>Obra:</strong> ${nomeObra}</p>
                 <p style="margin-bottom: 5px;"><strong>Att:</strong> ${representante}</p>
             </div>
 
             <!-- Especificação -->
             <div style="margin-bottom: 15px;">
-                <h2 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px;">ESPECIFICAÇÃO DA OBRA:</h2>
+                <h2 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px; color: #000080;">ESPECIFICAÇÃO DA OBRA:</h2>
                 ${itensHTML}
             </div>
         `;
