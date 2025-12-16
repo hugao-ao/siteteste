@@ -56,7 +56,7 @@
   --hvc-primary-lighter: #333399;
   --hvc-secondary: #add8e6; 
   --hvc-secondary-darker: #87ceeb; 
-  --hvc-secondary-lighter: #e0ffff; 
+  --hvc-secondary-lighter: #add8e6; /* Mudado de #e0ffff para #add8e6 (light blue) - melhor contraste para botão toggle */ 
   --hvc-bg-dark: #0f0f1f; 
   --hvc-bg-surface: #191933; 
   --hvc-text-light: #e6e6fa; 
