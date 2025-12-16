@@ -1069,6 +1069,153 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Gerar Proposta em PDF -->
+    <div class="modal" id="modal-gerar-pdf">
+      <div class="modal-content" style="max-width: 1200px; width: 95%; max-height: 95vh; display: flex; flex-direction: column;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 1.5rem; flex-shrink: 0;">
+          <h3 class="modal-title" style="font-size: 1.5rem; font-weight: 600;">
+            <i class="fas fa-file-pdf"></i> Gerar Proposta em PDF
+          </h3>
+          <button class="close-modal" id="close-modal-gerar-pdf" style="color: white;">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 400px 1fr; gap: 0; flex: 1; overflow: hidden;">
+          <!-- Painel de Configurações -->
+          <div style="background: rgba(255, 255, 255, 0.05); padding: 2rem; overflow-y: auto; border-right: 2px solid rgba(173, 216, 230, 0.2);">
+            <h4 style="color: #add8e6; margin: 0 0 1.5rem 0; font-size: 1.1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.3); padding-bottom: 0.5rem;">
+              <i class="fas fa-cog"></i> Configurações da Proposta
+            </h4>
+
+            <!-- Nome da Obra -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label class="form-label" for="pdf-nome-obra" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
+                <i class="fas fa-building"></i> Nome da Obra
+              </label>
+              <input 
+                type="text" 
+                id="pdf-nome-obra" 
+                class="form-input" 
+                placeholder="Ex: Edifício Casa Boa Viagem"
+                style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
+              >
+              <small style="color: #808080; font-size: 0.85rem; margin-top: 0.3rem; display: block;">
+                Deixe vazio para usar observações
+              </small>
+            </div>
+
+            <!-- Representante -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label class="form-label" for="pdf-representante" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
+                <i class="fas fa-user-tie"></i> Representante (Att:) *
+              </label>
+              <select 
+                id="pdf-representante" 
+                class="form-input" 
+                required
+                style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
+              >
+                <option value="">Selecione um representante</option>
+              </select>
+            </div>
+
+            <!-- Opção -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label class="form-label" for="pdf-opcao" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
+                <i class="fas fa-list-ol"></i> Opção
+              </label>
+              <input 
+                type="text" 
+                id="pdf-opcao" 
+                class="form-input" 
+                placeholder="Ex: OPÇÃO 1, OPÇÃO 2"
+                style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
+              >
+              <small style="color: #808080; font-size: 0.85rem; margin-top: 0.3rem; display: block;">
+                Deixe vazio se houver apenas uma proposta
+              </small>
+            </div>
+
+            <!-- Assinante -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label class="form-label" for="pdf-assinante" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
+                <i class="fas fa-signature"></i> Assinante *
+              </label>
+              <select 
+                id="pdf-assinante" 
+                class="form-input" 
+                required
+                style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
+              >
+                <option value="Hermógenes C. P. Viana">Hermógenes C. P. Viana</option>
+                <option value="Hugo Távora Tavares Cavalcanti Viana">Hugo Távora Tavares Cavalcanti Viana</option>
+              </select>
+            </div>
+
+            <!-- Formato -->
+            <div class="form-group" style="margin-bottom: 1.5rem;">
+              <label class="form-label" for="pdf-formato" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
+                <i class="fas fa-file-alt"></i> Formato da Proposta *
+              </label>
+              <select 
+                id="pdf-formato" 
+                class="form-input" 
+                required
+                style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
+              >
+                <option value="tabela">Tabela Profissional (Recomendado)</option>
+                <option value="simples">Texto Simples</option>
+              </select>
+            </div>
+
+            <!-- Botões de Ação -->
+            <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(173, 216, 230, 0.2);">
+              <button 
+                type="button" 
+                id="btn-atualizar-preview" 
+                class="btn-primary" 
+                style="width: 100%; margin-bottom: 1rem; padding: 0.75rem; font-size: 1rem;"
+              >
+                <i class="fas fa-sync-alt"></i> Atualizar Preview
+              </button>
+              
+              <button 
+                type="button" 
+                id="btn-salvar-pdf" 
+                class="btn-success" 
+                style="width: 100%; padding: 0.75rem; font-size: 1rem; background: linear-gradient(135deg, #28a745, #218838);"
+              >
+                <i class="fas fa-save"></i> Salvar em PDF no OneDrive
+              </button>
+            </div>
+          </div>
+
+          <!-- Preview da Proposta -->
+          <div style="background: white; padding: 2rem; overflow-y: auto;">
+            <div style="text-align: center; margin-bottom: 1rem;">
+              <span style="color: #808080; font-size: 0.9rem; font-style: italic;">
+                <i class="fas fa-eye"></i> Preview da Proposta
+              </span>
+            </div>
+            
+            <div id="pdf-preview-container" style="max-width: 210mm; margin: 0 auto; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.1); min-height: 297mm;">
+              <div style="padding: 40px; text-align: center; color: #808080;">
+                <i class="fas fa-file-pdf" style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                <p>Clique em "Atualizar Preview" para visualizar a proposta</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="background: rgba(255, 255, 255, 0.03); padding: 1rem 2rem; flex-shrink: 0; border-top: 2px solid rgba(173, 216, 230, 0.2);">
+          <button type="button" class="btn-secondary" id="close-gerar-pdf-btn">
+            <i class="fas fa-times"></i> Fechar
+          </button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script type="module" src="sidebar.js"></script>
@@ -1085,5 +1232,6 @@
   });
 </script>
 <script defer src="propostas-hvc-precos.js"></script>
+<script src="propostas-pdf-generator.js"></script>
 </body>
 </html>
