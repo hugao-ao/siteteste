@@ -494,21 +494,14 @@
     <script src="supabase.js"></script>
     <script src="onedrive-auth.js"></script>
     <script src="onedrive-browser.js"></script>
-    <script>
+    <script type="module">
         // Carregar sidebar após o DOM estar pronto
+        import { injectSidebar } from './sidebar.js';
+        
         document.addEventListener('DOMContentLoaded', async () => {
-            // Carregar sidebar.js dinamicamente
-            // Carregar sidebar como module ES6
-            const sidebarScript = document.createElement('script');
-            sidebarScript.type = 'module';
-            sidebarScript.textContent = `
-                import { injectSidebar } from './sidebar.js';
-                injectSidebar('main-content', 'Hvc');
-            `;
-            document.head.appendChild(sidebarScript);
+            // Injetar sidebar para projeto HVC
+            injectSidebar('main-content', 'Hvc');
         });
     </script>
 </body>
-</html>
-
 </html>
