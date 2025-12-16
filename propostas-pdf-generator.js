@@ -497,9 +497,28 @@ class PropostaPDFGenerator {
 
     async openFolderSelector() {
         try {
-            // Verificar se OneDrive está conectado
-            if (!window.oneDriveAuth || !window.oneDriveAuth.currentAccount) {
+            // Verificar se oneDriveAuth existe
+            if (typeof window.oneDriveAuth === 'undefined') {
+                alert('Módulo OneDrive não carregado. Por favor, acesse a página OneDrive Browser primeiro.');
+                return;
+            }
+
+            // Verificar se MSAL está inicializado
+            if (typeof window.msalInstance === 'undefined' || !window.msalInstance) {
+                alert('OneDrive não inicializado. Por favor, acesse a página OneDrive Browser primeiro.');
+                return;
+            }
+
+            // Verificar se há conta conectada
+            if (!window.oneDriveAuth.currentAccount) {
                 alert('Por favor, conecte-se ao OneDrive primeiro na página de OneDrive Browser.');
+                return;
+            }
+
+            // Verificar se há contas no MSAL
+            const accounts = window.msalInstance.getAllAccounts();
+            if (!accounts || accounts.length === 0) {
+                alert('Nenhuma conta OneDrive conectada. Por favor, faça login no OneDrive Browser.');
                 return;
             }
 
