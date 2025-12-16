@@ -1269,10 +1269,13 @@ class PropostasManager {
                     <button class="btn-info" onclick="window.propostasManager.viewProposta('${proposta.id}')" title="Visualizar proposta" style="margin-right: 0.5rem;">
                         <i class="fas fa-eye"></i>
                     </button>
-                    <button class="btn-secondary" ${editButtonOnclick} title="Editar proposta">
+                    <button class="btn-success" onclick="window.pdfGenerator?.openModal('${proposta.id}')" title="Gerar Proposta em PDF" style="margin-right: 0.5rem; background: linear-gradient(135deg, #dc3545, #c82333);">
+                        <i class="fas fa-file-pdf"></i>
+                    </button>
+                    <button class="btn-secondary" ${editButtonOnclick} title="Editar proposta" style="margin-right: 0.5rem;">
                         <i class="fas fa-edit"></i>
                     </button>
-                    <button class="btn-danger" onclick="window.propostasManager.deleteProposta('${proposta.id}')">
+                    <button class="btn-danger" onclick="window.propostasManager.deleteProposta('${proposta.id}')" title="Excluir proposta">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
