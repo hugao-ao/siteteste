@@ -498,16 +498,17 @@
         // Carregar sidebar após o DOM estar pronto
         document.addEventListener('DOMContentLoaded', async () => {
             // Carregar sidebar.js dinamicamente
+            // Carregar sidebar como module ES6
             const sidebarScript = document.createElement('script');
-            sidebarScript.src = 'sidebar.js';
-            sidebarScript.onload = () => {
-                // Injetar sidebar após carregar o script
-                if (typeof injectSidebar === 'function') {
-                    injectSidebar('main-content', 'Hvc');
-                }
-            };
+            sidebarScript.type = 'module';
+            sidebarScript.textContent = `
+                import { injectSidebar } from './sidebar.js';
+                injectSidebar('main-content', 'Hvc');
+            `;
             document.head.appendChild(sidebarScript);
         });
     </script>
 </body>
+</html>
+
 </html>
