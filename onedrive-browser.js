@@ -9,6 +9,7 @@ let currentPath = [];
 let selectedItems = [];
 let viewMode = 'grid'; // 'grid' ou 'list'
 let allFiles = [];
+let currentPreviewFile = null; // Arquivo sendo visualizado no preview
 
 // Elementos DOM
 let elementsLoaded = false;
@@ -41,7 +42,12 @@ function initElements() {
         modalNewFolder: document.getElementById('modalNewFolder'),
         inputFolderName: document.getElementById('inputFolderName'),
         btnCancelFolder: document.getElementById('btnCancelFolder'),
-        btnCreateFolder: document.getElementById('btnCreateFolder')
+        btnCreateFolder: document.getElementById('btnCreateFolder'),
+        modalPreviewPDF: document.getElementById('modalPreviewPDF'),
+        pdfViewer: document.getElementById('pdfViewer'),
+        previewFileName: document.getElementById('previewFileName'),
+        btnClosePreview: document.getElementById('btnClosePreview'),
+        btnDownloadFromPreview: document.getElementById('btnDownloadFromPreview')
     };
     
     elementsLoaded = true;
@@ -188,6 +194,25 @@ function setupEventListeners() {
         setViewMode('list');
     });
     
+    // Fechar modal de preview
+    elements.btnClosePreview.addEventListener('click', () => {
+        closePreview();
+    });
+    
+    // Download do preview
+    elements.btnDownloadFromPreview.addEventListener('click', async () => {
+        if (currentPreviewFile) {
+            await downloadFile(currentPreviewFile);
+        }
+    });
+    
+    // Fechar modal ao clicar fora
+    elements.modalPreviewPDF.addEventListener('click', (e) => {
+        if (e.target === elements.modalPreviewPDF) {
+            closePreview();
+        }
+    });
+    
     // Eventos de autenticação
     window.addEventListener('oneDriveAccountConnected', () => {
         updateAccountInfo();
@@ -305,10 +330,12 @@ function renderGridView() {
             ${size ? `<div class="file-size">${size}</div>` : ''}
         `;
         
-        // Click para abrir pasta ou selecionar arquivo
+        // Click para abrir pasta ou visualizar arquivo
         div.addEventListener('click', (e) => {
             if (file.folder) {
                 openFolder(file);
+            } else if (isPDF(file.name)) {
+                previewPDF(file);
             } else {
                 toggleSelection(file, div);
             }
@@ -352,10 +379,12 @@ function renderListView() {
             <td>${modified}</td>
         `;
         
-        // Click para abrir pasta ou selecionar arquivo
+        // Click para abrir pasta ou visualizar arquivo
         tr.addEventListener('click', () => {
             if (file.folder) {
                 openFolder(file);
+            } else if (isPDF(file.name)) {
+                previewPDF(file);
             } else {
                 toggleSelection(file, tr);
             }
@@ -733,6 +762,75 @@ function showError(message) {
  */
 function hideError() {
     elements.errorMessage.style.display = 'none';
+}
+
+/**
+ * Verifica se arquivo é PDF
+ */
+function isPDF(filename) {
+    return filename.toLowerCase().endsWith('.pdf');
+}
+
+/**
+ * Abre preview de PDF
+ */
+async function previewPDF(file) {
+    try {
+        console.log('👁️ Abrindo preview:', file.name);
+        
+        currentPreviewFile = file;
+        elements.previewFileName.textContent = file.name;
+        
+        // Obter token
+        const accessToken = await oneDriveAuth.getAccessToken();
+        
+        // Obter URL de download do arquivo
+        const response = await fetch(
+            `https://graph.microsoft.com/v1.0/me/drive/items/${file.id}/content`,
+            {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            }
+        );
+        
+        if (!response.ok) {
+            throw new Error(`Erro ao carregar PDF: ${response.status}`);
+        }
+        
+        // Criar blob URL
+        const blob = await response.blob();
+        const blobUrl = window.URL.createObjectURL(blob);
+        
+        // Carregar no iframe
+        elements.pdfViewer.src = blobUrl;
+        
+        // Mostrar modal
+        elements.modalPreviewPDF.classList.add('active');
+        
+        console.log('✅ Preview aberto:', file.name);
+        
+    } catch (error) {
+        console.error('❌ Erro ao abrir preview:', error);
+        showError('Erro ao visualizar PDF: ' + error.message);
+    }
+}
+
+/**
+ * Fecha preview de PDF
+ */
+function closePreview() {
+    // Limpar iframe
+    if (elements.pdfViewer.src) {
+        window.URL.revokeObjectURL(elements.pdfViewer.src);
+        elements.pdfViewer.src = '';
+    }
+    
+    // Fechar modal
+    elements.modalPreviewPDF.classList.remove('active');
+    currentPreviewFile = null;
+    
+    console.log('✅ Preview fechado');
 }
 
 /**
