@@ -21,9 +21,14 @@ class PropostaPDFGenerator {
             this.updatePreview();
         });
 
-        // Botão Salvar PDF
+        // Botão Salvar PDF no OneDrive
         document.getElementById('btn-salvar-pdf')?.addEventListener('click', () => {
             this.savePDFToOneDrive();
+        });
+
+        // Botão Salvar PDF no PC
+        document.getElementById('btn-salvar-pdf-pc')?.addEventListener('click', () => {
+            this.downloadPDFToPC();
         });
 
         // Fechar modais
@@ -634,7 +639,7 @@ class PropostaPDFGenerator {
                 // Botão voltar se não estiver na raiz
                 if (this.folderPath.length > 0) {
                     html += `
-                        <div class="folder-item" data-action="back" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s;">
+                        <div class="folder-item" data-action="back" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s; background: white;">
                             <i class="fas fa-arrow-left" style="color: #0078d4; font-size: 1.2rem;"></i>
                             <span style="font-weight: 500; color: #333;">..</span>
                         </div>
@@ -643,7 +648,7 @@ class PropostaPDFGenerator {
 
                 folders.forEach(folder => {
                     html += `
-                        <div class="folder-item" data-folder-id="${folder.id}" data-folder-name="${folder.name}" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s;">
+                        <div class="folder-item" data-folder-id="${folder.id}" data-folder-name="${folder.name}" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s; background: white;">
                             <i class="fas fa-folder" style="color: #FFC107; font-size: 1.2rem;"></i>
                             <span style="flex: 1; color: #333;">${folder.name}</span>
                             <i class="fas fa-chevron-right" style="color: #999; font-size: 0.8rem;"></i>
@@ -657,7 +662,7 @@ class PropostaPDFGenerator {
                 // Adicionar event listeners
                 folderList.querySelectorAll('.folder-item').forEach(item => {
                     item.addEventListener('mouseenter', function() {
-                        this.style.background = '#f0f0f0';
+                        this.style.background = '#f5f5f5';
                     });
                     item.addEventListener('mouseleave', function() {
                         this.style.background = 'white';
@@ -990,6 +995,47 @@ class PropostaPDFGenerator {
         const modal = document.getElementById('modal-onedrive-folder');
         if (modal) {
             modal.classList.remove('show');
+        }
+    }
+
+    async downloadPDFToPC() {
+        try {
+            // Verificar se há preview
+            const previewContainer = document.getElementById('pdf-preview-container');
+            if (!previewContainer || !previewContainer.innerHTML.includes('HVC IMPERMEABILIZAÇÕES')) {
+                alert('Por favor, atualize o preview antes de baixar.');
+                return;
+            }
+
+            // Gerar PDF blob se não existir
+            let pdfBlob = this.currentPDFBlob;
+            if (!pdfBlob) {
+                pdfBlob = await this.generatePDFBlob();
+            }
+
+            // Criar nome do arquivo
+            const numero = this.propostaData.numero_proposta || 'XXXX';
+            const ano = new Date().getFullYear();
+            const fileName = `Proposta_${numero}_${ano}.pdf`;
+
+            // Criar link temporário para download
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Liberar URL
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+
+            console.log('✅ PDF baixado:', fileName);
+            alert('✅ PDF baixado com sucesso!');
+
+        } catch (error) {
+            console.error('❌ Erro ao baixar PDF:', error);
+            alert('Erro ao baixar PDF: ' + error.message);
         }
     }
 
