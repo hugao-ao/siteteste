@@ -150,6 +150,14 @@ class PropostaPDFGenerator {
         if (selectFormato) {
             selectFormato.value = 'tabela';
         }
+
+        // Preencher data da proposta com data atual
+        const inputDataProposta = document.getElementById('pdf-data-proposta');
+        if (inputDataProposta) {
+            const hoje = new Date();
+            const dataFormatada = hoje.toISOString().split('T')[0];
+            inputDataProposta.value = dataFormatada;
+        }
     }
 
     updatePreview() {
@@ -167,11 +175,17 @@ class PropostaPDFGenerator {
                 return;
             }
 
+            const dataProposta = document.getElementById('pdf-data-proposta')?.value;
+            if (!dataProposta) {
+                alert('Por favor, selecione a data da proposta.');
+                return;
+            }
+
             // Coletar dados do formulário
             const formData = {
                 nomeObra: document.getElementById('pdf-nome-obra')?.value || this.propostaData.observacoes || 'Não informado',
                 representante: representante,
-                opcao: document.getElementById('pdf-opcao')?.value || '',
+                dataProposta: dataProposta,
                 assinante: assinante,
                 formato: document.getElementById('pdf-formato')?.value || 'tabela'
             };
@@ -192,17 +206,18 @@ class PropostaPDFGenerator {
     }
 
     generatePropostaHTML(formData) {
-        const { nomeObra, representante, opcao, assinante, formato } = formData;
+        const { nomeObra, representante, dataProposta, assinante, formato } = formData;
         const proposta = this.propostaData;
         const cliente = proposta.clientes_hvc;
 
-        // Formatar data
-        const dataFormatada = new Date(proposta.created_at).toLocaleDateString('pt-BR', {
+        // Formatar data da proposta
+        const dataObj = new Date(dataProposta + 'T12:00:00');
+        const dataFormatada = dataObj.toLocaleDateString('pt-BR', {
             day: '2-digit',
             month: 'long',
             year: 'numeric'
         });
-        const diaSemana = new Date(proposta.created_at).toLocaleDateString('pt-BR', { weekday: 'long' });
+        const diaSemana = dataObj.toLocaleDateString('pt-BR', { weekday: 'long' });
         const dataCompleta = `${diaSemana}, ${dataFormatada}`;
 
         // Formatar prazo
@@ -218,7 +233,7 @@ class PropostaPDFGenerator {
         let conteudo = '';
 
         if (formato === 'tabela') {
-            conteudo = this.generateTabelaFormat(nomeObra, representante, opcao, dataCompleta);
+            conteudo = this.generateTabelaFormat(nomeObra, representante, dataCompleta);
         } else {
             conteudo = this.generateSimplesFormat(nomeObra, representante);
         }
@@ -242,22 +257,23 @@ class PropostaPDFGenerator {
 
                 <!-- Total Geral -->
                 <div style="background: #00FF00; font-weight: bold; font-size: 11pt; padding: 10px; text-align: right; border: 2px solid #000; margin-bottom: 20px;">
-                    TOTAL GERAL: R$ ${this.formatMoney(proposta.total_proposta || 0)}
+                    TOTAL GERAL: R$ ${this.formatMoney(proposta.total_proposta || 0)}<br>
+                    <span style="font-size: 9pt; font-weight: normal;">(${this.valorPorExtenso(proposta.total_proposta || 0)})</span>
                 </div>
 
                 <!-- Condições -->
                 <div style="margin-bottom: 15px;">
-                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px;">CONDIÇÕES DE PAGAMENTO</h3>
+                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px; color: #000080;">CONDIÇÕES DE PAGAMENTO</h3>
                     <p style="margin-left: 20px;">- ${proposta.forma_pagamento || 'A combinar'}</p>
                 </div>
 
                 <div style="margin-bottom: 15px;">
-                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px;">PRAZO DE EXECUÇÃO</h3>
+                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px; color: #000080;">PRAZO DE EXECUÇÃO</h3>
                     <p style="margin-left: 20px;">- ${prazoTexto}</p>
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px;">GARANTIA</h3>
+                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px; color: #000080;">GARANTIA</h3>
                     <p style="margin-left: 20px; text-align: justify; line-height: 1.5; font-size: 9.5pt;">
                         A garantia legal é válida para os serviços executados e a qualidade dos materiais 
                         empregados que porventura apresentem falhas no seu rendimento, por um prazo de até três 
@@ -291,7 +307,7 @@ class PropostaPDFGenerator {
         `;
     }
 
-    generateTabelaFormat(nomeObra, representante, opcao, dataCompleta) {
+    generateTabelaFormat(nomeObra, representante, dataCompleta) {
         const proposta = this.propostaData;
         const cliente = proposta.clientes_hvc;
 
@@ -347,7 +363,7 @@ class PropostaPDFGenerator {
                     <strong>CLIENTE:</strong> ${cliente.nome}
                 </div>
                 <div style="margin-bottom: 8px;">
-                    <strong>PROPOSTA:</strong> ${proposta.numero_proposta}${opcao ? ` - ${opcao}` : ''}
+                    <strong>PROPOSTA:</strong> ${proposta.numero_proposta}
                 </div>
                 <div style="margin-bottom: 8px;">
                     <strong>DATA:</strong> ${dataCompleta}
@@ -441,6 +457,89 @@ class PropostaPDFGenerator {
         // Implementação do seletor de pasta OneDrive
         // Esta função será expandida com a integração do OneDrive
         alert('Funcionalidade de seleção de pasta OneDrive será implementada em breve!');
+    }
+
+    valorPorExtenso(valor) {
+        if (valor === null || valor === undefined || valor === 0) {
+            return 'zero reais';
+        }
+
+        const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+        const especiais = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+        const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+        const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+        function porExtenso(num) {
+            if (num === 0) return '';
+            if (num === 100) return 'cem';
+            if (num < 10) return unidades[num];
+            if (num < 20) return especiais[num - 10];
+            if (num < 100) {
+                const dez = Math.floor(num / 10);
+                const uni = num % 10;
+                return dezenas[dez] + (uni > 0 ? ' e ' + unidades[uni] : '');
+            }
+            if (num < 1000) {
+                const cen = Math.floor(num / 100);
+                const resto = num % 100;
+                return centenas[cen] + (resto > 0 ? ' e ' + porExtenso(resto) : '');
+            }
+            return '';
+        }
+
+        const valorInt = Math.floor(valor);
+        const centavos = Math.round((valor - valorInt) * 100);
+
+        let extenso = '';
+
+        // Milhões
+        const milhoes = Math.floor(valorInt / 1000000);
+        if (milhoes > 0) {
+            if (milhoes === 1) {
+                extenso += 'um milhão';
+            } else {
+                extenso += porExtenso(milhoes) + ' milhões';
+            }
+        }
+
+        // Milhares
+        const milhares = Math.floor((valorInt % 1000000) / 1000);
+        if (milhares > 0) {
+            if (extenso) extenso += ' ';
+            if (milhares === 1) {
+                extenso += 'mil';
+            } else {
+                extenso += porExtenso(milhares) + ' mil';
+            }
+        }
+
+        // Centenas
+        const resto = valorInt % 1000;
+        if (resto > 0) {
+            if (extenso) extenso += ' e ';
+            extenso += porExtenso(resto);
+        }
+
+        // Adicionar "reais" somente se houver parte inteira
+        if (valorInt > 0) {
+            if (valorInt === 1) {
+                extenso += ' real';
+            } else {
+                extenso += ' reais';
+            }
+        }
+
+        // Centavos
+        if (centavos > 0) {
+            extenso += ' e ' + porExtenso(centavos);
+            if (centavos === 1) {
+                extenso += ' centavo';
+            } else {
+                extenso += ' centavos';
+            }
+        }
+
+        return extenso;
     }
 
     formatMoney(value) {
