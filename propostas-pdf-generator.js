@@ -1053,8 +1053,8 @@ class PropostaPDFGenerator {
 // Inicializar quando o DOM estiver pronto
 let pdfGenerator;
 document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(() => {
-        pdfGenerator = new PropostaPDFGenerator();
-        window.pdfGenerator = pdfGenerator;
-    }, 1500);
+    pdfGenerator = new PropostaPDFGenerator();
+    window.pdfGenerator = pdfGenerator;
+    console.log('PDF Generator inicializado:', window.pdfGenerator);
 });
+
