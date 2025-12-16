@@ -418,10 +418,14 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
-// Export ES6 removido para evitar erro "Unexpected token 'export'"
-// Se precisar usar import, adicione type="module" no script tag:
-// <script type="module" src="sidebar.js"></script>
-//
-// Para usar normalmente (sem module):
-// <script src="sidebar.js"></script>
-// As funções estão disponíveis via window.injectSidebar(), etc.
+// Export ES6 (para páginas que usam import)
+export { 
+    injectSidebar, 
+    injectSidebarWithAutoDetection, 
+    applyProjectTheme,
+    createAdminSidebarHTML,
+    createUserSidebarHTML,
+    createAdminViewingUserSidebarHTML,
+    injectSidebarCSS,
+    initializeSidebar
+};
