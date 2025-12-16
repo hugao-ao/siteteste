@@ -387,15 +387,21 @@ async function connectOneDriveAccount() {
  */
 async function disconnectOneDriveAccount(email) {
     try {
-        // Remover do MSAL
+        // Remover do MSAL (SEM redirecionar)
         if (msalInstance) {
             const account = msalInstance.getAllAccounts().find(acc => acc.username === email);
             if (account) {
-                await msalInstance.logout({ account });
+                // Usar logoutRedirect com postLogoutRedirectUri para a mesma página
+                await msalInstance.logoutRedirect({
+                    account: account,
+                    postLogoutRedirectUri: window.location.origin + '/onedrive-browser.html'
+                });
+                // NÃO continua após logoutRedirect (redireciona)
+                return;
             }
         }
 
-        // Remover da classe
+        // Remover da classe (apenas se não houver MSAL)
         const removed = oneDriveAuth.removeAccount(email);
         
         if (removed) {
@@ -403,9 +409,15 @@ async function disconnectOneDriveAccount(email) {
                 detail: { email }
             }));
             console.log('✅ Conta OneDrive desconectada:', email);
+            
+            // Recarregar página para atualizar UI
+            window.location.reload();
         }
     } catch (error) {
         console.error('❌ Erro ao desconectar conta OneDrive:', error);
+        // Em caso de erro, apenas remover localmente
+        oneDriveAuth.removeAccount(email);
+        window.location.reload();
     }
 }
 
