@@ -56,6 +56,11 @@ async function initPage() {
     initElements();
     setupEventListeners();
     
+    // AGUARDAR INICIALIZAÇÃO DO MSAL
+    console.log('⏳ Aguardando inicialização do MSAL...');
+    await waitForMSAL();
+    console.log('✅ MSAL inicializado, continuando...');
+    
     // Verificar se está conectado
     if (!oneDriveAuth.isConnected()) {
         // Mostrar botão de conectar
@@ -728,6 +733,32 @@ function showError(message) {
  */
 function hideError() {
     elements.errorMessage.style.display = 'none';
+}
+
+/**
+ * Aguarda inicialização do MSAL
+ */
+async function waitForMSAL() {
+    // Verificar se já está inicializado
+    if (window.isMSALInitialized && window.isMSALInitialized()) {
+        return;
+    }
+    
+    // Aguardar até 10 segundos pela inicialização
+    const maxWait = 10000; // 10 segundos
+    const checkInterval = 100; // 100ms
+    let waited = 0;
+    
+    while (waited < maxWait) {
+        if (window.isMSALInitialized && window.isMSALInitialized()) {
+            return;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, checkInterval));
+        waited += checkInterval;
+    }
+    
+    throw new Error('Timeout aguardando inicialização do MSAL');
 }
 
 // Inicializar quando o DOM estiver pronto
