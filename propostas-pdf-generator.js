@@ -7,8 +7,9 @@ class PropostaPDFGenerator {
         this.propostaData = null;
         this.responsaveis = [];
         this.itens = [];
-        this.selectedFolderId = null;
-        this.selectedFolderPath = '';
+        this.currentFolderId = null;
+        this.folderPath = [];
+        this.currentPDFBlob = null;
         
         this.initializeEventListeners();
     }
@@ -37,11 +38,11 @@ class PropostaPDFGenerator {
             this.closeFolderModal();
         });
 
-        document.getElementById('cancel-folder-selection')?.addEventListener('click', () => {
+        document.getElementById('cancel-folder-selection-btn')?.addEventListener('click', () => {
             this.closeFolderModal();
         });
 
-        document.getElementById('confirm-folder-selection')?.addEventListener('click', () => {
+        document.getElementById('confirm-folder-selection-btn')?.addEventListener('click', () => {
             this.confirmFolderSelection();
         });
     }
@@ -444,6 +445,12 @@ class PropostaPDFGenerator {
                 return;
             }
 
+            // Gerar PDF
+            const pdfBlob = await this.generatePDFBlob();
+            
+            // Salvar blob temporariamente
+            this.currentPDFBlob = pdfBlob;
+
             // Abrir modal de seleção de pasta
             await this.openFolderSelector();
 
@@ -453,10 +460,260 @@ class PropostaPDFGenerator {
         }
     }
 
+    async generatePDFBlob() {
+        try {
+            const previewContainer = document.getElementById('pdf-preview-container');
+            
+            // Configurar opções do html2pdf
+            const opt = {
+                margin: 0,
+                filename: `Proposta_${this.propostaData.numero_proposta}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait' 
+                }
+            };
+
+            // Gerar PDF e retornar blob
+            const pdfBlob = await html2pdf()
+                .set(opt)
+                .from(previewContainer)
+                .output('blob');
+
+            return pdfBlob;
+
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+            throw new Error('Falha ao gerar PDF: ' + error.message);
+        }
+    }
+
     async openFolderSelector() {
-        // Implementação do seletor de pasta OneDrive
-        // Esta função será expandida com a integração do OneDrive
-        alert('Funcionalidade de seleção de pasta OneDrive será implementada em breve!');
+        try {
+            // Verificar se OneDrive está conectado
+            if (!window.oneDriveAuth || !window.oneDriveAuth.currentAccount) {
+                alert('Por favor, conecte-se ao OneDrive primeiro na página de OneDrive Browser.');
+                return;
+            }
+
+            // Resetar navegação
+            this.currentFolderId = null;
+            this.folderPath = [];
+
+            // Abrir modal
+            const modal = document.getElementById('modal-onedrive-folder');
+            if (modal) {
+                modal.classList.add('show');
+            }
+
+            // Carregar pastas raiz
+            await this.loadOneDriveFolders();
+
+        } catch (error) {
+            console.error('Erro ao abrir seletor de pasta:', error);
+            alert('Erro ao abrir seletor de pasta: ' + error.message);
+        }
+    }
+
+    async loadOneDriveFolders(folderId = null) {
+        try {
+            const folderList = document.getElementById('onedrive-folder-list');
+            if (!folderList) return;
+
+            // Mostrar loading
+            folderList.innerHTML = `
+                <div style="padding: 40px; text-align: center; color: #808080;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>Carregando pastas...</p>
+                </div>
+            `;
+
+            // Obter token
+            const accessToken = await window.oneDriveAuth.getAccessToken();
+
+            // Montar URL da API
+            let url;
+            if (folderId) {
+                url = `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children?$filter=folder ne null&$select=id,name,folder`;
+            } else {
+                url = 'https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=folder ne null&$select=id,name,folder';
+            }
+
+            // Fazer requisição
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Falha ao carregar pastas');
+            }
+
+            const data = await response.json();
+            const folders = data.value || [];
+
+            // Renderizar pastas
+            if (folders.length === 0) {
+                folderList.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: #808080;">
+                        <i class="fas fa-folder-open" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                        <p>Nenhuma pasta encontrada</p>
+                    </div>
+                `;
+            } else {
+                let html = '<div style="padding: 0;">';
+                
+                // Botão voltar se não estiver na raiz
+                if (this.folderPath.length > 0) {
+                    html += `
+                        <div class="folder-item" data-action="back" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s;">
+                            <i class="fas fa-arrow-left" style="color: #0078d4; font-size: 1.2rem;"></i>
+                            <span style="font-weight: 500; color: #333;">..</span>
+                        </div>
+                    `;
+                }
+
+                folders.forEach(folder => {
+                    html += `
+                        <div class="folder-item" data-folder-id="${folder.id}" data-folder-name="${folder.name}" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s;">
+                            <i class="fas fa-folder" style="color: #FFC107; font-size: 1.2rem;"></i>
+                            <span style="flex: 1; color: #333;">${folder.name}</span>
+                            <i class="fas fa-chevron-right" style="color: #999; font-size: 0.8rem;"></i>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                folderList.innerHTML = html;
+
+                // Adicionar event listeners
+                folderList.querySelectorAll('.folder-item').forEach(item => {
+                    item.addEventListener('mouseenter', function() {
+                        this.style.background = '#f0f0f0';
+                    });
+                    item.addEventListener('mouseleave', function() {
+                        this.style.background = 'white';
+                    });
+                    item.addEventListener('click', () => {
+                        const action = item.getAttribute('data-action');
+                        if (action === 'back') {
+                            this.navigateBack();
+                        } else {
+                            const folderId = item.getAttribute('data-folder-id');
+                            const folderName = item.getAttribute('data-folder-name');
+                            this.navigateToFolder(folderId, folderName);
+                        }
+                    });
+                });
+            }
+
+            // Atualizar breadcrumb
+            this.updateBreadcrumb();
+
+        } catch (error) {
+            console.error('Erro ao carregar pastas:', error);
+            const folderList = document.getElementById('onedrive-folder-list');
+            if (folderList) {
+                folderList.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>Erro ao carregar pastas</p>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    navigateToFolder(folderId, folderName) {
+        this.folderPath.push({ id: folderId, name: folderName });
+        this.currentFolderId = folderId;
+        this.loadOneDriveFolders(folderId);
+    }
+
+    navigateBack() {
+        this.folderPath.pop();
+        if (this.folderPath.length > 0) {
+            const lastFolder = this.folderPath[this.folderPath.length - 1];
+            this.currentFolderId = lastFolder.id;
+            this.loadOneDriveFolders(lastFolder.id);
+        } else {
+            this.currentFolderId = null;
+            this.loadOneDriveFolders();
+        }
+    }
+
+    updateBreadcrumb() {
+        const breadcrumb = document.getElementById('onedrive-breadcrumb');
+        if (!breadcrumb) return;
+
+        let html = '<i class="fas fa-home"></i> Meu OneDrive';
+        
+        this.folderPath.forEach(folder => {
+            html += ` <i class="fas fa-chevron-right" style="font-size: 0.7rem; margin: 0 0.5rem;"></i> ${folder.name}`;
+        });
+
+        breadcrumb.innerHTML = html;
+    }
+
+    async uploadPDFToOneDrive() {
+        try {
+            if (!this.currentPDFBlob) {
+                throw new Error('Nenhum PDF gerado');
+            }
+
+            // Obter token
+            const accessToken = await window.oneDriveAuth.getAccessToken();
+
+            // Nome do arquivo
+            const fileName = `Proposta_${this.propostaData.numero_proposta}.pdf`;
+
+            // URL de upload
+            let uploadUrl;
+            if (this.currentFolderId) {
+                uploadUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${this.currentFolderId}:/${fileName}:/content`;
+            } else {
+                uploadUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${fileName}:/content`;
+            }
+
+            // Fazer upload
+            const response = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/pdf'
+                },
+                body: this.currentPDFBlob
+            });
+
+            if (!response.ok) {
+                throw new Error('Falha ao fazer upload do PDF');
+            }
+
+            const result = await response.json();
+            console.log('✅ PDF salvo no OneDrive:', result);
+
+            // Fechar modais
+            this.closeFolderModal();
+            this.closeModal();
+
+            // Limpar blob
+            this.currentPDFBlob = null;
+
+            alert('✅ Proposta salva com sucesso no OneDrive!');
+
+        } catch (error) {
+            console.error('❌ Erro ao fazer upload:', error);
+            alert('Erro ao salvar PDF no OneDrive: ' + error.message);
+        }
     }
 
     valorPorExtenso(valor) {
@@ -589,10 +846,14 @@ class PropostaPDFGenerator {
         }
     }
 
-    confirmFolderSelection() {
-        // Implementação da confirmação de pasta
-        this.closeFolderModal();
-        alert('Pasta selecionada! Gerando PDF...');
+    async confirmFolderSelection() {
+        try {
+            // Fazer upload do PDF
+            await this.uploadPDFToOneDrive();
+        } catch (error) {
+            console.error('Erro ao confirmar seleção:', error);
+            alert('Erro ao salvar PDF: ' + error.message);
+        }
     }
 }
 
