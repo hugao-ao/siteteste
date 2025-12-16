@@ -1216,6 +1216,47 @@
         </div>
       </div>
     </div>
+
+    <!-- Modal Seleção de Pasta OneDrive -->
+    <div class="modal" id="modal-onedrive-folder">
+      <div class="modal-content" style="max-width: 800px; width: 90%;">
+        <div class="modal-header" style="background: linear-gradient(135deg, #0078d4 0%, #00bcf2 100%); color: white; padding: 1.5rem;">
+          <h3 class="modal-title" style="font-size: 1.3rem; font-weight: 600;">
+            <i class="fas fa-cloud"></i> Selecionar Pasta no OneDrive
+          </h3>
+          <button class="close-modal" id="close-modal-onedrive-folder" style="color: white;">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div class="modal-body" style="padding: 2rem; max-height: 500px; overflow-y: auto;">
+          <div style="margin-bottom: 1.5rem;">
+            <h4 style="color: #0078d4; margin: 0 0 1rem 0; font-size: 1rem;">
+              <i class="fas fa-folder-open"></i> Navegue até a pasta desejada
+            </h4>
+            <div id="onedrive-breadcrumb" style="background: #f0f0f0; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; color: #333;">
+              <i class="fas fa-home"></i> Meu OneDrive
+            </div>
+          </div>
+
+          <div id="onedrive-folder-list" style="border: 1px solid #ddd; border-radius: 6px; min-height: 300px;">
+            <div style="padding: 40px; text-align: center; color: #808080;">
+              <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+              <p>Carregando pastas...</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer" style="background: #f9f9f9; padding: 1rem 2rem; border-top: 1px solid #ddd;">
+          <button type="button" class="btn-secondary" id="cancel-folder-selection-btn">
+            <i class="fas fa-times"></i> Cancelar
+          </button>
+          <button type="button" class="btn-primary" id="confirm-folder-selection-btn">
+            <i class="fas fa-check"></i> Salvar Aqui
+          </button>
+        </div>
+      </div>
+    </div>
   </main>
 
   <script type="module" src="sidebar.js"></script>
@@ -1232,6 +1273,7 @@
   });
 </script>
 <script defer src="propostas-hvc-precos.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 <script src="propostas-pdf-generator.js"></script>
 </body>
 </html>
