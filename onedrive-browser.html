@@ -474,6 +474,24 @@
         </div>
     </div>
 
+    <!-- Modal Preview PDF -->
+    <div class="modal-overlay" id="modalPreviewPDF">
+        <div class="modal-content" style="max-width: 90vw; max-height: 90vh; width: 1200px; height: 800px;">
+            <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center;">
+                <h2 id="previewFileName">Visualizar PDF</h2>
+                <button class="btn-modal btn-modal-secondary" id="btnClosePreview" style="margin: 0;">✕ Fechar</button>
+            </div>
+            <div class="modal-body" style="height: calc(100% - 120px); padding: 0;">
+                <iframe id="pdfViewer" style="width: 100%; height: 100%; border: none; background: white;"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-modal btn-modal-primary" id="btnDownloadFromPreview">
+                    ⬇️ Baixar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Nova Pasta -->
     <div class="modal-overlay" id="modalNewFolder">
         <div class="modal-content">
