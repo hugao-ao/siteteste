@@ -441,7 +441,7 @@ class PropostaPDFGenerator {
         try {
             // Validar preview
             const previewContainer = document.getElementById('pdf-preview-container');
-            if (!previewContainer || !previewContainer.innerHTML.includes('HVC IMPERMEABILIZAÇÕES')) {
+            if (!previewContainer || !previewContainer.innerHTML.includes('TOTAL GERAL')) {
                 alert('Por favor, atualize o preview antes de salvar.');
                 return;
             }
@@ -1162,7 +1162,7 @@ class PropostaPDFGenerator {
         try {
             // Verificar se há preview
             const previewContainer = document.getElementById('pdf-preview-container');
-            if (!previewContainer || !previewContainer.innerHTML.includes('HVC IMPERMEABILIZAÇÕES')) {
+            if (!previewContainer || !previewContainer.innerHTML.includes('TOTAL GERAL')) {
                 alert('Por favor, atualize o preview antes de baixar.');
                 return;
             }
