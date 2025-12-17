@@ -516,7 +516,8 @@
       </div>
 
       <form id="proposta-form">
-        <div class="form-row">
+        <!-- Linha 1: Número da Proposta, Cliente e Status -->
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1.5fr 1fr; gap: 1rem; margin-bottom: 1rem;">
           <div class="form-group">
             <label class="form-label" for="numero-proposta">
               Número da Proposta *
@@ -535,11 +536,11 @@
             <label class="form-label" for="cliente-select">
               Cliente *
             </label>
-            <div class="input-group">
-              <select id="cliente-select" class="form-select" required>
+            <div class="input-group" style="display: flex; gap: 10px;">
+              <select id="cliente-select" class="form-select" style="flex: 1; min-width: 0;" required>
                 <option value="">Selecione um cliente...</option>
               </select>
-              <button type="button" class="btn-add" id="btn-add-cliente">
+              <button type="button" class="btn-add" id="btn-add-cliente" style="flex-shrink: 0;">
                 <i class="fas fa-plus"></i>
               </button>
             </div>
@@ -557,32 +558,30 @@
           </div>
         </div>
 
-        <!-- CORREÇÃO: Campos de Prazo reorganizados para evitar sobreposição -->
-        <div class="prazo-container">
+        <!-- Linha 2: Prazo de Execução e Forma de Pagamento lado a lado -->
+        <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
           <div class="form-group">
             <label class="form-label" for="prazo-execucao">
               Prazo de Execução *
             </label>
-            <div class="prazo-fields">
+            <div style="display: flex; gap: 10px;">
               <input 
                 type="number" 
                 id="prazo-execucao" 
                 class="form-input" 
                 placeholder="Ex: 30"
                 min="1"
+                style="flex: 1; min-width: 0;"
                 required
               >
-              <select id="tipo-prazo" class="form-select" required>
+              <select id="tipo-prazo" class="form-select" style="flex: 1; min-width: 0;" required>
                 <option value="corridos">Dias Corridos</option>
                 <option value="uteis">Dias Úteis</option>
                 <option value="cronograma">De Acordo com Cronograma da Obra</option>
               </select>
             </div>
           </div>
-        </div>
 
-        <!-- CORREÇÃO: Campo de Forma de Pagamento em container separado -->
-        <div class="forma-pagamento-container">
           <div class="form-group">
             <label class="form-label" for="forma-pagamento">
               Forma de Pagamento *
@@ -595,6 +594,34 @@
               required
             >
           </div>
+        </div>
+
+        <!-- Campo Observações - Movido para antes dos serviços -->
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label class="form-label" for="observacoes">
+            Observações
+          </label>
+          <textarea 
+            id="observacoes" 
+            class="form-input" 
+            rows="3"
+            placeholder="Observações adicionais sobre a proposta..."
+          ></textarea>
+        </div>
+
+        <!-- Campo Nome da Obra - Centralizado e Obrigatório -->
+        <div class="form-group" style="margin-bottom: 1.5rem;">
+          <label class="form-label" for="nome-obra" style="text-align: center; display: block; font-size: 1.1rem;">
+            <i class="fas fa-building"></i> Nome da Obra *
+          </label>
+          <input 
+            type="text" 
+            id="nome-obra" 
+            class="form-input" 
+            placeholder="Ex: Residencial Vista Mar, Edifício Comercial Centro, etc."
+            style="text-align: center; font-size: 1.1rem; font-weight: 500;"
+            required
+          >
         </div>
 
         <!-- Seção de Serviços -->
@@ -639,18 +666,6 @@
             <div>Total da Proposta:</div>
             <div class="total-value" id="total-proposta">R$ 0,00</div>
           </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="observacoes">
-            Observações
-          </label>
-          <textarea 
-            id="observacoes" 
-            class="form-input" 
-            rows="3"
-            placeholder="Observações adicionais sobre a proposta..."
-          ></textarea>
         </div>
 
         <div class="modal-footer">
