@@ -3804,7 +3804,8 @@ fecharModalAjustarQuantidade() {
             .eq('obra_id', obra.id)
             .order('created_at', { ascending: false });
         
-        // Buscar serviços da obra (itens das propostas vinculadas)
+        // Usar serviços já carregados no modal de andamento (this.servicosAndamento tem todos os dados)
+        // Buscar dados completos dos serviços incluindo quantidade_produzida e quantidade_medida
         const propostasIds = this.propostasSelecionadas.map(p => p.id);
         let servicosObra = [];
         if (propostasIds.length > 0) {
@@ -3812,7 +3813,7 @@ fecharModalAjustarQuantidade() {
                 .from('itens_proposta_hvc')
                 .select(`
                     *,
-                    propostas_hvc (numero_proposta),
+                    propostas_hvc (numero_proposta, valor_total),
                     servicos_hvc (codigo, descricao, unidade),
                     locais_hvc (nome)
                 `)
@@ -3821,8 +3822,17 @@ fecharModalAjustarQuantidade() {
             servicosObra = itens || [];
         }
         
+        // Buscar propostas com valor_total atualizado
+        const { data: propostasAtualizadas } = await supabaseClient
+            .from('propostas_hvc')
+            .select(`
+                *,
+                clientes_hvc (nome)
+            `)
+            .in('id', propostasIds);
+        
         // Buscar clientes das propostas
-        const clientesUnicos = [...new Set(this.propostasSelecionadas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
+        const clientesUnicos = [...new Set((propostasAtualizadas || []).map(p => p.clientes_hvc?.nome).filter(Boolean))];
         
         // Gerar HTML do relatório
         const html = this.gerarHTMLRelatorio(obra, {
@@ -3832,7 +3842,7 @@ fecharModalAjustarQuantidade() {
             producoes: producoes || [],
             medicoes: medicoes || [],
             clientes: clientesUnicos,
-            propostas: this.propostasSelecionadas,
+            propostas: propostasAtualizadas || [],
             servicos: servicosObra
         });
         
