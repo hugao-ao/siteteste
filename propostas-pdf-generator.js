@@ -600,7 +600,10 @@ class PropostaPDFGenerator {
 
             // Obter token
             console.log('DEBUG: Tentando obter accessToken...');
-            const accessToken = await window.oneDriveAuth.getAccessToken();
+            const accessToken = await window.oneDriveAuth.getAccessToken().catch(err => {
+                console.error('ERRO FATAL AO OBTER TOKEN:', err);
+                throw err;
+            });
             console.log('DEBUG: accessToken obtido com sucesso. Tamanho:', accessToken.length);
 
             // Montar URL da API
@@ -754,7 +757,10 @@ class PropostaPDFGenerator {
 
             // Obter token
             console.log('DEBUG: Tentando obter accessToken...');
-            const accessToken = await window.oneDriveAuth.getAccessToken();
+            const accessToken = await window.oneDriveAuth.getAccessToken().catch(err => {
+                console.error('ERRO FATAL AO OBTER TOKEN:', err);
+                throw err;
+            });
             console.log('DEBUG: accessToken obtido com sucesso. Tamanho:', accessToken.length);
 
             // Verificar se arquivo já existe (apenas se não for sobrescrita)
