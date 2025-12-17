@@ -346,9 +346,10 @@ class PropostaPDFGenerator {
 
         Object.keys(itensPorLocal).forEach(localNome => {
             // Cabeçalho do grupo
+            const fontSize = mostrarComposicao ? '8pt' : '9pt';
             linhasTabela += `
                 <tr>
-                    <td colspan="${colSpan}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 4px 5px; font-size: 9pt; border: 1px solid #000;">
+                    <td colspan="${colSpan}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 3px 4px; font-size: ${fontSize}; border: 0.5px solid #333;">
                         ${localNome}
                     </td>
                 </tr>
@@ -369,26 +370,26 @@ class PropostaPDFGenerator {
                     // Mostrar Mão de Obra e Material separados
                     linhasTabela += `
                         <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
-                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${itemIndex}</td>
-                            <td style="padding: 4px 4px; border: 1px solid #000; font-size: 9pt; word-wrap: break-word;">${descricaoCompleta}</td>
-                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${servico.unidade}</td>
-                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatNumber(item.quantidade)}</td>
-                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 8pt; background: #E8F5E9;">${this.formatMoney(precoMaoObra)}</td>
-                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 8pt; background: #FFF3E0;">${this.formatMoney(precoMaterial)}</td>
-                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatMoney(precoUnitario)}</td>
-                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
+                            <td style="text-align: center; padding: 2px 1px; border: 0.5px solid #333; font-size: 7pt;">${itemIndex}</td>
+                            <td style="padding: 2px 3px; border: 0.5px solid #333; font-size: 7pt; word-wrap: break-word; overflow-wrap: break-word; max-width: 100px;">${descricaoCompleta}</td>
+                            <td style="text-align: center; padding: 2px 1px; border: 0.5px solid #333; font-size: 7pt;">${servico.unidade}</td>
+                            <td style="text-align: right; padding: 2px 2px; border: 0.5px solid #333; font-size: 7pt;">${this.formatNumber(item.quantidade)}</td>
+                            <td style="text-align: right; padding: 2px 2px; border: 0.5px solid #333; font-size: 7pt;">${this.formatMoney(precoMaoObra)}</td>
+                            <td style="text-align: right; padding: 2px 2px; border: 0.5px solid #333; font-size: 7pt;">${this.formatMoney(precoMaterial)}</td>
+                            <td style="text-align: right; padding: 2px 2px; border: 0.5px solid #333; font-size: 7pt;">${this.formatMoney(precoUnitario)}</td>
+                            <td style="text-align: right; padding: 2px 2px; border: 0.5px solid #333; font-size: 7pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
                         </tr>
                     `;
                 } else {
                     // Mostrar apenas valor unitário total
                     linhasTabela += `
                         <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
-                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${itemIndex}</td>
-                            <td style="padding: 4px 4px; border: 1px solid #000; font-size: 9pt; word-wrap: break-word;">${descricaoCompleta}</td>
-                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${servico.unidade}</td>
-                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatNumber(item.quantidade)}</td>
-                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatMoney(precoUnitario)}</td>
-                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
+                            <td style="text-align: center; padding: 3px 2px; border: 0.5px solid #333; font-size: 9pt;">${itemIndex}</td>
+                            <td style="padding: 3px 4px; border: 0.5px solid #333; font-size: 9pt; word-wrap: break-word; overflow-wrap: break-word;">${descricaoCompleta}</td>
+                            <td style="text-align: center; padding: 3px 2px; border: 0.5px solid #333; font-size: 9pt;">${servico.unidade}</td>
+                            <td style="text-align: right; padding: 3px 2px; border: 0.5px solid #333; font-size: 9pt;">${this.formatNumber(item.quantidade)}</td>
+                            <td style="text-align: right; padding: 3px 2px; border: 0.5px solid #333; font-size: 9pt;">${this.formatMoney(precoUnitario)}</td>
+                            <td style="text-align: right; padding: 3px 2px; border: 0.5px solid #333; font-size: 9pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
                         </tr>
                     `;
                 }
@@ -399,23 +400,23 @@ class PropostaPDFGenerator {
         // Cabeçalho da tabela baseado na opção
         const cabecalhoTabela = mostrarComposicao ? `
             <tr>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 22px;">ITEM</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 25px;">UND</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 40px;">QUANT.</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 7pt; width: 50px; background: #C8E6C9;">M.OBRA</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 7pt; width: 50px; background: #FFE0B2;">MATERIAL</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 50px;">V. UNIT.</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 55px;">TOTAL</th>
+                <th style="padding: 3px 2px; border: 0.5px solid #333; font-size: 7pt; width: 20px;">ITEM</th>
+                <th style="padding: 3px 2px; border: 0.5px solid #333; font-size: 7pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
+                <th style="padding: 3px 2px; border: 0.5px solid #333; font-size: 7pt; width: 22px;">UND</th>
+                <th style="padding: 3px 2px; border: 0.5px solid #333; font-size: 7pt; width: 38px;">QUANT.</th>
+                <th style="padding: 3px 2px; border: 0.5px solid #333; font-size: 7pt; width: 45px;">M.OBRA</th>
+                <th style="padding: 3px 2px; border: 0.5px solid #333; font-size: 7pt; width: 45px;">MATERIAL</th>
+                <th style="padding: 3px 2px; border: 0.5px solid #333; font-size: 7pt; width: 45px;">V. UNIT.</th>
+                <th style="padding: 3px 2px; border: 0.5px solid #333; font-size: 7pt; width: 50px;">TOTAL</th>
             </tr>
         ` : `
             <tr>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 25px;">ITEM</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 30px;">UND</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 50px;">QUANT.</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 60px;">V. UNIT.</th>
-                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 65px;">TOTAL</th>
+                <th style="padding: 4px 3px; border: 0.5px solid #333; font-size: 9pt; width: 25px;">ITEM</th>
+                <th style="padding: 4px 3px; border: 0.5px solid #333; font-size: 9pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
+                <th style="padding: 4px 3px; border: 0.5px solid #333; font-size: 9pt; width: 30px;">UND</th>
+                <th style="padding: 4px 3px; border: 0.5px solid #333; font-size: 9pt; width: 50px;">QUANT.</th>
+                <th style="padding: 4px 3px; border: 0.5px solid #333; font-size: 9pt; width: 60px;">V. UNIT.</th>
+                <th style="padding: 4px 3px; border: 0.5px solid #333; font-size: 9pt; width: 65px;">TOTAL</th>
             </tr>
         `;
 
