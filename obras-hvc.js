@@ -3732,22 +3732,53 @@ fecharModalAjustarQuantidade() {
         const inputFilename = document.getElementById('relatorio-filename');
         const filename = inputFilename?.value || 'Relatorio_Obra';
         
-        this.hideModalOneDriveRelatorio();
-        this.showNotification('Salvando no OneDrive...', 'info');
-        
         try {
             // Verificar se oneDriveAuth existe
             if (typeof window.oneDriveAuth === 'undefined' || !window.oneDriveAuth.currentAccount) {
                 throw new Error('OneDrive não conectado. Acesse OneDrive Browser primeiro.');
             }
             
-            const pdfBlob = await this.gerarRelatorioPDF();
-            
             // Obter token via oneDriveAuth
             const accessToken = await window.oneDriveAuth.getAccessToken();
+            const folderId = this.currentOneDriveFolderRelatorio;
+            
+            // Verificar se arquivo já existe
+            const checkEndpoint = folderId
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${filename}.pdf`
+                : `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}.pdf`;
+            
+            const checkResponse = await fetch(checkEndpoint, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            // Se arquivo existe (status 200), perguntar ao usuário
+            if (checkResponse.ok) {
+                const existingFile = await checkResponse.json();
+                const lastModified = existingFile.lastModifiedDateTime 
+                    ? new Date(existingFile.lastModifiedDateTime).toLocaleString('pt-BR')
+                    : 'data desconhecida';
+                
+                const confirmar = await this.confirmarSobrescrita(filename, lastModified);
+                
+                if (confirmar === 'cancelar') {
+                    this.showNotification('Salvamento cancelado.', 'info');
+                    return;
+                } else if (confirmar === 'renomear') {
+                    // Reabrir modal para renomear
+                    this.showModalOneDriveRelatorio();
+                    this.showNotification('Altere o nome do arquivo e tente novamente.', 'info');
+                    return;
+                }
+                // Se confirmar === 'sobrescrever', continua o fluxo normal
+            }
+            
+            this.hideModalOneDriveRelatorio();
+            this.showNotification('Salvando no OneDrive...', 'info');
+            
+            const pdfBlob = await this.gerarRelatorioPDF();
             
             // Upload para OneDrive
-            const folderId = this.currentOneDriveFolderRelatorio;
             const endpoint = folderId
                 ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${filename}.pdf:/content`
                 : `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}.pdf:/content`;
@@ -3767,6 +3798,54 @@ fecharModalAjustarQuantidade() {
         } catch (error) {
             this.showNotification('Erro ao salvar no OneDrive: ' + error.message, 'error');
         }
+    }
+    
+    // Função para confirmar sobrescrita de arquivo
+    confirmarSobrescrita(filename, lastModified) {
+        return new Promise((resolve) => {
+            // Criar modal de confirmação
+            const modalHTML = `
+                <div id="modal-confirmar-sobrescrita" class="modal-overlay show" style="z-index: 10000;">
+                    <div class="modal-content" style="max-width: 450px;">
+                        <div class="modal-header">
+                            <h3 style="color: #ffc107;"><i class="fas fa-exclamation-triangle"></i> Arquivo Já Existe</h3>
+                        </div>
+                        <div class="modal-body" style="padding: 1.5rem;">
+                            <p style="margin-bottom: 1rem;">O arquivo <strong>${filename}.pdf</strong> já existe nesta pasta.</p>
+                            <p style="font-size: 0.9rem; color: #888;">\u00daltima modifica\u00e7\u00e3o: ${lastModified}</p>
+                            <p style="margin-top: 1rem;">O que deseja fazer?</p>
+                        </div>
+                        <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end; padding: 1rem;">
+                            <button id="btn-cancelar-sobrescrita" class="btn btn-secondary" style="background: #6c757d;">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                            <button id="btn-renomear-arquivo" class="btn btn-info" style="background: #17a2b8;">
+                                <i class="fas fa-edit"></i> Renomear
+                            </button>
+                            <button id="btn-sobrescrever-arquivo" class="btn btn-warning" style="background: #ffc107; color: #000;">
+                                <i class="fas fa-save"></i> Sobrescrever
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            const modal = document.getElementById('modal-confirmar-sobrescrita');
+            const btnCancelar = document.getElementById('btn-cancelar-sobrescrita');
+            const btnRenomear = document.getElementById('btn-renomear-arquivo');
+            const btnSobrescrever = document.getElementById('btn-sobrescrever-arquivo');
+            
+            const fecharModal = (resultado) => {
+                modal.remove();
+                resolve(resultado);
+            };
+            
+            btnCancelar.addEventListener('click', () => fecharModal('cancelar'));
+            btnRenomear.addEventListener('click', () => fecharModal('renomear'));
+            btnSobrescrever.addEventListener('click', () => fecharModal('sobrescrever'));
+        });
     }
     
     async gerarRelatorioPDF() {
