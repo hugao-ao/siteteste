@@ -3868,6 +3868,16 @@ fecharModalAjustarQuantidade() {
             `)
             .in('id', propostasIds);
         
+        // Calcular valor_total de cada proposta a partir dos itens
+        for (const proposta of (propostasAtualizadas || [])) {
+            const { data: itens } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select('preco_total')
+                .eq('proposta_id', proposta.id);
+            
+            proposta.valor_total_calculado = (itens || []).reduce((sum, item) => sum + (parseFloat(item.preco_total) || 0), 0);
+        }
+        
         // Buscar clientes das propostas
         const clientesUnicos = [...new Set((propostasAtualizadas || []).map(p => p.clientes_hvc?.nome).filter(Boolean))];
         
@@ -4038,44 +4048,28 @@ fecharModalAjustarQuantidade() {
         
         return `
             <div style="font-family: Arial, sans-serif; padding: 0; color: #333; width: 100%; background: white; box-sizing: border-box;">
-                <!-- Cabeçalho -->
-                <div style="text-align: center; border-bottom: 2px solid #000080; padding-bottom: 10px; margin-bottom: 15px; background: white;">
-                    <h1 style="color: #000080; margin: 0; font-size: 20px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
-                    <p style="margin: 3px 0; font-size: 10px; color: #666;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
+                <!-- Cabeçalho Criativo com Dados da Obra -->
+                <div style="background: linear-gradient(135deg, #000080 0%, #191970 100%); padding: 15px; margin-bottom: 15px; border-radius: 8px; color: white;">
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
+                        <p style="margin: 3px 0; font-size: 9px; opacity: 0.8;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
+                    </div>
+                    <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px; text-align: center;">
+                        <p style="margin: 0; font-size: 11px; opacity: 0.9;">RELATÓRIO DE ANDAMENTO</p>
+                        <h2 style="margin: 5px 0; font-size: 16px; font-weight: bold;">${obra.nome_obra || 'Obra ' + obra.numero_obra}</h2>
+                        <div style="display: flex; justify-content: center; gap: 20px; margin-top: 8px; font-size: 10px;">
+                            <span style="background: rgba(255,255,255,0.2); padding: 3px 10px; border-radius: 12px;">Nº ${obra.numero_obra}</span>
+                            <span style="background: ${this.getStatusColor(obra.status)}; padding: 3px 10px; border-radius: 12px;">${obra.status}</span>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 10px; opacity: 0.8;">Cliente: ${dados.clientes.join(', ') || 'Não informado'}</p>
+                        <p style="margin: 3px 0 0 0; font-size: 9px; opacity: 0.7;">Gerado em: ${dataAtual}</p>
+                    </div>
                 </div>
                 
-                <!-- Título do Relatório -->
-                <div style="background: #f0f4f8; padding: 10px; border-radius: 6px; margin-bottom: 15px; text-align: center; border: 0.5px solid #000080;">
-                    <h2 style="color: #000080; margin: 0; font-size: 16px;">RELATÓRIO DE ANDAMENTO DA OBRA</h2>
-                    <p style="margin: 5px 0 0 0; color: #666; font-size: 10px;">Gerado em: ${dataAtual}</p>
-                </div>
+                <!-- Linha de separação visual -->
+                <div style="height: 3px; background: linear-gradient(90deg, #000080, #d4a017, #000080); margin-bottom: 15px; border-radius: 2px;"></div>
                 
-                <!-- Informações da Obra -->
-                <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 0.5px solid #ddd; border-left: 3px solid #000080;">
-                    <h3 style="color: #000080; margin: 0 0 10px 0; font-size: 14px;">Dados da Obra</h3>
-                    <table style="width: 100%; border-collapse: collapse; background: white;">
-                        <tr style="background: #f8f9fa;">
-                            <td style="padding: 5px; width: 100px; color: #000080; font-weight: bold; font-size: 11px; border-bottom: 0.5px solid #ddd;">Número:</td>
-                            <td style="padding: 5px; font-size: 11px; color: #333; border-bottom: 0.5px solid #ddd;">${obra.numero_obra}</td>
-                        </tr>
-                        <tr style="background: white;">
-                            <td style="padding: 5px; color: #000080; font-weight: bold; font-size: 11px; border-bottom: 0.5px solid #ddd;">Nome da Obra:</td>
-                            <td style="padding: 5px; font-size: 11px; color: #333; border-bottom: 0.5px solid #ddd;">${obra.nome_obra || 'Não informado'}</td>
-                        </tr>
-                        <tr style="background: #f8f9fa;">
-                            <td style="padding: 5px; color: #000080; font-weight: bold; font-size: 11px; border-bottom: 0.5px solid #ddd;">Cliente(s):</td>
-                            <td style="padding: 5px; font-size: 11px; color: #333; border-bottom: 0.5px solid #ddd;">${dados.clientes.join(', ') || 'Não informado'}</td>
-                        </tr>
-                        <tr style="background: #f8f9fa;">
-                            <td style="padding: 5px; color: #000080; font-weight: bold; font-size: 11px;">Status:</td>
-                            <td style="padding: 5px;">
-                                <span style="background: ${this.getStatusColor(obra.status)}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px;">
-                                    ${obra.status}
-                                </span>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
+
                 
                 <!-- Resumo Financeiro -->
                 <div style="margin-bottom: 15px;">
@@ -4167,7 +4161,7 @@ fecharModalAjustarQuantidade() {
                             <tr style="background: ${i % 2 === 0 ? '#f9f9f9' : 'white'};">
                                 <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">${p.numero_proposta}</td>
                                 <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">${p.clientes_hvc?.nome || '-'}</td>
-                                <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; font-size: 10px;">${this.formatMoney(p.valor_total || 0)}</td>
+                                <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; font-size: 10px;">${this.formatMoney(p.valor_total_calculado || p.valor_total || 0)}</td>
                             </tr>
                         `).join('')}
                     </table>
@@ -4182,6 +4176,7 @@ fecharModalAjustarQuantidade() {
                                 <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">NÚMERO</th>
                                 <th style="padding: 5px; text-align: right; color: white; font-size: 10px;">VALOR</th>
                                 <th style="padding: 5px; text-align: center; color: white; font-size: 10px;">STATUS</th>
+                                <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">RECEBIMENTOS</th>
                             </tr>
                             ${dados.medicoes.map((m, i) => {
                                 const recebimentos = m.recebimentos || [];
@@ -4199,6 +4194,25 @@ fecharModalAjustarQuantidade() {
                                     status = 'RECEBIDO';
                                     statusColor = '#28a745';
                                 }
+                                
+                                // Formatar recebimentos
+                                let recebimentosHTML = '-';
+                                if (recebimentos.length > 0) {
+                                    recebimentosHTML = recebimentos.map(rec => {
+                                        let dataFormatada = '-';
+                                        if (rec.data) {
+                                            const dataStr = String(rec.data);
+                                            if (dataStr.match(/^\\d{4}-\\d{2}-\\d{2}$/)) {
+                                                const [ano, mes, dia] = dataStr.split('-');
+                                                dataFormatada = `${dia}/${mes}/${ano}`;
+                                            } else {
+                                                dataFormatada = dataStr;
+                                            }
+                                        }
+                                        return `${this.formatMoney(rec.valor || 0)} (${dataFormatada})`;
+                                    }).join('<br>');
+                                }
+                                
                                 return `
                                     <tr style="background: ${i % 2 === 0 ? '#f9f9f9' : 'white'};">
                                         <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">${m.numero_medicao}</td>
@@ -4206,6 +4220,7 @@ fecharModalAjustarQuantidade() {
                                         <td style="padding: 5px; text-align: center; border: 0.5px solid #ccc;">
                                             <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 9px;">${status}</span>
                                         </td>
+                                        <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">${recebimentosHTML}</td>
                                     </tr>
                                 `;
                             }).join('')}
