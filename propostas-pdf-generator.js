@@ -1,5 +1,6 @@
 // propostas-pdf-generator.js
 // Sistema de Geração de Propostas HVC em PDF
+console.log('DEBUG: propostas-pdf-generator.js carregado');
 
 class PropostaPDFGenerator {
     constructor() {
@@ -14,41 +15,69 @@ class PropostaPDFGenerator {
     }
 
     initializeEventListeners() {
+        console.log('DEBUG: initializeEventListeners() chamado');
+        
         // Botão Atualizar Preview
-        document.getElementById('btn-atualizar-preview')?.addEventListener('click', () => {
+        const btnAtualizarPreview = document.getElementById('btn-atualizar-preview');
+        console.log('DEBUG: btn-atualizar-preview encontrado:', !!btnAtualizarPreview);
+        btnAtualizarPreview?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Atualizar Preview clicado');
             this.updatePreview();
         });
 
         // Botão Salvar PDF no OneDrive
-        document.getElementById('btn-salvar-pdf')?.addEventListener('click', () => {
+        const btnSalvarPdf = document.getElementById('btn-salvar-pdf');
+        console.log('DEBUG: btn-salvar-pdf encontrado:', !!btnSalvarPdf);
+        btnSalvarPdf?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Salvar PDF OneDrive clicado');
             this.savePDFToOneDrive();
         });
 
         // Botão Salvar PDF no PC
-        document.getElementById('btn-salvar-pdf-pc')?.addEventListener('click', () => {
+        const btnSalvarPdfPc = document.getElementById('btn-salvar-pdf-pc');
+        console.log('DEBUG: btn-salvar-pdf-pc encontrado:', !!btnSalvarPdfPc);
+        btnSalvarPdfPc?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Salvar PDF PC clicado');
             this.downloadPDFToPC();
         });
 
         // Fechar modais
-        document.getElementById('close-modal-gerar-pdf')?.addEventListener('click', () => {
+        const closeModalGerarPdf = document.getElementById('close-modal-gerar-pdf');
+        console.log('DEBUG: close-modal-gerar-pdf encontrado:', !!closeModalGerarPdf);
+        closeModalGerarPdf?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Fechar Modal PDF clicado');
             this.closeModal();
         });
 
-        document.getElementById('close-gerar-pdf-btn')?.addEventListener('click', () => {
+        const closeGerarPdfBtn = document.getElementById('close-gerar-pdf-btn');
+        console.log('DEBUG: close-gerar-pdf-btn encontrado:', !!closeGerarPdfBtn);
+        closeGerarPdfBtn?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Fechar Gerar PDF clicado');
             this.closeModal();
         });
 
-        document.getElementById('close-modal-onedrive-folder')?.addEventListener('click', () => {
+        const closeModalOnedrive = document.getElementById('close-modal-onedrive-folder');
+        console.log('DEBUG: close-modal-onedrive-folder encontrado:', !!closeModalOnedrive);
+        closeModalOnedrive?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Fechar Modal OneDrive clicado');
             this.closeFolderModal();
         });
 
-        document.getElementById('cancel-folder-selection-btn')?.addEventListener('click', () => {
+        const cancelFolderBtn = document.getElementById('cancel-folder-selection-btn');
+        console.log('DEBUG: cancel-folder-selection-btn encontrado:', !!cancelFolderBtn);
+        cancelFolderBtn?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Cancelar Seleção Pasta clicado');
             this.closeFolderModal();
         });
 
-        document.getElementById('confirm-folder-selection-btn')?.addEventListener('click', () => {
+        const confirmFolderBtn = document.getElementById('confirm-folder-selection-btn');
+        console.log('DEBUG: confirm-folder-selection-btn encontrado:', !!confirmFolderBtn);
+        confirmFolderBtn?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Confirmar Seleção Pasta clicado');
             this.confirmFolderSelection();
         });
+        
+        console.log('DEBUG: Todos os event listeners configurados');
     }
 
     async openModal(propostaId) {
