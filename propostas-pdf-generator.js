@@ -275,7 +275,7 @@ class PropostaPDFGenerator {
 
         // Template completo - Layout A4 com margens mínimas
         return `
-            <div style="font-family: Arial, sans-serif; padding: 0; margin: 0; background: white; color: #000; width: 200mm; max-width: 200mm; box-sizing: border-box;">
+            <div style="font-family: Arial, sans-serif; padding: 10px; margin: 0 auto; background: white; color: #000; width: 180mm; max-width: 180mm; box-sizing: border-box;">
                 <!-- Cabeçalho - 3 linhas máx -->
                 <div style="text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #000080;">
                     <h1 style="font-size: 18pt; font-weight: bold; color: #000080; letter-spacing: 0.5px; margin: 0 0 3px 0;">
@@ -484,13 +484,15 @@ class PropostaPDFGenerator {
             
             // Configurar opções do html2pdf - A4 com margens mínimas
             const opt = {
-                margin: [3, 3, 3, 3], // top, left, bottom, right em mm
+                margin: [5, 10, 5, 10], // top, left, bottom, right em mm
                 filename: `Proposta_${this.propostaData.numero_proposta}.pdf`,
-                image: { type: 'jpeg', quality: 0.95 },
+                image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                     scale: 2,
                     useCORS: true,
-                    letterRendering: true
+                    letterRendering: true,
+                    scrollX: 0,
+                    scrollY: 0
                 },
                 jsPDF: { 
                     unit: 'mm', 
