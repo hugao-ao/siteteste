@@ -499,7 +499,31 @@ class PropostaPDFGenerator {
                 .toPdf()
                 .get('pdf');
             
-            const totalPages = pdf.internal.getNumberOfPages();
+            let totalPages = pdf.internal.getNumberOfPages();
+            
+            // Verificar se a última página está vazia e removê-la
+            // A última página é considerada vazia se o conteúdo não a alcançou
+            if (totalPages > 1) {
+                // Calcular altura do conteúdo HTML
+                const contentHeight = previewContainer.offsetHeight;
+                const pixelsPerMm = 3.78; // Aproximadamente 96 DPI
+                const contentHeightMm = contentHeight / pixelsPerMm;
+                
+                // Área útil por página (descontando margens)
+                const usableHeight = pageHeight - headerHeight - footerHeight;
+                
+                // Número de páginas necessárias
+                const pagesNeeded = Math.ceil(contentHeightMm / usableHeight);
+                
+                console.log('DEBUG PDF: contentHeightMm:', contentHeightMm, 'usableHeight:', usableHeight, 'pagesNeeded:', pagesNeeded, 'totalPages:', totalPages);
+                
+                // Se temos mais páginas do que o necessário, remover a última
+                if (totalPages > pagesNeeded) {
+                    pdf.deletePage(totalPages);
+                    totalPages = pdf.internal.getNumberOfPages();
+                    console.log('DEBUG PDF: Página vazia removida. Novo total:', totalPages);
+                }
+            }
             
             // Adicionar cabeçalho e rodapé em cada página
             for (let i = 1; i <= totalPages; i++) {
