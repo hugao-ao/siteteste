@@ -492,7 +492,7 @@ class PropostaPDFGenerator {
                 // Cabeçalho do item (local)
                 itensHTML += `
                     <div style="margin-bottom: 10px;">
-                        <p style="font-weight: bold; margin: 0 0 5px 0; font-size: 10pt; color: #000; text-decoration: underline;">
+                        <p style="font-weight: bold; margin: 0 0 5px 0; font-size: 10pt; color: #000;">
                             ${itemIndex}. ${localNome}
                         </p>
                 `;
@@ -541,9 +541,11 @@ class PropostaPDFGenerator {
 
                 // Subtotal do local
                 itensHTML += `
-                        <p style="margin: 8px auto 0 auto; font-size: 11pt; font-weight: bold; color: #006400; background: #FFFF00; padding: 4px 15px; text-align: center; width: fit-content;">
-                            Subtotal ${localNome}: R$ ${this.formatMoney(subtotalLocal)}
-                        </p>
+                        <div style="page-break-inside: avoid; margin: 8px 0 0 0;">
+                            <p style="margin: 0 auto; font-size: 11pt; font-weight: bold; color: #006400; background: #FFFF00; padding: 4px 15px; text-align: center; width: fit-content;">
+                                Subtotal ${localNome}: R$ ${this.formatMoney(subtotalLocal)}
+                            </p>
+                        </div>
                     </div>
                 `;
 
