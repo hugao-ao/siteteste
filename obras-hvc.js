@@ -3843,13 +3843,26 @@ fecharModalAjustarQuantidade() {
         // Gerar PDF usando html2pdf
         const element = document.createElement('div');
         element.innerHTML = html;
+        element.style.width = '210mm';
+        element.style.padding = '10mm';
+        element.style.boxSizing = 'border-box';
+        element.style.position = 'absolute';
+        element.style.left = '0';
+        element.style.top = '0';
         document.body.appendChild(element);
         
         const opt = {
-            margin: [5, 5, 5, 5],
+            margin: 0,
             filename: 'relatorio.pdf',
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, windowWidth: 595 },
+            html2canvas: { 
+                scale: 2, 
+                useCORS: true, 
+                scrollX: 0,
+                scrollY: 0,
+                width: element.offsetWidth,
+                height: element.offsetHeight
+            },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
