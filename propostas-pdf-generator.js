@@ -1146,10 +1146,29 @@ class PropostaPDFGenerator {
                 pdfBlob = await this.generatePDFBlob();
             }
 
-            // Criar nome do arquivo
-            const numero = this.propostaData.numero_proposta || 'XXXX';
-            const ano = new Date().getFullYear();
-            const fileName = `Proposta_${numero}_${ano}.pdf`;
+            // Criar nome do arquivo com mesmo formato do OneDrive
+            // Obter número da proposta e substituir '/' por '.' para evitar problemas
+            const numero = (this.propostaData.numero_proposta || 'XXXX').replace(/\//g, '.');
+            
+            // Obter nome da obra do campo do formulário ou das observações
+            const nomeObraInput = document.getElementById('pdf-nome-obra');
+            let nomeObra = nomeObraInput?.value || this.propostaData?.observacoes || '';
+            
+            // Limpar caracteres inválidos para nome de arquivo
+            nomeObra = nomeObra.replace(/[\\/:*?"<>|]/g, '-').trim();
+            
+            // Limitar tamanho do nome da obra
+            if (nomeObra.length > 50) {
+                nomeObra = nomeObra.substring(0, 50).trim();
+            }
+            
+            // Formato: "Proposta nº X.XXXX - Nome da Obra.pdf"
+            let fileName;
+            if (nomeObra) {
+                fileName = `Proposta nº ${numero} - ${nomeObra}.pdf`;
+            } else {
+                fileName = `Proposta nº ${numero}.pdf`;
+            }
 
             // Criar link temporário para download
             const url = URL.createObjectURL(pdfBlob);
