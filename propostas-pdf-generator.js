@@ -467,8 +467,8 @@ class PropostaPDFGenerator {
             const proposta = this.propostaData;
             
             // Configurações de margem para cabeçalho/rodapé
-            const headerHeight = 25; // mm para cabeçalho
-            const footerHeight = 15; // mm para rodapé
+            const headerHeight = 20; // mm para cabeçalho
+            const footerHeight = 12; // mm para rodapé
             const pageWidth = 210; // A4 width
             const pageHeight = 297; // A4 height
             
@@ -506,44 +506,43 @@ class PropostaPDFGenerator {
                 pdf.setPage(i);
                 
                 // === CABEÇALHO ===
-                pdf.setFontSize(14);
+                pdf.setFontSize(12);
                 pdf.setTextColor(0, 0, 128); // Azul escuro
                 pdf.setFont('helvetica', 'bold');
-                pdf.text('HVC IMPERMEABILIZAÇÕES LTDA.', pageWidth / 2, 10, { align: 'center' });
-                
-                pdf.setFontSize(8);
-                pdf.setTextColor(51, 51, 51);
-                pdf.setFont('helvetica', 'normal');
-                pdf.text('CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025', pageWidth / 2, 15, { align: 'center' });
-                
-                // Linha do cabeçalho
-                pdf.setDrawColor(0, 0, 128);
-                pdf.setLineWidth(0.5);
-                pdf.line(10, 18, pageWidth - 10, 18);
-                
-                // Número da proposta
-                pdf.setFontSize(10);
-                pdf.setTextColor(0, 0, 0);
-                pdf.setFont('helvetica', 'bold');
-                pdf.text(`Proposta nº ${proposta.numero_proposta}`, pageWidth - 10, 23, { align: 'right' });
-                
-                // === RODAPÉ ===
-                const footerY = pageHeight - 10;
-                
-                // Linha do rodapé
-                pdf.setDrawColor(0, 0, 128);
-                pdf.setLineWidth(0.5);
-                pdf.line(10, footerY - 5, pageWidth - 10, footerY - 5);
+                pdf.text('HVC IMPERMEABILIZAÇÕES LTDA.', pageWidth / 2, 8, { align: 'center' });
                 
                 pdf.setFontSize(7);
                 pdf.setTextColor(51, 51, 51);
                 pdf.setFont('helvetica', 'normal');
-                pdf.text('Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE', pageWidth / 2, footerY - 1, { align: 'center' });
-                pdf.text('Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com', pageWidth / 2, footerY + 3, { align: 'center' });
+                pdf.text('CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025', pageWidth / 2, 12, { align: 'center' });
+                
+                // Linha do cabeçalho
+                pdf.setDrawColor(0, 0, 128);
+                pdf.setLineWidth(0.5);
+                pdf.line(10, 14, pageWidth - 10, 14);
+                
+                // Número da proposta
+                pdf.setFontSize(9);
+                pdf.setTextColor(0, 0, 0);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text(`Proposta nº ${proposta.numero_proposta}`, pageWidth - 10, 18, { align: 'right' });
+                
+                // === RODAPÉ ===
+                const footerY = pageHeight - 6;
+                
+                // Linha do rodapé
+                pdf.setDrawColor(0, 0, 128);
+                pdf.setLineWidth(0.5);
+                pdf.line(10, footerY - 4, pageWidth - 10, footerY - 4);
+                
+                pdf.setFontSize(6);
+                pdf.setTextColor(51, 51, 51);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text('Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE | Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com', pageWidth / 2, footerY, { align: 'center' });
                 
                 // Número da página
-                pdf.setFontSize(8);
-                pdf.text(`Página ${i} de ${totalPages}`, pageWidth - 10, footerY + 3, { align: 'right' });
+                pdf.setFontSize(7);
+                pdf.text(`Página ${i} de ${totalPages}`, pageWidth - 10, footerY, { align: 'right' });
             }
             
             // Retornar como blob
