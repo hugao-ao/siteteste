@@ -666,26 +666,26 @@ class PropostaPDFGenerator {
             const folders = data.value || [];
 
             // Renderizar pastas
+            let html = '<div style="padding: 0;">';
+            
+            // Botão voltar se não estiver na raiz (sempre mostrar)
+            if (this.folderPath.length > 0) {
+                html += `
+                    <div class="folder-item" data-action="back" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s; background: #f0f8ff;">
+                        <i class="fas fa-arrow-left" style="color: #0078d4; font-size: 1.2rem;"></i>
+                        <span style="font-weight: 500; color: #0078d4;">.. (Voltar)</span>
+                    </div>
+                `;
+            }
+            
             if (folders.length === 0) {
-                folderList.innerHTML = `
+                html += `
                     <div style="padding: 40px; text-align: center; color: #808080;">
                         <i class="fas fa-folder-open" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.3;"></i>
                         <p>Nenhuma pasta encontrada</p>
                     </div>
                 `;
             } else {
-                let html = '<div style="padding: 0;">';
-                
-                // Botão voltar se não estiver na raiz
-                if (this.folderPath.length > 0) {
-                    html += `
-                        <div class="folder-item" data-action="back" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s; background: white;">
-                            <i class="fas fa-arrow-left" style="color: #0078d4; font-size: 1.2rem;"></i>
-                            <span style="font-weight: 500; color: #333;">..</span>
-                        </div>
-                    `;
-                }
-
                 folders.forEach(folder => {
                     html += `
                         <div class="folder-item" data-folder-id="${folder.id}" data-folder-name="${folder.name}" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s; background: white;">
@@ -696,32 +696,42 @@ class PropostaPDFGenerator {
                     `;
                 });
                 
-                html += '</div>';
-                folderList.innerHTML = html;
-
-                // Adicionar event listeners
-                folderList.querySelectorAll('.folder-item').forEach(item => {
-                    item.addEventListener('mouseenter', function() {
-                        this.style.background = '#f5f5f5';
-                    });
-                    item.addEventListener('mouseleave', function() {
-                        this.style.background = 'white';
-                    });
-                    item.addEventListener('click', () => {
-                        const action = item.getAttribute('data-action');
-                        if (action === 'back') {
-                            this.navigateBack();
-                        } else {
-                            const folderId = item.getAttribute('data-folder-id');
-                            const folderName = item.getAttribute('data-folder-name');
-                            this.navigateToFolder(folderId, folderName);
-                        }
-                    });
-                });
             }
+            
+            html += '</div>';
+            folderList.innerHTML = html;
 
-            // Atualizar breadcrumb
+            // Adicionar event listeners
+            folderList.querySelectorAll('.folder-item').forEach(item => {
+                item.addEventListener('mouseenter', function() {
+                    if (this.getAttribute('data-action') === 'back') {
+                        this.style.background = '#e0f0ff';
+                    } else {
+                        this.style.background = '#f5f5f5';
+                    }
+                });
+                item.addEventListener('mouseleave', function() {
+                    if (this.getAttribute('data-action') === 'back') {
+                        this.style.background = '#f0f8ff';
+                    } else {
+                        this.style.background = 'white';
+                    }
+                });
+                item.addEventListener('click', () => {
+                    const action = item.getAttribute('data-action');
+                    if (action === 'back') {
+                        this.navigateBack();
+                    } else {
+                        const folderId = item.getAttribute('data-folder-id');
+                        const folderName = item.getAttribute('data-folder-name');
+                        this.navigateToFolder(folderId, folderName);
+                    }
+                });
+            });
+
+            // Atualizar breadcrumb e pasta selecionada
             this.updateBreadcrumb();
+            this.updateSelectedFolder();
 
         } catch (error) {
             console.error('Erro ao carregar pastas:', error);
@@ -767,6 +777,28 @@ class PropostaPDFGenerator {
         });
 
         breadcrumb.innerHTML = html;
+    }
+
+    updateSelectedFolder() {
+        const selectedFolderPath = document.getElementById('selected-folder-path');
+        const confirmBtn = document.getElementById('confirm-folder-selection');
+        
+        if (selectedFolderPath) {
+            if (this.folderPath.length === 0) {
+                selectedFolderPath.textContent = 'Meu OneDrive (raiz)';
+                selectedFolderPath.style.color = '#28a745';
+            } else {
+                const path = this.folderPath.map(f => f.name).join(' / ');
+                selectedFolderPath.textContent = path;
+                selectedFolderPath.style.color = '#28a745';
+            }
+        }
+        
+        // Sempre habilitar o botão confirmar (pode salvar na pasta atual)
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            console.log('DEBUG: Botão Confirmar habilitado');
+        }
     }
 
     async uploadPDFToOneDrive(overwrite = false) {
@@ -1085,6 +1117,11 @@ class PropostaPDFGenerator {
     }
 
     async confirmFolderSelection() {
+        console.log('DEBUG: confirmFolderSelection() chamado');
+        console.log('DEBUG: currentFolderId:', this.currentFolderId);
+        console.log('DEBUG: folderPath:', this.folderPath);
+        console.log('DEBUG: currentPDFBlob:', this.currentPDFBlob ? 'existe' : 'não existe');
+        
         try {
             // Fazer upload do PDF
             await this.uploadPDFToOneDrive();
