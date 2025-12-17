@@ -3897,32 +3897,49 @@ fecharModalAjustarQuantidade() {
             const local = s.locais_hvc || {};
             const proposta = s.propostas_hvc || {};
             const qtdProduzida = s.quantidade_produzida || 0;
-            const qtdTotal = s.quantidade || 0;
-            const percentualServico = qtdTotal > 0 ? Math.round((qtdProduzida / qtdTotal) * 100) : 0;
+            const qtdMedida = s.quantidade_medida || 0;
+            const qtdContratada = s.quantidade || 0;
+            const percentualServico = qtdContratada > 0 ? Math.round((qtdProduzida / qtdContratada) * 100) : 0;
             
             let statusServico = 'PENDENTE';
-            let statusColor = '#ffc107';
+            let statusColor = '#d4a017'; // amarelo escuro
             if (percentualServico === 0) {
                 statusServico = 'PENDENTE';
-                statusColor = '#ffc107';
+                statusColor = '#d4a017';
             } else if (percentualServico < 100) {
                 statusServico = `INICIADO (${percentualServico}%)`;
-                statusColor = '#17a2b8';
+                statusColor = '#0d6efd';
             } else {
                 statusServico = 'CONCLUÍDO';
-                statusColor = '#28a745';
+                statusColor = '#198754';
+            }
+            
+            // Formatar datas
+            let dataInicio = '-';
+            let dataFinal = '-';
+            if (s.data_inicio) {
+                const [ano, mes, dia] = s.data_inicio.split('-');
+                dataInicio = `${dia}/${mes}/${ano}`;
+            }
+            if (s.data_final) {
+                const [ano, mes, dia] = s.data_final.split('-');
+                dataFinal = `${dia}/${mes}/${ano}`;
             }
             
             return `
                 <tr style="background: white;">
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${proposta.numero_proposta || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${servico.codigo || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${local.nome || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px; text-align: center;">${qtdProduzida} / ${qtdTotal} ${servico.unidade || ''}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px; text-align: right;">${this.formatMoney(s.preco_total || 0)}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">
-                        <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px;">${statusServico}</span>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px;">${proposta.numero_proposta || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px;">
+                        <strong>${servico.codigo || '-'}</strong><br>
+                        <span style="font-size: 9px; color: #666;">${servico.descricao || ''}</span>
                     </td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px;">${local.nome || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px; text-align: center;">${qtdMedida} / ${qtdProduzida} / ${qtdContratada} ${servico.unidade || ''}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px; text-align: right;">${this.formatMoney(s.preco_total || 0)}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px; color: ${statusColor}; font-weight: bold;">${statusServico}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px; text-align: center;">${dataInicio}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px; text-align: center;">${dataFinal}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 9px;">${s.observacoes || '-'}</td>
                 </tr>
             `;
         }).join('') : '';
@@ -3942,24 +3959,24 @@ fecharModalAjustarQuantidade() {
                 </div>
                 
                 <!-- Informações da Obra -->
-                <div style="background: #fafafa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #000080;">
+                <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; border-left: 4px solid #000080;">
                     <h3 style="color: #000080; margin: 0 0 10px 0; font-size: 14px;">Dados da Obra</h3>
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <tr>
-                            <td style="padding: 5px 0; width: 130px; color: #000080; font-weight: bold; font-size: 12px;">Número:</td>
-                            <td style="padding: 5px 0; font-size: 12px;">${obra.numero_obra}</td>
+                    <table style="width: 100%; border-collapse: collapse; background: white;">
+                        <tr style="background: #f8f9fa;">
+                            <td style="padding: 8px; width: 130px; color: #000080; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee;">Número:</td>
+                            <td style="padding: 8px; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">${obra.numero_obra}</td>
                         </tr>
-                        <tr>
-                            <td style="padding: 5px 0; color: #000080; font-weight: bold; font-size: 12px;">Nome da Obra:</td>
-                            <td style="padding: 5px 0; font-size: 12px;">${obra.nome_obra || 'Não informado'}</td>
+                        <tr style="background: white;">
+                            <td style="padding: 8px; color: #000080; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee;">Nome da Obra:</td>
+                            <td style="padding: 8px; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">${obra.nome_obra || 'Não informado'}</td>
                         </tr>
-                        <tr>
-                            <td style="padding: 5px 0; color: #000080; font-weight: bold; font-size: 12px;">Cliente(s):</td>
-                            <td style="padding: 5px 0; font-size: 12px;">${dados.clientes.join(', ') || 'Não informado'}</td>
+                        <tr style="background: #f8f9fa;">
+                            <td style="padding: 8px; color: #000080; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee;">Cliente(s):</td>
+                            <td style="padding: 8px; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">${dados.clientes.join(', ') || 'Não informado'}</td>
                         </tr>
-                        <tr>
-                            <td style="padding: 5px 0; color: #000080; font-weight: bold; font-size: 12px;">Status:</td>
-                            <td style="padding: 5px 0;">
+                        <tr style="background: #f8f9fa;">
+                            <td style="padding: 8px; color: #000080; font-weight: bold; font-size: 12px;">Status:</td>
+                            <td style="padding: 8px;">
                                 <span style="background: ${this.getStatusColor(obra.status)}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px;">
                                     ${obra.status}
                                 </span>
@@ -4010,19 +4027,24 @@ fecharModalAjustarQuantidade() {
                 ${dados.servicos.length > 0 ? `
                     <div style="margin-bottom: 20px;">
                         <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Andamento dos Serviços (${dados.servicos.length})</h3>
+                        <p style="font-size: 10px; color: #666; margin: 5px 0;">Quantidade: Medida / Produzida / Contratada</p>
                         <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
                             <tr style="background: #000080;">
-                                <th style="padding: 6px; text-align: left; color: white; font-size: 10px;">PROPOSTA</th>
-                                <th style="padding: 6px; text-align: left; color: white; font-size: 10px;">SERVIÇO</th>
-                                <th style="padding: 6px; text-align: left; color: white; font-size: 10px;">LOCAL</th>
-                                <th style="padding: 6px; text-align: center; color: white; font-size: 10px;">QUANTIDADE</th>
-                                <th style="padding: 6px; text-align: right; color: white; font-size: 10px;">VALOR</th>
-                                <th style="padding: 6px; text-align: center; color: white; font-size: 10px;">STATUS</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px;">PROPOSTA</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px;">SERVIÇO</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px;">LOCAL</th>
+                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px;">QUANTIDADE</th>
+                                <th style="padding: 6px; text-align: right; color: white; font-size: 9px;">VALOR</th>
+                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px;">STATUS</th>
+                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px;">INÍCIO</th>
+                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px;">FINAL</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px;">OBS</th>
                             </tr>
                             ${servicosHTML}
                         </table>
                     </div>
                 ` : ''}
+
                 
                 <!-- Produções Diárias -->
                 ${dados.producoes.length > 0 ? `
