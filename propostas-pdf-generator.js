@@ -619,7 +619,9 @@ class PropostaPDFGenerator {
             });
 
             if (!response.ok) {
-                throw new Error('Falha ao carregar pastas');
+                const errorBody = await response.text();
+                console.error('Erro detalhado da API do Graph:', response.status, errorBody);
+                throw new Error(`Erro na API do Graph: ${response.status} - ${response.statusText}. Detalhes: ${errorBody.substring(0, 100)}...`);
             }
 
             const data = await response.json();
