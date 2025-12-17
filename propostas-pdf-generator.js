@@ -594,9 +594,27 @@ class PropostaPDFGenerator {
             // Preencher nome do arquivo padrão
             const filenameInput = document.getElementById('pdf-filename-input');
             if (filenameInput && this.currentProposta) {
-                const numero = this.currentProposta.numero_proposta || 'XXXX';
-                const ano = new Date().getFullYear();
-                filenameInput.value = `Proposta_${numero}_${ano}`;
+                // Obter número da proposta e substituir '/' por '.' para evitar criação de pastas
+                const numero = (this.currentProposta.numero_proposta || 'XXXX').replace(/\//g, '.');
+                
+                // Obter nome da obra do campo do formulário ou das observações
+                const nomeObraInput = document.getElementById('pdf-nome-obra');
+                let nomeObra = nomeObraInput?.value || this.propostaData?.observacoes || '';
+                
+                // Limpar caracteres inválidos para nome de arquivo
+                nomeObra = nomeObra.replace(/[\\/:*?"<>|]/g, '-').trim();
+                
+                // Limitar tamanho do nome da obra
+                if (nomeObra.length > 50) {
+                    nomeObra = nomeObra.substring(0, 50).trim();
+                }
+                
+                // Formato: "Proposta nº X.XXXX - Nome da Obra"
+                if (nomeObra) {
+                    filenameInput.value = `Proposta nº ${numero} - ${nomeObra}`;
+                } else {
+                    filenameInput.value = `Proposta nº ${numero}`;
+                }
             }
 
             // Abrir modal
