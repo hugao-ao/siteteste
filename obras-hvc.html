@@ -1205,9 +1205,97 @@
           <i class="fas fa-times"></i>
           Fechar
         </button>
+        <button type="button" class="btn-info" id="btn-relatorio-obra" style="background: linear-gradient(135deg, #17a2b8, #138496); margin-left: auto; margin-right: 1rem;">
+          <i class="fas fa-file-pdf"></i>
+          Relatório
+        </button>
         <button type="button" class="btn-success" id="btn-salvar-andamento">
           <i class="fas fa-save"></i>
           Salvar Andamento
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Relatório da Obra -->
+  <div id="modal-relatorio-obra" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fas fa-file-pdf"></i>
+          Gerar Relatório da Obra
+        </h3>
+        <button class="close-modal" id="close-modal-relatorio">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body" style="padding: 1.5rem;">
+        <p style="color: #add8e6; margin-bottom: 1.5rem; text-align: center;">
+          Escolha onde deseja salvar o relatório da obra:
+        </p>
+        
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <button type="button" class="btn-primary" id="btn-baixar-relatorio-pc" style="width: 100%; padding: 1rem; font-size: 1rem;">
+            <i class="fas fa-download"></i>
+            Baixar no Computador
+          </button>
+          
+          <button type="button" class="btn-info" id="btn-salvar-relatorio-onedrive" style="width: 100%; padding: 1rem; font-size: 1rem; background: linear-gradient(135deg, #0078d4, #106ebe);">
+            <i class="fab fa-microsoft"></i>
+            Salvar no OneDrive
+          </button>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-relatorio">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Seleção de Pasta OneDrive para Relatório -->
+  <div id="modal-onedrive-relatorio" class="modal">
+    <div class="modal-content" style="max-width: 600px; max-height: 80vh;">
+      <div class="modal-header">
+        <h3 class="modal-title">
+          <i class="fab fa-microsoft"></i>
+          Selecionar Pasta no OneDrive
+        </h3>
+        <button class="close-modal" id="close-modal-onedrive-relatorio">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      
+      <div class="modal-body" style="padding: 1.5rem;">
+        <div style="margin-bottom: 1rem;">
+          <label style="color: #add8e6; font-weight: 600;">Nome do Arquivo:</label>
+          <input type="text" id="relatorio-filename" class="form-input" style="width: 100%; margin-top: 0.5rem;" placeholder="Relatório da Obra">
+        </div>
+        
+        <div style="margin-bottom: 1rem;">
+          <label style="color: #add8e6; font-weight: 600;">Pasta Selecionada:</label>
+          <div id="relatorio-pasta-selecionada" style="background: rgba(0,0,0,0.2); padding: 0.75rem; border-radius: 6px; margin-top: 0.5rem; color: #c0c0c0;">
+            / (Raiz)
+          </div>
+        </div>
+        
+        <div id="relatorio-onedrive-folders" style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(173,216,230,0.2); border-radius: 8px; padding: 0.5rem;">
+          <!-- Pastas serão carregadas aqui -->
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-onedrive-relatorio">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+        <button type="button" class="btn-success" id="confirmar-onedrive-relatorio">
+          <i class="fas fa-save"></i>
+          Salvar Aqui
         </button>
       </div>
     </div>
