@@ -3846,10 +3846,10 @@ fecharModalAjustarQuantidade() {
         document.body.appendChild(element);
         
         const opt = {
-            margin: [10, 10, 10, 10],
+            margin: [5, 5, 5, 5],
             filename: 'relatorio.pdf',
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
+            html2canvas: { scale: 2, useCORS: true, windowWidth: 595 },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
@@ -3979,7 +3979,7 @@ fecharModalAjustarQuantidade() {
         }).join('') : '';
         
         return `
-            <div style="font-family: Arial, sans-serif; padding: 5px; color: #333; width: 100%; max-width: 760px; margin: 0 auto; background: white; box-sizing: border-box;">
+            <div style="font-family: Arial, sans-serif; padding: 0; color: #333; width: 100%; background: white; box-sizing: border-box;">
                 <!-- Cabeçalho -->
                 <div style="text-align: center; border-bottom: 2px solid #000080; padding-bottom: 10px; margin-bottom: 15px; background: white;">
                     <h1 style="color: #000080; margin: 0; font-size: 20px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
