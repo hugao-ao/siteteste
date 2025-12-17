@@ -63,15 +63,15 @@ class PropostaPDFGenerator {
             this.closeFolderModal();
         });
 
-        const cancelFolderBtn = document.getElementById('cancel-folder-selection-btn');
-        console.log('DEBUG: cancel-folder-selection-btn encontrado:', !!cancelFolderBtn);
+        const cancelFolderBtn = document.getElementById('cancel-folder-selection');
+        console.log('DEBUG: cancel-folder-selection encontrado:', !!cancelFolderBtn);
         cancelFolderBtn?.addEventListener('click', () => {
             console.log('DEBUG: Botão Cancelar Seleção Pasta clicado');
             this.closeFolderModal();
         });
 
-        const confirmFolderBtn = document.getElementById('confirm-folder-selection-btn');
-        console.log('DEBUG: confirm-folder-selection-btn encontrado:', !!confirmFolderBtn);
+        const confirmFolderBtn = document.getElementById('confirm-folder-selection');
+        console.log('DEBUG: confirm-folder-selection encontrado:', !!confirmFolderBtn);
         confirmFolderBtn?.addEventListener('click', () => {
             console.log('DEBUG: Botão Confirmar Seleção Pasta clicado');
             this.confirmFolderSelection();
@@ -615,9 +615,14 @@ class PropostaPDFGenerator {
     }
 
     async loadOneDriveFolders(folderId = null) {
+        console.log('DEBUG: loadOneDriveFolders() chamado com folderId:', folderId);
         try {
-            const folderList = document.getElementById('onedrive-folder-list');
-            if (!folderList) return;
+            const folderList = document.getElementById('onedrive-folders-list');
+            console.log('DEBUG: onedrive-folders-list encontrado:', !!folderList);
+            if (!folderList) {
+                console.error('DEBUG: ERRO - elemento onedrive-folders-list não encontrado!');
+                return;
+            }
 
             // Mostrar loading
             folderList.innerHTML = `
@@ -720,7 +725,7 @@ class PropostaPDFGenerator {
 
         } catch (error) {
             console.error('Erro ao carregar pastas:', error);
-            const folderList = document.getElementById('onedrive-folder-list');
+            const folderList = document.getElementById('onedrive-folders-list');
             if (folderList) {
                 folderList.innerHTML = `
                     <div style="padding: 40px; text-align: center; color: #dc3545;">
