@@ -295,26 +295,29 @@ class PropostaPDFGenerator {
                     <p style="margin: 0 0 0 15px; font-size: 10pt;">- ${prazoTexto}</p>
                 </div>
 
-                <div style="margin-bottom: 5px;">
-                    <h3 style="font-size: 11pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">GARANTIA</h3>
-                    <p style="margin: 0 0 0 15px; text-align: justify; line-height: 1.3; font-size: 9pt;">
-                        A garantia legal é válida para os serviços executados e a qualidade dos materiais empregados que porventura apresentem falhas no seu rendimento, por um prazo de até três anos a contar da data de entrega dos mesmos, conforme Capítulo oito, Artigo 618 do Código Civil Brasileiro. É restrita à impermeabilização defeituosa e inválida caso haja danos causados por terceiros e/ou deficiência estrutural.
-                    </p>
-                </div>
+                <!-- Bloco GARANTIA + Assinatura - manter juntos na mesma página -->
+                <div style="page-break-inside: avoid; break-inside: avoid;">
+                    <div style="margin-bottom: 5px;">
+                        <h3 style="font-size: 11pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">GARANTIA</h3>
+                        <p style="margin: 0 0 0 15px; text-align: justify; line-height: 1.3; font-size: 9pt;">
+                            A garantia legal é válida para os serviços executados e a qualidade dos materiais empregados que porventura apresentem falhas no seu rendimento, por um prazo de até três anos a contar da data de entrega dos mesmos, conforme Capítulo oito, Artigo 618 do Código Civil Brasileiro. É restrita à impermeabilização defeituosa e inválida caso haja danos causados por terceiros e/ou deficiência estrutural.
+                        </p>
+                    </div>
 
-                ${proposta.observacoes && formato === 'tabela' ? `
-                <div style="background: #E6F2FF; padding: 6px; margin-bottom: 5px; border: 1px solid #000080;">
-                    <h3 style="font-size: 10pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">OBS:</h3>
-                    <p style="font-size: 9pt; line-height: 1.3; margin: 0;">${proposta.observacoes}</p>
-                </div>
-                ` : ''}
+                    ${proposta.observacoes && formato === 'tabela' ? `
+                    <div style="background: #E6F2FF; padding: 6px; margin-bottom: 5px; border: 1px solid #000080;">
+                        <h3 style="font-size: 10pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">OBS:</h3>
+                        <p style="font-size: 9pt; line-height: 1.3; margin: 0;">${proposta.observacoes}</p>
+                    </div>
+                    ` : ''}
 
-                <!-- Assinatura -->
-                <div style="margin-top: 12px; text-align: right;">
-                    <p style="margin: 0 0 5px 0; font-size: 10pt;">Recife, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.</p>
-                    <p style="margin: 0 0 15px 0; font-size: 10pt;">Atenciosamente,</p>
-                    <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">${assinante}</p>
-                    <p style="font-size: 9pt; margin: 0;">${assinante.includes('Hugo') ? 'ENGENHEIRO CIVIL – CREA: 1818793830' : 'ENGENHEIRO CIVIL – CREA: 1805287389'}</p>
+                    <!-- Assinatura -->
+                    <div style="margin-top: 12px; text-align: right;">
+                        <p style="margin: 0 0 5px 0; font-size: 10pt;">Recife, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.</p>
+                        <p style="margin: 0 0 15px 0; font-size: 10pt;">Atenciosamente,</p>
+                        <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">${assinante}</p>
+                        <p style="font-size: 9pt; margin: 0;">${assinante.includes('Hugo') ? 'ENGENHEIRO CIVIL – CREA: 1818793830' : 'ENGENHEIRO CIVIL – CREA: 1805287389'}</p>
+                    </div>
                 </div>
 
             </div>
