@@ -345,18 +345,41 @@ class PropostaPDFGenerator {
         const colSpan = mostrarComposicao ? 8 : 6;
 
         Object.keys(itensPorLocal).forEach(localNome => {
-            // Cabeçalho do grupo
+            const itensDoLocal = itensPorLocal[localNome];
+            const temMaisDeUmServico = itensDoLocal.length > 1;
+            
+            // Calcular subtotal do grupo
+            const subtotalGrupo = itensDoLocal.reduce((sum, item) => sum + (item.preco_total || 0), 0);
+            
             const fontSize = mostrarComposicao ? '8pt' : '9pt';
-            linhasTabela += `
-                <tr>
-                    <td colspan="${colSpan}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 3px 4px; font-size: ${fontSize}; border: 0.5px solid #333;">
-                        ${localNome}
-                    </td>
-                </tr>
-            `;
+            const colSpanTexto = mostrarComposicao ? 7 : 5; // Uma coluna a menos para o subtotal
+            const colSpanTotal = mostrarComposicao ? 8 : 6;
+            
+            if (temMaisDeUmServico) {
+                // Cabeçalho do grupo COM subtotal (mais de 1 serviço)
+                linhasTabela += `
+                    <tr>
+                        <td colspan="${colSpanTexto}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 3px 4px; font-size: ${fontSize}; border: 0.5px solid #333;">
+                            ${localNome}
+                        </td>
+                        <td style="background: #D3D3D3; font-weight: bold; text-align: right; padding: 3px 4px; font-size: ${fontSize}; border: 0.5px solid #333;">
+                            R$ ${this.formatMoney(subtotalGrupo)}
+                        </td>
+                    </tr>
+                `;
+            } else {
+                // Cabeçalho do grupo SEM subtotal (apenas 1 serviço)
+                linhasTabela += `
+                    <tr>
+                        <td colspan="${colSpanTotal}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 3px 4px; font-size: ${fontSize}; border: 0.5px solid #333;">
+                            ${localNome}
+                        </td>
+                    </tr>
+                `;
+            }
 
             // Itens do grupo
-            itensPorLocal[localNome].forEach(item => {
+            itensDoLocal.forEach(item => {
                 const servico = item.servico;
                 const descricaoCompleta = servico.detalhe 
                     ? `${servico.descricao} ${servico.detalhe}`
@@ -445,46 +468,128 @@ class PropostaPDFGenerator {
         const cliente = proposta.clientes_hvc;
         const mostrarComposicao = juntarPreco === 'nao';
 
-        let itensHTML = '';
-        this.itens.forEach((item, index) => {
-            const servico = item.servico;
+        // Agrupar itens por local
+        const itensPorLocal = {};
+        this.itens.forEach(item => {
             const localNome = item.local?.nome || 'SEM LOCAL';
-            const descricaoCompleta = servico.detalhe 
-                ? `${servico.descricao} ${servico.detalhe}`
-                : servico.descricao;
-            
-            const precoMaoObra = item.preco_mao_obra || 0;
-            const precoMaterial = item.preco_material || 0;
-            const precoUnitario = precoMaoObra + precoMaterial;
+            if (!itensPorLocal[localNome]) {
+                itensPorLocal[localNome] = [];
+            }
+            itensPorLocal[localNome].push(item);
+        });
 
-            if (mostrarComposicao) {
-                // Mostrar Mão de Obra e Material separados
+        let itensHTML = '';
+        let itemIndex = 1;
+
+        Object.keys(itensPorLocal).forEach(localNome => {
+            const itensDoLocal = itensPorLocal[localNome];
+            const temMaisDeUmServico = itensDoLocal.length > 1;
+
+            if (temMaisDeUmServico) {
+                // AGRUPAR: Mais de 1 serviço no mesmo local
+                let subtotalLocal = 0;
+
+                // Cabeçalho do item (local)
                 itensHTML += `
-                    <div style="margin-bottom: 8px;">
-                        <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
-                            ${index + 1}. ${localNome} - ${descricaoCompleta}
+                    <div style="margin-bottom: 10px;">
+                        <p style="font-weight: bold; margin: 0 0 5px 0; font-size: 10pt; color: #000080;">
+                            ${itemIndex}. ${localNome}
                         </p>
-                        <p style="margin: 0 0 2px 15px; font-size: 9pt;">
-                            ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(item.preco_total || 0)}
-                        </p>
-                        <p style="margin: 0 0 0 15px; font-size: 8pt; color: #555;">
-                            <span style="background: #E8F5E9; padding: 1px 4px; border-radius: 2px;">Mão de Obra: R$ ${this.formatMoney(precoMaoObra)}</span>
-                            <span style="background: #FFF3E0; padding: 1px 4px; border-radius: 2px; margin-left: 8px;">Material: R$ ${this.formatMoney(precoMaterial)}</span>
+                `;
+
+                // Sub-itens (serviços)
+                itensDoLocal.forEach((item, subIndex) => {
+                    const servico = item.servico;
+                    const descricaoCompleta = servico.detalhe 
+                        ? `${servico.descricao} ${servico.detalhe}`
+                        : servico.descricao;
+                    
+                    const precoMaoObra = item.preco_mao_obra || 0;
+                    const precoMaterial = item.preco_material || 0;
+                    const precoUnitario = precoMaoObra + precoMaterial;
+                    const precoTotal = item.preco_total || 0;
+                    subtotalLocal += precoTotal;
+
+                    if (mostrarComposicao) {
+                        itensHTML += `
+                            <div style="margin-left: 15px; margin-bottom: 6px;">
+                                <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 9pt;">
+                                    ${itemIndex}.${subIndex + 1}. ${descricaoCompleta}
+                                </p>
+                                <p style="margin: 0 0 2px 10px; font-size: 9pt;">
+                                    ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(precoTotal)}
+                                </p>
+                                <p style="margin: 0 0 0 10px; font-size: 8pt; color: #555;">
+                                    <span style="background: #E8F5E9; padding: 1px 4px; border-radius: 2px;">Mão de Obra: R$ ${this.formatMoney(precoMaoObra)}</span>
+                                    <span style="background: #FFF3E0; padding: 1px 4px; border-radius: 2px; margin-left: 8px;">Material: R$ ${this.formatMoney(precoMaterial)}</span>
+                                </p>
+                            </div>
+                        `;
+                    } else {
+                        itensHTML += `
+                            <div style="margin-left: 15px; margin-bottom: 6px;">
+                                <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 9pt;">
+                                    ${itemIndex}.${subIndex + 1}. ${descricaoCompleta}
+                                </p>
+                                <p style="margin: 0 0 0 10px; font-size: 9pt;">
+                                    ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(precoTotal)}
+                                </p>
+                            </div>
+                        `;
+                    }
+                });
+
+                // Subtotal do local
+                itensHTML += `
+                        <p style="margin: 5px 0 0 15px; font-size: 9pt; font-weight: bold; color: #333;">
+                            Subtotal ${localNome}: R$ ${this.formatMoney(subtotalLocal)}
                         </p>
                     </div>
                 `;
+
+                itemIndex++;
             } else {
-                // Mostrar apenas valor unitário total
-                itensHTML += `
-                    <div style="margin-bottom: 8px;">
-                        <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
-                            ${index + 1}. ${localNome} - ${descricaoCompleta}
-                        </p>
-                        <p style="margin: 0 0 0 15px; font-size: 9pt;">
-                            ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(item.preco_total || 0)}
-                        </p>
-                    </div>
-                `;
+                // NÃO AGRUPAR: Apenas 1 serviço no local - formato antigo
+                const item = itensDoLocal[0];
+                const servico = item.servico;
+                const descricaoCompleta = servico.detalhe 
+                    ? `${servico.descricao} ${servico.detalhe}`
+                    : servico.descricao;
+                
+                const precoMaoObra = item.preco_mao_obra || 0;
+                const precoMaterial = item.preco_material || 0;
+                const precoUnitario = precoMaoObra + precoMaterial;
+                const precoTotal = item.preco_total || 0;
+
+                if (mostrarComposicao) {
+                    itensHTML += `
+                        <div style="margin-bottom: 8px;">
+                            <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
+                                ${itemIndex}. ${localNome} - ${descricaoCompleta}
+                            </p>
+                            <p style="margin: 0 0 2px 15px; font-size: 9pt;">
+                                ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(precoTotal)}
+                            </p>
+                            <p style="margin: 0 0 0 15px; font-size: 8pt; color: #555;">
+                                <span style="background: #E8F5E9; padding: 1px 4px; border-radius: 2px;">Mão de Obra: R$ ${this.formatMoney(precoMaoObra)}</span>
+                                <span style="background: #FFF3E0; padding: 1px 4px; border-radius: 2px; margin-left: 8px;">Material: R$ ${this.formatMoney(precoMaterial)}</span>
+                            </p>
+                        </div>
+                    `;
+                } else {
+                    itensHTML += `
+                        <div style="margin-bottom: 8px;">
+                            <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
+                                ${itemIndex}. ${localNome} - ${descricaoCompleta}
+                            </p>
+                            <p style="margin: 0 0 0 15px; font-size: 9pt;">
+                                ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(precoTotal)}
+                            </p>
+                        </div>
+                    `;
+                }
+
+                itemIndex++;
             }
         });
 
