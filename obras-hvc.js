@@ -272,6 +272,32 @@ class ObrasManager {
                 });
             }
             
+            // Event listeners para PDF da Medição
+            const btnGerarPdfMedicao = document.getElementById('btn-gerar-pdf-medicao');
+            if (btnGerarPdfMedicao) {
+                btnGerarPdfMedicao.addEventListener('click', () => this.showModalPdfMedicao());
+            }
+            
+            // Modal de opções PDF
+            const closeModalPdfMedicao = document.getElementById('close-modal-pdf-medicao');
+            const cancelPdfMedicao = document.getElementById('cancel-pdf-medicao');
+            const btnBaixarPdfMedicaoPC = document.getElementById('btn-baixar-pdf-medicao-pc');
+            const btnSalvarPdfMedicaoOneDrive = document.getElementById('btn-salvar-pdf-medicao-onedrive');
+            
+            if (closeModalPdfMedicao) closeModalPdfMedicao.addEventListener('click', () => this.hideModalPdfMedicao());
+            if (cancelPdfMedicao) cancelPdfMedicao.addEventListener('click', () => this.hideModalPdfMedicao());
+            if (btnBaixarPdfMedicaoPC) btnBaixarPdfMedicaoPC.addEventListener('click', () => this.gerarPdfMedicaoPC());
+            if (btnSalvarPdfMedicaoOneDrive) btnSalvarPdfMedicaoOneDrive.addEventListener('click', () => this.showModalOneDriveMedicao());
+            
+            // Modal OneDrive para medição
+            const closeOneDriveMedicao = document.getElementById('close-modal-onedrive-medicao');
+            const cancelOneDriveMedicao = document.getElementById('cancel-onedrive-medicao');
+            const confirmarOneDriveMedicao = document.getElementById('confirmar-onedrive-medicao');
+            
+            if (closeOneDriveMedicao) closeOneDriveMedicao.addEventListener('click', () => this.hideModalOneDriveMedicao());
+            if (cancelOneDriveMedicao) cancelOneDriveMedicao.addEventListener('click', () => this.hideModalOneDriveMedicao());
+            if (confirmarOneDriveMedicao) confirmarOneDriveMedicao.addEventListener('click', () => this.salvarPdfMedicaoOneDrive());
+            
         } catch (error) {
         }
     }
@@ -3105,6 +3131,9 @@ fecharModalAjustarQuantidade() {
             
             if (medicaoError) throw medicaoError;
             
+            // Armazenar medição atual para uso no PDF
+            this.medicaoAtual = medicao;
+            
             // Buscar obra e clientes
             let numeroObra = 'N/A';
             let clientes = [];
@@ -3732,22 +3761,53 @@ fecharModalAjustarQuantidade() {
         const inputFilename = document.getElementById('relatorio-filename');
         const filename = inputFilename?.value || 'Relatorio_Obra';
         
-        this.hideModalOneDriveRelatorio();
-        this.showNotification('Salvando no OneDrive...', 'info');
-        
         try {
             // Verificar se oneDriveAuth existe
             if (typeof window.oneDriveAuth === 'undefined' || !window.oneDriveAuth.currentAccount) {
                 throw new Error('OneDrive não conectado. Acesse OneDrive Browser primeiro.');
             }
             
-            const pdfBlob = await this.gerarRelatorioPDF();
-            
             // Obter token via oneDriveAuth
             const accessToken = await window.oneDriveAuth.getAccessToken();
+            const folderId = this.currentOneDriveFolderRelatorio;
+            
+            // Verificar se arquivo já existe
+            const checkEndpoint = folderId
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${filename}.pdf`
+                : `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}.pdf`;
+            
+            const checkResponse = await fetch(checkEndpoint, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            // Se arquivo existe (status 200), perguntar ao usuário
+            if (checkResponse.ok) {
+                const existingFile = await checkResponse.json();
+                const lastModified = existingFile.lastModifiedDateTime 
+                    ? new Date(existingFile.lastModifiedDateTime).toLocaleString('pt-BR')
+                    : 'data desconhecida';
+                
+                const confirmar = await this.confirmarSobrescrita(filename, lastModified);
+                
+                if (confirmar === 'cancelar') {
+                    this.showNotification('Salvamento cancelado.', 'info');
+                    return;
+                } else if (confirmar === 'renomear') {
+                    // Reabrir modal para renomear
+                    this.showModalOneDriveRelatorio();
+                    this.showNotification('Altere o nome do arquivo e tente novamente.', 'info');
+                    return;
+                }
+                // Se confirmar === 'sobrescrever', continua o fluxo normal
+            }
+            
+            this.hideModalOneDriveRelatorio();
+            this.showNotification('Salvando no OneDrive...', 'info');
+            
+            const pdfBlob = await this.gerarRelatorioPDF();
             
             // Upload para OneDrive
-            const folderId = this.currentOneDriveFolderRelatorio;
             const endpoint = folderId
                 ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${filename}.pdf:/content`
                 : `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}.pdf:/content`;
@@ -3767,6 +3827,54 @@ fecharModalAjustarQuantidade() {
         } catch (error) {
             this.showNotification('Erro ao salvar no OneDrive: ' + error.message, 'error');
         }
+    }
+    
+    // Função para confirmar sobrescrita de arquivo
+    confirmarSobrescrita(filename, lastModified) {
+        return new Promise((resolve) => {
+            // Criar modal de confirmação
+            const modalHTML = `
+                <div id="modal-confirmar-sobrescrita" class="modal-overlay show" style="z-index: 10000;">
+                    <div class="modal-content" style="max-width: 450px;">
+                        <div class="modal-header">
+                            <h3 style="color: #ffc107;"><i class="fas fa-exclamation-triangle"></i> Arquivo Já Existe</h3>
+                        </div>
+                        <div class="modal-body" style="padding: 1.5rem;">
+                            <p style="margin-bottom: 1rem;">O arquivo <strong>${filename}.pdf</strong> já existe nesta pasta.</p>
+                            <p style="font-size: 0.9rem; color: #888;">\u00daltima modifica\u00e7\u00e3o: ${lastModified}</p>
+                            <p style="margin-top: 1rem;">O que deseja fazer?</p>
+                        </div>
+                        <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end; padding: 1rem;">
+                            <button id="btn-cancelar-sobrescrita" class="btn btn-secondary" style="background: #6c757d;">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                            <button id="btn-renomear-arquivo" class="btn btn-info" style="background: #17a2b8;">
+                                <i class="fas fa-edit"></i> Renomear
+                            </button>
+                            <button id="btn-sobrescrever-arquivo" class="btn btn-warning" style="background: #ffc107; color: #000;">
+                                <i class="fas fa-save"></i> Sobrescrever
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', modalHTML);
+            
+            const modal = document.getElementById('modal-confirmar-sobrescrita');
+            const btnCancelar = document.getElementById('btn-cancelar-sobrescrita');
+            const btnRenomear = document.getElementById('btn-renomear-arquivo');
+            const btnSobrescrever = document.getElementById('btn-sobrescrever-arquivo');
+            
+            const fecharModal = (resultado) => {
+                modal.remove();
+                resolve(resultado);
+            };
+            
+            btnCancelar.addEventListener('click', () => fecharModal('cancelar'));
+            btnRenomear.addEventListener('click', () => fecharModal('renomear'));
+            btnSobrescrever.addEventListener('click', () => fecharModal('sobrescrever'));
+        });
     }
     
     async gerarRelatorioPDF() {
@@ -4247,13 +4355,484 @@ fecharModalAjustarQuantidade() {
     
     getStatusColor(status) {
         const colors = {
-            'Planejamento': '#ffc107',
+            'Andamento': '#d4a017',
             'Em Andamento': '#17a2b8',
             'Concluída': '#28a745',
             'Pausada': '#6c757d',
             'Cancelada': '#dc3545'
         };
         return colors[status] || '#6c757d';
+    }
+    
+    // ========== FUNÇÕES DE PDF DA MEDIÇÃO ==========
+    
+    showModalPdfMedicao() {
+        const modal = document.getElementById('modal-pdf-medicao');
+        if (modal) modal.classList.add('show');
+    }
+    
+    hideModalPdfMedicao() {
+        const modal = document.getElementById('modal-pdf-medicao');
+        if (modal) modal.classList.remove('show');
+    }
+    
+    showModalOneDriveMedicao() {
+        this.hideModalPdfMedicao();
+        
+        // Definir nome do arquivo
+        const medicao = this.medicaoAtual;
+        const nomeArquivo = medicao ? `Medicao_${medicao.numero_medicao.replace('/', '-')}` : 'Medicao';
+        const inputFilename = document.getElementById('medicao-pdf-filename');
+        if (inputFilename) inputFilename.value = nomeArquivo;
+        
+        // Carregar pastas do OneDrive
+        this.loadOneDriveFoldersMedicao();
+        
+        const modal = document.getElementById('modal-onedrive-medicao');
+        if (modal) modal.classList.add('show');
+    }
+    
+    hideModalOneDriveMedicao() {
+        const modal = document.getElementById('modal-onedrive-medicao');
+        if (modal) modal.classList.remove('show');
+    }
+    
+    async loadOneDriveFoldersMedicao(folderId = null) {
+        const container = document.getElementById('medicao-onedrive-folders');
+        if (!container) return;
+        
+        container.innerHTML = '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Carregando pastas...</div>';
+        
+        try {
+            if (typeof window.oneDriveAuth === 'undefined' || !window.oneDriveAuth.currentAccount) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Conecte-se ao OneDrive na página OneDrive Browser.</div>';
+                return;
+            }
+            
+            const accessToken = await window.oneDriveAuth.getAccessToken();
+            
+            const endpoint = folderId 
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children?$filter=folder ne null`
+                : 'https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=folder ne null';
+            
+            const response = await fetch(endpoint, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            const data = await response.json();
+            const folders = data.value || [];
+            
+            this.currentOneDriveFolderMedicao = folderId;
+            
+            const pastaDisplay = document.getElementById('medicao-pasta-selecionada');
+            if (pastaDisplay) {
+                pastaDisplay.textContent = folderId ? `Pasta selecionada` : '/ (Raiz)';
+            }
+            
+            let html = '';
+            
+            if (folderId) {
+                html += `
+                    <div onclick="window.obrasManager.loadOneDriveFoldersMedicao(null)" 
+                         style="padding: 0.75rem; cursor: pointer; border-radius: 6px; margin-bottom: 0.5rem; background: rgba(173,216,230,0.1); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-arrow-left" style="color: #add8e6;"></i>
+                        <span style="color: #add8e6;">Voltar para Raiz</span>
+                    </div>
+                `;
+            }
+            
+            if (folders.length === 0) {
+                html += '<div style="text-align: center; padding: 1rem; color: #888;">Nenhuma pasta encontrada</div>';
+            } else {
+                folders.forEach(folder => {
+                    html += `
+                        <div onclick="window.obrasManager.loadOneDriveFoldersMedicao('${folder.id}')" 
+                             style="padding: 0.75rem; cursor: pointer; border-radius: 6px; margin-bottom: 0.5rem; background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s;"
+                             onmouseover="this.style.background='rgba(173,216,230,0.2)'"
+                             onmouseout="this.style.background='rgba(0,0,0,0.2)'">
+                            <i class="fas fa-folder" style="color: #ffc107;"></i>
+                            <span style="color: #e0e0e0;">${folder.name}</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            container.innerHTML = html;
+        } catch (error) {
+            container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Erro: ${error.message}</div>`;
+        }
+    }
+    
+    async gerarPdfMedicaoPC() {
+        this.hideModalPdfMedicao();
+        this.showNotification('Gerando PDF...', 'info');
+        
+        try {
+            const pdfBlob = await this.gerarPdfMedicao();
+            
+            const medicao = this.medicaoAtual;
+            const filename = medicao ? `Medicao_${medicao.numero_medicao.replace('/', '-')}.pdf` : 'Medicao.pdf';
+            
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            this.showNotification('PDF gerado com sucesso!', 'success');
+        } catch (error) {
+            this.showNotification('Erro ao gerar PDF: ' + error.message, 'error');
+        }
+    }
+    
+    async salvarPdfMedicaoOneDrive() {
+        const inputFilename = document.getElementById('medicao-pdf-filename');
+        const filename = inputFilename?.value || 'Medicao';
+        
+        try {
+            if (typeof window.oneDriveAuth === 'undefined' || !window.oneDriveAuth.currentAccount) {
+                throw new Error('OneDrive não conectado. Acesse OneDrive Browser primeiro.');
+            }
+            
+            const accessToken = await window.oneDriveAuth.getAccessToken();
+            const folderId = this.currentOneDriveFolderMedicao;
+            
+            // Verificar se arquivo já existe
+            const checkEndpoint = folderId
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${filename}.pdf`
+                : `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}.pdf`;
+            
+            const checkResponse = await fetch(checkEndpoint, {
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            if (checkResponse.ok) {
+                const existingFile = await checkResponse.json();
+                const lastModified = existingFile.lastModifiedDateTime 
+                    ? new Date(existingFile.lastModifiedDateTime).toLocaleString('pt-BR')
+                    : 'data desconhecida';
+                
+                const confirmar = await this.confirmarSobrescrita(filename, lastModified);
+                
+                if (confirmar === 'cancelar') {
+                    this.showNotification('Salvamento cancelado.', 'info');
+                    return;
+                } else if (confirmar === 'renomear') {
+                    this.showModalOneDriveMedicao();
+                    this.showNotification('Altere o nome do arquivo e tente novamente.', 'info');
+                    return;
+                }
+            }
+            
+            this.hideModalOneDriveMedicao();
+            this.showNotification('Salvando no OneDrive...', 'info');
+            
+            const pdfBlob = await this.gerarPdfMedicao();
+            
+            const endpoint = folderId
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${filename}.pdf:/content`
+                : `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}.pdf:/content`;
+            
+            const response = await fetch(endpoint, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/pdf'
+                },
+                body: pdfBlob
+            });
+            
+            if (!response.ok) throw new Error('Erro ao salvar no OneDrive');
+            
+            this.showNotification('PDF salvo no OneDrive com sucesso!', 'success');
+        } catch (error) {
+            this.showNotification('Erro ao salvar no OneDrive: ' + error.message, 'error');
+        }
+    }
+    
+    async gerarPdfMedicao() {
+        const medicao = this.medicaoAtual;
+        if (!medicao) throw new Error('Medição não encontrada');
+        
+        // Buscar dados completos da medição com serviços
+        const { data: medicaoCompleta, error: medicaoError } = await supabaseClient
+            .from('medicoes_hvc')
+            .select(`
+                *,
+                medicoes_servicos (
+                    *,
+                    itens_proposta_hvc (
+                        *,
+                        servicos_hvc (*),
+                        locais_hvc (*),
+                        propostas_hvc (
+                            numero_proposta,
+                            clientes_hvc (nome)
+                        )
+                    )
+                )
+            `)
+            .eq('id', medicao.id)
+            .single();
+        
+        if (medicaoError) throw medicaoError;
+        
+        // Buscar dados da obra
+        const { data: obra } = await supabaseClient
+            .from('obras_hvc')
+            .select('*, obras_propostas (proposta_id)')
+            .eq('id', medicaoCompleta.obra_id)
+            .single();
+        
+        // Buscar cliente da obra
+        let nomeCliente = 'Não informado';
+        if (obra?.obras_propostas?.length > 0) {
+            const { data: proposta } = await supabaseClient
+                .from('propostas_hvc')
+                .select('clientes_hvc (nome)')
+                .eq('id', obra.obras_propostas[0].proposta_id)
+                .single();
+            nomeCliente = proposta?.clientes_hvc?.nome || 'Não informado';
+        }
+        
+        // Gerar HTML do relatório
+        const html = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente);
+        
+        // Gerar PDF usando html2pdf
+        const element = document.createElement('div');
+        element.innerHTML = html;
+        
+        element.style.position = 'absolute';
+        element.style.left = '0';
+        element.style.top = '0';
+        element.style.width = '210mm';
+        element.style.padding = '10mm';
+        element.style.boxSizing = 'border-box';
+        element.style.background = 'white';
+        
+        document.body.appendChild(element);
+        
+        const opt = {
+            margin: 0,
+            filename: `Medicao_${medicao.numero_medicao.replace('/', '-')}.pdf`,
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { 
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                scrollX: 0,
+                scrollY: 0,
+                width: element.scrollWidth,
+                height: element.scrollHeight
+            },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        };
+        
+        const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob');
+        
+        document.body.removeChild(element);
+        
+        return pdfBlob;
+    }
+    
+    gerarHTMLMedicao(medicao, obra, nomeCliente) {
+        const dataAtual = new Date().toLocaleDateString('pt-BR', { 
+            weekday: 'long', 
+            year: 'numeric', 
+            month: 'long', 
+            day: 'numeric' 
+        });
+        
+        const dataCriacao = new Date(medicao.created_at).toLocaleDateString('pt-BR');
+        const previsaoPagamento = medicao.previsao_pagamento 
+            ? new Date(medicao.previsao_pagamento).toLocaleDateString('pt-BR') 
+            : 'Não informada';
+        
+        // Calcular status e valores
+        const recebimentos = medicao.recebimentos || [];
+        const totalRecebido = recebimentos.reduce((sum, rec) => sum + (rec.valor || 0), 0);
+        const valorTotal = medicao.valor_bruto || medicao.valor_total || 0;
+        const retencao = valorTotal - totalRecebido;
+        
+        let statusMedicao = 'PENDENTE';
+        let statusColor = '#ffc107';
+        
+        if (totalRecebido === 0) {
+            statusMedicao = 'PENDENTE';
+            statusColor = '#ffc107';
+        } else if (totalRecebido < valorTotal) {
+            statusMedicao = 'RECEBIDO COM RETENÇÃO';
+            statusColor = '#17a2b8';
+        } else {
+            statusMedicao = 'RECEBIDO';
+            statusColor = '#28a745';
+        }
+        
+        // Gerar HTML dos serviços
+        const servicos = medicao.medicoes_servicos || [];
+        let servicosHTML = '';
+        let valorTotalServicos = 0;
+        
+        servicos.forEach((s, index) => {
+            const item = s.itens_proposta_hvc || {};
+            const servico = item.servicos_hvc || {};
+            const local = item.locais_hvc || {};
+            const proposta = item.propostas_hvc || {};
+            
+            valorTotalServicos += s.valor_total || 0;
+            
+            servicosHTML += `
+                <tr style="background: ${index % 2 === 0 ? '#f9f9f9' : 'white'};">
+                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">${proposta.numero_proposta || '-'}</td>
+                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">
+                        <strong>${servico.codigo || '-'}</strong><br>
+                        <span style="font-size: 8px; color: #666;">${servico.descricao || ''}</span>
+                    </td>
+                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">${local.nome || '-'}</td>
+                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top;">${s.quantidade_medida || 0} ${servico.unidade || ''}</td>
+                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: right; vertical-align: top;">${this.formatMoney(s.preco_unitario || 0)}</td>
+                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: right; vertical-align: top; font-weight: bold; color: #28a745;">${this.formatMoney(s.valor_total || 0)}</td>
+                </tr>
+            `;
+        });
+        
+        // Gerar HTML dos recebimentos
+        let recebimentosHTML = '';
+        if (recebimentos.length > 0) {
+            recebimentosHTML = `
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Histórico de Recebimentos (${recebimentos.length})</h3>
+                    <table style="width: 100%; border-collapse: collapse; background: white;">
+                        <tr style="background: #28a745;">
+                            <th style="padding: 6px; text-align: center; color: white; font-size: 10px; width: 10%;">#</th>
+                            <th style="padding: 6px; text-align: left; color: white; font-size: 10px; width: 30%;">DATA</th>
+                            <th style="padding: 6px; text-align: right; color: white; font-size: 10px; width: 30%;">VALOR</th>
+                            <th style="padding: 6px; text-align: left; color: white; font-size: 10px; width: 30%;">REFERÊNCIA</th>
+                        </tr>
+                        ${recebimentos.map((rec, index) => {
+                            let dataFormatada = '-';
+                            if (rec.data) {
+                                const dataStr = String(rec.data);
+                                if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
+                                    const [ano, mes, dia] = dataStr.split('-');
+                                    dataFormatada = `${dia}/${mes}/${ano}`;
+                                } else {
+                                    dataFormatada = dataStr;
+                                }
+                            }
+                            return `
+                                <tr style="background: ${index % 2 === 0 ? '#f0fff0' : 'white'};">
+                                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: center;">${index + 1}</td>
+                                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px;">${dataFormatada}</td>
+                                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: right; color: #28a745; font-weight: bold;">${this.formatMoney(rec.valor || 0)}</td>
+                                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; color: #666;">${rec.evento_id || '-'}</td>
+                                </tr>
+                            `;
+                        }).join('')}
+                    </table>
+                </div>
+            `;
+        }
+        
+        return `
+            <div style="font-family: Arial, sans-serif; padding: 0; color: #333; width: 100%; background: white; box-sizing: border-box;">
+                <!-- Cabeçalho Criativo -->
+                <div style="background: linear-gradient(135deg, #000080 0%, #191970 100%); padding: 15px; margin-bottom: 15px; border-radius: 8px; color: white;">
+                    <div style="text-align: center; margin-bottom: 10px;">
+                        <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
+                        <p style="margin: 3px 0; font-size: 9px; opacity: 0.8;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
+                    </div>
+                    <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px; text-align: center;">
+                        <p style="margin: 0; font-size: 11px; opacity: 0.9;">RELATÓRIO DE MEDIÇÃO</p>
+                        <h2 style="margin: 5px 0; font-size: 20px; font-weight: bold;">${medicao.numero_medicao}</h2>
+                        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 8px; font-size: 10px;">
+                            <span style="background: ${statusColor}; padding: 3px 12px; border-radius: 12px;">${statusMedicao}</span>
+                        </div>
+                        <p style="margin: 8px 0 0 0; font-size: 10px; opacity: 0.8;">Obra: ${obra?.numero_obra || '-'} - ${obra?.nome_obra || ''}</p>
+                        <p style="margin: 3px 0 0 0; font-size: 10px; opacity: 0.8;">Cliente: ${nomeCliente}</p>
+                        <p style="margin: 5px 0 0 0; font-size: 9px; opacity: 0.7;">Gerado em: ${dataAtual}</p>
+                    </div>
+                </div>
+                
+                <!-- Linha decorativa -->
+                <div style="height: 3px; background: linear-gradient(90deg, #000080, #d4a017, #000080); margin-bottom: 15px; border-radius: 2px;"></div>
+                
+                <!-- Informações da Medição -->
+                <div style="margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #000080;">
+                        <p style="margin: 0 0 5px 0; font-size: 9px; color: #666;">Data de Criação</p>
+                        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #333;">${dataCriacao}</p>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #d4a017;">
+                        <p style="margin: 0 0 5px 0; font-size: 9px; color: #666;">Previsão de Pagamento</p>
+                        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #333;">${previsaoPagamento}</p>
+                    </div>
+                </div>
+                
+                <!-- Serviços Medidos -->
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Serviços Medidos (${servicos.length})</h3>
+                    <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
+                        <tr style="background: #000080;">
+                            <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 12%;">PROPOSTA</th>
+                            <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 30%;">SERVIÇO</th>
+                            <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 15%;">LOCAL</th>
+                            <th style="padding: 6px; text-align: center; color: white; font-size: 9px; width: 13%;">QUANTIDADE</th>
+                            <th style="padding: 6px; text-align: right; color: white; font-size: 9px; width: 15%;">PREÇO UNIT.</th>
+                            <th style="padding: 6px; text-align: right; color: white; font-size: 9px; width: 15%;">VALOR TOTAL</th>
+                        </tr>
+                        ${servicosHTML}
+                        <tr style="background: #e8f4e8;">
+                            <td colspan="5" style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px; text-align: right; font-weight: bold;">TOTAL DOS SERVIÇOS:</td>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px; text-align: right; font-weight: bold; color: #28a745;">${this.formatMoney(valorTotalServicos)}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                ${recebimentosHTML}
+                
+                <!-- Resumo Financeiro -->
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Resumo Financeiro</h3>
+                    <table style="width: 100%; border-collapse: collapse; background: white;">
+                        <tr style="background: #000080;">
+                            <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">Descrição</th>
+                            <th style="padding: 8px; text-align: right; color: white; font-size: 11px;">Valor</th>
+                        </tr>
+                        <tr style="background: #f9f9f9;">
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px;">Valor Total da Medição</td>
+                            <td style="padding: 8px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 11px;">${this.formatMoney(valorTotal)}</td>
+                        </tr>
+                        <tr style="background: white;">
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px; color: #28a745;">Total Recebido</td>
+                            <td style="padding: 8px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 11px; color: #28a745;">${this.formatMoney(totalRecebido)}</td>
+                        </tr>
+                        <tr style="background: #f9f9f9;">
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px; color: #ffc107;">Retenção / Saldo</td>
+                            <td style="padding: 8px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 11px; color: ${retencao > 0 ? '#ffc107' : '#28a745'};">${this.formatMoney(retencao)}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Observações -->
+                ${medicao.observacoes || medicao.anotacoes ? `
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Observações / Anotações</h3>
+                        <p style="background: #fafafa; padding: 10px; border-radius: 6px; line-height: 1.4; font-size: 10px; border: 0.5px solid #ddd; margin: 0;">${medicao.observacoes || medicao.anotacoes}</p>
+                    </div>
+                ` : ''}
+                
+                <!-- Rodapé -->
+                <div style="margin-top: 20px; padding-top: 10px; border-top: 2px solid #000080; text-align: center;">
+                    <p style="margin: 0; font-size: 9px; color: #666;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
+                    <p style="margin: 3px 0 0 0; font-size: 9px; color: #666;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
+                </div>
+            </div>
+        `;
     }
 }
 
