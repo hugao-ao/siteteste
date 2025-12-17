@@ -605,6 +605,12 @@ class PropostaPDFGenerator {
                 modal.classList.add('show');
             }
 
+            // Configurar event listeners dos botões do modal (garantir que funcionem)
+            this.setupFolderModalButtons();
+            
+            // Atualizar pasta selecionada para mostrar raiz
+            this.updateSelectedFolder();
+
             // Carregar pastas raiz
             await this.loadOneDriveFolders();
 
@@ -1065,6 +1071,38 @@ class PropostaPDFGenerator {
                     <p>Clique em "Atualizar Preview" para visualizar a proposta</p>
                 </div>
             `;
+        }
+    }
+
+    setupFolderModalButtons() {
+        console.log('DEBUG: setupFolderModalButtons() chamado');
+        
+        // Botão Cancelar
+        const cancelBtn = document.getElementById('cancel-folder-selection');
+        if (cancelBtn) {
+            // Remover listeners antigos clonando o elemento
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            newCancelBtn.addEventListener('click', () => {
+                console.log('DEBUG: Botão Cancelar clicado (via setupFolderModalButtons)');
+                this.closeFolderModal();
+            });
+            console.log('DEBUG: Event listener do botão Cancelar configurado');
+        }
+        
+        // Botão Confirmar
+        const confirmBtn = document.getElementById('confirm-folder-selection');
+        if (confirmBtn) {
+            // Remover listeners antigos clonando o elemento
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            // Habilitar o botão
+            newConfirmBtn.disabled = false;
+            newConfirmBtn.addEventListener('click', async () => {
+                console.log('DEBUG: Botão Confirmar clicado (via setupFolderModalButtons)');
+                await this.confirmFolderSelection();
+            });
+            console.log('DEBUG: Event listener do botão Confirmar configurado e habilitado');
         }
     }
 
