@@ -11,8 +11,6 @@ class PropostaPDFGenerator {
         this.currentFolderId = null;
         this.folderPath = [];
         this.currentPDFBlob = null;
-        
-        this.initializeEventListeners();
     }
 
     initializeEventListeners() {
@@ -1062,6 +1060,7 @@ let pdfGenerator;
 document.addEventListener('DOMContentLoaded', () => {
     pdfGenerator = new PropostaPDFGenerator();
     window.pdfGenerator = pdfGenerator;
+    pdfGenerator.initializeEventListeners();
     console.log('PDF Generator inicializado:', window.pdfGenerator);
 });
 
