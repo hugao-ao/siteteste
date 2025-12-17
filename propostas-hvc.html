@@ -1122,20 +1122,21 @@
           </select>
         </div>
 
-        <!-- Opção -->
+        <!-- Juntar Preço -->
         <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label class="form-label" for="pdf-opcao" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
-            <i class="fas fa-list-ol"></i> Opção
+          <label class="form-label" for="pdf-juntar-preco" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
+            <i class="fas fa-calculator"></i> Juntar Preço
           </label>
-          <input 
-            type="text" 
-            id="pdf-opcao" 
-            class="form-input" 
-            placeholder="Ex: OPÇÃO 1, OPÇÃO 2"
+          <select 
+            id="pdf-juntar-preco" 
+            class="form-select" 
             style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
           >
+            <option value="sim" style="background: #1a1a2e; color: #e0e0e0;">Sim - Mostrar apenas valor unitário total</option>
+            <option value="nao" style="background: #1a1a2e; color: #e0e0e0;">Não - Mostrar Mão de Obra + Material separados</option>
+          </select>
           <small style="color: #808080; font-size: 0.85rem; margin-top: 0.3rem; display: block;">
-            Deixe vazio se houver apenas uma proposta
+            Escolha como exibir a composição do valor unitário
           </small>
         </div>
 
