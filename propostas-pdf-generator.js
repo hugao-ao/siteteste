@@ -222,7 +222,8 @@ class PropostaPDFGenerator {
                 representante: representante,
                 dataProposta: dataProposta,
                 assinante: assinante,
-                formato: document.getElementById('pdf-formato')?.value || 'tabela'
+                formato: document.getElementById('pdf-formato')?.value || 'tabela',
+                juntarPreco: document.getElementById('pdf-juntar-preco')?.value || 'sim'
             };
 
             // Gerar HTML da proposta
@@ -241,7 +242,7 @@ class PropostaPDFGenerator {
     }
 
     generatePropostaHTML(formData) {
-        const { nomeObra, representante, dataProposta, assinante, formato } = formData;
+        const { nomeObra, representante, dataProposta, assinante, formato, juntarPreco } = formData;
         const proposta = this.propostaData;
         const cliente = proposta.clientes_hvc;
 
@@ -268,9 +269,9 @@ class PropostaPDFGenerator {
         let conteudo = '';
 
         if (formato === 'tabela') {
-            conteudo = this.generateTabelaFormat(nomeObra, representante, dataCompleta);
+            conteudo = this.generateTabelaFormat(nomeObra, representante, dataCompleta, juntarPreco);
         } else {
-            conteudo = this.generateSimplesFormat(nomeObra, representante);
+            conteudo = this.generateSimplesFormat(nomeObra, representante, juntarPreco);
         }
 
         // Template completo - Layout A4 (cabeçalho e rodapé serão adicionados via jsPDF)
@@ -323,9 +324,10 @@ class PropostaPDFGenerator {
         `;
     }
 
-    generateTabelaFormat(nomeObra, representante, dataCompleta) {
+    generateTabelaFormat(nomeObra, representante, dataCompleta, juntarPreco = 'sim') {
         const proposta = this.propostaData;
         const cliente = proposta.clientes_hvc;
+        const mostrarComposicao = juntarPreco === 'nao';
 
         // Agrupar itens por local
         const itensPorLocal = {};
@@ -340,12 +342,13 @@ class PropostaPDFGenerator {
         // Gerar linhas da tabela
         let linhasTabela = '';
         let itemIndex = 1;
+        const colSpan = mostrarComposicao ? 8 : 6;
 
         Object.keys(itensPorLocal).forEach(localNome => {
             // Cabeçalho do grupo
             linhasTabela += `
                 <tr>
-                    <td colspan="6" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 4px 5px; font-size: 9pt; border: 1px solid #000;">
+                    <td colspan="${colSpan}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 4px 5px; font-size: 9pt; border: 1px solid #000;">
                         ${localNome}
                     </td>
                 </tr>
@@ -357,20 +360,64 @@ class PropostaPDFGenerator {
                 const descricaoCompleta = servico.detalhe 
                     ? `${servico.descricao} ${servico.detalhe}`
                     : servico.descricao;
+                
+                const precoMaoObra = item.preco_mao_obra || 0;
+                const precoMaterial = item.preco_material || 0;
+                const precoUnitario = precoMaoObra + precoMaterial;
 
-                linhasTabela += `
-                    <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
-                        <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${itemIndex}</td>
-                        <td style="padding: 4px 4px; border: 1px solid #000; font-size: 9pt; word-wrap: break-word;">${descricaoCompleta}</td>
-                        <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${servico.unidade}</td>
-                        <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatNumber(item.quantidade)}</td>
-                        <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))}</td>
-                        <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
-                    </tr>
-                `;
+                if (mostrarComposicao) {
+                    // Mostrar Mão de Obra e Material separados
+                    linhasTabela += `
+                        <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
+                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${itemIndex}</td>
+                            <td style="padding: 4px 4px; border: 1px solid #000; font-size: 9pt; word-wrap: break-word;">${descricaoCompleta}</td>
+                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${servico.unidade}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatNumber(item.quantidade)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 8pt; background: #E8F5E9;">${this.formatMoney(precoMaoObra)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 8pt; background: #FFF3E0;">${this.formatMoney(precoMaterial)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatMoney(precoUnitario)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
+                        </tr>
+                    `;
+                } else {
+                    // Mostrar apenas valor unitário total
+                    linhasTabela += `
+                        <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
+                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${itemIndex}</td>
+                            <td style="padding: 4px 4px; border: 1px solid #000; font-size: 9pt; word-wrap: break-word;">${descricaoCompleta}</td>
+                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${servico.unidade}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatNumber(item.quantidade)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatMoney(precoUnitario)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
+                        </tr>
+                    `;
+                }
                 itemIndex++;
             });
         });
+
+        // Cabeçalho da tabela baseado na opção
+        const cabecalhoTabela = mostrarComposicao ? `
+            <tr>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 22px;">ITEM</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 25px;">UND</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 40px;">QUANT.</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 7pt; width: 50px; background: #C8E6C9;">M.OBRA</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 7pt; width: 50px; background: #FFE0B2;">MATERIAL</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 50px;">V. UNIT.</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 55px;">TOTAL</th>
+            </tr>
+        ` : `
+            <tr>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 25px;">ITEM</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 30px;">UND</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 50px;">QUANT.</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 60px;">V. UNIT.</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 65px;">TOTAL</th>
+            </tr>
+        `;
 
         return `
             <!-- Info Box -->
@@ -383,14 +430,7 @@ class PropostaPDFGenerator {
             <!-- Tabela de Serviços -->
             <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 9pt; table-layout: fixed;">
                 <thead style="background: #4A4A4A; color: white;">
-                    <tr>
-                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 25px;">ITEM</th>
-                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
-                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 30px;">UND</th>
-                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 50px;">QUANT.</th>
-                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 60px;">V. UNIT.</th>
-                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 65px;">TOTAL</th>
-                    </tr>
+                    ${cabecalhoTabela}
                 </thead>
                 <tbody>
                     ${linhasTabela}
@@ -399,9 +439,10 @@ class PropostaPDFGenerator {
         `;
     }
 
-    generateSimplesFormat(nomeObra, representante) {
+    generateSimplesFormat(nomeObra, representante, juntarPreco = 'sim') {
         const proposta = this.propostaData;
         const cliente = proposta.clientes_hvc;
+        const mostrarComposicao = juntarPreco === 'nao';
 
         let itensHTML = '';
         this.itens.forEach((item, index) => {
@@ -410,17 +451,40 @@ class PropostaPDFGenerator {
             const descricaoCompleta = servico.detalhe 
                 ? `${servico.descricao} ${servico.detalhe}`
                 : servico.descricao;
+            
+            const precoMaoObra = item.preco_mao_obra || 0;
+            const precoMaterial = item.preco_material || 0;
+            const precoUnitario = precoMaoObra + precoMaterial;
 
-            itensHTML += `
-                <div style="margin-bottom: 8px;">
-                    <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
-                        ${index + 1}. ${localNome} - ${descricaoCompleta}
-                    </p>
-                    <p style="margin: 0 0 0 15px; font-size: 9pt;">
-                        ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))} = R$ ${this.formatMoney(item.preco_total || 0)}
-                    </p>
-                </div>
-            `;
+            if (mostrarComposicao) {
+                // Mostrar Mão de Obra e Material separados
+                itensHTML += `
+                    <div style="margin-bottom: 8px;">
+                        <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
+                            ${index + 1}. ${localNome} - ${descricaoCompleta}
+                        </p>
+                        <p style="margin: 0 0 2px 15px; font-size: 9pt;">
+                            ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(item.preco_total || 0)}
+                        </p>
+                        <p style="margin: 0 0 0 15px; font-size: 8pt; color: #555;">
+                            <span style="background: #E8F5E9; padding: 1px 4px; border-radius: 2px;">Mão de Obra: R$ ${this.formatMoney(precoMaoObra)}</span>
+                            <span style="background: #FFF3E0; padding: 1px 4px; border-radius: 2px; margin-left: 8px;">Material: R$ ${this.formatMoney(precoMaterial)}</span>
+                        </p>
+                    </div>
+                `;
+            } else {
+                // Mostrar apenas valor unitário total
+                itensHTML += `
+                    <div style="margin-bottom: 8px;">
+                        <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
+                            ${index + 1}. ${localNome} - ${descricaoCompleta}
+                        </p>
+                        <p style="margin: 0 0 0 15px; font-size: 9pt;">
+                            ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(item.preco_total || 0)}
+                        </p>
+                    </div>
+                `;
+            }
         });
 
         return `
