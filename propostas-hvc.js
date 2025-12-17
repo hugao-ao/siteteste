@@ -1088,6 +1088,7 @@ class PropostasManager {
             const tipoPrazo = getTipoPrazoSafe();
             const formaPagamento = document.getElementById('forma-pagamento').value;
             const observacoes = document.getElementById('observacoes').value;
+            const nomeObra = document.getElementById('nome-obra').value;
 
             const totalProposta = this.servicosAdicionados.reduce((sum, item) => {
                 return sum + ensureNumericValue(item.preco_total);
@@ -1101,6 +1102,7 @@ class PropostasManager {
                 tipo_prazo: tipoPrazo,
                 forma_pagamento: formaPagamento,
                 observacoes: observacoes,
+                nome_obra: nomeObra,
                 total_proposta: ensureNumericValue(totalProposta)
             };
 
@@ -1175,6 +1177,7 @@ class PropostasManager {
     validateForm() {
         const numeroProposta = document.getElementById('numero-proposta').value;
         const clienteId = document.getElementById('cliente-select').value;
+        const nomeObra = document.getElementById('nome-obra').value;
         
         if (!numeroProposta || !numeroProposta.match(/^\d{4}\/\d{4}$/)) {
             this.showNotification('Número da proposta deve estar no formato XXXX/YYYY', 'error');
@@ -1183,6 +1186,11 @@ class PropostasManager {
 
         if (!clienteId) {
             this.showNotification('Selecione um cliente', 'error');
+            return false;
+        }
+
+        if (!nomeObra || nomeObra.trim() === '') {
+            this.showNotification('Nome da Obra é obrigatório', 'error');
             return false;
         }
 
@@ -1257,8 +1265,11 @@ class PropostasManager {
 
             const editButtonOnclick = `onclick="window.propostasManager.editProposta('${proposta.id}')"`;
             
+            // Nome da obra entre parênteses abaixo do número
+            const nomeObraDisplay = proposta.nome_obra ? `<br><span style="font-size: 0.85rem; color: #add8e6; font-weight: normal;">(${proposta.nome_obra})</span>` : '';
+            
             row.innerHTML = `
-                <td><strong>${proposta.numero_proposta}</strong></td>
+                <td><strong>${proposta.numero_proposta}</strong>${nomeObraDisplay}</td>
                 <td>${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}</td>
                 <td><strong>${this.formatMoney(proposta.total_proposta || 0)}</strong></td>
                 <td>${prazoTexto}</td>
@@ -1335,6 +1346,7 @@ class PropostasManager {
             document.getElementById('tipo-prazo').value = proposta.tipo_prazo || 'corridos';
             document.getElementById('forma-pagamento').value = proposta.forma_pagamento || '';
             document.getElementById('observacoes').value = proposta.observacoes || '';
+            document.getElementById('nome-obra').value = proposta.nome_obra || '';
 
             this.showFormProposta();
 
