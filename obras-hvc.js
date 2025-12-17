@@ -3778,24 +3778,17 @@ fecharModalAjustarQuantidade() {
         const valorMedido = await this.calcularValorMedido(obra.id);
         const valorRecebido = await this.calcularValorRecebido(obra.id);
         
-        // Buscar produções diárias com detalhes dos serviços
-        const { data: producoes } = await supabaseClient
+        // Buscar produções diárias (query simples para evitar erro 400)
+        const { data: producoes, error: producoesError } = await supabaseClient
             .from('producoes_diarias_hvc')
-            .select(`
-                *,
-                producao_servicos_hvc (
-                    quantidade_produzida,
-                    servico_id,
-                    servicos_hvc (
-                        codigo,
-                        descricao,
-                        unidade
-                    )
-                )
-            `)
+            .select('*')
             .eq('obra_id', obra.id)
-            .order('data', { ascending: false })
+            .order('data_producao', { ascending: false })
             .limit(10);
+        
+        if (producoesError) {
+            console.error('Erro ao buscar produções:', producoesError);
+        }
         
         // Buscar medições
         const { data: medicoes } = await supabaseClient
@@ -3805,21 +3798,22 @@ fecharModalAjustarQuantidade() {
             .order('created_at', { ascending: false });
         
         // Usar serviços já carregados no modal de andamento (this.servicosAndamento tem todos os dados)
-        // Buscar dados completos dos serviços incluindo quantidade_produzida e quantidade_medida
         const propostasIds = this.propostasSelecionadas.map(p => p.id);
-        let servicosObra = [];
-        if (propostasIds.length > 0) {
-            const { data: itens } = await supabaseClient
-                .from('itens_proposta_hvc')
-                .select(`
-                    *,
-                    propostas_hvc (numero_proposta, valor_total),
-                    servicos_hvc (codigo, descricao, unidade),
-                    locais_hvc (nome)
-                `)
-                .in('proposta_id', propostasIds)
-                .order('created_at', { ascending: true });
-            servicosObra = itens || [];
+        
+        // Usar os serviços já carregados no modal de andamento ao invés de fazer nova query
+        const servicosObra = this.servicosAndamento || [];
+        
+        // Buscar andamentos existentes para esta obra
+        const { data: andamentos } = await supabaseClient
+            .from('servicos_andamento')
+            .select('*')
+            .eq('obra_id', obra.id);
+        
+        this.andamentosExistentes = andamentos || [];
+        
+        // Carregar equipes e integrantes se ainda não foram carregados
+        if (!this.equipesIntegrantes || this.equipesIntegrantes.length === 0) {
+            await this.loadEquipesIntegrantes();
         }
         
         // Buscar propostas com valor_total atualizado
@@ -3879,22 +3873,48 @@ fecharModalAjustarQuantidade() {
         // Gerar HTML das produções diárias com serviços
         const producoesHTML = dados.producoes.length > 0 ? dados.producoes.map(p => {
             let dataFormatada = '-';
-            if (p.data) {
-                const [ano, mes, dia] = p.data.split('-');
+            // Usar data_producao ao invés de data
+            const dataProducao = p.data_producao || p.data;
+            if (dataProducao) {
+                const [ano, mes, dia] = dataProducao.split('-');
                 dataFormatada = `${dia}/${mes}/${ano}`;
             }
             
-            // Serviços da produção
-            const servicosProducao = p.producao_servicos_hvc || [];
-            const servicosTexto = servicosProducao.map(s => {
-                const servico = s.servicos_hvc || {};
-                return `${servico.codigo || 'N/A'}: ${s.quantidade_produzida || 0} ${servico.unidade || ''}`;
-            }).join(', ') || '-';
+            // Serviços da produção - usar campo quantidades_servicos que armazena {item_id: quantidade}
+            let servicosTexto = '-';
+            const quantidadesObj = p.quantidades_servicos || {};
+            const servicosExecutados = Object.entries(quantidadesObj)
+                .filter(([itemId, quantidade]) => quantidade > 0)
+                .map(([itemId, quantidade]) => {
+                    // Buscar informações do item nos serviços da obra
+                    const item = dados.servicos.find(s => s.id == itemId);
+                    const servico = item?.servicos_hvc || {};
+                    const local = item?.locais_hvc?.nome || '';
+                    const codigo = servico.codigo || `ID:${itemId}`;
+                    const unidade = servico.unidade || '';
+                    const localTexto = local ? ` (${local})` : '';
+                    return `${codigo}${localTexto}: ${quantidade}${unidade ? ' ' + unidade : ''}`;
+                });
+            
+            if (servicosExecutados.length > 0) {
+                servicosTexto = servicosExecutados.join(', ');
+            }
+            
+            // Buscar nome da equipe/integrante
+            let equipeTexto = '-';
+            if (p.tipo_responsavel === 'equipe') {
+                // Buscar equipe pelo ID
+                const equipe = this.equipesIntegrantes?.find(e => e.tipo === 'equipe' && (e.id === p.responsavel_id || e.nome === String(p.responsavel_id).padStart(4, '0')));
+                equipeTexto = equipe ? `Equipe ${equipe.nome}` : `Equipe ${p.responsavel_id || '-'}`;
+            } else if (p.tipo_responsavel === 'integrante') {
+                const integrante = this.equipesIntegrantes?.find(i => i.tipo === 'integrante' && i.id === p.responsavel_id);
+                equipeTexto = integrante ? integrante.nome : '-';
+            }
             
             return `
                 <tr style="background: white;">
                     <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top;">${dataFormatada}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top;">${p.equipe_nome || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top;">${equipeTexto}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top; font-size: 11px;">${servicosTexto}</td>
                     <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top; font-size: 11px;">${p.observacoes || '-'}</td>
                 </tr>
@@ -3906,8 +3926,12 @@ fecharModalAjustarQuantidade() {
             const servico = s.servicos_hvc || {};
             const local = s.locais_hvc || {};
             const proposta = s.propostas_hvc || {};
-            const qtdProduzida = s.quantidade_produzida || 0;
-            const qtdMedida = s.quantidade_medida || 0;
+            
+            // Buscar andamento existente para este item
+            const andamento = this.andamentosExistentes?.find(a => a.item_proposta_id === s.id) || {};
+            
+            const qtdProduzida = andamento.quantidade_produzida || 0;
+            const qtdMedida = andamento.quantidade_medida || 0;
             const qtdContratada = s.quantidade || 0;
             const percentualServico = qtdContratada > 0 ? Math.round((qtdProduzida / qtdContratada) * 100) : 0;
             
