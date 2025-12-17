@@ -3576,28 +3576,38 @@ fecharModalAjustarQuantidade() {
         container.innerHTML = '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Carregando pastas...</div>';
         
         try {
-            // Buscar token do OneDrive
-            const { data: tokenData, error: tokenError } = await supabaseClient
-                .from('user_tokens')
-                .select('access_token, refresh_token, expires_at')
-                .eq('provider', 'microsoft')
-                .single();
-            
-            if (tokenError || !tokenData) {
-                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> OneDrive não conectado. Configure nas configurações.</div>';
+            // Verificar se oneDriveAuth existe
+            if (typeof window.oneDriveAuth === 'undefined') {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Módulo OneDrive não carregado. Recarregue a página.</div>';
                 return;
             }
             
-            let accessToken = tokenData.access_token;
-            
-            // Verificar se token expirou
-            if (new Date(tokenData.expires_at) < new Date()) {
-                accessToken = await this.refreshOneDriveToken(tokenData.refresh_token);
-                if (!accessToken) {
-                    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Sessão expirada. Reconecte o OneDrive.</div>';
+            // Verificar se MSAL está inicializado
+            if (typeof window.msalInstance === 'undefined' || !window.msalInstance) {
+                console.log('⏳ MSAL não inicializado, aguardando...');
+                
+                // Aguardar até 10 segundos pela inicialização do MSAL
+                const maxWait = 10000;
+                const startTime = Date.now();
+                
+                while (!window.msalInstance && (Date.now() - startTime) < maxWait) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
+                
+                if (!window.msalInstance) {
+                    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> OneDrive não inicializado. Acesse OneDrive Browser primeiro.</div>';
                     return;
                 }
             }
+            
+            // Verificar se há conta conectada
+            if (!window.oneDriveAuth.currentAccount) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Conecte-se ao OneDrive na página OneDrive Browser.</div>';
+                return;
+            }
+            
+            // Obter token
+            const accessToken = await window.oneDriveAuth.getAccessToken();
             
             // Buscar pastas
             const endpoint = folderId 
@@ -3726,16 +3736,15 @@ fecharModalAjustarQuantidade() {
         this.showNotification('Salvando no OneDrive...', 'info');
         
         try {
+            // Verificar se oneDriveAuth existe
+            if (typeof window.oneDriveAuth === 'undefined' || !window.oneDriveAuth.currentAccount) {
+                throw new Error('OneDrive não conectado. Acesse OneDrive Browser primeiro.');
+            }
+            
             const pdfBlob = await this.gerarRelatorioPDF();
             
-            // Buscar token
-            const { data: tokenData } = await supabaseClient
-                .from('user_tokens')
-                .select('access_token')
-                .eq('provider', 'microsoft')
-                .single();
-            
-            if (!tokenData) throw new Error('OneDrive não conectado');
+            // Obter token via oneDriveAuth
+            const accessToken = await window.oneDriveAuth.getAccessToken();
             
             // Upload para OneDrive
             const folderId = this.currentOneDriveFolderRelatorio;
@@ -3746,7 +3755,7 @@ fecharModalAjustarQuantidade() {
             const response = await fetch(endpoint, {
                 method: 'PUT',
                 headers: {
-                    'Authorization': `Bearer ${tokenData.access_token}`,
+                    'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/pdf'
                 },
                 body: pdfBlob
@@ -3769,10 +3778,21 @@ fecharModalAjustarQuantidade() {
         const valorMedido = await this.calcularValorMedido(obra.id);
         const valorRecebido = await this.calcularValorRecebido(obra.id);
         
-        // Buscar produções diárias
+        // Buscar produções diárias com detalhes dos serviços
         const { data: producoes } = await supabaseClient
             .from('producoes_diarias_hvc')
-            .select('*')
+            .select(`
+                *,
+                producao_servicos_hvc (
+                    quantidade_produzida,
+                    servico_id,
+                    servicos_hvc (
+                        codigo,
+                        descricao,
+                        unidade
+                    )
+                )
+            `)
             .eq('obra_id', obra.id)
             .order('data', { ascending: false })
             .limit(10);
@@ -3783,6 +3803,23 @@ fecharModalAjustarQuantidade() {
             .select('*')
             .eq('obra_id', obra.id)
             .order('created_at', { ascending: false });
+        
+        // Buscar serviços da obra (itens das propostas vinculadas)
+        const propostasIds = this.propostasSelecionadas.map(p => p.id);
+        let servicosObra = [];
+        if (propostasIds.length > 0) {
+            const { data: itens } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select(`
+                    *,
+                    propostas_hvc (numero_proposta),
+                    servicos_hvc (codigo, descricao, unidade),
+                    locais_hvc (nome)
+                `)
+                .in('proposta_id', propostasIds)
+                .order('created_at', { ascending: true });
+            servicosObra = itens || [];
+        }
         
         // Buscar clientes das propostas
         const clientesUnicos = [...new Set(this.propostasSelecionadas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
@@ -3796,7 +3833,7 @@ fecharModalAjustarQuantidade() {
             medicoes: medicoes || [],
             clientes: clientesUnicos,
             propostas: this.propostasSelecionadas,
-            servicos: this.servicosObra || []
+            servicos: servicosObra
         });
         
         // Gerar PDF usando html2pdf
@@ -3829,40 +3866,101 @@ fecharModalAjustarQuantidade() {
         
         const percentual = obra.percentual_conclusao || 0;
         
+        // Gerar HTML das produções diárias com serviços
+        const producoesHTML = dados.producoes.length > 0 ? dados.producoes.map(p => {
+            let dataFormatada = '-';
+            if (p.data) {
+                const [ano, mes, dia] = p.data.split('-');
+                dataFormatada = `${dia}/${mes}/${ano}`;
+            }
+            
+            // Serviços da produção
+            const servicosProducao = p.producao_servicos_hvc || [];
+            const servicosTexto = servicosProducao.map(s => {
+                const servico = s.servicos_hvc || {};
+                return `${servico.codigo || 'N/A'}: ${s.quantidade_produzida || 0} ${servico.unidade || ''}`;
+            }).join(', ') || '-';
+            
+            return `
+                <tr style="background: white;">
+                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top;">${dataFormatada}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top;">${p.equipe_nome || '-'}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top; font-size: 11px;">${servicosTexto}</td>
+                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top; font-size: 11px;">${p.observacoes || '-'}</td>
+                </tr>
+            `;
+        }).join('') : '';
+        
+        // Gerar HTML da tabela de serviços
+        const servicosHTML = dados.servicos.length > 0 ? dados.servicos.map(s => {
+            const servico = s.servicos_hvc || {};
+            const local = s.locais_hvc || {};
+            const proposta = s.propostas_hvc || {};
+            const qtdProduzida = s.quantidade_produzida || 0;
+            const qtdTotal = s.quantidade || 0;
+            const percentualServico = qtdTotal > 0 ? Math.round((qtdProduzida / qtdTotal) * 100) : 0;
+            
+            let statusServico = 'PENDENTE';
+            let statusColor = '#ffc107';
+            if (percentualServico === 0) {
+                statusServico = 'PENDENTE';
+                statusColor = '#ffc107';
+            } else if (percentualServico < 100) {
+                statusServico = `INICIADO (${percentualServico}%)`;
+                statusColor = '#17a2b8';
+            } else {
+                statusServico = 'CONCLUÍDO';
+                statusColor = '#28a745';
+            }
+            
+            return `
+                <tr style="background: white;">
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${proposta.numero_proposta || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${servico.codigo || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px;">${local.nome || '-'}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px; text-align: center;">${qtdProduzida} / ${qtdTotal} ${servico.unidade || ''}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 11px; text-align: right;">${this.formatMoney(s.preco_total || 0)}</td>
+                    <td style="padding: 6px; border: 1px solid #ddd; text-align: center;">
+                        <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 10px;">${statusServico}</span>
+                    </td>
+                </tr>
+            `;
+        }).join('') : '';
+        
         return `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 800px; margin: 0 auto;">
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 800px; margin: 0 auto; background: white;">
                 <!-- Cabeçalho -->
-                <div style="text-align: center; border-bottom: 3px solid #000080; padding-bottom: 15px; margin-bottom: 20px;">
+                <div style="text-align: center; border-bottom: 3px solid #000080; padding-bottom: 15px; margin-bottom: 20px; background: white;">
                     <h1 style="color: #000080; margin: 0; font-size: 24px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
                     <p style="margin: 5px 0; font-size: 12px; color: #666;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
                 </div>
                 
                 <!-- Título do Relatório -->
-                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                <div style="background: #f0f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #000080;">
                     <h2 style="color: #000080; margin: 0;">RELATÓRIO DE ANDAMENTO DA OBRA</h2>
-                    <p style="margin: 10px 0 0 0; color: #666;">Gerado em: ${dataAtual}</p>
+                    <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">Gerado em: ${dataAtual}</p>
                 </div>
                 
                 <!-- Informações da Obra -->
-                <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #000080;">
-                    <h3 style="color: #000080; margin: 0 0 10px 0;">Dados da Obra</h3>
+                <div style="background: #fafafa; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #000080;">
+                    <h3 style="color: #000080; margin: 0 0 10px 0; font-size: 14px;">Dados da Obra</h3>
                     <table style="width: 100%; border-collapse: collapse;">
                         <tr>
-                            <td style="padding: 5px 0; width: 150px;"><strong>Número:</strong></td>
-                            <td style="padding: 5px 0;">${obra.numero_obra}</td>
+                            <td style="padding: 5px 0; width: 130px; color: #000080; font-weight: bold; font-size: 12px;">Número:</td>
+                            <td style="padding: 5px 0; font-size: 12px;">${obra.numero_obra}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 5px 0;"><strong>Nome da Obra:</strong></td>
-                            <td style="padding: 5px 0;">${obra.nome_obra || 'Não informado'}</td>
+                            <td style="padding: 5px 0; color: #000080; font-weight: bold; font-size: 12px;">Nome da Obra:</td>
+                            <td style="padding: 5px 0; font-size: 12px;">${obra.nome_obra || 'Não informado'}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 5px 0;"><strong>Cliente(s):</strong></td>
-                            <td style="padding: 5px 0;">${dados.clientes.join(', ') || 'Não informado'}</td>
+                            <td style="padding: 5px 0; color: #000080; font-weight: bold; font-size: 12px;">Cliente(s):</td>
+                            <td style="padding: 5px 0; font-size: 12px;">${dados.clientes.join(', ') || 'Não informado'}</td>
                         </tr>
                         <tr>
-                            <td style="padding: 5px 0;"><strong>Status:</strong></td>
+                            <td style="padding: 5px 0; color: #000080; font-weight: bold; font-size: 12px;">Status:</td>
                             <td style="padding: 5px 0;">
-                                <span style="background: ${this.getStatusColor(obra.status)}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px;">
+                                <span style="background: ${this.getStatusColor(obra.status)}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px;">
                                     ${obra.status}
                                 </span>
                             </td>
@@ -3872,100 +3970,106 @@ fecharModalAjustarQuantidade() {
                 
                 <!-- Resumo Financeiro -->
                 <div style="margin-bottom: 20px;">
-                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Resumo Financeiro</h3>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                        <tr style="background: #f5f5f5;">
-                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Descrição</th>
-                            <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Valor</th>
+                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Resumo Financeiro</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                        <tr style="background: #000080;">
+                            <th style="padding: 10px; text-align: left; color: white; font-size: 12px;">Descrição</th>
+                            <th style="padding: 10px; text-align: right; color: white; font-size: 12px;">Valor</th>
                         </tr>
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid #ddd;">Valor Total da Obra</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; font-weight: bold;">${this.formatMoney(obra.valor_total || 0)}</td>
+                        <tr style="background: #f9f9f9;">
+                            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">Valor Total da Obra</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; font-weight: bold; font-size: 12px;">${this.formatMoney(obra.valor_total || 0)}</td>
                         </tr>
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid #ddd;">Valor Produzido</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #17a2b8;">${this.formatMoney(dados.valorProduzido)}</td>
+                        <tr style="background: white;">
+                            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">Valor Produzido</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #17a2b8; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.valorProduzido)}</td>
                         </tr>
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid #ddd;">Valor Medido</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #ffc107;">${this.formatMoney(dados.valorMedido)}</td>
+                        <tr style="background: #f9f9f9;">
+                            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">Valor Medido</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #d4a017; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.valorMedido)}</td>
                         </tr>
-                        <tr>
-                            <td style="padding: 10px; border: 1px solid #ddd;">Valor Recebido</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #28a745;">${this.formatMoney(dados.valorRecebido)}</td>
+                        <tr style="background: white;">
+                            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">Valor Recebido</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #28a745; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.valorRecebido)}</td>
                         </tr>
                     </table>
                 </div>
                 
                 <!-- Progresso -->
                 <div style="margin-bottom: 20px;">
-                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Progresso da Obra</h3>
-                    <div style="background: #e0e0e0; border-radius: 10px; height: 30px; margin-top: 15px; overflow: hidden;">
-                        <div style="background: linear-gradient(90deg, #28a745, #20c997); height: 100%; width: ${percentual}%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Progresso da Obra</h3>
+                    <div style="background: #e8e8e8; border-radius: 10px; height: 25px; margin-top: 15px; overflow: hidden; border: 1px solid #ccc;">
+                        <div style="background: linear-gradient(90deg, #000080, #191970); height: 100%; width: ${percentual}%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">
                             ${percentual > 10 ? percentual + '%' : ''}
                         </div>
                     </div>
-                    <p style="text-align: center; margin-top: 10px; font-size: 18px; font-weight: bold; color: #000080;">${percentual}% Concluído</p>
+                    <p style="text-align: center; margin-top: 10px; font-size: 16px; font-weight: bold; color: #000080;">${percentual}% Concluído</p>
                 </div>
                 
-                <!-- Propostas -->
+                <!-- Tabela de Serviços -->
+                ${dados.servicos.length > 0 ? `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Andamento dos Serviços (${dados.servicos.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                            <tr style="background: #000080;">
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 10px;">PROPOSTA</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 10px;">SERVIÇO</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 10px;">LOCAL</th>
+                                <th style="padding: 6px; text-align: center; color: white; font-size: 10px;">QUANTIDADE</th>
+                                <th style="padding: 6px; text-align: right; color: white; font-size: 10px;">VALOR</th>
+                                <th style="padding: 6px; text-align: center; color: white; font-size: 10px;">STATUS</th>
+                            </tr>
+                            ${servicosHTML}
+                        </table>
+                    </div>
+                ` : ''}
+                
+                <!-- Produções Diárias -->
+                ${dados.producoes.length > 0 ? `
+                    <div style="margin-bottom: 20px;">
+                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Produções Diárias (${dados.producoes.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                            <tr style="background: #000080;">
+                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">DATA</th>
+                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">EQUIPE</th>
+                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">SERVIÇOS</th>
+                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">OBSERVAÇÕES</th>
+                            </tr>
+                            ${producoesHTML}
+                        </table>
+                    </div>
+                ` : ''}
+                
+                <!-- Propostas Vinculadas -->
                 <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Propostas Vinculadas (${dados.propostas.length})</h3>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                        <tr style="background: #000080; color: white;">
-                            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Número</th>
-                            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Cliente</th>
-                            <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Valor</th>
+                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Propostas Vinculadas (${dados.propostas.length})</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                        <tr style="background: #000080;">
+                            <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">NÚMERO</th>
+                            <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">CLIENTE</th>
+                            <th style="padding: 8px; text-align: right; color: white; font-size: 11px;">VALOR</th>
                         </tr>
-                        ${dados.propostas.map(p => `
-                            <tr>
-                                <td style="padding: 8px; border: 1px solid #ddd;">${p.numero_proposta}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">${p.clientes_hvc?.nome || '-'}</td>
-                                <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">${this.formatMoney(p.valor_total || 0)}</td>
+                        ${dados.propostas.map((p, i) => `
+                            <tr style="background: ${i % 2 === 0 ? '#f9f9f9' : 'white'};">
+                                <td style="padding: 8px; border: 1px solid #ddd; font-size: 11px;">${p.numero_proposta}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; font-size: 11px;">${p.clientes_hvc?.nome || '-'}</td>
+                                <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-size: 11px;">${this.formatMoney(p.valor_total || 0)}</td>
                             </tr>
                         `).join('')}
                     </table>
                 </div>
                 
-                <!-- Últimas Produções -->
-                ${dados.producoes.length > 0 ? `
-                    <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Últimas Produções Diárias</h3>
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                            <tr style="background: #000080; color: white;">
-                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Data</th>
-                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Equipe</th>
-                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Observações</th>
-                            </tr>
-                            ${dados.producoes.slice(0, 5).map(p => {
-                                let dataFormatada = '-';
-                                if (p.data) {
-                                    const [ano, mes, dia] = p.data.split('-');
-                                    dataFormatada = `${dia}/${mes}/${ano}`;
-                                }
-                                return `
-                                    <tr>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${dataFormatada}</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${p.equipe_nome || '-'}</td>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${p.observacoes || '-'}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </table>
-                    </div>
-                ` : ''}
-                
                 <!-- Medições -->
                 ${dados.medicoes.length > 0 ? `
                     <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Medições (${dados.medicoes.length})</h3>
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
-                            <tr style="background: #000080; color: white;">
-                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Número</th>
-                                <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Valor</th>
-                                <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Status</th>
+                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Medições (${dados.medicoes.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                            <tr style="background: #000080;">
+                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">NÚMERO</th>
+                                <th style="padding: 8px; text-align: right; color: white; font-size: 11px;">VALOR</th>
+                                <th style="padding: 8px; text-align: center; color: white; font-size: 11px;">STATUS</th>
                             </tr>
-                            ${dados.medicoes.map(m => {
+                            ${dados.medicoes.map((m, i) => {
                                 const recebimentos = m.recebimentos || [];
                                 const totalRecebido = recebimentos.reduce((sum, rec) => sum + (rec.valor || 0), 0);
                                 const valorTotal = m.valor_bruto || m.valor_total || 0;
@@ -3982,11 +4086,11 @@ fecharModalAjustarQuantidade() {
                                     statusColor = '#28a745';
                                 }
                                 return `
-                                    <tr>
-                                        <td style="padding: 8px; border: 1px solid #ddd;">${m.numero_medicao}</td>
-                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">${this.formatMoney(m.valor_total || 0)}</td>
+                                    <tr style="background: ${i % 2 === 0 ? '#f9f9f9' : 'white'};">
+                                        <td style="padding: 8px; border: 1px solid #ddd; font-size: 11px;">${m.numero_medicao}</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-size: 11px;">${this.formatMoney(m.valor_total || 0)}</td>
                                         <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">
-                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;">${status}</span>
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px;">${status}</span>
                                         </td>
                                     </tr>
                                 `;
@@ -3998,15 +4102,15 @@ fecharModalAjustarQuantidade() {
                 <!-- Observações -->
                 ${obra.observacoes ? `
                     <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Observações</h3>
-                        <p style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 10px; line-height: 1.6;">${obra.observacoes}</p>
+                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Observações</h3>
+                        <p style="background: #fafafa; padding: 15px; border-radius: 8px; margin-top: 10px; line-height: 1.6; font-size: 12px; border: 1px solid #ddd;">${obra.observacoes}</p>
                     </div>
                 ` : ''}
                 
                 <!-- Rodapé -->
-                <div style="margin-top: 30px; padding-top: 15px; border-top: 2px solid #000080; text-align: center; color: #666; font-size: 11px;">
-                    <p>Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
-                    <p>Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
+                <div style="margin-top: 30px; padding-top: 15px; border-top: 2px solid #000080; text-align: center; color: #666; font-size: 10px; background: white;">
+                    <p style="margin: 3px 0;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
+                    <p style="margin: 3px 0;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
                 </div>
             </div>
         `;
