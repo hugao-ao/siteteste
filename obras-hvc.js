@@ -3803,7 +3803,50 @@ fecharModalAjustarQuantidade() {
         // Usar os serviços já carregados no modal de andamento ao invés de fazer nova query
         const servicosObra = this.servicosAndamento || [];
         
-        // Buscar andamentos existentes para esta obra
+        // Buscar TODAS as produções para calcular quantidades produzidas por item
+        const { data: todasProducoes } = await supabaseClient
+            .from('producoes_diarias_hvc')
+            .select('*')
+            .eq('obra_id', obra.id);
+        
+        // Buscar TODAS as medições com seus serviços para calcular quantidades medidas
+        const { data: todasMedicoes } = await supabaseClient
+            .from('medicoes_hvc')
+            .select(`
+                *,
+                medicoes_servicos (*)
+            `)
+            .eq('obra_id', obra.id);
+        
+        // Calcular quantidades produzidas e medidas para cada serviço
+        const quantidadesPorItem = {};
+        
+        // Somar produções por item
+        (todasProducoes || []).forEach(producao => {
+            const quantidades = producao.quantidades_servicos || {};
+            Object.entries(quantidades).forEach(([itemId, qtd]) => {
+                if (!quantidadesPorItem[itemId]) {
+                    quantidadesPorItem[itemId] = { produzida: 0, medida: 0 };
+                }
+                quantidadesPorItem[itemId].produzida += parseFloat(qtd) || 0;
+            });
+        });
+        
+        // Somar medições por item
+        (todasMedicoes || []).forEach(medicao => {
+            (medicao.medicoes_servicos || []).forEach(ms => {
+                const itemId = ms.item_proposta_id;
+                if (!quantidadesPorItem[itemId]) {
+                    quantidadesPorItem[itemId] = { produzida: 0, medida: 0 };
+                }
+                quantidadesPorItem[itemId].medida += parseFloat(ms.quantidade_medida) || 0;
+            });
+        });
+        
+        // Armazenar para uso no HTML
+        this.quantidadesPorItem = quantidadesPorItem;
+        
+        // Buscar andamentos existentes para esta obra (para datas)
         const { data: andamentos } = await supabaseClient
             .from('servicos_andamento')
             .select('*')
@@ -3940,11 +3983,13 @@ fecharModalAjustarQuantidade() {
             const local = s.locais_hvc || {};
             const proposta = s.propostas_hvc || {};
             
-            // Buscar andamento existente para este item
+            // Buscar andamento existente para este item (para datas)
             const andamento = this.andamentosExistentes?.find(a => a.item_proposta_id === s.id) || {};
             
-            const qtdProduzida = andamento.quantidade_produzida || 0;
-            const qtdMedida = andamento.quantidade_medida || 0;
+            // Usar quantidades calculadas das produções e medições
+            const qtdInfo = this.quantidadesPorItem?.[s.id] || { produzida: 0, medida: 0 };
+            const qtdProduzida = qtdInfo.produzida;
+            const qtdMedida = qtdInfo.medida;
             const qtdContratada = s.quantidade || 0;
             const percentualServico = qtdContratada > 0 ? Math.round((qtdProduzida / qtdContratada) * 100) : 0;
             
