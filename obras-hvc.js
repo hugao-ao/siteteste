@@ -4590,17 +4590,63 @@ fecharModalAjustarQuantidade() {
         
         // Buscar cliente da obra
         let nomeCliente = 'Não informado';
+        let clienteEndereco = '';
+        let clienteCnpj = '';
         if (obra?.obras_propostas?.length > 0) {
             const { data: proposta } = await supabaseClient
                 .from('propostas_hvc')
-                .select('clientes_hvc (nome)')
+                .select('clientes_hvc (*)')
                 .eq('id', obra.obras_propostas[0].proposta_id)
                 .single();
-            nomeCliente = proposta?.clientes_hvc?.nome || 'Não informado';
+            if (proposta?.clientes_hvc) {
+                nomeCliente = proposta.clientes_hvc.nome || 'Não informado';
+                clienteEndereco = proposta.clientes_hvc.endereco || '';
+                clienteCnpj = proposta.clientes_hvc.cnpj || proposta.clientes_hvc.cpf || '';
+            }
         }
         
+        // Buscar TODAS as medições anteriores desta obra para calcular o que já foi medido
+        const { data: todasMedicoes } = await supabaseClient
+            .from('medicoes_hvc')
+            .select(`
+                id,
+                numero_medicao,
+                created_at,
+                medicoes_servicos (
+                    item_proposta_id,
+                    quantidade_medida,
+                    valor_total
+                )
+            `)
+            .eq('obra_id', medicaoCompleta.obra_id)
+            .lt('created_at', medicaoCompleta.created_at); // Apenas medições anteriores
+        
+        // Calcular quantidades já medidas por item (medições anteriores)
+        const jaMedidoPorItem = {};
+        (todasMedicoes || []).forEach(med => {
+            (med.medicoes_servicos || []).forEach(ms => {
+                if (!jaMedidoPorItem[ms.item_proposta_id]) {
+                    jaMedidoPorItem[ms.item_proposta_id] = { quantidade: 0, valor: 0 };
+                }
+                jaMedidoPorItem[ms.item_proposta_id].quantidade += parseFloat(ms.quantidade_medida) || 0;
+                jaMedidoPorItem[ms.item_proposta_id].valor += parseFloat(ms.valor_total) || 0;
+            });
+        });
+        
+        // Buscar todos os itens contratados das propostas da obra
+        const propostaIds = (obra?.obras_propostas || []).map(op => op.proposta_id);
+        const { data: itensContratados } = await supabaseClient
+            .from('itens_proposta_hvc')
+            .select(`
+                *,
+                servicos_hvc (*),
+                locais_hvc (*),
+                propostas_hvc (numero_proposta)
+            `)
+            .in('proposta_id', propostaIds);
+        
         // Gerar HTML do relatório
-        const html = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente);
+        const html = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados);
         
         // Gerar PDF usando html2pdf
         const element = document.createElement('div');
@@ -4639,7 +4685,7 @@ fecharModalAjustarQuantidade() {
         return pdfBlob;
     }
     
-    gerarHTMLMedicao(medicao, obra, nomeCliente) {
+    gerarHTMLMedicao(medicao, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados) {
         const dataAtual = new Date().toLocaleDateString('pt-BR', { 
             weekday: 'long', 
             year: 'numeric', 
@@ -4648,188 +4694,211 @@ fecharModalAjustarQuantidade() {
         });
         
         const dataCriacao = new Date(medicao.created_at).toLocaleDateString('pt-BR');
-        const previsaoPagamento = medicao.previsao_pagamento 
-            ? new Date(medicao.previsao_pagamento).toLocaleDateString('pt-BR') 
-            : 'Não informada';
         
-        // Calcular status e valores
-        const recebimentos = medicao.recebimentos || [];
-        const totalRecebido = recebimentos.reduce((sum, rec) => sum + (rec.valor || 0), 0);
-        const valorTotal = medicao.valor_bruto || medicao.valor_total || 0;
-        const retencao = valorTotal - totalRecebido;
+        // Serviços desta medição
+        const servicosMedicao = medicao.medicoes_servicos || [];
         
-        let statusMedicao = 'PENDENTE';
-        let statusColor = '#ffc107';
+        // Criar mapa de serviços desta medição por item_proposta_id
+        const estaMedicaoPorItem = {};
+        servicosMedicao.forEach(s => {
+            estaMedicaoPorItem[s.item_proposta_id] = {
+                quantidade: parseFloat(s.quantidade_medida) || 0,
+                valor: parseFloat(s.valor_total) || 0,
+                preco_unitario: parseFloat(s.preco_unitario) || 0
+            };
+        });
         
-        if (totalRecebido === 0) {
-            statusMedicao = 'PENDENTE';
-            statusColor = '#ffc107';
-        } else if (totalRecebido < valorTotal) {
-            statusMedicao = 'RECEBIDO COM RETENÇÃO';
-            statusColor = '#17a2b8';
-        } else {
-            statusMedicao = 'RECEBIDO';
-            statusColor = '#28a745';
-        }
+        // Calcular totais gerais
+        let totalContratado = 0;
+        let totalJaMedido = 0;
+        let totalEstaMedicao = 0;
+        let totalRestante = 0;
         
-        // Gerar HTML dos serviços
-        const servicos = medicao.medicoes_servicos || [];
+        // Gerar HTML da tabela de serviços
         let servicosHTML = '';
-        let valorTotalServicos = 0;
+        let itemIndex = 0;
         
-        servicos.forEach((s, index) => {
-            const item = s.itens_proposta_hvc || {};
+        (itensContratados || []).forEach(item => {
             const servico = item.servicos_hvc || {};
             const local = item.locais_hvc || {};
             const proposta = item.propostas_hvc || {};
             
-            valorTotalServicos += s.valor_total || 0;
+            const qtdContratada = parseFloat(item.quantidade) || 0;
+            const precoUnit = parseFloat(item.preco_unitario) || 0;
+            const valorContratado = parseFloat(item.preco_total) || (qtdContratada * precoUnit);
+            
+            const jaMedido = jaMedidoPorItem[item.id] || { quantidade: 0, valor: 0 };
+            const estaMedicao = estaMedicaoPorItem[item.id] || { quantidade: 0, valor: 0 };
+            
+            const qtdTotalMedida = jaMedido.quantidade + estaMedicao.quantidade;
+            const qtdRestante = Math.max(0, qtdContratada - qtdTotalMedida);
+            const valorRestante = qtdRestante * precoUnit;
+            
+            totalContratado += valorContratado;
+            totalJaMedido += jaMedido.valor;
+            totalEstaMedicao += estaMedicao.valor;
+            totalRestante += valorRestante;
+            
+            // Destacar se este item está sendo medido agora
+            const destaque = estaMedicao.quantidade > 0;
+            const bgColor = destaque ? '#fffde7' : (itemIndex % 2 === 0 ? '#f9f9f9' : 'white');
             
             servicosHTML += `
-                <tr style="background: ${index % 2 === 0 ? '#f9f9f9' : 'white'};">
-                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">${proposta.numero_proposta || '-'}</td>
-                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">
+                <tr style="background: ${bgColor};">
+                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; vertical-align: top;">
                         <strong>${servico.codigo || '-'}</strong><br>
-                        <span style="font-size: 8px; color: #666;">${servico.descricao || ''}</span>
+                        <span style="font-size: 7px; color: #666;">${(servico.descricao || '').substring(0, 40)}${(servico.descricao || '').length > 40 ? '...' : ''}</span>
                     </td>
-                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">${local.nome || '-'}</td>
-                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top;">${s.quantidade_medida || 0} ${servico.unidade || ''}</td>
-                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: right; vertical-align: top;">${this.formatMoney(s.preco_unitario || 0)}</td>
-                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: right; vertical-align: top; font-weight: bold; color: #28a745;">${this.formatMoney(s.valor_total || 0)}</td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; vertical-align: top;">${local.nome || '-'}</td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top;">
+                        ${qtdContratada.toFixed(2)} ${servico.unidade || ''}<br>
+                        <span style="font-size: 7px; color: #666;">${this.formatMoney(valorContratado)}</span>
+                    </td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top; color: #6c757d;">
+                        ${jaMedido.quantidade.toFixed(2)} ${servico.unidade || ''}<br>
+                        <span style="font-size: 7px;">${this.formatMoney(jaMedido.valor)}</span>
+                    </td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top; ${destaque ? 'font-weight: bold; color: #000080;' : ''}">
+                        ${estaMedicao.quantidade.toFixed(2)} ${servico.unidade || ''}<br>
+                        <span style="font-size: 7px; ${destaque ? 'color: #28a745;' : ''}">${this.formatMoney(estaMedicao.valor)}</span>
+                    </td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top; color: ${qtdRestante > 0 ? '#ffc107' : '#28a745'};">
+                        ${qtdRestante.toFixed(2)} ${servico.unidade || ''}<br>
+                        <span style="font-size: 7px;">${this.formatMoney(valorRestante)}</span>
+                    </td>
                 </tr>
             `;
+            itemIndex++;
         });
         
-        // Gerar HTML dos recebimentos
-        let recebimentosHTML = '';
-        if (recebimentos.length > 0) {
-            recebimentosHTML = `
-                <div style="margin-bottom: 15px;">
-                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Histórico de Recebimentos (${recebimentos.length})</h3>
-                    <table style="width: 100%; border-collapse: collapse; background: white;">
-                        <tr style="background: #28a745;">
-                            <th style="padding: 6px; text-align: center; color: white; font-size: 10px; width: 10%;">#</th>
-                            <th style="padding: 6px; text-align: left; color: white; font-size: 10px; width: 30%;">DATA</th>
-                            <th style="padding: 6px; text-align: right; color: white; font-size: 10px; width: 30%;">VALOR</th>
-                            <th style="padding: 6px; text-align: left; color: white; font-size: 10px; width: 30%;">REFERÊNCIA</th>
-                        </tr>
-                        ${recebimentos.map((rec, index) => {
-                            let dataFormatada = '-';
-                            if (rec.data) {
-                                const dataStr = String(rec.data);
-                                if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
-                                    const [ano, mes, dia] = dataStr.split('-');
-                                    dataFormatada = `${dia}/${mes}/${ano}`;
-                                } else {
-                                    dataFormatada = dataStr;
-                                }
-                            }
-                            return `
-                                <tr style="background: ${index % 2 === 0 ? '#f0fff0' : 'white'};">
-                                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: center;">${index + 1}</td>
-                                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px;">${dataFormatada}</td>
-                                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: right; color: #28a745; font-weight: bold;">${this.formatMoney(rec.valor || 0)}</td>
-                                    <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; color: #666;">${rec.evento_id || '-'}</td>
-                                </tr>
-                            `;
-                        }).join('')}
-                    </table>
-                </div>
-            `;
-        }
+        // Percentual de execução
+        const percentualExecutado = totalContratado > 0 
+            ? (((totalJaMedido + totalEstaMedicao) / totalContratado) * 100).toFixed(1) 
+            : 0;
         
         return `
             <div style="font-family: Arial, sans-serif; padding: 0; color: #333; width: 100%; background: white; box-sizing: border-box;">
-                <!-- Cabeçalho Criativo -->
-                <div style="background: linear-gradient(135deg, #000080 0%, #191970 100%); padding: 15px; margin-bottom: 15px; border-radius: 8px; color: white;">
-                    <div style="text-align: center; margin-bottom: 10px;">
-                        <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
-                        <p style="margin: 3px 0; font-size: 9px; opacity: 0.8;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
-                    </div>
-                    <div style="border-top: 1px solid rgba(255,255,255,0.3); padding-top: 10px; text-align: center;">
-                        <p style="margin: 0; font-size: 11px; opacity: 0.9;">RELATÓRIO DE MEDIÇÃO</p>
-                        <h2 style="margin: 5px 0; font-size: 20px; font-weight: bold;">${medicao.numero_medicao}</h2>
-                        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 8px; font-size: 10px;">
-                            <span style="background: ${statusColor}; padding: 3px 12px; border-radius: 12px;">${statusMedicao}</span>
+                <!-- Cabeçalho -->
+                <div style="background: linear-gradient(135deg, #000080 0%, #191970 100%); padding: 12px; margin-bottom: 10px; border-radius: 6px; color: white;">
+                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                        <div>
+                            <h1 style="margin: 0; font-size: 16px; letter-spacing: 1px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
+                            <p style="margin: 2px 0; font-size: 8px; opacity: 0.8;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
+                            <p style="margin: 2px 0; font-size: 8px; opacity: 0.8;">hvcimpermeabilizacoes@gmail.com</p>
                         </div>
-                        <p style="margin: 8px 0 0 0; font-size: 10px; opacity: 0.8;">Obra: ${obra?.numero_obra || '-'} - ${obra?.nome_obra || ''}</p>
-                        <p style="margin: 3px 0 0 0; font-size: 10px; opacity: 0.8;">Cliente: ${nomeCliente}</p>
-                        <p style="margin: 5px 0 0 0; font-size: 9px; opacity: 0.7;">Gerado em: ${dataAtual}</p>
+                        <div style="text-align: right;">
+                            <p style="margin: 0; font-size: 10px; opacity: 0.9;">MEDIÇÃO Nº</p>
+                            <h2 style="margin: 0; font-size: 22px; font-weight: bold;">${medicao.numero_medicao}</h2>
+                            <p style="margin: 2px 0; font-size: 8px; opacity: 0.7;">Data: ${dataCriacao}</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Dados do Cliente e Obra -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border-left: 3px solid #000080;">
+                        <p style="margin: 0; font-size: 8px; color: #666; text-transform: uppercase;">Cliente</p>
+                        <p style="margin: 2px 0; font-size: 11px; font-weight: bold; color: #333;">${nomeCliente}</p>
+                        ${clienteCnpj ? `<p style="margin: 0; font-size: 8px; color: #666;">CNPJ/CPF: ${clienteCnpj}</p>` : ''}
+                        ${clienteEndereco ? `<p style="margin: 0; font-size: 8px; color: #666;">${clienteEndereco}</p>` : ''}
+                    </div>
+                    <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border-left: 3px solid #d4a017;">
+                        <p style="margin: 0; font-size: 8px; color: #666; text-transform: uppercase;">Obra</p>
+                        <p style="margin: 2px 0; font-size: 11px; font-weight: bold; color: #333;">${obra?.numero_obra || '-'}</p>
+                        <p style="margin: 0; font-size: 9px; color: #666;">${obra?.nome_obra || ''}</p>
                     </div>
                 </div>
                 
                 <!-- Linha decorativa -->
-                <div style="height: 3px; background: linear-gradient(90deg, #000080, #d4a017, #000080); margin-bottom: 15px; border-radius: 2px;"></div>
+                <div style="height: 2px; background: linear-gradient(90deg, #000080, #d4a017, #000080); margin-bottom: 10px; border-radius: 1px;"></div>
                 
-                <!-- Informações da Medição -->
-                <div style="margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #000080;">
-                        <p style="margin: 0 0 5px 0; font-size: 9px; color: #666;">Data de Criação</p>
-                        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #333;">${dataCriacao}</p>
-                    </div>
-                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px; border-left: 3px solid #d4a017;">
-                        <p style="margin: 0 0 5px 0; font-size: 9px; color: #666;">Previsão de Pagamento</p>
-                        <p style="margin: 0; font-size: 12px; font-weight: bold; color: #333;">${previsaoPagamento}</p>
-                    </div>
-                </div>
-                
-                <!-- Serviços Medidos -->
-                <div style="margin-bottom: 15px;">
-                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Serviços Medidos (${servicos.length})</h3>
+                <!-- Tabela de Serviços Completa -->
+                <div style="margin-bottom: 10px;">
+                    <h3 style="color: #000080; font-size: 11px; margin: 0 0 5px 0;">Detalhamento dos Serviços</h3>
                     <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
                         <tr style="background: #000080;">
-                            <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 12%;">PROPOSTA</th>
-                            <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 30%;">SERVIÇO</th>
-                            <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 15%;">LOCAL</th>
-                            <th style="padding: 6px; text-align: center; color: white; font-size: 9px; width: 13%;">QUANTIDADE</th>
-                            <th style="padding: 6px; text-align: right; color: white; font-size: 9px; width: 15%;">PREÇO UNIT.</th>
-                            <th style="padding: 6px; text-align: right; color: white; font-size: 9px; width: 15%;">VALOR TOTAL</th>
+                            <th style="padding: 5px; text-align: left; color: white; font-size: 8px; width: 22%;">SERVIÇO</th>
+                            <th style="padding: 5px; text-align: left; color: white; font-size: 8px; width: 12%;">LOCAL</th>
+                            <th style="padding: 5px; text-align: center; color: white; font-size: 8px; width: 16%;">CONTRATADO</th>
+                            <th style="padding: 5px; text-align: center; color: white; font-size: 8px; width: 16%;">JÁ MEDIDO</th>
+                            <th style="padding: 5px; text-align: center; color: white; font-size: 8px; width: 18%; background: #28a745;">ESTA MEDIÇÃO</th>
+                            <th style="padding: 5px; text-align: center; color: white; font-size: 8px; width: 16%;">RESTANTE</th>
                         </tr>
                         ${servicosHTML}
-                        <tr style="background: #e8f4e8;">
-                            <td colspan="5" style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px; text-align: right; font-weight: bold;">TOTAL DOS SERVIÇOS:</td>
-                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px; text-align: right; font-weight: bold; color: #28a745;">${this.formatMoney(valorTotalServicos)}</td>
+                        <tr style="background: #e8e8e8; font-weight: bold;">
+                            <td colspan="2" style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: right;">TOTAIS:</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center;">${this.formatMoney(totalContratado)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; color: #6c757d;">${this.formatMoney(totalJaMedido)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; color: #28a745; background: #e8f5e9;">${this.formatMoney(totalEstaMedicao)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; color: #ffc107;">${this.formatMoney(totalRestante)}</td>
                         </tr>
                     </table>
                 </div>
                 
-                ${recebimentosHTML}
+                <!-- Resumo e Valor a Pagar -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
+                    <!-- Progresso da Obra -->
+                    <div style="background: #f8f9fa; padding: 10px; border-radius: 6px;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #000080;">Progresso do Contrato</h4>
+                        <div style="background: #e0e0e0; border-radius: 10px; height: 20px; overflow: hidden;">
+                            <div style="background: linear-gradient(90deg, #28a745, #20c997); height: 100%; width: ${percentualExecutado}%; display: flex; align-items: center; justify-content: center;">
+                                <span style="color: white; font-size: 9px; font-weight: bold;">${percentualExecutado}%</span>
+                            </div>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 8px; color: #666;">
+                            <span>Executado: ${this.formatMoney(totalJaMedido + totalEstaMedicao)}</span>
+                            <span>Contrato: ${this.formatMoney(totalContratado)}</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Valor a Pagar (destaque) -->
+                    <div style="background: linear-gradient(135deg, #28a745, #20c997); padding: 10px; border-radius: 6px; color: white; text-align: center;">
+                        <p style="margin: 0; font-size: 9px; opacity: 0.9;">VALOR DESTA MEDIÇÃO</p>
+                        <p style="margin: 5px 0; font-size: 22px; font-weight: bold;">${this.formatMoney(totalEstaMedicao)}</p>
+                        <p style="margin: 0; font-size: 8px; opacity: 0.8;">Saldo restante após esta medição: ${this.formatMoney(totalRestante)}</p>
+                    </div>
+                </div>
                 
-                <!-- Resumo Financeiro -->
-                <div style="margin-bottom: 15px;">
-                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Resumo Financeiro</h3>
+                <!-- Resumo Geral -->
+                <div style="margin-bottom: 10px;">
                     <table style="width: 100%; border-collapse: collapse; background: white;">
                         <tr style="background: #000080;">
-                            <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">Descrição</th>
-                            <th style="padding: 8px; text-align: right; color: white; font-size: 11px;">Valor</th>
+                            <th colspan="4" style="padding: 6px; text-align: center; color: white; font-size: 10px;">RESUMO FINANCEIRO DO CONTRATO</th>
                         </tr>
-                        <tr style="background: #f9f9f9;">
-                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px;">Valor Total da Medição</td>
-                            <td style="padding: 8px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 11px;">${this.formatMoney(valorTotal)}</td>
-                        </tr>
-                        <tr style="background: white;">
-                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px; color: #28a745;">Total Recebido</td>
-                            <td style="padding: 8px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 11px; color: #28a745;">${this.formatMoney(totalRecebido)}</td>
-                        </tr>
-                        <tr style="background: #f9f9f9;">
-                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 11px; color: #ffc107;">Retenção / Saldo</td>
-                            <td style="padding: 8px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 11px; color: ${retencao > 0 ? '#ffc107' : '#28a745'};">${this.formatMoney(retencao)}</td>
+                        <tr style="background: #f0f0f0;">
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; width: 25%;">
+                                <span style="display: block; color: #666; font-size: 8px;">Valor Contratado</span>
+                                <strong style="font-size: 11px;">${this.formatMoney(totalContratado)}</strong>
+                            </td>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; width: 25%;">
+                                <span style="display: block; color: #666; font-size: 8px;">Já Medido (anterior)</span>
+                                <strong style="font-size: 11px; color: #6c757d;">${this.formatMoney(totalJaMedido)}</strong>
+                            </td>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; width: 25%; background: #e8f5e9;">
+                                <span style="display: block; color: #28a745; font-size: 8px;">Esta Medição</span>
+                                <strong style="font-size: 11px; color: #28a745;">${this.formatMoney(totalEstaMedicao)}</strong>
+                            </td>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; width: 25%;">
+                                <span style="display: block; color: #ffc107; font-size: 8px;">Saldo Restante</span>
+                                <strong style="font-size: 11px; color: #ffc107;">${this.formatMoney(totalRestante)}</strong>
+                            </td>
                         </tr>
                     </table>
                 </div>
                 
                 <!-- Observações -->
                 ${medicao.observacoes || medicao.anotacoes ? `
-                    <div style="margin-bottom: 15px;">
-                        <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Observações / Anotações</h3>
-                        <p style="background: #fafafa; padding: 10px; border-radius: 6px; line-height: 1.4; font-size: 10px; border: 0.5px solid #ddd; margin: 0;">${medicao.observacoes || medicao.anotacoes}</p>
+                    <div style="margin-bottom: 10px;">
+                        <h4 style="color: #000080; font-size: 10px; margin: 0 0 5px 0;">Observações</h4>
+                        <p style="background: #fafafa; padding: 8px; border-radius: 4px; line-height: 1.3; font-size: 9px; border: 0.5px solid #ddd; margin: 0;">${medicao.observacoes || medicao.anotacoes}</p>
                     </div>
                 ` : ''}
                 
                 <!-- Rodapé -->
-                <div style="margin-top: 20px; padding-top: 10px; border-top: 2px solid #000080; text-align: center;">
-                    <p style="margin: 0; font-size: 9px; color: #666;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
-                    <p style="margin: 3px 0 0 0; font-size: 9px; color: #666;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
+                <div style="margin-top: 15px; padding-top: 8px; border-top: 2px solid #000080; text-align: center;">
+                    <p style="margin: 0; font-size: 8px; color: #666;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
+                    <p style="margin: 2px 0 0 0; font-size: 8px; color: #666;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
+                    <p style="margin: 5px 0 0 0; font-size: 7px; color: #999;">Documento gerado em ${dataAtual}</p>
                 </div>
             </div>
         `;
