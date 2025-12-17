@@ -1323,11 +1323,10 @@ class ObrasManager {
     async atualizarValorTotalNoBanco(obraId, valorTotal) {
         
         try {
-            const valorEmCentavos = Math.round(valorTotal * 100);
-            
+            // Salvar em reais (não multiplicar por 100)
             const { error } = await supabaseClient
                 .from('obras_hvc')
-                .update({ valor_total: valorEmCentavos })
+                .update({ valor_total: valorTotal })
                 .eq('id', obraId);
 
             if (error) {
