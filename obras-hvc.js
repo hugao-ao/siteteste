@@ -65,6 +65,7 @@ class ObrasManager {
             this.setupEventListeners();
             this.setupMasks();
             this.setupFilters();
+            this.initRelatorioEventListeners(); // ✅ Inicializar event listeners do relatório
         } catch (error) {
             this.showNotification('Erro ao inicializar sistema: ' + error.message, 'error');
         }
@@ -1636,6 +1637,7 @@ class ObrasManager {
 
             // Definir obra atual e propostas
             this.currentObraId = obraId;
+            this.obraAtual = data; // Armazenar dados completos da obra para o relatório
             this.propostasSelecionadas = data.obras_propostas?.map(op => op.propostas_hvc) || [];
             
             // Mostrar modal de andamento
@@ -3504,6 +3506,521 @@ fecharModalAjustarQuantidade() {
         } catch (error) {
             this.showNotification('Erro ao salvar anotações: ' + error.message, 'error');
         }
+    }
+
+    // ========== FUNÇÕES DE RELATÓRIO DA OBRA ==========
+    
+    initRelatorioEventListeners() {
+        // Botão de relatório no modal de andamento
+        const btnRelatorio = document.getElementById('btn-relatorio-obra');
+        if (btnRelatorio) {
+            btnRelatorio.addEventListener('click', () => this.showModalRelatorio());
+        }
+        
+        // Modal de relatório
+        const closeModalRelatorio = document.getElementById('close-modal-relatorio');
+        const cancelRelatorio = document.getElementById('cancel-relatorio');
+        const btnBaixarPC = document.getElementById('btn-baixar-relatorio-pc');
+        const btnSalvarOneDrive = document.getElementById('btn-salvar-relatorio-onedrive');
+        
+        if (closeModalRelatorio) closeModalRelatorio.addEventListener('click', () => this.hideModalRelatorio());
+        if (cancelRelatorio) cancelRelatorio.addEventListener('click', () => this.hideModalRelatorio());
+        if (btnBaixarPC) btnBaixarPC.addEventListener('click', () => this.gerarRelatorioPC());
+        if (btnSalvarOneDrive) btnSalvarOneDrive.addEventListener('click', () => this.showModalOneDriveRelatorio());
+        
+        // Modal OneDrive
+        const closeOneDrive = document.getElementById('close-modal-onedrive-relatorio');
+        const cancelOneDrive = document.getElementById('cancel-onedrive-relatorio');
+        const confirmarOneDrive = document.getElementById('confirmar-onedrive-relatorio');
+        
+        if (closeOneDrive) closeOneDrive.addEventListener('click', () => this.hideModalOneDriveRelatorio());
+        if (cancelOneDrive) cancelOneDrive.addEventListener('click', () => this.hideModalOneDriveRelatorio());
+        if (confirmarOneDrive) confirmarOneDrive.addEventListener('click', () => this.salvarRelatorioOneDrive());
+    }
+    
+    showModalRelatorio() {
+        const modal = document.getElementById('modal-relatorio-obra');
+        if (modal) modal.classList.add('show');
+    }
+    
+    hideModalRelatorio() {
+        const modal = document.getElementById('modal-relatorio-obra');
+        if (modal) modal.classList.remove('show');
+    }
+    
+    showModalOneDriveRelatorio() {
+        this.hideModalRelatorio();
+        
+        // Definir nome do arquivo
+        const obra = this.obraAtual;
+        const nomeArquivo = obra ? `Relatorio_Obra_${obra.numero_obra.replace('/', '-')}` : 'Relatorio_Obra';
+        const inputFilename = document.getElementById('relatorio-filename');
+        if (inputFilename) inputFilename.value = nomeArquivo;
+        
+        // Carregar pastas do OneDrive
+        this.loadOneDriveFoldersRelatorio();
+        
+        const modal = document.getElementById('modal-onedrive-relatorio');
+        if (modal) modal.classList.add('show');
+    }
+    
+    hideModalOneDriveRelatorio() {
+        const modal = document.getElementById('modal-onedrive-relatorio');
+        if (modal) modal.classList.remove('show');
+    }
+    
+    async loadOneDriveFoldersRelatorio(folderId = null) {
+        const container = document.getElementById('relatorio-onedrive-folders');
+        if (!container) return;
+        
+        container.innerHTML = '<div style="text-align: center; padding: 2rem;"><i class="fas fa-spinner fa-spin"></i> Carregando pastas...</div>';
+        
+        try {
+            // Buscar token do OneDrive
+            const { data: tokenData, error: tokenError } = await supabaseClient
+                .from('user_tokens')
+                .select('access_token, refresh_token, expires_at')
+                .eq('provider', 'microsoft')
+                .single();
+            
+            if (tokenError || !tokenData) {
+                container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> OneDrive não conectado. Configure nas configurações.</div>';
+                return;
+            }
+            
+            let accessToken = tokenData.access_token;
+            
+            // Verificar se token expirou
+            if (new Date(tokenData.expires_at) < new Date()) {
+                accessToken = await this.refreshOneDriveToken(tokenData.refresh_token);
+                if (!accessToken) {
+                    container.innerHTML = '<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Sessão expirada. Reconecte o OneDrive.</div>';
+                    return;
+                }
+            }
+            
+            // Buscar pastas
+            const endpoint = folderId 
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children?$filter=folder ne null`
+                : 'https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=folder ne null';
+            
+            const response = await fetch(endpoint, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+            
+            if (!response.ok) throw new Error('Erro ao buscar pastas');
+            
+            const data = await response.json();
+            const folders = data.value || [];
+            
+            // Armazenar pasta atual
+            this.currentOneDriveFolderRelatorio = folderId;
+            
+            // Atualizar exibição da pasta selecionada
+            const pastaDisplay = document.getElementById('relatorio-pasta-selecionada');
+            if (pastaDisplay) {
+                pastaDisplay.textContent = folderId ? `Pasta selecionada` : '/ (Raiz)';
+            }
+            
+            // Renderizar pastas
+            let html = '';
+            
+            // Botão voltar
+            if (folderId) {
+                html += `
+                    <div onclick="window.obrasManager.loadOneDriveFoldersRelatorio(null)" 
+                         style="padding: 0.75rem; cursor: pointer; border-radius: 6px; margin-bottom: 0.5rem; background: rgba(173,216,230,0.1); display: flex; align-items: center; gap: 0.5rem;">
+                        <i class="fas fa-arrow-left" style="color: #add8e6;"></i>
+                        <span style="color: #add8e6;">Voltar para Raiz</span>
+                    </div>
+                `;
+            }
+            
+            if (folders.length === 0) {
+                html += '<div style="text-align: center; padding: 1rem; color: #888;">Nenhuma pasta encontrada</div>';
+            } else {
+                folders.forEach(folder => {
+                    html += `
+                        <div onclick="window.obrasManager.loadOneDriveFoldersRelatorio('${folder.id}')" 
+                             style="padding: 0.75rem; cursor: pointer; border-radius: 6px; margin-bottom: 0.5rem; background: rgba(0,0,0,0.2); display: flex; align-items: center; gap: 0.5rem; transition: background 0.2s;"
+                             onmouseover="this.style.background='rgba(173,216,230,0.2)'"
+                             onmouseout="this.style.background='rgba(0,0,0,0.2)'">
+                            <i class="fas fa-folder" style="color: #ffc107;"></i>
+                            <span style="color: #e0e0e0;">${folder.name}</span>
+                        </div>
+                    `;
+                });
+            }
+            
+            container.innerHTML = html;
+            
+        } catch (error) {
+            container.innerHTML = `<div style="text-align: center; padding: 2rem; color: #ff6b6b;"><i class="fas fa-exclamation-triangle"></i> Erro: ${error.message}</div>`;
+        }
+    }
+    
+    async refreshOneDriveToken(refreshToken) {
+        try {
+            const response = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: new URLSearchParams({
+                    client_id: '5ccf12a3-130c-4a1a-9a2c-8abc3282f5c3',
+                    refresh_token: refreshToken,
+                    grant_type: 'refresh_token',
+                    scope: 'Files.ReadWrite.All offline_access'
+                })
+            });
+            
+            if (!response.ok) return null;
+            
+            const data = await response.json();
+            
+            // Atualizar token no banco
+            await supabaseClient
+                .from('user_tokens')
+                .update({
+                    access_token: data.access_token,
+                    refresh_token: data.refresh_token || refreshToken,
+                    expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString()
+                })
+                .eq('provider', 'microsoft');
+            
+            return data.access_token;
+        } catch (error) {
+            return null;
+        }
+    }
+    
+    async gerarRelatorioPC() {
+        this.hideModalRelatorio();
+        this.showNotification('Gerando relatório...', 'info');
+        
+        try {
+            const pdfBlob = await this.gerarRelatorioPDF();
+            
+            // Baixar arquivo
+            const obra = this.obraAtual;
+            const nomeArquivo = obra ? `Relatorio_Obra_${obra.numero_obra.replace('/', '-')}.pdf` : 'Relatorio_Obra.pdf';
+            
+            const url = URL.createObjectURL(pdfBlob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nomeArquivo;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            this.showNotification('Relatório baixado com sucesso!', 'success');
+        } catch (error) {
+            this.showNotification('Erro ao gerar relatório: ' + error.message, 'error');
+        }
+    }
+    
+    async salvarRelatorioOneDrive() {
+        const inputFilename = document.getElementById('relatorio-filename');
+        const filename = inputFilename?.value || 'Relatorio_Obra';
+        
+        this.hideModalOneDriveRelatorio();
+        this.showNotification('Salvando no OneDrive...', 'info');
+        
+        try {
+            const pdfBlob = await this.gerarRelatorioPDF();
+            
+            // Buscar token
+            const { data: tokenData } = await supabaseClient
+                .from('user_tokens')
+                .select('access_token')
+                .eq('provider', 'microsoft')
+                .single();
+            
+            if (!tokenData) throw new Error('OneDrive não conectado');
+            
+            // Upload para OneDrive
+            const folderId = this.currentOneDriveFolderRelatorio;
+            const endpoint = folderId
+                ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}:/${filename}.pdf:/content`
+                : `https://graph.microsoft.com/v1.0/me/drive/root:/${filename}.pdf:/content`;
+            
+            const response = await fetch(endpoint, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${tokenData.access_token}`,
+                    'Content-Type': 'application/pdf'
+                },
+                body: pdfBlob
+            });
+            
+            if (!response.ok) throw new Error('Erro ao salvar no OneDrive');
+            
+            this.showNotification('Relatório salvo no OneDrive com sucesso!', 'success');
+        } catch (error) {
+            this.showNotification('Erro ao salvar no OneDrive: ' + error.message, 'error');
+        }
+    }
+    
+    async gerarRelatorioPDF() {
+        const obra = this.obraAtual;
+        if (!obra) throw new Error('Obra não encontrada');
+        
+        // Buscar dados completos
+        const valorProduzido = await this.calcularValorProduzido(obra.id);
+        const valorMedido = await this.calcularValorMedido(obra.id);
+        const valorRecebido = await this.calcularValorRecebido(obra.id);
+        
+        // Buscar produções diárias
+        const { data: producoes } = await supabaseClient
+            .from('producoes_diarias_hvc')
+            .select('*')
+            .eq('obra_id', obra.id)
+            .order('data', { ascending: false })
+            .limit(10);
+        
+        // Buscar medições
+        const { data: medicoes } = await supabaseClient
+            .from('medicoes_hvc')
+            .select('*')
+            .eq('obra_id', obra.id)
+            .order('created_at', { ascending: false });
+        
+        // Buscar clientes das propostas
+        const clientesUnicos = [...new Set(this.propostasSelecionadas.map(p => p.clientes_hvc?.nome).filter(Boolean))];
+        
+        // Gerar HTML do relatório
+        const html = this.gerarHTMLRelatorio(obra, {
+            valorProduzido,
+            valorMedido,
+            valorRecebido,
+            producoes: producoes || [],
+            medicoes: medicoes || [],
+            clientes: clientesUnicos,
+            propostas: this.propostasSelecionadas,
+            servicos: this.servicosObra || []
+        });
+        
+        // Gerar PDF usando html2pdf
+        const element = document.createElement('div');
+        element.innerHTML = html;
+        document.body.appendChild(element);
+        
+        const opt = {
+            margin: 10,
+            filename: 'relatorio.pdf',
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true },
+            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
+            pagebreak: { mode: ['css', 'legacy'] }
+        };
+        
+        const pdfBlob = await html2pdf().set(opt).from(element).outputPdf('blob');
+        document.body.removeChild(element);
+        
+        return pdfBlob;
+    }
+    
+    gerarHTMLRelatorio(obra, dados) {
+        const dataAtual = new Date().toLocaleDateString('pt-BR', {
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        
+        const percentual = obra.percentual_conclusao || 0;
+        
+        return `
+            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 800px; margin: 0 auto;">
+                <!-- Cabeçalho -->
+                <div style="text-align: center; border-bottom: 3px solid #000080; padding-bottom: 15px; margin-bottom: 20px;">
+                    <h1 style="color: #000080; margin: 0; font-size: 24px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
+                    <p style="margin: 5px 0; font-size: 12px; color: #666;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
+                </div>
+                
+                <!-- Título do Relatório -->
+                <div style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center;">
+                    <h2 style="color: #000080; margin: 0;">RELATÓRIO DE ANDAMENTO DA OBRA</h2>
+                    <p style="margin: 10px 0 0 0; color: #666;">Gerado em: ${dataAtual}</p>
+                </div>
+                
+                <!-- Informações da Obra -->
+                <div style="background: #e8f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; border-left: 4px solid #000080;">
+                    <h3 style="color: #000080; margin: 0 0 10px 0;">Dados da Obra</h3>
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="padding: 5px 0; width: 150px;"><strong>Número:</strong></td>
+                            <td style="padding: 5px 0;">${obra.numero_obra}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 0;"><strong>Nome da Obra:</strong></td>
+                            <td style="padding: 5px 0;">${obra.nome_obra || 'Não informado'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 0;"><strong>Cliente(s):</strong></td>
+                            <td style="padding: 5px 0;">${dados.clientes.join(', ') || 'Não informado'}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 5px 0;"><strong>Status:</strong></td>
+                            <td style="padding: 5px 0;">
+                                <span style="background: ${this.getStatusColor(obra.status)}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 12px;">
+                                    ${obra.status}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Resumo Financeiro -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Resumo Financeiro</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <tr style="background: #f5f5f5;">
+                            <th style="padding: 10px; text-align: left; border: 1px solid #ddd;">Descrição</th>
+                            <th style="padding: 10px; text-align: right; border: 1px solid #ddd;">Valor</th>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #ddd;">Valor Total da Obra</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; font-weight: bold;">${this.formatMoney(obra.valor_total || 0)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #ddd;">Valor Produzido</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #17a2b8;">${this.formatMoney(dados.valorProduzido)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #ddd;">Valor Medido</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #ffc107;">${this.formatMoney(dados.valorMedido)}</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 10px; border: 1px solid #ddd;">Valor Recebido</td>
+                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #28a745;">${this.formatMoney(dados.valorRecebido)}</td>
+                        </tr>
+                    </table>
+                </div>
+                
+                <!-- Progresso -->
+                <div style="margin-bottom: 20px;">
+                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Progresso da Obra</h3>
+                    <div style="background: #e0e0e0; border-radius: 10px; height: 30px; margin-top: 15px; overflow: hidden;">
+                        <div style="background: linear-gradient(90deg, #28a745, #20c997); height: 100%; width: ${percentual}%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold;">
+                            ${percentual > 10 ? percentual + '%' : ''}
+                        </div>
+                    </div>
+                    <p style="text-align: center; margin-top: 10px; font-size: 18px; font-weight: bold; color: #000080;">${percentual}% Concluído</p>
+                </div>
+                
+                <!-- Propostas -->
+                <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Propostas Vinculadas (${dados.propostas.length})</h3>
+                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                        <tr style="background: #000080; color: white;">
+                            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Número</th>
+                            <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Cliente</th>
+                            <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Valor</th>
+                        </tr>
+                        ${dados.propostas.map(p => `
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${p.numero_proposta}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${p.clientes_hvc?.nome || '-'}</td>
+                                <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">${this.formatMoney(p.valor_total || 0)}</td>
+                            </tr>
+                        `).join('')}
+                    </table>
+                </div>
+                
+                <!-- Últimas Produções -->
+                ${dados.producoes.length > 0 ? `
+                    <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Últimas Produções Diárias</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                            <tr style="background: #000080; color: white;">
+                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Data</th>
+                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Equipe</th>
+                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Observações</th>
+                            </tr>
+                            ${dados.producoes.slice(0, 5).map(p => {
+                                let dataFormatada = '-';
+                                if (p.data) {
+                                    const [ano, mes, dia] = p.data.split('-');
+                                    dataFormatada = `${dia}/${mes}/${ano}`;
+                                }
+                                return `
+                                    <tr>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${dataFormatada}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${p.equipe_nome || '-'}</td>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${p.observacoes || '-'}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </table>
+                    </div>
+                ` : ''}
+                
+                <!-- Medições -->
+                ${dados.medicoes.length > 0 ? `
+                    <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Medições (${dados.medicoes.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+                            <tr style="background: #000080; color: white;">
+                                <th style="padding: 8px; text-align: left; border: 1px solid #ddd;">Número</th>
+                                <th style="padding: 8px; text-align: right; border: 1px solid #ddd;">Valor</th>
+                                <th style="padding: 8px; text-align: center; border: 1px solid #ddd;">Status</th>
+                            </tr>
+                            ${dados.medicoes.map(m => {
+                                const recebimentos = m.recebimentos || [];
+                                const totalRecebido = recebimentos.reduce((sum, rec) => sum + (rec.valor || 0), 0);
+                                const valorTotal = m.valor_bruto || m.valor_total || 0;
+                                let status = 'PENDENTE';
+                                let statusColor = '#ffc107';
+                                if (totalRecebido === 0) {
+                                    status = 'PENDENTE';
+                                    statusColor = '#ffc107';
+                                } else if (totalRecebido < valorTotal) {
+                                    status = 'RC c/ RET';
+                                    statusColor = '#17a2b8';
+                                } else {
+                                    status = 'RECEBIDO';
+                                    statusColor = '#28a745';
+                                }
+                                return `
+                                    <tr>
+                                        <td style="padding: 8px; border: 1px solid #ddd;">${m.numero_medicao}</td>
+                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd;">${this.formatMoney(m.valor_total || 0)}</td>
+                                        <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 11px;">${status}</span>
+                                        </td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                        </table>
+                    </div>
+                ` : ''}
+                
+                <!-- Observações -->
+                ${obra.observacoes ? `
+                    <div style="margin-bottom: 20px; page-break-inside: avoid;">
+                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px;">Observações</h3>
+                        <p style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-top: 10px; line-height: 1.6;">${obra.observacoes}</p>
+                    </div>
+                ` : ''}
+                
+                <!-- Rodapé -->
+                <div style="margin-top: 30px; padding-top: 15px; border-top: 2px solid #000080; text-align: center; color: #666; font-size: 11px;">
+                    <p>Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
+                    <p>Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    getStatusColor(status) {
+        const colors = {
+            'Planejamento': '#ffc107',
+            'Em Andamento': '#17a2b8',
+            'Concluída': '#28a745',
+            'Pausada': '#6c757d',
+            'Cancelada': '#dc3545'
+        };
+        return colors[status] || '#6c757d';
     }
 }
 
