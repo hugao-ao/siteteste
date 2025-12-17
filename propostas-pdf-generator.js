@@ -273,70 +273,67 @@ class PropostaPDFGenerator {
             conteudo = this.generateSimplesFormat(nomeObra, representante);
         }
 
-        // Template completo
+        // Template completo - Layout A4 com margens estreitas
         return `
-            <div style="font-family: Arial, sans-serif; padding: 40px; background: white; color: #000;">
-                <!-- Cabeçalho -->
-                <div style="text-align: center; margin-bottom: 30px; padding-bottom: 15px; border-bottom: 3px solid #000080;">
-                    <h1 style="font-size: 24pt; font-weight: bold; color: #000080; letter-spacing: 1px; margin: 0;">
+            <div style="font-family: Arial, sans-serif; padding: 10px 15px; background: white; color: #000; width: 100%; box-sizing: border-box; max-width: 210mm;">
+                <!-- Cabeçalho - 3 linhas máx -->
+                <div style="text-align: center; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid #000080;">
+                    <h1 style="font-size: 16pt; font-weight: bold; color: #000080; letter-spacing: 0.5px; margin: 0 0 3px 0;">
                         HVC IMPERMEABILIZAÇÕES LTDA.
                     </h1>
+                    <p style="font-size: 8pt; margin: 0; color: #333;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
                 </div>
 
                 <!-- Número da Proposta -->
-                <div style="text-align: right; margin-bottom: 20px;">
-                    <strong>Proposta nº ${proposta.numero_proposta}</strong>
+                <div style="text-align: right; margin-bottom: 10px;">
+                    <strong style="font-size: 10pt;">Proposta nº ${proposta.numero_proposta}</strong>
                 </div>
 
                 ${conteudo}
 
                 <!-- Total Geral -->
-                <div style="background: #00FF00; font-weight: bold; font-size: 11pt; padding: 10px; text-align: right; border: 2px solid #000; margin-bottom: 20px;">
-                    TOTAL GERAL: R$ ${this.formatMoney(proposta.total_proposta || 0)}<br>
-                    <span style="font-size: 9pt; font-weight: normal;">(${this.valorPorExtenso(proposta.total_proposta || 0)})</span>
+                <div style="background: #00FF00; font-weight: bold; font-size: 10pt; padding: 8px; text-align: right; border: 1px solid #000; margin-bottom: 12px;">
+                    TOTAL GERAL: R$ ${this.formatMoney(proposta.total_proposta || 0)}
+                    <span style="font-size: 8pt; font-weight: normal; display: block;">(${this.valorPorExtenso(proposta.total_proposta || 0)})</span>
                 </div>
 
                 <!-- Condições -->
-                <div style="margin-bottom: 15px;">
-                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px; color: #000080;">CONDIÇÕES DE PAGAMENTO</h3>
-                    <p style="margin-left: 20px;">- ${proposta.forma_pagamento || 'A combinar'}</p>
+                <div style="margin-bottom: 8px;">
+                    <h3 style="font-size: 10pt; font-weight: bold; margin-bottom: 4px; color: #000080;">CONDIÇÕES DE PAGAMENTO</h3>
+                    <p style="margin-left: 15px; font-size: 9pt; margin-top: 0;">- ${proposta.forma_pagamento || 'A combinar'}</p>
                 </div>
 
-                <div style="margin-bottom: 15px;">
-                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px; color: #000080;">PRAZO DE EXECUÇÃO</h3>
-                    <p style="margin-left: 20px;">- ${prazoTexto}</p>
+                <div style="margin-bottom: 8px;">
+                    <h3 style="font-size: 10pt; font-weight: bold; margin-bottom: 4px; color: #000080;">PRAZO DE EXECUÇÃO</h3>
+                    <p style="margin-left: 15px; font-size: 9pt; margin-top: 0;">- ${prazoTexto}</p>
                 </div>
 
-                <div style="margin-bottom: 20px;">
-                    <h3 style="font-size: 11pt; font-weight: bold; margin-bottom: 8px; color: #000080;">GARANTIA</h3>
-                    <p style="margin-left: 20px; text-align: justify; line-height: 1.5; font-size: 9.5pt;">
-                        A garantia legal é válida para os serviços executados e a qualidade dos materiais 
-                        empregados que porventura apresentem falhas no seu rendimento, por um prazo de até três 
-                        anos a contar da data de entrega dos mesmos, conforme Capítulo oito, Artigo 618 do Código 
-                        Civil Brasileiro. É restrita à impermeabilização defeituosa e inválida caso haja danos causados 
-                        por terceiros e/ou deficiência estrutural.
+                <div style="margin-bottom: 10px;">
+                    <h3 style="font-size: 10pt; font-weight: bold; margin-bottom: 4px; color: #000080;">GARANTIA</h3>
+                    <p style="margin-left: 15px; text-align: justify; line-height: 1.3; font-size: 8pt; margin-top: 0;">
+                        A garantia legal é válida para os serviços executados e a qualidade dos materiais empregados que porventura apresentem falhas no seu rendimento, por um prazo de até três anos a contar da data de entrega dos mesmos, conforme Capítulo oito, Artigo 618 do Código Civil Brasileiro. É restrita à impermeabilização defeituosa e inválida caso haja danos causados por terceiros e/ou deficiência estrutural.
                     </p>
                 </div>
 
                 ${proposta.observacoes && formato === 'tabela' ? `
-                <div style="background: #E6F2FF; padding: 10px; margin-bottom: 20px; border: 1px solid #000080;">
-                    <h3 style="font-size: 10pt; font-weight: bold; margin-bottom: 5px; color: #000080;">OBS:</h3>
-                    <p style="font-size: 9pt; line-height: 1.4; margin: 0;">${proposta.observacoes}</p>
+                <div style="background: #E6F2FF; padding: 6px; margin-bottom: 10px; border: 1px solid #000080;">
+                    <h3 style="font-size: 9pt; font-weight: bold; margin-bottom: 3px; color: #000080;">OBS:</h3>
+                    <p style="font-size: 8pt; line-height: 1.3; margin: 0;">${proposta.observacoes}</p>
                 </div>
                 ` : ''}
 
                 <!-- Assinatura -->
-                <div style="margin-top: 40px; text-align: right;">
-                    <p style="margin-bottom: 10px;">Recife, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.</p>
-                    <p style="margin-bottom: 40px;">Atenciosamente,</p>
-                    <p style="font-weight: bold; margin-bottom: 5px;">${assinante}</p>
-                    <p style="font-size: 9pt;">${assinante.includes('Hugo') ? 'ENGENHEIRO CIVIL – CREA: 1818793830' : 'ENGENHEIRO CIVIL – CREA: 1805287389'}</p>
+                <div style="margin-top: 20px; text-align: right;">
+                    <p style="margin-bottom: 5px; font-size: 9pt;">Recife, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.</p>
+                    <p style="margin-bottom: 25px; font-size: 9pt;">Atenciosamente,</p>
+                    <p style="font-weight: bold; margin-bottom: 3px; font-size: 9pt;">${assinante}</p>
+                    <p style="font-size: 8pt;">${assinante.includes('Hugo') ? 'ENGENHEIRO CIVIL – CREA: 1818793830' : 'ENGENHEIRO CIVIL – CREA: 1805287389'}</p>
                 </div>
 
-                <!-- Rodapé -->
-                <div style="text-align: center; padding-top: 15px; border-top: 3px solid #000080; font-size: 9pt; margin-top: 30px;">
-                    <p style="margin-bottom: 3px;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 Fone: 3228-3025 – Recife/PE</p>
-                    <p>E-mail: hvcimpermeabilizacoes@gmail.com – CNPJ 22.335.667/0001-88</p>
+                <!-- Rodapé - 3 linhas máx -->
+                <div style="text-align: center; padding-top: 8px; border-top: 2px solid #000080; font-size: 7pt; margin-top: 15px; position: relative; bottom: 0;">
+                    <p style="margin: 0;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
+                    <p style="margin: 2px 0 0 0;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
                 </div>
             </div>
         `;
@@ -364,7 +361,7 @@ class PropostaPDFGenerator {
             // Cabeçalho do grupo
             linhasTabela += `
                 <tr>
-                    <td colspan="6" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 8px; font-size: 10pt; border: 1px solid #000;">
+                    <td colspan="6" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 4px 5px; font-size: 8pt; border: 1px solid #000;">
                         ${localNome}
                     </td>
                 </tr>
@@ -379,12 +376,12 @@ class PropostaPDFGenerator {
 
                 linhasTabela += `
                     <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
-                        <td style="text-align: center; padding: 6px 5px; border: 1px solid #000;">${itemIndex}</td>
-                        <td style="padding: 6px 5px; border: 1px solid #000;">${descricaoCompleta}</td>
-                        <td style="text-align: center; padding: 6px 5px; border: 1px solid #000;">${servico.unidade}</td>
-                        <td style="text-align: right; padding: 6px 5px; border: 1px solid #000;">${this.formatNumber(item.quantidade)}</td>
-                        <td style="text-align: right; padding: 6px 5px; border: 1px solid #000;">R$ ${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))}</td>
-                        <td style="text-align: right; padding: 6px 5px; border: 1px solid #000; font-weight: bold;">R$ ${this.formatMoney(item.preco_total || 0)}</td>
+                        <td style="text-align: center; padding: 3px 2px; border: 1px solid #000; font-size: 8pt;">${itemIndex}</td>
+                        <td style="padding: 3px 4px; border: 1px solid #000; font-size: 8pt; word-wrap: break-word;">${descricaoCompleta}</td>
+                        <td style="text-align: center; padding: 3px 2px; border: 1px solid #000; font-size: 8pt;">${servico.unidade}</td>
+                        <td style="text-align: right; padding: 3px 2px; border: 1px solid #000; font-size: 8pt;">${this.formatNumber(item.quantidade)}</td>
+                        <td style="text-align: right; padding: 3px 2px; border: 1px solid #000; font-size: 8pt;">${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))}</td>
+                        <td style="text-align: right; padding: 3px 2px; border: 1px solid #000; font-size: 8pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
                     </tr>
                 `;
                 itemIndex++;
@@ -393,34 +390,24 @@ class PropostaPDFGenerator {
 
         return `
             <!-- Info Box -->
-            <div style="border: 2px solid #000080; padding: 15px; margin-bottom: 20px; background: #F0F8FF; font-size: 10pt;">
-                <div style="margin-bottom: 8px;">
-                    <strong>CLIENTE:</strong> ${cliente.nome}
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <strong>PROPOSTA:</strong> ${proposta.numero_proposta}
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <strong>DATA:</strong> ${dataCompleta}
-                </div>
-                <div style="margin-bottom: 8px;">
-                    <strong>OBRA:</strong> ${nomeObra}
-                </div>
-                <div>
-                    <strong>ATT:</strong> ${representante}
-                </div>
+            <div style="border: 1px solid #000080; padding: 8px 10px; margin-bottom: 10px; background: #F0F8FF; font-size: 9pt;">
+                <div style="margin-bottom: 4px;"><strong>CLIENTE:</strong> ${cliente.nome}</div>
+                <div style="margin-bottom: 4px;"><strong>PROPOSTA:</strong> ${proposta.numero_proposta}</div>
+                <div style="margin-bottom: 4px;"><strong>DATA:</strong> ${dataCompleta}</div>
+                <div style="margin-bottom: 4px;"><strong>OBRA:</strong> ${nomeObra}</div>
+                <div><strong>ATT:</strong> ${representante}</div>
             </div>
 
             <!-- Tabela de Serviços -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px; font-size: 9pt;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 10px; font-size: 8pt; table-layout: fixed;">
                 <thead style="background: #4A4A4A; color: white;">
                     <tr>
-                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 40px;">ITEM</th>
-                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
-                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 50px;">UND</th>
-                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 80px;">QUANT.</th>
-                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 100px;">VALOR UNIT.</th>
-                        <th style="padding: 10px 5px; border: 1px solid #000; font-size: 9pt; width: 100px;">P. TOTAL</th>
+                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 25px;">ITEM</th>
+                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
+                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 30px;">UND</th>
+                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 45px;">QUANT.</th>
+                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 55px;">V. UNIT.</th>
+                        <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 60px;">TOTAL</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -443,11 +430,11 @@ class PropostaPDFGenerator {
                 : servico.descricao;
 
             itensHTML += `
-                <div style="margin-bottom: 15px;">
-                    <p style="font-weight: bold; margin-bottom: 5px;">
+                <div style="margin-bottom: 8px;">
+                    <p style="font-weight: bold; margin-bottom: 2px; font-size: 9pt;">
                         ${index + 1}. ${localNome} - ${descricaoCompleta}
                     </p>
-                    <p style="margin-left: 20px; margin-bottom: 5px;">
+                    <p style="margin-left: 15px; margin-bottom: 0; font-size: 8pt;">
                         ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney((item.preco_mao_obra || 0) + (item.preco_material || 0))} = R$ ${this.formatMoney(item.preco_total || 0)}
                     </p>
                 </div>
@@ -456,15 +443,15 @@ class PropostaPDFGenerator {
 
         return `
             <!-- Destinatário -->
-            <div style="margin-bottom: 20px;">
-                <p style="margin-bottom: 5px;"><strong>Cliente:</strong> ${cliente.nome}</p>
-                <p style="margin-bottom: 5px;"><strong>Obra:</strong> ${nomeObra}</p>
-                <p style="margin-bottom: 5px;"><strong>Att:</strong> ${representante}</p>
+            <div style="margin-bottom: 10px; font-size: 9pt;">
+                <p style="margin-bottom: 3px;"><strong>Cliente:</strong> ${cliente.nome}</p>
+                <p style="margin-bottom: 3px;"><strong>Obra:</strong> ${nomeObra}</p>
+                <p style="margin-bottom: 3px;"><strong>Att:</strong> ${representante}</p>
             </div>
 
             <!-- Especificação -->
-            <div style="margin-bottom: 15px;">
-                <h2 style="font-size: 12pt; font-weight: bold; margin-bottom: 15px; color: #000080;">ESPECIFICAÇÃO DA OBRA:</h2>
+            <div style="margin-bottom: 10px;">
+                <h2 style="font-size: 10pt; font-weight: bold; margin-bottom: 8px; color: #000080;">ESPECIFICAÇÃO DA OBRA:</h2>
                 ${itensHTML}
             </div>
         `;
@@ -498,21 +485,23 @@ class PropostaPDFGenerator {
         try {
             const previewContainer = document.getElementById('pdf-preview-container');
             
-            // Configurar opções do html2pdf
+            // Configurar opções do html2pdf - Margens estreitas A4
             const opt = {
-                margin: 0,
+                margin: [8, 8, 8, 8], // top, left, bottom, right em mm
                 filename: `Proposta_${this.propostaData.numero_proposta}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                     scale: 2,
                     useCORS: true,
-                    letterRendering: true
+                    letterRendering: true,
+                    windowWidth: 794 // Largura A4 em pixels (210mm * 3.78)
                 },
                 jsPDF: { 
                     unit: 'mm', 
                     format: 'a4', 
                     orientation: 'portrait' 
-                }
+                },
+                pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
             };
 
             // Gerar PDF e retornar blob
