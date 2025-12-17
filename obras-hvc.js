@@ -625,6 +625,7 @@ class ObrasManager {
                     <div style="font-weight: 600; color: #2a5298;">
                         ${proposta.numero_proposta} - ${proposta.clientes_hvc?.nome || 'Cliente não encontrado'}
                     </div>
+                    ${proposta.nome_obra ? `<div style="color: #17a2b8; font-size: 0.85rem; font-style: italic;">(${proposta.nome_obra})</div>` : ''}
                     <div style="color: #666; font-size: 0.9rem;">
                         Total: ${this.formatMoney(proposta.total_proposta)}
                     </div>
@@ -1390,8 +1391,8 @@ class ObrasManager {
             
             const percentualConclusao = obra.percentual_conclusao || 0;
             
-            // Mostrar valor correto na lista (dividir por 100 pois está em centavos)
-            const valorObra = obra.valor_total ? (obra.valor_total / 100) : 0;
+            // Mostrar valor correto na lista (já está em reais)
+            const valorObra = obra.valor_total || 0;
             
             // ✅ NOVO: Calcular PRODUZIDO, MEDIDO e RECEBIDO
             const valorProduzido = await this.calcularValorProduzido(obra.id);
@@ -1486,7 +1487,7 @@ class ObrasManager {
             nome_obra: document.getElementById('nome-obra-select').value || null,
             status: document.getElementById('status-obra').value,
             observacoes: document.getElementById('observacoes-obra').value || null,
-            valor_total: Math.round(valorTotalCorreto * 100) // Salvar em centavos
+            valor_total: valorTotalCorreto // Salvar em reais (preco_total já está em reais)
         };
 
 
