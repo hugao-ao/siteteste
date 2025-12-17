@@ -1400,7 +1400,10 @@ class ObrasManager {
             
             const row = document.createElement('tr');
             row.innerHTML = `
-                <td><strong>${obra.numero_obra}</strong></td>
+                <td>
+                    <strong>${obra.numero_obra}</strong>
+                    ${obra.nome_obra ? `<br><span style="font-size: 0.85em; color: #add8e6;">(${obra.nome_obra})</span>` : ''}
+                </td>
                 <td>${clientesTexto}</td>
                 <td><strong>${this.formatMoney(valorObra)}</strong></td>
                 <td><strong style="color: #add8e6;">${this.formatMoney(valorProduzido)}</strong></td>
