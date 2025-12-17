@@ -4968,29 +4968,25 @@ fecharModalAjustarQuantidade() {
                                 let dataFormatada = '-';
                                 if (p.data) {
                                     const dataStr = String(p.data);
-                                    if (dataStr.match(/^\\d{4}-\\d{2}-\\d{2}$/)) {
+                                    if (dataStr.match(/^\d{4}-\d{2}-\d{2}$/)) {
                                         const [ano, mes, dia] = dataStr.split('-');
-                                        dataFormatada = \`\${dia}/\${mes}/\${ano}\`;
+                                        dataFormatada = dia + '/' + mes + '/' + ano;
                                     } else {
                                         dataFormatada = dataStr;
                                     }
                                 }
-                                return \`
-                                    <tr style="background: \${idx % 2 === 0 ? '#e8f4fc' : 'white'};">
-                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">\${dataFormatada}</td>
-                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">\${p.servico || '-'}</td>
-                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">\${p.local || '-'}</td>
-                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center;">\${(p.quantidade || 0).toFixed(2)}</td>
-                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">\${p.equipe || '-'}</td>
-                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 6px; color: #666;">\${(p.observacoes || '').substring(0, 30)}\${(p.observacoes || '').length > 30 ? '...' : ''}</td>
-                                    </tr>
-                                \`;
+                                const bgColor = idx % 2 === 0 ? '#e8f4fc' : 'white';
+                                const obs = (p.observacoes || '').substring(0, 30) + ((p.observacoes || '').length > 30 ? '...' : '');
+                                return '<tr style="background: ' + bgColor + ';">' +
+                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + dataFormatada + '</td>' +
+                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + (p.servico || '-') + '</td>' +
+                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + (p.local || '-') + '</td>' +
+                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center;">' + (p.quantidade || 0).toFixed(2) + '</td>' +
+                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + (p.equipe || '-') + '</td>' +
+                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 6px; color: #666;">' + obs + '</td>' +
+                                    '</tr>';
                             }).join('')}
-                            ${producoesParaComprovacao.length > 10 ? \`
-                                <tr style="background: #f0f0f0;">
-                                    <td colspan="6" style="padding: 4px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; color: #666;">... e mais \${producoesParaComprovacao.length - 10} registros de produção</td>
-                                </tr>
-                            \` : ''}
+                            ${producoesParaComprovacao.length > 10 ? '<tr style="background: #f0f0f0;"><td colspan="6" style="padding: 4px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; color: #666;">... e mais ' + (producoesParaComprovacao.length - 10) + ' registros de produção</td></tr>' : ''}
                         </table>
                     </div>
                 ` : ''}
