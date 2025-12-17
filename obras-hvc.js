@@ -45,6 +45,7 @@ class ObrasManager {
         this.obras = [];
         this.servicosAndamento = [];
         this.locais = []; // ✅ ADICIONADO: Array para armazenar os locais
+        this.nomeObraAtual = ''; // Nome da obra atual para edição
         
         // Variáveis para Produções Diárias
         this.producoesDiarias = [];
@@ -508,6 +509,7 @@ class ObrasManager {
         if (form) form.reset();
         
         this.propostasSelecionadas = [];
+        this.nomeObraAtual = '';
         this.updatePropostasTable();
         this.updateResumoObra();
     }
@@ -516,10 +518,14 @@ class ObrasManager {
         const numeroInput = document.getElementById('numero-obra');
         const statusSelect = document.getElementById('status-obra');
         const observacoesTextarea = document.getElementById('observacoes-obra');
+        const nomeObraSelect = document.getElementById('nome-obra-select');
         
         if (numeroInput) numeroInput.value = obra.numero_obra;
         if (statusSelect) statusSelect.value = obra.status;
         if (observacoesTextarea) observacoesTextarea.value = obra.observacoes || '';
+        
+        // Guardar nome_obra para selecionar após carregar propostas
+        this.nomeObraAtual = obra.nome_obra || '';
         
         // Carregar propostas da obra
         this.loadPropostasObra(obra.id);
@@ -734,6 +740,9 @@ class ObrasManager {
         if (!tbody) return;
         
         tbody.innerHTML = '';
+        
+        // Atualizar select de Nome da Obra com base nas propostas selecionadas
+        this.updateNomeObraSelect();
 
         if (this.propostasSelecionadas.length === 0) {
             tbody.innerHTML = `
@@ -809,6 +818,43 @@ class ObrasManager {
         if (valorTotalEl) valorTotalEl.textContent = this.formatMoney(valorTotal);
         if (progressoEl) {
             progressoEl.textContent = `${percentualConclusao}%`;
+        }
+    }
+
+    // Atualizar select de Nome da Obra com base nas propostas selecionadas
+    updateNomeObraSelect() {
+        const select = document.getElementById('nome-obra-select');
+        if (!select) return;
+        
+        // Limpar opções anteriores
+        select.innerHTML = '';
+        
+        // Coletar nomes de obra das propostas selecionadas (sem duplicatas)
+        const nomesObra = [...new Set(
+            this.propostasSelecionadas
+                .map(p => p.nome_obra)
+                .filter(nome => nome && nome.trim() !== '')
+        )];
+        
+        if (nomesObra.length === 0) {
+            select.innerHTML = '<option value="">Selecione as propostas primeiro...</option>';
+            return;
+        }
+        
+        // Adicionar opção padrão
+        select.innerHTML = '<option value="">Selecione o nome da obra...</option>';
+        
+        // Adicionar opções de nomes de obra
+        nomesObra.forEach(nome => {
+            const option = document.createElement('option');
+            option.value = nome;
+            option.textContent = nome;
+            select.appendChild(option);
+        });
+        
+        // Se houver nome_obra atual (edição), selecionar
+        if (this.nomeObraAtual && nomesObra.includes(this.nomeObraAtual)) {
+            select.value = this.nomeObraAtual;
         }
     }
 
@@ -1434,6 +1480,7 @@ class ObrasManager {
 
         const obraData = {
             numero_obra: document.getElementById('numero-obra').value,
+            nome_obra: document.getElementById('nome-obra-select').value || null,
             status: document.getElementById('status-obra').value,
             observacoes: document.getElementById('observacoes-obra').value || null,
             valor_total: Math.round(valorTotalCorreto * 100) // Salvar em centavos
@@ -1507,6 +1554,7 @@ class ObrasManager {
 
     validateFormObra() {
         const numeroObra = document.getElementById('numero-obra').value;
+        const nomeObra = document.getElementById('nome-obra-select').value;
         
         if (!numeroObra || !numeroObra.match(/^\d{4}\/\d{4}$/)) {
             this.showNotification('Número da obra deve estar no formato XXXX/YYYY', 'error');
@@ -1515,6 +1563,11 @@ class ObrasManager {
 
         if (this.propostasSelecionadas.length === 0) {
             this.showNotification('Adicione pelo menos uma proposta à obra', 'error');
+            return false;
+        }
+
+        if (!nomeObra) {
+            this.showNotification('Selecione o nome da obra', 'error');
             return false;
         }
 
