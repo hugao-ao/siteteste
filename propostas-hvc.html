@@ -1,1379 +1,1336 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Propostas HVC - Gerenciamento</title>
-  <link rel="stylesheet" href="style.css" />
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" integrity="sha512-GsLlZN/3F2ErC5ifS5QtgpiJtWd43JWSuIgh7mbzZ8zBps+dvLusV+eNQATqgA/HdeKFVgA5v3S/cIrLF7QnIg==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
-  <style>
-    /* Estilos específicos para a página de propostas */
-    body {
-      display: flex;
-      margin: 0;
-      min-height: 100vh;
-      background: linear-gradient(135deg, #000080, #191970);
-      color: #e0e0e0;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+// propostas-pdf-generator.js
+// Sistema de Geração de Propostas HVC em PDF
+console.log('DEBUG: propostas-pdf-generator.js carregado');
+
+class PropostaPDFGenerator {
+    constructor() {
+        this.currentPropostaId = null;
+        this.propostaData = null;
+        this.currentProposta = null;
+        this.responsaveis = [];
+        this.itens = [];
+        this.currentFolderId = null;
+        this.folderPath = [];
+        this.currentPDFBlob = null;
     }
 
-    #main-content-propostas-hvc {
-      flex-grow: 1;
-      padding: 2rem;
-      margin-left: 250px;
-      transition: margin-left 0.3s ease;
-      background: linear-gradient(135deg, #000080, #191970);
-      color: #e0e0e0;
-    }
-
-    #main-content-propostas-hvc.sidebar-collapsed {
-      margin-left: 60px;
-    }
-
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding-bottom: 1rem;
-      border-bottom: 2px solid rgba(173, 216, 230, 0.3);
-    }
-
-    .page-title {
-      font-size: 2.5rem;
-      font-weight: bold;
-      color: #add8e6;
-      text-shadow: 0 0 10px rgba(173, 216, 230, 0.5);
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, #4CAF50, #45a049);
-      color: white;
-      border: none;
-      padding: 12px 24px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      font-weight: 600;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(76, 175, 80, 0.3);
-    }
-
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(76, 175, 80, 0.4);
-    }
-
-    .btn-secondary {
-      background: linear-gradient(135deg, #6c757d, #5a6268);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: all 0.3s ease;
-    }
-
-    .btn-danger {
-      background: linear-gradient(135deg, #dc3545, #c82333);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: all 0.3s ease;
-    }
-
-    .btn-success {
-      background: linear-gradient(135deg, #28a745, #218838);
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: all 0.3s ease;
-    }
-
-    /* Formulário de Nova Proposta */
-    .form-section {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 15px;
-      padding: 2rem;
-      margin-bottom: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-
-    .form-section.hidden {
-      display: none;
-    }
-
-    .form-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: #add8e6;
-      margin-bottom: 1.5rem;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .form-row {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-      gap: 1rem;
-      margin-bottom: 1rem;
-    }
-
-    .form-group {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .form-label {
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      color: #add8e6;
-    }
-
-    .form-input {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 8px;
-      padding: 12px;
-      color: #e0e0e0;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-    }
-
-    .form-input:focus {
-      outline: none;
-      border-color: #add8e6;
-      box-shadow: 0 0 10px rgba(173, 216, 230, 0.3);
-    }
-
-    .form-select {
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 8px;
-      padding: 12px;
-      color: #e0e0e0;
-      font-size: 1rem;
-      cursor: pointer;
-    }
-
-    /* Cor preta para as opções do select */
-    .form-select option {
-      background: #ffffff;
-      color: #000000;
-      padding: 8px;
-    }
-
-    .input-group {
-      display: flex;
-      gap: 10px;
-      align-items: end;
-    }
-
-    .input-group .form-input {
-      flex: 1;
-    }
-
-    .btn-add {
-      background: linear-gradient(135deg, #17a2b8, #138496);
-      color: white;
-      border: none;
-      padding: 12px 16px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: all 0.3s ease;
-    }
-
-    /* CORREÇÃO: Estilos específicos para campos de prazo - evitar sobreposição */
-    .prazo-container {
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-
-    .prazo-fields {
-      display: flex;
-      gap: 10px;
-      align-items: end;
-    }
-
-    .prazo-fields .form-input,
-    .prazo-fields .form-select {
-      flex: 1;
-      min-width: 0; /* Permite que os elementos encolham */
-    }
-
-    /* CORREÇÃO: Responsividade para campos de prazo */
-    @media (max-width: 768px) {
-      .prazo-fields {
-        flex-direction: column;
-        gap: 1rem;
-      }
-      
-      .prazo-fields .form-input,
-      .prazo-fields .form-select {
-        width: 100%;
-      }
-    }
-
-    /* CORREÇÃO: Garantir que forma de pagamento tenha espaço adequado */
-    .forma-pagamento-container {
-      margin-top: 1.5rem;
-      margin-bottom: 1.5rem;
-    }
-
-    /* Tabela de Serviços */
-    .services-section {
-      margin: 2rem 0;
-    }
-
-    .services-table {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-    }
-
-    .services-table th,
-    .services-table td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
-    }
-
-    .services-table th {
-      background: rgba(173, 216, 230, 0.1);
-      font-weight: 600;
-      color: #add8e6;
-    }
-
-    .services-table tr:hover {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .services-table input,
-    .services-table select {
-      background: transparent;
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 4px;
-      padding: 8px;
-      color: #e0e0e0;
-      width: 100%;
-    }
-
-    .total-display {
-      background: rgba(76, 175, 80, 0.2);
-      border: 2px solid #4CAF50;
-      border-radius: 10px;
-      padding: 1rem;
-      margin: 1rem 0;
-      text-align: center;
-    }
-
-    .total-value {
-      font-size: 2rem;
-      font-weight: bold;
-      color: #4CAF50;
-    }
-
-    /* Lista de Propostas */
-    .proposals-list {
-      background: rgba(255, 255, 255, 0.1);
-      backdrop-filter: blur(10px);
-      border-radius: 15px;
-      padding: 2rem;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-
-    .proposals-table {
-      width: 100%;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 10px;
-      overflow: hidden;
-      border: 1px solid rgba(173, 216, 230, 0.2);
-    }
-
-    .proposals-table th,
-    .proposals-table td {
-      padding: 12px;
-      text-align: left;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.1);
-    }
-
-    .proposals-table th {
-      background: rgba(173, 216, 230, 0.1);
-      font-weight: 600;
-      color: #add8e6;
-    }
-
-    .proposals-table tr:hover {
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .status-badge {
-      padding: 4px 12px;
-      border-radius: 20px;
-      font-size: 0.8rem;
-      font-weight: 600;
-    }
-
-    .status-pendente {
-      background: rgba(255, 193, 7, 0.2);
-      color: #ffc107;
-      border: 1px solid #ffc107;
-    }
-
-    .status-aprovada {
-      background: rgba(40, 167, 69, 0.2);
-      color: #28a745;
-      border: 1px solid #28a745;
-    }
-
-    .status-recusada {
-      background: rgba(220, 53, 69, 0.2);
-      color: #dc3545;
-      border: 1px solid #dc3545;
-    }
-
-    .actions-cell {
-      display: flex;
-      gap: 8px;
-    }
-
-    /* Modal */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 1000;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(5px);
-    }
-
-    /* Modal de edição/criação de local fica na frente */
-    #modal-local {
-      z-index: 1100;
-    }
-
-    /* Modal de confirmação de exclusão fica na frente */
-    #modal-delete-local-confirm {
-      z-index: 1100;
-    }
-
-    .modal.show {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .modal-content {
-      background: linear-gradient(135deg, #000080, #191970);
-      border: 1px solid rgba(173, 216, 230, 0.3);
-      border-radius: 15px;
-      padding: 2rem;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-    }
-
-    .modal-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 1.5rem;
-      padding-bottom: 1rem;
-      border-bottom: 1px solid rgba(173, 216, 230, 0.3);
-    }
-
-    .modal-title {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: #add8e6;
-    }
-
-    .close-modal {
-      background: none;
-      border: none;
-      font-size: 1.5rem;
-      color: #e0e0e0;
-      cursor: pointer;
-      transition: color 0.3s ease;
-    }
-
-    .close-modal:hover {
-      color: #add8e6;
-    }
-
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 1rem;
-      margin-top: 2rem;
-      padding-top: 1rem;
-      border-top: 1px solid rgba(173, 216, 230, 0.3);
-    }
-
-    /* Responsividade */
-    @media (max-width: 768px) {
-      #main-content-propostas-hvc {
-        margin-left: 0;
-        padding: 1rem;
-      }
-
-      .form-row {
-        grid-template-columns: 1fr;
-      }
-
-      .page-header {
-        flex-direction: column;
-        gap: 1rem;
-        text-align: center;
-      }
-
-      .services-table,
-      .proposals-table {
-        font-size: 0.9rem;
-      }
-
-      .modal-content {
-        width: 95%;
-        padding: 1rem;
-      }
-    }
-
-    /* Animações */
-    .fade-in {
-      animation: fadeIn 0.3s ease-in;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .loading {
-      opacity: 0.6;
-      pointer-events: none;
-    }
-
-    .loading::after {
-      content: '';
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      width: 20px;
-      height: 20px;
-      margin: -10px 0 0 -10px;
-      border: 2px solid #add8e6;
-      border-radius: 50%;
-      border-top-color: transparent;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
-  <link rel="stylesheet" href="propostas-hvc-precos.css">
-</head>
-<body>
-  <main id="main-content-propostas-hvc">
-    <!-- Cabeçalho da Página -->
-    <div class="page-header">
-      <h1 class="page-title">
-        <i class="fas fa-file-contract"></i>
-        Gerenciamento de Propostas HVC
-      </h1>
-      <button class="btn-primary" id="btn-nova-proposta">
-        <i class="fas fa-plus"></i>
-        Nova Proposta
-      </button>
-    </div>
-
-    <!-- Formulário de Nova/Editar Proposta -->
-    <div class="form-section hidden" id="form-proposta">
-      <div class="form-title">
-        <i class="fas fa-edit"></i>
-        <span id="form-title-text">Nova Proposta</span>
-      </div>
-
-      <form id="proposta-form">
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" for="numero-proposta">
-              Número da Proposta *
-            </label>
-            <input 
-              type="text" 
-              id="numero-proposta" 
-              class="form-input" 
-              placeholder="0000/0000"
-              maxlength="9"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cliente-select">
-              Cliente *
-            </label>
-            <div class="input-group">
-              <select id="cliente-select" class="form-select" required>
-                <option value="">Selecione um cliente...</option>
-              </select>
-              <button type="button" class="btn-add" id="btn-add-cliente">
-                <i class="fas fa-plus"></i>
-              </button>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="status-select">
-              Status *
-            </label>
-            <select id="status-select" class="form-select" required>
-              <option value="Pendente">Pendente</option>
-              <option value="Aprovada">Aprovada</option>
-              <option value="Recusada">Recusada</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- CORREÇÃO: Campos de Prazo reorganizados para evitar sobreposição -->
-        <div class="prazo-container">
-          <div class="form-group">
-            <label class="form-label" for="prazo-execucao">
-              Prazo de Execução *
-            </label>
-            <div class="prazo-fields">
-              <input 
-                type="number" 
-                id="prazo-execucao" 
-                class="form-input" 
-                placeholder="Ex: 30"
-                min="1"
-                required
-              >
-              <select id="tipo-prazo" class="form-select" required>
-                <option value="corridos">Dias Corridos</option>
-                <option value="uteis">Dias Úteis</option>
-                <option value="cronograma">De Acordo com Cronograma da Obra</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- CORREÇÃO: Campo de Forma de Pagamento em container separado -->
-        <div class="forma-pagamento-container">
-          <div class="form-group">
-            <label class="form-label" for="forma-pagamento">
-              Forma de Pagamento *
-            </label>
-            <input 
-              type="text" 
-              id="forma-pagamento" 
-              class="form-input" 
-              placeholder="Ex: À vista, 30/60/90 dias, PIX, etc."
-              required
-            >
-          </div>
-        </div>
-
-        <!-- Seção de Serviços -->
-        <div class="services-section">
-          <div class="form-title">
-            <i class="fas fa-tools"></i>
-            Serviços da Proposta
-            <button type="button" class="btn-add" id="btn-add-servico">
-              <i class="fas fa-plus"></i>
-              Adicionar Serviço
-            </button>
-          </div>
-
-          <table class="services-table" id="services-table">
-            <thead>
-              <tr>
-                <th>Serviço</th>
-                <th>
-                  Local
-                  <button type="button" 
-                          class="btn-secondary" 
-                          onclick="window.propostasManager.showModalGerenciarLocais()" 
-                          style="margin-left: 0.5rem; padding: 4px 8px; font-size: 0.8rem;"
-                          title="Gerenciar Locais">
-                    <i class="fas fa-cog"></i>
-                  </button>
-                </th>
-                <th>Quantidade</th>
-                <th>Unidade</th>
-                <th>Mão de Obra (R$)</th>
-                <th>Material (R$)</th>
-                <th>Total (R$)</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody id="services-tbody">
-              <!-- Serviços serão adicionados dinamicamente -->
-            </tbody>
-          </table>
-
-          <div class="total-display">
-            <div>Total da Proposta:</div>
-            <div class="total-value" id="total-proposta">R$ 0,00</div>
-          </div>
-        </div>
-
-        <div class="form-group">
-          <label class="form-label" for="observacoes">
-            Observações
-          </label>
-          <textarea 
-            id="observacoes" 
-            class="form-input" 
-            rows="3"
-            placeholder="Observações adicionais sobre a proposta..."
-          ></textarea>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" id="btn-cancelar">
-            <i class="fas fa-times"></i>
-            Cancelar
-          </button>
-          <button type="submit" class="btn-success" id="btn-salvar">
-            <i class="fas fa-save"></i>
-            Salvar Proposta
-          </button>
-        </div>
-      </form>
-    </div>
-
-    <!-- Lista de Propostas -->
-    <div class="proposals-list" id="proposals-list">
-      <div class="form-title">
-        <i class="fas fa-list"></i>
-        Lista de Propostas
-      </div>
-
-      <table class="proposals-table" id="proposals-table">
-        <thead>
-          <tr>
-            <th>Número</th>
-            <th>Cliente</th>
-            <th>Total</th>
-            <th>Prazo</th>
-            <th>Pagamento</th>
-            <th>Status</th>
-            <th>Data</th>
-            <th>Ações</th>
-          </tr>
-        </thead>
-        <tbody id="proposals-tbody">
-          <!-- Propostas serão carregadas dinamicamente -->
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Modal Adicionar Serviço -->
-    <div class="modal" id="modal-servico">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Serviço</h3>
-          <button class="close-modal" id="close-modal-servico">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <form id="servico-form">
-          <div class="form-group">
-            <label class="form-label" for="servico-codigo">
-              Código do Serviço *
-            </label>
-            <input 
-              type="text" 
-              id="servico-codigo" 
-              class="form-input" 
-              placeholder="Ex: 001"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-descricao">
-              Descrição *
-            </label>
-            <input 
-              type="text" 
-              id="servico-descricao" 
-              class="form-input" 
-              placeholder="Ex: Pintura de parede"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-detalhe">
-              Detalhe
-            </label>
-            <input 
-              type="text" 
-              id="servico-detalhe" 
-              class="form-input" 
-              placeholder="Detalhes adicionais do serviço"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="servico-unidade">
-              Unidade *
-            </label>
-            <select 
-              id="servico-unidade" 
-              class="form-select" 
-              required
-            >
-              <option value="">Selecione uma unidade</option>
-              <option value="m">Metro (m)</option>
-              <option value="m²">Metro Quadrado (m²)</option>
-              <option value="m³">Metro Cúbico (m³)</option>
-              <option value="kg">Quilograma (kg)</option>
-              <option value="t">Tonelada (t)</option>
-              <option value="un">Unidade (un)</option>
-              <option value="h">Hora (h)</option>
-              <option value="dia">Dia (dia)</option>
-              <option value="mês">Mês (mês)</option>
-              <option value="vb">Verba (vb)</option>
-            </select>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="cancel-servico">
-              Cancelar
-            </button>
-            <button type="submit" class="btn-success">
-              <i class="fas fa-save"></i>
-              Criar Serviço
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Modal Adicionar Cliente -->
-    <div class="modal" id="modal-cliente">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title">Adicionar Novo Cliente</h3>
-          <button class="close-modal" id="close-modal-cliente">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <form id="cliente-form">
-          <div class="form-group">
-            <label class="form-label" for="cliente-nome">
-              Nome do Cliente *
-            </label>
-            <input 
-              type="text" 
-              id="cliente-nome" 
-              class="form-input" 
-              placeholder="Nome completo do cliente"
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cliente-email">
-              Email
-            </label>
-            <input 
-              type="email" 
-              id="cliente-email" 
-              class="form-input" 
-              placeholder="email@exemplo.com"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cliente-telefone">
-              Telefone
-            </label>
-            <input 
-              type="tel" 
-              id="cliente-telefone" 
-              class="form-input" 
-              placeholder="(11) 99999-9999"
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="cliente-endereco">
-              Endereço
-            </label>
-            <textarea 
-              id="cliente-endereco" 
-              class="form-input" 
-              rows="3"
-              placeholder="Endereço completo do cliente"
-            ></textarea>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="cancel-cliente">
-              Cancelar
-            </button>
-            <button type="submit" class="btn-success">
-              <i class="fas fa-save"></i>
-              Salvar Cliente
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- NOVO: Modal Adicionar Local -->
-    <div class="modal" id="modal-local">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title" id="modal-local-title">Adicionar Novo Local</h3>
-          <button class="close-modal" id="close-modal-local">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <form id="local-form">
-          <div class="form-group">
-            <label class="form-label" for="local-nome">
-              Nome do Local *
-            </label>
-            <input 
-              type="text" 
-              id="local-nome" 
-              class="form-input" 
-              placeholder="Ex: Sala de Estar, Cozinha, etc."
-              required
-            >
-          </div>
-
-          <div class="form-group">
-            <label class="form-label" for="local-descricao">
-              Descrição
-            </label>
-            <textarea 
-              id="local-descricao" 
-              class="form-input" 
-              rows="3"
-              placeholder="Descrição detalhada do local"
-            ></textarea>
-          </div>
-
-          <div class="modal-footer">
-            <button type="button" class="btn-secondary" id="cancel-local">
-              Cancelar
-            </button>
-            <button type="submit" class="btn-success">
-              <i class="fas fa-save"></i>
-              Salvar Local
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-
-    <!-- Modal Gerenciar Locais -->
-    <div class="modal" id="modal-gerenciar-locais">
-      <div class="modal-content" style="max-width: 800px;">
-        <div class="modal-header">
-          <h3 class="modal-title">
-            <i class="fas fa-map-marker-alt"></i> Gerenciar Locais
-          </h3>
-          <button class="close-modal" id="close-modal-gerenciar-locais">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <div style="margin-bottom: 1.5rem;">
-          <button type="button" class="btn-primary" onclick="window.propostasManager.showModalLocal()">
-            <i class="fas fa-plus"></i> Novo Local
-          </button>
-        </div>
-
-        <div style="max-height: 500px; overflow-y: auto;">
-          <table class="services-table" id="locais-gerenciar-table">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Descrição</th>
-                <th>Status</th>
-                <th style="width: 120px;">Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              <!-- Preenchido via JavaScript -->
-            </tbody>
-          </table>
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" id="close-gerenciar-locais-btn">
-            <i class="fas fa-times"></i> Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal de Confirmação de Exclusão de Local -->
-    <div class="modal" id="modal-delete-local-confirm">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h3 class="modal-title">Confirmar Exclusão</h3>
-          <button class="close-modal" id="close-modal-delete-local">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <div id="delete-local-message" style="margin: 1.5rem 0; color: #e0e0e0;">
-          <!-- Mensagem preenchida via JavaScript -->
-        </div>
-
-        <div class="modal-footer">
-          <button type="button" class="btn-secondary" id="cancel-delete-local">
-            <i class="fas fa-times"></i> Cancelar
-          </button>
-          <button type="button" class="btn-danger" id="confirm-delete-local">
-            <i class="fas fa-trash"></i> Excluir
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Modal Visualizar Proposta -->
-    <div class="modal" id="modal-view-proposta">
-      <div class="modal-content" id="modal-view-proposta-content" style="max-width: 900px; width: 900px; max-height: 90vh; display: flex; flex-direction: column; resize: both; overflow: hidden; position: relative;">
-        <div class="modal-header" id="modal-view-proposta-header" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 1.5rem; cursor: move; flex-shrink: 0;">
-          <h3 class="modal-title" style="font-size: 1.5rem; font-weight: 600; user-select: none;">
-            <i class="fas fa-file-invoice"></i> Visualização de Proposta
-          </h3>
-          <button class="close-modal" id="close-modal-view-proposta" style="color: white;">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <div id="modal-view-proposta-body" style="padding: 2rem; background: #0a1628; overflow-y: auto; flex: 1;">
-          <!-- Cabeçalho da Proposta -->
-          <div style="background: linear-gradient(135deg, rgba(30, 60, 114, 0.3) 0%, rgba(42, 82, 152, 0.3) 100%); border-left: 4px solid #2a5298; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
-            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
-              <div>
-                <h4 style="color: #add8e6; font-size: 1.2rem; margin: 0 0 0.5rem 0;">
-                  <i class="fas fa-hashtag"></i> <span id="view-numero-proposta"></span>
-                </h4>
-                <p style="color: #c0c0c0; margin: 0; font-size: 0.9rem;">
-                  <i class="fas fa-calendar-alt"></i> Criada em: <span id="view-data-criacao"></span>
-                </p>
-              </div>
-              <div id="view-status-badge" style="padding: 0.5rem 1rem; border-radius: 20px; font-weight: 600; font-size: 0.9rem;">
-                <!-- Status -->
-              </div>
-            </div>
-          </div>
-
-          <!-- Informações do Cliente -->
-          <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <h5 style="color: #add8e6; margin: 0 0 1rem 0; font-size: 1.1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.3); padding-bottom: 0.5rem;">
-              <i class="fas fa-user"></i> Informações do Cliente
-            </h5>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
-              <div>
-                <p style="color: #808080; margin: 0 0 0.3rem 0; font-size: 0.85rem;">Nome do Cliente</p>
-                <p style="color: #e0e0e0; margin: 0; font-size: 1rem; font-weight: 500;" id="view-cliente-nome"></p>
-              </div>
-              <div>
-                <p style="color: #808080; margin: 0 0 0.3rem 0; font-size: 0.85rem;">Documento</p>
-                <p style="color: #e0e0e0; margin: 0; font-size: 1rem; font-weight: 500;" id="view-cliente-documento"></p>
-              </div>
-            </div>
-            
-            <!-- Responsáveis -->
-            <div style="margin-top: 1.5rem;">
-              <p style="color: #808080; margin: 0 0 0.8rem 0; font-size: 0.85rem;">
-                <i class="fas fa-users"></i> Responsáveis em Atenção
-              </p>
-              <div id="view-responsaveis-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                <!-- Responsáveis preenchidos via JS -->
-              </div>
-            </div>
-          </div>
-
-          <!-- Detalhes da Proposta -->
-          <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <h5 style="color: #add8e6; margin: 0 0 1rem 0; font-size: 1.1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.3); padding-bottom: 0.5rem;">
-              <i class="fas fa-info-circle"></i> Detalhes da Proposta
-            </h5>
-            <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
-              <div>
-                <p style="color: #808080; margin: 0 0 0.3rem 0; font-size: 0.85rem;">Valor Total</p>
-                <p style="color: #28a745; margin: 0; font-size: 1.3rem; font-weight: 700;" id="view-total-proposta"></p>
-              </div>
-              <div>
-                <p style="color: #808080; margin: 0 0 0.3rem 0; font-size: 0.85rem;">Prazo de Execução</p>
-                <p style="color: #e0e0e0; margin: 0; font-size: 1rem; font-weight: 500;" id="view-prazo"></p>
-              </div>
-              <div>
-                <p style="color: #808080; margin: 0 0 0.3rem 0; font-size: 0.85rem;">Forma de Pagamento</p>
-                <p style="color: #e0e0e0; margin: 0; font-size: 1rem; font-weight: 500;" id="view-forma-pagamento"></p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Serviços -->
-          <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem;">
-            <h5 style="color: #add8e6; margin: 0 0 1rem 0; font-size: 1.1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.3); padding-bottom: 0.5rem;">
-              <i class="fas fa-list"></i> Serviços Incluídos
-            </h5>
-            <div id="view-servicos-list" style="max-height: 300px; overflow-y: auto;">
-              <!-- Serviços preenchidos via JS -->
-            </div>
-          </div>
-
-          <!-- Observações -->
-          <div style="background: rgba(255, 255, 255, 0.05); border-radius: 8px; padding: 1.5rem;">
-            <h5 style="color: #add8e6; margin: 0 0 1rem 0; font-size: 1.1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.3); padding-bottom: 0.5rem;">
-              <i class="fas fa-comment-dots"></i> Observações
-            </h5>
-            <p style="color: #e0e0e0; margin: 0; line-height: 1.6; white-space: pre-wrap;" id="view-observacoes"></p>
-          </div>
-        </div>
-
-        <div class="modal-footer" style="background: rgba(255, 255, 255, 0.03); padding: 1rem 2rem; flex-shrink: 0;">
-          <button type="button" class="btn-secondary" id="close-view-proposta-btn">
-            <i class="fas fa-times"></i> Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-<!-- Modal Gerar Proposta em PDF -->
-<div class="modal" id="modal-gerar-pdf">
-  <div class="modal-content" style="max-width: 1200px; width: 95%; max-height: 95vh; display: flex; flex-direction: column;">
-    <div class="modal-header" style="background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%); color: white; padding: 1.5rem; flex-shrink: 0;">
-      <h3 class="modal-title" style="font-size: 1.5rem; font-weight: 600;">
-        <i class="fas fa-file-pdf"></i> Gerar Proposta em PDF
-      </h3>
-      <button class="close-modal" id="close-modal-gerar-pdf" style="color: white;">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
-
-    <div style="display: grid; grid-template-columns: 400px 1fr; gap: 0; flex: 1; overflow: hidden;">
-      <!-- Painel de Configurações -->
-      <div style="background: rgba(255, 255, 255, 0.05); padding: 2rem; overflow-y: auto; border-right: 2px solid rgba(173, 216, 230, 0.2);">
-        <h4 style="color: #add8e6; margin: 0 0 1.5rem 0; font-size: 1.1rem; border-bottom: 2px solid rgba(173, 216, 230, 0.3); padding-bottom: 0.5rem;">
-          <i class="fas fa-cog"></i> Configurações da Proposta
-        </h4>
-
-        <!-- Nome da Obra -->
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label class="form-label" for="pdf-nome-obra" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
-            <i class="fas fa-building"></i> Nome da Obra
-          </label>
-          <input 
-            type="text" 
-            id="pdf-nome-obra" 
-            class="form-input" 
-            placeholder="Ex: Edifício Casa Boa Viagem"
-            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
-          >
-          <small style="color: #808080; font-size: 0.85rem; margin-top: 0.3rem; display: block;">
-            Deixe vazio para usar observações
-          </small>
-        </div>
-
-        <!-- Representante -->
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label class="form-label" for="pdf-representante" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
-            <i class="fas fa-user-tie"></i> Representante (Att:) *
-          </label>
-          <select 
-            id="pdf-representante" 
-            class="form-input" 
-            required
-            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
-          >
-            <option value="">Selecione um representante</option>
-            <!-- Preenchido via JavaScript -->
-          </select>
-        </div>
-
-        <!-- Juntar Preço -->
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label class="form-label" for="pdf-juntar-preco" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
-            <i class="fas fa-calculator"></i> Juntar Preço
-          </label>
-          <select 
-            id="pdf-juntar-preco" 
-            class="form-select" 
-            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
-          >
-            <option value="sim" style="background: #1a1a2e; color: #e0e0e0;">Sim - Mostrar apenas valor unitário total</option>
-            <option value="nao" style="background: #1a1a2e; color: #e0e0e0;">Não - Mostrar Mão de Obra + Material separados</option>
-          </select>
-          <small style="color: #808080; font-size: 0.85rem; margin-top: 0.3rem; display: block;">
-            Escolha como exibir a composição do valor unitário
-          </small>
-        </div>
-
-        <!-- Data da Proposta -->
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label class="form-label" for="pdf-data-proposta" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
-            <i class="fas fa-calendar-alt"></i> Data da Proposta *
-          </label>
-          <input 
-            type="date" 
-            id="pdf-data-proposta" 
-            class="form-input" 
-            required
-            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
-          >
-          <small style="color: #808080; font-size: 0.85rem; margin-top: 0.3rem; display: block;">
-            Data que aparecerá na proposta
-          </small>
-        </div>
-
-        <!-- Assinante -->
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label class="form-label" for="pdf-assinante" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
-            <i class="fas fa-signature"></i> Assinante *
-          </label>
-          <select 
-            id="pdf-assinante" 
-            class="form-input" 
-            required
-            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
-          >
-            <option value="Hermógenes C. P. Viana">Hermógenes C. P. Viana</option>
-            <option value="Hugo Távora Tavares Cavalcanti Viana">Hugo Távora Tavares Cavalcanti Viana</option>
-          </select>
-        </div>
-
-        <!-- Formato -->
-        <div class="form-group" style="margin-bottom: 1.5rem;">
-          <label class="form-label" for="pdf-formato" style="color: #e0e0e0; font-weight: 500; margin-bottom: 0.5rem; display: block;">
-            <i class="fas fa-file-alt"></i> Formato da Proposta *
-          </label>
-          <select 
-            id="pdf-formato" 
-            class="form-input" 
-            required
-            style="width: 100%; padding: 0.75rem; background: rgba(255, 255, 255, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #e0e0e0;"
-          >
-            <option value="tabela">Tabela Profissional (Recomendado)</option>
-            <option value="simples">Texto Simples</option>
-          </select>
-        </div>
-
-        <!-- Botões de Ação -->
-        <div style="margin-top: 2rem; padding-top: 1.5rem; border-top: 2px solid rgba(173, 216, 230, 0.2);">
-          <button 
-            type="button" 
-            id="btn-atualizar-preview" 
-            class="btn-primary" 
-            style="width: 100%; margin-bottom: 1rem; padding: 0.75rem; font-size: 1rem;"
-          >
-            <i class="fas fa-sync-alt"></i> Atualizar Preview
-          </button>
-          
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
-            <button 
-              type="button" 
-              id="btn-salvar-pdf-pc" 
-              class="btn-info" 
-              style="padding: 0.75rem; font-size: 1rem; background: linear-gradient(135deg, #17a2b8, #138496); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s;"
-            >
-              <i class="fas fa-download"></i> Salvar em PDF no PC
-            </button>
-            
-            <button 
-              type="button" 
-              id="btn-salvar-pdf" 
-              class="btn-success" 
-              style="padding: 0.75rem; font-size: 1rem; background: linear-gradient(135deg, #28a745, #218838); color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.3s;"
-            >
-              <i class="fas fa-save"></i> Salvar em PDF no OneDrive
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Preview da Proposta -->
-      <div style="background: white; padding: 2rem; overflow-y: auto;">
-        <div style="text-align: center; margin-bottom: 1rem;">
-          <span style="color: #808080; font-size: 0.9rem; font-style: italic;">
-            <i class="fas fa-eye"></i> Preview da Proposta
-          </span>
-        </div>
+    initializeEventListeners() {
+        console.log('DEBUG: initializeEventListeners() chamado');
         
-        <div id="pdf-preview-container" style="max-width: 210mm; margin: 0 auto; background: white; box-shadow: 0 0 20px rgba(0,0,0,0.1); min-height: 297mm;">
-          <!-- Preview será inserido aqui -->
-          <div style="padding: 40px; text-align: center; color: #808080;">
-            <i class="fas fa-file-pdf" style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.3;"></i>
-            <p>Clique em "Atualizar Preview" para visualizar a proposta</p>
-          </div>
-        </div>
-      </div>
-    </div>
+        // Botão Atualizar Preview
+        const btnAtualizarPreview = document.getElementById('btn-atualizar-preview');
+        console.log('DEBUG: btn-atualizar-preview encontrado:', !!btnAtualizarPreview);
+        btnAtualizarPreview?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Atualizar Preview clicado');
+            this.updatePreview();
+        });
 
-    <div class="modal-footer" style="background: rgba(255, 255, 255, 0.03); padding: 1rem 2rem; flex-shrink: 0; border-top: 2px solid rgba(173, 216, 230, 0.2);">
-      <button type="button" class="btn-secondary" id="close-gerar-pdf-btn">
-        <i class="fas fa-times"></i> Fechar
-      </button>
-    </div>
-  </div>
-</div>
+        // Botão Salvar PDF no OneDrive
+        const btnSalvarPdf = document.getElementById('btn-salvar-pdf');
+        console.log('DEBUG: btn-salvar-pdf encontrado:', !!btnSalvarPdf);
+        btnSalvarPdf?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Salvar PDF OneDrive clicado');
+            this.savePDFToOneDrive();
+        });
 
-<!-- Modal Seletor de Pasta OneDrive -->
-<div class="modal" id="modal-onedrive-folder">
-  <div class="modal-content" style="max-width: 700px; width: 90%; min-height: 600px; max-height: 90vh; resize: both; overflow: auto;">
-    <div class="modal-header" style="background: linear-gradient(135deg, #0078D4, #005A9E); color: white;">
-      <h3 class="modal-title">
-        <i class="fab fa-microsoft"></i> Selecionar Pasta no OneDrive
-      </h3>
-      <button class="close-modal" id="close-modal-onedrive-folder" style="color: white;">
-        <i class="fas fa-times"></i>
-      </button>
-    </div>
+        // Botão Salvar PDF no PC
+        const btnSalvarPdfPc = document.getElementById('btn-salvar-pdf-pc');
+        console.log('DEBUG: btn-salvar-pdf-pc encontrado:', !!btnSalvarPdfPc);
+        btnSalvarPdfPc?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Salvar PDF PC clicado');
+            this.downloadPDFToPC();
+        });
 
-    <div style="padding: 2rem;">
-      <!-- Breadcrumb -->
-      <div id="onedrive-breadcrumb" style="background: rgba(0, 120, 212, 0.1); padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.9rem; color: #0078D4;">
-        <i class="fas fa-folder-open"></i> <span id="breadcrumb-path">Meu OneDrive</span>
-      </div>
+        // Fechar modais
+        const closeModalGerarPdf = document.getElementById('close-modal-gerar-pdf');
+        console.log('DEBUG: close-modal-gerar-pdf encontrado:', !!closeModalGerarPdf);
+        closeModalGerarPdf?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Fechar Modal PDF clicado');
+            this.closeModal();
+        });
 
-      <!-- Lista de Pastas -->
-      <div id="onedrive-folders-list" style="max-height: 400px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px;">
-        <!-- Pastas serão carregadas aqui -->
-        <div style="padding: 2rem; text-align: center; color: #808080;">
-          <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-          <p>Carregando pastas...</p>
-        </div>
-      </div>
+        const closeGerarPdfBtn = document.getElementById('close-gerar-pdf-btn');
+        console.log('DEBUG: close-gerar-pdf-btn encontrado:', !!closeGerarPdfBtn);
+        closeGerarPdfBtn?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Fechar Gerar PDF clicado');
+            this.closeModal();
+        });
 
-      <!-- Nome do Arquivo -->
-      <div style="margin-top: 1.5rem;">
-        <label for="pdf-filename-input" style="display: block; margin-bottom: 0.5rem; color: #e0e0e0; font-weight: 500;">
-          <i class="fas fa-file-signature"></i> Nome do Arquivo:
-        </label>
-        <input 
-          type="text" 
-          id="pdf-filename-input" 
-          placeholder="Ex: Proposta_1234_2025"
-          style="width: 100%; padding: 0.75rem; background: white; border: 1px solid #ddd; border-radius: 6px; color: #333; font-size: 0.95rem;"
-        >
-        <small style="color: #808080; font-size: 0.85rem; margin-top: 0.3rem; display: block;">
-          A extensão .pdf será adicionada automaticamente
-        </small>
-      </div>
+        const closeModalOnedrive = document.getElementById('close-modal-onedrive-folder');
+        console.log('DEBUG: close-modal-onedrive-folder encontrado:', !!closeModalOnedrive);
+        closeModalOnedrive?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Fechar Modal OneDrive clicado');
+            this.closeFolderModal();
+        });
 
-      <!-- Pasta Selecionada -->
-      <div style="margin-top: 1.5rem; padding: 1rem; background: rgba(40, 167, 69, 0.1); border: 1px solid #28a745; border-radius: 6px;">
-        <p style="margin: 0 0 0.5rem 0; color: #e0e0e0; font-size: 0.9rem;">
-          <i class="fas fa-check-circle" style="color: #28a745;"></i> Pasta Selecionada:
-        </p>
-        <p id="selected-folder-path" style="margin: 0; color: #28a745; font-weight: 600;">
-          Nenhuma pasta selecionada
-        </p>
-      </div>
-    </div>
+        const cancelFolderBtn = document.getElementById('cancel-folder-selection');
+        console.log('DEBUG: cancel-folder-selection encontrado:', !!cancelFolderBtn);
+        cancelFolderBtn?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Cancelar Seleção Pasta clicado');
+            this.closeFolderModal();
+        });
 
-    <div class="modal-footer">
-      <button type="button" class="btn-secondary" id="cancel-folder-selection">
-        <i class="fas fa-times"></i> Cancelar
-      </button>
-      <button type="button" class="btn-success" id="confirm-folder-selection" disabled>
-        <i class="fas fa-check"></i> Confirmar
-      </button>
-    </div>
-  </div>
-</div>
-
-
-<!-- Modal de Confirmação de Sobrescrita -->
-<div id="modal-confirm-overwrite" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.7); z-index: 10000; align-items: center; justify-content: center;">
-  <div style="background: #1a1a2e; border-radius: 12px; max-width: 500px; width: 90%; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); border: 2px solid rgba(173, 216, 230, 0.3);">
-    <!-- Header -->
-    <div style="background: linear-gradient(135deg, #dc3545, #c82333); color: white; padding: 1.5rem; border-radius: 10px 10px 0 0;">
-      <h3 style="margin: 0; font-size: 1.3rem; font-weight: 600;">
-        <i class="fas fa-exclamation-triangle"></i> Arquivo Já Existe
-      </h3>
-    </div>
-
-    <!-- Body -->
-    <div style="padding: 2rem;">
-      <p style="color: #e0e0e0; margin: 0 0 1rem 0; font-size: 1rem; line-height: 1.6;">
-        O arquivo <strong style="color: #add8e6;"><span id="existing-filename"></span></strong> já existe nesta pasta.
-      </p>
-      <p style="color: #e0e0e0; margin: 0; font-size: 1rem; line-height: 1.6;">
-        Deseja sobrescrever o arquivo existente?
-      </p>
-    </div>
-
-    <!-- Footer -->
-    <div style="padding: 1rem 2rem 1.5rem; display: flex; gap: 1rem; justify-content: flex-end;">
-      <button 
-        type="button" 
-        id="cancel-overwrite-btn" 
-        style="padding: 0.75rem 1.5rem; background: #6c757d; color: white; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; transition: all 0.3s;"
-        onmouseover="this.style.background='#5a6268'" 
-        onmouseout="this.style.background='#6c757d'"
-      >
-        <i class="fas fa-times"></i> Cancelar
-      </button>
-      <button 
-        type="button" 
-        id="confirm-overwrite-btn" 
-        style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #dc3545, #c82333); color: white; border: none; border-radius: 6px; font-size: 1rem; cursor: pointer; transition: all 0.3s;"
-        onmouseover="this.style.background='linear-gradient(135deg, #c82333, #bd2130)'" 
-        onmouseout="this.style.background='linear-gradient(135deg, #dc3545, #c82333)'"
-      >
-        <i class="fas fa-check"></i> Sobrescrever
-      </button>
-    </div>
-  </div>
-</div>
-  </main>
-
-  <script type="module" src="sidebar.js"></script>
-<script type="module" src="supabase.js"></script>
-<script defer src="propostas-hvc.js"></script>
-<script defer src="propostas-pdf-generator.js"></script>
-<script defer src="onedrive-auth.js"></script>
-<script type="module">
-  import { injectSidebar } from './sidebar.js';
-  document.addEventListener('DOMContentLoaded', () => {
-    if (typeof injectSidebar === 'function') {
-      injectSidebar('main-content-propostas-hvc');
-    } else {
-      console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
+        const confirmFolderBtn = document.getElementById('confirm-folder-selection');
+        console.log('DEBUG: confirm-folder-selection encontrado:', !!confirmFolderBtn);
+        confirmFolderBtn?.addEventListener('click', () => {
+            console.log('DEBUG: Botão Confirmar Seleção Pasta clicado');
+            this.confirmFolderSelection();
+        });
+        
+        console.log('DEBUG: Todos os event listeners configurados');
     }
-  });
-</script>
-<script defer src="propostas-hvc-precos.js"></script>
-</body>
-</html>
+
+    async openModal(propostaId) {
+        try {
+            this.currentPropostaId = propostaId;
+            
+            // Carregar dados da proposta
+            await this.loadPropostaData();
+            
+            // Preencher formulário
+            this.populateForm();
+            
+            // Abrir modal
+            const modal = document.getElementById('modal-gerar-pdf');
+            if (modal) {
+                modal.classList.add('show');
+            }
+            
+        } catch (error) {
+            console.error('Erro ao abrir modal de PDF:', error);
+            alert('Erro ao carregar dados da proposta: ' + error.message);
+        }
+    }
+
+    async loadPropostaData() {
+        if (!supabaseClient) {
+            throw new Error('Supabase não inicializado');
+        }
+
+        // Carregar proposta com cliente
+        const { data: proposta, error: propostaError } = await supabaseClient
+            .from('propostas_hvc')
+            .select(`
+                *,
+                clientes_hvc (
+                    id,
+                    nome,
+                    documento,
+                    tipo_documento
+                )
+            `)
+            .eq('id', this.currentPropostaId)
+            .single();
+
+        if (propostaError) throw propostaError;
+        this.propostaData = proposta;
+        this.currentProposta = proposta;
+
+        // Carregar responsáveis do cliente
+        const { data: responsaveis, error: responsaveisError } = await supabaseClient
+            .from('responsaveis_cliente_hvc')
+            .select('*')
+            .eq('cliente_id', proposta.cliente_id);
+
+        if (responsaveisError) throw responsaveisError;
+        this.responsaveis = responsaveis || [];
+
+        // Carregar itens da proposta
+        const { data: itens, error: itensError } = await supabaseClient
+            .from('itens_proposta_hvc')
+            .select(`
+                *,
+                servico:servicos_hvc(*),
+                local:locais_hvc(nome)
+            `)
+            .eq('proposta_id', this.currentPropostaId);
+
+        if (itensError) throw itensError;
+        this.itens = itens || [];
+    }
+
+    populateForm() {
+        // Preencher seletor de representantes
+        const selectRepresentante = document.getElementById('pdf-representante');
+        if (selectRepresentante) {
+            selectRepresentante.innerHTML = '<option value="">Selecione um representante</option>';
+            
+            this.responsaveis.forEach(resp => {
+                const option = document.createElement('option');
+                option.value = resp.nome;
+                option.textContent = resp.nome;
+                selectRepresentante.appendChild(option);
+            });
+
+            // Se houver apenas um responsável, selecionar automaticamente
+            if (this.responsaveis.length === 1) {
+                selectRepresentante.value = this.responsaveis[0].nome;
+            }
+        }
+
+        // Preencher nome da obra com observações se houver
+        const inputNomeObra = document.getElementById('pdf-nome-obra');
+        if (inputNomeObra && this.propostaData.observacoes) {
+            inputNomeObra.value = this.propostaData.observacoes.substring(0, 100);
+        }
+
+        // Selecionar assinante padrão
+        const selectAssinante = document.getElementById('pdf-assinante');
+        if (selectAssinante) {
+            selectAssinante.value = 'Hermógenes C. P. Viana';
+        }
+
+        // Selecionar formato padrão
+        const selectFormato = document.getElementById('pdf-formato');
+        if (selectFormato) {
+            selectFormato.value = 'tabela';
+        }
+
+        // Preencher data da proposta com data atual
+        const inputDataProposta = document.getElementById('pdf-data-proposta');
+        if (inputDataProposta) {
+            const hoje = new Date();
+            const dataFormatada = hoje.toISOString().split('T')[0];
+            inputDataProposta.value = dataFormatada;
+        }
+    }
+
+    updatePreview() {
+        try {
+            // Validar campos obrigatórios
+            const representante = document.getElementById('pdf-representante')?.value;
+            if (!representante) {
+                alert('Por favor, selecione um representante.');
+                return;
+            }
+
+            const assinante = document.getElementById('pdf-assinante')?.value;
+            if (!assinante) {
+                alert('Por favor, selecione um assinante.');
+                return;
+            }
+
+            const dataProposta = document.getElementById('pdf-data-proposta')?.value;
+            if (!dataProposta) {
+                alert('Por favor, selecione a data da proposta.');
+                return;
+            }
+
+            // Coletar dados do formulário
+            const formData = {
+                nomeObra: document.getElementById('pdf-nome-obra')?.value || this.propostaData.observacoes || 'Não informado',
+                representante: representante,
+                dataProposta: dataProposta,
+                assinante: assinante,
+                formato: document.getElementById('pdf-formato')?.value || 'tabela',
+                juntarPreco: document.getElementById('pdf-juntar-preco')?.value || 'sim'
+            };
+
+            // Gerar HTML da proposta
+            const html = this.generatePropostaHTML(formData);
+
+            // Inserir no preview
+            const previewContainer = document.getElementById('pdf-preview-container');
+            if (previewContainer) {
+                previewContainer.innerHTML = html;
+            }
+
+        } catch (error) {
+            console.error('Erro ao atualizar preview:', error);
+            alert('Erro ao gerar preview: ' + error.message);
+        }
+    }
+
+    generatePropostaHTML(formData) {
+        const { nomeObra, representante, dataProposta, assinante, formato, juntarPreco } = formData;
+        const proposta = this.propostaData;
+        const cliente = proposta.clientes_hvc;
+
+        // Formatar data da proposta
+        const dataObj = new Date(dataProposta + 'T12:00:00');
+        const dataFormatada = dataObj.toLocaleDateString('pt-BR', {
+            day: '2-digit',
+            month: 'long',
+            year: 'numeric'
+        });
+        const diaSemana = dataObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+        const dataCompleta = `${diaSemana}, ${dataFormatada}`;
+
+        // Formatar prazo
+        let prazoTexto = '';
+        if (proposta.tipo_prazo === 'cronograma') {
+            prazoTexto = 'De acordo com o cronograma da obra.';
+        } else {
+            const tipoDias = proposta.tipo_prazo === 'uteis' ? 'dias úteis' : 'dias corridos';
+            prazoTexto = `${proposta.prazo_execucao || 0} ${tipoDias}`;
+        }
+
+        // Gerar conteúdo baseado no formato
+        let conteudo = '';
+
+        if (formato === 'tabela') {
+            conteudo = this.generateTabelaFormat(nomeObra, representante, dataCompleta, juntarPreco);
+        } else {
+            conteudo = this.generateSimplesFormat(nomeObra, representante, juntarPreco);
+        }
+
+        // Template completo - Layout A4 (cabeçalho e rodapé serão adicionados via jsPDF)
+        return `
+            <div style="font-family: Arial, sans-serif; padding: 5px; margin: 0 auto; background: white; color: #000; width: 180mm; max-width: 180mm; box-sizing: border-box;">
+                ${conteudo}
+
+                <!-- Total Geral -->
+                <div style="background: #00FF00; font-weight: bold; font-size: 12pt; padding: 8px; text-align: right; border: 1px solid #000; margin-bottom: 8px;">
+                    TOTAL GERAL: R$ ${this.formatMoney(proposta.total_proposta || 0)}
+                    <span style="font-size: 9pt; font-weight: normal; display: block;">(${this.valorPorExtenso(proposta.total_proposta || 0)})</span>
+                </div>
+
+                <!-- Condições -->
+                <div style="margin-bottom: 5px;">
+                    <h3 style="font-size: 11pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">CONDIÇÕES DE PAGAMENTO</h3>
+                    <p style="margin: 0 0 0 15px; font-size: 10pt;">- ${proposta.forma_pagamento || 'A combinar'}</p>
+                </div>
+
+                <div style="margin-bottom: 5px;">
+                    <h3 style="font-size: 11pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">PRAZO DE EXECUÇÃO</h3>
+                    <p style="margin: 0 0 0 15px; font-size: 10pt;">- ${prazoTexto}</p>
+                </div>
+
+                <!-- Bloco GARANTIA + Assinatura - manter juntos na mesma página -->
+                <div style="page-break-inside: avoid; break-inside: avoid;">
+                    <div style="margin-bottom: 5px;">
+                        <h3 style="font-size: 11pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">GARANTIA</h3>
+                        <p style="margin: 0 0 0 15px; text-align: justify; line-height: 1.3; font-size: 9pt;">
+                            A garantia legal é válida para os serviços executados e a qualidade dos materiais empregados que porventura apresentem falhas no seu rendimento, por um prazo de até três anos a contar da data de entrega dos mesmos, conforme Capítulo oito, Artigo 618 do Código Civil Brasileiro. É restrita à impermeabilização defeituosa e inválida caso haja danos causados por terceiros e/ou deficiência estrutural.
+                        </p>
+                    </div>
+
+                    ${proposta.observacoes && formato === 'tabela' ? `
+                    <div style="background: #E6F2FF; padding: 6px; margin-bottom: 5px; border: 1px solid #000080;">
+                        <h3 style="font-size: 10pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">OBS:</h3>
+                        <p style="font-size: 9pt; line-height: 1.3; margin: 0;">${proposta.observacoes}</p>
+                    </div>
+                    ` : ''}
+
+                    <!-- Assinatura -->
+                    <div style="margin-top: 8px; text-align: right;">
+                        <p style="margin: 0 0 3px 0; font-size: 10pt;">Recife, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.</p>
+                        <p style="margin: 0 0 8px 0; font-size: 10pt;">Atenciosamente,</p>
+                        <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 10pt;">${assinante}</p>
+                        <p style="font-size: 9pt; margin: 0;">${assinante.includes('Hugo') ? 'ENGENHEIRO CIVIL – CREA: 1818793830' : 'ENGENHEIRO CIVIL – CREA: 1805287389'}</p>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    generateTabelaFormat(nomeObra, representante, dataCompleta, juntarPreco = 'sim') {
+        const proposta = this.propostaData;
+        const cliente = proposta.clientes_hvc;
+        const mostrarComposicao = juntarPreco === 'nao';
+
+        // Agrupar itens por local
+        const itensPorLocal = {};
+        this.itens.forEach(item => {
+            const localNome = item.local?.nome || 'SEM LOCAL';
+            if (!itensPorLocal[localNome]) {
+                itensPorLocal[localNome] = [];
+            }
+            itensPorLocal[localNome].push(item);
+        });
+
+        // Gerar linhas da tabela
+        let linhasTabela = '';
+        let itemIndex = 1;
+        const colSpan = mostrarComposicao ? 8 : 6;
+
+        Object.keys(itensPorLocal).forEach(localNome => {
+            // Cabeçalho do grupo
+            linhasTabela += `
+                <tr>
+                    <td colspan="${colSpan}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 4px 5px; font-size: 9pt; border: 1px solid #000;">
+                        ${localNome}
+                    </td>
+                </tr>
+            `;
+
+            // Itens do grupo
+            itensPorLocal[localNome].forEach(item => {
+                const servico = item.servico;
+                const descricaoCompleta = servico.detalhe 
+                    ? `${servico.descricao} ${servico.detalhe}`
+                    : servico.descricao;
+                
+                const precoMaoObra = item.preco_mao_obra || 0;
+                const precoMaterial = item.preco_material || 0;
+                const precoUnitario = precoMaoObra + precoMaterial;
+
+                if (mostrarComposicao) {
+                    // Mostrar Mão de Obra e Material separados
+                    linhasTabela += `
+                        <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
+                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${itemIndex}</td>
+                            <td style="padding: 4px 4px; border: 1px solid #000; font-size: 9pt; word-wrap: break-word;">${descricaoCompleta}</td>
+                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${servico.unidade}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatNumber(item.quantidade)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 8pt; background: #E8F5E9;">${this.formatMoney(precoMaoObra)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 8pt; background: #FFF3E0;">${this.formatMoney(precoMaterial)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatMoney(precoUnitario)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
+                        </tr>
+                    `;
+                } else {
+                    // Mostrar apenas valor unitário total
+                    linhasTabela += `
+                        <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
+                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${itemIndex}</td>
+                            <td style="padding: 4px 4px; border: 1px solid #000; font-size: 9pt; word-wrap: break-word;">${descricaoCompleta}</td>
+                            <td style="text-align: center; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${servico.unidade}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatNumber(item.quantidade)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt;">${this.formatMoney(precoUnitario)}</td>
+                            <td style="text-align: right; padding: 4px 2px; border: 1px solid #000; font-size: 9pt; font-weight: bold;">${this.formatMoney(item.preco_total || 0)}</td>
+                        </tr>
+                    `;
+                }
+                itemIndex++;
+            });
+        });
+
+        // Cabeçalho da tabela baseado na opção
+        const cabecalhoTabela = mostrarComposicao ? `
+            <tr>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 22px;">ITEM</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 25px;">UND</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 40px;">QUANT.</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 7pt; width: 50px; background: #C8E6C9;">M.OBRA</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 7pt; width: 50px; background: #FFE0B2;">MATERIAL</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 50px;">V. UNIT.</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 8pt; width: 55px;">TOTAL</th>
+            </tr>
+        ` : `
+            <tr>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 25px;">ITEM</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; text-align: left;">ESPECIFICAÇÃO DOS SERVIÇOS</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 30px;">UND</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 50px;">QUANT.</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 60px;">V. UNIT.</th>
+                <th style="padding: 5px 3px; border: 1px solid #000; font-size: 9pt; width: 65px;">TOTAL</th>
+            </tr>
+        `;
+
+        return `
+            <!-- Info Box -->
+            <div style="border: 1px solid #000080; padding: 6px 8px; margin-bottom: 8px; background: #F0F8FF; font-size: 10pt;">
+                <div style="margin-bottom: 3px;"><strong>CLIENTE:</strong> ${cliente.nome}</div>
+                <div style="margin-bottom: 3px;"><strong>PROPOSTA:</strong> ${proposta.numero_proposta} | <strong>DATA:</strong> ${dataCompleta}</div>
+                <div><strong>OBRA:</strong> ${nomeObra} | <strong>ATT:</strong> ${representante}</div>
+            </div>
+
+            <!-- Tabela de Serviços -->
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 9pt; table-layout: fixed;">
+                <thead style="background: #4A4A4A; color: white;">
+                    ${cabecalhoTabela}
+                </thead>
+                <tbody>
+                    ${linhasTabela}
+                </tbody>
+            </table>
+        `;
+    }
+
+    generateSimplesFormat(nomeObra, representante, juntarPreco = 'sim') {
+        const proposta = this.propostaData;
+        const cliente = proposta.clientes_hvc;
+        const mostrarComposicao = juntarPreco === 'nao';
+
+        let itensHTML = '';
+        this.itens.forEach((item, index) => {
+            const servico = item.servico;
+            const localNome = item.local?.nome || 'SEM LOCAL';
+            const descricaoCompleta = servico.detalhe 
+                ? `${servico.descricao} ${servico.detalhe}`
+                : servico.descricao;
+            
+            const precoMaoObra = item.preco_mao_obra || 0;
+            const precoMaterial = item.preco_material || 0;
+            const precoUnitario = precoMaoObra + precoMaterial;
+
+            if (mostrarComposicao) {
+                // Mostrar Mão de Obra e Material separados
+                itensHTML += `
+                    <div style="margin-bottom: 8px;">
+                        <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
+                            ${index + 1}. ${localNome} - ${descricaoCompleta}
+                        </p>
+                        <p style="margin: 0 0 2px 15px; font-size: 9pt;">
+                            ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(item.preco_total || 0)}
+                        </p>
+                        <p style="margin: 0 0 0 15px; font-size: 8pt; color: #555;">
+                            <span style="background: #E8F5E9; padding: 1px 4px; border-radius: 2px;">Mão de Obra: R$ ${this.formatMoney(precoMaoObra)}</span>
+                            <span style="background: #FFF3E0; padding: 1px 4px; border-radius: 2px; margin-left: 8px;">Material: R$ ${this.formatMoney(precoMaterial)}</span>
+                        </p>
+                    </div>
+                `;
+            } else {
+                // Mostrar apenas valor unitário total
+                itensHTML += `
+                    <div style="margin-bottom: 8px;">
+                        <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">
+                            ${index + 1}. ${localNome} - ${descricaoCompleta}
+                        </p>
+                        <p style="margin: 0 0 0 15px; font-size: 9pt;">
+                            ${this.formatNumber(item.quantidade)} ${servico.unidade} x R$ ${this.formatMoney(precoUnitario)} = R$ ${this.formatMoney(item.preco_total || 0)}
+                        </p>
+                    </div>
+                `;
+            }
+        });
+
+        return `
+            <!-- Destinatário -->
+            <div style="margin-bottom: 10px; font-size: 10pt;">
+                <p style="margin: 0 0 4px 0;"><strong>Cliente:</strong> ${cliente.nome}</p>
+                <p style="margin: 0 0 4px 0;"><strong>Obra:</strong> ${nomeObra}</p>
+                <p style="margin: 0;"><strong>Att:</strong> ${representante}</p>
+            </div>
+
+            <!-- Especificação -->
+            <div style="margin-bottom: 8px;">
+                <h2 style="font-size: 11pt; font-weight: bold; margin: 0 0 8px 0; color: #000080;">ESPECIFICAÇÃO DA OBRA:</h2>
+                ${itensHTML}
+            </div>
+        `;
+    }
+
+    async savePDFToOneDrive() {
+        try {
+            // Validar preview
+            const previewContainer = document.getElementById('pdf-preview-container');
+            if (!previewContainer || !previewContainer.innerHTML.includes('TOTAL GERAL')) {
+                alert('Por favor, atualize o preview antes de salvar.');
+                return;
+            }
+
+            // Gerar PDF
+            const pdfBlob = await this.generatePDFBlob();
+            
+            // Salvar blob temporariamente
+            this.currentPDFBlob = pdfBlob;
+
+            // Abrir modal de seleção de pasta
+            await this.openFolderSelector();
+
+        } catch (error) {
+            console.error('Erro ao salvar PDF:', error);
+            alert('Erro ao salvar PDF: ' + error.message);
+        }
+    }
+
+    async generatePDFBlob() {
+        try {
+            const previewContainer = document.getElementById('pdf-preview-container');
+            const proposta = this.propostaData;
+            
+            // Configurações de margem para cabeçalho/rodapé
+            const headerHeight = 20; // mm para cabeçalho
+            const footerHeight = 12; // mm para rodapé
+            const pageWidth = 210; // A4 width
+            const pageHeight = 297; // A4 height
+            
+            // Configurar opções do html2pdf - deixar espaço para cabeçalho e rodapé
+            const opt = {
+                margin: [headerHeight, 10, footerHeight, 10], // top, left, bottom, right em mm
+                filename: `Proposta_${proposta.numero_proposta}.pdf`,
+                image: { type: 'jpeg', quality: 0.98 },
+                html2canvas: { 
+                    scale: 2,
+                    useCORS: true,
+                    letterRendering: true,
+                    scrollX: 0,
+                    scrollY: 0
+                },
+                jsPDF: { 
+                    unit: 'mm', 
+                    format: 'a4', 
+                    orientation: 'portrait' 
+                },
+                pagebreak: { mode: 'avoid-all' }
+            };
+
+            // Gerar PDF com html2pdf e obter o objeto jsPDF
+            const pdf = await html2pdf()
+                .set(opt)
+                .from(previewContainer)
+                .toPdf()
+                .get('pdf');
+            
+            let totalPages = pdf.internal.getNumberOfPages();
+            
+            // Verificar se a última página está vazia e removê-la
+            // Abordagem: se temos mais de 1 página e a última parece vazia, remover
+            if (totalPages > 1) {
+                // Calcular altura do conteúdo HTML em mm
+                // O html2canvas usa scale: 2, então precisamos ajustar
+                const contentHeight = previewContainer.offsetHeight;
+                // 1mm = 3.78px em 96 DPI, mas com scale 2 o html2canvas dobra
+                const pixelsPerMm = 3.78;
+                const contentHeightMm = contentHeight / pixelsPerMm;
+                
+                // Área útil por página (descontando margens de cabeçalho e rodapé)
+                const usableHeight = pageHeight - headerHeight - footerHeight;
+                
+                // Número de páginas necessárias (com margem de segurança de 5%)
+                const pagesNeeded = Math.ceil(contentHeightMm / (usableHeight * 0.95));
+                
+                console.log('DEBUG PDF: contentHeight(px):', contentHeight, 'contentHeightMm:', contentHeightMm.toFixed(1), 'usableHeight:', usableHeight, 'pagesNeeded:', pagesNeeded, 'totalPages:', totalPages);
+                
+                // Se temos mais páginas do que o necessário, remover as extras
+                while (totalPages > pagesNeeded && totalPages > 1) {
+                    pdf.deletePage(totalPages);
+                    totalPages = pdf.internal.getNumberOfPages();
+                    console.log('DEBUG PDF: Página vazia removida. Novo total:', totalPages);
+                }
+            }
+            
+            // Adicionar cabeçalho e rodapé em cada página
+            for (let i = 1; i <= totalPages; i++) {
+                pdf.setPage(i);
+                
+                // === CABEÇALHO ===
+                pdf.setFontSize(12);
+                pdf.setTextColor(0, 0, 128); // Azul escuro
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('HVC IMPERMEABILIZAÇÕES LTDA.', pageWidth / 2, 8, { align: 'center' });
+                
+                pdf.setFontSize(7);
+                pdf.setTextColor(51, 51, 51);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text('CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025', pageWidth / 2, 12, { align: 'center' });
+                
+                // Linha do cabeçalho
+                pdf.setDrawColor(0, 0, 128);
+                pdf.setLineWidth(0.5);
+                pdf.line(10, 14, pageWidth - 10, 14);
+                
+                // Número da proposta
+                pdf.setFontSize(9);
+                pdf.setTextColor(0, 0, 0);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text(`Proposta nº ${proposta.numero_proposta}`, pageWidth - 10, 18, { align: 'right' });
+                
+                // === RODAPÉ ===
+                const footerY = pageHeight - 6;
+                
+                // Linha do rodapé
+                pdf.setDrawColor(0, 0, 128);
+                pdf.setLineWidth(0.5);
+                pdf.line(10, footerY - 4, pageWidth - 10, footerY - 4);
+                
+                pdf.setFontSize(6);
+                pdf.setTextColor(51, 51, 51);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text('Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE | Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com', pageWidth / 2, footerY, { align: 'center' });
+                
+                // Número da página
+                pdf.setFontSize(7);
+                pdf.text(`Página ${i} de ${totalPages}`, pageWidth - 10, footerY, { align: 'right' });
+            }
+            
+            // Retornar como blob
+            const pdfBlob = pdf.output('blob');
+            return pdfBlob;
+
+        } catch (error) {
+            console.error('Erro ao gerar PDF:', error);
+            throw new Error('Falha ao gerar PDF: ' + error.message);
+        }
+    }
+
+    async openFolderSelector() {
+        try {
+            // Verificar se oneDriveAuth existe
+            if (typeof window.oneDriveAuth === 'undefined') {
+                alert('Módulo OneDrive não carregado. Por favor, recarregue a página.');
+                return;
+            }
+
+            // Verificar se MSAL está inicializado
+            if (typeof window.msalInstance === 'undefined' || !window.msalInstance) {
+                console.log('⏳ MSAL não inicializado, aguardando...');
+                
+                // Aguardar até 10 segundos pela inicialização do MSAL
+                const maxWait = 10000; // 10 segundos
+                const startTime = Date.now();
+                
+                while (!window.msalInstance && (Date.now() - startTime) < maxWait) {
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    console.log('⏳ Aguardando MSAL... ' + Math.floor((Date.now() - startTime) / 1000) + 's');
+                }
+                
+                // Se ainda não inicializou, tentar inicializar manualmente
+                if (!window.msalInstance) {
+                    console.log('⏳ MSAL não inicializou automaticamente, tentando inicializar manualmente...');
+                    
+                    if (typeof window.loadMSALScript === 'function') {
+                        await window.loadMSALScript();
+                        
+                        // Aguardar mais 5 segundos após carregar
+                        const initStartTime = Date.now();
+                        while (!window.msalInstance && (Date.now() - initStartTime) < 5000) {
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                        }
+                    }
+                }
+                
+                // Verificar novamente
+                if (!window.msalInstance) {
+                    alert('OneDrive não inicializado. Por favor, acesse a página OneDrive Browser e conecte sua conta primeiro.');
+                    return;
+                }
+                
+                console.log('✅ MSAL inicializado com sucesso!');
+            }
+
+            // Verificar se há conta conectada
+            if (!window.oneDriveAuth.currentAccount) {
+                alert('Por favor, conecte-se ao OneDrive primeiro na página de OneDrive Browser.');
+                return;
+            }
+
+            // Verificar se há contas no MSAL
+            const accounts = window.msalInstance.getAllAccounts();
+            if (!accounts || accounts.length === 0) {
+                alert('Nenhuma conta OneDrive conectada. Por favor, faça login no OneDrive Browser.');
+                return;
+            }
+
+            // Resetar navegação
+            this.currentFolderId = null;
+            this.folderPath = [];
+
+            // Preencher nome do arquivo padrão
+            const filenameInput = document.getElementById('pdf-filename-input');
+            if (filenameInput && this.currentProposta) {
+                // Obter número da proposta e substituir '/' por '.' para evitar criação de pastas
+                const numero = (this.currentProposta.numero_proposta || 'XXXX').replace(/\//g, '.');
+                
+                // Obter nome da obra do campo do formulário ou das observações
+                const nomeObraInput = document.getElementById('pdf-nome-obra');
+                let nomeObra = nomeObraInput?.value || this.propostaData?.observacoes || '';
+                
+                // Limpar caracteres inválidos para nome de arquivo
+                nomeObra = nomeObra.replace(/[\\/:*?"<>|]/g, '-').trim();
+                
+                // Limitar tamanho do nome da obra
+                if (nomeObra.length > 50) {
+                    nomeObra = nomeObra.substring(0, 50).trim();
+                }
+                
+                // Formato: "Proposta nº X.XXXX - Nome da Obra"
+                if (nomeObra) {
+                    filenameInput.value = `Proposta nº ${numero} - ${nomeObra}`;
+                } else {
+                    filenameInput.value = `Proposta nº ${numero}`;
+                }
+            }
+
+            // Abrir modal
+            const modal = document.getElementById('modal-onedrive-folder');
+            if (modal) {
+                modal.classList.add('show');
+            }
+
+            // Configurar event listeners dos botões do modal (garantir que funcionem)
+            this.setupFolderModalButtons();
+            
+            // Atualizar pasta selecionada para mostrar raiz
+            this.updateSelectedFolder();
+
+            // Carregar pastas raiz
+            await this.loadOneDriveFolders();
+
+        } catch (error) {
+            console.error('Erro ao abrir seletor de pasta:', error);
+            alert('Erro ao abrir seletor de pasta: ' + error.message);
+        }
+    }
+
+    async loadOneDriveFolders(folderId = null) {
+        console.log('DEBUG: loadOneDriveFolders() chamado com folderId:', folderId);
+        try {
+            const folderList = document.getElementById('onedrive-folders-list');
+            console.log('DEBUG: onedrive-folders-list encontrado:', !!folderList);
+            if (!folderList) {
+                console.error('DEBUG: ERRO - elemento onedrive-folders-list não encontrado!');
+                return;
+            }
+
+            // Mostrar loading
+            folderList.innerHTML = `
+                <div style="padding: 40px; text-align: center; color: #808080;">
+                    <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>Carregando pastas...</p>
+                </div>
+            `;
+
+            // Obter token
+            console.log('DEBUG: Tentando obter accessToken...');
+            const accessToken = await window.oneDriveAuth.getAccessToken().catch(err => {
+                console.error('ERRO FATAL AO OBTER TOKEN:', err);
+                throw err;
+            });
+            console.log('DEBUG: accessToken obtido com sucesso. Tamanho:', accessToken.length);
+
+            // Montar URL da API
+            let url;
+            if (folderId) {
+                url = `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children?$filter=folder ne null&$select=id,name,folder`;
+            } else {
+                url = 'https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=folder ne null&$select=id,name,folder';
+            }
+
+            // Fazer requisição
+            console.log('DEBUG: Fazendo requisição para URL:', url);
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (!response.ok) {
+                const errorBody = await response.text();
+                console.error('Erro detalhado da API do Graph:', response.status, errorBody);
+                throw new Error(`Erro na API do Graph: ${response.status} - ${response.statusText}. Detalhes: ${errorBody.substring(0, 100)}...`);
+            }
+
+            const data = await response.json();
+            const folders = data.value || [];
+
+            // Renderizar pastas
+            let html = '<div style="padding: 0;">';
+            
+            // Botão voltar se não estiver na raiz (sempre mostrar)
+            if (this.folderPath.length > 0) {
+                html += `
+                    <div class="folder-item" data-action="back" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s; background: #f0f8ff;">
+                        <i class="fas fa-arrow-left" style="color: #0078d4; font-size: 1.2rem;"></i>
+                        <span style="font-weight: 500; color: #0078d4;">.. (Voltar)</span>
+                    </div>
+                `;
+            }
+            
+            if (folders.length === 0) {
+                html += `
+                    <div style="padding: 40px; text-align: center; color: #808080;">
+                        <i class="fas fa-folder-open" style="font-size: 2rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                        <p>Nenhuma pasta encontrada</p>
+                    </div>
+                `;
+            } else {
+                folders.forEach(folder => {
+                    html += `
+                        <div class="folder-item" data-folder-id="${folder.id}" data-folder-name="${folder.name}" style="padding: 1rem; border-bottom: 1px solid #ddd; cursor: pointer; display: flex; align-items: center; gap: 0.75rem; transition: background 0.2s; background: white;">
+                            <i class="fas fa-folder" style="color: #FFC107; font-size: 1.2rem;"></i>
+                            <span style="flex: 1; color: #333;">${folder.name}</span>
+                            <i class="fas fa-chevron-right" style="color: #999; font-size: 0.8rem;"></i>
+                        </div>
+                    `;
+                });
+                
+            }
+            
+            html += '</div>';
+            folderList.innerHTML = html;
+
+            // Adicionar event listeners
+            folderList.querySelectorAll('.folder-item').forEach(item => {
+                item.addEventListener('mouseenter', function() {
+                    if (this.getAttribute('data-action') === 'back') {
+                        this.style.background = '#e0f0ff';
+                    } else {
+                        this.style.background = '#f5f5f5';
+                    }
+                });
+                item.addEventListener('mouseleave', function() {
+                    if (this.getAttribute('data-action') === 'back') {
+                        this.style.background = '#f0f8ff';
+                    } else {
+                        this.style.background = 'white';
+                    }
+                });
+                item.addEventListener('click', () => {
+                    const action = item.getAttribute('data-action');
+                    if (action === 'back') {
+                        this.navigateBack();
+                    } else {
+                        const folderId = item.getAttribute('data-folder-id');
+                        const folderName = item.getAttribute('data-folder-name');
+                        this.navigateToFolder(folderId, folderName);
+                    }
+                });
+            });
+
+            // Atualizar breadcrumb e pasta selecionada
+            this.updateBreadcrumb();
+            this.updateSelectedFolder();
+
+        } catch (error) {
+            console.error('Erro ao carregar pastas:', error);
+            const folderList = document.getElementById('onedrive-folders-list');
+            if (folderList) {
+                folderList.innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: #dc3545;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>Erro ao carregar pastas</p>
+                        <small>${error.message}</small>
+                    </div>
+                `;
+            }
+        }
+    }
+
+    navigateToFolder(folderId, folderName) {
+        this.folderPath.push({ id: folderId, name: folderName });
+        this.currentFolderId = folderId;
+        this.loadOneDriveFolders(folderId);
+    }
+
+    navigateBack() {
+        this.folderPath.pop();
+        if (this.folderPath.length > 0) {
+            const lastFolder = this.folderPath[this.folderPath.length - 1];
+            this.currentFolderId = lastFolder.id;
+            this.loadOneDriveFolders(lastFolder.id);
+        } else {
+            this.currentFolderId = null;
+            this.loadOneDriveFolders();
+        }
+    }
+
+    updateBreadcrumb() {
+        const breadcrumb = document.getElementById('onedrive-breadcrumb');
+        if (!breadcrumb) return;
+
+        let html = '<i class="fas fa-home"></i> Meu OneDrive';
+        
+        this.folderPath.forEach(folder => {
+            html += ` <i class="fas fa-chevron-right" style="font-size: 0.7rem; margin: 0 0.5rem;"></i> ${folder.name}`;
+        });
+
+        breadcrumb.innerHTML = html;
+    }
+
+    updateSelectedFolder() {
+        const selectedFolderPath = document.getElementById('selected-folder-path');
+        const confirmBtn = document.getElementById('confirm-folder-selection');
+        
+        if (selectedFolderPath) {
+            if (this.folderPath.length === 0) {
+                selectedFolderPath.textContent = 'Meu OneDrive (raiz)';
+                selectedFolderPath.style.color = '#28a745';
+            } else {
+                const path = this.folderPath.map(f => f.name).join(' / ');
+                selectedFolderPath.textContent = path;
+                selectedFolderPath.style.color = '#28a745';
+            }
+        }
+        
+        // Sempre habilitar o botão confirmar (pode salvar na pasta atual)
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            console.log('DEBUG: Botão Confirmar habilitado');
+        }
+    }
+
+    async uploadPDFToOneDrive(overwrite = false) {
+        try {
+            if (!this.currentPDFBlob) {
+                throw new Error('Nenhum PDF gerado');
+            }
+
+            // Obter nome do arquivo do input
+            const filenameInput = document.getElementById('pdf-filename-input');
+            let fileName = filenameInput ? filenameInput.value.trim() : '';
+            
+            if (!fileName) {
+                alert('Por favor, insira um nome para o arquivo.');
+                return;
+            }
+            
+            // Adicionar .pdf se não tiver
+            if (!fileName.toLowerCase().endsWith('.pdf')) {
+                fileName += '.pdf';
+            }
+
+            // Obter token
+            console.log('DEBUG: Tentando obter accessToken...');
+            const accessToken = await window.oneDriveAuth.getAccessToken().catch(err => {
+                console.error('ERRO FATAL AO OBTER TOKEN:', err);
+                throw err;
+            });
+            console.log('DEBUG: accessToken obtido com sucesso. Tamanho:', accessToken.length);
+
+            // Verificar se arquivo já existe (apenas se não for sobrescrita)
+            if (!overwrite) {
+                const exists = await this.checkFileExists(fileName, accessToken);
+                if (exists) {
+                    // Mostrar modal de confirmação
+                    this.showOverwriteConfirmation(fileName);
+                    return;
+                }
+            }
+
+            // URL de upload
+            let uploadUrl;
+            if (this.currentFolderId) {
+                uploadUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${this.currentFolderId}:/${fileName}:/content`;
+            } else {
+                uploadUrl = `https://graph.microsoft.com/v1.0/me/drive/root:/${fileName}:/content`;
+            }
+
+            // Fazer upload
+            const response = await fetch(uploadUrl, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/pdf'
+                },
+                body: this.currentPDFBlob
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Erro ao fazer upload:', errorText);
+                throw new Error('Falha ao fazer upload do PDF');
+            }
+
+            const result = await response.json();
+            console.log('✅ PDF salvo no OneDrive:', result);
+
+            // Fechar modais
+            this.closeFolderModal();
+            this.closeModal();
+
+            // Limpar blob
+            this.currentPDFBlob = null;
+
+            alert('✅ Proposta salva com sucesso no OneDrive!');
+
+        } catch (error) {
+            console.error('❌ Erro ao fazer upload:', error);
+            alert('Erro ao salvar PDF no OneDrive: ' + error.message);
+        }
+    }
+
+    async checkFileExists(fileName, accessToken) {
+        try {
+            let checkUrl;
+            if (this.currentFolderId) {
+                checkUrl = `https://graph.microsoft.com/v1.0/me/drive/items/${this.currentFolderId}/children?$filter=name eq '${fileName}'`;
+            } else {
+                checkUrl = `https://graph.microsoft.com/v1.0/me/drive/root/children?$filter=name eq '${fileName}'`;
+            }
+
+            const response = await fetch(checkUrl, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`
+                }
+            });
+
+            if (!response.ok) return false;
+
+            const data = await response.json();
+            return data.value && data.value.length > 0;
+        } catch (error) {
+            console.error('Erro ao verificar arquivo:', error);
+            return false;
+        }
+    }
+
+    showOverwriteConfirmation(fileName) {
+        const modal = document.getElementById('modal-confirm-overwrite');
+        const filenameSpan = document.getElementById('existing-filename');
+        
+        if (filenameSpan) {
+            filenameSpan.textContent = fileName;
+        }
+        
+        if (modal) {
+            modal.style.display = 'flex';
+        }
+
+        // Event listeners para os botões
+        const cancelBtn = document.getElementById('cancel-overwrite-btn');
+        const confirmBtn = document.getElementById('confirm-overwrite-btn');
+
+        const closeOverwriteModal = () => {
+            if (modal) modal.style.display = 'none';
+        };
+
+        const handleConfirm = async () => {
+            closeOverwriteModal();
+            await this.uploadPDFToOneDrive(true); // Sobrescrever
+        };
+
+        // Remover listeners antigos
+        if (cancelBtn) {
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            newCancelBtn.addEventListener('click', closeOverwriteModal);
+        }
+
+        if (confirmBtn) {
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            newConfirmBtn.addEventListener('click', handleConfirm);
+        }
+    }
+
+    valorPorExtenso(valor) {
+        if (valor === null || valor === undefined || valor === 0) {
+            return 'zero reais';
+        }
+
+        const unidades = ['', 'um', 'dois', 'três', 'quatro', 'cinco', 'seis', 'sete', 'oito', 'nove'];
+        const especiais = ['dez', 'onze', 'doze', 'treze', 'quatorze', 'quinze', 'dezesseis', 'dezessete', 'dezoito', 'dezenove'];
+        const dezenas = ['', '', 'vinte', 'trinta', 'quarenta', 'cinquenta', 'sessenta', 'setenta', 'oitenta', 'noventa'];
+        const centenas = ['', 'cento', 'duzentos', 'trezentos', 'quatrocentos', 'quinhentos', 'seiscentos', 'setecentos', 'oitocentos', 'novecentos'];
+
+        function porExtenso(num) {
+            if (num === 0) return '';
+            if (num === 100) return 'cem';
+            if (num < 10) return unidades[num];
+            if (num < 20) return especiais[num - 10];
+            if (num < 100) {
+                const dez = Math.floor(num / 10);
+                const uni = num % 10;
+                return dezenas[dez] + (uni > 0 ? ' e ' + unidades[uni] : '');
+            }
+            if (num < 1000) {
+                const cen = Math.floor(num / 100);
+                const resto = num % 100;
+                return centenas[cen] + (resto > 0 ? ' e ' + porExtenso(resto) : '');
+            }
+            return '';
+        }
+
+        const valorInt = Math.floor(valor);
+        const centavos = Math.round((valor - valorInt) * 100);
+
+        let extenso = '';
+
+        // Milhões
+        const milhoes = Math.floor(valorInt / 1000000);
+        if (milhoes > 0) {
+            if (milhoes === 1) {
+                extenso += 'um milhão';
+            } else {
+                extenso += porExtenso(milhoes) + ' milhões';
+            }
+        }
+
+        // Milhares
+        const milhares = Math.floor((valorInt % 1000000) / 1000);
+        if (milhares > 0) {
+            if (extenso) extenso += ' ';
+            if (milhares === 1) {
+                extenso += 'mil';
+            } else {
+                extenso += porExtenso(milhares) + ' mil';
+            }
+        }
+
+        // Centenas
+        const resto = valorInt % 1000;
+        if (resto > 0) {
+            if (extenso) extenso += ' e ';
+            extenso += porExtenso(resto);
+        }
+
+        // Adicionar "reais" somente se houver parte inteira
+        if (valorInt > 0) {
+            if (valorInt === 1) {
+                extenso += ' real';
+            } else {
+                extenso += ' reais';
+            }
+        }
+
+        // Centavos
+        if (centavos > 0) {
+            extenso += ' e ' + porExtenso(centavos);
+            if (centavos === 1) {
+                extenso += ' centavo';
+            } else {
+                extenso += ' centavos';
+            }
+        }
+
+        return extenso;
+    }
+
+    formatMoney(value) {
+        if (value === null || value === undefined) return '0,00';
+        return parseFloat(value).toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    formatNumber(value) {
+        if (value === null || value === undefined) return '0';
+        return parseFloat(value).toLocaleString('pt-BR', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
+    }
+
+    closeModal() {
+        const modal = document.getElementById('modal-gerar-pdf');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+        
+        // Limpar dados
+        this.currentPropostaId = null;
+        this.propostaData = null;
+        this.responsaveis = [];
+        this.itens = [];
+        
+        // Limpar preview
+        const previewContainer = document.getElementById('pdf-preview-container');
+        if (previewContainer) {
+            previewContainer.innerHTML = `
+                <div style="padding: 40px; text-align: center; color: #808080;">
+                    <i class="fas fa-file-pdf" style="font-size: 4rem; margin-bottom: 1rem; opacity: 0.3;"></i>
+                    <p>Clique em "Atualizar Preview" para visualizar a proposta</p>
+                </div>
+            `;
+        }
+    }
+
+    setupFolderModalButtons() {
+        console.log('DEBUG: setupFolderModalButtons() chamado');
+        
+        // Botão Cancelar
+        const cancelBtn = document.getElementById('cancel-folder-selection');
+        if (cancelBtn) {
+            // Remover listeners antigos clonando o elemento
+            const newCancelBtn = cancelBtn.cloneNode(true);
+            cancelBtn.parentNode.replaceChild(newCancelBtn, cancelBtn);
+            newCancelBtn.addEventListener('click', () => {
+                console.log('DEBUG: Botão Cancelar clicado (via setupFolderModalButtons)');
+                this.closeFolderModal();
+            });
+            console.log('DEBUG: Event listener do botão Cancelar configurado');
+        }
+        
+        // Botão Confirmar
+        const confirmBtn = document.getElementById('confirm-folder-selection');
+        if (confirmBtn) {
+            // Remover listeners antigos clonando o elemento
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            // Habilitar o botão
+            newConfirmBtn.disabled = false;
+            newConfirmBtn.addEventListener('click', async () => {
+                console.log('DEBUG: Botão Confirmar clicado (via setupFolderModalButtons)');
+                await this.confirmFolderSelection();
+            });
+            console.log('DEBUG: Event listener do botão Confirmar configurado e habilitado');
+        }
+    }
+
+    closeFolderModal() {
+        const modal = document.getElementById('modal-onedrive-folder');
+        if (modal) {
+            modal.classList.remove('show');
+        }
+    }
+
+    async downloadPDFToPC() {
+        try {
+            // Verificar se há preview
+            const previewContainer = document.getElementById('pdf-preview-container');
+            if (!previewContainer || !previewContainer.innerHTML.includes('TOTAL GERAL')) {
+                alert('Por favor, atualize o preview antes de baixar.');
+                return;
+            }
+
+            // Gerar PDF blob se não existir
+            let pdfBlob = this.currentPDFBlob;
+            if (!pdfBlob) {
+                pdfBlob = await this.generatePDFBlob();
+            }
+
+            // Criar nome do arquivo com mesmo formato do OneDrive
+            // Obter número da proposta e substituir '/' por '.' para evitar problemas
+            const numero = (this.propostaData.numero_proposta || 'XXXX').replace(/\//g, '.');
+            
+            // Obter nome da obra do campo do formulário ou das observações
+            const nomeObraInput = document.getElementById('pdf-nome-obra');
+            let nomeObra = nomeObraInput?.value || this.propostaData?.observacoes || '';
+            
+            // Limpar caracteres inválidos para nome de arquivo
+            nomeObra = nomeObra.replace(/[\\/:*?"<>|]/g, '-').trim();
+            
+            // Limitar tamanho do nome da obra
+            if (nomeObra.length > 50) {
+                nomeObra = nomeObra.substring(0, 50).trim();
+            }
+            
+            // Formato: "Proposta nº X.XXXX - Nome da Obra.pdf"
+            let fileName;
+            if (nomeObra) {
+                fileName = `Proposta nº ${numero} - ${nomeObra}.pdf`;
+            } else {
+                fileName = `Proposta nº ${numero}.pdf`;
+            }
+
+            // Criar link temporário para download
+            const url = URL.createObjectURL(pdfBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            // Liberar URL
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+
+            console.log('✅ PDF baixado:', fileName);
+            alert('✅ PDF baixado com sucesso!');
+
+        } catch (error) {
+            console.error('❌ Erro ao baixar PDF:', error);
+            alert('Erro ao baixar PDF: ' + error.message);
+        }
+    }
+
+    async confirmFolderSelection() {
+        console.log('DEBUG: confirmFolderSelection() chamado');
+        console.log('DEBUG: currentFolderId:', this.currentFolderId);
+        console.log('DEBUG: folderPath:', this.folderPath);
+        console.log('DEBUG: currentPDFBlob:', this.currentPDFBlob ? 'existe' : 'não existe');
+        
+        try {
+            // Fazer upload do PDF
+            await this.uploadPDFToOneDrive();
+        } catch (error) {
+            console.error('Erro ao confirmar seleção:', error);
+            alert('Erro ao salvar PDF: ' + error.message);
+        }
+    }
+}
+
+// Inicializar quando o DOM estiver pronto
+let pdfGenerator;
+document.addEventListener('DOMContentLoaded', () => {
+    pdfGenerator = new PropostaPDFGenerator();
+    window.pdfGenerator = pdfGenerator;
+    pdfGenerator.initializeEventListeners();
+    console.log('PDF Generator inicializado:', window.pdfGenerator);
+});
+
