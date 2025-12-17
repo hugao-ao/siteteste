@@ -168,10 +168,14 @@ class PropostaPDFGenerator {
             }
         }
 
-        // Preencher nome da obra com observações se houver
+        // Preencher nome da obra com o campo nome_obra da proposta (prioridade) ou observações
         const inputNomeObra = document.getElementById('pdf-nome-obra');
-        if (inputNomeObra && this.propostaData.observacoes) {
-            inputNomeObra.value = this.propostaData.observacoes.substring(0, 100);
+        if (inputNomeObra) {
+            if (this.propostaData.nome_obra) {
+                inputNomeObra.value = this.propostaData.nome_obra;
+            } else if (this.propostaData.observacoes) {
+                inputNomeObra.value = this.propostaData.observacoes.substring(0, 100);
+            }
         }
 
         // Selecionar assinante padrão
