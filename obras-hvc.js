@@ -1412,9 +1412,7 @@ class ObrasManager {
                 <td class="percentual-cell">
                     <div class="percentual-container">
                         <div class="percentual-bar">
-                            <div class="percentual-fill" style="width: ${percentualConclusao}%;">
-                                ${percentualConclusao > 15 ? percentualConclusao + '%' : ''}
-                            </div>
+                            <div class="percentual-fill" style="width: ${percentualConclusao}%;"></div>
                         </div>
                         <span class="percentual-text">${percentualConclusao}%</span>
                     </div>
