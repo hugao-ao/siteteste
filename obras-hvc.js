@@ -3846,10 +3846,10 @@ fecharModalAjustarQuantidade() {
         document.body.appendChild(element);
         
         const opt = {
-            margin: 10,
+            margin: [10, 10, 10, 10],
             filename: 'relatorio.pdf',
             image: { type: 'jpeg', quality: 0.98 },
-            html2canvas: { scale: 2, useCORS: true },
+            html2canvas: { scale: 2, useCORS: true, windowWidth: 800 },
             jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
             pagebreak: { mode: ['css', 'legacy'] }
         };
@@ -3913,10 +3913,10 @@ fecharModalAjustarQuantidade() {
             
             return `
                 <tr style="background: white;">
-                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top;">${dataFormatada}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top;">${equipeTexto}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top; font-size: 11px;">${servicosTexto}</td>
-                    <td style="padding: 8px; border: 1px solid #ddd; vertical-align: top; font-size: 11px;">${p.observacoes || '-'}</td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; vertical-align: top; font-size: 9px;">${dataFormatada}</td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; vertical-align: top; font-size: 9px; word-wrap: break-word;">${equipeTexto}</td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; vertical-align: top; font-size: 8px; word-wrap: break-word;">${servicosTexto}</td>
+                    <td style="padding: 4px; border: 0.5px solid #ccc; vertical-align: top; font-size: 8px; word-wrap: break-word;">${p.observacoes || '-'}</td>
                 </tr>
             `;
         }).join('') : '';
@@ -3962,56 +3962,56 @@ fecharModalAjustarQuantidade() {
             
             return `
                 <tr style="background: white;">
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px;">${proposta.numero_proposta || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px;">
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 8px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word;">${proposta.numero_proposta || '-'}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 8px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word;">
                         <strong>${servico.codigo || '-'}</strong><br>
-                        <span style="font-size: 9px; color: #666;">${servico.descricao || ''}</span>
+                        <span style="font-size: 7px; color: #666;">${servico.descricao || ''}</span>
                     </td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px;">${local.nome || '-'}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px; text-align: center;">${qtdMedida} / ${qtdProduzida} / ${qtdContratada} ${servico.unidade || ''}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px; text-align: right;">${this.formatMoney(s.preco_total || 0)}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; text-align: center; font-size: 10px; color: ${statusColor}; font-weight: bold;">${statusServico}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px; text-align: center;">${dataInicio}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 10px; text-align: center;">${dataFinal}</td>
-                    <td style="padding: 6px; border: 1px solid #ddd; font-size: 9px;">${s.observacoes || '-'}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 8px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word;">${local.nome || '-'}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top; word-wrap: break-word;">${qtdMedida}/${qtdProduzida}/${qtdContratada} ${servico.unidade || ''}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 8px; text-align: right; vertical-align: top;">${this.formatMoney(s.preco_total || 0)}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; text-align: center; font-size: 7px; color: ${statusColor}; font-weight: bold; vertical-align: top; word-wrap: break-word;">${statusServico}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top;">${dataInicio}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top;">${dataFinal}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; vertical-align: top; word-wrap: break-word; overflow-wrap: break-word;">${s.observacoes || '-'}</td>
                 </tr>
             `;
         }).join('') : '';
         
         return `
-            <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 800px; margin: 0 auto; background: white;">
+            <div style="font-family: Arial, sans-serif; padding: 5px; color: #333; width: 100%; max-width: 760px; margin: 0 auto; background: white; box-sizing: border-box;">
                 <!-- Cabeçalho -->
-                <div style="text-align: center; border-bottom: 3px solid #000080; padding-bottom: 15px; margin-bottom: 20px; background: white;">
-                    <h1 style="color: #000080; margin: 0; font-size: 24px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
-                    <p style="margin: 5px 0; font-size: 12px; color: #666;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
+                <div style="text-align: center; border-bottom: 2px solid #000080; padding-bottom: 10px; margin-bottom: 15px; background: white;">
+                    <h1 style="color: #000080; margin: 0; font-size: 20px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
+                    <p style="margin: 3px 0; font-size: 10px; color: #666;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
                 </div>
                 
                 <!-- Título do Relatório -->
-                <div style="background: #f0f4f8; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; border: 1px solid #000080;">
-                    <h2 style="color: #000080; margin: 0;">RELATÓRIO DE ANDAMENTO DA OBRA</h2>
-                    <p style="margin: 10px 0 0 0; color: #666; font-size: 12px;">Gerado em: ${dataAtual}</p>
+                <div style="background: #f0f4f8; padding: 10px; border-radius: 6px; margin-bottom: 15px; text-align: center; border: 0.5px solid #000080;">
+                    <h2 style="color: #000080; margin: 0; font-size: 16px;">RELATÓRIO DE ANDAMENTO DA OBRA</h2>
+                    <p style="margin: 5px 0 0 0; color: #666; font-size: 10px;">Gerado em: ${dataAtual}</p>
                 </div>
                 
                 <!-- Informações da Obra -->
-                <div style="background: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #ddd; border-left: 4px solid #000080;">
+                <div style="background: white; padding: 10px; border-radius: 8px; margin-bottom: 15px; border: 0.5px solid #ddd; border-left: 3px solid #000080;">
                     <h3 style="color: #000080; margin: 0 0 10px 0; font-size: 14px;">Dados da Obra</h3>
                     <table style="width: 100%; border-collapse: collapse; background: white;">
                         <tr style="background: #f8f9fa;">
-                            <td style="padding: 8px; width: 130px; color: #000080; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee;">Número:</td>
-                            <td style="padding: 8px; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">${obra.numero_obra}</td>
+                            <td style="padding: 5px; width: 100px; color: #000080; font-weight: bold; font-size: 11px; border-bottom: 0.5px solid #ddd;">Número:</td>
+                            <td style="padding: 5px; font-size: 11px; color: #333; border-bottom: 0.5px solid #ddd;">${obra.numero_obra}</td>
                         </tr>
                         <tr style="background: white;">
-                            <td style="padding: 8px; color: #000080; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee;">Nome da Obra:</td>
-                            <td style="padding: 8px; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">${obra.nome_obra || 'Não informado'}</td>
+                            <td style="padding: 5px; color: #000080; font-weight: bold; font-size: 11px; border-bottom: 0.5px solid #ddd;">Nome da Obra:</td>
+                            <td style="padding: 5px; font-size: 11px; color: #333; border-bottom: 0.5px solid #ddd;">${obra.nome_obra || 'Não informado'}</td>
                         </tr>
                         <tr style="background: #f8f9fa;">
-                            <td style="padding: 8px; color: #000080; font-weight: bold; font-size: 12px; border-bottom: 1px solid #eee;">Cliente(s):</td>
-                            <td style="padding: 8px; font-size: 12px; color: #333; border-bottom: 1px solid #eee;">${dados.clientes.join(', ') || 'Não informado'}</td>
+                            <td style="padding: 5px; color: #000080; font-weight: bold; font-size: 11px; border-bottom: 0.5px solid #ddd;">Cliente(s):</td>
+                            <td style="padding: 5px; font-size: 11px; color: #333; border-bottom: 0.5px solid #ddd;">${dados.clientes.join(', ') || 'Não informado'}</td>
                         </tr>
                         <tr style="background: #f8f9fa;">
-                            <td style="padding: 8px; color: #000080; font-weight: bold; font-size: 12px;">Status:</td>
-                            <td style="padding: 8px;">
-                                <span style="background: ${this.getStatusColor(obra.status)}; color: white; padding: 3px 10px; border-radius: 12px; font-size: 11px;">
+                            <td style="padding: 5px; color: #000080; font-weight: bold; font-size: 11px;">Status:</td>
+                            <td style="padding: 5px;">
+                                <span style="background: ${this.getStatusColor(obra.status)}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px;">
                                     ${obra.status}
                                 </span>
                             </td>
@@ -4020,59 +4020,59 @@ fecharModalAjustarQuantidade() {
                 </div>
                 
                 <!-- Resumo Financeiro -->
-                <div style="margin-bottom: 20px;">
-                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Resumo Financeiro</h3>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Resumo Financeiro</h3>
+                    <table style="width: 100%; border-collapse: collapse; background: white;">
                         <tr style="background: #000080;">
-                            <th style="padding: 10px; text-align: left; color: white; font-size: 12px;">Descrição</th>
-                            <th style="padding: 10px; text-align: right; color: white; font-size: 12px;">Valor</th>
+                            <th style="padding: 6px; text-align: left; color: white; font-size: 11px;">Descrição</th>
+                            <th style="padding: 6px; text-align: right; color: white; font-size: 11px;">Valor</th>
                         </tr>
                         <tr style="background: #f9f9f9;">
-                            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">Valor Total da Obra</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; font-weight: bold; font-size: 12px;">${this.formatMoney(obra.valor_total || 0)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Total da Obra</td>
+                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 11px;">${this.formatMoney(obra.valor_total || 0)}</td>
                         </tr>
                         <tr style="background: white;">
-                            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">Valor Produzido</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #17a2b8; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.valorProduzido)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Produzido</td>
+                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #17a2b8; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.valorProduzido)}</td>
                         </tr>
                         <tr style="background: #f9f9f9;">
-                            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">Valor Medido</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #d4a017; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.valorMedido)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Medido</td>
+                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #d4a017; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.valorMedido)}</td>
                         </tr>
                         <tr style="background: white;">
-                            <td style="padding: 10px; border: 1px solid #ddd; font-size: 12px;">Valor Recebido</td>
-                            <td style="padding: 10px; text-align: right; border: 1px solid #ddd; color: #28a745; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.valorRecebido)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Recebido</td>
+                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #28a745; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.valorRecebido)}</td>
                         </tr>
                     </table>
                 </div>
                 
                 <!-- Progresso -->
-                <div style="margin-bottom: 20px;">
-                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Progresso da Obra</h3>
-                    <div style="background: #e8e8e8; border-radius: 10px; height: 25px; margin-top: 15px; overflow: hidden; border: 1px solid #ccc;">
-                        <div style="background: linear-gradient(90deg, #000080, #191970); height: 100%; width: ${percentual}%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 12px;">
+                <div style="margin-bottom: 15px;">
+                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Progresso da Obra</h3>
+                    <div style="background: #e8e8e8; border-radius: 8px; height: 20px; margin-top: 8px; overflow: hidden; border: 0.5px solid #ccc;">
+                        <div style="background: linear-gradient(90deg, #000080, #191970); height: 100%; width: ${percentual}%; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 10px;">
                             ${percentual > 10 ? percentual + '%' : ''}
                         </div>
                     </div>
-                    <p style="text-align: center; margin-top: 10px; font-size: 16px; font-weight: bold; color: #000080;">${percentual}% Concluído</p>
+                    <p style="text-align: center; margin-top: 5px; font-size: 12px; font-weight: bold; color: #000080;">${percentual}% Concluído</p>
                 </div>
                 
                 <!-- Tabela de Serviços -->
                 ${dados.servicos.length > 0 ? `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Andamento dos Serviços (${dados.servicos.length})</h3>
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Andamento dos Serviços (${dados.servicos.length})</h3>
                         <p style="font-size: 10px; color: #666; margin: 5px 0;">Quantidade: Medida / Produzida / Contratada</p>
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                        <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
                             <tr style="background: #000080;">
-                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px;">PROPOSTA</th>
-                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px;">SERVIÇO</th>
-                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px;">LOCAL</th>
-                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px;">QUANTIDADE</th>
-                                <th style="padding: 6px; text-align: right; color: white; font-size: 9px;">VALOR</th>
-                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px;">STATUS</th>
-                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px;">INÍCIO</th>
-                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px;">FINAL</th>
-                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px;">OBS</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 8px; width: 8%;">PROP.</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 8px; width: 18%;">SERVIÇO</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 8px; width: 10%;">LOCAL</th>
+                                <th style="padding: 4px; text-align: center; color: white; font-size: 8px; width: 14%;">QUANTIDADE</th>
+                                <th style="padding: 4px; text-align: right; color: white; font-size: 8px; width: 10%;">VALOR</th>
+                                <th style="padding: 4px; text-align: center; color: white; font-size: 8px; width: 14%;">STATUS</th>
+                                <th style="padding: 4px; text-align: center; color: white; font-size: 8px; width: 8%;">INÍCIO</th>
+                                <th style="padding: 4px; text-align: center; color: white; font-size: 8px; width: 8%;">FINAL</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 8px; width: 10%;">OBS</th>
                             </tr>
                             ${servicosHTML}
                         </table>
@@ -4082,14 +4082,14 @@ fecharModalAjustarQuantidade() {
                 
                 <!-- Produções Diárias -->
                 ${dados.producoes.length > 0 ? `
-                    <div style="margin-bottom: 20px;">
-                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Produções Diárias (${dados.producoes.length})</h3>
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                    <div style="margin-bottom: 15px;">
+                        <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Produções Diárias (${dados.producoes.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
                             <tr style="background: #000080;">
-                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">DATA</th>
-                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">EQUIPE</th>
-                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">SERVIÇOS</th>
-                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">OBSERVAÇÕES</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 9px; width: 12%;">DATA</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 9px; width: 18%;">EQUIPE</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 9px; width: 40%;">SERVIÇOS</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 9px; width: 30%;">OBSERVAÇÕES</th>
                             </tr>
                             ${producoesHTML}
                         </table>
@@ -4097,19 +4097,19 @@ fecharModalAjustarQuantidade() {
                 ` : ''}
                 
                 <!-- Propostas Vinculadas -->
-                <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                    <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Propostas Vinculadas (${dados.propostas.length})</h3>
-                    <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                <div style="margin-bottom: 15px; page-break-inside: avoid;">
+                    <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Propostas Vinculadas (${dados.propostas.length})</h3>
+                    <table style="width: 100%; border-collapse: collapse; background: white;">
                         <tr style="background: #000080;">
-                            <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">NÚMERO</th>
-                            <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">CLIENTE</th>
-                            <th style="padding: 8px; text-align: right; color: white; font-size: 11px;">VALOR</th>
+                            <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">NÚMERO</th>
+                            <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">CLIENTE</th>
+                            <th style="padding: 5px; text-align: right; color: white; font-size: 10px;">VALOR</th>
                         </tr>
                         ${dados.propostas.map((p, i) => `
                             <tr style="background: ${i % 2 === 0 ? '#f9f9f9' : 'white'};">
-                                <td style="padding: 8px; border: 1px solid #ddd; font-size: 11px;">${p.numero_proposta}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd; font-size: 11px;">${p.clientes_hvc?.nome || '-'}</td>
-                                <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-size: 11px;">${this.formatMoney(p.valor_total || 0)}</td>
+                                <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">${p.numero_proposta}</td>
+                                <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">${p.clientes_hvc?.nome || '-'}</td>
+                                <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; font-size: 10px;">${this.formatMoney(p.valor_total || 0)}</td>
                             </tr>
                         `).join('')}
                     </table>
@@ -4117,13 +4117,13 @@ fecharModalAjustarQuantidade() {
                 
                 <!-- Medições -->
                 ${dados.medicoes.length > 0 ? `
-                    <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Medições (${dados.medicoes.length})</h3>
-                        <table style="width: 100%; border-collapse: collapse; margin-top: 10px; background: white;">
+                    <div style="margin-bottom: 15px; page-break-inside: avoid;">
+                        <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Medições (${dados.medicoes.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; background: white;">
                             <tr style="background: #000080;">
-                                <th style="padding: 8px; text-align: left; color: white; font-size: 11px;">NÚMERO</th>
-                                <th style="padding: 8px; text-align: right; color: white; font-size: 11px;">VALOR</th>
-                                <th style="padding: 8px; text-align: center; color: white; font-size: 11px;">STATUS</th>
+                                <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">NÚMERO</th>
+                                <th style="padding: 5px; text-align: right; color: white; font-size: 10px;">VALOR</th>
+                                <th style="padding: 5px; text-align: center; color: white; font-size: 10px;">STATUS</th>
                             </tr>
                             ${dados.medicoes.map((m, i) => {
                                 const recebimentos = m.recebimentos || [];
@@ -4143,10 +4143,10 @@ fecharModalAjustarQuantidade() {
                                 }
                                 return `
                                     <tr style="background: ${i % 2 === 0 ? '#f9f9f9' : 'white'};">
-                                        <td style="padding: 8px; border: 1px solid #ddd; font-size: 11px;">${m.numero_medicao}</td>
-                                        <td style="padding: 8px; text-align: right; border: 1px solid #ddd; font-size: 11px;">${this.formatMoney(m.valor_total || 0)}</td>
-                                        <td style="padding: 8px; text-align: center; border: 1px solid #ddd;">
-                                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-size: 10px;">${status}</span>
+                                        <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">${m.numero_medicao}</td>
+                                        <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; font-size: 10px;">${this.formatMoney(m.valor_total || 0)}</td>
+                                        <td style="padding: 5px; text-align: center; border: 0.5px solid #ccc;">
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 9px;">${status}</span>
                                         </td>
                                     </tr>
                                 `;
@@ -4157,16 +4157,16 @@ fecharModalAjustarQuantidade() {
                 
                 <!-- Observações -->
                 ${obra.observacoes ? `
-                    <div style="margin-bottom: 20px; page-break-inside: avoid;">
-                        <h3 style="color: #000080; border-bottom: 2px solid #000080; padding-bottom: 5px; font-size: 14px;">Observações</h3>
-                        <p style="background: #fafafa; padding: 15px; border-radius: 8px; margin-top: 10px; line-height: 1.6; font-size: 12px; border: 1px solid #ddd;">${obra.observacoes}</p>
+                    <div style="margin-bottom: 15px; page-break-inside: avoid;">
+                        <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Observações</h3>
+                        <p style="background: #fafafa; padding: 10px; border-radius: 6px; margin-top: 5px; line-height: 1.4; font-size: 10px; border: 0.5px solid #ddd;">${obra.observacoes}</p>
                     </div>
                 ` : ''}
                 
                 <!-- Rodapé -->
-                <div style="margin-top: 30px; padding-top: 15px; border-top: 2px solid #000080; text-align: center; color: #666; font-size: 10px; background: white;">
-                    <p style="margin: 3px 0;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
-                    <p style="margin: 3px 0;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
+                <div style="margin-top: 20px; padding-top: 10px; border-top: 1px solid #000080; text-align: center; color: #666; font-size: 9px; background: white;">
+                    <p style="margin: 2px 0;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
+                    <p style="margin: 2px 0;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
                 </div>
             </div>
         `;
