@@ -273,22 +273,9 @@ class PropostaPDFGenerator {
             conteudo = this.generateSimplesFormat(nomeObra, representante);
         }
 
-        // Template completo - Layout A4 com margens mínimas
+        // Template completo - Layout A4 (cabeçalho e rodapé serão adicionados via jsPDF)
         return `
-            <div style="font-family: Arial, sans-serif; padding: 10px; margin: 0 auto; background: white; color: #000; width: 180mm; max-width: 180mm; box-sizing: border-box;">
-                <!-- Cabeçalho - 3 linhas máx -->
-                <div style="text-align: center; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 2px solid #000080;">
-                    <h1 style="font-size: 18pt; font-weight: bold; color: #000080; letter-spacing: 0.5px; margin: 0 0 3px 0;">
-                        HVC IMPERMEABILIZAÇÕES LTDA.
-                    </h1>
-                    <p style="font-size: 9pt; margin: 0; color: #333;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
-                </div>
-
-                <!-- Número da Proposta -->
-                <div style="text-align: right; margin-bottom: 8px;">
-                    <strong style="font-size: 11pt;">Proposta nº ${proposta.numero_proposta}</strong>
-                </div>
-
+            <div style="font-family: Arial, sans-serif; padding: 5px; margin: 0 auto; background: white; color: #000; width: 180mm; max-width: 180mm; box-sizing: border-box;">
                 ${conteudo}
 
                 <!-- Total Geral -->
@@ -330,10 +317,6 @@ class PropostaPDFGenerator {
                     <p style="font-size: 9pt; margin: 0;">${assinante.includes('Hugo') ? 'ENGENHEIRO CIVIL – CREA: 1818793830' : 'ENGENHEIRO CIVIL – CREA: 1805287389'}</p>
                 </div>
 
-                <!-- Rodapé -->
-                <div style="text-align: center; padding-top: 8px; border-top: 2px solid #000080; font-size: 8pt; margin-top: 12px;">
-                    <p style="margin: 0;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE | Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
-                </div>
             </div>
         `;
     }
@@ -481,11 +464,18 @@ class PropostaPDFGenerator {
     async generatePDFBlob() {
         try {
             const previewContainer = document.getElementById('pdf-preview-container');
+            const proposta = this.propostaData;
             
-            // Configurar opções do html2pdf - A4 com margens mínimas
+            // Configurações de margem para cabeçalho/rodapé
+            const headerHeight = 25; // mm para cabeçalho
+            const footerHeight = 15; // mm para rodapé
+            const pageWidth = 210; // A4 width
+            const pageHeight = 297; // A4 height
+            
+            // Configurar opções do html2pdf - deixar espaço para cabeçalho e rodapé
             const opt = {
-                margin: [5, 10, 5, 10], // top, left, bottom, right em mm
-                filename: `Proposta_${this.propostaData.numero_proposta}.pdf`,
+                margin: [headerHeight, 10, footerHeight, 10], // top, left, bottom, right em mm
+                filename: `Proposta_${proposta.numero_proposta}.pdf`,
                 image: { type: 'jpeg', quality: 0.98 },
                 html2canvas: { 
                     scale: 2,
@@ -502,12 +492,62 @@ class PropostaPDFGenerator {
                 pagebreak: { mode: 'avoid-all' }
             };
 
-            // Gerar PDF e retornar blob
-            const pdfBlob = await html2pdf()
+            // Gerar PDF com html2pdf e obter o objeto jsPDF
+            const pdf = await html2pdf()
                 .set(opt)
                 .from(previewContainer)
-                .output('blob');
-
+                .toPdf()
+                .get('pdf');
+            
+            const totalPages = pdf.internal.getNumberOfPages();
+            
+            // Adicionar cabeçalho e rodapé em cada página
+            for (let i = 1; i <= totalPages; i++) {
+                pdf.setPage(i);
+                
+                // === CABEÇALHO ===
+                pdf.setFontSize(14);
+                pdf.setTextColor(0, 0, 128); // Azul escuro
+                pdf.setFont('helvetica', 'bold');
+                pdf.text('HVC IMPERMEABILIZAÇÕES LTDA.', pageWidth / 2, 10, { align: 'center' });
+                
+                pdf.setFontSize(8);
+                pdf.setTextColor(51, 51, 51);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text('CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025', pageWidth / 2, 15, { align: 'center' });
+                
+                // Linha do cabeçalho
+                pdf.setDrawColor(0, 0, 128);
+                pdf.setLineWidth(0.5);
+                pdf.line(10, 18, pageWidth - 10, 18);
+                
+                // Número da proposta
+                pdf.setFontSize(10);
+                pdf.setTextColor(0, 0, 0);
+                pdf.setFont('helvetica', 'bold');
+                pdf.text(`Proposta nº ${proposta.numero_proposta}`, pageWidth - 10, 23, { align: 'right' });
+                
+                // === RODAPÉ ===
+                const footerY = pageHeight - 10;
+                
+                // Linha do rodapé
+                pdf.setDrawColor(0, 0, 128);
+                pdf.setLineWidth(0.5);
+                pdf.line(10, footerY - 5, pageWidth - 10, footerY - 5);
+                
+                pdf.setFontSize(7);
+                pdf.setTextColor(51, 51, 51);
+                pdf.setFont('helvetica', 'normal');
+                pdf.text('Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE', pageWidth / 2, footerY - 1, { align: 'center' });
+                pdf.text('Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com', pageWidth / 2, footerY + 3, { align: 'center' });
+                
+                // Número da página
+                pdf.setFontSize(8);
+                pdf.text(`Página ${i} de ${totalPages}`, pageWidth - 10, footerY + 3, { align: 'right' });
+            }
+            
+            // Retornar como blob
+            const pdfBlob = pdf.output('blob');
             return pdfBlob;
 
         } catch (error) {
