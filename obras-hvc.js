@@ -4645,8 +4645,41 @@ fecharModalAjustarQuantidade() {
             `)
             .in('proposta_id', propostaIds);
         
+        // Buscar TODAS as produções diárias desta obra
+        const { data: todasProducoes } = await supabaseClient
+            .from('producoes_diarias_hvc')
+            .select(`
+                *,
+                equipes_hvc (nome)
+            `)
+            .eq('obra_id', medicaoCompleta.obra_id)
+            .order('data_producao', { ascending: false });
+        
+        // Calcular quantidades produzidas por item_proposta_id
+        const produzidoPorItem = {};
+        const producoesDetalhadas = []; // Para a seção de comprovação
+        
+        (todasProducoes || []).forEach(prod => {
+            const servicos = prod.servicos || [];
+            servicos.forEach(s => {
+                const itemId = s.item_proposta_id;
+                if (itemId) {
+                    if (!produzidoPorItem[itemId]) {
+                        produzidoPorItem[itemId] = { quantidade: 0, producoes: [] };
+                    }
+                    produzidoPorItem[itemId].quantidade += parseFloat(s.quantidade) || 0;
+                    produzidoPorItem[itemId].producoes.push({
+                        data: prod.data_producao,
+                        quantidade: parseFloat(s.quantidade) || 0,
+                        equipe: prod.equipes_hvc?.nome || 'N/A',
+                        observacoes: prod.observacoes
+                    });
+                }
+            });
+        });
+        
         // Gerar HTML do relatório
-        const html = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados);
+        const html = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados, produzidoPorItem);
         
         // Gerar PDF usando html2pdf
         const element = document.createElement('div');
@@ -4685,7 +4718,7 @@ fecharModalAjustarQuantidade() {
         return pdfBlob;
     }
     
-    gerarHTMLMedicao(medicao, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados) {
+    gerarHTMLMedicao(medicao, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados, produzidoPorItem = {}) {
         const dataAtual = new Date().toLocaleDateString('pt-BR', { 
             weekday: 'long', 
             year: 'numeric', 
@@ -4710,9 +4743,13 @@ fecharModalAjustarQuantidade() {
         
         // Calcular totais gerais
         let totalContratado = 0;
+        let totalProduzido = 0;
         let totalJaMedido = 0;
         let totalEstaMedicao = 0;
         let totalRestante = 0;
+        
+        // Coletar produções para seção de comprovação
+        let producoesParaComprovacao = [];
         
         // Gerar HTML da tabela de serviços
         let servicosHTML = '';
@@ -4727,6 +4764,7 @@ fecharModalAjustarQuantidade() {
             const precoUnit = parseFloat(item.preco_unitario) || 0;
             const valorContratado = parseFloat(item.preco_total) || (qtdContratada * precoUnit);
             
+            const produzido = produzidoPorItem[item.id] || { quantidade: 0, producoes: [] };
             const jaMedido = jaMedidoPorItem[item.id] || { quantidade: 0, valor: 0 };
             const estaMedicao = estaMedicaoPorItem[item.id] || { quantidade: 0, valor: 0 };
             
@@ -4735,36 +4773,55 @@ fecharModalAjustarQuantidade() {
             const valorRestante = qtdRestante * precoUnit;
             
             totalContratado += valorContratado;
+            totalProduzido += produzido.quantidade * precoUnit;
             totalJaMedido += jaMedido.valor;
             totalEstaMedicao += estaMedicao.valor;
             totalRestante += valorRestante;
+            
+            // Coletar produções deste item para comprovação
+            if (produzido.producoes.length > 0 && estaMedicao.quantidade > 0) {
+                produzido.producoes.forEach(p => {
+                    producoesParaComprovacao.push({
+                        servico: servico.codigo,
+                        local: local.nome,
+                        ...p
+                    });
+                });
+            }
             
             // Destacar se este item está sendo medido agora
             const destaque = estaMedicao.quantidade > 0;
             const bgColor = destaque ? '#fffde7' : (itemIndex % 2 === 0 ? '#f9f9f9' : 'white');
             
+            // Verificar consistência: produzido vs medido
+            const consistente = produzido.quantidade >= qtdTotalMedida;
+            
             servicosHTML += `
                 <tr style="background: ${bgColor};">
-                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; vertical-align: top;">
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; vertical-align: top;">
                         <strong>${servico.codigo || '-'}</strong><br>
-                        <span style="font-size: 7px; color: #666;">${(servico.descricao || '').substring(0, 40)}${(servico.descricao || '').length > 40 ? '...' : ''}</span>
+                        <span style="font-size: 6px; color: #666;">${(servico.descricao || '').substring(0, 30)}${(servico.descricao || '').length > 30 ? '...' : ''}</span>
                     </td>
-                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; vertical-align: top;">${local.nome || '-'}</td>
-                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top;">
-                        ${qtdContratada.toFixed(2)} ${servico.unidade || ''}<br>
-                        <span style="font-size: 7px; color: #666;">${this.formatMoney(valorContratado)}</span>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; vertical-align: top;">${local.nome || '-'}</td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top;">
+                        ${qtdContratada.toFixed(2)}<br>
+                        <span style="font-size: 6px; color: #666;">${this.formatMoney(valorContratado)}</span>
                     </td>
-                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top; color: #6c757d;">
-                        ${jaMedido.quantidade.toFixed(2)} ${servico.unidade || ''}<br>
-                        <span style="font-size: 7px;">${this.formatMoney(jaMedido.valor)}</span>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; color: ${consistente ? '#17a2b8' : '#dc3545'};">
+                        ${produzido.quantidade.toFixed(2)}<br>
+                        <span style="font-size: 6px;">${this.formatMoney(produzido.quantidade * precoUnit)}</span>
                     </td>
-                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top; ${destaque ? 'font-weight: bold; color: #000080;' : ''}">
-                        ${estaMedicao.quantidade.toFixed(2)} ${servico.unidade || ''}<br>
-                        <span style="font-size: 7px; ${destaque ? 'color: #28a745;' : ''}">${this.formatMoney(estaMedicao.valor)}</span>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; color: #6c757d;">
+                        ${jaMedido.quantidade.toFixed(2)}<br>
+                        <span style="font-size: 6px;">${this.formatMoney(jaMedido.valor)}</span>
                     </td>
-                    <td style="padding: 4px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; vertical-align: top; color: ${qtdRestante > 0 ? '#ffc107' : '#28a745'};">
-                        ${qtdRestante.toFixed(2)} ${servico.unidade || ''}<br>
-                        <span style="font-size: 7px;">${this.formatMoney(valorRestante)}</span>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; ${destaque ? 'font-weight: bold; color: #000080;' : ''}">
+                        ${estaMedicao.quantidade.toFixed(2)}<br>
+                        <span style="font-size: 6px; ${destaque ? 'color: #28a745;' : ''}">${this.formatMoney(estaMedicao.valor)}</span>
+                    </td>
+                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; color: ${qtdRestante > 0 ? '#ffc107' : '#28a745'};">
+                        ${qtdRestante.toFixed(2)}<br>
+                        <span style="font-size: 6px;">${this.formatMoney(valorRestante)}</span>
                     </td>
                 </tr>
             `;
@@ -4774,6 +4831,10 @@ fecharModalAjustarQuantidade() {
         // Percentual de execução
         const percentualExecutado = totalContratado > 0 
             ? (((totalJaMedido + totalEstaMedicao) / totalContratado) * 100).toFixed(1) 
+            : 0;
+        
+        const percentualProduzido = totalContratado > 0 
+            ? ((totalProduzido / totalContratado) * 100).toFixed(1) 
             : 0;
         
         return `
@@ -4814,23 +4875,26 @@ fecharModalAjustarQuantidade() {
                 
                 <!-- Tabela de Serviços Completa -->
                 <div style="margin-bottom: 10px;">
-                    <h3 style="color: #000080; font-size: 11px; margin: 0 0 5px 0;">Detalhamento dos Serviços</h3>
+                    <h3 style="color: #000080; font-size: 10px; margin: 0 0 5px 0;">Detalhamento dos Serviços</h3>
+                    <p style="margin: 0 0 5px 0; font-size: 7px; color: #666;">Fluxo: Contratado → Produzido (execução em campo) → Medido (cobrança) → Restante</p>
                     <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
                         <tr style="background: #000080;">
-                            <th style="padding: 5px; text-align: left; color: white; font-size: 8px; width: 22%;">SERVIÇO</th>
-                            <th style="padding: 5px; text-align: left; color: white; font-size: 8px; width: 12%;">LOCAL</th>
-                            <th style="padding: 5px; text-align: center; color: white; font-size: 8px; width: 16%;">CONTRATADO</th>
-                            <th style="padding: 5px; text-align: center; color: white; font-size: 8px; width: 16%;">JÁ MEDIDO</th>
-                            <th style="padding: 5px; text-align: center; color: white; font-size: 8px; width: 18%; background: #28a745;">ESTA MEDIÇÃO</th>
-                            <th style="padding: 5px; text-align: center; color: white; font-size: 8px; width: 16%;">RESTANTE</th>
+                            <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 18%;">SERVIÇO</th>
+                            <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 10%;">LOCAL</th>
+                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 13%;">CONTRATADO</th>
+                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 13%; background: #17a2b8;">PRODUZIDO</th>
+                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 13%;">JÁ MEDIDO</th>
+                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 15%; background: #28a745;">ESTA MEDIÇÃO</th>
+                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 13%;">RESTANTE</th>
                         </tr>
                         ${servicosHTML}
                         <tr style="background: #e8e8e8; font-weight: bold;">
-                            <td colspan="2" style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: right;">TOTAIS:</td>
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center;">${this.formatMoney(totalContratado)}</td>
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; color: #6c757d;">${this.formatMoney(totalJaMedido)}</td>
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; color: #28a745; background: #e8f5e9;">${this.formatMoney(totalEstaMedicao)}</td>
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; color: #ffc107;">${this.formatMoney(totalRestante)}</td>
+                            <td colspan="2" style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: right;">TOTAIS:</td>
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center;">${this.formatMoney(totalContratado)}</td>
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; color: #17a2b8;">${this.formatMoney(totalProduzido)}</td>
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; color: #6c757d;">${this.formatMoney(totalJaMedido)}</td>
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; color: #28a745; background: #e8f5e9;">${this.formatMoney(totalEstaMedicao)}</td>
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; color: #ffc107;">${this.formatMoney(totalRestante)}</td>
                         </tr>
                     </table>
                 </div>
@@ -4885,6 +4949,51 @@ fecharModalAjustarQuantidade() {
                         </tr>
                     </table>
                 </div>
+                
+                <!-- Comprovação de Execução -->
+                ${producoesParaComprovacao.length > 0 ? `
+                    <div style="margin-bottom: 10px;">
+                        <h4 style="color: #17a2b8; font-size: 10px; margin: 0 0 5px 0;"><i>✓</i> Comprovação de Execução (Produções Registradas)</h4>
+                        <p style="margin: 0 0 5px 0; font-size: 7px; color: #666;">Registro das produções diárias que comprovam a execução dos serviços medidos</p>
+                        <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
+                            <tr style="background: #17a2b8;">
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 15%;">DATA</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 20%;">SERVIÇO</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 15%;">LOCAL</th>
+                                <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 15%;">QUANTIDADE</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 15%;">EQUIPE</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 20%;">OBS</th>
+                            </tr>
+                            ${producoesParaComprovacao.slice(0, 10).map((p, idx) => {
+                                let dataFormatada = '-';
+                                if (p.data) {
+                                    const dataStr = String(p.data);
+                                    if (dataStr.match(/^\\d{4}-\\d{2}-\\d{2}$/)) {
+                                        const [ano, mes, dia] = dataStr.split('-');
+                                        dataFormatada = \`\${dia}/\${mes}/\${ano}\`;
+                                    } else {
+                                        dataFormatada = dataStr;
+                                    }
+                                }
+                                return \`
+                                    <tr style="background: \${idx % 2 === 0 ? '#e8f4fc' : 'white'};">
+                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">\${dataFormatada}</td>
+                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">\${p.servico || '-'}</td>
+                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">\${p.local || '-'}</td>
+                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center;">\${(p.quantidade || 0).toFixed(2)}</td>
+                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">\${p.equipe || '-'}</td>
+                                        <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 6px; color: #666;">\${(p.observacoes || '').substring(0, 30)}\${(p.observacoes || '').length > 30 ? '...' : ''}</td>
+                                    </tr>
+                                \`;
+                            }).join('')}
+                            ${producoesParaComprovacao.length > 10 ? \`
+                                <tr style="background: #f0f0f0;">
+                                    <td colspan="6" style="padding: 4px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; color: #666;">... e mais \${producoesParaComprovacao.length - 10} registros de produção</td>
+                                </tr>
+                            \` : ''}
+                        </table>
+                    </div>
+                ` : ''}
                 
                 <!-- Observações -->
                 ${medicao.observacoes || medicao.anotacoes ? `
