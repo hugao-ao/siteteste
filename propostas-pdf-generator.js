@@ -312,14 +312,13 @@ class PropostaPDFGenerator {
                     ` : ''}
 
                     <!-- Assinatura -->
-                    <div style="margin-top: 12px; text-align: right;">
-                        <p style="margin: 0 0 5px 0; font-size: 10pt;">Recife, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.</p>
-                        <p style="margin: 0 0 15px 0; font-size: 10pt;">Atenciosamente,</p>
-                        <p style="font-weight: bold; margin: 0 0 3px 0; font-size: 10pt;">${assinante}</p>
+                    <div style="margin-top: 8px; text-align: right;">
+                        <p style="margin: 0 0 3px 0; font-size: 10pt;">Recife, ${new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' })}.</p>
+                        <p style="margin: 0 0 8px 0; font-size: 10pt;">Atenciosamente,</p>
+                        <p style="font-weight: bold; margin: 0 0 2px 0; font-size: 10pt;">${assinante}</p>
                         <p style="font-size: 9pt; margin: 0;">${assinante.includes('Hugo') ? 'ENGENHEIRO CIVIL – CREA: 1818793830' : 'ENGENHEIRO CIVIL – CREA: 1805287389'}</p>
                     </div>
                 </div>
-
             </div>
         `;
     }
@@ -505,23 +504,25 @@ class PropostaPDFGenerator {
             let totalPages = pdf.internal.getNumberOfPages();
             
             // Verificar se a última página está vazia e removê-la
-            // A última página é considerada vazia se o conteúdo não a alcançou
+            // Abordagem: se temos mais de 1 página e a última parece vazia, remover
             if (totalPages > 1) {
-                // Calcular altura do conteúdo HTML
+                // Calcular altura do conteúdo HTML em mm
+                // O html2canvas usa scale: 2, então precisamos ajustar
                 const contentHeight = previewContainer.offsetHeight;
-                const pixelsPerMm = 3.78; // Aproximadamente 96 DPI
+                // 1mm = 3.78px em 96 DPI, mas com scale 2 o html2canvas dobra
+                const pixelsPerMm = 3.78;
                 const contentHeightMm = contentHeight / pixelsPerMm;
                 
-                // Área útil por página (descontando margens)
+                // Área útil por página (descontando margens de cabeçalho e rodapé)
                 const usableHeight = pageHeight - headerHeight - footerHeight;
                 
-                // Número de páginas necessárias
-                const pagesNeeded = Math.ceil(contentHeightMm / usableHeight);
+                // Número de páginas necessárias (com margem de segurança de 5%)
+                const pagesNeeded = Math.ceil(contentHeightMm / (usableHeight * 0.95));
                 
-                console.log('DEBUG PDF: contentHeightMm:', contentHeightMm, 'usableHeight:', usableHeight, 'pagesNeeded:', pagesNeeded, 'totalPages:', totalPages);
+                console.log('DEBUG PDF: contentHeight(px):', contentHeight, 'contentHeightMm:', contentHeightMm.toFixed(1), 'usableHeight:', usableHeight, 'pagesNeeded:', pagesNeeded, 'totalPages:', totalPages);
                 
-                // Se temos mais páginas do que o necessário, remover a última
-                if (totalPages > pagesNeeded) {
+                // Se temos mais páginas do que o necessário, remover as extras
+                while (totalPages > pagesNeeded && totalPages > 1) {
                     pdf.deletePage(totalPages);
                     totalPages = pdf.internal.getNumberOfPages();
                     console.log('DEBUG PDF: Página vazia removida. Novo total:', totalPages);
