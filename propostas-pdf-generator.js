@@ -280,18 +280,18 @@ class PropostaPDFGenerator {
                 ${conteudo}
 
                 <!-- Total Geral -->
-                <div style="background: #00FF00; font-weight: bold; font-size: 12pt; padding: 8px; text-align: right; border: 1px solid #000; margin-bottom: 8px;">
+                <div style="background: #00FF00; font-weight: bold; font-size: 12pt; padding: 8px; text-align: right; border: 1px solid #000; margin-bottom: 8px; page-break-inside: avoid;">
                     TOTAL GERAL: R$ ${this.formatMoney(proposta.total_proposta || 0)}
                     <span style="font-size: 9pt; font-weight: normal; display: block;">(${this.valorPorExtenso(proposta.total_proposta || 0)})</span>
                 </div>
 
                 <!-- Condições -->
-                <div style="margin-bottom: 5px;">
+                <div style="margin-bottom: 5px; page-break-inside: avoid;">
                     <h3 style="font-size: 11pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">CONDIÇÕES DE PAGAMENTO</h3>
                     <p style="margin: 0 0 0 15px; font-size: 10pt;">- ${proposta.forma_pagamento || 'A combinar'}</p>
                 </div>
 
-                <div style="margin-bottom: 5px;">
+                <div style="margin-bottom: 5px; page-break-inside: avoid;">
                     <h3 style="font-size: 11pt; font-weight: bold; margin: 0 0 3px 0; color: #000080;">PRAZO DE EXECUÇÃO</h3>
                     <p style="margin: 0 0 0 15px; font-size: 10pt;">- ${prazoTexto}</p>
                 </div>
@@ -358,7 +358,7 @@ class PropostaPDFGenerator {
             if (temMaisDeUmServico) {
                 // Cabeçalho do grupo COM subtotal (mais de 1 serviço)
                 linhasTabela += `
-                    <tr>
+                    <tr style="page-break-inside: avoid; page-break-after: avoid;">
                         <td colspan="${colSpanTexto}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 3px 4px; font-size: ${fontSize}; border: 0.5px solid #333;">
                             ${localNome}
                         </td>
@@ -370,7 +370,7 @@ class PropostaPDFGenerator {
             } else {
                 // Cabeçalho do grupo SEM subtotal (apenas 1 serviço)
                 linhasTabela += `
-                    <tr>
+                    <tr style="page-break-inside: avoid; page-break-after: avoid;">
                         <td colspan="${colSpanTotal}" style="background: #D3D3D3; font-weight: bold; text-align: left; padding: 3px 4px; font-size: ${fontSize}; border: 0.5px solid #333;">
                             ${localNome}
                         </td>
@@ -392,7 +392,7 @@ class PropostaPDFGenerator {
                 if (mostrarComposicao) {
                     // Mostrar Mão de Obra e Material separados
                     linhasTabela += `
-                        <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
+                        <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'}; page-break-inside: avoid;">
                             <td style="text-align: center; padding: 2px 1px; border: 0.5px solid #333; font-size: 7pt;">${itemIndex}</td>
                             <td style="padding: 2px 3px; border: 0.5px solid #333; font-size: 7pt; word-wrap: break-word; overflow-wrap: break-word; max-width: 100px;">${descricaoCompleta}</td>
                             <td style="text-align: center; padding: 2px 1px; border: 0.5px solid #333; font-size: 7pt;">${servico.unidade}</td>
@@ -406,7 +406,7 @@ class PropostaPDFGenerator {
                 } else {
                     // Mostrar apenas valor unitário total
                     linhasTabela += `
-                        <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'};">
+                        <tr style="background: ${itemIndex % 2 === 0 ? '#F5F5F5' : 'white'}; page-break-inside: avoid;">
                             <td style="text-align: center; padding: 3px 2px; border: 0.5px solid #333; font-size: 9pt;">${itemIndex}</td>
                             <td style="padding: 3px 4px; border: 0.5px solid #333; font-size: 9pt; word-wrap: break-word; overflow-wrap: break-word;">${descricaoCompleta}</td>
                             <td style="text-align: center; padding: 3px 2px; border: 0.5px solid #333; font-size: 9pt;">${servico.unidade}</td>
@@ -445,14 +445,14 @@ class PropostaPDFGenerator {
 
         return `
             <!-- Info Box -->
-            <div style="border: 1px solid #000080; padding: 6px 8px; margin-bottom: 8px; background: #F0F8FF; font-size: 10pt;">
+            <div style="border: 1px solid #000080; padding: 6px 8px; margin-bottom: 8px; background: #F0F8FF; font-size: 10pt; page-break-inside: avoid; page-break-after: avoid;">
                 <div style="margin-bottom: 3px;"><strong>CLIENTE:</strong> ${cliente.nome}</div>
                 <div style="margin-bottom: 3px;"><strong>PROPOSTA:</strong> ${proposta.numero_proposta} | <strong>DATA:</strong> ${dataCompleta}</div>
                 <div><strong>OBRA:</strong> ${nomeObra} | <strong>ATT:</strong> ${representante}</div>
             </div>
 
             <!-- Tabela de Serviços -->
-            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 9pt; table-layout: fixed;">
+            <table style="width: 100%; border-collapse: collapse; margin-bottom: 8px; font-size: 9pt; table-layout: fixed; page-break-inside: auto;">
                 <thead style="background: #4A4A4A; color: white;">
                     ${cabecalhoTabela}
                 </thead>
@@ -661,7 +661,7 @@ class PropostaPDFGenerator {
                     format: 'a4', 
                     orientation: 'portrait' 
                 },
-                pagebreak: { mode: 'avoid-all' }
+                pagebreak: { mode: ['css', 'legacy'], avoid: ['img'] }
             };
 
             // Gerar PDF com html2pdf e obter o objeto jsPDF
@@ -673,31 +673,8 @@ class PropostaPDFGenerator {
             
             let totalPages = pdf.internal.getNumberOfPages();
             
-            // Verificar se a última página está vazia e removê-la
-            // Abordagem: se temos mais de 1 página e a última parece vazia, remover
-            if (totalPages > 1) {
-                // Calcular altura do conteúdo HTML em mm
-                // O html2canvas usa scale: 2, então precisamos ajustar
-                const contentHeight = previewContainer.offsetHeight;
-                // 1mm = 3.78px em 96 DPI, mas com scale 2 o html2canvas dobra
-                const pixelsPerMm = 3.78;
-                const contentHeightMm = contentHeight / pixelsPerMm;
-                
-                // Área útil por página (descontando margens de cabeçalho e rodapé)
-                const usableHeight = pageHeight - headerHeight - footerHeight;
-                
-                // Número de páginas necessárias (com margem de segurança de 5%)
-                const pagesNeeded = Math.ceil(contentHeightMm / (usableHeight * 0.95));
-                
-                console.log('DEBUG PDF: contentHeight(px):', contentHeight, 'contentHeightMm:', contentHeightMm.toFixed(1), 'usableHeight:', usableHeight, 'pagesNeeded:', pagesNeeded, 'totalPages:', totalPages);
-                
-                // Se temos mais páginas do que o necessário, remover as extras
-                while (totalPages > pagesNeeded && totalPages > 1) {
-                    pdf.deletePage(totalPages);
-                    totalPages = pdf.internal.getNumberOfPages();
-                    console.log('DEBUG PDF: Página vazia removida. Novo total:', totalPages);
-                }
-            }
+            // Não remover páginas automaticamente - deixar o html2pdf gerenciar a paginação
+            console.log('DEBUG PDF: Total de páginas geradas:', totalPages);
             
             // Adicionar cabeçalho e rodapé em cada página
             for (let i = 1; i <= totalPages; i++) {
