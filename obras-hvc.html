@@ -1319,10 +1319,86 @@
         <!-- Conteúdo será preenchido dinamicamente -->
       </div>
       
-      <div class="modal-footer">
+      <div class="modal-footer" style="display: flex; justify-content: space-between;">
+        <button type="button" class="btn-primary" id="btn-gerar-pdf-medicao" style="background: linear-gradient(135deg, #dc3545, #c82333);">
+          <i class="fas fa-file-pdf"></i>
+          Gerar PDF
+        </button>
         <button type="button" class="btn-secondary" id="fechar-detalhes-medicao">
           <i class="fas fa-times"></i>
           Fechar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Opções de PDF da Medição -->
+  <div id="modal-pdf-medicao" class="modal">
+    <div class="modal-content" style="max-width: 400px;">
+      <div class="modal-header">
+        <h2>
+          <i class="fas fa-file-pdf"></i>
+          Gerar PDF da Medição
+        </h2>
+        <button class="modal-close" id="close-modal-pdf-medicao">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem;">
+        <p style="margin-bottom: 1.5rem; color: #c0c0c0;">Escolha onde deseja salvar o PDF:</p>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <button id="btn-baixar-pdf-medicao-pc" class="btn-primary" style="width: 100%; justify-content: center; padding: 1rem;">
+            <i class="fas fa-download"></i>
+            Baixar no Computador
+          </button>
+          <button id="btn-salvar-pdf-medicao-onedrive" class="btn-primary" style="width: 100%; justify-content: center; padding: 1rem; background: linear-gradient(135deg, #0078d4, #106ebe);">
+            <i class="fab fa-microsoft"></i>
+            Salvar no OneDrive
+          </button>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-pdf-medicao">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal: Seleção de Pasta OneDrive para Medição -->
+  <div id="modal-onedrive-medicao" class="modal">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h2>
+          <i class="fab fa-microsoft"></i>
+          Salvar no OneDrive
+        </h2>
+        <button class="modal-close" id="close-modal-onedrive-medicao">
+          <i class="fas fa-times"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem;">
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem; color: #add8e6;">Nome do arquivo:</label>
+          <input type="text" id="medicao-pdf-filename" class="form-control" style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(173,216,230,0.3); border-radius: 6px; color: #e0e0e0;">
+        </div>
+        <div style="margin-bottom: 1rem;">
+          <label style="display: block; margin-bottom: 0.5rem; color: #add8e6;">Pasta de destino:</label>
+          <div id="medicao-pasta-selecionada" style="padding: 0.5rem; background: rgba(0,0,0,0.2); border-radius: 4px; color: #888; font-size: 0.9rem;">/ (Raiz)</div>
+        </div>
+        <div id="medicao-onedrive-folders" style="max-height: 250px; overflow-y: auto; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 0.5rem;">
+          <!-- Pastas serão carregadas aqui -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-secondary" id="cancel-onedrive-medicao">
+          <i class="fas fa-times"></i>
+          Cancelar
+        </button>
+        <button type="button" class="btn-primary" id="confirmar-onedrive-medicao" style="background: linear-gradient(135deg, #0078d4, #106ebe);">
+          <i class="fas fa-save"></i>
+          Salvar Aqui
         </button>
       </div>
     </div>
