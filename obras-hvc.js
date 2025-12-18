@@ -4808,22 +4808,29 @@ fecharModalAjustarQuantidade() {
             // Verificar consistência: produzido vs medido
             const consistente = produzido.quantidade >= qtdTotalMedida;
             
+            // Verificar condições para check verde
+            const checkProduzido = produzido.quantidade >= qtdContratada;
+            const checkJaMedido = (jaMedido.quantidade + estaMedicao.quantidade) >= qtdContratada;
+            const checkRestante = qtdRestante <= 0;
+            
             servicosHTML += `
                 <tr style="background: ${bgColor};">
-                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top; word-wrap: break-word;">
                         <strong>${servico.codigo || '-'}</strong><br>
-                        <span style="font-size: 8px; color: #666;">${(servico.descricao || '').substring(0, 25)}${(servico.descricao || '').length > 25 ? '...' : ''}</span>
+                        <span style="font-size: 8px; color: #666; word-wrap: break-word; white-space: normal;">${servico.descricao || ''}</span>
                     </td>
                     <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">${local.nome || '-'}</td>
                     <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top;">
                         ${qtdContratada.toFixed(2)}<br>
                         <span style="font-size: 8px; color: #666;">${this.formatMoney(valorContratado)}</span>
                     </td>
-                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: ${consistente ? '#17a2b8' : '#dc3545'};">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: ${consistente ? '#17a2b8' : '#dc3545'}; position: relative;">
+                        ${checkProduzido ? '<span style="position: absolute; top: 2px; right: 3px; color: #28a745; font-size: 10px; font-weight: bold;">✓</span>' : ''}
                         ${produzido.quantidade.toFixed(2)}<br>
                         <span style="font-size: 8px;">${this.formatMoney(valorProduzido)}</span>
                     </td>
-                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: #6c757d;">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: #6c757d; position: relative;">
+                        ${checkJaMedido ? '<span style="position: absolute; top: 2px; right: 3px; color: #28a745; font-size: 10px; font-weight: bold;">✓</span>' : ''}
                         ${jaMedido.quantidade.toFixed(2)}<br>
                         <span style="font-size: 8px;">${this.formatMoney(jaMedido.valor)}</span>
                     </td>
@@ -4831,7 +4838,8 @@ fecharModalAjustarQuantidade() {
                         ${estaMedicao.quantidade.toFixed(2)}<br>
                         <span style="font-size: 8px; ${destaque ? 'color: #28a745;' : ''}">${this.formatMoney(estaMedicao.valor)}</span>
                     </td>
-                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: ${qtdRestante > 0 ? '#b8860b' : '#28a745'};">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: ${qtdRestante > 0 ? '#b8860b' : '#28a745'}; position: relative;">
+                        ${checkRestante ? '<span style="position: absolute; top: 2px; right: 3px; color: #28a745; font-size: 10px; font-weight: bold;">✓</span>' : ''}
                         ${qtdRestante.toFixed(2)}<br>
                         <span style="font-size: 8px;">${this.formatMoney(valorRestante)}</span>
                     </td>
