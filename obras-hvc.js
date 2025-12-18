@@ -3581,10 +3581,13 @@ fecharModalAjustarQuantidade() {
         const btnBaixarPC = document.getElementById('btn-baixar-relatorio-pc');
         const btnSalvarOneDrive = document.getElementById('btn-salvar-relatorio-onedrive');
         
+        const btnVisualizarRelatorio = document.getElementById('btn-visualizar-relatorio');
+        
         if (closeModalRelatorio) closeModalRelatorio.addEventListener('click', () => this.hideModalRelatorio());
         if (cancelRelatorio) cancelRelatorio.addEventListener('click', () => this.hideModalRelatorio());
         if (btnBaixarPC) btnBaixarPC.addEventListener('click', () => this.gerarRelatorioPC());
         if (btnSalvarOneDrive) btnSalvarOneDrive.addEventListener('click', () => this.showModalOneDriveRelatorio());
+        if (btnVisualizarRelatorio) btnVisualizarRelatorio.addEventListener('click', () => this.visualizarRelatorio());
         
         // Modal OneDrive
         const closeOneDrive = document.getElementById('close-modal-onedrive-relatorio');
@@ -3604,6 +3607,141 @@ fecharModalAjustarQuantidade() {
     hideModalRelatorio() {
         const modal = document.getElementById('modal-relatorio-obra');
         if (modal) modal.classList.remove('show');
+    }
+    
+    async visualizarRelatorio() {
+        this.hideModalRelatorio();
+        this.showNotification('Gerando visualização do relatório...', 'info');
+        
+        try {
+            const obra = this.obraAtual;
+            if (!obra) throw new Error('Obra não encontrada');
+            
+            // Buscar dados completos
+            const valorProduzido = await this.calcularValorProduzido(obra.id);
+            const valorMedido = await this.calcularValorMedido(obra.id);
+            const valorRecebido = await this.calcularValorRecebido(obra.id);
+            
+            // Buscar produções diárias
+            const { data: producoes } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('*')
+                .eq('obra_id', obra.id)
+                .order('data_producao', { ascending: false })
+                .limit(10);
+            
+            // Buscar medições
+            const { data: medicoes } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('*')
+                .eq('obra_id', obra.id)
+                .order('created_at', { ascending: false });
+            
+            // Usar serviços já carregados no modal de andamento
+            const propostasIds = this.propostasSelecionadas.map(p => p.id);
+            const servicosObra = this.servicosAndamento || [];
+            
+            // Buscar TODAS as produções para calcular quantidades produzidas por item
+            const { data: todasProducoes } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('*')
+                .eq('obra_id', obra.id);
+            
+            // Buscar TODAS as medições com seus serviços para calcular quantidades medidas
+            const { data: todasMedicoes } = await supabaseClient
+                .from('medicoes_hvc')
+                .select(`
+                    *,
+                    medicoes_servicos (*)
+                `)
+                .eq('obra_id', obra.id);
+            
+            // Calcular quantidades produzidas e medidas para cada serviço
+            const quantidadesPorItem = {};
+            
+            // Somar produções por item
+            (todasProducoes || []).forEach(producao => {
+                const quantidades = producao.quantidades_servicos || {};
+                Object.entries(quantidades).forEach(([itemId, qtd]) => {
+                    if (!quantidadesPorItem[itemId]) {
+                        quantidadesPorItem[itemId] = { produzida: 0, medida: 0 };
+                    }
+                    quantidadesPorItem[itemId].produzida += parseFloat(qtd) || 0;
+                });
+            });
+            
+            // Somar medições por item
+            (todasMedicoes || []).forEach(medicao => {
+                (medicao.medicoes_servicos || []).forEach(ms => {
+                    const itemId = ms.item_proposta_id;
+                    if (!quantidadesPorItem[itemId]) {
+                        quantidadesPorItem[itemId] = { produzida: 0, medida: 0 };
+                    }
+                    quantidadesPorItem[itemId].medida += parseFloat(ms.quantidade_medida) || 0;
+                });
+            });
+            
+            // Armazenar para uso no HTML
+            this.quantidadesPorItem = quantidadesPorItem;
+            
+            // Buscar andamentos existentes para esta obra
+            const { data: andamentos } = await supabaseClient
+                .from('servicos_andamento')
+                .select('*')
+                .eq('obra_id', obra.id);
+            
+            this.andamentosExistentes = andamentos || [];
+            
+            // Carregar equipes e integrantes se ainda não foram carregados
+            if (!this.equipesIntegrantes || this.equipesIntegrantes.length === 0) {
+                await this.loadEquipesIntegrantes();
+            }
+            
+            // Buscar propostas com valor_total atualizado
+            const { data: propostasAtualizadas } = await supabaseClient
+                .from('propostas_hvc')
+                .select(`
+                    *,
+                    clientes_hvc (nome)
+                `)
+                .in('id', propostasIds);
+            
+            // Calcular valor_total de cada proposta a partir dos itens
+            for (const proposta of (propostasAtualizadas || [])) {
+                const { data: itens } = await supabaseClient
+                    .from('itens_proposta_hvc')
+                    .select('preco_total')
+                    .eq('proposta_id', proposta.id);
+                
+                proposta.valor_total_calculado = (itens || []).reduce((sum, item) => sum + (parseFloat(item.preco_total) || 0), 0);
+            }
+            
+            // Buscar clientes das propostas
+            const clientesUnicos = [...new Set((propostasAtualizadas || []).map(p => p.clientes_hvc?.nome).filter(Boolean))];
+            
+            // Gerar HTML do relatório
+            const html = this.gerarHTMLRelatorio(obra, {
+                valorProduzido,
+                valorMedido,
+                valorRecebido,
+                producoes: producoes || [],
+                medicoes: medicoes || [],
+                clientes: clientesUnicos,
+                propostas: propostasAtualizadas || [],
+                servicos: servicosObra
+            });
+            
+            // Abrir em nova janela para visualização
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(html);
+            printWindow.document.close();
+            
+            this.showNotification('Relatório aberto para visualização!', 'success');
+            
+        } catch (error) {
+            console.error('Erro ao visualizar relatório:', error);
+            this.showNotification('Erro ao gerar visualização: ' + error.message, 'error');
+        }
     }
     
     showModalOneDriveRelatorio() {
