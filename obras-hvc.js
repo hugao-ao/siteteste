@@ -4704,8 +4704,29 @@ fecharModalAjustarQuantidade() {
         console.log('produzidoPorItem:', JSON.stringify(produzidoPorItem, null, 2));
         console.log('itensContratados IDs:', (itensContratados || []).map(i => i.id));
         
+        // Buscar medições anteriores com detalhes completos para exibir no PDF
+        const { data: medicoesAnterioresDetalhadas } = await supabaseClient
+            .from('medicoes_hvc')
+            .select(`
+                id,
+                numero_medicao,
+                created_at,
+                valor_total,
+                medicoes_servicos (
+                    quantidade_medida,
+                    valor_total,
+                    itens_proposta_hvc (
+                        servicos_hvc (codigo),
+                        locais_hvc (nome)
+                    )
+                )
+            `)
+            .eq('obra_id', medicaoCompleta.obra_id)
+            .lt('created_at', medicaoCompleta.created_at)
+            .order('created_at', { ascending: true });
+        
         // Gerar HTML do relatório
-        const html = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados, produzidoPorItem);
+        const html = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados, produzidoPorItem, medicoesAnterioresDetalhadas || []);
         
         // Gerar PDF usando html2pdf
         const element = document.createElement('div');
@@ -4744,7 +4765,7 @@ fecharModalAjustarQuantidade() {
         return pdfBlob;
     }
     
-    gerarHTMLMedicao(medicao, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados, produzidoPorItem = {}) {
+    gerarHTMLMedicao(medicao, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados, produzidoPorItem = {}, medicoesAnteriores = []) {
         const dataAtual = new Date().toLocaleDateString('pt-BR', { 
             weekday: 'long', 
             year: 'numeric', 
@@ -5033,6 +5054,53 @@ fecharModalAjustarQuantidade() {
                             }).join('')}
                             ${producoesParaComprovacao.length > 10 ? '<tr style="background: #f0f0f0;"><td colspan="5" style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; color: #666;">... e mais ' + (producoesParaComprovacao.length - 10) + ' registros de produção</td></tr>' : ''}
                         </table>
+                    </div>
+                ` : ''}
+                
+                <!-- Medições Anteriores -->
+                ${medicoesAnteriores.length > 0 ? `
+                    <div style="margin-bottom: 10px;">
+                        <h4 style="color: #6c757d; font-size: 12px; margin: 0 0 5px 0;"><i>⏳</i> Histórico de Medições Anteriores</h4>
+                        <p style="margin: 0 0 5px 0; font-size: 9px; color: #666;">Medições já realizadas nesta obra</p>
+                        ${medicoesAnteriores.map((med, medIdx) => {
+                            let dataMedicao = '-';
+                            if (med.created_at) {
+                                const d = new Date(med.created_at);
+                                dataMedicao = d.toLocaleDateString('pt-BR');
+                            }
+                            const servicosMed = med.medicoes_servicos || [];
+                            const valorTotalMed = servicosMed.reduce((acc, s) => acc + (parseFloat(s.valor_total) || 0), 0);
+                            const bgHeader = medIdx % 2 === 0 ? '#f8f9fa' : '#e9ecef';
+                            
+                            return '<div style="margin-bottom: 8px; border: 1px solid #ddd; border-radius: 6px; overflow: hidden;">' +
+                                '<div style="background: ' + bgHeader + '; padding: 8px; display: flex; justify-content: space-between; align-items: center;">' +
+                                    '<div>' +
+                                        '<strong style="font-size: 10px; color: #333;">Medição ' + (med.numero_medicao || '-') + '</strong>' +
+                                        '<span style="font-size: 9px; color: #666; margin-left: 10px;">' + dataMedicao + '</span>' +
+                                    '</div>' +
+                                    '<strong style="font-size: 10px; color: #28a745;">' + this.formatMoney(valorTotalMed) + '</strong>' +
+                                '</div>' +
+                                '<table style="width: 100%; border-collapse: collapse; font-size: 8px;">' +
+                                    '<tr style="background: #e0e0e0;">' +
+                                        '<th style="padding: 4px; text-align: left; width: 25%;">CÓDIGO</th>' +
+                                        '<th style="padding: 4px; text-align: left; width: 35%;">LOCAL</th>' +
+                                        '<th style="padding: 4px; text-align: center; width: 20%;">QUANTIDADE</th>' +
+                                        '<th style="padding: 4px; text-align: right; width: 20%;">VALOR</th>' +
+                                    '</tr>' +
+                                    servicosMed.map((s, sIdx) => {
+                                        const codigo = s.itens_proposta_hvc?.servicos_hvc?.codigo || '-';
+                                        const local = s.itens_proposta_hvc?.locais_hvc?.nome || '-';
+                                        const bgRow = sIdx % 2 === 0 ? 'white' : '#f8f8f8';
+                                        return '<tr style="background: ' + bgRow + ';">' +
+                                            '<td style="padding: 4px; border-top: 0.5px solid #eee;">' + codigo + '</td>' +
+                                            '<td style="padding: 4px; border-top: 0.5px solid #eee;">' + local + '</td>' +
+                                            '<td style="padding: 4px; border-top: 0.5px solid #eee; text-align: center;">' + (parseFloat(s.quantidade_medida) || 0).toFixed(2) + '</td>' +
+                                            '<td style="padding: 4px; border-top: 0.5px solid #eee; text-align: right;">' + this.formatMoney(parseFloat(s.valor_total) || 0) + '</td>' +
+                                        '</tr>';
+                                    }).join('') +
+                                '</table>' +
+                            '</div>';
+                        }).join('')}
                     </div>
                 ` : ''}
                 
