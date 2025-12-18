@@ -2718,7 +2718,7 @@ class ObrasManager {
                     <button 
                         type="button"
                         class="btn-ajustar-medicao"
-                        data-index="${index}"
+                        data-chave="${chaveUnica}"
                         style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #000080 0%, #191970 100%); color: #add8e6; border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.3s;"
                         onmouseover="this.style.background='linear-gradient(135deg, #191970 0%, #000080 100%)'"
                         onmouseout="this.style.background='linear-gradient(135deg, #000080 0%, #191970 100%)'"
@@ -2737,11 +2737,11 @@ class ObrasManager {
     
     botoes.forEach(botao => {
         botao.addEventListener('click', () => {
-            const index = parseInt(botao.dataset.index);
-            const servico = this.servicosParaMedicao[index];
+            const chaveUnica = botao.dataset.chave;
+            const servico = this.servicosParaMedicao.find(s => s.chaveUnica === chaveUnica);
             
             if (!servico) {
-
+                console.error('Serviço não encontrado para chave:', chaveUnica);
                 return;
             }
             
@@ -2898,8 +2898,22 @@ abrirModalAjustarQuantidade(chaveUnica, codigo, nome, unidade, precoUnitario, qu
 atualizarSliderDeInput() {
     const input = document.getElementById('input-quantidade-manual');
     const slider = document.getElementById('slider-quantidade-modal');
-    if (input && slider) {
-        slider.value = input.value;
+    if (input && slider && this.servicoAtualModal) {
+        // Validar limite máximo
+        let valor = parseFloat(input.value) || 0;
+        const maximo = this.servicoAtualModal.quantidadeDisponivel;
+        
+        if (valor > maximo) {
+            valor = maximo;
+            input.value = maximo;
+            this.showNotification(`Quantidade máxima disponível: ${maximo.toFixed(2)}`, 'warning');
+        }
+        if (valor < 0) {
+            valor = 0;
+            input.value = 0;
+        }
+        
+        slider.value = valor;
         this.atualizarDisplaysModal();
     }
 }
@@ -2931,11 +2945,20 @@ confirmarQuantidade(chaveUnica) {
     const input = document.getElementById('input-quantidade-manual');
     
     if (!input || !this.servicoAtualModal) {
-
         return;
     }
     
-    const quantidade = parseFloat(input.value) || 0;
+    let quantidade = parseFloat(input.value) || 0;
+    const maximo = this.servicoAtualModal.quantidadeDisponivel;
+    
+    // Validação final: garantir que quantidade não exceda o máximo disponível
+    if (quantidade > maximo) {
+        quantidade = maximo;
+        this.showNotification(`Quantidade ajustada para o máximo disponível: ${maximo.toFixed(2)}`, 'warning');
+    }
+    if (quantidade < 0) {
+        quantidade = 0;
+    }
     
     // Atualizar serviço no array usando chaveUnica
     const index = this.servicosMedicao.findIndex(s => s.chave_unica === chaveUnica);
