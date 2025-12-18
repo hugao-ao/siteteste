@@ -4410,8 +4410,147 @@ fecharModalAjustarQuantidade() {
         this.hideModalPdfMedicao();
         
         try {
-            // Gerar o HTML da medição
-            const htmlContent = await this.gerarHTMLMedicao();
+            const medicao = this.medicaoAtual;
+            if (!medicao) throw new Error('Medição não encontrada');
+            
+            // Buscar dados completos da medição com serviços
+            const { data: medicaoCompleta, error: medicaoError } = await supabaseClient
+                .from('medicoes_hvc')
+                .select(`
+                    *,
+                    medicoes_servicos (
+                        *,
+                        itens_proposta_hvc (
+                            *,
+                            servicos_hvc (*),
+                            locais_hvc (*),
+                            propostas_hvc (
+                                numero_proposta,
+                                clientes_hvc (nome)
+                            )
+                        )
+                    )
+                `)
+                .eq('id', medicao.id)
+                .single();
+            
+            if (medicaoError) throw medicaoError;
+            
+            // Buscar dados da obra
+            const { data: obra } = await supabaseClient
+                .from('obras_hvc')
+                .select('*, obras_propostas (proposta_id)')
+                .eq('id', medicaoCompleta.obra_id)
+                .single();
+            
+            // Buscar cliente da obra
+            let nomeCliente = 'Não informado';
+            let clienteEndereco = '';
+            let clienteCnpj = '';
+            if (obra?.obras_propostas?.length > 0) {
+                const { data: proposta } = await supabaseClient
+                    .from('propostas_hvc')
+                    .select('clientes_hvc (*)')
+                    .eq('id', obra.obras_propostas[0].proposta_id)
+                    .single();
+                if (proposta?.clientes_hvc) {
+                    nomeCliente = proposta.clientes_hvc.nome || 'Não informado';
+                    clienteEndereco = proposta.clientes_hvc.endereco || '';
+                    clienteCnpj = proposta.clientes_hvc.cnpj || proposta.clientes_hvc.cpf || '';
+                }
+            }
+            
+            // Buscar TODAS as medições anteriores desta obra
+            const { data: todasMedicoes } = await supabaseClient
+                .from('medicoes_hvc')
+                .select(`
+                    id,
+                    numero_medicao,
+                    created_at,
+                    medicoes_servicos (
+                        item_proposta_id,
+                        quantidade_medida,
+                        valor_total
+                    )
+                `)
+                .eq('obra_id', medicaoCompleta.obra_id)
+                .lt('created_at', medicaoCompleta.created_at);
+            
+            // Calcular quantidades já medidas por item
+            const jaMedidoPorItem = {};
+            (todasMedicoes || []).forEach(med => {
+                (med.medicoes_servicos || []).forEach(ms => {
+                    if (!jaMedidoPorItem[ms.item_proposta_id]) {
+                        jaMedidoPorItem[ms.item_proposta_id] = { quantidade: 0, valor: 0 };
+                    }
+                    jaMedidoPorItem[ms.item_proposta_id].quantidade += parseFloat(ms.quantidade_medida) || 0;
+                    jaMedidoPorItem[ms.item_proposta_id].valor += parseFloat(ms.valor_total) || 0;
+                });
+            });
+            
+            // Buscar todos os itens contratados das propostas da obra
+            const propostaIds = (obra?.obras_propostas || []).map(op => op.proposta_id);
+            const { data: itensContratados } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select(`
+                    *,
+                    servicos_hvc (*),
+                    locais_hvc (*),
+                    propostas_hvc (numero_proposta)
+                `)
+                .in('proposta_id', propostaIds);
+            
+            // Buscar TODAS as produções diárias desta obra
+            const { data: todasProducoes } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('*')
+                .eq('obra_id', medicaoCompleta.obra_id)
+                .order('data_producao', { ascending: false });
+            
+            // Calcular quantidades produzidas por item_proposta_id
+            const produzidoPorItem = {};
+            (todasProducoes || []).forEach(prod => {
+                const quantidades = prod.quantidades_servicos || {};
+                Object.entries(quantidades).forEach(([itemId, quantidade]) => {
+                    const qtd = parseFloat(quantidade) || 0;
+                    if (qtd > 0) {
+                        if (!produzidoPorItem[itemId]) {
+                            produzidoPorItem[itemId] = { quantidade: 0, producoes: [] };
+                        }
+                        produzidoPorItem[itemId].quantidade += qtd;
+                        produzidoPorItem[itemId].producoes.push({
+                            data: prod.data_producao,
+                            quantidade: qtd,
+                            equipe: prod.responsavel_id || 'N/A',
+                            observacoes: prod.observacoes
+                        });
+                    }
+                });
+            });
+            
+            // Buscar medições anteriores detalhadas
+            const { data: medicoesAnterioresDetalhadas } = await supabaseClient
+                .from('medicoes_hvc')
+                .select(`
+                    id,
+                    numero_medicao,
+                    created_at,
+                    valor_total,
+                    medicoes_servicos (
+                        quantidade_medida,
+                        valor_total,
+                        itens_proposta_hvc (
+                            servicos_hvc (codigo),
+                            locais_hvc (nome)
+                        )
+                    )
+                `)
+                .eq('obra_id', medicaoCompleta.obra_id)
+                .lt('created_at', medicaoCompleta.created_at)
+                .order('created_at', { ascending: true });
+            
+            // Gerar HTML do relatório
+            const htmlContent = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados, produzidoPorItem, medicoesAnterioresDetalhadas || []);
             
             // Abrir em nova janela para visualização
             const printWindow = window.open('', '_blank');
