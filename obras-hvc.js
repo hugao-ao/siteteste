@@ -4656,21 +4656,23 @@ fecharModalAjustarQuantidade() {
             .order('data_producao', { ascending: false });
         
         // Calcular quantidades produzidas por item_proposta_id
+        // A estrutura é: quantidades_servicos = { item_proposta_id: quantidade }
         const produzidoPorItem = {};
         const producoesDetalhadas = []; // Para a seção de comprovação
         
         (todasProducoes || []).forEach(prod => {
-            const servicos = prod.servicos || [];
-            servicos.forEach(s => {
-                const itemId = s.item_proposta_id;
-                if (itemId) {
+            const quantidades = prod.quantidades_servicos || {};
+            // Iterar sobre cada item_proposta_id nas quantidades
+            Object.entries(quantidades).forEach(([itemId, quantidade]) => {
+                const qtd = parseFloat(quantidade) || 0;
+                if (qtd > 0) {
                     if (!produzidoPorItem[itemId]) {
                         produzidoPorItem[itemId] = { quantidade: 0, producoes: [] };
                     }
-                    produzidoPorItem[itemId].quantidade += parseFloat(s.quantidade) || 0;
+                    produzidoPorItem[itemId].quantidade += qtd;
                     produzidoPorItem[itemId].producoes.push({
                         data: prod.data_producao,
-                        quantidade: parseFloat(s.quantidade) || 0,
+                        quantidade: qtd,
                         equipe: prod.equipes_hvc?.nome || 'N/A',
                         observacoes: prod.observacoes
                     });
@@ -4927,24 +4929,28 @@ fecharModalAjustarQuantidade() {
                 <div style="margin-bottom: 10px;">
                     <table style="width: 100%; border-collapse: collapse; background: white;">
                         <tr style="background: #000080;">
-                            <th colspan="4" style="padding: 6px; text-align: center; color: white; font-size: 10px;">RESUMO FINANCEIRO DO CONTRATO</th>
+                            <th colspan="5" style="padding: 6px; text-align: center; color: white; font-size: 10px;">RESUMO FINANCEIRO DO CONTRATO</th>
                         </tr>
                         <tr style="background: #f0f0f0;">
-                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; width: 25%;">
-                                <span style="display: block; color: #666; font-size: 8px;">Valor Contratado</span>
-                                <strong style="font-size: 11px;">${this.formatMoney(totalContratado)}</strong>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%;">
+                                <span style="display: block; color: #666; font-size: 7px;">Valor Contratado</span>
+                                <strong style="font-size: 10px;">${this.formatMoney(totalContratado)}</strong>
                             </td>
-                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; width: 25%;">
-                                <span style="display: block; color: #666; font-size: 8px;">Já Medido (anterior)</span>
-                                <strong style="font-size: 11px; color: #6c757d;">${this.formatMoney(totalJaMedido)}</strong>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%; background: #e8f4fc;">
+                                <span style="display: block; color: #17a2b8; font-size: 7px;">Total Produzido</span>
+                                <strong style="font-size: 10px; color: #17a2b8;">${this.formatMoney(totalProduzido)}</strong>
                             </td>
-                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; width: 25%; background: #e8f5e9;">
-                                <span style="display: block; color: #28a745; font-size: 8px;">Esta Medição</span>
-                                <strong style="font-size: 11px; color: #28a745;">${this.formatMoney(totalEstaMedicao)}</strong>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%;">
+                                <span style="display: block; color: #666; font-size: 7px;">Já Medido</span>
+                                <strong style="font-size: 10px; color: #6c757d;">${this.formatMoney(totalJaMedido)}</strong>
                             </td>
-                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; width: 25%;">
-                                <span style="display: block; color: #ffc107; font-size: 8px;">Saldo Restante</span>
-                                <strong style="font-size: 11px; color: #ffc107;">${this.formatMoney(totalRestante)}</strong>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%; background: #e8f5e9;">
+                                <span style="display: block; color: #28a745; font-size: 7px;">Esta Medição</span>
+                                <strong style="font-size: 10px; color: #28a745;">${this.formatMoney(totalEstaMedicao)}</strong>
+                            </td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%;">
+                                <span style="display: block; color: #ffc107; font-size: 7px;">Saldo Restante</span>
+                                <strong style="font-size: 10px; color: #ffc107;">${this.formatMoney(totalRestante)}</strong>
                             </td>
                         </tr>
                     </table>
