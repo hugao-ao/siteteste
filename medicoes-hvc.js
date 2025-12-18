@@ -716,21 +716,23 @@ class MedicoesManager {
                     </span>
                 </td>
                 <td>
-                    <button class="btn-info" onclick="visualizarMedicao('${medicao.id}')" title="Visualizar" style="margin-right: 0.25rem;">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button class="btn-success" onclick="gerarPdfMedicao('${medicao.id}')" title="Gerar PDF" style="margin-right: 0.25rem; background: linear-gradient(135deg, #28a745, #20c997);">
-                        <i class="fas fa-file-pdf"></i>
-                    </button>
-                    <button class="btn-primary" onclick="editarMedicao('${medicao.id}')" title="Editar" style="margin-right: 0.25rem;">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-warning" onclick="abrirModalAnotacoes('${medicao.id}')" title="Anotações" style="margin-right: 0.25rem;">
-                        <i class="fas fa-sticky-note"></i>
-                    </button>
-                    <button class="btn-danger" onclick="excluirMedicao('${medicao.id}')" title="Excluir">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <div style="display: flex; flex-wrap: nowrap; gap: 0.25rem; justify-content: center;">
+                        <button class="btn-info" onclick="visualizarMedicao('${medicao.id}')" title="Visualizar" style="padding: 0.4rem 0.5rem; min-width: auto;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        <button class="btn-success" onclick="gerarPdfMedicao('${medicao.id}')" title="Gerar PDF" style="padding: 0.4rem 0.5rem; min-width: auto; background: linear-gradient(135deg, #28a745, #20c997);">
+                            <i class="fas fa-file-pdf"></i>
+                        </button>
+                        <button class="btn-primary" onclick="editarMedicao('${medicao.id}')" title="Editar" style="padding: 0.4rem 0.5rem; min-width: auto;">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="btn-warning" onclick="abrirModalAnotacoes('${medicao.id}')" title="Anotações" style="padding: 0.4rem 0.5rem; min-width: auto;">
+                            <i class="fas fa-sticky-note"></i>
+                        </button>
+                        <button class="btn-danger" onclick="excluirMedicao('${medicao.id}')" title="Excluir" style="padding: 0.4rem 0.5rem; min-width: auto;">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
                 </td>
             </tr>
         `}).join('');
