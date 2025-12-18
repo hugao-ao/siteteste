@@ -5157,8 +5157,10 @@ fecharModalAjustarQuantidade() {
             (medicao.medicoes_servicos || []).forEach(ms => {
                 const item = ms.itens_proposta_hvc;
                 if (item) {
+                    const chaveUnica = `${item.servico_id}_${item.local_id}`;
                     this.servicosMedicaoEdicao.push({
                         id: ms.id,
+                        chave_unica: chaveUnica,
                         item_proposta_id: ms.item_proposta_id,
                         servico_id: item.servico_id,
                         codigo_servico: item.servicos_hvc?.codigo || '-',
@@ -5172,11 +5174,126 @@ fecharModalAjustarQuantidade() {
                 }
             });
             
+            // Carregar serviços disponíveis para adição (igual ao modal de criar)
+            await this.loadServicosParaEdicaoMedicao(medicaoId);
+            
             // Mostrar modal de edição
             this.showModalEditarMedicao(medicao);
             
         } catch (error) {
             this.showNotification('Erro ao carregar medição: ' + error.message, 'error');
+        }
+    }
+    
+    async loadServicosParaEdicaoMedicao(medicaoIdAtual) {
+        try {
+            if (!this.currentObraId) return;
+            
+            // 1. Buscar todos os itens das propostas da obra
+            const servicosPromises = this.propostasSelecionadas.map(async (proposta) => {
+                const { data, error } = await supabaseClient
+                    .from('itens_proposta_hvc')
+                    .select(`
+                        id,
+                        proposta_id,
+                        servico_id,
+                        local_id,
+                        quantidade,
+                        preco_mao_obra,
+                        preco_material,
+                        preco_total,
+                        servicos_hvc (*),
+                        propostas_hvc (numero_proposta),
+                        locais_hvc (nome)
+                    `)
+                    .eq('proposta_id', proposta.id);
+                
+                if (error) throw error;
+                return data || [];
+            });
+            
+            const servicosArrays = await Promise.all(servicosPromises);
+            const todosItens = servicosArrays.flat();
+            
+            // 2. Buscar todas as produções diárias da obra
+            const { data: producoes } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('*')
+                .eq('obra_id', this.currentObraId);
+            
+            // 3. Buscar todas as medições EXCETO a atual (para calcular já medido)
+            const { data: medicoes } = await supabaseClient
+                .from('medicoes_hvc')
+                .select(`id, medicoes_servicos (*)`)
+                .eq('obra_id', this.currentObraId)
+                .neq('id', medicaoIdAtual)
+                .neq('status', 'cancelada');
+            
+            // 4. Agrupar serviços por código e local
+            const servicosAgrupados = {};
+            
+            todosItens.forEach(item => {
+                const codigo = item.servicos_hvc?.codigo || 'SEM-CODIGO';
+                const localNome = item.locais_hvc?.nome || 'Sem local';
+                const chaveUnica = `${item.servico_id}_${item.local_id}`;
+                
+                if (!servicosAgrupados[chaveUnica]) {
+                    servicosAgrupados[chaveUnica] = {
+                        chaveUnica,
+                        servicoId: item.servico_id,
+                        localId: item.local_id,
+                        codigo,
+                        nome: item.servicos_hvc?.descricao || 'Sem descrição',
+                        local: localNome,
+                        unidade: item.servicos_hvc?.unidade || 'un',
+                        precoUnitario: (parseFloat(item.preco_mao_obra) || 0) + (parseFloat(item.preco_material) || 0),
+                        quantidadeContratada: 0,
+                        quantidadeProduzida: 0,
+                        quantidadeJaMedida: 0,
+                        itens: []
+                    };
+                }
+                
+                servicosAgrupados[chaveUnica].quantidadeContratada += parseFloat(item.quantidade) || 0;
+                servicosAgrupados[chaveUnica].itens.push(item);
+            });
+            
+            // 5. Calcular quantidades produzidas
+            (producoes || []).forEach(prod => {
+                const quantidades = prod.quantidades_servicos || {};
+                Object.entries(quantidades).forEach(([itemId, qtd]) => {
+                    const item = todosItens.find(i => i.id === itemId);
+                    if (item) {
+                        const chaveUnica = `${item.servico_id}_${item.local_id}`;
+                        if (servicosAgrupados[chaveUnica]) {
+                            servicosAgrupados[chaveUnica].quantidadeProduzida += parseFloat(qtd) || 0;
+                        }
+                    }
+                });
+            });
+            
+            // 6. Calcular quantidades já medidas (excluindo medição atual)
+            (medicoes || []).forEach(med => {
+                (med.medicoes_servicos || []).forEach(ms => {
+                    const item = todosItens.find(i => i.id === ms.item_proposta_id);
+                    if (item) {
+                        const chaveUnica = `${item.servico_id}_${item.local_id}`;
+                        if (servicosAgrupados[chaveUnica]) {
+                            servicosAgrupados[chaveUnica].quantidadeJaMedida += parseFloat(ms.quantidade_medida) || 0;
+                        }
+                    }
+                });
+            });
+            
+            // 7. Calcular quantidade disponível
+            this.servicosParaEdicao = Object.values(servicosAgrupados).map(s => ({
+                ...s,
+                quantidadeDisponivel: Math.max(0, s.quantidadeProduzida - s.quantidadeJaMedida)
+            }));
+            
+        } catch (error) {
+            console.error('Erro ao carregar serviços para edição:', error);
+            this.servicosParaEdicao = [];
         }
     }
     
@@ -5217,10 +5334,19 @@ fecharModalAjustarQuantidade() {
                             </div>
                         </div>
                         
-                        <!-- Serviços Medidos -->
+                        <!-- Serviços Disponíveis para Adicionar -->
                         <div style="margin-bottom: 1.5rem;">
-                            <h4 style="color: #add8e6; margin: 0 0 1rem 0;"><i class="fas fa-list"></i> Serviços Medidos</h4>
-                            <div id="lista-servicos-edicao" style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 1rem; max-height: 300px; overflow-y: auto;">
+                            <h4 style="color: #add8e6; margin: 0 0 0.5rem 0;"><i class="fas fa-plus-circle"></i> Selecionar Serviços para Medir</h4>
+                            <p style="color: #888; font-size: 0.85rem; margin: 0 0 1rem 0;">* Clique em "Adicionar" para incluir um serviço na medição</p>
+                            <div id="lista-servicos-disponiveis-edicao" style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 1rem; max-height: 250px; overflow-y: auto;">
+                                ${this.renderServicosDisponiveisEdicao()}
+                            </div>
+                        </div>
+                        
+                        <!-- Serviços Já Adicionados na Medição -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="color: #20c997; margin: 0 0 1rem 0;"><i class="fas fa-check-circle"></i> Resumo dos Serviços Medidos</h4>
+                            <div id="lista-servicos-edicao" style="background: rgba(32, 201, 151, 0.1); border-radius: 8px; padding: 1rem; max-height: 200px; overflow-y: auto;">
                                 ${this.renderServicosEdicao()}
                             </div>
                         </div>
@@ -5252,9 +5378,235 @@ fecharModalAjustarQuantidade() {
         document.body.insertAdjacentHTML('beforeend', modalHTML);
     }
     
+    renderServicosDisponiveisEdicao() {
+        if (!this.servicosParaEdicao || this.servicosParaEdicao.length === 0) {
+            return '<p style="color: #888; text-align: center;">Nenhum serviço disponível</p>';
+        }
+        
+        return this.servicosParaEdicao.map(servico => {
+            // Verificar se já está adicionado na medição
+            const jaAdicionado = this.servicosMedicaoEdicao.some(s => s.chave_unica === servico.chaveUnica);
+            const quantidadeNaMedicao = jaAdicionado ? 
+                this.servicosMedicaoEdicao.find(s => s.chave_unica === servico.chaveUnica)?.quantidade_medida || 0 : 0;
+            
+            // Quantidade disponível = produzido - já medido (em outras medições) + quantidade desta medição
+            const disponivelReal = servico.quantidadeDisponivel + quantidadeNaMedicao;
+            
+            return `
+                <div style="background: ${jaAdicionado ? 'rgba(32, 201, 151, 0.15)' : 'rgba(173, 216, 230, 0.05)'}; padding: 0.75rem; border-radius: 8px; margin-bottom: 0.5rem; border: 1px solid ${jaAdicionado ? 'rgba(32, 201, 151, 0.3)' : 'rgba(173, 216, 230, 0.1)'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <div style="flex: 1;">
+                            <div style="color: #add8e6; font-weight: 600; font-size: 0.95rem;">
+                                ${servico.codigo} - ${servico.nome}
+                                <span style="color: #20c997; font-size: 0.85rem; margin-left: 0.5rem;">R$ ${servico.precoUnitario.toFixed(2)}/${servico.unidade}</span>
+                            </div>
+                            <div style="color: #888; font-size: 0.8rem;"><i class="fas fa-map-marker-alt"></i> ${servico.local}</div>
+                            <div style="display: flex; gap: 1rem; margin-top: 0.25rem; font-size: 0.8rem;">
+                                <span style="color: #888;"><i class="fas fa-file-contract"></i> Contratado: ${servico.quantidadeContratada.toFixed(2)} ${servico.unidade}</span>
+                                <span style="color: #17a2b8;"><i class="fas fa-tools"></i> Produzido: ${servico.quantidadeProduzida.toFixed(2)} ${servico.unidade}</span>
+                                <span style="color: #888;"><i class="fas fa-check"></i> Já Medido: ${servico.quantidadeJaMedida.toFixed(2)} ${servico.unidade}</span>
+                                <span style="color: #ffc107;"><i class="fas fa-arrow-right"></i> Disponível: <strong>${disponivelReal.toFixed(2)} ${servico.unidade}</strong></span>
+                            </div>
+                        </div>
+                        <div>
+                            ${jaAdicionado ? 
+                                `<span style="color: #20c997; font-size: 0.85rem;"><i class="fas fa-check-circle"></i> Adicionado (${quantidadeNaMedicao.toFixed(2)})</span>` :
+                                (disponivelReal > 0 ? 
+                                    `<button onclick="window.obrasManager.abrirModalQuantidadeEdicao('${servico.chaveUnica}')" 
+                                        style="padding: 0.5rem 1rem; background: linear-gradient(135deg, #17a2b8 0%, #20c997 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
+                                        <i class="fas fa-plus"></i> Adicionar
+                                    </button>` :
+                                    `<span style="color: #888; font-size: 0.85rem;">Sem quantidade disponível</span>`
+                                )
+                            }
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+    
+    abrirModalQuantidadeEdicao(chaveUnica) {
+        const servico = this.servicosParaEdicao.find(s => s.chaveUnica === chaveUnica);
+        if (!servico) return;
+        
+        // Calcular quantidade disponível real
+        const quantidadeNaMedicao = this.servicosMedicaoEdicao.find(s => s.chave_unica === chaveUnica)?.quantidade_medida || 0;
+        const disponivelReal = servico.quantidadeDisponivel + quantidadeNaMedicao;
+        
+        this.servicoSelecionadoEdicao = { ...servico, disponivelReal };
+        
+        // Criar modal de quantidade
+        const existingModal = document.getElementById('modal-quantidade-edicao');
+        if (existingModal) existingModal.remove();
+        
+        const modalHTML = `
+            <div id="modal-quantidade-edicao" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 10000; display: flex; align-items: center; justify-content: center;">
+                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 12px; padding: 1.5rem; width: 100%; max-width: 400px; border: 1px solid rgba(173, 216, 230, 0.3);">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 style="color: #add8e6; margin: 0;"><i class="fas fa-edit"></i> Ajustar Quantidade</h4>
+                        <button onclick="document.getElementById('modal-quantidade-edicao').remove()" style="background: none; border: none; color: #ff6b6b; font-size: 1.2rem; cursor: pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <div style="color: #add8e6; font-weight: 600;">${servico.codigo} - ${servico.nome}</div>
+                        <div style="color: #20c997; font-size: 0.9rem;">Preço: R$ ${servico.precoUnitario.toFixed(2)}/${servico.unidade}</div>
+                        <div style="color: #ffc107; font-size: 0.9rem;"><i class="fas fa-info-circle"></i> Disponível: ${disponivelReal.toFixed(2)} ${servico.unidade}</div>
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: #888; margin-bottom: 0.5rem;"><i class="fas fa-keyboard"></i> Digite a quantidade:</label>
+                        <input type="number" id="input-quantidade-edicao" step="0.01" min="0" max="${disponivelReal}" value="${disponivelReal}" 
+                            style="width: 100%; padding: 0.75rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #add8e6; font-size: 1.1rem; text-align: center;"
+                            oninput="window.obrasManager.atualizarPreviewQuantidadeEdicao()" />
+                    </div>
+                    
+                    <div style="margin-bottom: 1rem;">
+                        <label style="display: block; color: #888; margin-bottom: 0.5rem;"><i class="fas fa-sliders-h"></i> Ou ajuste com o slider:</label>
+                        <input type="range" id="slider-quantidade-edicao" min="0" max="${disponivelReal}" step="0.01" value="${disponivelReal}" 
+                            style="width: 100%; cursor: pointer;"
+                            oninput="document.getElementById('input-quantidade-edicao').value = this.value; window.obrasManager.atualizarPreviewQuantidadeEdicao();" />
+                        <div style="display: flex; justify-content: space-between; color: #888; font-size: 0.8rem;">
+                            <span>0</span>
+                            <span>${disponivelReal.toFixed(2)} ${servico.unidade}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="background: rgba(32, 201, 151, 0.15); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: #888;">Quantidade a Medir:</span>
+                            <span id="preview-quantidade-edicao" style="color: #20c997; font-weight: 600;">${disponivelReal.toFixed(2)} ${servico.unidade}</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 0.5rem;">
+                            <span style="color: #888;">Valor Total:</span>
+                            <span id="preview-valor-edicao" style="color: #20c997; font-weight: 600;">R$ ${(disponivelReal * servico.precoUnitario).toFixed(2)}</span>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; gap: 1rem;">
+                        <button onclick="document.getElementById('modal-quantidade-edicao').remove()" 
+                            style="flex: 1; padding: 0.75rem; background: rgba(255,255,255,0.1); color: #c0c0c0; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                        <button onclick="window.obrasManager.confirmarQuantidadeEdicao()" 
+                            style="flex: 1; padding: 0.75rem; background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-check"></i> Confirmar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+    
+    atualizarPreviewQuantidadeEdicao() {
+        const input = document.getElementById('input-quantidade-edicao');
+        const slider = document.getElementById('slider-quantidade-edicao');
+        const previewQtd = document.getElementById('preview-quantidade-edicao');
+        const previewValor = document.getElementById('preview-valor-edicao');
+        
+        if (!input || !this.servicoSelecionadoEdicao) return;
+        
+        let quantidade = parseFloat(input.value) || 0;
+        const max = this.servicoSelecionadoEdicao.disponivelReal;
+        
+        // Limitar ao máximo disponível
+        if (quantidade > max) {
+            quantidade = max;
+            input.value = max;
+        }
+        if (quantidade < 0) {
+            quantidade = 0;
+            input.value = 0;
+        }
+        
+        if (slider) slider.value = quantidade;
+        
+        const valor = quantidade * this.servicoSelecionadoEdicao.precoUnitario;
+        
+        if (previewQtd) previewQtd.textContent = `${quantidade.toFixed(2)} ${this.servicoSelecionadoEdicao.unidade}`;
+        if (previewValor) previewValor.textContent = `R$ ${valor.toFixed(2)}`;
+    }
+    
+    confirmarQuantidadeEdicao() {
+        const input = document.getElementById('input-quantidade-edicao');
+        if (!input || !this.servicoSelecionadoEdicao) return;
+        
+        let quantidade = parseFloat(input.value) || 0;
+        const max = this.servicoSelecionadoEdicao.disponivelReal;
+        
+        // Validar limite
+        if (quantidade > max) {
+            quantidade = max;
+            this.showNotification(`Quantidade ajustada para o máximo disponível: ${max.toFixed(2)}`, 'warning');
+        }
+        
+        if (quantidade <= 0) {
+            this.showNotification('Quantidade deve ser maior que zero', 'warning');
+            return;
+        }
+        
+        const servico = this.servicoSelecionadoEdicao;
+        
+        // Adicionar ou atualizar na lista de serviços da medição
+        const existenteIndex = this.servicosMedicaoEdicao.findIndex(s => s.chave_unica === servico.chaveUnica);
+        
+        if (existenteIndex >= 0) {
+            // Atualizar existente
+            this.servicosMedicaoEdicao[existenteIndex].quantidade_medida = quantidade;
+            this.servicosMedicaoEdicao[existenteIndex].valor_total = quantidade * servico.precoUnitario;
+        } else {
+            // Adicionar novo
+            this.servicosMedicaoEdicao.push({
+                chave_unica: servico.chaveUnica,
+                item_proposta_id: servico.itens[0]?.id,
+                servico_id: servico.servicoId,
+                codigo_servico: servico.codigo,
+                nome_servico: servico.nome,
+                local: servico.local,
+                unidade: servico.unidade,
+                quantidade_medida: quantidade,
+                preco_unitario: servico.precoUnitario,
+                valor_total: quantidade * servico.precoUnitario
+            });
+        }
+        
+        // Fechar modal de quantidade
+        const modal = document.getElementById('modal-quantidade-edicao');
+        if (modal) modal.remove();
+        
+        // Atualizar listas
+        this.atualizarListasEdicao();
+        
+        this.showNotification('Serviço adicionado/atualizado!', 'success');
+    }
+    
+    atualizarListasEdicao() {
+        // Atualizar lista de disponíveis
+        const containerDisponiveis = document.getElementById('lista-servicos-disponiveis-edicao');
+        if (containerDisponiveis) {
+            containerDisponiveis.innerHTML = this.renderServicosDisponiveisEdicao();
+        }
+        
+        // Atualizar lista de adicionados
+        const containerAdicionados = document.getElementById('lista-servicos-edicao');
+        if (containerAdicionados) {
+            containerAdicionados.innerHTML = this.renderServicosEdicao();
+        }
+        
+        // Atualizar total
+        const totalElement = document.getElementById('edit-valor-total-medicao');
+        if (totalElement) {
+            totalElement.textContent = this.formatMoney(this.calcularTotalEdicao());
+        }
+    }
+    
     renderServicosEdicao() {
         if (!this.servicosMedicaoEdicao || this.servicosMedicaoEdicao.length === 0) {
-            return '<p style="color: #888; text-align: center;">Nenhum serviço na medição</p>';
+            return '<p style="color: #888; text-align: center;">Nenhum serviço adicionado ainda</p>';
         }
         
         return this.servicosMedicaoEdicao.map((servico, index) => `
@@ -5307,17 +5659,10 @@ fecharModalAjustarQuantidade() {
     removerServicoEdicao(index) {
         this.servicosMedicaoEdicao.splice(index, 1);
         
-        // Re-renderizar lista
-        const container = document.getElementById('lista-servicos-edicao');
-        if (container) {
-            container.innerHTML = this.renderServicosEdicao();
-        }
+        // Atualizar todas as listas
+        this.atualizarListasEdicao();
         
-        // Atualizar total
-        const totalElement = document.getElementById('edit-valor-total-medicao');
-        if (totalElement) {
-            totalElement.textContent = this.formatMoney(this.calcularTotalEdicao());
-        }
+        this.showNotification('Serviço removido da medição', 'info');
     }
     
     calcularTotalEdicao() {
