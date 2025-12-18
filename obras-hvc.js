@@ -2411,6 +2411,9 @@ class ObrasManager {
                     <button class="btn btn-secondary" onclick="window.obrasManager.verDetalhesMedicao('${medicao.id}')" title="Ver detalhes">
                         <i class="fas fa-eye"></i>
                     </button>
+                    <button class="btn btn-info" onclick="window.obrasManager.editarMedicao('${medicao.id}')" title="Editar medição" style="background: #17a2b8; border-color: #17a2b8;">
+                        <i class="fas fa-edit"></i>
+                    </button>
                     <button class="btn btn-warning" onclick="window.obrasManager.abrirModalAnotacoesMedicao('${medicao.id}')" title="Anotações" style="background: #ffc107; border-color: #ffc107;">
                         <i class="fas fa-sticky-note"></i>
                     </button>
@@ -5120,6 +5123,271 @@ fecharModalAjustarQuantidade() {
                 </div>
             </div>
         `;
+    }
+    
+    // ========== EDIÇÃO DE MEDIÇÃO ==========
+    
+    async editarMedicao(medicaoId) {
+        try {
+            this.showNotification('Carregando dados da medição...', 'info');
+            
+            // Buscar dados completos da medição
+            const { data: medicao, error } = await supabaseClient
+                .from('medicoes_hvc')
+                .select(`
+                    *,
+                    medicoes_servicos (
+                        *,
+                        itens_proposta_hvc (
+                            *,
+                            servicos_hvc (*),
+                            locais_hvc (*)
+                        )
+                    )
+                `)
+                .eq('id', medicaoId)
+                .single();
+            
+            if (error) throw error;
+            
+            this.medicaoEmEdicao = medicao;
+            this.servicosMedicaoEdicao = [];
+            
+            // Converter serviços da medição para o formato de edição
+            (medicao.medicoes_servicos || []).forEach(ms => {
+                const item = ms.itens_proposta_hvc;
+                if (item) {
+                    this.servicosMedicaoEdicao.push({
+                        id: ms.id,
+                        item_proposta_id: ms.item_proposta_id,
+                        servico_id: item.servico_id,
+                        codigo_servico: item.servicos_hvc?.codigo || '-',
+                        nome_servico: item.servicos_hvc?.descricao || '-',
+                        local: item.locais_hvc?.nome || '-',
+                        unidade: item.servicos_hvc?.unidade || 'un',
+                        quantidade_medida: parseFloat(ms.quantidade_medida) || 0,
+                        preco_unitario: (parseFloat(item.preco_mao_obra) || 0) + (parseFloat(item.preco_material) || 0),
+                        valor_total: parseFloat(ms.valor_total) || 0
+                    });
+                }
+            });
+            
+            // Mostrar modal de edição
+            this.showModalEditarMedicao(medicao);
+            
+        } catch (error) {
+            this.showNotification('Erro ao carregar medição: ' + error.message, 'error');
+        }
+    }
+    
+    showModalEditarMedicao(medicao) {
+        // Remover modal existente se houver
+        const existingModal = document.getElementById('modal-editar-medicao');
+        if (existingModal) existingModal.remove();
+        
+        const modalHTML = `
+            <div id="modal-editar-medicao" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 9999; display: flex; align-items: center; justify-content: center; padding: 1rem;">
+                <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); border-radius: 12px; width: 100%; max-width: 900px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5); border: 1px solid rgba(173, 216, 230, 0.2);">
+                    <div style="padding: 1.5rem; border-bottom: 2px solid rgba(173, 216, 230, 0.2); display: flex; justify-content: space-between; align-items: center;">
+                        <h3 style="color: #add8e6; margin: 0;">
+                            <i class="fas fa-edit"></i> Editar Medição ${medicao.numero_medicao}
+                        </h3>
+                        <button onclick="window.obrasManager.fecharModalEditarMedicao()" style="background: none; border: none; color: #ff6b6b; font-size: 1.5rem; cursor: pointer;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    
+                    <div style="padding: 1.5rem;">
+                        <!-- Informações da Medição -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">Número da Medição</label>
+                                <input type="text" id="edit-numero-medicao" value="${medicao.numero_medicao}" 
+                                    style="width: 100%; padding: 0.75rem; background: rgba(173, 216, 230, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #add8e6;" readonly />
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">Data da Medição *</label>
+                                <input type="date" id="edit-data-medicao" value="${medicao.created_at ? medicao.created_at.split('T')[0] : ''}" 
+                                    style="width: 100%; padding: 0.75rem; background: rgba(173, 216, 230, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #add8e6;" />
+                            </div>
+                            <div>
+                                <label style="display: block; margin-bottom: 0.5rem; color: #add8e6; font-weight: 600;">Previsão de Pagamento</label>
+                                <input type="date" id="edit-previsao-pagamento" value="${medicao.previsao_pagamento || ''}" 
+                                    style="width: 100%; padding: 0.75rem; background: rgba(173, 216, 230, 0.1); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 6px; color: #add8e6;" />
+                            </div>
+                        </div>
+                        
+                        <!-- Serviços Medidos -->
+                        <div style="margin-bottom: 1.5rem;">
+                            <h4 style="color: #add8e6; margin: 0 0 1rem 0;"><i class="fas fa-list"></i> Serviços Medidos</h4>
+                            <div id="lista-servicos-edicao" style="background: rgba(0,0,0,0.2); border-radius: 8px; padding: 1rem; max-height: 300px; overflow-y: auto;">
+                                ${this.renderServicosEdicao()}
+                            </div>
+                        </div>
+                        
+                        <!-- Resumo -->
+                        <div style="background: rgba(32, 201, 151, 0.15); padding: 1rem; border-radius: 8px; border-left: 4px solid #20c997; margin-bottom: 1.5rem;">
+                            <div style="display: flex; justify-content: space-between; align-items: center;">
+                                <span style="color: #c0c0c0;">Valor Total da Medição:</span>
+                                <strong id="edit-valor-total-medicao" style="color: #20c997; font-size: 1.5rem;">${this.formatMoney(this.calcularTotalEdicao())}</strong>
+                            </div>
+                        </div>
+                        
+                        <!-- Botões -->
+                        <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                            <button onclick="window.obrasManager.fecharModalEditarMedicao()" 
+                                style="padding: 0.75rem 1.5rem; background: rgba(255,255,255,0.1); color: #c0c0c0; border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; cursor: pointer;">
+                                <i class="fas fa-times"></i> Cancelar
+                            </button>
+                            <button onclick="window.obrasManager.salvarEdicaoMedicao()" 
+                                style="padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #20c997 0%, #17a2b8 100%); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-save"></i> Salvar Alterações
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+    
+    renderServicosEdicao() {
+        if (!this.servicosMedicaoEdicao || this.servicosMedicaoEdicao.length === 0) {
+            return '<p style="color: #888; text-align: center;">Nenhum serviço na medição</p>';
+        }
+        
+        return this.servicosMedicaoEdicao.map((servico, index) => `
+            <div style="background: rgba(173, 216, 230, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 0.75rem; display: flex; justify-content: space-between; align-items: center;">
+                <div style="flex: 1;">
+                    <div style="color: #add8e6; font-weight: 600;">${servico.codigo_servico} - ${servico.nome_servico}</div>
+                    <div style="color: #888; font-size: 0.85rem;"><i class="fas fa-map-marker-alt"></i> ${servico.local}</div>
+                    <div style="color: #20c997; font-size: 0.9rem; margin-top: 0.25rem;">
+                        Preço: ${this.formatMoney(servico.preco_unitario)}/${servico.unidade}
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 1rem;">
+                    <div>
+                        <label style="display: block; color: #888; font-size: 0.8rem; margin-bottom: 0.25rem;">Quantidade</label>
+                        <input type="number" step="0.01" min="0" value="${servico.quantidade_medida}" 
+                            onchange="window.obrasManager.atualizarQuantidadeEdicao(${index}, this.value)"
+                            style="width: 100px; padding: 0.5rem; background: rgba(0,0,0,0.3); border: 1px solid rgba(173, 216, 230, 0.3); border-radius: 4px; color: #add8e6; text-align: center;" />
+                    </div>
+                    <div style="text-align: right; min-width: 120px;">
+                        <div style="color: #888; font-size: 0.8rem;">Valor</div>
+                        <div style="color: #20c997; font-weight: 600;" id="valor-servico-${index}">${this.formatMoney(servico.valor_total)}</div>
+                    </div>
+                    <button onclick="window.obrasManager.removerServicoEdicao(${index})" 
+                        style="background: rgba(255, 107, 107, 0.2); border: none; color: #ff6b6b; padding: 0.5rem; border-radius: 4px; cursor: pointer;" title="Remover">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `).join('');
+    }
+    
+    atualizarQuantidadeEdicao(index, valor) {
+        const quantidade = parseFloat(valor) || 0;
+        this.servicosMedicaoEdicao[index].quantidade_medida = quantidade;
+        this.servicosMedicaoEdicao[index].valor_total = quantidade * this.servicosMedicaoEdicao[index].preco_unitario;
+        
+        // Atualizar valor do serviço na tela
+        const valorElement = document.getElementById(`valor-servico-${index}`);
+        if (valorElement) {
+            valorElement.textContent = this.formatMoney(this.servicosMedicaoEdicao[index].valor_total);
+        }
+        
+        // Atualizar total
+        const totalElement = document.getElementById('edit-valor-total-medicao');
+        if (totalElement) {
+            totalElement.textContent = this.formatMoney(this.calcularTotalEdicao());
+        }
+    }
+    
+    removerServicoEdicao(index) {
+        this.servicosMedicaoEdicao.splice(index, 1);
+        
+        // Re-renderizar lista
+        const container = document.getElementById('lista-servicos-edicao');
+        if (container) {
+            container.innerHTML = this.renderServicosEdicao();
+        }
+        
+        // Atualizar total
+        const totalElement = document.getElementById('edit-valor-total-medicao');
+        if (totalElement) {
+            totalElement.textContent = this.formatMoney(this.calcularTotalEdicao());
+        }
+    }
+    
+    calcularTotalEdicao() {
+        return this.servicosMedicaoEdicao.reduce((sum, s) => sum + (s.valor_total || 0), 0);
+    }
+    
+    fecharModalEditarMedicao() {
+        const modal = document.getElementById('modal-editar-medicao');
+        if (modal) modal.remove();
+        this.medicaoEmEdicao = null;
+        this.servicosMedicaoEdicao = [];
+    }
+    
+    async salvarEdicaoMedicao() {
+        if (!this.medicaoEmEdicao) {
+            this.showNotification('Erro: medição não encontrada', 'error');
+            return;
+        }
+        
+        try {
+            this.showNotification('Salvando alterações...', 'info');
+            
+            const previsaoPagamento = document.getElementById('edit-previsao-pagamento')?.value || null;
+            const valorTotal = this.calcularTotalEdicao();
+            
+            // 1. Atualizar dados da medição
+            const { error: updateError } = await supabaseClient
+                .from('medicoes_hvc')
+                .update({
+                    previsao_pagamento: previsaoPagamento,
+                    valor_total: valorTotal,
+                    valor_bruto: valorTotal
+                })
+                .eq('id', this.medicaoEmEdicao.id);
+            
+            if (updateError) throw updateError;
+            
+            // 2. Deletar serviços antigos
+            const { error: deleteError } = await supabaseClient
+                .from('medicoes_servicos')
+                .delete()
+                .eq('medicao_id', this.medicaoEmEdicao.id);
+            
+            if (deleteError) throw deleteError;
+            
+            // 3. Inserir serviços atualizados
+            if (this.servicosMedicaoEdicao.length > 0) {
+                const servicosParaInserir = this.servicosMedicaoEdicao.map(s => ({
+                    medicao_id: this.medicaoEmEdicao.id,
+                    item_proposta_id: s.item_proposta_id,
+                    quantidade_medida: s.quantidade_medida,
+                    valor_total: s.valor_total
+                }));
+                
+                const { error: insertError } = await supabaseClient
+                    .from('medicoes_servicos')
+                    .insert(servicosParaInserir);
+                
+                if (insertError) throw insertError;
+            }
+            
+            this.showNotification('Medição atualizada com sucesso!', 'success');
+            this.fecharModalEditarMedicao();
+            
+            // Recarregar medições
+            await this.loadMedicoesObra(this.currentObraId);
+            
+        } catch (error) {
+            this.showNotification('Erro ao salvar: ' + error.message, 'error');
+        }
     }
 }
 
