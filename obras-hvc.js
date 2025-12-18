@@ -4677,6 +4677,10 @@ fecharModalAjustarQuantidade() {
             });
         });
         
+        // Debug: mostrar produzidoPorItem
+        console.log('produzidoPorItem:', JSON.stringify(produzidoPorItem, null, 2));
+        console.log('itensContratados IDs:', (itensContratados || []).map(i => i.id));
+        
         // Gerar HTML do relatório
         const html = this.gerarHTMLMedicao(medicaoCompleta, obra, nomeCliente, clienteEndereco, clienteCnpj, jaMedidoPorItem, itensContratados, produzidoPorItem);
         
@@ -4760,12 +4764,19 @@ fecharModalAjustarQuantidade() {
             const proposta = item.propostas_hvc || {};
             
             const qtdContratada = parseFloat(item.quantidade) || 0;
-            const precoUnit = parseFloat(item.preco_unitario) || 0;
+            // preco_unitario não existe na tabela - calcular a partir de preco_mao_obra + preco_material
+            const precoMaoObra = parseFloat(item.preco_mao_obra) || 0;
+            const precoMaterial = parseFloat(item.preco_material) || 0;
+            const precoUnit = precoMaoObra + precoMaterial;
             const valorContratado = parseFloat(item.preco_total) || (qtdContratada * precoUnit);
             
             // Converter para string pois as chaves do JSON são strings
-            const produzido = produzidoPorItem[String(item.id)] || { quantidade: 0, producoes: [] };
+            const itemIdStr = String(item.id);
+            const produzido = produzidoPorItem[itemIdStr] || { quantidade: 0, producoes: [] };
             const valorProduzido = produzido.quantidade * precoUnit;
+            
+            // Debug
+            console.log('Item ID:', itemIdStr, 'Produzido:', produzido.quantidade, 'PrecoUnit:', precoUnit, 'ValorProduzido:', valorProduzido);
             const jaMedido = jaMedidoPorItem[item.id] || { quantidade: 0, valor: 0 };
             const estaMedicao = estaMedicaoPorItem[item.id] || { quantidade: 0, valor: 0 };
             
