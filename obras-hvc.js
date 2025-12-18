@@ -4810,30 +4810,30 @@ fecharModalAjustarQuantidade() {
             
             servicosHTML += `
                 <tr style="background: ${bgColor};">
-                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; vertical-align: top;">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">
                         <strong>${servico.codigo || '-'}</strong><br>
-                        <span style="font-size: 6px; color: #666;">${(servico.descricao || '').substring(0, 30)}${(servico.descricao || '').length > 30 ? '...' : ''}</span>
+                        <span style="font-size: 8px; color: #666;">${(servico.descricao || '').substring(0, 25)}${(servico.descricao || '').length > 25 ? '...' : ''}</span>
                     </td>
-                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; vertical-align: top;">${local.nome || '-'}</td>
-                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top;">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; vertical-align: top;">${local.nome || '-'}</td>
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top;">
                         ${qtdContratada.toFixed(2)}<br>
-                        <span style="font-size: 6px; color: #666;">${this.formatMoney(valorContratado)}</span>
+                        <span style="font-size: 8px; color: #666;">${this.formatMoney(valorContratado)}</span>
                     </td>
-                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; color: ${consistente ? '#17a2b8' : '#dc3545'};">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: ${consistente ? '#17a2b8' : '#dc3545'};">
                         ${produzido.quantidade.toFixed(2)}<br>
-                        <span style="font-size: 6px;">${this.formatMoney(valorProduzido)}</span>
+                        <span style="font-size: 8px;">${this.formatMoney(valorProduzido)}</span>
                     </td>
-                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; color: #6c757d;">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: #6c757d;">
                         ${jaMedido.quantidade.toFixed(2)}<br>
-                        <span style="font-size: 6px;">${this.formatMoney(jaMedido.valor)}</span>
+                        <span style="font-size: 8px;">${this.formatMoney(jaMedido.valor)}</span>
                     </td>
-                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; ${destaque ? 'font-weight: bold; color: #000080;' : ''}">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; ${destaque ? 'font-weight: bold; color: #000080;' : ''}">
                         ${estaMedicao.quantidade.toFixed(2)}<br>
-                        <span style="font-size: 6px; ${destaque ? 'color: #28a745;' : ''}">${this.formatMoney(estaMedicao.valor)}</span>
+                        <span style="font-size: 8px; ${destaque ? 'color: #28a745;' : ''}">${this.formatMoney(estaMedicao.valor)}</span>
                     </td>
-                    <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; color: ${qtdRestante > 0 ? '#ffc107' : '#28a745'};">
+                    <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; vertical-align: top; color: ${qtdRestante > 0 ? '#b8860b' : '#28a745'};">
                         ${qtdRestante.toFixed(2)}<br>
-                        <span style="font-size: 6px;">${this.formatMoney(valorRestante)}</span>
+                        <span style="font-size: 8px;">${this.formatMoney(valorRestante)}</span>
                     </td>
                 </tr>
             `;
@@ -4855,14 +4855,14 @@ fecharModalAjustarQuantidade() {
                 <div style="background: linear-gradient(135deg, #000080 0%, #191970 100%); padding: 12px; margin-bottom: 10px; border-radius: 6px; color: white;">
                     <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                         <div>
-                            <h1 style="margin: 0; font-size: 16px; letter-spacing: 1px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
-                            <p style="margin: 2px 0; font-size: 8px; opacity: 0.8;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
-                            <p style="margin: 2px 0; font-size: 8px; opacity: 0.8;">hvcimpermeabilizacoes@gmail.com</p>
+                            <h1 style="margin: 0; font-size: 18px; letter-spacing: 1px;">HVC IMPERMEABILIZAÇÕES LTDA.</h1>
+                            <p style="margin: 2px 0; font-size: 10px; opacity: 0.8;">CNPJ: 22.335.667/0001-88 | Fone: (81) 3228-3025</p>
+                            <p style="margin: 2px 0; font-size: 10px; opacity: 0.8;">hvcimpermeabilizacoes@gmail.com</p>
                         </div>
                         <div style="text-align: right;">
-                            <p style="margin: 0; font-size: 10px; opacity: 0.9;">MEDIÇÃO Nº</p>
-                            <h2 style="margin: 0; font-size: 22px; font-weight: bold;">${medicao.numero_medicao}</h2>
-                            <p style="margin: 2px 0; font-size: 8px; opacity: 0.7;">Data: ${dataCriacao}</p>
+                            <p style="margin: 0; font-size: 11px; opacity: 0.9;">MEDIÇÃO Nº</p>
+                            <h2 style="margin: 0; font-size: 24px; font-weight: bold;">${medicao.numero_medicao}</h2>
+                            <p style="margin: 2px 0; font-size: 10px; opacity: 0.7;">Data: ${dataCriacao}</p>
                         </div>
                     </div>
                 </div>
@@ -4870,15 +4870,15 @@ fecharModalAjustarQuantidade() {
                 <!-- Dados do Cliente e Obra -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                     <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border-left: 3px solid #000080;">
-                        <p style="margin: 0; font-size: 8px; color: #666; text-transform: uppercase;">Cliente</p>
-                        <p style="margin: 2px 0; font-size: 11px; font-weight: bold; color: #333;">${nomeCliente}</p>
-                        ${clienteCnpj ? `<p style="margin: 0; font-size: 8px; color: #666;">CNPJ/CPF: ${clienteCnpj}</p>` : ''}
-                        ${clienteEndereco ? `<p style="margin: 0; font-size: 8px; color: #666;">${clienteEndereco}</p>` : ''}
+                        <p style="margin: 0; font-size: 9px; color: #666; text-transform: uppercase;">Cliente</p>
+                        <p style="margin: 2px 0; font-size: 12px; font-weight: bold; color: #333;">${nomeCliente}</p>
+                        ${clienteCnpj ? `<p style="margin: 0; font-size: 10px; color: #666;">CNPJ/CPF: ${clienteCnpj}</p>` : ''}
+                        ${clienteEndereco ? `<p style="margin: 0; font-size: 10px; color: #666;">${clienteEndereco}</p>` : ''}
                     </div>
                     <div style="background: #f8f9fa; padding: 8px; border-radius: 4px; border-left: 3px solid #d4a017;">
-                        <p style="margin: 0; font-size: 8px; color: #666; text-transform: uppercase;">Obra</p>
-                        <p style="margin: 2px 0; font-size: 11px; font-weight: bold; color: #333;">${obra?.numero_obra || '-'}</p>
-                        <p style="margin: 0; font-size: 9px; color: #666;">${obra?.nome_obra || ''}</p>
+                        <p style="margin: 0; font-size: 9px; color: #666; text-transform: uppercase;">Obra</p>
+                        <p style="margin: 2px 0; font-size: 12px; font-weight: bold; color: #333;">${obra?.numero_obra || '-'}</p>
+                        <p style="margin: 0; font-size: 10px; color: #666;">${obra?.nome_obra || ''}</p>
                     </div>
                 </div>
                 
@@ -4887,26 +4887,26 @@ fecharModalAjustarQuantidade() {
                 
                 <!-- Tabela de Serviços Completa -->
                 <div style="margin-bottom: 10px;">
-                    <h3 style="color: #000080; font-size: 10px; margin: 0 0 5px 0;">Detalhamento dos Serviços</h3>
-                    <p style="margin: 0 0 5px 0; font-size: 7px; color: #666;">Fluxo: Contratado → Produzido (execução em campo) → Medido (cobrança) → Restante</p>
+                    <h3 style="color: #000080; font-size: 14px; margin: 0 0 5px 0;">Detalhamento dos Serviços</h3>
+                    <p style="margin: 0 0 5px 0; font-size: 9px; color: #666;">Fluxo: Contratado → Produzido (execução em campo) → Medido (cobrança) → Restante</p>
                     <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
                         <tr style="background: #000080;">
-                            <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 18%;">SERVIÇO</th>
-                            <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 10%;">LOCAL</th>
-                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 13%;">CONTRATADO</th>
-                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 13%; background: #17a2b8;">PRODUZIDO</th>
-                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 13%;">JÁ MEDIDO</th>
-                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 15%; background: #28a745;">ESTA MEDIÇÃO</th>
-                            <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 13%;">RESTANTE</th>
+                            <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 18%;">SERVIÇO</th>
+                            <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 10%;">LOCAL</th>
+                            <th style="padding: 6px; text-align: center; color: white; font-size: 9px; width: 13%;">CONTRATADO</th>
+                            <th style="padding: 6px; text-align: center; color: white; font-size: 9px; width: 13%; background: #17a2b8;">PRODUZIDO</th>
+                            <th style="padding: 6px; text-align: center; color: white; font-size: 9px; width: 13%;">JÁ MEDIDO</th>
+                            <th style="padding: 6px; text-align: center; color: white; font-size: 9px; width: 15%; background: #28a745;">ESTA MEDIÇÃO</th>
+                            <th style="padding: 6px; text-align: center; color: white; font-size: 9px; width: 13%; background: #b8860b;">RESTANTE</th>
                         </tr>
                         ${servicosHTML}
                         <tr style="background: #e8e8e8; font-weight: bold;">
-                            <td colspan="2" style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: right;">TOTAIS:</td>
-                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center;">${this.formatMoney(totalContratado)}</td>
-                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; color: #17a2b8;">${this.formatMoney(totalProduzido)}</td>
-                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; color: #6c757d;">${this.formatMoney(totalJaMedido)}</td>
-                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; color: #28a745; background: #e8f5e9;">${this.formatMoney(totalEstaMedicao)}</td>
-                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; color: #ffc107;">${this.formatMoney(totalRestante)}</td>
+                            <td colspan="2" style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: right;">TOTAIS:</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: center;">${this.formatMoney(totalContratado)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; color: #17a2b8;">${this.formatMoney(totalProduzido)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; color: #6c757d;">${this.formatMoney(totalJaMedido)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; color: #28a745; background: #e8f5e9;">${this.formatMoney(totalEstaMedicao)}</td>
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; color: #b8860b;">${this.formatMoney(totalRestante)}</td>
                         </tr>
                     </table>
                 </div>
@@ -4915,13 +4915,13 @@ fecharModalAjustarQuantidade() {
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px;">
                     <!-- Progresso da Obra -->
                     <div style="background: #f8f9fa; padding: 10px; border-radius: 6px;">
-                        <h4 style="margin: 0 0 8px 0; font-size: 10px; color: #000080;">Progresso do Contrato</h4>
-                        <div style="background: #e0e0e0; border-radius: 10px; height: 20px; overflow: hidden;">
+                        <h4 style="margin: 0 0 8px 0; font-size: 12px; color: #000080;">Progresso do Contrato</h4>
+                        <div style="background: #e0e0e0; border-radius: 10px; height: 22px; overflow: hidden;">
                             <div style="background: linear-gradient(90deg, #28a745, #20c997); height: 100%; width: ${percentualExecutado}%; display: flex; align-items: center; justify-content: center;">
-                                <span style="color: white; font-size: 9px; font-weight: bold;">${percentualExecutado}%</span>
+                                <span style="color: white; font-size: 10px; font-weight: bold;">${percentualExecutado}%</span>
                             </div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 8px; color: #666;">
+                        <div style="display: flex; justify-content: space-between; margin-top: 5px; font-size: 10px; color: #666;">
                             <span>Executado: ${this.formatMoney(totalJaMedido + totalEstaMedicao)}</span>
                             <span>Contrato: ${this.formatMoney(totalContratado)}</span>
                         </div>
@@ -4929,9 +4929,9 @@ fecharModalAjustarQuantidade() {
                     
                     <!-- Valor a Pagar (destaque) -->
                     <div style="background: linear-gradient(135deg, #28a745, #20c997); padding: 10px; border-radius: 6px; color: white; text-align: center;">
-                        <p style="margin: 0; font-size: 9px; opacity: 0.9;">VALOR DESTA MEDIÇÃO</p>
-                        <p style="margin: 5px 0; font-size: 22px; font-weight: bold;">${this.formatMoney(totalEstaMedicao)}</p>
-                        <p style="margin: 0; font-size: 8px; opacity: 0.8;">Saldo restante após esta medição: ${this.formatMoney(totalRestante)}</p>
+                        <p style="margin: 0; font-size: 11px; opacity: 0.9;">VALOR DESTA MEDIÇÃO</p>
+                        <p style="margin: 5px 0; font-size: 24px; font-weight: bold;">${this.formatMoney(totalEstaMedicao)}</p>
+                        <p style="margin: 0; font-size: 10px; opacity: 0.8;">Saldo restante após esta medição: ${this.formatMoney(totalRestante)}</p>
                     </div>
                 </div>
                 
@@ -4939,28 +4939,28 @@ fecharModalAjustarQuantidade() {
                 <div style="margin-bottom: 10px;">
                     <table style="width: 100%; border-collapse: collapse; background: white;">
                         <tr style="background: #000080;">
-                            <th colspan="5" style="padding: 6px; text-align: center; color: white; font-size: 10px;">RESUMO FINANCEIRO DO CONTRATO</th>
+                            <th colspan="5" style="padding: 8px; text-align: center; color: white; font-size: 12px;">RESUMO FINANCEIRO DO CONTRATO</th>
                         </tr>
                         <tr style="background: #f0f0f0;">
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%;">
-                                <span style="display: block; color: #666; font-size: 7px;">Valor Contratado</span>
-                                <strong style="font-size: 10px;">${this.formatMoney(totalContratado)}</strong>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; width: 20%;">
+                                <span style="display: block; color: #666; font-size: 9px;">Valor Contratado</span>
+                                <strong style="font-size: 12px;">${this.formatMoney(totalContratado)}</strong>
                             </td>
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%; background: #e8f4fc;">
-                                <span style="display: block; color: #17a2b8; font-size: 7px;">Total Produzido</span>
-                                <strong style="font-size: 10px; color: #17a2b8;">${this.formatMoney(totalProduzido)}</strong>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; width: 20%; background: #e8f4fc;">
+                                <span style="display: block; color: #17a2b8; font-size: 9px;">Total Produzido</span>
+                                <strong style="font-size: 12px; color: #17a2b8;">${this.formatMoney(totalProduzido)}</strong>
                             </td>
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%;">
-                                <span style="display: block; color: #666; font-size: 7px;">Já Medido</span>
-                                <strong style="font-size: 10px; color: #6c757d;">${this.formatMoney(totalJaMedido)}</strong>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; width: 20%;">
+                                <span style="display: block; color: #666; font-size: 9px;">Já Medido</span>
+                                <strong style="font-size: 12px; color: #6c757d;">${this.formatMoney(totalJaMedido)}</strong>
                             </td>
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%; background: #e8f5e9;">
-                                <span style="display: block; color: #28a745; font-size: 7px;">Esta Medição</span>
-                                <strong style="font-size: 10px; color: #28a745;">${this.formatMoney(totalEstaMedicao)}</strong>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; width: 20%; background: #e8f5e9;">
+                                <span style="display: block; color: #28a745; font-size: 9px;">Esta Medição</span>
+                                <strong style="font-size: 12px; color: #28a745;">${this.formatMoney(totalEstaMedicao)}</strong>
                             </td>
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 8px; text-align: center; width: 20%;">
-                                <span style="display: block; color: #ffc107; font-size: 7px;">Saldo Restante</span>
-                                <strong style="font-size: 10px; color: #ffc107;">${this.formatMoney(totalRestante)}</strong>
+                            <td style="padding: 8px; border: 0.5px solid #ccc; font-size: 10px; text-align: center; width: 20%; background: #fff8e1;">
+                                <span style="display: block; color: #b8860b; font-size: 9px;">Saldo Restante</span>
+                                <strong style="font-size: 12px; color: #b8860b;">${this.formatMoney(totalRestante)}</strong>
                             </td>
                         </tr>
                     </table>
@@ -4969,15 +4969,15 @@ fecharModalAjustarQuantidade() {
                 <!-- Comprovação de Execução -->
                 ${producoesParaComprovacao.length > 0 ? `
                     <div style="margin-bottom: 10px;">
-                        <h4 style="color: #17a2b8; font-size: 10px; margin: 0 0 5px 0;"><i>✓</i> Comprovação de Execução (Produções Registradas)</h4>
-                        <p style="margin: 0 0 5px 0; font-size: 7px; color: #666;">Registro das produções diárias que comprovam a execução dos serviços medidos</p>
+                        <h4 style="color: #17a2b8; font-size: 12px; margin: 0 0 5px 0;"><i>✓</i> Comprovação de Execução (Produções Registradas)</h4>
+                        <p style="margin: 0 0 5px 0; font-size: 9px; color: #666;">Registro das produções diárias que comprovam a execução dos serviços medidos</p>
                         <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
                             <tr style="background: #17a2b8;">
-                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 15%;">DATA</th>
-                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 25%;">SERVIÇO</th>
-                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 20%;">LOCAL</th>
-                                <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 15%;">QUANTIDADE</th>
-                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 25%;">OBSERVAÇÕES</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 15%;">DATA</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 25%;">SERVIÇO</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 20%;">LOCAL</th>
+                                <th style="padding: 6px; text-align: center; color: white; font-size: 9px; width: 15%;">QUANTIDADE</th>
+                                <th style="padding: 6px; text-align: left; color: white; font-size: 9px; width: 25%;">OBSERVAÇÕES</th>
                             </tr>
                             ${producoesParaComprovacao.slice(0, 10).map((p, idx) => {
                                 let dataFormatada = '-';
@@ -4993,14 +4993,14 @@ fecharModalAjustarQuantidade() {
                                 const bgColor = idx % 2 === 0 ? '#e8f4fc' : 'white';
                                 const obs = (p.observacoes || '').substring(0, 30) + ((p.observacoes || '').length > 30 ? '...' : '');
                                 return '<tr style="background: ' + bgColor + ';">' +
-                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + dataFormatada + '</td>' +
-                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + (p.servico || '-') + '</td>' +
-                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + (p.local || '-') + '</td>' +
-                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center;">' + (p.quantidade || 0).toFixed(2) + '</td>' +
-                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; color: #666;">' + obs + '</td>' +
+                                    '<td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px;">' + dataFormatada + '</td>' +
+                                    '<td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px;">' + (p.servico || '-') + '</td>' +
+                                    '<td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px;">' + (p.local || '-') + '</td>' +
+                                    '<td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; text-align: center;">' + (p.quantidade || 0).toFixed(2) + '</td>' +
+                                    '<td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; color: #666;">' + obs + '</td>' +
                                     '</tr>';
                             }).join('')}
-                            ${producoesParaComprovacao.length > 10 ? '<tr style="background: #f0f0f0;"><td colspan="5" style="padding: 4px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; color: #666;">... e mais ' + (producoesParaComprovacao.length - 10) + ' registros de produção</td></tr>' : ''}
+                            ${producoesParaComprovacao.length > 10 ? '<tr style="background: #f0f0f0;"><td colspan="5" style="padding: 6px; border: 0.5px solid #ccc; font-size: 9px; text-align: center; color: #666;">... e mais ' + (producoesParaComprovacao.length - 10) + ' registros de produção</td></tr>' : ''}
                         </table>
                     </div>
                 ` : ''}
@@ -5008,16 +5008,16 @@ fecharModalAjustarQuantidade() {
                 <!-- Observações -->
                 ${medicao.observacoes || medicao.anotacoes ? `
                     <div style="margin-bottom: 10px;">
-                        <h4 style="color: #000080; font-size: 10px; margin: 0 0 5px 0;">Observações</h4>
-                        <p style="background: #fafafa; padding: 8px; border-radius: 4px; line-height: 1.3; font-size: 9px; border: 0.5px solid #ddd; margin: 0;">${medicao.observacoes || medicao.anotacoes}</p>
+                        <h4 style="color: #000080; font-size: 12px; margin: 0 0 5px 0;">Observações</h4>
+                        <p style="background: #fafafa; padding: 8px; border-radius: 4px; line-height: 1.4; font-size: 10px; border: 0.5px solid #ddd; margin: 0;">${medicao.observacoes || medicao.anotacoes}</p>
                     </div>
                 ` : ''}
                 
                 <!-- Rodapé -->
                 <div style="margin-top: 15px; padding-top: 8px; border-top: 2px solid #000080; text-align: center;">
-                    <p style="margin: 0; font-size: 8px; color: #666;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
-                    <p style="margin: 2px 0 0 0; font-size: 8px; color: #666;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
-                    <p style="margin: 5px 0 0 0; font-size: 7px; color: #999;">Documento gerado em ${dataAtual}</p>
+                    <p style="margin: 0; font-size: 9px; color: #666;">Rua Profª Anunciada da Rocha Melo, 214 – Sl 104 – Madalena – CEP: 50710-390 – Recife/PE</p>
+                    <p style="margin: 2px 0 0 0; font-size: 9px; color: #666;">Fone: (81) 3228-3025 | E-mail: hvcimpermeabilizacoes@gmail.com</p>
+                    <p style="margin: 5px 0 0 0; font-size: 8px; color: #999;">Documento gerado em ${dataAtual}</p>
                 </div>
             </div>
         `;
