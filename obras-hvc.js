@@ -4648,10 +4648,7 @@ fecharModalAjustarQuantidade() {
         // Buscar TODAS as produções diárias desta obra
         const { data: todasProducoes } = await supabaseClient
             .from('producoes_diarias_hvc')
-            .select(`
-                *,
-                equipes_hvc (nome)
-            `)
+            .select('*')
             .eq('obra_id', medicaoCompleta.obra_id)
             .order('data_producao', { ascending: false });
         
@@ -4673,7 +4670,7 @@ fecharModalAjustarQuantidade() {
                     produzidoPorItem[itemId].producoes.push({
                         data: prod.data_producao,
                         quantidade: qtd,
-                        equipe: prod.equipes_hvc?.nome || 'N/A',
+                        equipe: prod.responsavel_id || 'N/A',
                         observacoes: prod.observacoes
                     });
                 }
