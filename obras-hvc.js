@@ -284,10 +284,13 @@ class ObrasManager {
             const btnBaixarPdfMedicaoPC = document.getElementById('btn-baixar-pdf-medicao-pc');
             const btnSalvarPdfMedicaoOneDrive = document.getElementById('btn-salvar-pdf-medicao-onedrive');
             
+            const btnVisualizarPdfMedicao = document.getElementById('btn-visualizar-pdf-medicao');
+            
             if (closeModalPdfMedicao) closeModalPdfMedicao.addEventListener('click', () => this.hideModalPdfMedicao());
             if (cancelPdfMedicao) cancelPdfMedicao.addEventListener('click', () => this.hideModalPdfMedicao());
             if (btnBaixarPdfMedicaoPC) btnBaixarPdfMedicaoPC.addEventListener('click', () => this.gerarPdfMedicaoPC());
             if (btnSalvarPdfMedicaoOneDrive) btnSalvarPdfMedicaoOneDrive.addEventListener('click', () => this.showModalOneDriveMedicao());
+            if (btnVisualizarPdfMedicao) btnVisualizarPdfMedicao.addEventListener('click', () => this.visualizarPdfMedicao());
             
             // Modal OneDrive para medição
             const closeOneDriveMedicao = document.getElementById('close-modal-onedrive-medicao');
@@ -4400,6 +4403,25 @@ fecharModalAjustarQuantidade() {
     hideModalPdfMedicao() {
         const modal = document.getElementById('modal-pdf-medicao');
         if (modal) modal.classList.remove('show');
+    }
+    
+    async visualizarPdfMedicao() {
+        // Fechar modal de opções
+        this.hideModalPdfMedicao();
+        
+        try {
+            // Gerar o HTML da medição
+            const htmlContent = await this.gerarHTMLMedicao();
+            
+            // Abrir em nova janela para visualização
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(htmlContent);
+            printWindow.document.close();
+            
+        } catch (error) {
+            console.error('Erro ao visualizar PDF:', error);
+            alert('Erro ao gerar visualização do PDF. Tente novamente.');
+        }
     }
     
     showModalOneDriveMedicao() {
