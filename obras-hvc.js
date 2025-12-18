@@ -4763,7 +4763,9 @@ fecharModalAjustarQuantidade() {
             const precoUnit = parseFloat(item.preco_unitario) || 0;
             const valorContratado = parseFloat(item.preco_total) || (qtdContratada * precoUnit);
             
-            const produzido = produzidoPorItem[item.id] || { quantidade: 0, producoes: [] };
+            // Converter para string pois as chaves do JSON são strings
+            const produzido = produzidoPorItem[String(item.id)] || { quantidade: 0, producoes: [] };
+            const valorProduzido = produzido.quantidade * precoUnit;
             const jaMedido = jaMedidoPorItem[item.id] || { quantidade: 0, valor: 0 };
             const estaMedicao = estaMedicaoPorItem[item.id] || { quantidade: 0, valor: 0 };
             
@@ -4772,7 +4774,7 @@ fecharModalAjustarQuantidade() {
             const valorRestante = qtdRestante * precoUnit;
             
             totalContratado += valorContratado;
-            totalProduzido += produzido.quantidade * precoUnit;
+            totalProduzido += valorProduzido;
             totalJaMedido += jaMedido.valor;
             totalEstaMedicao += estaMedicao.valor;
             totalRestante += valorRestante;
@@ -4808,7 +4810,7 @@ fecharModalAjustarQuantidade() {
                     </td>
                     <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; color: ${consistente ? '#17a2b8' : '#dc3545'};">
                         ${produzido.quantidade.toFixed(2)}<br>
-                        <span style="font-size: 6px;">${this.formatMoney(produzido.quantidade * precoUnit)}</span>
+                        <span style="font-size: 6px;">${this.formatMoney(valorProduzido)}</span>
                     </td>
                     <td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; vertical-align: top; color: #6c757d;">
                         ${jaMedido.quantidade.toFixed(2)}<br>
@@ -4961,11 +4963,10 @@ fecharModalAjustarQuantidade() {
                         <table style="width: 100%; border-collapse: collapse; background: white; table-layout: fixed;">
                             <tr style="background: #17a2b8;">
                                 <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 15%;">DATA</th>
-                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 20%;">SERVIÇO</th>
-                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 15%;">LOCAL</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 25%;">SERVIÇO</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 20%;">LOCAL</th>
                                 <th style="padding: 4px; text-align: center; color: white; font-size: 7px; width: 15%;">QUANTIDADE</th>
-                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 15%;">EQUIPE</th>
-                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 20%;">OBS</th>
+                                <th style="padding: 4px; text-align: left; color: white; font-size: 7px; width: 25%;">OBSERVAÇÕES</th>
                             </tr>
                             ${producoesParaComprovacao.slice(0, 10).map((p, idx) => {
                                 let dataFormatada = '-';
@@ -4985,11 +4986,10 @@ fecharModalAjustarQuantidade() {
                                     '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + (p.servico || '-') + '</td>' +
                                     '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + (p.local || '-') + '</td>' +
                                     '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; text-align: center;">' + (p.quantidade || 0).toFixed(2) + '</td>' +
-                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px;">' + (p.equipe || '-') + '</td>' +
-                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 6px; color: #666;">' + obs + '</td>' +
+                                    '<td style="padding: 3px; border: 0.5px solid #ccc; font-size: 7px; color: #666;">' + obs + '</td>' +
                                     '</tr>';
                             }).join('')}
-                            ${producoesParaComprovacao.length > 10 ? '<tr style="background: #f0f0f0;"><td colspan="6" style="padding: 4px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; color: #666;">... e mais ' + (producoesParaComprovacao.length - 10) + ' registros de produção</td></tr>' : ''}
+                            ${producoesParaComprovacao.length > 10 ? '<tr style="background: #f0f0f0;"><td colspan="5" style="padding: 4px; border: 0.5px solid #ccc; font-size: 7px; text-align: center; color: #666;">... e mais ' + (producoesParaComprovacao.length - 10) + ' registros de produção</td></tr>' : ''}
                         </table>
                     </div>
                 ` : ''}
