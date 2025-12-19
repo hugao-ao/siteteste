@@ -1078,9 +1078,9 @@
     const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
 
     // Criar cliente Supabase
-    let supabase;
+    let supabaseClient;
     try {
-      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
       console.log('✅ Supabase conectado com sucesso');
     } catch (error) {
       console.error('❌ Erro ao conectar Supabase:', error);
@@ -1099,7 +1099,7 @@
       console.log('🚀 Inicializando página Equipe HVC...');
       
       // Verificar conexão com Supabase
-      if (!supabase) {
+      if (!supabaseClient) {
         console.error('❌ Supabase não carregado');
         showNotification('Erro: Conexão com banco de dados não disponível', 'error');
         return;
@@ -1400,7 +1400,7 @@
       try {
         console.log('📋 Carregando funções...');
         
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('funcoes_hvc')
           .select('*')
           .order('nome');
@@ -1427,7 +1427,7 @@
       try {
         console.log('👥 Carregando integrantes...');
         
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('integrantes_hvc')
           .select(`
             *,
@@ -1459,7 +1459,7 @@
       try {
         console.log('🏗️ Carregando equipes...');
         
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('equipes_hvc')
           .select(`
             *,
@@ -1726,7 +1726,7 @@
           </div>
         `;
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('integrantes_hvc')
           .select(`
             *,
@@ -1860,7 +1860,7 @@
 
         // Verificar se número já existe (apenas para nova equipe)
         if (!editandoEquipe) {
-          const { data: existente } = await supabase
+          const { data: existente } = await supabaseClient
             .from('equipes_hvc')
             .select('id')
             .eq('numero', numero)
@@ -1877,7 +1877,7 @@
 
         if (editandoEquipe) {
           // Atualizar equipe existente
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from('equipes_hvc')
             .update({
               numero,
@@ -1893,14 +1893,14 @@
           equipeId = editandoEquipe;
 
           // Remover integrantes antigos
-          await supabase
+          await supabaseClient
             .from('equipe_integrantes')
             .delete()
             .eq('equipe_id', equipeId);
 
         } else {
           // Criar nova equipe
-          const { data, error } = await supabase
+          const { data, error } = await supabaseClient
             .from('equipes_hvc')
             .insert({
               numero,
@@ -1920,7 +1920,7 @@
           integrante_id: integranteId
         }));
 
-        const { error: errorIntegrantes } = await supabase
+        const { error: errorIntegrantes } = await supabaseClient
           .from('equipe_integrantes')
           .insert(integrantesParaInserir);
 
@@ -1967,7 +1967,7 @@
 
         // Verificar CPF duplicado (apenas para novo integrante ou se CPF foi alterado)
         if (!editandoIntegrante) {
-          const { data: existente } = await supabase
+          const { data: existente } = await supabaseClient
             .from('integrantes_hvc')
             .select('id')
             .eq('cpf', cpf)
@@ -1982,7 +1982,7 @@
           // Verificar se CPF foi alterado e se já existe
           const integranteAtual = integrantesData.find(i => i.id === editandoIntegrante);
           if (integranteAtual && integranteAtual.cpf !== cpf) {
-            const { data: existente } = await supabase
+            const { data: existente } = await supabaseClient
               .from('integrantes_hvc')
               .select('id')
               .eq('cpf', cpf)
@@ -2013,7 +2013,7 @@
           // Atualizar integrante existente
           dadosIntegrante.updated_at = new Date().toISOString();
           
-          const { error } = await supabase
+          const { error } = await supabaseClient
             .from('integrantes_hvc')
             .update(dadosIntegrante)
             .eq('id', editandoIntegrante);
@@ -2021,7 +2021,7 @@
           if (error) throw error;
         } else {
           // Criar novo integrante
-          const { error } = await supabase
+          const { error } = await supabaseClient
             .from('integrantes_hvc')
             .insert(dadosIntegrante);
 
@@ -2063,7 +2063,7 @@
 
         showLoading('Salvando função...');
 
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('funcoes_hvc')
           .insert({
             nome,
@@ -2093,7 +2093,7 @@
       try {
         showLoading('Carregando dados da equipe...');
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('equipes_hvc')
           .select(`
             *,
@@ -2151,7 +2151,7 @@
       try {
         showLoading('Carregando dados do integrante...');
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('integrantes_hvc')
           .select('*')
           .eq('id', integranteId)
@@ -2189,7 +2189,7 @@
       try {
         showLoading('Carregando dados da equipe...');
 
-        const { data, error } = await supabase
+        const { data, error } = await supabaseClient
           .from('equipes_hvc')
           .select(`
             *,
@@ -2319,13 +2319,13 @@
         showLoading('Excluindo equipe...');
 
         // Excluir relacionamentos primeiro
-        await supabase
+        await supabaseClient
           .from('equipe_integrantes')
           .delete()
           .eq('equipe_id', equipeId);
 
         // Excluir equipe
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('equipes_hvc')
           .delete()
           .eq('id', equipeId);
@@ -2353,13 +2353,13 @@
         showLoading('Excluindo integrante...');
 
         // Excluir relacionamentos com equipes primeiro
-        await supabase
+        await supabaseClient
           .from('equipe_integrantes')
           .delete()
           .eq('integrante_id', integranteId);
 
         // Excluir integrante
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('integrantes_hvc')
           .delete()
           .eq('id', integranteId);
@@ -2395,7 +2395,7 @@
       try {
         showLoading('Excluindo função...');
 
-        const { error } = await supabase
+        const { error } = await supabaseClient
           .from('funcoes_hvc')
           .delete()
           .eq('id', funcaoId);
