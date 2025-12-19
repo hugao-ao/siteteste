@@ -1,4 +1,3 @@
-
 // dashboard-hvc.js - Dashboard Administrativo HVC
 // Versão: 1.0
 // Data: 18/12/2024
@@ -87,14 +86,24 @@ class DashboardHVC {
                 numero,
                 status,
                 created_at,
-                clientes_hvc (nome),
-                propostas_hvc (valor_total),
+                obras_propostas (
+                    propostas_hvc (
+                        valor_total,
+                        clientes_hvc (nome)
+                    )
+                ),
                 medicoes_hvc (id, valor_total, valor_recebido, valor_retencao, status)
             `)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data || [];
+        
+        // Transformar dados para formato esperado
+        return (data || []).map(obra => ({
+            ...obra,
+            cliente_nome: obra.obras_propostas?.[0]?.propostas_hvc?.clientes_hvc?.nome || 'N/A',
+            valor_contratado: obra.obras_propostas?.[0]?.propostas_hvc?.valor_total || 0
+        }));
     }
 
     async carregarProdutividadeIntegrantes() {
@@ -251,8 +260,7 @@ class DashboardHVC {
         // Buscar serviços
         const { data: servicos, error: errServ } = await supabaseClient
             .from('servicos_hvc')
-            .select('id, codigo, descricao, unidade, ativo')
-            .eq('ativo', true);
+            .select('id, codigo, descricao, unidade');
 
         if (errServ) throw errServ;
 
@@ -265,16 +273,21 @@ class DashboardHVC {
 
         // Buscar medições de serviços
         const { data: medicaoServicos, error: errMed } = await supabaseClient
-            .from('medicao_servicos_hvc')
+            .from('medicoes_servicos')
             .select('item_proposta_id, quantidade_medida, valor_total');
 
-        if (errMed) throw errMed;
+        if (errMed) {
+            console.warn('Tabela medicoes_servicos não encontrada ou vazia');
+        }
 
         // Criar mapas
         const servicoMap = {};
         (servicos || []).forEach(s => {
             servicoMap[s.id] = {
-                ...s,
+                id: s.id,
+                codigo: s.codigo,
+                descricao: s.descricao,
+                unidade: s.unidade,
                 totalPropostas: new Set(),
                 totalQuantidadeContratada: 0,
                 valorTotalContratado: 0,
@@ -965,3 +978,4 @@ document.addEventListener('DOMContentLoaded', () => {
         window.dashboardHVC = dashboardHVC;
     }, 1000);
 });
+
