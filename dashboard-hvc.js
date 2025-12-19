@@ -88,23 +88,42 @@ class DashboardHVC {
                 created_at,
                 obras_propostas (
                     propostas_hvc (
-                        valor_total,
+                        total_proposta,
                         clientes_hvc (nome)
                     )
                 ),
-                medicoes_hvc (id, valor_total, valor_recebido, valor_retencao, status)
+                medicoes_hvc (id, valor_total, recebimentos, status)
             `)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
         
         // Transformar dados para formato esperado
-        return (data || []).map(obra => ({
-            ...obra,
-            numero: obra.numero_obra, // Alias para compatibilidade
-            cliente_nome: obra.obras_propostas?.[0]?.propostas_hvc?.clientes_hvc?.nome || 'N/A',
-            valor_contratado: obra.obras_propostas?.[0]?.propostas_hvc?.valor_total || 0
-        }));
+        return (data || []).map(obra => {
+            // Calcular valor recebido somando recebimentos com status RC
+            let valorRecebido = 0;
+            let valorRetencao = 0;
+            (obra.medicoes_hvc || []).forEach(med => {
+                const recebimentos = med.recebimentos || [];
+                recebimentos.forEach(rec => {
+                    if (rec.status === 'RC') {
+                        valorRecebido += parseFloat(rec.valor) || 0;
+                    } else if (rec.status === 'RC c/ RET') {
+                        valorRecebido += parseFloat(rec.valor) || 0;
+                        valorRetencao += parseFloat(rec.retencao) || 0;
+                    }
+                });
+            });
+            
+            return {
+                ...obra,
+                numero: obra.numero_obra,
+                cliente_nome: obra.obras_propostas?.[0]?.propostas_hvc?.clientes_hvc?.nome || 'N/A',
+                valor_contratado: obra.obras_propostas?.[0]?.propostas_hvc?.total_proposta || 0,
+                valor_recebido: valorRecebido,
+                valor_retencao: valorRetencao
+            };
+        });
     }
 
     async carregarProdutividadeIntegrantes() {
@@ -337,19 +356,37 @@ class DashboardHVC {
             .from('medicoes_hvc')
             .select(`
                 id,
-                numero,
+                numero_medicao,
                 obra_id,
                 valor_total,
-                valor_recebido,
-                valor_retencao,
+                recebimentos,
                 status,
                 created_at,
-                obras_hvc (numero)
+                obras_hvc (numero_obra)
             `)
             .order('created_at', { ascending: false });
 
         if (error) throw error;
-        return data || [];
+        
+        // Transformar dados calculando valores de recebimentos
+        return (data || []).map(med => {
+            let valorRecebido = 0;
+            let valorRetencao = 0;
+            (med.recebimentos || []).forEach(rec => {
+                if (rec.status === 'RC') {
+                    valorRecebido += parseFloat(rec.valor) || 0;
+                } else if (rec.status === 'RC c/ RET') {
+                    valorRecebido += parseFloat(rec.valor) || 0;
+                    valorRetencao += parseFloat(rec.retencao) || 0;
+                }
+            });
+            return {
+                ...med,
+                numero: med.numero_medicao,
+                valor_recebido: valorRecebido,
+                valor_retencao: valorRetencao
+            };
+        });
     }
 
     async carregarProducoes() {
@@ -371,15 +408,13 @@ class DashboardHVC {
         // Obras ativas
         const obrasAtivas = resumoObras.filter(o => o.status === 'Em Andamento').length;
         
-        // Valor total contratado
+        // Valor total contratado (já calculado em carregarResumoObras)
         let valorContratado = 0;
         resumoObras.forEach(o => {
-            if (o.propostas_hvc && o.propostas_hvc.length > 0) {
-                valorContratado += parseFloat(o.propostas_hvc[0].valor_total) || 0;
-            }
+            valorContratado += parseFloat(o.valor_contratado) || 0;
         });
 
-        // Valor medido e recebido
+        // Valor medido e recebido (já calculado em carregarMedicoes)
         let valorMedido = 0;
         let valorRecebido = 0;
         let valorRetencao = 0;
@@ -540,14 +575,14 @@ class DashboardHVC {
     renderizarRankingObras() {
         const { resumoObras } = this.dataCache;
         
-        // Ordenar por valor contratado
+        // Ordenar por valor contratado (dados já transformados em carregarResumoObras)
         const obrasOrdenadas = resumoObras
             .map(o => ({
                 numero: o.numero,
-                cliente: o.clientes_hvc?.nome || 'N/A',
-                valorContratado: o.propostas_hvc?.[0]?.valor_total || 0,
+                cliente: o.cliente_nome || 'N/A',
+                valorContratado: o.valor_contratado || 0,
                 valorMedido: (o.medicoes_hvc || []).reduce((sum, m) => sum + (parseFloat(m.valor_total) || 0), 0),
-                valorRecebido: (o.medicoes_hvc || []).reduce((sum, m) => sum + (parseFloat(m.valor_recebido) || 0), 0),
+                valorRecebido: o.valor_recebido || 0,
                 status: o.status
             }))
             .sort((a, b) => b.valorContratado - a.valorContratado)
