@@ -78,45 +78,25 @@
             color: #ffffff;
         }
 
-        /* Ocultar conteúdo por padrão */
-        .admin-content, .user-content {
-            display: none;
+        /* Estilo para container de redirecionamento */
+        #redirect-container {
+            display: block;
         }
     </style>
 </head>
 <body>
     <!-- Sidebar será injetada aqui pelo sidebar.js -->
     <main id="main-content-dashboard-hvc">
-        <!-- Conteúdo para Administrador -->
-        <div class="admin-content">
-            <div class="hvc-container">
-                <h1 class="hvc-title">
-                    <i class="fas fa-user-tie"></i> Dashboard Administrador HVC
-                </h1>
-
-                <div class="development-message">
-                    <div class="message-content">
-                        <div class="icon">🚧</div>
-                        <h1 class="hvc-title">Dashboard do Administrador em Desenvolvimento</h1>
-                        <p>Esta página está sendo desenvolvida especialmente para administradores do sistema HVC. Em breve você terá acesso a todas as funcionalidades administrativas avançadas.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Conteúdo para Usuário -->
-        <div class="user-content">
-            <div class="hvc-container">
-                <h1 class="hvc-title">
-                    <i class="fas fa-user"></i> Dashboard Usuário HVC
-                </h1>
-
-                <div class="development-message">
-                    <div class="message-content">
-                        <div class="icon">🚧</div>
-                        <h1 class="hvc-title">Dashboard do Usuário em Desenvolvimento</h1>
-                        <p>Esta página está sendo desenvolvida especialmente para usuários do sistema HVC. Em breve você terá acesso a todas as funcionalidades essenciais para o seu trabalho diário.</p>
-                    </div>
+        <!-- Container de redirecionamento -->
+        <div class="hvc-container" id="redirect-container">
+            <h1 class="hvc-title">
+                <i class="fas fa-chart-line"></i> Dashboard HVC
+            </h1>
+            <div class="development-message">
+                <div class="message-content">
+                    <div class="icon"><i class="fas fa-spinner fa-spin"></i></div>
+                    <h1 class="hvc-title">Redirecionando...</h1>
+                    <p>Aguarde enquanto identificamos seu perfil de acesso.</p>
                 </div>
             </div>
         </div>
@@ -137,19 +117,19 @@
                 
                 console.log('Dashboard - Nível do usuário:', userLevel);
                 
-                // Mostrar conteúdo baseado no nível
+                // Redirecionar baseado no nível
                 if (userLevel === 'admin') {
-                    document.querySelector('.admin-content').style.display = 'block';
-                    console.log('Mostrando dashboard do administrador');
+                    console.log('Redirecionando para dashboard do administrador');
+                    window.location.href = 'dashboard-hvc-admin.html';
                 } else {
-                    document.querySelector('.user-content').style.display = 'block';
-                    console.log('Mostrando dashboard do usuário');
+                    console.log('Redirecionando para dashboard do usuário');
+                    window.location.href = 'dashboard-hvc-user.html';
                 }
                 
             } catch (error) {
                 console.error('Erro ao verificar nível:', error);
-                // Em caso de erro, mostrar conteúdo de usuário
-                document.querySelector('.user-content').style.display = 'block';
+                // Em caso de erro, redirecionar para usuário
+                window.location.href = 'dashboard-hvc-user.html';
             }
         }, 500);
     </script>
