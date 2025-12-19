@@ -83,7 +83,7 @@ class DashboardHVC {
             .from('obras_hvc')
             .select(`
                 id,
-                numero,
+                numero_obra,
                 status,
                 created_at,
                 obras_propostas (
@@ -101,6 +101,7 @@ class DashboardHVC {
         // Transformar dados para formato esperado
         return (data || []).map(obra => ({
             ...obra,
+            numero: obra.numero_obra, // Alias para compatibilidade
             cliente_nome: obra.obras_propostas?.[0]?.propostas_hvc?.clientes_hvc?.nome || 'N/A',
             valor_contratado: obra.obras_propostas?.[0]?.propostas_hvc?.valor_total || 0
         }));
@@ -978,4 +979,3 @@ document.addEventListener('DOMContentLoaded', () => {
         window.dashboardHVC = dashboardHVC;
     }, 1000);
 });
-
