@@ -1,8 +1,11 @@
 // =========================================================================
 // DASHBOARD HVC - ADMINISTRATIVO
-// Versão: 2.0
+// Versão: 2.1
 // Data: 23/12/2024
 // =========================================================================
+
+// Importar supabaseClient do módulo supabase.js
+import { supabase as supabaseClient } from './supabase.js';
 
 class DashboardHVC {
     constructor() {
@@ -46,9 +49,11 @@ class DashboardHVC {
         await this.carregarDados();
         this.renderizarDashboard();
         
-        // Remover loading
+        // Mostrar conteudo e esconder loading
         const loading = document.getElementById('dashboard-loading');
+        const content = document.getElementById('dashboard-content');
         if (loading) loading.style.display = 'none';
+        if (content) content.style.display = 'block';
         
         console.log('✅ Dashboard HVC inicializado');
     }
@@ -278,10 +283,10 @@ class DashboardHVC {
             .eq('tipo_responsavel', 'integrante');
         
         if (this.filtros.dataInicio) {
-            query = query.gte('data', this.filtros.dataInicio.toISOString().split('T')[0]);
+            query = query.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
         }
         if (this.filtros.dataFim) {
-            query = query.lte('data', this.filtros.dataFim.toISOString().split('T')[0]);
+            query = query.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
         }
 
         const { data: producoes, error: errProd } = await query;
@@ -302,10 +307,14 @@ class DashboardHVC {
             precoMap[item.id] = quantidade > 0 ? (precoTotal / quantidade) : 0;
         });
 
+        // Debug: log de produções encontradas
+        console.log('Produções de integrantes encontradas:', producoes?.length || 0);
+        console.log('Itens de proposta encontrados:', itensProposta?.length || 0);
+        
         // Calcular produtividade por integrante
         const produtividadeMap = {};
         (producoes || []).forEach(prod => {
-            const integranteId = prod.responsavel_id;
+            const integranteId = String(prod.responsavel_id); // Converter para string
             if (!produtividadeMap[integranteId]) {
                 produtividadeMap[integranteId] = {
                     totalProducoes: 0,
@@ -338,18 +347,25 @@ class DashboardHVC {
             }
         });
 
-        // Montar resultado
-        return (integrantes || []).map(int => ({
-            id: int.id,
-            nome: int.nome,
-            cpf: int.cpf,
-            ativo: int.ativo,
-            totalProducoes: produtividadeMap[int.id]?.totalProducoes || 0,
-            totalQuantidade: produtividadeMap[int.id]?.totalQuantidade || 0,
-            totalValor: produtividadeMap[int.id]?.totalValor || 0,
-            totalObras: produtividadeMap[int.id]?.obras?.size || 0,
-            servicos: produtividadeMap[int.id]?.servicos || {}
-        })).sort((a, b) => b.totalValor - a.totalValor);
+        // Debug: log do mapa de produtividade
+        console.log('Mapa de produtividade:', Object.keys(produtividadeMap));
+        console.log('IDs dos integrantes:', integrantes?.map(i => i.id));
+        
+        // Montar resultado (converter ID para string na comparação)
+        return (integrantes || []).map(int => {
+            const intId = String(int.id);
+            return {
+                id: int.id,
+                nome: int.nome,
+                cpf: int.cpf,
+                ativo: int.ativo,
+                totalProducoes: produtividadeMap[intId]?.totalProducoes || 0,
+                totalQuantidade: produtividadeMap[intId]?.totalQuantidade || 0,
+                totalValor: produtividadeMap[intId]?.totalValor || 0,
+                totalObras: produtividadeMap[intId]?.obras?.size || 0,
+                servicos: produtividadeMap[intId]?.servicos || {}
+            };
+        }).sort((a, b) => b.totalValor - a.totalValor);
     }
 
     async carregarProdutividadeEquipes() {
@@ -369,14 +385,20 @@ class DashboardHVC {
             console.warn('Tabela equipe_integrantes não encontrada');
         }
 
-        // Contar integrantes por equipe
+        // Debug: log de relações encontradas
+        console.log('Relações equipe-integrante encontradas:', relacoes?.length || 0);
+        
+        // Contar integrantes por equipe (converter IDs para string)
         const integrantesPorEquipe = {};
         (relacoes || []).forEach(rel => {
-            if (!integrantesPorEquipe[rel.equipe_id]) {
-                integrantesPorEquipe[rel.equipe_id] = new Set();
+            const equipeId = String(rel.equipe_id);
+            if (!integrantesPorEquipe[equipeId]) {
+                integrantesPorEquipe[equipeId] = new Set();
             }
-            integrantesPorEquipe[rel.equipe_id].add(rel.integrante_id);
+            integrantesPorEquipe[equipeId].add(rel.integrante_id);
         });
+        
+        console.log('Integrantes por equipe:', Object.keys(integrantesPorEquipe).map(k => ({ equipe: k, qtd: integrantesPorEquipe[k].size })));
 
         // Buscar produções de equipes com filtro de data
         let query = supabaseClient
@@ -385,10 +407,10 @@ class DashboardHVC {
             .eq('tipo_responsavel', 'equipe');
         
         if (this.filtros.dataInicio) {
-            query = query.gte('data', this.filtros.dataInicio.toISOString().split('T')[0]);
+            query = query.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
         }
         if (this.filtros.dataFim) {
-            query = query.lte('data', this.filtros.dataFim.toISOString().split('T')[0]);
+            query = query.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
         }
 
         const { data: producoes, error: errProd } = await query;
@@ -424,10 +446,13 @@ class DashboardHVC {
             itemServicoMap[item.id] = item.servico_id;
         });
 
+        // Debug: log de produções de equipes
+        console.log('Produções de equipes encontradas:', producoes?.length || 0);
+        
         // Calcular produtividade por equipe
         const produtividadeMap = {};
         (producoes || []).forEach(prod => {
-            const equipeId = prod.responsavel_id;
+            const equipeId = String(prod.responsavel_id); // Converter para string
             if (!produtividadeMap[equipeId]) {
                 produtividadeMap[equipeId] = {
                     totalProducoes: 0,
@@ -470,18 +495,26 @@ class DashboardHVC {
             }
         });
 
-        // Montar resultado
-        return (equipes || []).map(eq => ({
-            id: eq.id,
-            numero: eq.numero,
-            ativa: eq.ativa,
-            totalIntegrantes: integrantesPorEquipe[eq.id]?.size || 0,
-            totalProducoes: produtividadeMap[eq.id]?.totalProducoes || 0,
-            totalQuantidade: produtividadeMap[eq.id]?.totalQuantidade || 0,
-            totalValor: produtividadeMap[eq.id]?.totalValor || 0,
-            totalObras: produtividadeMap[eq.id]?.obras?.size || 0,
-            servicosDetalhados: produtividadeMap[eq.id]?.servicosDetalhados || {}
-        })).sort((a, b) => b.totalValor - a.totalValor);
+        // Debug: log dos mapas
+        console.log('IDs das equipes:', equipes?.map(e => e.id));
+        console.log('Chaves do mapa de integrantes:', Object.keys(integrantesPorEquipe));
+        console.log('Chaves do mapa de produtividade:', Object.keys(produtividadeMap));
+        
+        // Montar resultado (converter ID para string na comparação)
+        return (equipes || []).map(eq => {
+            const eqId = String(eq.id);
+            return {
+                id: eq.id,
+                numero: eq.numero,
+                ativa: eq.ativa,
+                totalIntegrantes: integrantesPorEquipe[eqId]?.size || 0,
+                totalProducoes: produtividadeMap[eqId]?.totalProducoes || 0,
+                totalQuantidade: produtividadeMap[eqId]?.totalQuantidade || 0,
+                totalValor: produtividadeMap[eqId]?.totalValor || 0,
+                totalObras: produtividadeMap[eqId]?.obras?.size || 0,
+                servicosDetalhados: produtividadeMap[eqId]?.servicosDetalhados || {}
+            };
+        }).sort((a, b) => b.totalValor - a.totalValor);
     }
 
     async carregarAnaliseServicos() {
@@ -560,13 +593,13 @@ class DashboardHVC {
         let query = supabaseClient
             .from('producoes_diarias_hvc')
             .select('*')
-            .order('data', { ascending: false });
+            .order('data_producao', { ascending: false });
 
         if (this.filtros.dataInicio) {
-            query = query.gte('data', this.filtros.dataInicio.toISOString().split('T')[0]);
+            query = query.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
         }
         if (this.filtros.dataFim) {
-            query = query.lte('data', this.filtros.dataFim.toISOString().split('T')[0]);
+            query = query.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
         }
 
         const { data, error } = await query;
@@ -1072,11 +1105,18 @@ class DashboardHVC {
     }
 }
 
-// Instância global
-let dashboardHVC;
+// Instância global (usando window para garantir escopo global em módulos)
+let dashboardHVC = null;
 
 // Inicializar quando DOM estiver pronto
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    // Aguardar um pouco para garantir que o supabase.js foi carregado
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
     dashboardHVC = new DashboardHVC();
-    dashboardHVC.init();
+    window.dashboardHVC = dashboardHVC; // Expor globalmente
+    await dashboardHVC.init();
 });
+
+// Exportar para uso em outros módulos
+export { DashboardHVC, dashboardHVC };
