@@ -46,11 +46,9 @@ class DashboardHVC {
         await this.carregarDados();
         this.renderizarDashboard();
         
-        // Mostrar conteudo e esconder loading
+        // Remover loading
         const loading = document.getElementById('dashboard-loading');
-        const content = document.getElementById('dashboard-content');
         if (loading) loading.style.display = 'none';
-        if (content) content.style.display = 'block';
         
         console.log('✅ Dashboard HVC inicializado');
     }
@@ -280,10 +278,10 @@ class DashboardHVC {
             .eq('tipo_responsavel', 'integrante');
         
         if (this.filtros.dataInicio) {
-            query = query.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
+            query = query.gte('data', this.filtros.dataInicio.toISOString().split('T')[0]);
         }
         if (this.filtros.dataFim) {
-            query = query.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
+            query = query.lte('data', this.filtros.dataFim.toISOString().split('T')[0]);
         }
 
         const { data: producoes, error: errProd } = await query;
@@ -387,10 +385,10 @@ class DashboardHVC {
             .eq('tipo_responsavel', 'equipe');
         
         if (this.filtros.dataInicio) {
-            query = query.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
+            query = query.gte('data', this.filtros.dataInicio.toISOString().split('T')[0]);
         }
         if (this.filtros.dataFim) {
-            query = query.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
+            query = query.lte('data', this.filtros.dataFim.toISOString().split('T')[0]);
         }
 
         const { data: producoes, error: errProd } = await query;
@@ -562,13 +560,13 @@ class DashboardHVC {
         let query = supabaseClient
             .from('producoes_diarias_hvc')
             .select('*')
-            .order('data_producao', { ascending: false });
+            .order('data', { ascending: false });
 
         if (this.filtros.dataInicio) {
-            query = query.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
+            query = query.gte('data', this.filtros.dataInicio.toISOString().split('T')[0]);
         }
         if (this.filtros.dataFim) {
-            query = query.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
+            query = query.lte('data', this.filtros.dataFim.toISOString().split('T')[0]);
         }
 
         const { data, error } = await query;
