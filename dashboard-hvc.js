@@ -22,7 +22,8 @@ class DashboardHVC {
             integrantes: { column: 'totalValor', ascending: false },
             equipes: { column: 'totalValor', ascending: false },
             obras: { column: 'valor_contratado', ascending: false },
-            servicos: { column: 'valorTotalContratado', ascending: false }
+            servicos: { column: 'valorTotalContratado', ascending: false },
+            propostas: { column: 'valorTotal', ascending: false }
         };
     }
 
@@ -179,14 +180,14 @@ class DashboardHVC {
                 produtividadeIntegrantes,
                 produtividadeEquipes,
                 analiseServicos,
-                medicoes,
+                analisePropostas,
                 producoes
             ] = await Promise.all([
                 this.carregarResumoObras(),
                 this.carregarProdutividadeIntegrantes(),
                 this.carregarProdutividadeEquipes(),
                 this.carregarAnaliseServicos(),
-                this.carregarMedicoes(),
+                this.carregarAnalisePropostas(),
                 this.carregarProducoes()
             ]);
 
@@ -195,7 +196,7 @@ class DashboardHVC {
                 produtividadeIntegrantes,
                 produtividadeEquipes,
                 analiseServicos,
-                medicoes,
+                analisePropostas,
                 producoes,
                 timestamp: Date.now()
             };
@@ -773,29 +774,68 @@ class DashboardHVC {
         })).sort((a, b) => b.valorTotalContratado - a.valorTotalContratado);
     }
 
-    async carregarMedicoes() {
-        let query = supabaseClient
-            .from('medicoes_hvc')
+    async carregarAnalisePropostas() {
+        // Buscar propostas com informações de cliente e itens
+        const { data: propostas, error: errProp } = await supabaseClient
+            .from('propostas_hvc')
             .select(`
                 id,
-                numero_medicao,
-                valor_total,
+                numero_proposta,
+                total_proposta,
                 status,
                 created_at,
-                obras_hvc (id, numero_obra)
+                clientes_hvc (id, nome),
+                itens_proposta_hvc (id, quantidade, preco_total)
             `)
             .order('created_at', { ascending: false });
 
-        if (this.filtros.dataInicio) {
-            query = query.gte('created_at', this.filtros.dataInicio.toISOString());
-        }
-        if (this.filtros.dataFim) {
-            query = query.lte('created_at', this.filtros.dataFim.toISOString());
-        }
+        if (errProp) throw errProp;
 
-        const { data, error } = await query;
-        if (error) throw error;
-        return data || [];
+        // Buscar obras vinculadas às propostas
+        const { data: obrasPropostas, error: errOP } = await supabaseClient
+            .from('obras_propostas')
+            .select('proposta_id, obra_id, obras_hvc (id, numero_obra, status)');
+
+        // Criar mapa de proposta -> obra
+        const propostaObraMap = {};
+        (obrasPropostas || []).forEach(op => {
+            if (!propostaObraMap[op.proposta_id]) {
+                propostaObraMap[op.proposta_id] = [];
+            }
+            if (op.obras_hvc) {
+                propostaObraMap[op.proposta_id].push(op.obras_hvc);
+            }
+        });
+
+        // Processar propostas
+        return (propostas || []).map(prop => {
+            const obras = propostaObraMap[prop.id] || [];
+            const temObra = obras.length > 0;
+            const obraAtiva = obras.some(o => o.status === 'ANDAMENTO' || o.status === 'PLANEJAMENTO');
+            const totalItens = (prop.itens_proposta_hvc || []).length;
+            const valorTotal = parseFloat(prop.total_proposta) || 0;
+
+            // Determinar status da proposta
+            let statusProposta = prop.status || 'PENDENTE';
+            if (temObra && obraAtiva) {
+                statusProposta = 'EM EXECUÇÃO';
+            } else if (temObra) {
+                statusProposta = 'CONCLUÍDA';
+            }
+
+            return {
+                id: prop.id,
+                numero: prop.numero_proposta,
+                cliente: prop.clientes_hvc?.nome || 'Cliente N/A',
+                clienteId: prop.clientes_hvc?.id,
+                valorTotal,
+                totalItens,
+                status: statusProposta,
+                temObra,
+                obras: obras.map(o => o.numero_obra).join(', ') || '-',
+                dataCriacao: prop.created_at
+            };
+        });
     }
 
     async carregarProducoes() {
@@ -842,6 +882,9 @@ class DashboardHVC {
             case 'servicos':
                 this.renderizarAnaliseServicos();
                 break;
+            case 'propostas':
+                this.renderizarAnalisePropostas();
+                break;
         }
     }
 
@@ -854,7 +897,7 @@ class DashboardHVC {
         this.renderizarProdutividadeIntegrantes();
         this.renderizarProdutividadeEquipes();
         this.renderizarAnaliseServicos();
-        this.renderizarGraficoEvolucao();
+        this.renderizarAnalisePropostas();
     }
 
     renderizarKPIs() {
@@ -1240,84 +1283,73 @@ class DashboardHVC {
         `;
     }
 
-    renderizarGraficoEvolucao() {
-        const container = document.getElementById('grafico-evolucao-container');
+    renderizarAnalisePropostas() {
+        const container = document.getElementById('analise-propostas-container');
         if (!container) return;
 
-        // Agrupar medições por mês
-        const medicoes = this.dataCache.medicoes || [];
-        const medicoesporMes = {};
-
-        medicoes.forEach(med => {
-            const data = new Date(med.created_at);
-            const chave = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, '0')}`;
-            if (!medicoesporMes[chave]) {
-                medicoesporMes[chave] = { quantidade: 0, valor: 0 };
+        let propostas = [...(this.dataCache.analisePropostas || [])];
+        
+        // Ordenar por valor total (decrescente)
+        const config = this.sortConfig.propostas || { column: 'valorTotal', ascending: false };
+        propostas.sort((a, b) => {
+            const valorA = a[config.column] || 0;
+            const valorB = b[config.column] || 0;
+            if (typeof valorA === 'string') {
+                return config.ascending ? valorA.localeCompare(valorB) : valorB.localeCompare(valorA);
             }
-            medicoesporMes[chave].quantidade++;
-            medicoesporMes[chave].valor += parseFloat(med.valor_total) || 0;
+            return config.ascending ? valorA - valorB : valorB - valorA;
         });
 
-        const meses = Object.keys(medicoesporMes).sort();
-        const valores = meses.map(m => medicoesporMes[m].valor);
-        const quantidades = meses.map(m => medicoesporMes[m].quantidade);
+        const propostasExibir = propostas.slice(0, 5);
+        const sortIcon = (col) => config.column === col ? (config.ascending ? '↑' : '↓') : '';
+
+        // Função para cor do status
+        const getStatusClass = (status) => {
+            switch(status) {
+                case 'EM EXECUÇÃO': return 'status-execucao';
+                case 'CONCLUÍDA': return 'status-concluida';
+                case 'APROVADA': return 'status-aprovada';
+                case 'PENDENTE': return 'status-pendente';
+                default: return '';
+            }
+        };
 
         container.innerHTML = `
             <div class="section-header">
-                <h3>📈 Evolução de Medições</h3>
+                <h3>📝 Análise de Propostas</h3>
             </div>
-            <div class="chart-container">
-                <canvas id="chart-evolucao"></canvas>
+            <div class="table-responsive">
+                <table class="dashboard-table sortable">
+                    <thead>
+                        <tr>
+                            <th>POS</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('propostas', 'numero')">PROPOSTA ${sortIcon('numero')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('propostas', 'cliente')">CLIENTE ${sortIcon('cliente')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('propostas', 'valorTotal')">VALOR ${sortIcon('valorTotal')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('propostas', 'totalItens')">ITENS ${sortIcon('totalItens')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('propostas', 'status')">STATUS ${sortIcon('status')}</th>
+                            <th>OBRA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${propostasExibir.map((prop, idx) => `
+                            <tr>
+                                <td class="pos-cell">${idx + 1}º</td>
+                                <td>${prop.numero || 'N/A'}</td>
+                                <td>${prop.cliente}</td>
+                                <td class="valor-positivo">${this.formatarMoeda(prop.valorTotal)}</td>
+                                <td>${prop.totalItens}</td>
+                                <td class="${getStatusClass(prop.status)}">${prop.status}</td>
+                                <td>${prop.obras}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
             </div>
+            <button class="btn-ver-todos" onclick="window.dashboardHVC.abrirModalVerTodos('propostas')">
+                📋 Ver Todos
+            </button>
         `;
-
-        // Criar gráfico
-        const ctx = document.getElementById('chart-evolucao');
-        if (ctx && window.Chart) {
-            if (this.charts.evolucao) {
-                this.charts.evolucao.destroy();
-            }
-
-            this.charts.evolucao = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: meses.map(m => {
-                        const [ano, mes] = m.split('-');
-                        return `${mes}/${ano.slice(2)}`;
-                    }),
-                    datasets: [{
-                        label: 'Valor Medido (R$)',
-                        data: valores,
-                        backgroundColor: 'rgba(0, 128, 255, 0.7)',
-                        borderColor: 'rgba(0, 128, 255, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                        legend: {
-                            labels: { color: '#add8e6' }
-                        }
-                    },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { 
-                                color: '#add8e6',
-                                callback: (value) => 'R$ ' + value.toLocaleString('pt-BR')
-                            },
-                            grid: { color: 'rgba(173, 216, 230, 0.1)' }
-                        },
-                        x: {
-                            ticks: { color: '#add8e6' },
-                            grid: { color: 'rgba(173, 216, 230, 0.1)' }
-                        }
-                    }
-                }
-            });
-        }
     }
 
     // =========================================================================
@@ -1351,6 +1383,10 @@ class DashboardHVC {
             case 'servicos':
                 titulo = '📋 Todos os Serviços';
                 conteudo = this.gerarTabelaServicosCompleta();
+                break;
+            case 'propostas':
+                titulo = '📝 Todas as Propostas';
+                conteudo = this.gerarTabelaPropostasCompleta();
                 break;
         }
 
@@ -1527,6 +1563,61 @@ class DashboardHVC {
                                 <td>${serv.totalPropostas}</td>
                                 <td>${serv.totalQuantidadeContratada?.toFixed(2) || '0.00'} ${serv.unidade}</td>
                                 <td class="valor-positivo">${this.formatarMoeda(serv.valorTotalContratado)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    gerarTabelaPropostasCompleta() {
+        const propostas = [...(this.dataCache.analisePropostas || [])];
+        const config = this.sortConfig.propostas || { column: 'valorTotal', ascending: false };
+        propostas.sort((a, b) => {
+            const valorA = a[config.column] || 0;
+            const valorB = b[config.column] || 0;
+            if (typeof valorA === 'string') {
+                return config.ascending ? valorA.localeCompare(valorB) : valorB.localeCompare(valorA);
+            }
+            return config.ascending ? valorA - valorB : valorB - valorA;
+        });
+
+        // Função para cor do status
+        const getStatusClass = (status) => {
+            switch(status) {
+                case 'EM EXECUÇÃO': return 'status-execucao';
+                case 'CONCLUÍDA': return 'status-concluida';
+                case 'APROVADA': return 'status-aprovada';
+                case 'PENDENTE': return 'status-pendente';
+                default: return '';
+            }
+        };
+
+        return `
+            <div class="table-responsive">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>POS</th>
+                            <th>PROPOSTA</th>
+                            <th>CLIENTE</th>
+                            <th>VALOR</th>
+                            <th>ITENS</th>
+                            <th>STATUS</th>
+                            <th>OBRA</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${propostas.map((prop, idx) => `
+                            <tr>
+                                <td class="pos-cell">${idx + 1}º</td>
+                                <td>${prop.numero || 'N/A'}</td>
+                                <td>${prop.cliente}</td>
+                                <td class="valor-positivo">${this.formatarMoeda(prop.valorTotal)}</td>
+                                <td>${prop.totalItens}</td>
+                                <td class="${getStatusClass(prop.status)}">${prop.status}</td>
+                                <td>${prop.obras}</td>
                             </tr>
                         `).join('')}
                     </tbody>
