@@ -276,94 +276,278 @@ class DashboardHVC {
         
         if (errInt) throw errInt;
 
-        // Buscar produções com filtro de data
-        let query = supabaseClient
+        // Buscar relacionamentos equipe-integrante para saber quais equipes cada integrante participa
+        const { data: relacoesEquipe, error: errRelEq } = await supabaseClient
+            .from('equipe_integrantes')
+            .select('equipe_id, integrante_id');
+        
+        // Criar mapa de integrante -> equipes
+        const integranteEquipesMap = {};
+        (relacoesEquipe || []).forEach(rel => {
+            const intId = String(rel.integrante_id);
+            if (!integranteEquipesMap[intId]) {
+                integranteEquipesMap[intId] = new Set();
+            }
+            integranteEquipesMap[intId].add(String(rel.equipe_id));
+        });
+
+        // Buscar TODAS as produções (individuais e de equipe) com filtro de data
+        let queryProducoes = supabaseClient
             .from('producoes_diarias_hvc')
-            .select('*')
-            .eq('tipo_responsavel', 'integrante');
+            .select('*');
         
         if (this.filtros.dataInicio) {
-            query = query.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
+            queryProducoes = queryProducoes.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
         }
         if (this.filtros.dataFim) {
-            query = query.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
+            queryProducoes = queryProducoes.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
         }
 
-        const { data: producoes, error: errProd } = await query;
+        const { data: todasProducoes, error: errProd } = await queryProducoes;
         if (errProd) throw errProd;
 
         // Buscar itens de proposta para preços
         const { data: itensProposta, error: errItens } = await supabaseClient
             .from('itens_proposta_hvc')
-            .select('id, preco_mao_obra, preco_material, preco_total, quantidade');
+            .select('id, servico_id, preco_mao_obra, preco_material, preco_total, quantidade');
 
         if (errItens) throw errItens;
 
-        // Criar mapa de preços (valor unitário = preco_total / quantidade)
+        // Buscar serviços para nomes
+        const { data: servicos, error: errServ } = await supabaseClient
+            .from('servicos_hvc')
+            .select('id, codigo, descricao, unidade');
+
+        // Buscar obras para nomes
+        const { data: obras, error: errObras } = await supabaseClient
+            .from('obras_hvc')
+            .select('id, numero_obra');
+
+        // Criar mapa de obras
+        const obrasMap = {};
+        (obras || []).forEach(o => {
+            obrasMap[o.id] = o.numero_obra;
+        });
+
+        // Criar mapa de serviços
+        const servicoMap = {};
+        (servicos || []).forEach(s => {
+            servicoMap[s.id] = s;
+        });
+
+        // Criar mapa de preços e item->servico
         const precoMap = {};
+        const itemServicoMap = {};
         (itensProposta || []).forEach(item => {
             const quantidade = parseFloat(item.quantidade) || 1;
             const precoTotal = parseFloat(item.preco_total) || 0;
             precoMap[item.id] = quantidade > 0 ? (precoTotal / quantidade) : 0;
+            itemServicoMap[item.id] = item.servico_id;
         });
 
-        // Debug: log de produções encontradas
-        console.log('Produções de integrantes encontradas:', producoes?.length || 0);
-        console.log('Itens de proposta encontrados:', itensProposta?.length || 0);
+        // Separar produções individuais e de equipe
+        const producoesIndividuais = (todasProducoes || []).filter(p => p.tipo_responsavel === 'integrante');
+        const producoesEquipes = (todasProducoes || []).filter(p => p.tipo_responsavel === 'equipe');
+
+        console.log('Produções individuais encontradas:', producoesIndividuais.length);
+        console.log('Produções de equipes encontradas:', producoesEquipes.length);
         
         // Calcular produtividade por integrante
         const produtividadeMap = {};
-        (producoes || []).forEach(prod => {
-            const integranteId = String(prod.responsavel_id); // Converter para string
+        
+        // Processar produções INDIVIDUAIS
+        producoesIndividuais.forEach(prod => {
+            const integranteId = String(prod.responsavel_id);
             if (!produtividadeMap[integranteId]) {
                 produtividadeMap[integranteId] = {
-                    totalProducoes: 0,
-                    totalQuantidade: 0,
-                    totalValor: 0,
-                    obras: new Set(),
-                    servicos: {} // Para detalhamento
+                    producoesIndividuais: [],
+                    producoesEmEquipe: [],
+                    totalProducoesIndividuais: 0,
+                    totalProducoesEmEquipe: 0,
+                    totalQuantidadeIndividual: 0,
+                    totalQuantidadeEmEquipe: 0,
+                    totalValorIndividual: 0,
+                    totalValorEmEquipe: 0,
+                    obrasIndividuais: new Set(),
+                    obrasEmEquipe: new Set(),
+                    servicosIndividuais: {},
+                    servicosEmEquipe: {}
                 };
             }
 
-            produtividadeMap[integranteId].totalProducoes++;
-            produtividadeMap[integranteId].obras.add(prod.obra_id);
+            produtividadeMap[integranteId].totalProducoesIndividuais++;
+            produtividadeMap[integranteId].obrasIndividuais.add(prod.obra_id);
 
-            // Processar quantidades_servicos (é um OBJETO, não array)
+            const producaoInfo = {
+                id: prod.id,
+                data: prod.data_producao,
+                obraId: prod.obra_id,
+                obraNumero: obrasMap[prod.obra_id] || 'N/A',
+                servicos: []
+            };
+
+            // Processar quantidades_servicos
             if (prod.quantidades_servicos && typeof prod.quantidades_servicos === 'object') {
                 Object.entries(prod.quantidades_servicos).forEach(([itemId, quantidade]) => {
                     const qtd = parseFloat(quantidade) || 0;
                     const precoUnitario = precoMap[itemId] || 0;
+                    const servicoId = itemServicoMap[itemId];
+                    const servico = servicoMap[servicoId] || {};
                     
-                    produtividadeMap[integranteId].totalQuantidade += qtd;
-                    produtividadeMap[integranteId].totalValor += qtd * precoUnitario;
+                    produtividadeMap[integranteId].totalQuantidadeIndividual += qtd;
+                    produtividadeMap[integranteId].totalValorIndividual += qtd * precoUnitario;
                     
+                    producaoInfo.servicos.push({
+                        codigo: servico.codigo || 'N/A',
+                        descricao: servico.descricao || 'Serviço',
+                        unidade: servico.unidade || 'UN',
+                        quantidade: qtd,
+                        valor: qtd * precoUnitario
+                    });
+
                     // Acumular por serviço
-                    if (!produtividadeMap[integranteId].servicos[itemId]) {
-                        produtividadeMap[integranteId].servicos[itemId] = { quantidade: 0, valor: 0 };
+                    if (servicoId) {
+                        if (!produtividadeMap[integranteId].servicosIndividuais[servicoId]) {
+                            produtividadeMap[integranteId].servicosIndividuais[servicoId] = {
+                                codigo: servico.codigo || 'N/A',
+                                descricao: servico.descricao || 'Serviço',
+                                unidade: servico.unidade || 'UN',
+                                quantidade: 0,
+                                valor: 0
+                            };
+                        }
+                        produtividadeMap[integranteId].servicosIndividuais[servicoId].quantidade += qtd;
+                        produtividadeMap[integranteId].servicosIndividuais[servicoId].valor += qtd * precoUnitario;
                     }
-                    produtividadeMap[integranteId].servicos[itemId].quantidade += qtd;
-                    produtividadeMap[integranteId].servicos[itemId].valor += qtd * precoUnitario;
                 });
             }
+
+            produtividadeMap[integranteId].producoesIndividuais.push(producaoInfo);
         });
 
-        // Debug: log do mapa de produtividade
+        // Processar produções EM EQUIPE (atribuir a cada integrante da equipe)
+        producoesEquipes.forEach(prod => {
+            const equipeId = String(prod.responsavel_id);
+            
+            // Encontrar todos os integrantes desta equipe
+            (integrantes || []).forEach(int => {
+                const intId = String(int.id);
+                const equipesDoIntegrante = integranteEquipesMap[intId] || new Set();
+                
+                if (equipesDoIntegrante.has(equipeId)) {
+                    // Este integrante faz parte desta equipe
+                    if (!produtividadeMap[intId]) {
+                        produtividadeMap[intId] = {
+                            producoesIndividuais: [],
+                            producoesEmEquipe: [],
+                            totalProducoesIndividuais: 0,
+                            totalProducoesEmEquipe: 0,
+                            totalQuantidadeIndividual: 0,
+                            totalQuantidadeEmEquipe: 0,
+                            totalValorIndividual: 0,
+                            totalValorEmEquipe: 0,
+                            obrasIndividuais: new Set(),
+                            obrasEmEquipe: new Set(),
+                            servicosIndividuais: {},
+                            servicosEmEquipe: {}
+                        };
+                    }
+
+                    produtividadeMap[intId].totalProducoesEmEquipe++;
+                    produtividadeMap[intId].obrasEmEquipe.add(prod.obra_id);
+
+                    const producaoInfo = {
+                        id: prod.id,
+                        data: prod.data_producao,
+                        obraId: prod.obra_id,
+                        obraNumero: obrasMap[prod.obra_id] || 'N/A',
+                        equipeId: equipeId,
+                        servicos: []
+                    };
+
+                    // Processar quantidades_servicos
+                    if (prod.quantidades_servicos && typeof prod.quantidades_servicos === 'object') {
+                        Object.entries(prod.quantidades_servicos).forEach(([itemId, quantidade]) => {
+                            const qtd = parseFloat(quantidade) || 0;
+                            const precoUnitario = precoMap[itemId] || 0;
+                            const servicoId = itemServicoMap[itemId];
+                            const servico = servicoMap[servicoId] || {};
+                            
+                            produtividadeMap[intId].totalQuantidadeEmEquipe += qtd;
+                            produtividadeMap[intId].totalValorEmEquipe += qtd * precoUnitario;
+                            
+                            producaoInfo.servicos.push({
+                                codigo: servico.codigo || 'N/A',
+                                descricao: servico.descricao || 'Serviço',
+                                unidade: servico.unidade || 'UN',
+                                quantidade: qtd,
+                                valor: qtd * precoUnitario
+                            });
+
+                            // Acumular por serviço
+                            if (servicoId) {
+                                if (!produtividadeMap[intId].servicosEmEquipe[servicoId]) {
+                                    produtividadeMap[intId].servicosEmEquipe[servicoId] = {
+                                        codigo: servico.codigo || 'N/A',
+                                        descricao: servico.descricao || 'Serviço',
+                                        unidade: servico.unidade || 'UN',
+                                        quantidade: 0,
+                                        valor: 0
+                                    };
+                                }
+                                produtividadeMap[intId].servicosEmEquipe[servicoId].quantidade += qtd;
+                                produtividadeMap[intId].servicosEmEquipe[servicoId].valor += qtd * precoUnitario;
+                            }
+                        });
+                    }
+
+                    produtividadeMap[intId].producoesEmEquipe.push(producaoInfo);
+                }
+            });
+        });
+
         console.log('Mapa de produtividade:', Object.keys(produtividadeMap));
-        console.log('IDs dos integrantes:', integrantes?.map(i => i.id));
         
-        // Montar resultado (converter ID para string na comparação)
+        // Montar resultado
         return (integrantes || []).map(int => {
             const intId = String(int.id);
+            const dados = produtividadeMap[intId] || {
+                producoesIndividuais: [],
+                producoesEmEquipe: [],
+                totalProducoesIndividuais: 0,
+                totalProducoesEmEquipe: 0,
+                totalQuantidadeIndividual: 0,
+                totalQuantidadeEmEquipe: 0,
+                totalValorIndividual: 0,
+                totalValorEmEquipe: 0,
+                obrasIndividuais: new Set(),
+                obrasEmEquipe: new Set(),
+                servicosIndividuais: {},
+                servicosEmEquipe: {}
+            };
+            
+            // Combinar obras individuais e em equipe (sem duplicatas)
+            const todasObras = new Set([...dados.obrasIndividuais, ...dados.obrasEmEquipe]);
+            
             return {
                 id: int.id,
                 nome: int.nome,
                 cpf: int.cpf,
                 ativo: int.ativo,
-                totalProducoes: produtividadeMap[intId]?.totalProducoes || 0,
-                totalQuantidade: produtividadeMap[intId]?.totalQuantidade || 0,
-                totalValor: produtividadeMap[intId]?.totalValor || 0,
-                totalObras: produtividadeMap[intId]?.obras?.size || 0,
-                servicos: produtividadeMap[intId]?.servicos || {}
+                totalProducoes: dados.totalProducoesIndividuais + dados.totalProducoesEmEquipe,
+                totalProducoesIndividuais: dados.totalProducoesIndividuais,
+                totalProducoesEmEquipe: dados.totalProducoesEmEquipe,
+                totalQuantidade: dados.totalQuantidadeIndividual + dados.totalQuantidadeEmEquipe,
+                totalQuantidadeIndividual: dados.totalQuantidadeIndividual,
+                totalQuantidadeEmEquipe: dados.totalQuantidadeEmEquipe,
+                totalValor: dados.totalValorIndividual + dados.totalValorEmEquipe,
+                totalValorIndividual: dados.totalValorIndividual,
+                totalValorEmEquipe: dados.totalValorEmEquipe,
+                totalObras: todasObras.size,
+                producoesIndividuais: dados.producoesIndividuais,
+                producoesEmEquipe: dados.producoesEmEquipe,
+                servicosIndividuais: dados.servicosIndividuais,
+                servicosEmEquipe: dados.servicosEmEquipe
             };
         }).sort((a, b) => b.totalValor - a.totalValor);
     }
@@ -385,9 +569,6 @@ class DashboardHVC {
             console.warn('Tabela equipe_integrantes não encontrada');
         }
 
-        // Debug: log de relações encontradas
-        console.log('Relações equipe-integrante encontradas:', relacoes?.length || 0);
-        
         // Contar integrantes por equipe (converter IDs para string)
         const integrantesPorEquipe = {};
         (relacoes || []).forEach(rel => {
@@ -397,8 +578,6 @@ class DashboardHVC {
             }
             integrantesPorEquipe[equipeId].add(rel.integrante_id);
         });
-        
-        console.log('Integrantes por equipe:', Object.keys(integrantesPorEquipe).map(k => ({ equipe: k, qtd: integrantesPorEquipe[k].size })));
 
         // Buscar produções de equipes com filtro de data
         let query = supabaseClient
@@ -419,7 +598,7 @@ class DashboardHVC {
         // Buscar itens de proposta para preços
         const { data: itensProposta, error: errItens } = await supabaseClient
             .from('itens_proposta_hvc')
-            .select('id, servico_id, preco_total, quantidade');
+            .select('id, servico_id, preco_total, quantidade, proposta_id');
 
         if (errItens) throw errItens;
 
@@ -429,6 +608,31 @@ class DashboardHVC {
             .select('id, codigo, descricao, unidade');
 
         if (errServ) throw errServ;
+
+        // Buscar obras para nomes
+        const { data: obras, error: errObras } = await supabaseClient
+            .from('obras_hvc')
+            .select(`
+                id, 
+                numero_obra,
+                obras_propostas (
+                    propostas_hvc (
+                        id,
+                        clientes_hvc (nome)
+                    )
+                )
+            `);
+
+        // Criar mapa de obras com nome do cliente
+        const obrasMap = {};
+        (obras || []).forEach(o => {
+            const proposta = o.obras_propostas?.[0]?.propostas_hvc;
+            const clienteNome = proposta?.clientes_hvc?.nome || 'Cliente N/A';
+            obrasMap[o.id] = {
+                numero: o.numero_obra,
+                cliente: clienteNome
+            };
+        });
 
         // Criar mapa de serviços
         const servicoMap = {};
@@ -446,25 +650,34 @@ class DashboardHVC {
             itemServicoMap[item.id] = item.servico_id;
         });
 
-        // Debug: log de produções de equipes
         console.log('Produções de equipes encontradas:', producoes?.length || 0);
         
         // Calcular produtividade por equipe
         const produtividadeMap = {};
         (producoes || []).forEach(prod => {
-            const equipeId = String(prod.responsavel_id); // Converter para string
+            const equipeId = String(prod.responsavel_id);
             if (!produtividadeMap[equipeId]) {
                 produtividadeMap[equipeId] = {
                     totalProducoes: 0,
                     totalQuantidade: 0,
                     totalValor: 0,
                     obras: new Set(),
-                    servicosDetalhados: {} // Para o modal
+                    servicosPorObra: {} // Serviços agrupados por obra para o modal
                 };
             }
 
             produtividadeMap[equipeId].totalProducoes++;
             produtividadeMap[equipeId].obras.add(prod.obra_id);
+
+            // Inicializar obra no mapa se não existir
+            if (!produtividadeMap[equipeId].servicosPorObra[prod.obra_id]) {
+                const obraInfo = obrasMap[prod.obra_id] || { numero: 'N/A', cliente: 'N/A' };
+                produtividadeMap[equipeId].servicosPorObra[prod.obra_id] = {
+                    obraNumero: obraInfo.numero,
+                    obraCliente: obraInfo.cliente,
+                    servicos: {}
+                };
+            }
 
             // Processar quantidades_servicos (é um OBJETO)
             if (prod.quantidades_servicos && typeof prod.quantidades_servicos === 'object') {
@@ -476,11 +689,12 @@ class DashboardHVC {
                     produtividadeMap[equipeId].totalQuantidade += qtd;
                     produtividadeMap[equipeId].totalValor += qtd * precoUnitario;
                     
-                    // Acumular por serviço para o modal
+                    // Acumular por serviço dentro da obra
                     if (servicoId) {
-                        if (!produtividadeMap[equipeId].servicosDetalhados[servicoId]) {
+                        const servicosObra = produtividadeMap[equipeId].servicosPorObra[prod.obra_id].servicos;
+                        if (!servicosObra[servicoId]) {
                             const servico = servicoMap[servicoId] || {};
-                            produtividadeMap[equipeId].servicosDetalhados[servicoId] = {
+                            servicosObra[servicoId] = {
                                 codigo: servico.codigo || 'N/A',
                                 descricao: servico.descricao || 'Serviço não identificado',
                                 unidade: servico.unidade || 'UN',
@@ -488,19 +702,14 @@ class DashboardHVC {
                                 valor: 0
                             };
                         }
-                        produtividadeMap[equipeId].servicosDetalhados[servicoId].quantidade += qtd;
-                        produtividadeMap[equipeId].servicosDetalhados[servicoId].valor += qtd * precoUnitario;
+                        servicosObra[servicoId].quantidade += qtd;
+                        servicosObra[servicoId].valor += qtd * precoUnitario;
                     }
                 });
             }
         });
-
-        // Debug: log dos mapas
-        console.log('IDs das equipes:', equipes?.map(e => e.id));
-        console.log('Chaves do mapa de integrantes:', Object.keys(integrantesPorEquipe));
-        console.log('Chaves do mapa de produtividade:', Object.keys(produtividadeMap));
         
-        // Montar resultado (converter ID para string na comparação)
+        // Montar resultado
         return (equipes || []).map(eq => {
             const eqId = String(eq.id);
             return {
@@ -512,7 +721,7 @@ class DashboardHVC {
                 totalQuantidade: produtividadeMap[eqId]?.totalQuantidade || 0,
                 totalValor: produtividadeMap[eqId]?.totalValor || 0,
                 totalObras: produtividadeMap[eqId]?.obras?.size || 0,
-                servicosDetalhados: produtividadeMap[eqId]?.servicosDetalhados || {}
+                servicosPorObra: produtividadeMap[eqId]?.servicosPorObra || {}
             };
         }).sort((a, b) => b.totalValor - a.totalValor);
     }
@@ -714,7 +923,7 @@ class DashboardHVC {
         `;
     }
 
-    renderizarRankingObras(mostrarTodos = false) {
+    renderizarRankingObras() {
         const container = document.getElementById('ranking-obras-container');
         if (!container) return;
 
@@ -728,24 +937,24 @@ class DashboardHVC {
             return config.ascending ? valorA - valorB : valorB - valorA;
         });
 
-        const obrasExibir = mostrarTodos ? obras : obras.slice(0, 5);
+        const obrasExibir = obras.slice(0, 5);
         const sortIcon = (col) => config.column === col ? (config.ascending ? '↑' : '↓') : '';
 
         container.innerHTML = `
             <div class="section-header">
-                <h3>🏆 Top ${mostrarTodos ? 'Todas' : '5'} Obras por Valor</h3>
+                <h3>🏆 Top 5 Obras por Valor</h3>
             </div>
             <div class="table-responsive">
                 <table class="dashboard-table sortable">
                     <thead>
                         <tr>
                             <th>POS</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('obras', 'numero')">OBRA ${sortIcon('numero')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'numero')">OBRA ${sortIcon('numero')}</th>
                             <th>CLIENTE</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('obras', 'valor_contratado')">CONTRATADO ${sortIcon('valor_contratado')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('obras', 'valor_medido')">MEDIDO ${sortIcon('valor_medido')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('obras', 'valor_recebido')">RECEBIDO ${sortIcon('valor_recebido')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('obras', 'percentual_andamento')">ANDAMENTO ${sortIcon('percentual_andamento')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'valor_contratado')">CONTRATADO ${sortIcon('valor_contratado')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'valor_medido')">MEDIDO ${sortIcon('valor_medido')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'valor_recebido')">RECEBIDO ${sortIcon('valor_recebido')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'percentual_andamento')">ANDAMENTO ${sortIcon('percentual_andamento')}</th>
                             <th>DESPESAS</th>
                         </tr>
                     </thead>
@@ -765,13 +974,13 @@ class DashboardHVC {
                     </tbody>
                 </table>
             </div>
-            <button class="btn-ver-todos" onclick="dashboardHVC.renderizarRankingObras(${!mostrarTodos})">
-                ${mostrarTodos ? '📋 Ver Menos' : '📋 Ver Todos'}
+            <button class="btn-ver-todos" onclick="window.dashboardHVC.abrirModalVerTodos('obras')">
+                📋 Ver Todos
             </button>
         `;
     }
 
-    renderizarProdutividadeIntegrantes(mostrarTodos = false) {
+    renderizarProdutividadeIntegrantes() {
         const container = document.getElementById('produtividade-integrantes-container');
         if (!container) return;
 
@@ -785,7 +994,7 @@ class DashboardHVC {
             return config.ascending ? valorA - valorB : valorB - valorA;
         });
 
-        const integrantesExibir = mostrarTodos ? integrantes : integrantes.slice(0, 5);
+        const integrantesExibir = integrantes.slice(0, 5);
         const sortIcon = (col) => config.column === col ? (config.ascending ? '↑' : '↓') : '';
 
         container.innerHTML = `
@@ -797,18 +1006,18 @@ class DashboardHVC {
                     <thead>
                         <tr>
                             <th>POS</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('integrantes', 'nome')">INTEGRANTE ${sortIcon('nome')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('integrantes', 'totalProducoes')">PRODUÇÕES ${sortIcon('totalProducoes')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('integrantes', 'totalObras')">OBRAS ${sortIcon('totalObras')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('integrantes', 'totalQuantidade')">QTD. TOTAL ${sortIcon('totalQuantidade')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('integrantes', 'totalValor')">VALOR PRODUZIDO ${sortIcon('totalValor')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'nome')">INTEGRANTE ${sortIcon('nome')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalProducoes')">PRODUÇÕES ${sortIcon('totalProducoes')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalObras')">OBRAS ${sortIcon('totalObras')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalQuantidade')">QTD. TOTAL ${sortIcon('totalQuantidade')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalValor')">VALOR PRODUZIDO ${sortIcon('totalValor')}</th>
                         </tr>
                     </thead>
                     <tbody>
                         ${integrantesExibir.map((int, idx) => `
                             <tr>
                                 <td class="pos-cell">${idx + 1}º</td>
-                                <td>${int.nome}</td>
+                                <td class="nome-clicavel" onclick="window.dashboardHVC.abrirModalDetalhesIntegrante('${int.id}')" style="cursor: pointer; color: #add8e6; text-decoration: underline;">${int.nome}</td>
                                 <td>${int.totalProducoes}</td>
                                 <td>${int.totalObras}</td>
                                 <td>${int.totalQuantidade.toFixed(2)}</td>
@@ -818,13 +1027,13 @@ class DashboardHVC {
                     </tbody>
                 </table>
             </div>
-            <button class="btn-ver-todos" onclick="dashboardHVC.renderizarProdutividadeIntegrantes(${!mostrarTodos})">
-                ${mostrarTodos ? '📋 Ver Menos' : '📋 Ver Todos'}
+            <button class="btn-ver-todos" onclick="window.dashboardHVC.abrirModalVerTodos('integrantes')">
+                📋 Ver Todos
             </button>
         `;
     }
 
-    renderizarProdutividadeEquipes(mostrarTodos = false) {
+    renderizarProdutividadeEquipes() {
         const container = document.getElementById('produtividade-equipes-container');
         if (!container) return;
 
@@ -838,7 +1047,7 @@ class DashboardHVC {
             return config.ascending ? valorA - valorB : valorB - valorA;
         });
 
-        const equipesExibir = mostrarTodos ? equipes : equipes.slice(0, 5);
+        const equipesExibir = equipes.slice(0, 5);
         const sortIcon = (col) => config.column === col ? (config.ascending ? '↑' : '↓') : '';
 
         container.innerHTML = `
@@ -850,11 +1059,11 @@ class DashboardHVC {
                     <thead>
                         <tr>
                             <th>POS</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('equipes', 'numero')">EQUIPE ${sortIcon('numero')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('equipes', 'totalIntegrantes')">INTEGRANTES ${sortIcon('totalIntegrantes')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('equipes', 'totalProducoes')">PRODUÇÕES ${sortIcon('totalProducoes')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('equipes', 'totalObras')">OBRAS ${sortIcon('totalObras')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('equipes', 'totalQuantidade')">QTD. TOTAL ${sortIcon('totalQuantidade')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'numero')">EQUIPE ${sortIcon('numero')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'totalIntegrantes')">INTEGRANTES ${sortIcon('totalIntegrantes')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'totalProducoes')">PRODUÇÕES ${sortIcon('totalProducoes')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'totalObras')">OBRAS ${sortIcon('totalObras')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'totalValor')">VALOR PRODUZIDO ${sortIcon('totalValor')}</th>
                             <th>DETALHES</th>
                         </tr>
                     </thead>
@@ -866,9 +1075,9 @@ class DashboardHVC {
                                 <td>${eq.totalIntegrantes}</td>
                                 <td>${eq.totalProducoes}</td>
                                 <td>${eq.totalObras}</td>
-                                <td>${eq.totalQuantidade.toFixed(2)}</td>
+                                <td class="${eq.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(eq.totalValor)}</td>
                                 <td>
-                                    <button class="btn-detalhes" onclick="dashboardHVC.abrirModalDetalhesEquipe('${eq.id}')" title="Ver detalhes">
+                                    <button class="btn-detalhes" onclick="window.dashboardHVC.abrirModalDetalhesEquipe('${eq.id}')" title="Ver detalhes">
                                         📊
                                     </button>
                                 </td>
@@ -877,8 +1086,8 @@ class DashboardHVC {
                     </tbody>
                 </table>
             </div>
-            <button class="btn-ver-todos" onclick="dashboardHVC.renderizarProdutividadeEquipes(${!mostrarTodos})">
-                ${mostrarTodos ? '📋 Ver Menos' : '📋 Ver Todos'}
+            <button class="btn-ver-todos" onclick="window.dashboardHVC.abrirModalVerTodos('equipes')">
+                📋 Ver Todos
             </button>
         `;
     }
@@ -887,8 +1096,27 @@ class DashboardHVC {
         const equipe = this.dataCache.produtividadeEquipes.find(e => e.id === equipeId);
         if (!equipe) return;
 
-        const servicos = Object.values(equipe.servicosDetalhados || {});
-        const totalValor = servicos.reduce((sum, s) => sum + s.valor, 0);
+        // Construir lista de serviços por obra
+        const servicosPorObra = equipe.servicosPorObra || {};
+        let servicosHtml = '';
+        let totalGeral = 0;
+
+        Object.entries(servicosPorObra).forEach(([obraId, obraData]) => {
+            const servicos = Object.values(obraData.servicos || {});
+            servicos.forEach(s => {
+                totalGeral += s.valor;
+                servicosHtml += `
+                    <tr>
+                        <td>${obraData.obraNumero}<br><small style="color: #888;">(${obraData.obraCliente})</small></td>
+                        <td>${s.codigo}</td>
+                        <td>${s.descricao}</td>
+                        <td>${s.unidade}</td>
+                        <td>${s.quantidade.toFixed(2)}</td>
+                        <td class="valor-positivo">${this.formatarMoeda(s.valor)}</td>
+                    </tr>
+                `;
+            });
+        });
 
         // Criar modal
         let modal = document.getElementById('modal-detalhes-equipe');
@@ -903,7 +1131,7 @@ class DashboardHVC {
             <div class="modal-content modal-lg">
                 <div class="modal-header">
                     <h3>📊 Detalhes - Equipe ${equipe.numero}</h3>
-                    <button class="modal-close" onclick="dashboardHVC.fecharModalDetalhesEquipe()">×</button>
+                    <button class="modal-close" onclick="window.dashboardHVC.fecharModal('modal-detalhes-equipe')">×</button>
                 </div>
                 <div class="modal-body">
                     <div class="modal-summary">
@@ -921,14 +1149,15 @@ class DashboardHVC {
                         </div>
                         <div class="summary-item highlight">
                             <span class="summary-label">Valor Total Produzido:</span>
-                            <span class="summary-value">${this.formatarMoeda(totalValor)}</span>
+                            <span class="summary-value">${this.formatarMoeda(totalGeral)}</span>
                         </div>
                     </div>
-                    <h4>Serviços Produzidos</h4>
+                    <h4>Serviços Produzidos por Obra</h4>
                     <div class="table-responsive">
                         <table class="dashboard-table">
                             <thead>
                                 <tr>
+                                    <th>OBRA</th>
                                     <th>CÓDIGO</th>
                                     <th>SERVIÇO</th>
                                     <th>UNIDADE</th>
@@ -937,15 +1166,7 @@ class DashboardHVC {
                                 </tr>
                             </thead>
                             <tbody>
-                                ${servicos.length > 0 ? servicos.map(s => `
-                                    <tr>
-                                        <td>${s.codigo}</td>
-                                        <td>${s.descricao}</td>
-                                        <td>${s.unidade}</td>
-                                        <td>${s.quantidade.toFixed(2)}</td>
-                                        <td class="valor-positivo">${this.formatarMoeda(s.valor)}</td>
-                                    </tr>
-                                `).join('') : '<tr><td colspan="5" class="empty-message">Nenhum serviço produzido no período</td></tr>'}
+                                ${servicosHtml || '<tr><td colspan="6" class="empty-message">Nenhum serviço produzido no período</td></tr>'}
                             </tbody>
                         </table>
                     </div>
@@ -956,12 +1177,17 @@ class DashboardHVC {
         modal.style.display = 'flex';
     }
 
-    fecharModalDetalhesEquipe() {
-        const modal = document.getElementById('modal-detalhes-equipe');
+    // Função genérica para fechar modais
+    fecharModal(modalId) {
+        const modal = document.getElementById(modalId);
         if (modal) modal.style.display = 'none';
     }
 
-    renderizarAnaliseServicos(mostrarTodos = false) {
+    fecharModalDetalhesEquipe() {
+        this.fecharModal('modal-detalhes-equipe');
+    }
+
+    renderizarAnaliseServicos() {
         const container = document.getElementById('analise-servicos-container');
         if (!container) return;
 
@@ -975,7 +1201,7 @@ class DashboardHVC {
             return config.ascending ? valorA - valorB : valorB - valorA;
         });
 
-        const servicosExibir = mostrarTodos ? servicos : servicos.slice(0, 5);
+        const servicosExibir = servicos.slice(0, 5);
         const sortIcon = (col) => config.column === col ? (config.ascending ? '↑' : '↓') : '';
 
         container.innerHTML = `
@@ -987,11 +1213,11 @@ class DashboardHVC {
                     <thead>
                         <tr>
                             <th>POS</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('servicos', 'codigo')">CÓDIGO ${sortIcon('codigo')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('servicos', 'codigo')">CÓDIGO ${sortIcon('codigo')}</th>
                             <th>SERVIÇO</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('servicos', 'totalPropostas')">PROPOSTAS ${sortIcon('totalPropostas')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('servicos', 'totalQuantidadeContratada')">QTD. CONTRATADA ${sortIcon('totalQuantidadeContratada')}</th>
-                            <th class="sortable-header" onclick="dashboardHVC.ordenarDados('servicos', 'valorTotalContratado')">VALOR CONTRATADO ${sortIcon('valorTotalContratado')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('servicos', 'totalPropostas')">PROPOSTAS ${sortIcon('totalPropostas')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('servicos', 'totalQuantidadeContratada')">QTD. CONTRATADA ${sortIcon('totalQuantidadeContratada')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('servicos', 'valorTotalContratado')">VALOR CONTRATADO ${sortIcon('valorTotalContratado')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1008,8 +1234,8 @@ class DashboardHVC {
                     </tbody>
                 </table>
             </div>
-            <button class="btn-ver-todos" onclick="dashboardHVC.renderizarAnaliseServicos(${!mostrarTodos})">
-                ${mostrarTodos ? '📋 Ver Menos' : '📋 Ver Todos'}
+            <button class="btn-ver-todos" onclick="window.dashboardHVC.abrirModalVerTodos('servicos')">
+                📋 Ver Todos
             </button>
         `;
     }
@@ -1092,6 +1318,351 @@ class DashboardHVC {
                 }
             });
         }
+    }
+
+    // =========================================================================
+    // MODAIS VER TODOS
+    // =========================================================================
+    abrirModalVerTodos(tipo) {
+        let modal = document.getElementById('modal-ver-todos');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modal-ver-todos';
+            modal.className = 'modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        let titulo = '';
+        let conteudo = '';
+
+        switch (tipo) {
+            case 'obras':
+                titulo = '🏆 Todas as Obras';
+                conteudo = this.gerarTabelaObrasCompleta();
+                break;
+            case 'integrantes':
+                titulo = '👥 Todos os Integrantes';
+                conteudo = this.gerarTabelaIntegrantesCompleta();
+                break;
+            case 'equipes':
+                titulo = '👥 Todas as Equipes';
+                conteudo = this.gerarTabelaEquipesCompleta();
+                break;
+            case 'servicos':
+                titulo = '📋 Todos os Serviços';
+                conteudo = this.gerarTabelaServicosCompleta();
+                break;
+        }
+
+        modal.innerHTML = `
+            <div class="modal-content modal-xl">
+                <div class="modal-header">
+                    <h3>${titulo}</h3>
+                    <button class="modal-close" onclick="window.dashboardHVC.fecharModal('modal-ver-todos')">×</button>
+                </div>
+                <div class="modal-body">
+                    ${conteudo}
+                </div>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
+    }
+
+    gerarTabelaObrasCompleta() {
+        const obras = [...(this.dataCache.resumoObras || [])];
+        const config = this.sortConfig.obras;
+        obras.sort((a, b) => {
+            const valorA = a[config.column] || 0;
+            const valorB = b[config.column] || 0;
+            return config.ascending ? valorA - valorB : valorB - valorA;
+        });
+
+        return `
+            <div class="table-responsive">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>POS</th>
+                            <th>OBRA</th>
+                            <th>CLIENTE</th>
+                            <th>CONTRATADO</th>
+                            <th>MEDIDO</th>
+                            <th>RECEBIDO</th>
+                            <th>ANDAMENTO</th>
+                            <th>DESPESAS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${obras.map((obra, idx) => `
+                            <tr>
+                                <td class="pos-cell">${idx + 1}º</td>
+                                <td>${obra.numero || 'N/A'}</td>
+                                <td>${obra.cliente}</td>
+                                <td>${this.formatarMoeda(obra.valor_contratado)}</td>
+                                <td>${this.formatarMoeda(obra.valor_medido)}</td>
+                                <td class="${obra.valor_recebido > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(obra.valor_recebido)}</td>
+                                <td class="percentual-cell">${obra.percentual_andamento.toFixed(1)}%</td>
+                                <td class="despesas-cell">-</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    gerarTabelaIntegrantesCompleta() {
+        const integrantes = [...(this.dataCache.produtividadeIntegrantes || [])];
+        const config = this.sortConfig.integrantes;
+        integrantes.sort((a, b) => {
+            const valorA = a[config.column] || 0;
+            const valorB = b[config.column] || 0;
+            return config.ascending ? valorA - valorB : valorB - valorA;
+        });
+
+        return `
+            <div class="table-responsive">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>POS</th>
+                            <th>INTEGRANTE</th>
+                            <th>PRODUÇÕES</th>
+                            <th>OBRAS</th>
+                            <th>QTD. TOTAL</th>
+                            <th>VALOR PRODUZIDO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${integrantes.map((int, idx) => `
+                            <tr>
+                                <td class="pos-cell">${idx + 1}º</td>
+                                <td class="nome-clicavel" onclick="window.dashboardHVC.fecharModal('modal-ver-todos'); window.dashboardHVC.abrirModalDetalhesIntegrante('${int.id}');" style="cursor: pointer; color: #add8e6; text-decoration: underline;">${int.nome}</td>
+                                <td>${int.totalProducoes}</td>
+                                <td>${int.totalObras}</td>
+                                <td>${int.totalQuantidade.toFixed(2)}</td>
+                                <td class="${int.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(int.totalValor)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    gerarTabelaEquipesCompleta() {
+        const equipes = [...(this.dataCache.produtividadeEquipes || [])];
+        const config = this.sortConfig.equipes;
+        equipes.sort((a, b) => {
+            const valorA = a[config.column] || 0;
+            const valorB = b[config.column] || 0;
+            return config.ascending ? valorA - valorB : valorB - valorA;
+        });
+
+        return `
+            <div class="table-responsive">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>POS</th>
+                            <th>EQUIPE</th>
+                            <th>INTEGRANTES</th>
+                            <th>PRODUÇÕES</th>
+                            <th>OBRAS</th>
+                            <th>VALOR PRODUZIDO</th>
+                            <th>DETALHES</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${equipes.map((eq, idx) => `
+                            <tr>
+                                <td class="pos-cell">${idx + 1}º</td>
+                                <td>Equipe ${eq.numero || 'N/A'}</td>
+                                <td>${eq.totalIntegrantes}</td>
+                                <td>${eq.totalProducoes}</td>
+                                <td>${eq.totalObras}</td>
+                                <td class="${eq.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(eq.totalValor)}</td>
+                                <td>
+                                    <button class="btn-detalhes" onclick="window.dashboardHVC.fecharModal('modal-ver-todos'); window.dashboardHVC.abrirModalDetalhesEquipe('${eq.id}');" title="Ver detalhes">
+                                        📊
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    gerarTabelaServicosCompleta() {
+        const servicos = [...(this.dataCache.analiseServicos || [])];
+        const config = this.sortConfig.servicos;
+        servicos.sort((a, b) => {
+            const valorA = a[config.column] || 0;
+            const valorB = b[config.column] || 0;
+            return config.ascending ? valorA - valorB : valorB - valorA;
+        });
+
+        return `
+            <div class="table-responsive">
+                <table class="dashboard-table">
+                    <thead>
+                        <tr>
+                            <th>POS</th>
+                            <th>CÓDIGO</th>
+                            <th>SERVIÇO</th>
+                            <th>PROPOSTAS</th>
+                            <th>QTD. CONTRATADA</th>
+                            <th>VALOR CONTRATADO</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${servicos.map((serv, idx) => `
+                            <tr>
+                                <td class="pos-cell">${idx + 1}º</td>
+                                <td>${serv.codigo}</td>
+                                <td>${serv.descricao}</td>
+                                <td>${serv.totalPropostas}</td>
+                                <td>${serv.totalQuantidadeContratada?.toFixed(2) || '0.00'} ${serv.unidade}</td>
+                                <td class="valor-positivo">${this.formatarMoeda(serv.valorTotalContratado)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    }
+
+    // =========================================================================
+    // MODAL DETALHES INTEGRANTE
+    // =========================================================================
+    abrirModalDetalhesIntegrante(integranteId) {
+        const integrante = this.dataCache.produtividadeIntegrantes.find(i => i.id === integranteId);
+        if (!integrante) return;
+
+        // Criar modal
+        let modal = document.getElementById('modal-detalhes-integrante');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modal-detalhes-integrante';
+            modal.className = 'modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        // Gerar tabela de produções individuais
+        let producoesIndividuaisHtml = '';
+        (integrante.producoesIndividuais || []).forEach(prod => {
+            prod.servicos.forEach(s => {
+                producoesIndividuaisHtml += `
+                    <tr>
+                        <td>${prod.obraNumero}</td>
+                        <td>${prod.data}</td>
+                        <td>${s.codigo}</td>
+                        <td>${s.descricao}</td>
+                        <td>${s.quantidade.toFixed(2)} ${s.unidade}</td>
+                        <td class="valor-positivo">${this.formatarMoeda(s.valor)}</td>
+                    </tr>
+                `;
+            });
+        });
+
+        // Gerar tabela de produções em equipe
+        let producoesEquipeHtml = '';
+        (integrante.producoesEmEquipe || []).forEach(prod => {
+            prod.servicos.forEach(s => {
+                producoesEquipeHtml += `
+                    <tr>
+                        <td>${prod.obraNumero}</td>
+                        <td>Equipe ${prod.equipeId}</td>
+                        <td>${prod.data}</td>
+                        <td>${s.codigo}</td>
+                        <td>${s.descricao}</td>
+                        <td>${s.quantidade.toFixed(2)} ${s.unidade}</td>
+                        <td class="valor-positivo">${this.formatarMoeda(s.valor)}</td>
+                    </tr>
+                `;
+            });
+        });
+
+        modal.innerHTML = `
+            <div class="modal-content modal-xl">
+                <div class="modal-header">
+                    <h3>👤 Detalhes - ${integrante.nome}</h3>
+                    <button class="modal-close" onclick="window.dashboardHVC.fecharModal('modal-detalhes-integrante')">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="modal-summary">
+                        <div class="summary-item">
+                            <span class="summary-label">Produções Individuais:</span>
+                            <span class="summary-value">${integrante.totalProducoesIndividuais || 0}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Produções em Equipe:</span>
+                            <span class="summary-value">${integrante.totalProducoesEmEquipe || 0}</span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-label">Total Obras:</span>
+                            <span class="summary-value">${integrante.totalObras}</span>
+                        </div>
+                        <div class="summary-item highlight">
+                            <span class="summary-label">Valor Individual:</span>
+                            <span class="summary-value">${this.formatarMoeda(integrante.totalValorIndividual || 0)}</span>
+                        </div>
+                        <div class="summary-item highlight">
+                            <span class="summary-label">Valor em Equipe:</span>
+                            <span class="summary-value">${this.formatarMoeda(integrante.totalValorEmEquipe || 0)}</span>
+                        </div>
+                        <div class="summary-item highlight-total">
+                            <span class="summary-label">VALOR TOTAL:</span>
+                            <span class="summary-value">${this.formatarMoeda(integrante.totalValor)}</span>
+                        </div>
+                    </div>
+
+                    <h4>👤 Produções Individuais</h4>
+                    <div class="table-responsive">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>OBRA</th>
+                                    <th>DATA</th>
+                                    <th>CÓDIGO</th>
+                                    <th>SERVIÇO</th>
+                                    <th>QUANTIDADE</th>
+                                    <th>VALOR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${producoesIndividuaisHtml || '<tr><td colspan="6" class="empty-message">Nenhuma produção individual no período</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <h4>👥 Produções em Equipe</h4>
+                    <div class="table-responsive">
+                        <table class="dashboard-table">
+                            <thead>
+                                <tr>
+                                    <th>OBRA</th>
+                                    <th>EQUIPE</th>
+                                    <th>DATA</th>
+                                    <th>CÓDIGO</th>
+                                    <th>SERVIÇO</th>
+                                    <th>QUANTIDADE</th>
+                                    <th>VALOR</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${producoesEquipeHtml || '<tr><td colspan="7" class="empty-message">Nenhuma produção em equipe no período</td></tr>'}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        modal.style.display = 'flex';
     }
 
     // =========================================================================
