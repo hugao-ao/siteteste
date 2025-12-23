@@ -223,8 +223,8 @@
            SEÇÕES DO DASHBOARD
            ================================================================ */
         .dashboard-sections {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            display: flex;
+            flex-direction: column;
             gap: 1.5rem;
             width: 100%;
         }
@@ -384,6 +384,29 @@
         }
 
         /* ================================================================
+           STATUS DE PROPOSTAS
+           ================================================================ */
+        .status-execucao {
+            color: #00ff00;
+            font-weight: bold;
+        }
+
+        .status-concluida {
+            color: #00bfff;
+            font-weight: bold;
+        }
+
+        .status-aprovada {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .status-pendente {
+            color: #ff8c00;
+            font-weight: bold;
+        }
+
+        /* ================================================================
            GRÁFICOS
            ================================================================ */
         .chart-container {
@@ -423,6 +446,33 @@
 
         .modal-content.modal-lg {
             max-width: 800px;
+        }
+
+        .modal-content.modal-xl {
+            max-width: 95%;
+            width: 1200px;
+            resize: horizontal;
+            overflow: auto;
+            min-width: 400px;
+        }
+
+        .modal-content.modal-lg {
+            resize: horizontal;
+            overflow: auto;
+            min-width: 400px;
+        }
+
+        .summary-item.highlight-total {
+            background: linear-gradient(145deg, rgba(0, 128, 0, 0.3), rgba(0, 100, 0, 0.2));
+            border: 1px solid rgba(0, 200, 0, 0.4);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+        }
+
+        .summary-item.highlight-total .summary-value {
+            color: #00ff00;
+            font-weight: bold;
+            font-size: 1.1rem;
         }
 
         .modal-header {
@@ -706,22 +756,22 @@
                     </div>
 
                     <!-- Produtividade Integrantes -->
-                    <div class="dashboard-section" id="produtividade-integrantes-container">
+                    <div class="dashboard-section full-width" id="produtividade-integrantes-container">
                         <!-- Preenchido via JS -->
                     </div>
 
                     <!-- Produtividade Equipes -->
-                    <div class="dashboard-section" id="produtividade-equipes-container">
+                    <div class="dashboard-section full-width" id="produtividade-equipes-container">
                         <!-- Preenchido via JS -->
                     </div>
 
                     <!-- Análise de Serviços -->
-                    <div class="dashboard-section" id="analise-servicos-container">
+                    <div class="dashboard-section full-width" id="analise-servicos-container">
                         <!-- Preenchido via JS -->
                     </div>
 
-                    <!-- Gráfico de Evolução -->
-                    <div class="dashboard-section" id="grafico-evolucao-container">
+                    <!-- Análise de Propostas -->
+                    <div class="dashboard-section full-width" id="analise-propostas-container">
                         <!-- Preenchido via JS -->
                     </div>
                 </div>
