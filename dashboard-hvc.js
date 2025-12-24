@@ -302,6 +302,18 @@ class DashboardHVC {
             }
             integranteEquipesMap[intId].add(String(rel.equipe_id));
         });
+        
+        // Criar mapa de equipe -> quantidade de integrantes
+        const equipeMembrosMap = {};
+        (relacoesEquipe || []).forEach(rel => {
+            const eqId = String(rel.equipe_id);
+            if (!equipeMembrosMap[eqId]) {
+                equipeMembrosMap[eqId] = 0;
+            }
+            equipeMembrosMap[eqId]++;
+        });
+        
+        console.log('Mapa de membros por equipe:', equipeMembrosMap);
 
         // Buscar TODAS as produções (individuais e de equipe) com filtro de data
         let queryProducoes = supabaseClient
@@ -437,9 +449,12 @@ class DashboardHVC {
             produtividadeMap[integranteId].producoesIndividuais.push(producaoInfo);
         });
 
-        // Processar produções EM EQUIPE (atribuir a cada integrante da equipe)
+        // Processar produções EM EQUIPE (atribuir a cada integrante da equipe, DIVIDINDO pelo número de membros)
         producoesEquipes.forEach(prod => {
             const equipeId = String(prod.responsavel_id);
+            
+            // Obter número de membros da equipe para divisão proporcional
+            const numMembros = equipeMembrosMap[equipeId] || 1;
             
             // Encontrar todos os integrantes desta equipe
             (integrantes || []).forEach(int => {
@@ -475,29 +490,37 @@ class DashboardHVC {
                         obraNumero: obrasMap[prod.obra_id] || 'N/A',
                         equipeId: equipeId,
                         equipeNumero: equipeNumeroMap[equipeId] || equipeId,
+                        numMembrosEquipe: numMembros, // Guardar para referência
                         servicos: []
                     };
 
-                    // Processar quantidades_servicos
+                    // Processar quantidades_servicos - DIVIDIR pelo número de membros
                     if (prod.quantidades_servicos && typeof prod.quantidades_servicos === 'object') {
                         Object.entries(prod.quantidades_servicos).forEach(([itemId, quantidade]) => {
-                            const qtd = parseFloat(quantidade) || 0;
+                            const qtdTotal = parseFloat(quantidade) || 0;
                             const precoUnitario = precoMap[itemId] || 0;
                             const servicoId = itemServicoMap[itemId];
                             const servico = servicoMap[servicoId] || {};
                             
-                            produtividadeMap[intId].totalQuantidadeEmEquipe += qtd;
-                            produtividadeMap[intId].totalValorEmEquipe += qtd * precoUnitario;
+                            // DIVIDIR quantidade e valor pelo número de membros da equipe
+                            const qtdProporcional = qtdTotal / numMembros;
+                            const valorProporcional = (qtdTotal * precoUnitario) / numMembros;
+                            
+                            produtividadeMap[intId].totalQuantidadeEmEquipe += qtdProporcional;
+                            produtividadeMap[intId].totalValorEmEquipe += valorProporcional;
                             
                             producaoInfo.servicos.push({
                                 codigo: servico.codigo || 'N/A',
                                 descricao: servico.descricao || 'Serviço',
                                 unidade: servico.unidade || 'UN',
-                                quantidade: qtd,
-                                valor: qtd * precoUnitario
+                                quantidade: qtdProporcional,
+                                quantidadeTotal: qtdTotal, // Guardar total para referência
+                                valor: valorProporcional,
+                                valorTotal: qtdTotal * precoUnitario, // Guardar total para referência
+                                numMembros: numMembros
                             });
 
-                            // Acumular por serviço
+                            // Acumular por serviço - também proporcional
                             if (servicoId) {
                                 if (!produtividadeMap[intId].servicosEmEquipe[servicoId]) {
                                     produtividadeMap[intId].servicosEmEquipe[servicoId] = {
@@ -505,11 +528,27 @@ class DashboardHVC {
                                         descricao: servico.descricao || 'Serviço',
                                         unidade: servico.unidade || 'UN',
                                         quantidade: 0,
-                                        valor: 0
+                                        valor: 0,
+                                        producoes: [] // Lista de produções para detalhamento
                                     };
                                 }
-                                produtividadeMap[intId].servicosEmEquipe[servicoId].quantidade += qtd;
-                                produtividadeMap[intId].servicosEmEquipe[servicoId].valor += qtd * precoUnitario;
+                                produtividadeMap[intId].servicosEmEquipe[servicoId].quantidade += qtdProporcional;
+                                produtividadeMap[intId].servicosEmEquipe[servicoId].valor += valorProporcional;
+                                
+                                // Guardar detalhes da produção para o modal de detalhes
+                                produtividadeMap[intId].servicosEmEquipe[servicoId].producoes.push({
+                                    producaoId: prod.id,
+                                    data: prod.data_producao,
+                                    obraId: prod.obra_id,
+                                    obraNumero: obrasMap[prod.obra_id] || 'N/A',
+                                    equipeId: equipeId,
+                                    equipeNumero: equipeNumeroMap[equipeId] || equipeId,
+                                    quantidade: qtdProporcional,
+                                    quantidadeTotal: qtdTotal,
+                                    valor: valorProporcional,
+                                    valorTotal: qtdTotal * precoUnitario,
+                                    numMembros: numMembros
+                                });
                             }
                         });
                     }
@@ -1777,41 +1816,57 @@ class DashboardHVC {
         const integrante = this.dataCache.produtividadeIntegrantes.find(i => i.id === integranteId);
         if (!integrante) return;
 
-        // Buscar produções deste serviço
-        const producoes = tipo === 'individual' ? integrante.producoesIndividuais : integrante.producoesEmEquipe;
-        
-        // Filtrar e agrupar por obra
-        const producoesPorObra = {};
-        (producoes || []).forEach(prod => {
-            prod.servicos.forEach(s => {
-                // Verificar se é o serviço correto (comparar por código já que servicoId pode não estar disponível)
-                const servicoInfo = tipo === 'individual' 
-                    ? integrante.servicosIndividuais[servicoId] 
-                    : integrante.servicosEmEquipe[servicoId];
-                
-                if (servicoInfo && s.codigo === servicoInfo.codigo) {
-                    const obraKey = prod.obraNumero;
-                    if (!producoesPorObra[obraKey]) {
-                        producoesPorObra[obraKey] = {
-                            obraNumero: prod.obraNumero,
-                            producoes: []
-                        };
-                    }
-                    producoesPorObra[obraKey].producoes.push({
-                        data: prod.data,
-                        equipeNumero: prod.equipeNumero || null,
-                        quantidade: s.quantidade,
-                        unidade: s.unidade,
-                        valor: s.valor
-                    });
-                }
-            });
-        });
-
         // Obter informações do serviço
         const servicoInfo = tipo === 'individual' 
             ? integrante.servicosIndividuais[servicoId] 
             : integrante.servicosEmEquipe[servicoId];
+
+        // Para produções em equipe, usar os dados já armazenados no serviço
+        let producoesPorObra = {};
+        
+        if (tipo === 'equipe' && servicoInfo && servicoInfo.producoes) {
+            // Usar os dados já calculados com valores proporcionais
+            servicoInfo.producoes.forEach(p => {
+                const obraKey = p.obraNumero;
+                if (!producoesPorObra[obraKey]) {
+                    producoesPorObra[obraKey] = {
+                        obraNumero: p.obraNumero,
+                        producoes: []
+                    };
+                }
+                producoesPorObra[obraKey].producoes.push({
+                    data: p.data,
+                    equipeNumero: p.equipeNumero || null,
+                    quantidade: p.quantidade, // Já é proporcional
+                    unidade: servicoInfo.unidade,
+                    valor: p.valor, // Já é proporcional
+                    numMembros: p.numMembros
+                });
+            });
+        } else {
+            // Para produções individuais, buscar das produções
+            const producoes = integrante.producoesIndividuais || [];
+            producoes.forEach(prod => {
+                prod.servicos.forEach(s => {
+                    if (servicoInfo && s.codigo === servicoInfo.codigo) {
+                        const obraKey = prod.obraNumero;
+                        if (!producoesPorObra[obraKey]) {
+                            producoesPorObra[obraKey] = {
+                                obraNumero: prod.obraNumero,
+                                producoes: []
+                            };
+                        }
+                        producoesPorObra[obraKey].producoes.push({
+                            data: prod.data,
+                            equipeNumero: null,
+                            quantidade: s.quantidade,
+                            unidade: s.unidade,
+                            valor: s.valor
+                        });
+                    }
+                });
+            });
+        }
 
         // Criar modal
         let modal = document.getElementById('modal-detalhes-servico');
@@ -1833,13 +1888,14 @@ class DashboardHVC {
                         <td>${p.data}</td>
                         <td>${p.quantidade.toFixed(2)} ${p.unidade}</td>
                         <td class="valor-positivo">${this.formatarMoeda(p.valor)}</td>
+                        ${tipo === 'equipe' ? `<td style="color: #888; font-size: 0.85em;">(÷${p.numMembros || 1} membros)</td>` : ''}
                     </tr>
                 `;
             });
         });
 
         const tipoLabel = tipo === 'individual' ? 'Individual' : 'em Equipe';
-        const colSpan = tipo === 'equipe' ? 5 : 4;
+        const colSpan = tipo === 'equipe' ? 6 : 4;
 
         modal.innerHTML = `
             <div class="modal-content modal-lg">
@@ -1868,6 +1924,7 @@ class DashboardHVC {
                     </div>
 
                     <h4>📅 Produções Diárias por Obra</h4>
+                    ${tipo === 'equipe' ? '<p style="font-size: 0.8rem; color: #888; margin-bottom: 0.5rem;">Valores proporcionais (divididos pelo número de membros da equipe)</p>' : ''}
                     <div class="table-responsive">
                         <table class="dashboard-table">
                             <thead>
@@ -1877,6 +1934,7 @@ class DashboardHVC {
                                     <th>DATA</th>
                                     <th>QUANTIDADE</th>
                                     <th>VALOR</th>
+                                    ${tipo === 'equipe' ? '<th>DIVISÃO</th>' : ''}
                                 </tr>
                             </thead>
                             <tbody>
