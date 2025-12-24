@@ -209,11 +209,51 @@ class FluxoCaixaSync {
     // BUSCAR EVENTOS DO GOOGLE AGENDA
     // =========================================================================
     async buscarEventosGoogleAgenda() {
-        // Verificar se há contas conectadas
-        const accounts = window.googleAccounts || [];
+        // Verificar se há contas conectadas - tentar múltiplas fontes
+        let accounts = [];
+        
+        // Fonte 1: window.connectedAccounts
+        if (window.connectedAccounts && Array.isArray(window.connectedAccounts)) {
+            accounts = window.connectedAccounts.filter(acc => acc && (acc.isConnected || acc.connected || acc.email));
+            console.log('📝 Contas encontradas em window.connectedAccounts:', accounts.length);
+        }
+        
+        // Fonte 2: window.accounts
+        if (accounts.length === 0 && window.accounts && Array.isArray(window.accounts)) {
+            accounts = window.accounts.filter(acc => acc && (acc.isConnected || acc.connected || acc.email));
+            console.log('📝 Contas encontradas em window.accounts:', accounts.length);
+        }
+        
+        // Fonte 3: googleAuth.getAccounts()
+        if (accounts.length === 0 && typeof googleAuth !== 'undefined' && googleAuth && googleAuth.getAccounts) {
+            const authAccounts = googleAuth.getAccounts();
+            if (authAccounts && authAccounts.length > 0) {
+                accounts = authAccounts;
+                console.log('📝 Contas encontradas em googleAuth:', accounts.length);
+            }
+        }
+        
+        // Fonte 4: localStorage
+        if (accounts.length === 0) {
+            try {
+                const storedAccounts = localStorage.getItem('connectedAccounts');
+                if (storedAccounts) {
+                    const parsedAccounts = JSON.parse(storedAccounts);
+                    if (Array.isArray(parsedAccounts)) {
+                        accounts = parsedAccounts.filter(acc => acc && acc.email);
+                        console.log('📝 Contas encontradas em localStorage:', accounts.length);
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ Erro ao ler localStorage:', e);
+            }
+        }
+        
         if (accounts.length === 0) {
             throw new Error('Nenhuma conta do Google conectada. Conecte uma conta na barra lateral.');
         }
+        
+        console.log('✅ Total de contas encontradas:', accounts.length, accounts.map(a => a.email));
 
         const todosEventos = [];
         const inicioAno = new Date(this.anoAtual, 0, 1).toISOString();
