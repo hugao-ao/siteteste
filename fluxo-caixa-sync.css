@@ -1,0 +1,650 @@
+/* =========================================================================
+   ESTILOS DO MÓDULO DE SINCRONIZAÇÃO - FLUXO DE CAIXA HVC
+   ========================================================================= */
+
+/* Container do botão de sincronização */
+.sync-button-container {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    margin-bottom: 20px;
+    background: rgba(66, 133, 244, 0.1);
+    border: 1px solid rgba(66, 133, 244, 0.3);
+    border-radius: 12px;
+}
+
+.btn-sync-agenda {
+    background: linear-gradient(135deg, #4285f4, #1a73e8);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all 0.3s ease;
+}
+
+.btn-sync-agenda:hover {
+    background: linear-gradient(135deg, #1a73e8, #0d47a1);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 15px rgba(66, 133, 244, 0.4);
+}
+
+.btn-sync-agenda i {
+    font-size: 18px;
+}
+
+.sync-info {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.sync-info i {
+    color: #4285f4;
+}
+
+/* Loader de sincronização */
+.sync-loader-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+}
+
+.sync-loader-content {
+    text-align: center;
+    color: white;
+}
+
+.sync-loader-content .spinner {
+    width: 50px;
+    height: 50px;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top: 4px solid #4285f4;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 20px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Modal de Preview */
+#modal-sync-preview .modal-content {
+    max-width: 900px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.sync-summary {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.sync-stats {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+    margin-top: 15px;
+}
+
+.sync-stats .stat {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+}
+
+.sync-stats .stat.adicionar {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.sync-stats .stat.modificar {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.sync-stats .stat.excluir {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+/* Seções de sincronização */
+.sync-section {
+    margin-bottom: 25px;
+}
+
+.sync-section-title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    font-size: 16px;
+}
+
+.sync-section-title.adicionar {
+    background: rgba(76, 175, 80, 0.15);
+    color: #4caf50;
+}
+
+.sync-section-title.modificar {
+    background: rgba(255, 193, 7, 0.15);
+    color: #ffc107;
+}
+
+.sync-section-title.excluir {
+    background: rgba(244, 67, 54, 0.15);
+    color: #f44336;
+}
+
+.select-all {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: normal;
+    cursor: pointer;
+}
+
+.select-all input {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+}
+
+/* Itens de sincronização */
+.sync-items {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.sync-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 15px;
+    padding: 15px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.sync-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.sync-item.excluir {
+    opacity: 0.8;
+}
+
+.sync-checkbox {
+    display: flex;
+    align-items: center;
+    padding-top: 3px;
+}
+
+.sync-checkbox input {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.sync-item-content {
+    flex: 1;
+}
+
+.sync-item-header {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.tipo-badge {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.tipo-badge.pagamento {
+    background: rgba(66, 133, 244, 0.2);
+    color: #4285f4;
+}
+
+.tipo-badge.recebimento {
+    background: rgba(52, 168, 83, 0.2);
+    color: #34a853;
+}
+
+.status-badge {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-badge.pendente {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.status-badge.pago {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.status-badge.cancelado {
+    background: rgba(158, 158, 158, 0.2);
+    color: #9e9e9e;
+}
+
+.sync-item-descricao {
+    font-size: 15px;
+    color: #ffffff;
+    margin-bottom: 8px;
+}
+
+.sync-item-detalhes {
+    display: flex;
+    gap: 20px;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.sync-item-detalhes i {
+    margin-right: 5px;
+}
+
+.sync-item-detalhes .valor.pagamento {
+    color: #4285f4;
+}
+
+.sync-item-detalhes .valor.recebimento {
+    color: #34a853;
+}
+
+/* Alterações */
+.sync-changes {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 6px;
+    padding: 10px;
+}
+
+.change-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 0;
+    font-size: 14px;
+}
+
+.change-campo {
+    color: rgba(255, 255, 255, 0.6);
+    min-width: 80px;
+}
+
+.change-de {
+    color: #f44336;
+    text-decoration: line-through;
+}
+
+.change-para {
+    color: #4caf50;
+    font-weight: 500;
+}
+
+.change-item i {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 12px;
+}
+
+/* Footer do modal */
+.modal-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: 15px;
+    padding-top: 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 20px;
+}
+
+.btn-cancel, .btn-confirm {
+    padding: 12px 24px;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.btn-cancel {
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+}
+
+.btn-cancel:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.btn-confirm {
+    background: linear-gradient(135deg, #4caf50, #388e3c);
+    border: none;
+    color: white;
+}
+
+.btn-confirm:hover {
+    background: linear-gradient(135deg, #388e3c, #2e7d32);
+    transform: translateY(-1px);
+}
+
+/* Lista vazia */
+.empty-list {
+    text-align: center;
+    padding: 40px 20px;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.empty-list i {
+    font-size: 48px;
+    margin-bottom: 15px;
+    opacity: 0.5;
+}
+
+.empty-list p {
+    font-size: 16px;
+    margin-bottom: 10px;
+}
+
+.empty-list small {
+    font-size: 14px;
+    opacity: 0.7;
+}
+
+/* Itens de pagamento/recebimento */
+.payment-item, .receiving-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 10px;
+    transition: all 0.3s ease;
+}
+
+.payment-item:hover, .receiving-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.payment-header, .receiving-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.payment-date, .receiving-date {
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 14px;
+}
+
+.payment-status, .receiving-status {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.status-pendente {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+}
+
+.status-pago {
+    background: rgba(76, 175, 80, 0.2);
+    color: #4caf50;
+}
+
+.status-cancelado {
+    background: rgba(158, 158, 158, 0.2);
+    color: #9e9e9e;
+}
+
+.payment-content, .receiving-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.payment-name, .receiving-name {
+    font-size: 16px;
+    color: #ffffff;
+    font-weight: 500;
+}
+
+.payment-value, .receiving-value {
+    font-size: 18px;
+    font-weight: 600;
+}
+
+.payment-value {
+    color: #4285f4;
+}
+
+.receiving-value {
+    color: #34a853;
+}
+
+.payment-category, .receiving-category,
+.payment-notes, .receiving-notes {
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.6);
+    margin-bottom: 5px;
+}
+
+.payment-category i, .receiving-category i,
+.payment-notes i, .receiving-notes i {
+    margin-right: 5px;
+}
+
+.payment-actions, .receiving-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.btn-edit-item, .btn-delete-item {
+    padding: 8px 12px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.btn-edit-item {
+    background: rgba(66, 133, 244, 0.2);
+    color: #4285f4;
+}
+
+.btn-edit-item:hover {
+    background: rgba(66, 133, 244, 0.3);
+}
+
+.btn-delete-item {
+    background: rgba(244, 67, 54, 0.2);
+    color: #f44336;
+}
+
+.btn-delete-item:hover {
+    background: rgba(244, 67, 54, 0.3);
+}
+
+/* Modal de edição */
+#modal-edit-item .modal-content {
+    max-width: 500px;
+}
+
+#modal-edit-item .form-group {
+    margin-bottom: 15px;
+}
+
+#modal-edit-item .form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 14px;
+}
+
+#modal-edit-item .form-input {
+    width: 100%;
+    padding: 10px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 6px;
+    color: #ffffff;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+#modal-edit-item .form-input:focus {
+    outline: none;
+    border-color: #4285f4;
+    background: rgba(255, 255, 255, 0.15);
+}
+
+#modal-edit-item .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+#modal-edit-item textarea.form-input {
+    resize: vertical;
+    min-height: 80px;
+}
+
+/* Notificações */
+.notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    z-index: 10001;
+    animation: slideIn 0.3s ease;
+    max-width: 400px;
+}
+
+.notification-success {
+    background: rgba(76, 175, 80, 0.9);
+    color: white;
+}
+
+.notification-error {
+    background: rgba(244, 67, 54, 0.9);
+    color: white;
+}
+
+.notification-warning {
+    background: rgba(255, 193, 7, 0.9);
+    color: #333;
+}
+
+.notification-info {
+    background: rgba(66, 133, 244, 0.9);
+    color: white;
+}
+
+.notification.fade-out {
+    animation: slideOut 0.3s ease forwards;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOut {
+    from {
+        transform: translateX(0);
+        opacity: 1;
+    }
+    to {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+}
+
+/* Responsivo */
+@media (max-width: 768px) {
+    .sync-button-container {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+
+    .sync-stats {
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .sync-item-detalhes {
+        flex-direction: column;
+        gap: 5px;
+    }
+
+    .modal-footer {
+        flex-direction: column;
+    }
+
+    .btn-cancel, .btn-confirm {
+        width: 100%;
+        justify-content: center;
+    }
+
+    #modal-edit-item .form-row {
+        grid-template-columns: 1fr;
+    }
+}
