@@ -308,7 +308,7 @@ class FluxoCaixaSync {
     }
 
     renderizarListaRecebimentos(recebimentos) {
-        const container = document.getElementById('receiptsList');
+        const container = document.getElementById('receivingsList');
         if (!container) return;
 
         if (recebimentos.length === 0) {
@@ -782,37 +782,97 @@ class FluxoCaixaSync {
             excluir: []
         };
 
+        console.log('\n🔍 === INICIANDO COMPARAÇÃO DE DADOS ===' );
+        console.log(`📦 Dados locais (banco): ${this.dadosLocais.length} itens`);
+        console.log(`📅 Dados da agenda: ${eventosAgenda.length} itens`);
+
         // Criar mapa de eventos locais por google_event_id + google_calendar_id + item_index
         // NAO incluir nome na chave para permitir detectar alteracoes no nome
         const mapaLocal = new Map();
         this.dadosLocais.forEach(item => {
             if (item.google_event_id) {
-                const itemIndex = item.item_index !== undefined ? item.item_index : 0;
+                // item_index pode ser string '0' no banco, converter para numero
+                const itemIndex = item.item_index !== undefined && item.item_index !== null 
+                    ? parseInt(item.item_index, 10) 
+                    : 0;
                 const key = `${item.google_event_id}_${item.google_calendar_id}_${itemIndex}`;
                 mapaLocal.set(key, item);
+                
+                // Log para debug
+                if (item.nome === 'ITAUCARD') {
+                    console.log(`🔑 Chave LOCAL para ITAUCARD: ${key}`);
+                    console.log('   item_index original:', item.item_index, 'tipo:', typeof item.item_index);
+                    console.log('   item_index convertido:', itemIndex);
+                }
             }
         });
+
+        console.log(`🗂️ Mapa local criado com ${mapaLocal.size} chaves`);
 
         // Criar mapa de eventos da agenda
         const mapaAgenda = new Map();
         eventosAgenda.forEach(evento => {
-            const itemIndex = evento._itemIndex !== undefined ? evento._itemIndex : 0;
+            const itemIndex = evento._itemIndex !== undefined && evento._itemIndex !== null 
+                ? parseInt(evento._itemIndex, 10) 
+                : 0;
             const key = `${evento.google_event_id}_${evento.google_calendar_id}_${itemIndex}`;
             mapaAgenda.set(key, evento);
+            
+            // Log para debug
+            if (evento.nome === 'ITAUCARD') {
+                console.log(`🔑 Chave AGENDA para ITAUCARD: ${key}`);
+                console.log('   _itemIndex original:', evento._itemIndex, 'tipo:', typeof evento._itemIndex);
+                console.log('   _itemIndex convertido:', itemIndex);
+            }
         });
+
+        console.log(`🗂️ Mapa agenda criado com ${mapaAgenda.size} chaves`);
 
         // Verificar novos e modificados
         for (const evento of eventosAgenda) {
-            const itemIndex = evento._itemIndex !== undefined ? evento._itemIndex : 0;
+            const itemIndex = evento._itemIndex !== undefined && evento._itemIndex !== null 
+                ? parseInt(evento._itemIndex, 10) 
+                : 0;
             const key = `${evento.google_event_id}_${evento.google_calendar_id}_${itemIndex}`;
             const itemLocal = mapaLocal.get(key);
 
             if (!itemLocal) {
                 // Novo evento
                 this.alteracoesPendentes.adicionar.push(evento);
+                
+                // Log para debug
+                if (evento.nome === 'ITAUCARD') {
+                    console.log(`➕ ITAUCARD marcado como NOVO (chave não encontrada): ${key}`);
+                }
             } else {
                 // Verificar se houve modificação
-                if (this.eventoModificado(itemLocal, evento)) {
+                const modificado = this.eventoModificado(itemLocal, evento);
+                
+                // Log para debug
+                if (evento.nome === 'ITAUCARD' || itemLocal.nome === 'ITAUCARD') {
+                    console.log(`🔍 Comparando ITAUCARD:`);
+                    console.log('   Local:', {
+                        nome: itemLocal.nome,
+                        tipo_item: itemLocal.tipo_item,
+                        subtipo: itemLocal.subtipo,
+                        categoria: itemLocal.categoria,
+                        valor: itemLocal.valor,
+                        status: itemLocal.status,
+                        detalhe: itemLocal.detalhe
+                    });
+                    console.log('   Agenda:', {
+                        nome: evento.nome,
+                        tipo_item: evento.tipo_item,
+                        subtipo: evento.subtipo,
+                        categoria: evento.categoria,
+                        valor: evento.valor,
+                        status: evento.status,
+                        detalhe: evento.detalhe
+                    });
+                    console.log(`   Modificado: ${modificado}`);
+                }
+                
+                if (modificado) {
                     this.alteracoesPendentes.modificar.push({
                         local: itemLocal,
                         agenda: evento
@@ -836,16 +896,41 @@ class FluxoCaixaSync {
     }
 
     eventoModificado(local, agenda) {
-        return (
-            local.nome !== agenda.nome ||
-            local.tipo_item !== agenda.tipo_item ||
-            local.subtipo !== agenda.subtipo ||
-            local.categoria !== agenda.categoria ||
-            parseFloat(local.valor) !== parseFloat(agenda.valor) ||
-            local.data_vencimento !== agenda.data_vencimento ||
-            local.status !== agenda.status ||
-            local.detalhe !== agenda.detalhe
+        // Normalizar valores para comparação (tratar null, undefined e strings vazias como equivalentes)
+        const normalizar = (val) => {
+            if (val === null || val === undefined || val === '') return null;
+            return String(val).trim();
+        };
+        
+        const nomeLocal = normalizar(local.nome);
+        const nomeAgenda = normalizar(agenda.nome);
+        const tipoItemLocal = normalizar(local.tipo_item);
+        const tipoItemAgenda = normalizar(agenda.tipo_item);
+        const subtipoLocal = normalizar(local.subtipo);
+        const subtipoAgenda = normalizar(agenda.subtipo);
+        const categoriaLocal = normalizar(local.categoria);
+        const categoriaAgenda = normalizar(agenda.categoria);
+        const statusLocal = normalizar(local.status);
+        const statusAgenda = normalizar(agenda.status);
+        const detalheLocal = normalizar(local.detalhe);
+        const detalheAgenda = normalizar(agenda.detalhe);
+        const valorLocal = parseFloat(local.valor) || 0;
+        const valorAgenda = parseFloat(agenda.valor) || 0;
+        const dataLocal = normalizar(local.data_vencimento);
+        const dataAgenda = normalizar(agenda.data_vencimento);
+        
+        const modificado = (
+            nomeLocal !== nomeAgenda ||
+            tipoItemLocal !== tipoItemAgenda ||
+            subtipoLocal !== subtipoAgenda ||
+            categoriaLocal !== categoriaAgenda ||
+            Math.abs(valorLocal - valorAgenda) > 0.01 ||
+            dataLocal !== dataAgenda ||
+            statusLocal !== statusAgenda ||
+            detalheLocal !== detalheAgenda
         );
+        
+        return modificado;
     }
 
     // =========================================================================
