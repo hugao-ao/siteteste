@@ -10067,8 +10067,19 @@ window.openManageCategoriasPayment = function() {
             const newDescription = updatedItems.map(item => {
                 const parts = [];
                 
-                // Formato: [tipo] - [subtipo] - [categoria] - [nome] - [valor] ([status]) - [detalhe]
-                // Como não temos tipo/subtipo/categoria nos itens editados, usar apenas nome
+                // Formato COMPLETO: [tipo] - [subtipo] - [categoria] - [nome] - [valor] ([status]) - [detalhe]
+                // Incluir TIPO, SUBTIPO e CATEGORIA se existirem
+                if (item.tipo && item.tipo.trim() !== '') {
+                    parts.push(item.tipo.trim());
+                }
+                if (item.subtipo && item.subtipo.trim() !== '') {
+                    parts.push(item.subtipo.trim());
+                }
+                if (item.categoria && item.categoria.trim() !== '') {
+                    parts.push(item.categoria.trim());
+                }
+                
+                // Adicionar nome
                 parts.push(item.name);
                 
                 // Formatar valor com status (usando formatCurrency existente)
