@@ -763,11 +763,14 @@ class FluxoCaixaSync {
             excluir: []
         };
 
-        // Criar mapa de eventos locais por google_event_id + item_index
+        // Criar mapa de eventos locais por google_event_id + item_index + nome
+        // Isso permite multiplos itens do mesmo evento do Google
         const mapaLocal = new Map();
         this.dadosLocais.forEach(item => {
             if (item.google_event_id) {
-                const key = `${item.google_event_id}_${item.google_calendar_id}_${item.nome || ''}`;
+                // Usar item_index se disponivel, senao usar nome para diferenciar
+                const itemIndex = item.item_index !== undefined ? item.item_index : 0;
+                const key = `${item.google_event_id}_${item.google_calendar_id}_${itemIndex}_${item.nome || ''}`;
                 mapaLocal.set(key, item);
             }
         });
@@ -775,13 +778,15 @@ class FluxoCaixaSync {
         // Criar mapa de eventos da agenda
         const mapaAgenda = new Map();
         eventosAgenda.forEach(evento => {
-            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${evento.nome || ''}`;
+            const itemIndex = evento._itemIndex !== undefined ? evento._itemIndex : 0;
+            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${itemIndex}_${evento.nome || ''}`;
             mapaAgenda.set(key, evento);
         });
 
         // Verificar novos e modificados
         for (const evento of eventosAgenda) {
-            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${evento.nome || ''}`;
+            const itemIndex = evento._itemIndex !== undefined ? evento._itemIndex : 0;
+            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${itemIndex}_${evento.nome || ''}`;
             const itemLocal = mapaLocal.get(key);
 
             if (!itemLocal) {
@@ -1014,6 +1019,7 @@ class FluxoCaixaSync {
                             detalhe: item.detalhe,
                             google_event_id: item.google_event_id,
                             google_calendar_id: item.google_calendar_id,
+                            item_index: item._itemIndex || 0,
                             observacoes: item.observacoes,
                             sincronizado_em: new Date().toISOString()
                         });
