@@ -21,9 +21,9 @@ class FluxoCaixaSync {
         this.dadosAgenda = [];
         this.anoAtual = new Date().getFullYear();
         this.filtros = {
-            tipo: 'todos', // 'todos', 'pagamento', 'recebimento'
-            status: 'todos',
-            mes: 'todos'
+            mes: 'todos',
+            periodoInicio: null,
+            periodoFim: null
         };
     }
 
@@ -107,20 +107,19 @@ class FluxoCaixaSync {
 
     aplicarFiltros(dados) {
         return dados.filter(item => {
-            // Filtro por tipo
-            if (this.filtros.tipo !== 'todos' && item.tipo !== this.filtros.tipo) {
-                return false;
-            }
-            // Filtro por status
-            if (this.filtros.status !== 'todos') {
-                const statusNormalizado = (item.status || '').toUpperCase();
-                if (statusNormalizado !== this.filtros.status.toUpperCase()) {
+            const dataItem = new Date(item.data_vencimento);
+            
+            // Filtro por periodo personalizado
+            if (this.filtros.periodoInicio && this.filtros.periodoFim) {
+                const inicio = new Date(this.filtros.periodoInicio);
+                const fim = new Date(this.filtros.periodoFim);
+                fim.setHours(23, 59, 59, 999);
+                if (dataItem < inicio || dataItem > fim) {
                     return false;
                 }
-            }
-            // Filtro por mês
-            if (this.filtros.mes !== 'todos') {
-                const mesItem = new Date(item.data_vencimento).getMonth();
+            } else if (this.filtros.mes !== 'todos') {
+                // Filtro por mes
+                const mesItem = dataItem.getMonth();
                 if (mesItem !== parseInt(this.filtros.mes)) {
                     return false;
                 }
@@ -149,43 +148,51 @@ class FluxoCaixaSync {
 
         const filtrosContainer = document.getElementById('filtrosContainer');
         if (filtrosContainer) {
-            const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            const meses = ['Janeiro', 'Fevereiro', 'Marco', 'Abril', 'Maio', 'Junho',
                           'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            
+            const periodoAtivo = this.filtros.periodoInicio && this.filtros.periodoFim;
             
             filtrosContainer.innerHTML = `
                 <div class="filtros-wrapper">
                     <div class="filtro-grupo">
-                        <label>Tipo:</label>
-                        <select id="filtroTipo" onchange="fluxoCaixaSync.atualizarFiltro('tipo', this.value)">
-                            <option value="todos" ${this.filtros.tipo === 'todos' ? 'selected' : ''}>Todos</option>
-                            <option value="pagamento" ${this.filtros.tipo === 'pagamento' ? 'selected' : ''}>Pagamentos</option>
-                            <option value="recebimento" ${this.filtros.tipo === 'recebimento' ? 'selected' : ''}>Recebimentos</option>
+                        <label>Periodo:</label>
+                        <select id="filtroMes" onchange="fluxoCaixaSync.atualizarFiltro('mes', this.value)" ${periodoAtivo ? 'disabled' : ''}>
+                            <option value="todos" ${this.filtros.mes === 'todos' && !periodoAtivo ? 'selected' : ''}>Todos os meses</option>
+                            ${meses.map((mes, i) => `<option value="${i}" ${this.filtros.mes === String(i) && !periodoAtivo ? 'selected' : ''}>${mes}</option>`).join('')}
+                            <option value="personalizado" ${periodoAtivo ? 'selected' : ''}>Personalizado...</option>
                         </select>
                     </div>
-                    <div class="filtro-grupo">
-                        <label>Status:</label>
-                        <select id="filtroStatus" onchange="fluxoCaixaSync.atualizarFiltro('status', this.value)">
-                            <option value="todos" ${this.filtros.status === 'todos' ? 'selected' : ''}>Todos</option>
-                            <option value="PG" ${this.filtros.status === 'PG' ? 'selected' : ''}>PG (Pago)</option>
-                            <option value="PENDENTE" ${this.filtros.status === 'PENDENTE' ? 'selected' : ''}>Pendente</option>
-                            <option value="RECALCULADO" ${this.filtros.status === 'RECALCULADO' ? 'selected' : ''}>Recalculado</option>
-                            <option value="RC" ${this.filtros.status === 'RC' ? 'selected' : ''}>RC (Recebido)</option>
-                            <option value="ADIADO" ${this.filtros.status === 'ADIADO' ? 'selected' : ''}>Adiado</option>
-                            <option value="AGUARDANDO" ${this.filtros.status === 'AGUARDANDO' ? 'selected' : ''}>Aguardando</option>
-                        </select>
-                    </div>
-                    <div class="filtro-grupo">
-                        <label>Mês:</label>
-                        <select id="filtroMes" onchange="fluxoCaixaSync.atualizarFiltro('mes', this.value)">
-                            <option value="todos" ${this.filtros.mes === 'todos' ? 'selected' : ''}>Todos</option>
-                            ${meses.map((mes, i) => `<option value="${i}" ${this.filtros.mes === String(i) ? 'selected' : ''}>${mes}</option>`).join('')}
-                        </select>
+                    <div class="filtro-grupo filtro-periodo ${periodoAtivo ? 'ativo' : 'oculto'}" id="filtroPeriodoContainer">
+                        <label>De:</label>
+                        <input type="date" id="periodoInicio" value="${this.filtros.periodoInicio || ''}" 
+                               onchange="fluxoCaixaSync.atualizarPeriodo()">
+                        <label>Ate:</label>
+                        <input type="date" id="periodoFim" value="${this.filtros.periodoFim || ''}" 
+                               onchange="fluxoCaixaSync.atualizarPeriodo()">
                     </div>
                     <button class="btn-limpar-filtros" onclick="fluxoCaixaSync.limparFiltros()">
                         <i class="fas fa-times"></i> Limpar
                     </button>
                 </div>
             `;
+            
+            // Adicionar listener para mostrar/ocultar periodo personalizado
+            const selectMes = document.getElementById('filtroMes');
+            if (selectMes) {
+                selectMes.addEventListener('change', (e) => {
+                    const periodoContainer = document.getElementById('filtroPeriodoContainer');
+                    if (e.target.value === 'personalizado') {
+                        periodoContainer.classList.remove('oculto');
+                        periodoContainer.classList.add('ativo');
+                    } else {
+                        periodoContainer.classList.add('oculto');
+                        periodoContainer.classList.remove('ativo');
+                        this.filtros.periodoInicio = null;
+                        this.filtros.periodoFim = null;
+                    }
+                });
+            }
         }
     }
 
@@ -195,8 +202,20 @@ class FluxoCaixaSync {
     }
 
     limparFiltros() {
-        this.filtros = { tipo: 'todos', status: 'todos', mes: 'todos' };
+        this.filtros = { mes: 'todos', periodoInicio: null, periodoFim: null };
         this.renderizarListasPersistentes();
+    }
+
+    atualizarPeriodo() {
+        const inicio = document.getElementById('periodoInicio')?.value;
+        const fim = document.getElementById('periodoFim')?.value;
+        
+        if (inicio && fim) {
+            this.filtros.periodoInicio = inicio;
+            this.filtros.periodoFim = fim;
+            this.filtros.mes = 'personalizado';
+            this.renderizarListasPersistentes();
+        }
     }
 
     renderizarResumo(pagamentos, recebimentos) {
@@ -763,14 +782,13 @@ class FluxoCaixaSync {
             excluir: []
         };
 
-        // Criar mapa de eventos locais por google_event_id + item_index + nome
-        // Isso permite multiplos itens do mesmo evento do Google
+        // Criar mapa de eventos locais por google_event_id + google_calendar_id + item_index
+        // NAO incluir nome na chave para permitir detectar alteracoes no nome
         const mapaLocal = new Map();
         this.dadosLocais.forEach(item => {
             if (item.google_event_id) {
-                // Usar item_index se disponivel, senao usar nome para diferenciar
                 const itemIndex = item.item_index !== undefined ? item.item_index : 0;
-                const key = `${item.google_event_id}_${item.google_calendar_id}_${itemIndex}_${item.nome || ''}`;
+                const key = `${item.google_event_id}_${item.google_calendar_id}_${itemIndex}`;
                 mapaLocal.set(key, item);
             }
         });
@@ -779,14 +797,14 @@ class FluxoCaixaSync {
         const mapaAgenda = new Map();
         eventosAgenda.forEach(evento => {
             const itemIndex = evento._itemIndex !== undefined ? evento._itemIndex : 0;
-            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${itemIndex}_${evento.nome || ''}`;
+            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${itemIndex}`;
             mapaAgenda.set(key, evento);
         });
 
         // Verificar novos e modificados
         for (const evento of eventosAgenda) {
             const itemIndex = evento._itemIndex !== undefined ? evento._itemIndex : 0;
-            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${itemIndex}_${evento.nome || ''}`;
+            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${itemIndex}`;
             const itemLocal = mapaLocal.get(key);
 
             if (!itemLocal) {
