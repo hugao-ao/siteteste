@@ -125,6 +125,55 @@
     border-color: #ef4444;
 }
 
+/* Filtro de periodo personalizado */
+.filtro-periodo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.3s ease;
+}
+
+.filtro-periodo.oculto {
+    display: none;
+    opacity: 0;
+}
+
+.filtro-periodo.ativo {
+    display: flex;
+    opacity: 1;
+}
+
+.filtro-grupo input[type="date"] {
+    padding: 8px 12px;
+    background: rgba(15, 23, 42, 0.8);
+    border: 1px solid rgba(71, 85, 105, 0.5);
+    border-radius: 6px;
+    color: #e2e8f0;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.filtro-grupo input[type="date"]:hover {
+    border-color: #6366f1;
+}
+
+.filtro-grupo input[type="date"]:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+}
+
+.filtro-grupo input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    cursor: pointer;
+}
+
+.filtro-grupo select:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
 /* Container de resumo */
 .resumo-container {
     margin-bottom: 20px;
