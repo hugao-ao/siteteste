@@ -652,14 +652,18 @@ class FluxoCaixaSync {
             defaultType = 'recebimento';
         }
         
-        // Regex para detectar padrões como "Nome do pagamento - R$ 1.234,56 (STATUS) - detalhes"
-        const paymentRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?\s*(?:-\s*([^\n\r]*))?/gi;
+        // Regex para detectar padrões como "TIPO - SUBTIPO - CATEGORIA - Nome - R$ 1.234,56 (STATUS) - detalhes"
+        // Captura TUDO antes de "R$" (não apenas até o primeiro hífen)
+        const paymentRegex = /(.+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?\s*(?:-\s*([^\n\r]*))?/gi;
         const matches = [];
         let match;
         
         while ((match = paymentRegex.exec(text)) !== null) {
             let fullTextBeforeValue = match[1].trim();
             let itemType = defaultType;
+            
+            console.log('🔍 extractPaymentInfo - Match encontrado:');
+            console.log('   fullTextBeforeValue:', fullTextBeforeValue);
             
             // Remover "PAGAMENTO" ou "RECEBIMENTO" do início se existir e ajustar tipo
             if (fullTextBeforeValue.toLowerCase().startsWith('pagamento ')) {
@@ -678,12 +682,15 @@ class FluxoCaixaSync {
             let categoria = null;
             let nome = null;
             
+            console.log('   Parts encontradas:', parts.length, parts);
+            
             if (parts.length >= 4) {
                 // Tem todas as 4 partes: TIPO - SUBTIPO - CATEGORIA - NOME
                 tipo = parts[0];
                 subtipo = parts[1];
                 categoria = parts[2];
                 nome = parts.slice(3).join(' - ');
+                console.log('   ✅ Formato 4+ partes: tipo=', tipo, 'subtipo=', subtipo, 'categoria=', categoria, 'nome=', nome);
             } else if (parts.length === 3) {
                 // Tem 3 partes: SUBTIPO - CATEGORIA - NOME
                 subtipo = parts[0];
