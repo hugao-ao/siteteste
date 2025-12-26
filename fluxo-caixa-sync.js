@@ -1,10 +1,11 @@
 // =========================================================================
 // MÓDULO DE SINCRONIZAÇÃO - FLUXO DE CAIXA HVC
 // =========================================================================
-// Versão: 1.0
-// Data: 23/12/2024
+// Versão: 3.0
+// Data: 24/12/2024
 // Descrição: Sincroniza pagamentos e recebimentos do Google Calendar com
-//            a tabela fluxo_caixa_hvc no Supabase, com preview de alterações
+//            a tabela fluxo_caixa_hvc no Supabase, usando o mesmo padrão
+//            de parsing existente na página de fluxo de caixa
 // =========================================================================
 
 import { supabase as supabaseClient } from './supabase.js';
@@ -19,6 +20,11 @@ class FluxoCaixaSync {
         this.dadosLocais = [];
         this.dadosAgenda = [];
         this.anoAtual = new Date().getFullYear();
+        this.filtros = {
+            tipo: 'todos', // 'todos', 'pagamento', 'recebimento'
+            status: 'todos',
+            mes: 'todos'
+        };
     }
 
     // =========================================================================
@@ -46,11 +52,11 @@ class FluxoCaixaSync {
                 btnContainer.innerHTML = `
                     <button id="btnSincronizarAgenda" class="btn-sync-agenda" onclick="fluxoCaixaSync.iniciarSincronizacao()">
                         <i class="fas fa-sync-alt"></i>
-                        Sincronizar com Google Agenda
+                        Atualizar Listas
                     </button>
                     <span class="sync-info">
                         <i class="fas fa-info-circle"></i>
-                        Última sincronização: <span id="ultimaSincronizacao">Nunca</span>
+                        Última atualização: <span id="ultimaSincronizacao">Nunca</span>
                     </span>
                 `;
                 listsSection.insertBefore(btnContainer, listsSection.firstChild);
@@ -82,16 +88,167 @@ class FluxoCaixaSync {
     }
 
     // =========================================================================
-    // RENDERIZAR LISTAS PERSISTENTES
+    // RENDERIZAR LISTAS PERSISTENTES COM FILTROS
     // =========================================================================
     async renderizarListasPersistentes() {
         await this.carregarDadosLocais();
         
-        const pagamentos = this.dadosLocais.filter(item => item.tipo === 'pagamento');
-        const recebimentos = this.dadosLocais.filter(item => item.tipo === 'recebimento');
+        // Aplicar filtros
+        let dadosFiltrados = this.aplicarFiltros(this.dadosLocais);
+        
+        const pagamentos = dadosFiltrados.filter(item => item.tipo === 'pagamento');
+        const recebimentos = dadosFiltrados.filter(item => item.tipo === 'recebimento');
 
+        this.renderizarFiltros();
         this.renderizarListaPagamentos(pagamentos);
         this.renderizarListaRecebimentos(recebimentos);
+        this.renderizarResumo(pagamentos, recebimentos);
+    }
+
+    aplicarFiltros(dados) {
+        return dados.filter(item => {
+            // Filtro por tipo
+            if (this.filtros.tipo !== 'todos' && item.tipo !== this.filtros.tipo) {
+                return false;
+            }
+            // Filtro por status
+            if (this.filtros.status !== 'todos') {
+                const statusNormalizado = (item.status || '').toUpperCase();
+                if (statusNormalizado !== this.filtros.status.toUpperCase()) {
+                    return false;
+                }
+            }
+            // Filtro por mês
+            if (this.filtros.mes !== 'todos') {
+                const mesItem = new Date(item.data_vencimento).getMonth();
+                if (mesItem !== parseInt(this.filtros.mes)) {
+                    return false;
+                }
+            }
+            return true;
+        });
+    }
+
+    renderizarFiltros() {
+        const container = document.getElementById('filtrosContainer');
+        if (!container) {
+            const listsSection = document.getElementById('listsSection');
+            if (listsSection) {
+                const filtrosDiv = document.createElement('div');
+                filtrosDiv.id = 'filtrosContainer';
+                filtrosDiv.className = 'filtros-container';
+                
+                const syncBtn = document.getElementById('syncButtonContainer');
+                if (syncBtn && syncBtn.nextSibling) {
+                    listsSection.insertBefore(filtrosDiv, syncBtn.nextSibling);
+                } else {
+                    listsSection.appendChild(filtrosDiv);
+                }
+            }
+        }
+
+        const filtrosContainer = document.getElementById('filtrosContainer');
+        if (filtrosContainer) {
+            const meses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                          'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+            
+            filtrosContainer.innerHTML = `
+                <div class="filtros-wrapper">
+                    <div class="filtro-grupo">
+                        <label>Tipo:</label>
+                        <select id="filtroTipo" onchange="fluxoCaixaSync.atualizarFiltro('tipo', this.value)">
+                            <option value="todos" ${this.filtros.tipo === 'todos' ? 'selected' : ''}>Todos</option>
+                            <option value="pagamento" ${this.filtros.tipo === 'pagamento' ? 'selected' : ''}>Pagamentos</option>
+                            <option value="recebimento" ${this.filtros.tipo === 'recebimento' ? 'selected' : ''}>Recebimentos</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Status:</label>
+                        <select id="filtroStatus" onchange="fluxoCaixaSync.atualizarFiltro('status', this.value)">
+                            <option value="todos" ${this.filtros.status === 'todos' ? 'selected' : ''}>Todos</option>
+                            <option value="PG" ${this.filtros.status === 'PG' ? 'selected' : ''}>PG (Pago)</option>
+                            <option value="PENDENTE" ${this.filtros.status === 'PENDENTE' ? 'selected' : ''}>Pendente</option>
+                            <option value="RECALCULADO" ${this.filtros.status === 'RECALCULADO' ? 'selected' : ''}>Recalculado</option>
+                            <option value="RC" ${this.filtros.status === 'RC' ? 'selected' : ''}>RC (Recebido)</option>
+                            <option value="ADIADO" ${this.filtros.status === 'ADIADO' ? 'selected' : ''}>Adiado</option>
+                            <option value="AGUARDANDO" ${this.filtros.status === 'AGUARDANDO' ? 'selected' : ''}>Aguardando</option>
+                        </select>
+                    </div>
+                    <div class="filtro-grupo">
+                        <label>Mês:</label>
+                        <select id="filtroMes" onchange="fluxoCaixaSync.atualizarFiltro('mes', this.value)">
+                            <option value="todos" ${this.filtros.mes === 'todos' ? 'selected' : ''}>Todos</option>
+                            ${meses.map((mes, i) => `<option value="${i}" ${this.filtros.mes === String(i) ? 'selected' : ''}>${mes}</option>`).join('')}
+                        </select>
+                    </div>
+                    <button class="btn-limpar-filtros" onclick="fluxoCaixaSync.limparFiltros()">
+                        <i class="fas fa-times"></i> Limpar
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    atualizarFiltro(campo, valor) {
+        this.filtros[campo] = valor;
+        this.renderizarListasPersistentes();
+    }
+
+    limparFiltros() {
+        this.filtros = { tipo: 'todos', status: 'todos', mes: 'todos' };
+        this.renderizarListasPersistentes();
+    }
+
+    renderizarResumo(pagamentos, recebimentos) {
+        const container = document.getElementById('resumoContainer');
+        if (!container) {
+            const listsSection = document.getElementById('listsSection');
+            if (listsSection) {
+                const resumoDiv = document.createElement('div');
+                resumoDiv.id = 'resumoContainer';
+                resumoDiv.className = 'resumo-container';
+                
+                const filtrosContainer = document.getElementById('filtrosContainer');
+                if (filtrosContainer && filtrosContainer.nextSibling) {
+                    listsSection.insertBefore(resumoDiv, filtrosContainer.nextSibling);
+                }
+            }
+        }
+
+        const resumoContainer = document.getElementById('resumoContainer');
+        if (resumoContainer) {
+            const totalPagamentos = pagamentos.reduce((sum, item) => sum + parseFloat(item.valor || 0), 0);
+            const totalRecebimentos = recebimentos.reduce((sum, item) => sum + parseFloat(item.valor || 0), 0);
+            const saldo = totalRecebimentos - totalPagamentos;
+
+            resumoContainer.innerHTML = `
+                <div class="resumo-cards">
+                    <div class="resumo-card pagamento">
+                        <div class="resumo-icon"><i class="fas fa-arrow-up"></i></div>
+                        <div class="resumo-info">
+                            <span class="resumo-label">Total Pagamentos</span>
+                            <span class="resumo-valor">R$ ${this.formatarMoeda(totalPagamentos)}</span>
+                            <span class="resumo-qtd">${pagamentos.length} itens</span>
+                        </div>
+                    </div>
+                    <div class="resumo-card recebimento">
+                        <div class="resumo-icon"><i class="fas fa-arrow-down"></i></div>
+                        <div class="resumo-info">
+                            <span class="resumo-label">Total Recebimentos</span>
+                            <span class="resumo-valor">R$ ${this.formatarMoeda(totalRecebimentos)}</span>
+                            <span class="resumo-qtd">${recebimentos.length} itens</span>
+                        </div>
+                    </div>
+                    <div class="resumo-card saldo ${saldo >= 0 ? 'positivo' : 'negativo'}">
+                        <div class="resumo-icon"><i class="fas fa-balance-scale"></i></div>
+                        <div class="resumo-info">
+                            <span class="resumo-label">Saldo</span>
+                            <span class="resumo-valor">${saldo >= 0 ? '' : '-'}R$ ${this.formatarMoeda(Math.abs(saldo))}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
     }
 
     renderizarListaPagamentos(pagamentos) {
@@ -100,108 +257,178 @@ class FluxoCaixaSync {
 
         if (pagamentos.length === 0) {
             container.innerHTML = `
-                <div class="empty-list">
+                <div class="empty-list-message">
                     <i class="fas fa-inbox"></i>
-                    <p>Nenhum pagamento registrado</p>
-                    <small>Clique em "Sincronizar com Google Agenda" para importar</small>
+                    <p>Nenhum pagamento encontrado</p>
+                    <small>Clique em "Atualizar Listas" para sincronizar com o Google Agenda</small>
                 </div>
             `;
             return;
         }
 
-        container.innerHTML = pagamentos.map(item => `
-            <div class="payment-item ${item.status}" data-id="${item.id}">
-                <div class="payment-header">
-                    <span class="payment-date">${this.formatarData(item.data_vencimento)}</span>
-                    <span class="payment-status status-${item.status}">${item.status.toUpperCase()}</span>
+        // Agrupar por mês
+        const pagamentosPorMes = this.agruparPorMes(pagamentos);
+        
+        let html = '';
+        for (const [mes, items] of Object.entries(pagamentosPorMes)) {
+            const totalMes = items.reduce((sum, item) => sum + parseFloat(item.valor || 0), 0);
+            html += `
+                <div class="month-group">
+                    <div class="month-header">
+                        <span class="month-name">${mes}</span>
+                        <span class="month-total pagamento">R$ ${this.formatarMoeda(totalMes)}</span>
+                    </div>
+                    <div class="month-items">
+                        ${items.map(item => this.renderizarItemLista(item)).join('')}
+                    </div>
                 </div>
-                <div class="payment-content">
-                    <span class="payment-name">${item.descricao}</span>
-                    <span class="payment-value">${this.formatarMoeda(item.valor)}</span>
-                </div>
-                ${item.categoria ? `<div class="payment-category"><i class="fas fa-tag"></i> ${item.categoria}</div>` : ''}
-                ${item.observacoes ? `<div class="payment-notes"><i class="fas fa-sticky-note"></i> ${item.observacoes}</div>` : ''}
-                <div class="payment-actions">
-                    <button class="btn-edit-item" onclick="fluxoCaixaSync.editarItem('${item.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-delete-item" onclick="fluxoCaixaSync.excluirItem('${item.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `).join('');
+            `;
+        }
+
+        container.innerHTML = html;
     }
 
     renderizarListaRecebimentos(recebimentos) {
-        const container = document.getElementById('receivingsList');
+        const container = document.getElementById('receiptsList');
         if (!container) return;
 
         if (recebimentos.length === 0) {
             container.innerHTML = `
-                <div class="empty-list">
+                <div class="empty-list-message">
                     <i class="fas fa-inbox"></i>
-                    <p>Nenhum recebimento registrado</p>
-                    <small>Clique em "Sincronizar com Google Agenda" para importar</small>
+                    <p>Nenhum recebimento encontrado</p>
+                    <small>Clique em "Atualizar Listas" para sincronizar com o Google Agenda</small>
                 </div>
             `;
             return;
         }
 
-        container.innerHTML = recebimentos.map(item => `
-            <div class="receiving-item ${item.status}" data-id="${item.id}">
-                <div class="receiving-header">
-                    <span class="receiving-date">${this.formatarData(item.data_vencimento)}</span>
-                    <span class="receiving-status status-${item.status}">${item.status.toUpperCase()}</span>
+        // Agrupar por mês
+        const recebimentosPorMes = this.agruparPorMes(recebimentos);
+        
+        let html = '';
+        for (const [mes, items] of Object.entries(recebimentosPorMes)) {
+            const totalMes = items.reduce((sum, item) => sum + parseFloat(item.valor || 0), 0);
+            html += `
+                <div class="month-group">
+                    <div class="month-header">
+                        <span class="month-name">${mes}</span>
+                        <span class="month-total recebimento">R$ ${this.formatarMoeda(totalMes)}</span>
+                    </div>
+                    <div class="month-items">
+                        ${items.map(item => this.renderizarItemLista(item)).join('')}
+                    </div>
                 </div>
-                <div class="receiving-content">
-                    <span class="receiving-name">${item.descricao}</span>
-                    <span class="receiving-value">${this.formatarMoeda(item.valor)}</span>
+            `;
+        }
+
+        container.innerHTML = html;
+    }
+
+    renderizarItemLista(item) {
+        const statusClass = this.getStatusClass(item.status, item.tipo);
+        const statusIcon = this.getStatusIcon(item.status);
+        const dataFormatada = this.formatarData(item.data_vencimento);
+        
+        // Construir descrição completa
+        let descricaoCompleta = '';
+        if (item.tipo_item) descricaoCompleta += `<span class="item-tipo-tag">${item.tipo_item}</span>`;
+        if (item.subtipo) descricaoCompleta += `<span class="item-subtipo-tag">${item.subtipo}</span>`;
+        if (item.categoria) descricaoCompleta += `<span class="item-categoria-tag">${item.categoria}</span>`;
+        
+        const nome = item.nome || item.descricao || 'Sem descrição';
+        
+        return `
+            <div class="list-item ${item.tipo}" data-id="${item.id}">
+                <div class="item-info">
+                    <span class="item-date">${dataFormatada}</span>
+                    <div class="item-tags">${descricaoCompleta}</div>
+                    <span class="item-description">${nome}</span>
+                    ${item.detalhe ? `<span class="item-detalhe">${item.detalhe}</span>` : ''}
                 </div>
-                ${item.categoria ? `<div class="receiving-category"><i class="fas fa-tag"></i> ${item.categoria}</div>` : ''}
-                ${item.observacoes ? `<div class="receiving-notes"><i class="fas fa-sticky-note"></i> ${item.observacoes}</div>` : ''}
-                <div class="receiving-actions">
-                    <button class="btn-edit-item" onclick="fluxoCaixaSync.editarItem('${item.id}')">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn-delete-item" onclick="fluxoCaixaSync.excluirItem('${item.id}')">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <div class="item-value-status">
+                    <span class="item-value ${item.tipo}">R$ ${this.formatarMoeda(item.valor)}</span>
+                    <span class="item-status ${statusClass}">
+                        <i class="fas ${statusIcon}"></i>
+                        ${item.status || 'PENDENTE'}
+                    </span>
                 </div>
             </div>
-        `).join('');
+        `;
+    }
+
+    getStatusClass(status, tipo) {
+        const s = (status || '').toUpperCase();
+        if (tipo === 'pagamento') {
+            if (s === 'PG') return 'status-pago';
+            if (s === 'RECALCULADO') return 'status-recalculado';
+            return 'status-pendente';
+        } else {
+            if (s === 'RC') return 'status-recebido';
+            if (s === 'ADIADO') return 'status-adiado';
+            return 'status-aguardando';
+        }
+    }
+
+    getStatusIcon(status) {
+        const s = (status || '').toUpperCase();
+        if (s === 'PG' || s === 'RC') return 'fa-check-circle';
+        if (s === 'RECALCULADO') return 'fa-calculator';
+        if (s === 'ADIADO') return 'fa-clock';
+        return 'fa-hourglass-half';
+    }
+
+    agruparPorMes(items) {
+        const meses = {};
+        const nomesMeses = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+                           'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+        items.forEach(item => {
+            const data = new Date(item.data_vencimento);
+            const mesAno = `${nomesMeses[data.getMonth()]} ${data.getFullYear()}`;
+            
+            if (!meses[mesAno]) {
+                meses[mesAno] = [];
+            }
+            meses[mesAno].push(item);
+        });
+
+        return meses;
     }
 
     // =========================================================================
     // INICIAR SINCRONIZAÇÃO
     // =========================================================================
     async iniciarSincronizacao() {
-        try {
-            this.mostrarLoading('Buscando eventos do Google Agenda...');
+        const btn = document.getElementById('btnSincronizarAgenda');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Buscando eventos...';
+        }
 
-            // Buscar TODOS os eventos do ano inteiro
+        try {
+            // Buscar eventos do Google Agenda
             const eventosAgenda = await this.buscarEventosGoogleAgenda();
             
-            if (!eventosAgenda || eventosAgenda.length === 0) {
-                this.esconderLoading();
-                this.mostrarNotificacao('Nenhum evento encontrado no Google Agenda', 'warning');
+            if (eventosAgenda.length === 0) {
+                this.mostrarNotificacao('Nenhum evento de pagamento/recebimento encontrado no Google Agenda', 'warning');
                 return;
             }
 
-            this.mostrarLoading('Comparando com dados locais...');
-
             // Comparar com dados locais
-            await this.detectarAlteracoes(eventosAgenda);
-
-            this.esconderLoading();
+            this.compararDados(eventosAgenda);
 
             // Mostrar modal de preview
             this.mostrarModalPreview();
 
         } catch (error) {
-            this.esconderLoading();
             console.error('❌ Erro na sincronização:', error);
-            this.mostrarNotificacao('Erro ao sincronizar: ' + error.message, 'error');
+            this.mostrarNotificacao(error.message || 'Erro ao sincronizar', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-sync-alt"></i> Atualizar Listas';
+            }
         }
     }
 
@@ -209,23 +436,16 @@ class FluxoCaixaSync {
     // BUSCAR EVENTOS DO GOOGLE AGENDA
     // =========================================================================
     async buscarEventosGoogleAgenda() {
-        // Verificar se há contas conectadas - tentar múltiplas fontes
+        // Verificar se gapi está disponível
+        if (typeof gapi === 'undefined' || !gapi.client) {
+            throw new Error('Google API não carregada. Aguarde o carregamento completo da página.');
+        }
+
+        // Verificar se há contas conectadas via googleAuth
         let accounts = [];
         
-        // Fonte 1: window.connectedAccounts
-        if (window.connectedAccounts && Array.isArray(window.connectedAccounts)) {
-            accounts = window.connectedAccounts.filter(acc => acc && (acc.isConnected || acc.connected || acc.email));
-            console.log('📝 Contas encontradas em window.connectedAccounts:', accounts.length);
-        }
-        
-        // Fonte 2: window.accounts
-        if (accounts.length === 0 && window.accounts && Array.isArray(window.accounts)) {
-            accounts = window.accounts.filter(acc => acc && (acc.isConnected || acc.connected || acc.email));
-            console.log('📝 Contas encontradas em window.accounts:', accounts.length);
-        }
-        
-        // Fonte 3: googleAuth.getAccounts()
-        if (accounts.length === 0 && typeof googleAuth !== 'undefined' && googleAuth && googleAuth.getAccounts) {
+        // Fonte 1: googleAuth.getAccounts()
+        if (typeof googleAuth !== 'undefined' && googleAuth && typeof googleAuth.getAccounts === 'function') {
             const authAccounts = googleAuth.getAccounts();
             if (authAccounts && authAccounts.length > 0) {
                 accounts = authAccounts;
@@ -233,19 +453,34 @@ class FluxoCaixaSync {
             }
         }
         
-        // Fonte 4: localStorage
+        // Fonte 2: window.connectedAccounts
+        if (accounts.length === 0 && window.connectedAccounts && Array.isArray(window.connectedAccounts)) {
+            accounts = window.connectedAccounts.filter(acc => acc && acc.email);
+            console.log('📝 Contas encontradas em window.connectedAccounts:', accounts.length);
+        }
+        
+        // Fonte 3: localStorage
         if (accounts.length === 0) {
             try {
                 const storedAccounts = localStorage.getItem('connectedAccounts');
                 if (storedAccounts) {
                     const parsedAccounts = JSON.parse(storedAccounts);
                     if (Array.isArray(parsedAccounts)) {
-                        accounts = parsedAccounts.filter(acc => acc && acc.email);
+                        accounts = parsedAccounts.filter(acc => acc && acc.email && acc.accessToken);
                         console.log('📝 Contas encontradas em localStorage:', accounts.length);
                     }
                 }
             } catch (e) {
                 console.warn('⚠️ Erro ao ler localStorage:', e);
+            }
+        }
+        
+        // Fonte 4: Verificar se há token ativo no gapi
+        if (accounts.length === 0) {
+            const token = gapi.client.getToken();
+            if (token && token.access_token) {
+                console.log('📝 Token ativo encontrado no gapi');
+                accounts = [{ email: 'conta_principal', accessToken: token.access_token }];
             }
         }
         
@@ -256,228 +491,338 @@ class FluxoCaixaSync {
         console.log('✅ Total de contas encontradas:', accounts.length, accounts.map(a => a.email));
 
         const todosEventos = [];
-        const inicioAno = new Date(this.anoAtual, 0, 1).toISOString();
-        const fimAno = new Date(this.anoAtual, 11, 31, 23, 59, 59).toISOString();
+        const inicioAno = new Date(this.anoAtual, 0, 1);
+        const fimAno = new Date(this.anoAtual, 11, 31, 23, 59, 59);
+
+        // Keywords para filtrar eventos (mesmo padrão da página de fluxo de caixa)
+        const keywords = ['pagamento', 'pagamentos', 'recebimento', 'recebimentos', 'hvc'];
 
         for (const account of accounts) {
             try {
                 console.log(`📅 Buscando eventos da conta: ${account.email}`);
                 
-                // Usar a função global de busca de eventos se disponível
-                if (typeof window.fetchCalendarEvents === 'function') {
-                    const eventos = await window.fetchCalendarEvents(account.email, inicioAno, fimAno);
-                    
-                    // Processar eventos para extrair pagamentos/recebimentos
-                    const eventosProcessados = this.processarEventosAgenda(eventos, account.email);
-                    todosEventos.push(...eventosProcessados);
-                } else {
-                    console.warn('⚠️ Função fetchCalendarEvents não disponível');
+                // Definir token da conta atual
+                if (account.accessToken) {
+                    gapi.client.setToken({ access_token: account.accessToken });
                 }
+                
+                // Buscar eventos usando gapi.client.calendar.events.list
+                const response = await gapi.client.calendar.events.list({
+                    calendarId: 'primary',
+                    timeMin: inicioAno.toISOString(),
+                    timeMax: fimAno.toISOString(),
+                    showDeleted: false,
+                    singleEvents: true,
+                    maxResults: 2500,
+                    orderBy: 'startTime'
+                });
+
+                const eventos = response.result.items || [];
+                console.log(`📅 ${eventos.length} eventos totais encontrados na conta ${account.email}`);
+                
+                // Filtrar eventos que contenham as keywords no título
+                const eventosFiltrados = eventos.filter(event => {
+                    const title = (event.summary || '').toLowerCase();
+                    return keywords.some(keyword => title.includes(keyword));
+                });
+                
+                console.log(`✅ ${eventosFiltrados.length} eventos de pagamento/recebimento encontrados`);
+                
+                // Processar eventos usando o mesmo padrão da página de fluxo de caixa
+                const eventosProcessados = this.processarEventosAgenda(eventosFiltrados, account.email);
+                todosEventos.push(...eventosProcessados);
+                
             } catch (error) {
                 console.error(`❌ Erro ao buscar eventos de ${account.email}:`, error);
+                
+                // Se for erro 401, tentar reconectar
+                if (error.status === 401) {
+                    this.mostrarNotificacao(`Token expirado para ${account.email}. Reconecte a conta.`, 'warning');
+                }
             }
         }
 
-        console.log(`✅ Total de ${todosEventos.length} eventos encontrados`);
+        console.log(`✅ Total de ${todosEventos.length} itens de pagamento/recebimento encontrados`);
         this.dadosAgenda = todosEventos;
         return todosEventos;
     }
 
     // =========================================================================
-    // PROCESSAR EVENTOS DA AGENDA
+    // PROCESSAR EVENTOS DA AGENDA (MESMO PADRÃO DA PÁGINA DE FLUXO DE CAIXA)
     // =========================================================================
     processarEventosAgenda(eventos, accountEmail) {
         const eventosProcessados = [];
 
         for (const evento of eventos) {
-            // Verificar se é um evento de pagamento ou recebimento
             const titulo = evento.summary || '';
             const descricao = evento.description || '';
+            const dataEvento = evento.start?.date || (evento.start?.dateTime ? evento.start.dateTime.split('T')[0] : null);
             
-            // Detectar tipo pelo título ou descrição
-            let tipo = null;
-            if (titulo.toUpperCase().includes('PAGAMENTO') || titulo.toUpperCase().includes('PAG')) {
-                tipo = 'pagamento';
-            } else if (titulo.toUpperCase().includes('RECEBIMENTO') || titulo.toUpperCase().includes('REC')) {
-                tipo = 'recebimento';
+            if (!dataEvento) continue;
+
+            // Determinar tipo baseado no título do evento
+            const titleLower = titulo.toLowerCase();
+            let tipoEvento = 'pagamento';
+            if (titleLower.includes('recebimento')) {
+                tipoEvento = 'recebimento';
             }
 
-            if (!tipo) continue; // Ignorar eventos que não são pagamentos/recebimentos
-
-            // Extrair valor do título ou descrição
-            const valor = this.extrairValor(titulo) || this.extrairValor(descricao) || 0;
-
-            // Extrair status
-            const status = this.extrairStatus(titulo, descricao, tipo);
-
-            // Extrair categoria
-            const categoria = this.extrairCategoria(titulo, descricao);
-
-            // Data do evento
-            const dataEvento = evento.start?.date || evento.start?.dateTime?.split('T')[0];
-
-            eventosProcessados.push({
-                google_event_id: evento.id,
-                google_calendar_id: accountEmail,
-                tipo: tipo,
-                descricao: this.limparTitulo(titulo),
-                valor: valor,
-                data_vencimento: dataEvento,
-                status: status,
-                categoria: categoria,
-                observacoes: descricao,
-                dados_originais: evento
-            });
+            // Extrair itens de pagamento/recebimento da descrição
+            const itens = this.extractPaymentInfo(descricao, titulo);
+            
+            if (itens.length > 0) {
+                // Processar cada item encontrado
+                for (const item of itens) {
+                    eventosProcessados.push({
+                        google_event_id: evento.id,
+                        google_calendar_id: accountEmail,
+                        tipo: item.type || tipoEvento,
+                        tipo_item: item.tipo,
+                        subtipo: item.subtipo,
+                        categoria: item.categoria,
+                        nome: item.name,
+                        descricao: item.original,
+                        valor: item.value || 0,
+                        data_vencimento: dataEvento,
+                        status: item.status,
+                        detalhe: item.detail,
+                        observacoes: descricao,
+                        _accountEmail: accountEmail,
+                        _eventTitle: titulo,
+                        _itemIndex: itens.indexOf(item)
+                    });
+                }
+            } else {
+                // Evento sem itens estruturados - criar item genérico
+                const valor = this.extrairValorSimples(titulo) || this.extrairValorSimples(descricao) || 0;
+                
+                eventosProcessados.push({
+                    google_event_id: evento.id,
+                    google_calendar_id: accountEmail,
+                    tipo: tipoEvento,
+                    tipo_item: null,
+                    subtipo: null,
+                    categoria: null,
+                    nome: titulo,
+                    descricao: titulo,
+                    valor: valor,
+                    data_vencimento: dataEvento,
+                    status: tipoEvento === 'recebimento' ? 'AGUARDANDO' : 'PENDENTE',
+                    detalhe: null,
+                    observacoes: descricao,
+                    _accountEmail: accountEmail,
+                    _eventTitle: titulo,
+                    _itemIndex: 0
+                });
+            }
         }
 
         return eventosProcessados;
     }
 
     // =========================================================================
-    // FUNÇÕES AUXILIARES DE EXTRAÇÃO
+    // EXTRAIR INFORMAÇÕES DE PAGAMENTO (MESMO PADRÃO DA PÁGINA DE FLUXO DE CAIXA)
     // =========================================================================
-    extrairValor(texto) {
+    extractPaymentInfo(text, eventTitle = '') {
+        if (!text) return [];
+        
+        // Determinar tipo baseado no título do evento primeiro
+        const titleLower = eventTitle.toLowerCase();
+        let defaultType = 'pagamento';
+        if (titleLower.includes('recebimento')) {
+            defaultType = 'recebimento';
+        }
+        
+        // Regex para detectar padrões como "Nome do pagamento - R$ 1.234,56 (STATUS) - detalhes"
+        const paymentRegex = /([^-\n\r]+?)\s*-\s*R\$\s*([\d.]+,\d{2})\s*(\([^)]*\))?\s*(?:-\s*([^\n\r]*))?/gi;
+        const matches = [];
+        let match;
+        
+        while ((match = paymentRegex.exec(text)) !== null) {
+            let fullTextBeforeValue = match[1].trim();
+            let itemType = defaultType;
+            
+            // Remover "PAGAMENTO" ou "RECEBIMENTO" do início se existir e ajustar tipo
+            if (fullTextBeforeValue.toLowerCase().startsWith('pagamento ')) {
+                fullTextBeforeValue = fullTextBeforeValue.substring(10).trim();
+                itemType = 'pagamento';
+            } else if (fullTextBeforeValue.toLowerCase().startsWith('recebimento ')) {
+                fullTextBeforeValue = fullTextBeforeValue.substring(12).trim();
+                itemType = 'recebimento';
+            }
+            
+            // Extrair TIPO, SUBTIPO, CATEGORIA e NOME
+            // Formato: TIPO - SUBTIPO - CATEGORIA - NOME
+            const parts = fullTextBeforeValue.split(' - ').map(p => p.trim());
+            let tipo = null;
+            let subtipo = null;
+            let categoria = null;
+            let nome = null;
+            
+            if (parts.length >= 4) {
+                // Tem todas as 4 partes: TIPO - SUBTIPO - CATEGORIA - NOME
+                tipo = parts[0];
+                subtipo = parts[1];
+                categoria = parts[2];
+                nome = parts.slice(3).join(' - ');
+            } else if (parts.length === 3) {
+                // Tem 3 partes: SUBTIPO - CATEGORIA - NOME
+                subtipo = parts[0];
+                categoria = parts[1];
+                nome = parts[2];
+            } else if (parts.length === 2) {
+                // Tem 2 partes: CATEGORIA - NOME
+                categoria = parts[0];
+                nome = parts[1];
+            } else if (parts.length === 1) {
+                // Tem apenas 1 parte: NOME
+                nome = parts[0];
+            } else {
+                nome = fullTextBeforeValue;
+            }
+            
+            const valueStr = match[2];
+            const statusText = match[3] ? match[3].replace(/[()]/g, '').trim() : '';
+            const detailText = match[4] ? match[4].trim() : '';
+            const numericValue = parseFloat(valueStr.replace(/\./g, '').replace(',', '.'));
+            
+            // Determinar status baseado no texto entre parênteses e tipo
+            let status = itemType === 'recebimento' ? 'AGUARDANDO' : 'PENDENTE';
+            
+            if (statusText) {
+                const statusLower = statusText.toLowerCase();
+                
+                if (itemType === 'recebimento') {
+                    if (statusLower.includes('rc')) {
+                        status = 'RC';
+                    } else if (statusLower.includes('adiado')) {
+                        status = 'ADIADO';
+                    } else if (statusLower.includes('aguardando')) {
+                        status = 'AGUARDANDO';
+                    }
+                } else {
+                    if (statusLower.includes('pg')) {
+                        status = 'PG';
+                    } else if (statusLower.includes('recalculado')) {
+                        status = 'RECALCULADO';
+                    } else if (statusLower.includes('pendente')) {
+                        status = 'PENDENTE';
+                    }
+                }
+            }
+            
+            matches.push({
+                tipo: tipo,
+                subtipo: subtipo,
+                categoria: categoria,
+                name: nome,
+                original: `${fullTextBeforeValue} - R$ ${valueStr}${match[3] ? ' ' + match[3] : ''}${detailText ? ' - ' + detailText : ''}`,
+                value: numericValue,
+                formattedValue: `R$ ${valueStr}`,
+                status: status,
+                statusText: statusText,
+                detail: detailText,
+                type: itemType
+            });
+        }
+        
+        return matches;
+    }
+
+    extrairValorSimples(texto) {
         if (!texto) return 0;
         
-        // Padrões comuns: R$ 1.234,56 ou R$1234.56 ou 1234,56
         const padroes = [
             /R\$\s*([\d.,]+)/i,
-            /valor[:\s]*([\d.,]+)/i,
-            /([\d.]+,\d{2})/
+            /(\d{1,3}(?:\.\d{3})*(?:,\d{2}))/,
+            /(\d+(?:,\d{2}))/
         ];
 
         for (const padrao of padroes) {
             const match = texto.match(padrao);
             if (match) {
-                let valor = match[1]
-                    .replace(/\./g, '')  // Remove pontos de milhar
-                    .replace(',', '.');   // Converte vírgula decimal para ponto
-                return parseFloat(valor) || 0;
+                let valor = match[1];
+                valor = valor.replace(/\./g, '').replace(',', '.');
+                const numero = parseFloat(valor);
+                if (!isNaN(numero) && numero > 0) {
+                    return numero;
+                }
             }
         }
+
         return 0;
     }
 
-    extrairStatus(titulo, descricao, tipo) {
-        const texto = (titulo + ' ' + descricao).toUpperCase();
-        
-        if (tipo === 'pagamento') {
-            if (texto.includes('PG') || texto.includes('PAGO')) return 'pago';
-            if (texto.includes('PENDENTE')) return 'pendente';
-            if (texto.includes('CANCELADO')) return 'cancelado';
-            return 'pendente';
-        } else {
-            if (texto.includes('RC') || texto.includes('RECEBIDO')) return 'pago';
-            if (texto.includes('AGUARDANDO')) return 'pendente';
-            if (texto.includes('CANCELADO')) return 'cancelado';
-            return 'pendente';
-        }
-    }
-
-    extrairCategoria(titulo, descricao) {
-        const texto = (titulo + ' ' + descricao).toUpperCase();
-        
-        // Categorias comuns
-        const categorias = [
-            'INTERNO', 'EXTERNO', 'OBRA', 'FORNECEDOR', 'FUNCIONÁRIO',
-            'ALUGUEL', 'ENERGIA', 'ÁGUA', 'TELEFONE', 'INTERNET',
-            'MATERIAL', 'EQUIPAMENTO', 'SERVIÇO', 'IMPOSTO', 'TAXA'
-        ];
-
-        for (const cat of categorias) {
-            if (texto.includes(cat)) return cat;
-        }
-        return null;
-    }
-
-    limparTitulo(titulo) {
-        // Remove prefixos comuns e valores do título
-        return titulo
-            .replace(/^(PAGAMENTO|RECEBIMENTO|PAG|REC)[:\s-]*/i, '')
-            .replace(/R\$\s*[\d.,]+/g, '')
-            .replace(/\s*(PG|PAGO|RC|RECEBIDO|PENDENTE|AGUARDANDO)\s*/gi, '')
-            .trim();
-    }
-
     // =========================================================================
-    // DETECTAR ALTERAÇÕES
+    // COMPARAR DADOS (AGENDA vs LOCAL)
     // =========================================================================
-    async detectarAlteracoes(eventosAgenda) {
-        await this.carregarDadosLocais();
-
+    compararDados(eventosAgenda) {
         this.alteracoesPendentes = {
             adicionar: [],
             modificar: [],
             excluir: []
         };
 
-        // Criar mapa dos dados locais por google_event_id
-        const locaisMap = new Map();
+        // Criar mapa de eventos locais por google_event_id + item_index
+        const mapaLocal = new Map();
         this.dadosLocais.forEach(item => {
             if (item.google_event_id) {
-                const chave = `${item.google_event_id}_${item.google_calendar_id}`;
-                locaisMap.set(chave, item);
+                const key = `${item.google_event_id}_${item.google_calendar_id}_${item.nome || ''}`;
+                mapaLocal.set(key, item);
             }
         });
 
-        // Processar eventos da agenda
-        for (const evento of eventosAgenda) {
-            const chave = `${evento.google_event_id}_${evento.google_calendar_id}`;
-            const itemLocal = locaisMap.get(chave);
+        // Criar mapa de eventos da agenda
+        const mapaAgenda = new Map();
+        eventosAgenda.forEach(evento => {
+            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${evento.nome || ''}`;
+            mapaAgenda.set(key, evento);
+        });
 
-            if (itemLocal) {
+        // Verificar novos e modificados
+        for (const evento of eventosAgenda) {
+            const key = `${evento.google_event_id}_${evento.google_calendar_id}_${evento.nome || ''}`;
+            const itemLocal = mapaLocal.get(key);
+
+            if (!itemLocal) {
+                // Novo evento
+                this.alteracoesPendentes.adicionar.push(evento);
+            } else {
                 // Verificar se houve modificação
-                const alteracoes = this.compararItens(itemLocal, evento);
-                if (alteracoes.length > 0) {
+                if (this.eventoModificado(itemLocal, evento)) {
                     this.alteracoesPendentes.modificar.push({
-                        id: itemLocal.id,
-                        anterior: itemLocal,
-                        novo: evento,
-                        campos_alterados: alteracoes
+                        local: itemLocal,
+                        agenda: evento
                     });
                 }
-                locaisMap.delete(chave); // Remover do mapa
-            } else {
-                // Novo item
-                this.alteracoesPendentes.adicionar.push(evento);
             }
         }
 
-        // Itens que sobraram no mapa são candidatos a exclusão
-        // (apenas os que vieram do Google Agenda)
-        locaisMap.forEach((item, chave) => {
-            if (item.google_event_id) {
-                this.alteracoesPendentes.excluir.push(item);
+        // Verificar excluídos (eventos locais que não estão mais na agenda)
+        for (const [key, itemLocal] of mapaLocal) {
+            if (!mapaAgenda.has(key)) {
+                this.alteracoesPendentes.excluir.push(itemLocal);
             }
-        });
+        }
 
-        console.log('📊 Alterações detectadas:', {
+        console.log('📊 Alterações pendentes:', {
             adicionar: this.alteracoesPendentes.adicionar.length,
             modificar: this.alteracoesPendentes.modificar.length,
             excluir: this.alteracoesPendentes.excluir.length
         });
-
-        return this.alteracoesPendentes;
     }
 
-    compararItens(local, agenda) {
-        const alteracoes = [];
-        const camposComparar = ['descricao', 'valor', 'data_vencimento', 'status', 'categoria'];
-
-        for (const campo of camposComparar) {
-            const valorLocal = local[campo];
-            const valorAgenda = agenda[campo];
-
-            if (valorLocal !== valorAgenda) {
-                alteracoes.push({
-                    campo,
-                    de: valorLocal,
-                    para: valorAgenda
-                });
-            }
-        }
-
-        return alteracoes;
+    eventoModificado(local, agenda) {
+        return (
+            local.nome !== agenda.nome ||
+            local.tipo_item !== agenda.tipo_item ||
+            local.subtipo !== agenda.subtipo ||
+            local.categoria !== agenda.categoria ||
+            parseFloat(local.valor) !== parseFloat(agenda.valor) ||
+            local.data_vencimento !== agenda.data_vencimento ||
+            local.status !== agenda.status ||
+            local.detalhe !== agenda.detalhe
+        );
     }
 
     // =========================================================================
@@ -488,186 +833,185 @@ class FluxoCaixaSync {
         const totalAlteracoes = adicionar.length + modificar.length + excluir.length;
 
         if (totalAlteracoes === 0) {
-            this.mostrarNotificacao('Nenhuma alteração detectada. Tudo está sincronizado!', 'success');
+            this.mostrarNotificacao('Nenhuma alteração necessária. Dados já estão sincronizados!', 'success');
             return;
         }
 
-        const modalHtml = `
-            <div class="modal-overlay" id="modal-sync-preview">
-                <div class="modal-content modal-xl" onclick="event.stopPropagation()">
-                    <div class="modal-header">
-                        <h2><i class="fas fa-sync-alt"></i> Preview da Sincronização</h2>
-                        <button class="modal-close" onclick="fluxoCaixaSync.fecharModalPreview()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="sync-summary">
-                            <p>Foram detectadas <strong>${totalAlteracoes}</strong> alterações:</p>
-                            <div class="sync-stats">
-                                <span class="stat adicionar"><i class="fas fa-plus-circle"></i> ${adicionar.length} Novos</span>
-                                <span class="stat modificar"><i class="fas fa-edit"></i> ${modificar.length} Alterados</span>
-                                <span class="stat excluir"><i class="fas fa-trash"></i> ${excluir.length} Removidos</span>
-                            </div>
+        // Criar ou obter modal
+        let modal = document.getElementById('modalSyncPreview');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'modalSyncPreview';
+            modal.className = 'modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        modal.innerHTML = `
+            <div class="modal-content modal-sync-preview">
+                <div class="modal-header">
+                    <h3><i class="fas fa-sync-alt"></i> Preview de Atualização</h3>
+                    <button class="modal-close" onclick="fluxoCaixaSync.fecharModalPreview()">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div class="sync-summary">
+                        <div class="sync-stat adicionar">
+                            <i class="fas fa-plus-circle"></i>
+                            <span class="stat-number">${adicionar.length}</span>
+                            <span class="stat-label">Novos</span>
                         </div>
-
-                        <!-- Adições -->
-                        ${adicionar.length > 0 ? `
-                            <div class="sync-section">
-                                <h3 class="sync-section-title adicionar">
-                                    <i class="fas fa-plus-circle"></i> Novos Itens (${adicionar.length})
-                                    <label class="select-all">
-                                        <input type="checkbox" checked onchange="fluxoCaixaSync.toggleTodos('adicionar', this.checked)">
-                                        Selecionar todos
-                                    </label>
-                                </h3>
-                                <div class="sync-items">
-                                    ${adicionar.map((item, i) => `
-                                        <div class="sync-item">
-                                            <label class="sync-checkbox">
-                                                <input type="checkbox" checked data-tipo="adicionar" data-index="${i}">
-                                            </label>
-                                            <div class="sync-item-content">
-                                                <div class="sync-item-header">
-                                                    <span class="tipo-badge ${item.tipo}">${item.tipo === 'pagamento' ? 'Pagamento' : 'Recebimento'}</span>
-                                                    <span class="status-badge ${item.status}">${item.status}</span>
-                                                </div>
-                                                <div class="sync-item-descricao">${item.descricao || 'Sem descrição'}</div>
-                                                <div class="sync-item-detalhes">
-                                                    <span class="data"><i class="fas fa-calendar"></i> ${this.formatarData(item.data_vencimento)}</span>
-                                                    <span class="valor ${item.tipo}"><i class="fas fa-dollar-sign"></i> ${this.formatarMoeda(item.valor)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        <!-- Modificações -->
-                        ${modificar.length > 0 ? `
-                            <div class="sync-section">
-                                <h3 class="sync-section-title modificar">
-                                    <i class="fas fa-edit"></i> Itens Alterados (${modificar.length})
-                                    <label class="select-all">
-                                        <input type="checkbox" checked onchange="fluxoCaixaSync.toggleTodos('modificar', this.checked)">
-                                        Selecionar todos
-                                    </label>
-                                </h3>
-                                <div class="sync-items">
-                                    ${modificar.map((item, i) => `
-                                        <div class="sync-item">
-                                            <label class="sync-checkbox">
-                                                <input type="checkbox" checked data-tipo="modificar" data-index="${i}">
-                                            </label>
-                                            <div class="sync-item-content">
-                                                <div class="sync-item-descricao">${item.anterior.descricao || 'Sem descrição'}</div>
-                                                <div class="sync-changes">
-                                                    ${item.campos_alterados.map(c => `
-                                                        <div class="change-item">
-                                                            <span class="change-campo">${this.traduzirCampo(c.campo)}:</span>
-                                                            <span class="change-de">${this.formatarValorCampo(c.campo, c.de)}</span>
-                                                            <i class="fas fa-arrow-right"></i>
-                                                            <span class="change-para">${this.formatarValorCampo(c.campo, c.para)}</span>
-                                                        </div>
-                                                    `).join('')}
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
-
-                        <!-- Exclusões -->
-                        ${excluir.length > 0 ? `
-                            <div class="sync-section">
-                                <h3 class="sync-section-title excluir">
-                                    <i class="fas fa-trash"></i> Itens Removidos (${excluir.length})
-                                    <label class="select-all">
-                                        <input type="checkbox" checked onchange="fluxoCaixaSync.toggleTodos('excluir', this.checked)">
-                                        Selecionar todos
-                                    </label>
-                                </h3>
-                                <div class="sync-items">
-                                    ${excluir.map((item, i) => `
-                                        <div class="sync-item excluir">
-                                            <label class="sync-checkbox">
-                                                <input type="checkbox" checked data-tipo="excluir" data-index="${i}">
-                                            </label>
-                                            <div class="sync-item-content">
-                                                <div class="sync-item-header">
-                                                    <span class="tipo-badge ${item.tipo}">${item.tipo === 'pagamento' ? 'Pagamento' : 'Recebimento'}</span>
-                                                </div>
-                                                <div class="sync-item-descricao">${item.descricao || 'Sem descrição'}</div>
-                                                <div class="sync-item-detalhes">
-                                                    <span class="data"><i class="fas fa-calendar"></i> ${this.formatarData(item.data_vencimento)}</span>
-                                                    <span class="valor">${this.formatarMoeda(item.valor)}</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                        ` : ''}
+                        <div class="sync-stat modificar">
+                            <i class="fas fa-edit"></i>
+                            <span class="stat-number">${modificar.length}</span>
+                            <span class="stat-label">Alterados</span>
+                        </div>
+                        <div class="sync-stat excluir">
+                            <i class="fas fa-trash-alt"></i>
+                            <span class="stat-number">${excluir.length}</span>
+                            <span class="stat-label">Removidos</span>
+                        </div>
                     </div>
-                    <div class="modal-footer">
-                        <button class="btn-cancel" onclick="fluxoCaixaSync.fecharModalPreview()">
-                            <i class="fas fa-times"></i> Cancelar
-                        </button>
-                        <button class="btn-confirm" onclick="fluxoCaixaSync.confirmarSincronizacao()">
-                            <i class="fas fa-check"></i> Confirmar Sincronização
-                        </button>
+
+                    <div class="sync-details">
+                        ${this.renderizarSecaoPreview('Novos Itens', adicionar, 'adicionar')}
+                        ${this.renderizarSecaoPreview('Itens Alterados', modificar, 'modificar')}
+                        ${this.renderizarSecaoPreview('Itens a Remover', excluir, 'excluir')}
                     </div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn-secondary" onclick="fluxoCaixaSync.fecharModalPreview()">
+                        <i class="fas fa-times"></i> Cancelar
+                    </button>
+                    <button class="btn-primary" onclick="fluxoCaixaSync.confirmarSincronizacao()">
+                        <i class="fas fa-check"></i> Confirmar Atualização
+                    </button>
                 </div>
             </div>
         `;
 
-        // Remover modal existente se houver
-        const modalExistente = document.getElementById('modal-sync-preview');
-        if (modalExistente) modalExistente.remove();
+        modal.style.display = 'flex';
+    }
 
-        // Adicionar novo modal
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
+    renderizarSecaoPreview(titulo, items, tipo) {
+        if (items.length === 0) return '';
+
+        let itemsHtml = '';
+        items.forEach((item, index) => {
+            const dados = tipo === 'modificar' ? item.agenda : item;
+            const dadosAntigos = tipo === 'modificar' ? item.local : null;
+            
+            // Construir tags de classificação
+            let tags = '';
+            if (dados.tipo_item) tags += `<span class="preview-tag tipo">${dados.tipo_item}</span>`;
+            if (dados.subtipo) tags += `<span class="preview-tag subtipo">${dados.subtipo}</span>`;
+            if (dados.categoria) tags += `<span class="preview-tag categoria">${dados.categoria}</span>`;
+            
+            itemsHtml += `
+                <div class="preview-item ${tipo}">
+                    <label class="checkbox-container">
+                        <input type="checkbox" checked data-tipo="${tipo}" data-index="${index}">
+                        <span class="checkmark"></span>
+                    </label>
+                    <div class="item-details">
+                        <div class="item-header">
+                            <span class="item-tipo-badge ${dados.tipo}">${dados.tipo}</span>
+                            <span class="item-status-badge ${this.getStatusClass(dados.status, dados.tipo)}">${dados.status || 'PENDENTE'}</span>
+                        </div>
+                        <div class="item-tags">${tags}</div>
+                        <span class="item-desc">${dados.nome || dados.descricao || 'Sem descrição'}</span>
+                        <div class="item-meta">
+                            <span class="item-data"><i class="fas fa-calendar"></i> ${this.formatarData(dados.data_vencimento)}</span>
+                            <span class="item-valor ${dados.tipo}"><i class="fas fa-dollar-sign"></i> R$ ${this.formatarMoeda(dados.valor)}</span>
+                        </div>
+                        ${dados.detalhe ? `<span class="item-detalhe"><i class="fas fa-info-circle"></i> ${dados.detalhe}</span>` : ''}
+                        ${tipo === 'modificar' && dadosAntigos ? `
+                            <div class="item-changes">
+                                <small><i class="fas fa-history"></i> Anterior: R$ ${this.formatarMoeda(dadosAntigos.valor)} - ${dadosAntigos.nome || dadosAntigos.descricao}</small>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        });
+
+        return `
+            <div class="preview-section ${tipo}">
+                <h4>
+                    <i class="fas fa-${tipo === 'adicionar' ? 'plus' : tipo === 'modificar' ? 'edit' : 'trash'}"></i>
+                    ${titulo} (${items.length})
+                    <label class="select-all-container">
+                        <input type="checkbox" checked onchange="fluxoCaixaSync.toggleSelectAll('${tipo}', this.checked)">
+                        <span>Selecionar todos</span>
+                    </label>
+                </h4>
+                <div class="preview-items">
+                    ${itemsHtml}
+                </div>
+            </div>
+        `;
+    }
+
+    toggleSelectAll(tipo, checked) {
+        const checkboxes = document.querySelectorAll(`#modalSyncPreview input[data-tipo="${tipo}"]`);
+        checkboxes.forEach(cb => cb.checked = checked);
     }
 
     fecharModalPreview() {
-        const modal = document.getElementById('modal-sync-preview');
-        if (modal) modal.remove();
-    }
-
-    toggleTodos(tipo, checked) {
-        const checkboxes = document.querySelectorAll(`input[data-tipo="${tipo}"]`);
-        checkboxes.forEach(cb => cb.checked = checked);
+        const modal = document.getElementById('modalSyncPreview');
+        if (modal) {
+            modal.style.display = 'none';
+        }
     }
 
     // =========================================================================
     // CONFIRMAR SINCRONIZAÇÃO
     // =========================================================================
     async confirmarSincronizacao() {
+        const btn = document.querySelector('.modal-footer .btn-primary');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Atualizando...';
+        }
+
         try {
-            this.mostrarLoading('Aplicando alterações...');
+            // Obter itens selecionados
+            const checkboxes = document.querySelectorAll('#modalSyncPreview input[type="checkbox"][data-tipo]:checked');
+            
+            const selecionados = {
+                adicionar: [],
+                modificar: [],
+                excluir: []
+            };
 
-            // Coletar itens selecionados
-            const adicionar = this.coletarSelecionados('adicionar');
-            const modificar = this.coletarSelecionados('modificar');
-            const excluir = this.coletarSelecionados('excluir');
+            checkboxes.forEach(cb => {
+                const tipo = cb.dataset.tipo;
+                const index = parseInt(cb.dataset.index);
+                if (!isNaN(index) && this.alteracoesPendentes[tipo][index]) {
+                    selecionados[tipo].push(this.alteracoesPendentes[tipo][index]);
+                }
+            });
 
-            let totalProcessados = 0;
-            let erros = [];
+            // Executar operações
+            let sucesso = 0;
+            let erros = 0;
 
-            // Processar adições
-            for (const item of adicionar) {
+            // Adicionar novos
+            for (const item of selecionados.adicionar) {
                 try {
                     const { error } = await supabaseClient
                         .from('fluxo_caixa_hvc')
                         .insert({
                             tipo: item.tipo,
+                            tipo_item: item.tipo_item,
+                            subtipo: item.subtipo,
+                            categoria: item.categoria,
+                            nome: item.nome,
                             descricao: item.descricao,
                             valor: item.valor,
                             data_vencimento: item.data_vencimento,
                             status: item.status,
-                            categoria: item.categoria,
+                            detalhe: item.detalhe,
                             google_event_id: item.google_event_id,
                             google_calendar_id: item.google_calendar_id,
                             observacoes: item.observacoes,
@@ -675,38 +1019,44 @@ class FluxoCaixaSync {
                         });
 
                     if (error) throw error;
-                    totalProcessados++;
+                    sucesso++;
                 } catch (e) {
-                    erros.push(`Erro ao adicionar: ${item.descricao}`);
+                    console.error('Erro ao adicionar:', e);
+                    erros++;
                 }
             }
 
-            // Processar modificações
-            for (const item of modificar) {
+            // Modificar existentes
+            for (const item of selecionados.modificar) {
                 try {
                     const { error } = await supabaseClient
                         .from('fluxo_caixa_hvc')
                         .update({
-                            descricao: item.novo.descricao,
-                            valor: item.novo.valor,
-                            data_vencimento: item.novo.data_vencimento,
-                            status: item.novo.status,
-                            categoria: item.novo.categoria,
-                            observacoes: item.novo.observacoes,
-                            updated_at: new Date().toISOString(),
+                            tipo: item.agenda.tipo,
+                            tipo_item: item.agenda.tipo_item,
+                            subtipo: item.agenda.subtipo,
+                            categoria: item.agenda.categoria,
+                            nome: item.agenda.nome,
+                            descricao: item.agenda.descricao,
+                            valor: item.agenda.valor,
+                            data_vencimento: item.agenda.data_vencimento,
+                            status: item.agenda.status,
+                            detalhe: item.agenda.detalhe,
+                            observacoes: item.agenda.observacoes,
                             sincronizado_em: new Date().toISOString()
                         })
-                        .eq('id', item.id);
+                        .eq('id', item.local.id);
 
                     if (error) throw error;
-                    totalProcessados++;
+                    sucesso++;
                 } catch (e) {
-                    erros.push(`Erro ao modificar: ${item.anterior.descricao}`);
+                    console.error('Erro ao modificar:', e);
+                    erros++;
                 }
             }
 
-            // Processar exclusões
-            for (const item of excluir) {
+            // Excluir removidos
+            for (const item of selecionados.excluir) {
                 try {
                     const { error } = await supabaseClient
                         .from('fluxo_caixa_hvc')
@@ -714,178 +1064,58 @@ class FluxoCaixaSync {
                         .eq('id', item.id);
 
                     if (error) throw error;
-                    totalProcessados++;
+                    sucesso++;
                 } catch (e) {
-                    erros.push(`Erro ao excluir: ${item.descricao}`);
+                    console.error('Erro ao excluir:', e);
+                    erros++;
                 }
             }
 
-            this.esconderLoading();
-            this.fecharModalPreview();
+            // Salvar última sincronização
+            localStorage.setItem('ultimaSincronizacaoFluxoCaixa', new Date().toISOString());
 
-            // Atualizar listas
+            // Fechar modal e atualizar listas
+            this.fecharModalPreview();
             await this.renderizarListasPersistentes();
             this.atualizarUltimaSincronizacao();
 
             // Mostrar resultado
-            if (erros.length > 0) {
-                this.mostrarNotificacao(`Sincronização parcial: ${totalProcessados} itens processados, ${erros.length} erros`, 'warning');
+            if (erros === 0) {
+                this.mostrarNotificacao(`Atualização concluída! ${sucesso} itens processados.`, 'success');
             } else {
-                this.mostrarNotificacao(`Sincronização concluída! ${totalProcessados} itens processados.`, 'success');
+                this.mostrarNotificacao(`Atualização parcial: ${sucesso} ok, ${erros} erros.`, 'warning');
             }
 
         } catch (error) {
-            this.esconderLoading();
-            console.error('❌ Erro na sincronização:', error);
-            this.mostrarNotificacao('Erro ao sincronizar: ' + error.message, 'error');
-        }
-    }
-
-    coletarSelecionados(tipo) {
-        const checkboxes = document.querySelectorAll(`input[data-tipo="${tipo}"]:checked`);
-        const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.index));
-        return indices.map(i => this.alteracoesPendentes[tipo][i]);
-    }
-
-    // =========================================================================
-    // EDITAR E EXCLUIR ITENS
-    // =========================================================================
-    async editarItem(id) {
-        const item = this.dadosLocais.find(i => i.id === id);
-        if (!item) return;
-
-        // Criar modal de edição
-        const modalHtml = `
-            <div class="modal-overlay" id="modal-edit-item">
-                <div class="modal-content" onclick="event.stopPropagation()">
-                    <div class="modal-header">
-                        <h2><i class="fas fa-edit"></i> Editar ${item.tipo === 'pagamento' ? 'Pagamento' : 'Recebimento'}</h2>
-                        <button class="modal-close" onclick="fluxoCaixaSync.fecharModalEdicao()">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                    <div class="modal-body">
-                        <div class="form-group">
-                            <label>Descrição</label>
-                            <input type="text" id="edit-descricao" value="${item.descricao || ''}" class="form-input">
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Valor</label>
-                                <input type="text" id="edit-valor" value="${this.formatarMoeda(item.valor)}" class="form-input">
-                            </div>
-                            <div class="form-group">
-                                <label>Data</label>
-                                <input type="date" id="edit-data" value="${item.data_vencimento}" class="form-input">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Status</label>
-                                <select id="edit-status" class="form-input">
-                                    <option value="pendente" ${item.status === 'pendente' ? 'selected' : ''}>Pendente</option>
-                                    <option value="pago" ${item.status === 'pago' ? 'selected' : ''}>Pago</option>
-                                    <option value="cancelado" ${item.status === 'cancelado' ? 'selected' : ''}>Cancelado</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Categoria</label>
-                                <input type="text" id="edit-categoria" value="${item.categoria || ''}" class="form-input">
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Observações</label>
-                            <textarea id="edit-observacoes" class="form-input" rows="3">${item.observacoes || ''}</textarea>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button class="btn-cancel" onclick="fluxoCaixaSync.fecharModalEdicao()">
-                            <i class="fas fa-times"></i> Cancelar
-                        </button>
-                        <button class="btn-confirm" onclick="fluxoCaixaSync.salvarEdicao('${id}')">
-                            <i class="fas fa-save"></i> Salvar
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        const modalExistente = document.getElementById('modal-edit-item');
-        if (modalExistente) modalExistente.remove();
-
-        document.body.insertAdjacentHTML('beforeend', modalHtml);
-    }
-
-    fecharModalEdicao() {
-        const modal = document.getElementById('modal-edit-item');
-        if (modal) modal.remove();
-    }
-
-    async salvarEdicao(id) {
-        try {
-            const descricao = document.getElementById('edit-descricao').value;
-            const valorStr = document.getElementById('edit-valor').value;
-            const data = document.getElementById('edit-data').value;
-            const status = document.getElementById('edit-status').value;
-            const categoria = document.getElementById('edit-categoria').value;
-            const observacoes = document.getElementById('edit-observacoes').value;
-
-            // Converter valor
-            const valor = parseFloat(valorStr.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
-
-            const { error } = await supabaseClient
-                .from('fluxo_caixa_hvc')
-                .update({
-                    descricao,
-                    valor,
-                    data_vencimento: data,
-                    status,
-                    categoria,
-                    observacoes,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', id);
-
-            if (error) throw error;
-
-            this.fecharModalEdicao();
-            await this.renderizarListasPersistentes();
-            this.mostrarNotificacao('Item atualizado com sucesso!', 'success');
-
-        } catch (error) {
-            console.error('Erro ao salvar:', error);
-            this.mostrarNotificacao('Erro ao salvar: ' + error.message, 'error');
-        }
-    }
-
-    async excluirItem(id) {
-        if (!confirm('Tem certeza que deseja excluir este item?')) return;
-
-        try {
-            const { error } = await supabaseClient
-                .from('fluxo_caixa_hvc')
-                .delete()
-                .eq('id', id);
-
-            if (error) throw error;
-
-            await this.renderizarListasPersistentes();
-            this.mostrarNotificacao('Item excluído com sucesso!', 'success');
-
-        } catch (error) {
-            console.error('Erro ao excluir:', error);
-            this.mostrarNotificacao('Erro ao excluir: ' + error.message, 'error');
+            console.error('❌ Erro na atualização:', error);
+            this.mostrarNotificacao('Erro ao atualizar dados', 'error');
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check"></i> Confirmar Atualização';
+            }
         }
     }
 
     // =========================================================================
-    // FUNÇÕES AUXILIARES
+    // UTILITÁRIOS
     // =========================================================================
+    atualizarUltimaSincronizacao() {
+        const elemento = document.getElementById('ultimaSincronizacao');
+        if (elemento) {
+            const ultima = localStorage.getItem('ultimaSincronizacaoFluxoCaixa');
+            if (ultima) {
+                const data = new Date(ultima);
+                elemento.textContent = data.toLocaleString('pt-BR');
+            } else {
+                elemento.textContent = 'Nunca';
+            }
+        }
+    }
+
     formatarMoeda(valor) {
-        return new Intl.NumberFormat('pt-BR', {
-            style: 'currency',
-            currency: 'BRL'
-        }).format(valor || 0);
+        const numero = parseFloat(valor) || 0;
+        return numero.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     formatarData(data) {
@@ -894,69 +1124,30 @@ class FluxoCaixaSync {
         return d.toLocaleDateString('pt-BR');
     }
 
-    traduzirCampo(campo) {
-        const traducoes = {
-            'descricao': 'Descrição',
-            'valor': 'Valor',
-            'data_vencimento': 'Data',
-            'status': 'Status',
-            'categoria': 'Categoria'
-        };
-        return traducoes[campo] || campo;
-    }
-
-    formatarValorCampo(campo, valor) {
-        if (campo === 'valor') return this.formatarMoeda(valor);
-        if (campo === 'data_vencimento') return this.formatarData(valor);
-        return valor || '-';
-    }
-
-    atualizarUltimaSincronizacao() {
-        const span = document.getElementById('ultimaSincronizacao');
-        if (span) {
-            const agora = new Date();
-            span.textContent = agora.toLocaleString('pt-BR');
-        }
-    }
-
-    mostrarLoading(mensagem) {
-        let loader = document.getElementById('sync-loader');
-        if (!loader) {
-            loader = document.createElement('div');
-            loader.id = 'sync-loader';
-            loader.className = 'sync-loader-overlay';
-            document.body.appendChild(loader);
-        }
-        loader.innerHTML = `
-            <div class="sync-loader-content">
-                <div class="spinner"></div>
-                <p>${mensagem}</p>
-            </div>
-        `;
-        loader.style.display = 'flex';
-    }
-
-    esconderLoading() {
-        const loader = document.getElementById('sync-loader');
-        if (loader) loader.style.display = 'none';
-    }
-
     mostrarNotificacao(mensagem, tipo = 'info') {
-        const container = document.getElementById('messagesContainer') || document.body;
-        
+        // Usar a função showMessage se disponível, senão criar notificação própria
+        if (typeof showMessage === 'function') {
+            showMessage(mensagem, tipo);
+            return;
+        }
+
+        // Criar notificação própria
         const notif = document.createElement('div');
-        notif.className = `notification notification-${tipo}`;
+        notif.className = `sync-notification ${tipo}`;
         notif.innerHTML = `
             <i class="fas fa-${tipo === 'success' ? 'check-circle' : tipo === 'error' ? 'exclamation-circle' : tipo === 'warning' ? 'exclamation-triangle' : 'info-circle'}"></i>
             <span>${mensagem}</span>
         `;
-        
-        container.appendChild(notif);
-        
+        document.body.appendChild(notif);
+
         setTimeout(() => {
-            notif.classList.add('fade-out');
+            notif.classList.add('show');
+        }, 10);
+
+        setTimeout(() => {
+            notif.classList.remove('show');
             setTimeout(() => notif.remove(), 300);
-        }, 5000);
+        }, 4000);
     }
 }
 
@@ -964,5 +1155,11 @@ class FluxoCaixaSync {
 const fluxoCaixaSync = new FluxoCaixaSync();
 window.fluxoCaixaSync = fluxoCaixaSync;
 
-// Exportar
-export { fluxoCaixaSync, FluxoCaixaSync };
+// Inicializar quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => fluxoCaixaSync.init());
+} else {
+    fluxoCaixaSync.init();
+}
+
+export { FluxoCaixaSync, fluxoCaixaSync };
