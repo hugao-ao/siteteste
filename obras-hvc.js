@@ -1559,23 +1559,43 @@ class ObrasManager {
             // Calcular valor recebido (já recebido de fato)
             const valorRecebido = await this.calcularValorRecebido(this.currentObraId);
             
-            // Calcular valor a receber (medições pendentes de recebimento)
-            const valorMedido = await this.calcularValorMedido(this.currentObraId);
-            const valorAReceber = valorMedido - valorRecebido;
+            // Buscar medições para calcular retenções totais
+            const { data: medicoes } = await supabaseClient
+                .from('medicoes_hvc')
+                .select('recebimentos')
+                .eq('obra_id', this.currentObraId);
             
-            // Cálculos de resultado
-            const resultadoAtual = valorRecebido - totalDespesasPagas; // Situação atual real
-            const resultadoPrevisto = valorAReceber - totalDespesasPendentes; // Previsão futura
+            // Calcular retenções totais (soma de todas retenções de todas medições)
+            let retensoesTotais = 0;
+            (medicoes || []).forEach(med => {
+                if (med.recebimentos && Array.isArray(med.recebimentos)) {
+                    med.recebimentos.forEach(rec => {
+                        retensoesTotais += parseFloat(rec.retencao) || 0;
+                    });
+                }
+            });
+            
+            // Calcular valor total contratado
+            const valorContratado = parseFloat(this.obraAtual.valor_total) || 0;
+            
+            // SITUAÇÃO ATUAL: RECEBIDO - DESPESAS PAGAS - RETENSÕES TOTAIS
+            const resultadoAtual = valorRecebido - totalDespesasPagas - retensoesTotais;
+            
+            // PREVISÃO FUTURA: A RECEBER = TOTAL CONTRATADO - TOTAL JÁ RECEBIDO
+            const valorAReceber = valorContratado - valorRecebido;
+            // RESULTADO PREVISTO = A RECEBER - DESPESAS PENDENTES
+            const resultadoPrevisto = valorAReceber - totalDespesasPendentes;
             
             // Cálculos consolidados
             const totalEntradas = valorRecebido + valorAReceber;
-            const totalSaidas = totalDespesasPagas + totalDespesasPendentes;
+            const totalSaidas = totalDespesasPagas + totalDespesasPendentes + retensoesTotais;
             const balancoFinal = totalEntradas - totalSaidas;
             const margem = totalEntradas > 0 ? (balancoFinal / totalEntradas) * 100 : 0;
             
             // Atualizar SITUAÇÃO ATUAL
             this.atualizarElemento('valor-recebido-atual', this.formatMoney(valorRecebido));
             this.atualizarElemento('valor-despesas-pagas', this.formatMoney(totalDespesasPagas));
+            this.atualizarElemento('valor-retensoes-totais', this.formatMoney(retensoesTotais));
             this.atualizarElementoComCor('valor-resultado-atual', this.formatMoney(resultadoAtual), resultadoAtual >= 0 ? '#17a2b8' : '#dc3545');
             
             // Atualizar PREVISÃO FUTURA
@@ -1594,7 +1614,7 @@ class ObrasManager {
             this.atualizarElemento('total-despesas-pendentes-label', this.formatMoney(totalDespesasPendentes));
             
             // Renderizar lista de despesas PAGAS
-            this.renderizarListaDespesas('lista-despesas-pagas', despesasPagas, '#28a745', 'Nenhuma despesa paga encontrada.');
+            this.renderizarListaDespesas('lista-despesas-pagas', despesasPagas, '#dc3545', 'Nenhuma despesa paga encontrada.');
             
             // Renderizar lista de despesas PENDENTES
             this.renderizarListaDespesas('lista-despesas-pendentes', despesasPendentes, '#ffc107', 'Nenhuma despesa pendente encontrada.');
@@ -4254,14 +4274,35 @@ fecharModalAjustarQuantidade() {
         despesasPagas.forEach(d => totalDespesasPagas += parseFloat(d.valor) || 0);
         despesasPendentes.forEach(d => totalDespesasPendentes += parseFloat(d.valor) || 0);
         
-        // Calcular valor a receber (medições pendentes)
-        const valorAReceber = valorMedido - valorRecebido;
+        // Buscar medições para calcular retenções totais
+        const { data: medicoesRetencao } = await supabaseClient
+            .from('medicoes_hvc')
+            .select('recebimentos')
+            .eq('obra_id', obra.id);
+        
+        // Calcular retenções totais (soma de todas retenções de todas medições)
+        let retensoesTotais = 0;
+        (medicoesRetencao || []).forEach(med => {
+            if (med.recebimentos && Array.isArray(med.recebimentos)) {
+                med.recebimentos.forEach(rec => {
+                    retensoesTotais += parseFloat(rec.retencao) || 0;
+                });
+            }
+        });
+        
+        // Calcular valor total contratado
+        const valorContratado = parseFloat(obra.valor_total) || 0;
+        
+        // PREVISÃO FUTURA: A RECEBER = TOTAL CONTRATADO - TOTAL JÁ RECEBIDO
+        const valorAReceber = valorContratado - valorRecebido;
         
         // Resultados financeiros
-        const resultadoAtual = valorRecebido - totalDespesasPagas;
+        // SITUAÇÃO ATUAL: RECEBIDO - DESPESAS PAGAS - RETENSÕES TOTAIS
+        const resultadoAtual = valorRecebido - totalDespesasPagas - retensoesTotais;
+        // RESULTADO PREVISTO = A RECEBER - DESPESAS PENDENTES
         const resultadoPrevisto = valorAReceber - totalDespesasPendentes;
         const totalEntradas = valorRecebido + valorAReceber;
-        const totalSaidas = totalDespesasPagas + totalDespesasPendentes;
+        const totalSaidas = totalDespesasPagas + totalDespesasPendentes + retensoesTotais;
         const balancoFinal = totalEntradas - totalSaidas;
         const margem = totalEntradas > 0 ? (balancoFinal / totalEntradas) * 100 : 0;
         
@@ -4381,6 +4422,7 @@ fecharModalAjustarQuantidade() {
             despesasPendentes,
             totalDespesasPagas,
             totalDespesasPendentes,
+            retensoesTotais,
             resultadoAtual,
             resultadoPrevisto,
             totalEntradas,
@@ -4609,6 +4651,10 @@ fecharModalAjustarQuantidade() {
                             <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Despesas Pagas</td>
                             <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #dc3545; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalDespesasPagas || 0)}</td>
                         </tr>
+                        <tr style="background: #f3e5f5;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Retenções Totais</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #9b59b6; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.retensoesTotais || 0)}</td>
+                        </tr>
                         <tr style="background: ${dados.resultadoAtual >= 0 ? '#d4edda' : '#f8d7da'};">
                             <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold;">= RESULTADO ATUAL</td>
                             <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: ${dados.resultadoAtual >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.resultadoAtual || 0)}</td>
@@ -4644,7 +4690,7 @@ fecharModalAjustarQuantidade() {
                             <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #28a745; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalEntradas || 0)}</td>
                         </tr>
                         <tr style="background: #ffebee;">
-                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Total de Saídas (Pagas + Pendentes)</td>
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Total de Saídas (Pagas + Pendentes + Retenções)</td>
                             <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #dc3545; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalSaidas || 0)}</td>
                         </tr>
                         <tr style="background: ${dados.balancoFinal >= 0 ? '#c8e6c9' : '#ffcdd2'};">
