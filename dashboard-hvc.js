@@ -232,21 +232,27 @@ class DashboardHVC {
         // Buscar produções diárias para calcular valor produzido
         const { data: producoes, error: errProducoes } = await supabaseClient
             .from('producoes_diarias_hvc')
-            .select('obra_id, itens_producao');
+            .select('obra_id, quantidades_servicos');
         
         if (errProducoes) {
             console.error('⚠️ Erro ao buscar produções:', errProducoes);
         }
         
-        // Criar mapa de produções por obra
-        const producoesPorObra = {};
+        // Criar mapa de quantidades produzidas por item por obra
+        // Formato: { obra_id: { item_id: quantidade_total } }
+        const quantidadesPorObraItem = {};
         (producoes || []).forEach(prod => {
-            if (!producoesPorObra[prod.obra_id]) {
-                producoesPorObra[prod.obra_id] = [];
+            if (!quantidadesPorObraItem[prod.obra_id]) {
+                quantidadesPorObraItem[prod.obra_id] = {};
             }
-            if (prod.itens_producao && Array.isArray(prod.itens_producao)) {
-                producoesPorObra[prod.obra_id].push(...prod.itens_producao);
-            }
+            // quantidades_servicos é um objeto { item_id: quantidade }
+            const quantidades = prod.quantidades_servicos || {};
+            Object.entries(quantidades).forEach(([itemId, qtd]) => {
+                if (!quantidadesPorObraItem[prod.obra_id][itemId]) {
+                    quantidadesPorObraItem[prod.obra_id][itemId] = 0;
+                }
+                quantidadesPorObraItem[prod.obra_id][itemId] += parseFloat(qtd) || 0;
+            });
         });
         
         // Buscar despesas do fluxo de caixa (pagamentos onde categoria é o número da obra)
@@ -290,11 +296,10 @@ class DashboardHVC {
             
             // Calcular valor produzido baseado nas produções
             let valorProduzido = 0;
-            const itensProducao = producoesPorObra[obra.id] || [];
-            itensProducao.forEach(itemProd => {
-                const itemProposta = itensProposta[itemProd.item_proposta_id];
+            const quantidadesObra = quantidadesPorObraItem[obra.id] || {};
+            Object.entries(quantidadesObra).forEach(([itemId, qtdProduzida]) => {
+                const itemProposta = itensProposta[itemId];
                 if (itemProposta && itemProposta.quantidade > 0) {
-                    const qtdProduzida = parseFloat(itemProd.quantidade) || 0;
                     const precoUnitario = itemProposta.precoTotal / itemProposta.quantidade;
                     valorProduzido += qtdProduzida * precoUnitario;
                 }
