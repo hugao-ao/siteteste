@@ -1546,80 +1546,113 @@ class ObrasManager {
                 return;
             }
             
-            // Calcular totais
-            let totalDespesas = 0;
-            let totalDespesasPagas = 0;
-            (despesas || []).forEach(d => {
-                if (d.status === 'PG') {
-                    totalDespesasPagas += parseFloat(d.valor) || 0;
-                }
-                totalDespesas += parseFloat(d.valor) || 0;
-            });
+            // Separar despesas por status
+            const despesasPagas = (despesas || []).filter(d => d.status === 'PG');
+            const despesasPendentes = (despesas || []).filter(d => d.status !== 'PG');
             
-            // Calcular valor recebido
+            // Calcular totais
+            let totalDespesasPagas = 0;
+            let totalDespesasPendentes = 0;
+            despesasPagas.forEach(d => totalDespesasPagas += parseFloat(d.valor) || 0);
+            despesasPendentes.forEach(d => totalDespesasPendentes += parseFloat(d.valor) || 0);
+            
+            // Calcular valor recebido (já recebido de fato)
             const valorRecebido = await this.calcularValorRecebido(this.currentObraId);
             
-            // Calcular resultado
-            const resultado = valorRecebido - totalDespesasPagas;
+            // Calcular valor a receber (medições pendentes de recebimento)
+            const valorMedido = await this.calcularValorMedido(this.currentObraId);
+            const valorAReceber = valorMedido - valorRecebido;
             
-            // Atualizar resumo financeiro
-            const valorRecebidoEl = document.getElementById('valor-recebido-resumo');
-            const valorDespesasEl = document.getElementById('valor-despesas-resumo');
-            const valorResultadoEl = document.getElementById('valor-resultado-resumo');
-            const totalDespesasEl = document.getElementById('total-despesas-obra');
+            // Cálculos de resultado
+            const resultadoAtual = valorRecebido - totalDespesasPagas; // Situação atual real
+            const resultadoPrevisto = valorAReceber - totalDespesasPendentes; // Previsão futura
             
-            if (valorRecebidoEl) valorRecebidoEl.textContent = this.formatMoney(valorRecebido);
-            if (valorDespesasEl) valorDespesasEl.textContent = this.formatMoney(totalDespesasPagas);
-            if (valorResultadoEl) {
-                valorResultadoEl.textContent = this.formatMoney(resultado);
-                valorResultadoEl.style.color = resultado >= 0 ? '#17a2b8' : '#dc3545';
-            }
-            if (totalDespesasEl) totalDespesasEl.textContent = `Total: ${this.formatMoney(totalDespesas)}`;
+            // Cálculos consolidados
+            const totalEntradas = valorRecebido + valorAReceber;
+            const totalSaidas = totalDespesasPagas + totalDespesasPendentes;
+            const balancoFinal = totalEntradas - totalSaidas;
+            const margem = totalEntradas > 0 ? (balancoFinal / totalEntradas) * 100 : 0;
             
-            // Renderizar lista de despesas
-            const listaDespesas = document.getElementById('lista-despesas-obra');
-            if (listaDespesas) {
-                if (!despesas || despesas.length === 0) {
-                    listaDespesas.innerHTML = `
-                        <div style="padding: 2rem; text-align: center; color: #888;">
-                            <i class="fas fa-money-bill-wave" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
-                            Nenhuma despesa encontrada para esta obra.
-                        </div>
-                    `;
-                } else {
-                    listaDespesas.innerHTML = `
-                        <table style="width: 100%; border-collapse: collapse;">
-                            <thead style="background: rgba(220, 53, 69, 0.2); position: sticky; top: 0;">
-                                <tr>
-                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Nome</th>
-                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Detalhe</th>
-                                    <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Data</th>
-                                    <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Status</th>
-                                    <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Valor</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${despesas.map(d => `
-                                    <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
-                                        <td style="padding: 0.75rem; color: #e0e0e0;">${d.nome || '-'}</td>
-                                        <td style="padding: 0.75rem; color: #c0c0c0; font-size: 0.85rem;">${d.detalhe || '-'}</td>
-                                        <td style="padding: 0.75rem; text-align: center; color: #c0c0c0;">${d.data_vencimento ? new Date(d.data_vencimento).toLocaleDateString('pt-BR') : '-'}</td>
-                                        <td style="padding: 0.75rem; text-align: center;">
-                                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; background: ${d.status === 'PG' ? 'rgba(40, 167, 69, 0.3)' : 'rgba(255, 193, 7, 0.3)'}; color: ${d.status === 'PG' ? '#28a745' : '#ffc107'};">
-                                                ${d.status || 'PENDENTE'}
-                                            </span>
-                                        </td>
-                                        <td style="padding: 0.75rem; text-align: right; color: #dc3545; font-weight: bold;">${this.formatMoney(parseFloat(d.valor) || 0)}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                    `;
-                }
-            }
+            // Atualizar SITUAÇÃO ATUAL
+            this.atualizarElemento('valor-recebido-atual', this.formatMoney(valorRecebido));
+            this.atualizarElemento('valor-despesas-pagas', this.formatMoney(totalDespesasPagas));
+            this.atualizarElementoComCor('valor-resultado-atual', this.formatMoney(resultadoAtual), resultadoAtual >= 0 ? '#17a2b8' : '#dc3545');
+            
+            // Atualizar PREVISÃO FUTURA
+            this.atualizarElemento('valor-a-receber', this.formatMoney(valorAReceber));
+            this.atualizarElemento('valor-despesas-pendentes', this.formatMoney(totalDespesasPendentes));
+            this.atualizarElementoComCor('valor-resultado-previsto', this.formatMoney(resultadoPrevisto), resultadoPrevisto >= 0 ? '#9b59b6' : '#dc3545');
+            
+            // Atualizar RESUMO CONSOLIDADO
+            this.atualizarElemento('valor-total-entradas', this.formatMoney(totalEntradas));
+            this.atualizarElemento('valor-total-saidas', this.formatMoney(totalSaidas));
+            this.atualizarElementoComCor('valor-balanco-final', this.formatMoney(balancoFinal), balancoFinal >= 0 ? '#28a745' : '#dc3545');
+            this.atualizarElementoComCor('valor-margem', `${margem.toFixed(1)}%`, margem >= 0 ? '#28a745' : '#dc3545');
+            
+            // Atualizar labels de totais das listas
+            this.atualizarElemento('total-despesas-pagas-label', this.formatMoney(totalDespesasPagas));
+            this.atualizarElemento('total-despesas-pendentes-label', this.formatMoney(totalDespesasPendentes));
+            
+            // Renderizar lista de despesas PAGAS
+            this.renderizarListaDespesas('lista-despesas-pagas', despesasPagas, '#28a745', 'Nenhuma despesa paga encontrada.');
+            
+            // Renderizar lista de despesas PENDENTES
+            this.renderizarListaDespesas('lista-despesas-pendentes', despesasPendentes, '#ffc107', 'Nenhuma despesa pendente encontrada.');
             
         } catch (error) {
             console.error('⚠️ Erro ao carregar despesas do modal:', error);
+        }
+    }
+    
+    // Função auxiliar para atualizar elemento
+    atualizarElemento(id, valor) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = valor;
+    }
+    
+    // Função auxiliar para atualizar elemento com cor
+    atualizarElementoComCor(id, valor, cor) {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = valor;
+            el.style.color = cor;
+        }
+    }
+    
+    // Função auxiliar para renderizar lista de despesas
+    renderizarListaDespesas(containerId, despesas, corHeader, mensagemVazia) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        
+        if (!despesas || despesas.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 1rem; text-align: center; color: #888; font-size: 0.85rem;">
+                    ${mensagemVazia}
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead style="background: rgba(0, 0, 0, 0.2); position: sticky; top: 0;">
+                        <tr>
+                            <th style="padding: 0.5rem; text-align: left; color: ${corHeader};">Nome</th>
+                            <th style="padding: 0.5rem; text-align: left; color: ${corHeader};">Detalhe</th>
+                            <th style="padding: 0.5rem; text-align: center; color: ${corHeader};">Data</th>
+                            <th style="padding: 0.5rem; text-align: right; color: ${corHeader};">Valor</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${despesas.map(d => `
+                            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                                <td style="padding: 0.5rem; color: #e0e0e0;">${d.nome || '-'}</td>
+                                <td style="padding: 0.5rem; color: #a0a0a0;">${d.detalhe || '-'}</td>
+                                <td style="padding: 0.5rem; text-align: center; color: #a0a0a0;">${d.data_vencimento ? new Date(d.data_vencimento).toLocaleDateString('pt-BR') : '-'}</td>
+                                <td style="padding: 0.5rem; text-align: right; color: #dc3545; font-weight: bold;">${this.formatMoney(parseFloat(d.valor) || 0)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            `;
         }
     }
 
@@ -4211,14 +4244,29 @@ fecharModalAjustarQuantidade() {
             .ilike('categoria', `${numeroObraLimpo}%`)
             .order('data_vencimento', { ascending: false });
         
-        // Calcular total de despesas pagas
+        // Separar despesas por status
+        const despesasPagas = (despesasObra || []).filter(d => d.status === 'PG');
+        const despesasPendentes = (despesasObra || []).filter(d => d.status !== 'PG');
+        
+        // Calcular totais
         let totalDespesasPagas = 0;
-        (despesasObra || []).forEach(d => {
-            if (d.status === 'PG') {
-                totalDespesasPagas += parseFloat(d.valor) || 0;
-            }
-        });
-        const resultadoFinanceiro = valorRecebido - totalDespesasPagas;
+        let totalDespesasPendentes = 0;
+        despesasPagas.forEach(d => totalDespesasPagas += parseFloat(d.valor) || 0);
+        despesasPendentes.forEach(d => totalDespesasPendentes += parseFloat(d.valor) || 0);
+        
+        // Calcular valor a receber (medições pendentes)
+        const valorAReceber = valorMedido - valorRecebido;
+        
+        // Resultados financeiros
+        const resultadoAtual = valorRecebido - totalDespesasPagas;
+        const resultadoPrevisto = valorAReceber - totalDespesasPendentes;
+        const totalEntradas = valorRecebido + valorAReceber;
+        const totalSaidas = totalDespesasPagas + totalDespesasPendentes;
+        const balancoFinal = totalEntradas - totalSaidas;
+        const margem = totalEntradas > 0 ? (balancoFinal / totalEntradas) * 100 : 0;
+        
+        // Para compatibilidade
+        const resultadoFinanceiro = resultadoAtual;
         
         // Buscar produções diárias (query simples para evitar erro 400)
         const { data: producoes, error: producoesError } = await supabaseClient
@@ -4328,8 +4376,17 @@ fecharModalAjustarQuantidade() {
             valorProduzido,
             valorMedido,
             valorRecebido,
-            despesas: despesasObra || [],
-            totalDespesas: totalDespesasPagas,
+            valorAReceber,
+            despesasPagas,
+            despesasPendentes,
+            totalDespesasPagas,
+            totalDespesasPendentes,
+            resultadoAtual,
+            resultadoPrevisto,
+            totalEntradas,
+            totalSaidas,
+            balancoFinal,
+            margem,
             resultadoFinanceiro,
             producoes: producoes || [],
             medicoes: medicoes || [],
@@ -4516,37 +4573,87 @@ fecharModalAjustarQuantidade() {
                 
 
                 
-                <!-- Resumo Financeiro -->
+                <!-- Resumo Financeiro Completo -->
                 <div style="margin-bottom: 15px;">
                     <h3 style="color: #000080; border-bottom: 1px solid #000080; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Resumo Financeiro</h3>
+                    
+                    <!-- Valores da Obra -->
+                    <table style="width: 100%; border-collapse: collapse; background: white; margin-bottom: 10px;">
+                        <tr style="background: #000080;">
+                            <th colspan="2" style="padding: 6px; text-align: center; color: white; font-size: 10px;">VALORES DA OBRA</th>
+                        </tr>
+                        <tr style="background: #f9f9f9;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Valor Total Contratado</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 10px;">${this.formatMoney(obra.valor_total || 0)}</td>
+                        </tr>
+                        <tr style="background: white;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Valor Produzido</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #17a2b8; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.valorProduzido)}</td>
+                        </tr>
+                        <tr style="background: #f9f9f9;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Valor Medido</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #d4a017; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.valorMedido)}</td>
+                        </tr>
+                    </table>
+                    
+                    <!-- Situação Atual (Realizado) -->
+                    <table style="width: 100%; border-collapse: collapse; background: white; margin-bottom: 10px;">
+                        <tr style="background: #28a745;">
+                            <th colspan="2" style="padding: 6px; text-align: center; color: white; font-size: 10px;">SITUAÇÃO ATUAL (Realizado)</th>
+                        </tr>
+                        <tr style="background: #d4edda;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Valor Recebido</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #28a745; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.valorRecebido)}</td>
+                        </tr>
+                        <tr style="background: #f8d7da;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Despesas Pagas</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #dc3545; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalDespesasPagas || 0)}</td>
+                        </tr>
+                        <tr style="background: ${dados.resultadoAtual >= 0 ? '#d4edda' : '#f8d7da'};">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold;">= RESULTADO ATUAL</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: ${dados.resultadoAtual >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.resultadoAtual || 0)}</td>
+                        </tr>
+                    </table>
+                    
+                    <!-- Previsão Futura (Pendente) -->
+                    <table style="width: 100%; border-collapse: collapse; background: white; margin-bottom: 10px;">
+                        <tr style="background: #ffc107;">
+                            <th colspan="2" style="padding: 6px; text-align: center; color: #333; font-size: 10px;">PREVISÃO FUTURA (Pendente)</th>
+                        </tr>
+                        <tr style="background: #fff3cd;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Valor a Receber</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #856404; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.valorAReceber || 0)}</td>
+                        </tr>
+                        <tr style="background: #ffe5b4;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Despesas Pendentes</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #e67e22; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalDespesasPendentes || 0)}</td>
+                        </tr>
+                        <tr style="background: ${dados.resultadoPrevisto >= 0 ? '#d4edda' : '#f8d7da'};">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold;">= RESULTADO PREVISTO</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: ${dados.resultadoPrevisto >= 0 ? '#9b59b6' : '#dc3545'}; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.resultadoPrevisto || 0)}</td>
+                        </tr>
+                    </table>
+                    
+                    <!-- Resumo Consolidado -->
                     <table style="width: 100%; border-collapse: collapse; background: white;">
                         <tr style="background: #000080;">
-                            <th style="padding: 6px; text-align: left; color: white; font-size: 11px;">Descrição</th>
-                            <th style="padding: 6px; text-align: right; color: white; font-size: 11px;">Valor</th>
+                            <th colspan="2" style="padding: 6px; text-align: center; color: white; font-size: 10px;">RESUMO CONSOLIDADO</th>
                         </tr>
-                        <tr style="background: #f9f9f9;">
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Total da Obra</td>
-                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; font-weight: bold; font-size: 11px;">${this.formatMoney(obra.valor_total || 0)}</td>
+                        <tr style="background: #e8f5e9;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Total de Entradas (Recebido + A Receber)</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #28a745; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalEntradas || 0)}</td>
                         </tr>
-                        <tr style="background: white;">
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Produzido</td>
-                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #17a2b8; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.valorProduzido)}</td>
+                        <tr style="background: #ffebee;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Total de Saídas (Pagas + Pendentes)</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #dc3545; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalSaidas || 0)}</td>
                         </tr>
-                        <tr style="background: #f9f9f9;">
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Medido</td>
-                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #d4a017; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.valorMedido)}</td>
+                        <tr style="background: ${dados.balancoFinal >= 0 ? '#c8e6c9' : '#ffcdd2'};">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold;">= BALANÇO FINAL</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: ${dados.balancoFinal >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.balancoFinal || 0)}</td>
                         </tr>
-                        <tr style="background: white;">
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Recebido</td>
-                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #28a745; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.valorRecebido)}</td>
-                        </tr>
-                        <tr style="background: #f9f9f9;">
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Total de Despesas (Pagas)</td>
-                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #dc3545; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.totalDespesas || 0)}</td>
-                        </tr>
-                        <tr style="background: ${dados.resultadoFinanceiro >= 0 ? '#d4edda' : '#f8d7da'};">
-                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px; font-weight: bold;">RESULTADO (Recebido - Despesas)</td>
-                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: ${dados.resultadoFinanceiro >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.resultadoFinanceiro || 0)}</td>
+                        <tr style="background: #f5f5f5;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold;">MARGEM</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: ${dados.margem >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold; font-size: 11px;">${(dados.margem || 0).toFixed(1)}%</td>
                         </tr>
                     </table>
                 </div>
@@ -4681,40 +4788,69 @@ fecharModalAjustarQuantidade() {
                     </div>
                 ` : ''}
                 
-                <!-- Despesas da Obra -->
-                ${dados.despesas && dados.despesas.length > 0 ? `
+                <!-- Despesas Pagas -->
+                ${dados.despesasPagas && dados.despesasPagas.length > 0 ? `
                     <div style="margin-bottom: 15px; page-break-inside: avoid;">
-                        <h3 style="color: #dc3545; border-bottom: 1px solid #dc3545; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Despesas da Obra (${dados.despesas.length})</h3>
+                        <h3 style="color: #28a745; border-bottom: 1px solid #28a745; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Despesas Pagas (${dados.despesasPagas.length})</h3>
                         <table style="width: 100%; border-collapse: collapse; background: white;">
-                            <tr style="background: #dc3545;">
+                            <tr style="background: #28a745;">
                                 <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">NOME</th>
                                 <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">DETALHE</th>
                                 <th style="padding: 5px; text-align: center; color: white; font-size: 10px;">DATA</th>
-                                <th style="padding: 5px; text-align: center; color: white; font-size: 10px;">STATUS</th>
                                 <th style="padding: 5px; text-align: right; color: white; font-size: 10px;">VALOR</th>
                             </tr>
-                            ${dados.despesas.map((d, i) => {
+                            ${dados.despesasPagas.map((d, i) => {
                                 let dataFormatada = '-';
                                 if (d.data_vencimento) {
                                     const [ano, mes, dia] = d.data_vencimento.split('-');
                                     dataFormatada = `${dia}/${mes}/${ano}`;
                                 }
-                                const statusColor = d.status === 'PG' ? '#28a745' : '#ffc107';
                                 return `
                                     <tr style="background: ${i % 2 === 0 ? '#f9f9f9' : 'white'};">
                                         <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px;">${d.nome || '-'}</td>
                                         <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; color: #666;">${d.detalhe || '-'}</td>
                                         <td style="padding: 5px; text-align: center; border: 0.5px solid #ccc; font-size: 9px;">${dataFormatada}</td>
-                                        <td style="padding: 5px; text-align: center; border: 0.5px solid #ccc;">
-                                            <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 8px;">${d.status || 'PENDENTE'}</span>
-                                        </td>
                                         <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; font-size: 9px; color: #dc3545; font-weight: bold;">${this.formatMoney(parseFloat(d.valor) || 0)}</td>
                                     </tr>
                                 `;
                             }).join('')}
-                            <tr style="background: #f8d7da;">
-                                <td colspan="4" style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold; text-align: right;">TOTAL DE DESPESAS (PAGAS):</td>
-                                <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; font-size: 11px; color: #dc3545; font-weight: bold;">${this.formatMoney(dados.totalDespesas || 0)}</td>
+                            <tr style="background: #d4edda;">
+                                <td colspan="3" style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold; text-align: right;">TOTAL DESPESAS PAGAS:</td>
+                                <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; font-size: 11px; color: #28a745; font-weight: bold;">${this.formatMoney(dados.totalDespesasPagas || 0)}</td>
+                            </tr>
+                        </table>
+                    </div>
+                ` : ''}
+                
+                <!-- Despesas Pendentes -->
+                ${dados.despesasPendentes && dados.despesasPendentes.length > 0 ? `
+                    <div style="margin-bottom: 15px; page-break-inside: avoid;">
+                        <h3 style="color: #ffc107; border-bottom: 1px solid #ffc107; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Despesas Pendentes (${dados.despesasPendentes.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; background: white;">
+                            <tr style="background: #ffc107;">
+                                <th style="padding: 5px; text-align: left; color: #333; font-size: 10px;">NOME</th>
+                                <th style="padding: 5px; text-align: left; color: #333; font-size: 10px;">DETALHE</th>
+                                <th style="padding: 5px; text-align: center; color: #333; font-size: 10px;">DATA VENC.</th>
+                                <th style="padding: 5px; text-align: right; color: #333; font-size: 10px;">VALOR</th>
+                            </tr>
+                            ${dados.despesasPendentes.map((d, i) => {
+                                let dataFormatada = '-';
+                                if (d.data_vencimento) {
+                                    const [ano, mes, dia] = d.data_vencimento.split('-');
+                                    dataFormatada = `${dia}/${mes}/${ano}`;
+                                }
+                                return `
+                                    <tr style="background: ${i % 2 === 0 ? '#fff3cd' : '#fffbe6'};">
+                                        <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px;">${d.nome || '-'}</td>
+                                        <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; color: #666;">${d.detalhe || '-'}</td>
+                                        <td style="padding: 5px; text-align: center; border: 0.5px solid #ccc; font-size: 9px;">${dataFormatada}</td>
+                                        <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; font-size: 9px; color: #e67e22; font-weight: bold;">${this.formatMoney(parseFloat(d.valor) || 0)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                            <tr style="background: #fff3cd;">
+                                <td colspan="3" style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold; text-align: right;">TOTAL DESPESAS PENDENTES:</td>
+                                <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; font-size: 11px; color: #e67e22; font-weight: bold;">${this.formatMoney(dados.totalDespesasPendentes || 0)}</td>
                             </tr>
                         </table>
                     </div>
