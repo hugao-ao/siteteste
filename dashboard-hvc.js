@@ -281,20 +281,33 @@ class DashboardHVC {
 
         // Transformar dados
         return (data || []).map(obra => {
-            const proposta = obra.obras_propostas?.[0]?.propostas_hvc;
-            const cliente = proposta?.clientes_hvc?.nome || 'N/A';
-            const valorContratado = parseFloat(proposta?.total_proposta) || 0;
-            
-            // Criar mapa de itens da proposta para calcular valor produzido
+            // Coletar dados de TODAS as propostas vinculadas à obra
+            let cliente = 'N/A';
+            let valorContratado = 0;
             const itensProposta = {};
-            (proposta?.itens_proposta_hvc || []).forEach(item => {
-                itensProposta[item.id] = {
-                    quantidade: parseFloat(item.quantidade) || 0,
-                    precoTotal: parseFloat(item.preco_total) || 0
-                };
+            
+            // Iterar sobre todas as propostas da obra
+            (obra.obras_propostas || []).forEach(op => {
+                const proposta = op.propostas_hvc;
+                if (proposta) {
+                    // Pegar o primeiro cliente encontrado
+                    if (cliente === 'N/A' && proposta.clientes_hvc?.nome) {
+                        cliente = proposta.clientes_hvc.nome;
+                    }
+                    // Somar valores de todas as propostas
+                    valorContratado += parseFloat(proposta.total_proposta) || 0;
+                    
+                    // Coletar itens de todas as propostas
+                    (proposta.itens_proposta_hvc || []).forEach(item => {
+                        itensProposta[item.id] = {
+                            quantidade: parseFloat(item.quantidade) || 0,
+                            precoTotal: parseFloat(item.preco_total) || 0
+                        };
+                    });
+                }
             });
             
-            // Calcular valor produzido baseado nas produções
+            // Calcular valor produzido baseado nas produções (usando itens de TODAS as propostas)
             let valorProduzido = 0;
             const quantidadesObra = quantidadesPorObraItem[obra.id] || {};
             Object.entries(quantidadesObra).forEach(([itemId, qtdProduzida]) => {
