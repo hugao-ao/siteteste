@@ -1170,15 +1170,26 @@ class DashboardHVC {
         const retencao = totalMedido - totalRecebido;
         const taxaRecebimento = totalMedido > 0 ? (totalRecebido / totalMedido) * 100 : 0;
         
-        // Buscar dados de propostas
-        const { data: propostas, error: errProp } = await supabaseClient
+        // Buscar dados de propostas com filtro de período
+        let queryPropostas = supabaseClient
             .from('propostas_hvc')
-            .select('id, total_proposta, status');
+            .select('id, total_proposta, status, created_at');
+        
+        if (this.filtros.dataInicio) {
+            queryPropostas = queryPropostas.gte('created_at', this.filtros.dataInicio.toISOString());
+        }
+        if (this.filtros.dataFim) {
+            queryPropostas = queryPropostas.lte('created_at', this.filtros.dataFim.toISOString());
+        }
+        
+        const { data: propostas, error: errProp } = await queryPropostas;
         
         let totalPropostas = 0;
         let valorTotalPropostas = 0;
         let propostasAprovadas = 0;
         let valorPropostasAprovadas = 0;
+        let propostasPendentes = 0;
+        let valorPropostasPendentes = 0;
         let propostasRecusadas = 0;
         let valorPropostasRecusadas = 0;
         
@@ -1198,25 +1209,55 @@ class DashboardHVC {
             } else if (statusUpper === 'RECUSADA' || statusUpper === 'RECUSADO' || statusUpper === 'REJEITADA' || statusUpper === 'REJEITADO') {
                 propostasRecusadas++;
                 valorPropostasRecusadas += parseFloat(p.total_proposta) || 0;
+            } else if (statusUpper === 'PENDENTE' || statusUpper === 'AGUARDANDO' || statusUpper === 'EM ANÁLISE' || statusUpper === 'EM ANALISE' || statusUpper === '') {
+                propostasPendentes++;
+                valorPropostasPendentes += parseFloat(p.total_proposta) || 0;
             }
         });
         
-        // Buscar dados de produções e medições
-        const { data: producoes, error: errProd } = await supabaseClient
+        // Buscar dados de produções e medições com filtro de período
+        let queryProducoes = supabaseClient
             .from('producoes_diarias_hvc')
-            .select('id');
+            .select('id, data_producao');
         
-        const { data: medicoes, error: errMed } = await supabaseClient
+        if (this.filtros.dataInicio) {
+            queryProducoes = queryProducoes.gte('data_producao', this.filtros.dataInicio.toISOString().split('T')[0]);
+        }
+        if (this.filtros.dataFim) {
+            queryProducoes = queryProducoes.lte('data_producao', this.filtros.dataFim.toISOString().split('T')[0]);
+        }
+        
+        const { data: producoes, error: errProd } = await queryProducoes;
+        
+        let queryMedicoes = supabaseClient
             .from('medicoes_hvc')
-            .select('id');
+            .select('id, created_at');
+        
+        if (this.filtros.dataInicio) {
+            queryMedicoes = queryMedicoes.gte('created_at', this.filtros.dataInicio.toISOString());
+        }
+        if (this.filtros.dataFim) {
+            queryMedicoes = queryMedicoes.lte('created_at', this.filtros.dataFim.toISOString());
+        }
+        
+        const { data: medicoes, error: errMed } = await queryMedicoes;
         
         const totalProducoes = (producoes || []).length;
         const totalMedicoes = (medicoes || []).length;
         
-        // Buscar pagamentos pendentes e recebimentos aguardando
-        const { data: fluxoCaixa, error: errFluxo } = await supabaseClient
+        // Buscar pagamentos pendentes e recebimentos aguardando com filtro de período
+        let queryFluxo = supabaseClient
             .from('fluxo_caixa_hvc')
-            .select('tipo, valor, status');
+            .select('tipo, valor, status, data_vencimento');
+        
+        if (this.filtros.dataInicio) {
+            queryFluxo = queryFluxo.gte('data_vencimento', this.filtros.dataInicio.toISOString().split('T')[0]);
+        }
+        if (this.filtros.dataFim) {
+            queryFluxo = queryFluxo.lte('data_vencimento', this.filtros.dataFim.toISOString().split('T')[0]);
+        }
+        
+        const { data: fluxoCaixa, error: errFluxo } = await queryFluxo;
         
         let pagamentosPendentes = 0;
         let recebimentosAguardando = 0;
@@ -1230,9 +1271,9 @@ class DashboardHVC {
             }
         });
         
-        // Cálculos de diferenças
-        const diffContratadoProduzido = totalContratado - totalProduzido;
-        const diffContratadoMedido = totalContratado - totalMedido;
+        // Cálculos de diferenças (usando valorPropostasAprovadas como total contratado)
+        const diffContratadoProduzido = valorPropostasAprovadas - totalProduzido;
+        const diffContratadoMedido = valorPropostasAprovadas - totalMedido;
         const diffProduzidoMedido = totalProduzido - totalMedido;
         const diffRecebimentosPagamentos = recebimentosAguardando - pagamentosPendentes;
 
@@ -1243,45 +1284,33 @@ class DashboardHVC {
         const resultadoAtual = totalRecebido - totalDespesas;
         
         container.innerHTML = `
-            <!-- LINHA 1: Produção e Medição (PRINCIPAL - HORIZONTAL) -->
-            <div class="kpi-section kpi-section-main">
-                <h4 class="kpi-section-title">📊 Resumo Financeiro</h4>
-                <div class="kpi-row kpi-row-horizontal">
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: #17a2b8;">${this.formatarMoeda(totalProduzido)}</div>
-                            <div class="kpi-label">Total Produzido</div>
-                        </div>
+            <!-- LINHA 1: Resumo Financeiro (HORIZONTAL - TOPO) -->
+            <div style="width: 100%; margin-bottom: 20px;">
+                <h4 style="color: #17a2b8; font-size: 14px; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">📊 Resumo Financeiro</h4>
+                <div style="display: flex; flex-wrap: wrap; gap: 15px; justify-content: flex-start;">
+                    <div style="background: rgba(23, 162, 184, 0.1); border: 1px solid rgba(23, 162, 184, 0.3); border-radius: 8px; padding: 12px 20px; min-width: 140px; text-align: center;">
+                        <div style="color: #17a2b8; font-size: 18px; font-weight: bold;">${this.formatarMoeda(totalProduzido)}</div>
+                        <div style="color: #aaa; font-size: 11px; margin-top: 4px;">Total Produzido</div>
                     </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: #6f42c1;">${this.formatarMoeda(totalMedido)}</div>
-                            <div class="kpi-label">Total Medido</div>
-                        </div>
+                    <div style="background: rgba(111, 66, 193, 0.1); border: 1px solid rgba(111, 66, 193, 0.3); border-radius: 8px; padding: 12px 20px; min-width: 140px; text-align: center;">
+                        <div style="color: #6f42c1; font-size: 18px; font-weight: bold;">${this.formatarMoeda(totalMedido)}</div>
+                        <div style="color: #aaa; font-size: 11px; margin-top: 4px;">Total Medido</div>
                     </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: #28a745;">${this.formatarMoeda(totalRecebido)}</div>
-                            <div class="kpi-label">Total Recebido</div>
-                        </div>
+                    <div style="background: rgba(40, 167, 69, 0.1); border: 1px solid rgba(40, 167, 69, 0.3); border-radius: 8px; padding: 12px 20px; min-width: 140px; text-align: center;">
+                        <div style="color: #28a745; font-size: 18px; font-weight: bold;">${this.formatarMoeda(totalRecebido)}</div>
+                        <div style="color: #aaa; font-size: 11px; margin-top: 4px;">Total Recebido</div>
                     </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: #ffc107;">${this.formatarMoeda(retencao)}</div>
-                            <div class="kpi-label">Total Retido</div>
-                        </div>
+                    <div style="background: rgba(255, 193, 7, 0.1); border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; padding: 12px 20px; min-width: 140px; text-align: center;">
+                        <div style="color: #ffc107; font-size: 18px; font-weight: bold;">${this.formatarMoeda(retencao)}</div>
+                        <div style="color: #aaa; font-size: 11px; margin-top: 4px;">Total Retido</div>
                     </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: #dc3545;">${this.formatarMoeda(totalDespesas)}</div>
-                            <div class="kpi-label">Despesas Totais</div>
-                        </div>
+                    <div style="background: rgba(220, 53, 69, 0.1); border: 1px solid rgba(220, 53, 69, 0.3); border-radius: 8px; padding: 12px 20px; min-width: 140px; text-align: center;">
+                        <div style="color: #dc3545; font-size: 18px; font-weight: bold;">${this.formatarMoeda(totalDespesas)}</div>
+                        <div style="color: #aaa; font-size: 11px; margin-top: 4px;">Despesas Totais</div>
                     </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: ${resultadoAtual >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${this.formatarMoeda(resultadoAtual)}</div>
-                            <div class="kpi-label">Resultado Atual</div>
-                        </div>
+                    <div style="background: ${resultadoAtual >= 0 ? 'rgba(40, 167, 69, 0.1)' : 'rgba(220, 53, 69, 0.1)'}; border: 1px solid ${resultadoAtual >= 0 ? 'rgba(40, 167, 69, 0.3)' : 'rgba(220, 53, 69, 0.3)'}; border-radius: 8px; padding: 12px 20px; min-width: 140px; text-align: center;">
+                        <div style="color: ${resultadoAtual >= 0 ? '#28a745' : '#dc3545'}; font-size: 18px; font-weight: bold;">${this.formatarMoeda(resultadoAtual)}</div>
+                        <div style="color: #aaa; font-size: 11px; margin-top: 4px;">Resultado Atual</div>
                     </div>
                 </div>
             </div>
@@ -1325,6 +1354,12 @@ class DashboardHVC {
                         <div class="kpi-content">
                             <div class="kpi-value" style="color: #28a745;">${propostasAprovadas}</div>
                             <div class="kpi-label">Aprovadas (${this.formatarMoeda(valorPropostasAprovadas)})</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #ffc107;">${propostasPendentes}</div>
+                            <div class="kpi-label">Pendentes (${this.formatarMoeda(valorPropostasPendentes)})</div>
                         </div>
                     </div>
                     <div class="kpi-card kpi-small">
