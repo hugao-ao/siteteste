@@ -265,6 +265,24 @@ class DashboardHVC {
             console.error('⚠️ Erro ao buscar despesas:', errDespesas);
         }
         
+        // ✅ NOVO: Buscar despesas estimadas por serviço
+        const { data: despesasEstimadas, error: errDespesasEst } = await supabaseClient
+            .from('despesas_estimadas_servicos')
+            .select('obra_id, item_valor');
+        
+        if (errDespesasEst) {
+            console.error('⚠️ Erro ao buscar despesas estimadas:', errDespesasEst);
+        }
+        
+        // Criar mapa de DTE (Despesas Totais Estimadas) por obra
+        const dtePorObra = {};
+        (despesasEstimadas || []).forEach(item => {
+            if (!dtePorObra[item.obra_id]) {
+                dtePorObra[item.obra_id] = 0;
+            }
+            dtePorObra[item.obra_id] += parseFloat(item.item_valor) || 0;
+        });
+        
         // Criar mapa de despesas por número de obra (categoria) - APENAS STATUS PG
         const despesasPorObra = {};
         (despesasFluxo || []).forEach(item => {
@@ -356,6 +374,10 @@ class DashboardHVC {
             // Calcular resultado (recebido - despesas)
             const resultado = valorRecebido - despesasObra;
             
+            // ✅ NOVO: Calcular DTE e RFE
+            const dte = dtePorObra[obra.id] || 0;
+            const rfe = valorContratado - dte;
+            
             return {
                 id: obra.id,
                 numero: obra.numero_obra,
@@ -367,7 +389,9 @@ class DashboardHVC {
                 valor_recebido: valorRecebido,
                 percentual_andamento: percentualAndamento,
                 despesas: despesasObra,
+                dte: dte,
                 resultado: resultado,
+                rfe: rfe,
                 created_at: obra.created_at
             };
         });
@@ -1456,7 +1480,9 @@ class DashboardHVC {
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'valor_medido')">MEDIDO ${sortIcon('valor_medido')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'valor_recebido')">RECEBIDO ${sortIcon('valor_recebido')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'despesas')">DESPESAS ${sortIcon('despesas')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'dte')" style="color: #ff6b35;">DTE ${sortIcon('dte')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'resultado')">RESULTADO ${sortIcon('resultado')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'rfe')" style="color: #9b59b6;">RFE ${sortIcon('rfe')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'percentual_andamento')">ANDAMENTO ${sortIcon('percentual_andamento')}</th>
                         </tr>
                     </thead>
@@ -1471,7 +1497,9 @@ class DashboardHVC {
                                 <td style="color: #ffc107;">${this.formatarMoeda(obra.valor_medido)}</td>
                                 <td class="${obra.valor_recebido > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(obra.valor_recebido)}</td>
                                 <td style="color: #dc3545;">${this.formatarMoeda(obra.despesas)}</td>
+                                <td style="color: #ff6b35;">${this.formatarMoeda(obra.dte || 0)}</td>
                                 <td style="color: ${obra.resultado >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${this.formatarMoeda(obra.resultado)}</td>
+                                <td style="color: ${(obra.rfe || 0) >= 0 ? '#9b59b6' : '#dc3545'}; font-weight: bold;">${this.formatarMoeda(obra.rfe || 0)}</td>
                                 <td class="percentual-cell">${obra.percentual_andamento.toFixed(1)}%</td>
                             </tr>
                         `).join('')}
@@ -1899,7 +1927,9 @@ class DashboardHVC {
                             <th>MEDIDO</th>
                             <th>RECEBIDO</th>
                             <th>DESPESAS</th>
+                            <th style="color: #ff6b35;">DTE</th>
                             <th>RESULTADO</th>
+                            <th style="color: #9b59b6;">RFE</th>
                             <th>ANDAMENTO</th>
                         </tr>
                     </thead>
@@ -1914,7 +1944,9 @@ class DashboardHVC {
                                 <td style="color: #ffc107;">${this.formatarMoeda(obra.valor_medido)}</td>
                                 <td class="${obra.valor_recebido > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(obra.valor_recebido)}</td>
                                 <td style="color: #dc3545;">${this.formatarMoeda(obra.despesas)}</td>
+                                <td style="color: #ff6b35;">${this.formatarMoeda(obra.dte || 0)}</td>
                                 <td style="color: ${obra.resultado >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${this.formatarMoeda(obra.resultado)}</td>
+                                <td style="color: ${(obra.rfe || 0) >= 0 ? '#9b59b6' : '#dc3545'}; font-weight: bold;">${this.formatarMoeda(obra.rfe || 0)}</td>
                                 <td class="percentual-cell">${obra.percentual_andamento.toFixed(1)}%</td>
                             </tr>
                         `).join('')}
