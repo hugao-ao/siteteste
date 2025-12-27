@@ -1089,6 +1089,20 @@ class ObrasManager {
                 }
             }
             
+            // ✅ NOVO: Carregar despesas estimadas para esta obra
+            let despesasEstimadas = [];
+            if (this.currentObraId) {
+                const { data: despesas, error: errorDespesas } = await supabaseClient
+                    .from('despesas_estimadas_servicos')
+                    .select('*')
+                    .eq('obra_id', this.currentObraId);
+                
+                if (!errorDespesas) {
+                    despesasEstimadas = despesas || [];
+                }
+            }
+            this.despesasEstimadas = despesasEstimadas;
+            
             if (todosServicos.length === 0) {
                 container.innerHTML = `
                     <div style="text-align: center; padding: 2rem; color: #888;">
@@ -1109,6 +1123,7 @@ class ObrasManager {
                             <th style="min-width: 120px;">Local</th>
                             <th style="min-width: 80px;">Quantidade</th>
                             <th style="min-width: 120px;">Valor Total</th>
+                            <th style="min-width: 100px; color: #ff6b35;">Despesas</th>
                             <th style="min-width: 160px;">Status</th>
                             <th style="min-width: 120px;">Início</th>
                             <th style="min-width: 120px;">Final</th>
@@ -1186,6 +1201,21 @@ class ObrasManager {
                 // ✅ ADICIONADO: Obter nome do local
                 const localNome = this.getLocalNome(item.local_id);
                 
+                // ✅ NOVO: Calcular despesas estimadas para este serviço/local
+                const propostaNumero = item.propostas_hvc?.numero_proposta || '';
+                const servicoCodigo = item.servicos_hvc?.codigo || '';
+                const servicoLocal = localNome !== '-' ? localNome : '';
+                
+                // Filtrar despesas para este serviço específico
+                const despesasServico = despesasEstimadas.filter(d => 
+                    d.proposta_numero === propostaNumero && 
+                    d.servico_codigo === servicoCodigo &&
+                    (d.servico_local === servicoLocal || (!d.servico_local && !servicoLocal))
+                );
+                
+                // Somar valores das despesas
+                const totalDespesasServico = despesasServico.reduce((sum, d) => sum + (parseFloat(d.item_valor) || 0), 0);
+                
                 const row = document.createElement('tr');
                 row.innerHTML = `
                     <td><strong>${item.propostas_hvc?.numero_proposta}</strong></td>
@@ -1202,6 +1232,28 @@ class ObrasManager {
                         </strong>
                     </td>
                     <td><strong style="color: #20c997;">${this.formatMoney(precoTotal)}</strong></td>
+                    <td>
+                        <button type="button" 
+                                class="btn-despesas-servico" 
+                                data-index="${index}"
+                                data-proposta="${propostaNumero}"
+                                data-servico="${servicoCodigo}"
+                                data-local="${servicoLocal}"
+                                data-item-id="${item.id}"
+                                style="background: ${totalDespesasServico > 0 ? 'rgba(255, 107, 53, 0.2)' : 'rgba(255, 255, 255, 0.1)'}; 
+                                       border: 1px solid ${totalDespesasServico > 0 ? '#ff6b35' : 'rgba(173, 216, 230, 0.3)'}; 
+                                       color: ${totalDespesasServico > 0 ? '#ff6b35' : '#888'}; 
+                                       padding: 6px 10px; 
+                                       border-radius: 4px; 
+                                       cursor: pointer; 
+                                       font-size: 0.85rem;
+                                       font-weight: 600;
+                                       transition: all 0.3s ease;"
+                                title="Clique para gerenciar despesas estimadas">
+                            ${totalDespesasServico > 0 ? this.formatMoney(totalDespesasServico) : 'R$ 0,00'}
+                            <i class="fas fa-edit" style="margin-left: 5px; font-size: 0.75rem;"></i>
+                        </button>
+                    </td>
                     <td>
                         <span class="status-badge" data-index="${index}" data-percentual="${percentualServico.toFixed(1)}" style="display: inline-block; padding: 6px 12px; border-radius: 4px; background-color: ${statusCor}; color: white; font-weight: 600; font-size: 0.85rem;">
                             ${statusTexto}
@@ -1258,6 +1310,18 @@ class ObrasManager {
             
             // Carregar produções diárias
             await this.loadProducoesDiarias();
+            
+            // ✅ NOVO: Adicionar event listeners para botões de despesas
+            const btnsDespesas = document.querySelectorAll('.btn-despesas-servico');
+            btnsDespesas.forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const proposta = btn.dataset.proposta;
+                    const servico = btn.dataset.servico;
+                    const local = btn.dataset.local;
+                    const itemId = btn.dataset.itemId;
+                    this.showModalDespesasServico(proposta, servico, local, itemId);
+                });
+            });
             
         } catch (error) {
             container.innerHTML = `
@@ -1405,7 +1469,7 @@ class ObrasManager {
         if (obras.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="11" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="13" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
                     </td>
@@ -1439,6 +1503,10 @@ class ObrasManager {
             const despesas = despesasPorObra[numeroObraLimpo] || 0;
             const resultado = valorRecebido - despesas;
             
+            // ✅ NOVO: Calcular DTE e RFE
+            const dte = await this.calcularDTE(obra.id);
+            const rfe = valorObra - dte;
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>
@@ -1451,7 +1519,9 @@ class ObrasManager {
                 <td><strong style="color: #ffc107;">${this.formatMoney(valorMedido)}</strong></td>
                 <td><strong style="color: #28a745;">${this.formatMoney(valorRecebido)}</strong></td>
                 <td><strong style="color: #dc3545;">${this.formatMoney(despesas)}</strong></td>
+                <td><strong style="color: #ff6b35;">${this.formatMoney(dte)}</strong></td>
                 <td><strong style="color: ${resultado >= 0 ? '#17a2b8' : '#dc3545'};">${this.formatMoney(resultado)}</strong></td>
+                <td><strong style="color: ${rfe >= 0 ? '#9b59b6' : '#dc3545'};">${this.formatMoney(rfe)}</strong></td>
                 <td class="percentual-cell">
                     <div class="percentual-container">
                         <div class="percentual-bar">
@@ -4374,6 +4444,10 @@ fecharModalAjustarQuantidade() {
         // Para compatibilidade
         const resultadoFinanceiro = resultadoAtual;
         
+        // ✅ NOVO: Calcular DTE (Despesas Totais Estimadas) e RFE (Resultado Final Estimado)
+        const dte = await this.calcularDTE(obra.id);
+        const rfe = valorContratado - dte;
+        
         // Buscar produções diárias (query simples para evitar erro 400)
         const { data: producoes, error: producoesError } = await supabaseClient
             .from('producoes_diarias_hvc')
@@ -4495,6 +4569,8 @@ fecharModalAjustarQuantidade() {
             balancoFinal,
             margem,
             resultadoFinanceiro,
+            dte,
+            rfe,
             producoes: producoes || [],
             medicoes: medicoes || [],
             clientes: clientesUnicos,
@@ -4746,7 +4822,7 @@ fecharModalAjustarQuantidade() {
                     </table>
                     
                     <!-- Resumo Consolidado -->
-                    <table style="width: 100%; border-collapse: collapse; background: white;">
+                    <table style="width: 100%; border-collapse: collapse; background: white; margin-bottom: 10px;">
                         <tr style="background: #000080;">
                             <th colspan="2" style="padding: 6px; text-align: center; color: white; font-size: 10px;">RESUMO CONSOLIDADO</th>
                         </tr>
@@ -4765,6 +4841,26 @@ fecharModalAjustarQuantidade() {
                         <tr style="background: #f5f5f5;">
                             <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold;">MARGEM</td>
                             <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: ${dados.margem >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold; font-size: 11px;">${(dados.margem || 0).toFixed(1)}%</td>
+                        </tr>
+                    </table>
+                    
+                    <!-- ✅ NOVO: Previsão Estimada (DTE e RFE) -->
+                    <table style="width: 100%; border-collapse: collapse; background: white;">
+                        <tr style="background: #ff6b35;">
+                            <th colspan="2" style="padding: 6px; text-align: center; color: white; font-size: 10px;">PREVISÃO ESTIMADA</th>
+                        </tr>
+                        <tr style="background: #fff5f0;">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">DTE - Despesas Totais Estimadas</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #ff6b35; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.dte || 0)}</td>
+                        </tr>
+                        <tr style="background: ${(dados.rfe || 0) >= 0 ? '#f3e5f5' : '#ffebee'};">
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold;">RFE - Resultado Final Estimado</td>
+                            <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: ${(dados.rfe || 0) >= 0 ? '#9b59b6' : '#dc3545'}; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.rfe || 0)}</td>
+                        </tr>
+                        <tr style="background: #f5f5f5;">
+                            <td colspan="2" style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px; color: #666; text-align: center;">
+                                <em>DTE = soma das despesas estimadas por serviço | RFE = Valor Contratado - DTE</em>
+                            </td>
                         </tr>
                     </table>
                 </div>
@@ -6496,6 +6592,319 @@ fecharModalAjustarQuantidade() {
         } catch (error) {
             this.showNotification('Erro ao salvar: ' + error.message, 'error');
         }
+    }
+    
+    // ============================================
+    // ✅ NOVO: FUNÇÕES PARA DESPESAS ESTIMADAS POR SERVIÇO
+    // ============================================
+    
+    async showModalDespesasServico(proposta, servico, local, itemId) {
+        // Criar modal se não existir
+        let modal = document.getElementById('modal-despesas-servico');
+        if (!modal) {
+            modal = this.criarModalDespesasServico();
+            document.body.appendChild(modal);
+        }
+        
+        // Armazenar dados do serviço atual
+        this.despesaServicoAtual = {
+            proposta,
+            servico,
+            local,
+            itemId
+        };
+        
+        // Atualizar título do modal
+        const titulo = modal.querySelector('.modal-title');
+        titulo.innerHTML = `
+            <i class="fas fa-calculator"></i>
+            Despesas Estimadas - ${servico} ${local ? `(${local})` : ''}
+        `;
+        
+        // Carregar despesas existentes
+        await this.carregarDespesasServico();
+        
+        // Mostrar modal
+        modal.style.display = 'flex';
+    }
+    
+    criarModalDespesasServico() {
+        const modal = document.createElement('div');
+        modal.id = 'modal-despesas-servico';
+        modal.className = 'modal';
+        modal.style.cssText = 'z-index: 1002;';
+        
+        modal.innerHTML = `
+            <div class="modal-content" style="max-width: 700px; max-height: 90vh;">
+                <div class="modal-header">
+                    <h3 class="modal-title">
+                        <i class="fas fa-calculator"></i>
+                        Despesas Estimadas
+                    </h3>
+                    <button class="close-modal" id="close-modal-despesas-servico">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div style="padding: 1rem;">
+                    <!-- Formulário para adicionar item -->
+                    <div style="background: rgba(255, 107, 53, 0.1); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid rgba(255, 107, 53, 0.3);">
+                        <h5 style="color: #ff6b35; margin-bottom: 0.75rem;"><i class="fas fa-plus"></i> Adicionar Item de Despesa</h5>
+                        <div style="display: grid; grid-template-columns: 2fr 1fr auto; gap: 0.75rem; align-items: end;">
+                            <div>
+                                <label style="font-size: 0.85rem; color: #add8e6;">Descrição *</label>
+                                <input type="text" id="despesa-descricao" class="form-input" placeholder="Ex: Material, Mão de obra, Transporte..." style="width: 100%;">
+                            </div>
+                            <div>
+                                <label style="font-size: 0.85rem; color: #add8e6;">Valor (R$) *</label>
+                                <input type="text" id="despesa-valor" class="form-input" placeholder="0,00" style="width: 100%;">
+                            </div>
+                            <button type="button" id="btn-adicionar-despesa" class="btn-primary" style="padding: 0.75rem 1rem;">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Lista de despesas -->
+                    <div style="margin-bottom: 1rem;">
+                        <h5 style="color: #add8e6; margin-bottom: 0.75rem;"><i class="fas fa-list"></i> Itens de Despesa</h5>
+                        <div id="lista-despesas-servico" style="max-height: 300px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 8px; background: rgba(255, 255, 255, 0.05);">
+                            <div style="padding: 2rem; text-align: center; color: #888;">
+                                Nenhuma despesa cadastrada
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Total -->
+                    <div style="background: rgba(255, 107, 53, 0.2); padding: 1rem; border-radius: 8px; border: 2px solid rgba(255, 107, 53, 0.5);">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <span style="font-size: 1.1rem; font-weight: 600; color: #add8e6;">Total de Despesas Estimadas:</span>
+                            <span id="total-despesas-servico" style="font-size: 1.3rem; font-weight: bold; color: #ff6b35;">R$ 0,00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" id="cancel-despesas-servico">
+                        <i class="fas fa-times"></i>
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        // Event listeners
+        modal.querySelector('#close-modal-despesas-servico').addEventListener('click', () => this.hideModalDespesasServico());
+        modal.querySelector('#cancel-despesas-servico').addEventListener('click', () => this.hideModalDespesasServico());
+        modal.querySelector('#btn-adicionar-despesa').addEventListener('click', () => this.adicionarDespesaServico());
+        
+        // Fechar ao clicar fora
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) this.hideModalDespesasServico();
+        });
+        
+        // Máscara de valor
+        const inputValor = modal.querySelector('#despesa-valor');
+        inputValor.addEventListener('input', (e) => {
+            let valor = e.target.value.replace(/\D/g, '');
+            valor = (parseInt(valor) / 100).toFixed(2);
+            e.target.value = valor.replace('.', ',');
+        });
+        
+        // Enter para adicionar
+        modal.querySelector('#despesa-descricao').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.adicionarDespesaServico();
+        });
+        modal.querySelector('#despesa-valor').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this.adicionarDespesaServico();
+        });
+        
+        return modal;
+    }
+    
+    hideModalDespesasServico() {
+        const modal = document.getElementById('modal-despesas-servico');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        // Recarregar tabela de serviços para atualizar valores
+        this.renderServicosAndamento();
+    }
+    
+    async carregarDespesasServico() {
+        const { proposta, servico, local } = this.despesaServicoAtual;
+        
+        try {
+            // Buscar despesas do banco
+            const { data, error } = await supabaseClient
+                .from('despesas_estimadas_servicos')
+                .select('*')
+                .eq('obra_id', this.currentObraId)
+                .eq('proposta_numero', proposta)
+                .eq('servico_codigo', servico)
+                .order('created_at', { ascending: true });
+            
+            if (error) throw error;
+            
+            // Filtrar por local se necessário
+            let despesas = data || [];
+            if (local) {
+                despesas = despesas.filter(d => d.servico_local === local);
+            } else {
+                despesas = despesas.filter(d => !d.servico_local);
+            }
+            
+            this.renderListaDespesasServico(despesas);
+            
+        } catch (error) {
+            this.showNotification('Erro ao carregar despesas: ' + error.message, 'error');
+        }
+    }
+    
+    renderListaDespesasServico(despesas) {
+        const container = document.getElementById('lista-despesas-servico');
+        if (!container) return;
+        
+        if (!despesas || despesas.length === 0) {
+            container.innerHTML = `
+                <div style="padding: 2rem; text-align: center; color: #888;">
+                    <i class="fas fa-inbox" style="font-size: 2rem; margin-bottom: 0.5rem; display: block;"></i>
+                    Nenhuma despesa cadastrada
+                </div>
+            `;
+            document.getElementById('total-despesas-servico').textContent = 'R$ 0,00';
+            return;
+        }
+        
+        let total = 0;
+        container.innerHTML = `
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead style="background: rgba(173, 216, 230, 0.1); position: sticky; top: 0;">
+                    <tr>
+                        <th style="padding: 0.75rem; text-align: left; color: #add8e6;">Descrição</th>
+                        <th style="padding: 0.75rem; text-align: right; color: #add8e6;">Valor</th>
+                        <th style="padding: 0.75rem; text-align: center; color: #add8e6; width: 60px;">Ações</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${despesas.map(d => {
+                        const valor = parseFloat(d.item_valor) || 0;
+                        total += valor;
+                        return `
+                            <tr style="border-bottom: 1px solid rgba(255, 255, 255, 0.05);">
+                                <td style="padding: 0.75rem; color: #e0e0e0;">${d.item_descricao}</td>
+                                <td style="padding: 0.75rem; text-align: right; color: #ff6b35; font-weight: bold;">${this.formatMoney(valor)}</td>
+                                <td style="padding: 0.75rem; text-align: center;">
+                                    <button type="button" 
+                                            class="btn-excluir-despesa" 
+                                            data-id="${d.id}"
+                                            style="background: rgba(220, 53, 69, 0.2); border: 1px solid #dc3545; color: #dc3545; padding: 4px 8px; border-radius: 4px; cursor: pointer;"
+                                            title="Excluir">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        `;
+        
+        // Atualizar total
+        document.getElementById('total-despesas-servico').textContent = this.formatMoney(total);
+        
+        // Event listeners para excluir
+        container.querySelectorAll('.btn-excluir-despesa').forEach(btn => {
+            btn.addEventListener('click', () => this.excluirDespesaServico(btn.dataset.id));
+        });
+    }
+    
+    async adicionarDespesaServico() {
+        const descricao = document.getElementById('despesa-descricao').value.trim();
+        const valorStr = document.getElementById('despesa-valor').value.replace(',', '.');
+        const valor = parseFloat(valorStr) || 0;
+        
+        if (!descricao) {
+            this.showNotification('Informe a descrição da despesa', 'warning');
+            return;
+        }
+        
+        if (valor <= 0) {
+            this.showNotification('Informe um valor válido', 'warning');
+            return;
+        }
+        
+        const { proposta, servico, local } = this.despesaServicoAtual;
+        
+        try {
+            const { error } = await supabaseClient
+                .from('despesas_estimadas_servicos')
+                .insert({
+                    obra_id: this.currentObraId,
+                    proposta_numero: proposta,
+                    servico_codigo: servico,
+                    servico_local: local || null,
+                    item_descricao: descricao,
+                    item_valor: valor
+                });
+            
+            if (error) throw error;
+            
+            // Limpar campos
+            document.getElementById('despesa-descricao').value = '';
+            document.getElementById('despesa-valor').value = '';
+            document.getElementById('despesa-descricao').focus();
+            
+            // Recarregar lista
+            await this.carregarDespesasServico();
+            
+            this.showNotification('Despesa adicionada com sucesso!', 'success');
+            
+        } catch (error) {
+            this.showNotification('Erro ao adicionar despesa: ' + error.message, 'error');
+        }
+    }
+    
+    async excluirDespesaServico(id) {
+        if (!confirm('Deseja realmente excluir esta despesa?')) return;
+        
+        try {
+            const { error } = await supabaseClient
+                .from('despesas_estimadas_servicos')
+                .delete()
+                .eq('id', id);
+            
+            if (error) throw error;
+            
+            await this.carregarDespesasServico();
+            this.showNotification('Despesa excluída com sucesso!', 'success');
+            
+        } catch (error) {
+            this.showNotification('Erro ao excluir despesa: ' + error.message, 'error');
+        }
+    }
+    
+    // ✅ NOVO: Calcular DTE (Despesas Totais Estimadas) para uma obra
+    async calcularDTE(obraId) {
+        try {
+            const { data, error } = await supabaseClient
+                .from('despesas_estimadas_servicos')
+                .select('item_valor')
+                .eq('obra_id', obraId);
+            
+            if (error) throw error;
+            
+            return (data || []).reduce((sum, d) => sum + (parseFloat(d.item_valor) || 0), 0);
+        } catch (error) {
+            console.error('Erro ao calcular DTE:', error);
+            return 0;
+        }
+    }
+    
+    // ✅ NOVO: Calcular RFE (Resultado Final Estimado) para uma obra
+    async calcularRFE(obraId, valorTotal) {
+        const dte = await this.calcularDTE(obraId);
+        return valorTotal - dte;
     }
 }
 
