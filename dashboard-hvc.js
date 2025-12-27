@@ -653,6 +653,27 @@ class DashboardHVC {
 
         console.log('Mapa de produtividade:', Object.keys(produtividadeMap));
         
+        // Buscar despesas (custos) por integrante do fluxo de caixa
+        const { data: despesasIntegrantes, error: errDespesas } = await supabaseClient
+            .from('fluxo_caixa_hvc')
+            .select('categoria, valor, status')
+            .eq('tipo', 'pagamento')
+            .eq('status', 'PG');
+        
+        // Criar mapa de custo por nome de integrante
+        const custosPorIntegrante = {};
+        (despesasIntegrantes || []).forEach(d => {
+            const categoria = (d.categoria || '').trim();
+            if (categoria) {
+                if (!custosPorIntegrante[categoria]) {
+                    custosPorIntegrante[categoria] = 0;
+                }
+                custosPorIntegrante[categoria] += parseFloat(d.valor) || 0;
+            }
+        });
+        
+        console.log('Mapa de custos por integrante:', custosPorIntegrante);
+        
         // Montar resultado
         return (integrantes || []).map(int => {
             const intId = String(int.id);
@@ -674,6 +695,9 @@ class DashboardHVC {
             // Combinar obras individuais e em equipe (sem duplicatas)
             const todasObras = new Set([...dados.obrasIndividuais, ...dados.obrasEmEquipe]);
             
+            // Buscar custo deste integrante pelo nome
+            const custoIntegrante = custosPorIntegrante[int.nome] || 0;
+            
             return {
                 id: int.id,
                 nome: int.nome,
@@ -689,6 +713,7 @@ class DashboardHVC {
                 totalValorIndividual: dados.totalValorIndividual,
                 totalValorEmEquipe: dados.totalValorEmEquipe,
                 totalObras: todasObras.size,
+                custo: custoIntegrante,
                 producoesIndividuais: dados.producoesIndividuais,
                 producoesEmEquipe: dados.producoesEmEquipe,
                 servicosIndividuais: dados.servicosIndividuais,
@@ -1201,6 +1226,7 @@ class DashboardHVC {
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalObras')">OBRAS ${sortIcon('totalObras')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalQuantidade')">QTD. TOTAL ${sortIcon('totalQuantidade')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalValor')">VALOR PRODUZIDO ${sortIcon('totalValor')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'custo')">CUSTO ${sortIcon('custo')}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1212,6 +1238,7 @@ class DashboardHVC {
                                 <td>${int.totalObras}</td>
                                 <td>${int.totalQuantidade.toFixed(2)}</td>
                                 <td class="${int.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(int.totalValor)}</td>
+                                <td style="color: #dc3545;">${this.formatarMoeda(int.custo || 0)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1618,6 +1645,7 @@ class DashboardHVC {
                             <th>OBRAS</th>
                             <th>QTD. TOTAL</th>
                             <th>VALOR PRODUZIDO</th>
+                            <th>CUSTO</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1629,6 +1657,7 @@ class DashboardHVC {
                                 <td>${int.totalObras}</td>
                                 <td>${int.totalQuantidade.toFixed(2)}</td>
                                 <td class="${int.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(int.totalValor)}</td>
+                                <td style="color: #dc3545;">${this.formatarMoeda(int.custo || 0)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
