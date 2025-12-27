@@ -1182,14 +1182,20 @@ class DashboardHVC {
         let propostasRecusadas = 0;
         let valorPropostasRecusadas = 0;
         
+        // Debug: verificar status das propostas
+        const statusUnicos = [...new Set((propostas || []).map(p => p.status))];
+        console.log('📊 Status de propostas encontrados:', statusUnicos);
+        
         (propostas || []).forEach(p => {
             totalPropostas++;
             valorTotalPropostas += parseFloat(p.total_proposta) || 0;
             
-            if (p.status === 'APROVADA' || p.status === 'CONTRATADA') {
+            // Verificar diferentes variações de status
+            const statusUpper = (p.status || '').toUpperCase().trim();
+            if (statusUpper === 'APROVADA' || statusUpper === 'CONTRATADA' || statusUpper === 'APROVADO' || statusUpper === 'CONTRATADO') {
                 propostasAprovadas++;
                 valorPropostasAprovadas += parseFloat(p.total_proposta) || 0;
-            } else if (p.status === 'RECUSADA') {
+            } else if (statusUpper === 'RECUSADA' || statusUpper === 'RECUSADO' || statusUpper === 'REJEITADA' || statusUpper === 'REJEITADO') {
                 propostasRecusadas++;
                 valorPropostasRecusadas += parseFloat(p.total_proposta) || 0;
             }
@@ -1233,8 +1239,54 @@ class DashboardHVC {
         const container = document.getElementById('kpis-container');
         if (!container) return;
 
+        // Calcular resultado atual (Total Recebido - Despesas Totais)
+        const resultadoAtual = totalRecebido - totalDespesas;
+        
         container.innerHTML = `
-            <!-- LINHA 1: Status das Obras -->
+            <!-- LINHA 1: Produção e Medição (PRINCIPAL - HORIZONTAL) -->
+            <div class="kpi-section kpi-section-main">
+                <h4 class="kpi-section-title">📊 Resumo Financeiro</h4>
+                <div class="kpi-row kpi-row-horizontal">
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #17a2b8;">${this.formatarMoeda(totalProduzido)}</div>
+                            <div class="kpi-label">Total Produzido</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #6f42c1;">${this.formatarMoeda(totalMedido)}</div>
+                            <div class="kpi-label">Total Medido</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #28a745;">${this.formatarMoeda(totalRecebido)}</div>
+                            <div class="kpi-label">Total Recebido</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #ffc107;">${this.formatarMoeda(retencao)}</div>
+                            <div class="kpi-label">Total Retido</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #dc3545;">${this.formatarMoeda(totalDespesas)}</div>
+                            <div class="kpi-label">Despesas Totais</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: ${resultadoAtual >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold;">${this.formatarMoeda(resultadoAtual)}</div>
+                            <div class="kpi-label">Resultado Atual</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LINHA 2: Status das Obras -->
             <div class="kpi-section">
                 <h4 class="kpi-section-title">🏗️ Status das Obras</h4>
                 <div class="kpi-row">
@@ -1259,7 +1311,7 @@ class DashboardHVC {
                 </div>
             </div>
             
-            <!-- LINHA 2: Propostas -->
+            <!-- LINHA 3: Propostas -->
             <div class="kpi-section">
                 <h4 class="kpi-section-title">📝 Propostas</h4>
                 <div class="kpi-row">
@@ -1279,43 +1331,6 @@ class DashboardHVC {
                         <div class="kpi-content">
                             <div class="kpi-value" style="color: #dc3545;">${propostasRecusadas}</div>
                             <div class="kpi-label">Recusadas (${this.formatarMoeda(valorPropostasRecusadas)})</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- LINHA 3: Produção e Medição -->
-            <div class="kpi-section">
-                <h4 class="kpi-section-title">📊 Produção e Medição</h4>
-                <div class="kpi-row">
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value">${totalProducoes}</div>
-                            <div class="kpi-label">Produções</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value">${totalMedicoes}</div>
-                            <div class="kpi-label">Medições</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: #28a745;">${this.formatarMoeda(totalRecebido)}</div>
-                            <div class="kpi-label">Total Recebido</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: #ffc107;">${this.formatarMoeda(retencao)}</div>
-                            <div class="kpi-label">Total Retido</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card kpi-small">
-                        <div class="kpi-content">
-                            <div class="kpi-value" style="color: #dc3545;">${this.formatarMoeda(totalDespesas)}</div>
-                            <div class="kpi-label">Despesas Totais</div>
                         </div>
                     </div>
                 </div>
