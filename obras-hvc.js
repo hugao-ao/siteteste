@@ -3930,7 +3930,42 @@ fecharModalAjustarQuantidade() {
             // Buscar clientes das propostas
             const clientesUnicos = [...new Set((propostasAtualizadas || []).map(p => p.clientes_hvc?.nome).filter(Boolean))];
             
-            // Gerar HTML do relatório
+            // Buscar despesas da obra (pagamentos com categoria = numero da obra)
+            const { data: despesasObra } = await supabaseClient
+                .from('fluxo_caixa_hvc')
+                .select('*')
+                .eq('tipo', 'pagamento')
+                .ilike('categoria', `${obra.numero_obra}%`);
+            
+            // Separar despesas pagas e pendentes
+            const despesasPagas = (despesasObra || []).filter(d => d.status === 'PG');
+            const despesasPendentes = (despesasObra || []).filter(d => d.status === 'PENDENTE');
+            const totalDespesasPagas = despesasPagas.reduce((sum, d) => sum + (parseFloat(d.valor) || 0), 0);
+            const totalDespesasPendentes = despesasPendentes.reduce((sum, d) => sum + (parseFloat(d.valor) || 0), 0);
+            
+            // Calcular retencoes totais (valor_total das medicoes - soma dos recebimentos)
+            let retensoesTotais = 0;
+            (medicoes || []).forEach(med => {
+                const valorTotalMedicao = parseFloat(med.valor_bruto || med.valor_total) || 0;
+                const recebimentos = med.recebimentos || [];
+                const totalRecebidoMedicao = recebimentos.reduce((sum, rec) => sum + (parseFloat(rec.valor) || 0), 0);
+                const retencaoMedicao = valorTotalMedicao - totalRecebidoMedicao;
+                if (retencaoMedicao > 0) {
+                    retensoesTotais += retencaoMedicao;
+                }
+            });
+            
+            // Calcular dados financeiros
+            const valorContratado = obra.valor_total || 0;
+            const resultadoAtual = valorRecebido - totalDespesasPagas;
+            const valorAReceber = valorContratado - valorRecebido - retensoesTotais;
+            const resultadoPrevisto = valorAReceber - totalDespesasPendentes;
+            const totalEntradas = valorRecebido + valorAReceber;
+            const totalSaidas = totalDespesasPagas + totalDespesasPendentes;
+            const balancoFinal = totalEntradas - totalSaidas;
+            const margem = valorContratado > 0 ? (balancoFinal / valorContratado) * 100 : 0;
+            
+            // Gerar HTML do relatorio
             const html = this.gerarHTMLRelatorio(obra, {
                 valorProduzido,
                 valorMedido,
@@ -3939,7 +3974,19 @@ fecharModalAjustarQuantidade() {
                 medicoes: medicoes || [],
                 clientes: clientesUnicos,
                 propostas: propostasAtualizadas || [],
-                servicos: servicosObra
+                servicos: servicosObra,
+                despesasPagas,
+                despesasPendentes,
+                totalDespesasPagas,
+                totalDespesasPendentes,
+                retensoesTotais,
+                resultadoAtual,
+                valorAReceber,
+                resultadoPrevisto,
+                totalEntradas,
+                totalSaidas,
+                balancoFinal,
+                margem
             });
             
             // Abrir em nova janela para visualização
@@ -4708,7 +4755,7 @@ fecharModalAjustarQuantidade() {
                             <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #28a745; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalEntradas || 0)}</td>
                         </tr>
                         <tr style="background: #ffebee;">
-                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Total de Saídas (Pagas + Pendentes + Retenções)</td>
+                            <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 10px;">Total de Saídas (Pagas + Pendentes)</td>
                             <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; color: #dc3545; font-weight: bold; font-size: 10px;">${this.formatMoney(dados.totalSaidas || 0)}</td>
                         </tr>
                         <tr style="background: ${dados.balancoFinal >= 0 ? '#c8e6c9' : '#ffcdd2'};">
@@ -4855,9 +4902,9 @@ fecharModalAjustarQuantidade() {
                 <!-- Despesas Pagas -->
                 ${dados.despesasPagas && dados.despesasPagas.length > 0 ? `
                     <div style="margin-bottom: 15px; page-break-inside: avoid;">
-                        <h3 style="color: #28a745; border-bottom: 1px solid #28a745; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Despesas Pagas (${dados.despesasPagas.length})</h3>
+                        <h3 style="color: #dc3545; border-bottom: 1px solid #dc3545; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Despesas Pagas (${dados.despesasPagas.length})</h3>
                         <table style="width: 100%; border-collapse: collapse; background: white;">
-                            <tr style="background: #28a745;">
+                            <tr style="background: #dc3545;">
                                 <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">NOME</th>
                                 <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">DETALHE</th>
                                 <th style="padding: 5px; text-align: center; color: white; font-size: 10px;">DATA</th>
@@ -4878,9 +4925,9 @@ fecharModalAjustarQuantidade() {
                                     </tr>
                                 `;
                             }).join('')}
-                            <tr style="background: #d4edda;">
+                            <tr style="background: #f8d7da;">
                                 <td colspan="3" style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold; text-align: right;">TOTAL DESPESAS PAGAS:</td>
-                                <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; font-size: 11px; color: #28a745; font-weight: bold;">${this.formatMoney(dados.totalDespesasPagas || 0)}</td>
+                                <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; font-size: 11px; color: #dc3545; font-weight: bold;">${this.formatMoney(dados.totalDespesasPagas || 0)}</td>
                             </tr>
                         </table>
                     </div>
