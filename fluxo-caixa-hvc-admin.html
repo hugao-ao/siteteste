@@ -3706,27 +3706,43 @@
             
             // Fonte 1: googleAuth.getAccounts()
             if (googleAuth && googleAuth.isConnected()) {
-                console.log('📋 Contas encontradas em googleAuth.getAccounts():', googleAuth.getAccounts().length);
-                console.log('🔍 Estrutura das contas:', window.connectedAccounts.map(acc => ({
-                    email: acc.email,
-                    isConnected: acc.isConnected,
-                    connected: acc.connected,
-                    status: acc.status
-                })));
+                const authAccounts = googleAuth.getAccounts();
+                console.log('📋 Contas encontradas em googleAuth.getAccounts():', authAccounts ? authAccounts.length : 0);
                 
-                // Verificar múltiplas propriedades de conexão
-                accounts = window.connectedAccounts.filter(account => {
-                    if (!account || !account.email) return false;
+                // Verificar se window.connectedAccounts existe e é um array
+                if (window.connectedAccounts && Array.isArray(window.connectedAccounts)) {
+                    console.log('🔍 Estrutura das contas:', window.connectedAccounts.map(acc => ({
+                        email: acc.email,
+                        isConnected: acc.isConnected,
+                        connected: acc.connected,
+                        status: acc.status
+                    })));
                     
-                    // Verificar diferentes formas de indicar conexão
-                    return account.isConnected === true || 
-                           account.connected === true || 
-                           account.status === 'connected' ||
-                           account.status === 'active' ||
-                           (account.accessToken && account.accessToken.length > 0);
-                });
-                
-                console.log('✅ Contas filtradas como conectadas:', accounts.length);
+                    // Verificar múltiplas propriedades de conexão
+                    accounts = window.connectedAccounts.filter(account => {
+                        if (!account || !account.email) return false;
+                        
+                        // Verificar diferentes formas de indicar conexão
+                        return account.isConnected === true || 
+                               account.connected === true || 
+                               account.status === 'connected' ||
+                               account.status === 'active' ||
+                               (account.accessToken && account.accessToken.length > 0);
+                    });
+                    
+                    console.log('✅ Contas filtradas como conectadas:', accounts.length);
+                } else if (authAccounts && Array.isArray(authAccounts)) {
+                    // Usar diretamente googleAuth.getAccounts() se window.connectedAccounts não existir
+                    accounts = authAccounts.filter(account => {
+                        if (!account || !account.email) return false;
+                        return account.isConnected === true || 
+                               account.connected === true || 
+                               account.status === 'connected' ||
+                               account.status === 'active' ||
+                               (account.accessToken && account.accessToken.length > 0);
+                    });
+                    console.log('✅ Contas filtradas de googleAuth.getAccounts():', accounts.length);
+                }
             }
             
             // Fonte 2: window.accounts (fallback)
