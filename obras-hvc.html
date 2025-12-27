@@ -1058,30 +1058,108 @@
             <i class="fas fa-money-bill-wave"></i>
             Despesas da Obra
           </h4>
-          <div id="total-despesas-obra" style="font-size: 1.1rem; font-weight: bold; color: #dc3545;">
-            Total: R$ 0,00
+        </div>
+        
+        <!-- Resumo Financeiro Atual (Realizado) -->
+        <div style="margin-bottom: 1.5rem;">
+          <h5 style="color: #28a745; margin: 0 0 0.75rem 0; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-check-circle"></i>
+            SITUAÇÃO ATUAL (Realizado)
+          </h5>
+          <div id="resumo-financeiro-atual" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 10px; border: 1px solid rgba(40, 167, 69, 0.3);">
+            <div style="text-align: center;">
+              <div style="color: #28a745; font-size: 0.8rem;">RECEBIDO</div>
+              <div id="valor-recebido-atual" style="color: #28a745; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #dc3545; font-size: 0.8rem;">DESPESAS PAGAS</div>
+              <div id="valor-despesas-pagas" style="color: #dc3545; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #17a2b8; font-size: 0.8rem;">RESULTADO ATUAL</div>
+              <div id="valor-resultado-atual" style="font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+            </div>
           </div>
         </div>
         
-        <!-- Resumo Financeiro -->
-        <div id="resumo-financeiro-obra" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem; padding: 1rem; background: rgba(255, 255, 255, 0.05); border-radius: 10px; border: 1px solid rgba(173, 216, 230, 0.2);">
-          <div style="text-align: center;">
-            <div style="color: #28a745; font-size: 0.85rem;">RECEBIDO</div>
-            <div id="valor-recebido-resumo" style="color: #28a745; font-size: 1.2rem; font-weight: bold;">R$ 0,00</div>
-          </div>
-          <div style="text-align: center;">
-            <div style="color: #dc3545; font-size: 0.85rem;">DESPESAS</div>
-            <div id="valor-despesas-resumo" style="color: #dc3545; font-size: 1.2rem; font-weight: bold;">R$ 0,00</div>
-          </div>
-          <div style="text-align: center;">
-            <div style="color: #17a2b8; font-size: 0.85rem;">RESULTADO</div>
-            <div id="valor-resultado-resumo" style="font-size: 1.2rem; font-weight: bold;">R$ 0,00</div>
+        <!-- Previsão Futura (Pendente) -->
+        <div style="margin-bottom: 1.5rem;">
+          <h5 style="color: #ffc107; margin: 0 0 0.75rem 0; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-clock"></i>
+            PREVISÃO FUTURA (Pendente)
+          </h5>
+          <div id="resumo-financeiro-futuro" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem; background: rgba(255, 193, 7, 0.1); border-radius: 10px; border: 1px solid rgba(255, 193, 7, 0.3);">
+            <div style="text-align: center;">
+              <div style="color: #ffc107; font-size: 0.8rem;">A RECEBER</div>
+              <div id="valor-a-receber" style="color: #ffc107; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #e67e22; font-size: 0.8rem;">DESPESAS PENDENTES</div>
+              <div id="valor-despesas-pendentes" style="color: #e67e22; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #9b59b6; font-size: 0.8rem;">RESULTADO PREVISTO</div>
+              <div id="valor-resultado-previsto" style="font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+            </div>
           </div>
         </div>
         
-        <!-- Lista de Despesas -->
-        <div id="lista-despesas-obra" style="max-height: 250px; overflow-y: auto; border: 1px solid rgba(173, 216, 230, 0.2); border-radius: 10px; background: rgba(255, 255, 255, 0.05);">
-          <!-- Despesas serão carregadas aqui -->
+        <!-- Resumo Consolidado -->
+        <div style="margin-bottom: 1.5rem;">
+          <h5 style="color: #add8e6; margin: 0 0 0.75rem 0; font-size: 0.95rem; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-calculator"></i>
+            RESUMO CONSOLIDADO
+          </h5>
+          <div id="resumo-consolidado" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding: 1rem; background: rgba(173, 216, 230, 0.1); border-radius: 10px; border: 1px solid rgba(173, 216, 230, 0.3);">
+            <div style="text-align: center;">
+              <div style="color: #add8e6; font-size: 0.8rem;">TOTAL ENTRADAS</div>
+              <div id="valor-total-entradas" style="color: #28a745; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+              <div style="color: #888; font-size: 0.7rem;">(Recebido + A Receber)</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #add8e6; font-size: 0.8rem;">TOTAL SAÍDAS</div>
+              <div id="valor-total-saidas" style="color: #dc3545; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+              <div style="color: #888; font-size: 0.7rem;">(Pagas + Pendentes)</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #add8e6; font-size: 0.8rem;">BALANÇO FINAL</div>
+              <div id="valor-balanco-final" style="font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+              <div style="color: #888; font-size: 0.7rem;">(Entradas - Saídas)</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #add8e6; font-size: 0.8rem;">MARGEM</div>
+              <div id="valor-margem" style="font-size: 1.1rem; font-weight: bold;">0%</div>
+              <div style="color: #888; font-size: 0.7rem;">(Balanço / Entradas)</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Despesas Pagas -->
+        <div style="margin-bottom: 1rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h5 style="color: #28a745; margin: 0; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i class="fas fa-check"></i>
+              Despesas Pagas (PG)
+            </h5>
+            <span id="total-despesas-pagas-label" style="color: #28a745; font-weight: bold; font-size: 0.9rem;">R$ 0,00</span>
+          </div>
+          <div id="lista-despesas-pagas" style="max-height: 150px; overflow-y: auto; border: 1px solid rgba(40, 167, 69, 0.3); border-radius: 8px; background: rgba(40, 167, 69, 0.05);">
+            <!-- Despesas pagas serão carregadas aqui -->
+          </div>
+        </div>
+        
+        <!-- Despesas Pendentes -->
+        <div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+            <h5 style="color: #ffc107; margin: 0; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+              <i class="fas fa-clock"></i>
+              Despesas Pendentes
+            </h5>
+            <span id="total-despesas-pendentes-label" style="color: #ffc107; font-weight: bold; font-size: 0.9rem;">R$ 0,00</span>
+          </div>
+          <div id="lista-despesas-pendentes" style="max-height: 150px; overflow-y: auto; border: 1px solid rgba(255, 193, 7, 0.3); border-radius: 8px; background: rgba(255, 193, 7, 0.05);">
+            <!-- Despesas pendentes serão carregadas aqui -->
+          </div>
         </div>
       </div>
       
