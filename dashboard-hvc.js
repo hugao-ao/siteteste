@@ -227,6 +227,34 @@ class DashboardHVC {
             .order('created_at', { ascending: false });
 
         if (error) throw error;
+        
+        // Buscar despesas do fluxo de caixa (pagamentos onde categoria é o número da obra)
+        const { data: despesasFluxo, error: errDespesas } = await supabaseClient
+            .from('fluxo_caixa_hvc')
+            .select('categoria, valor, status')
+            .eq('tipo', 'pagamento');
+        
+        if (errDespesas) {
+            console.error('⚠️ Erro ao buscar despesas:', errDespesas);
+        }
+        
+        // Criar mapa de despesas por número de obra (categoria)
+        const despesasPorObra = {};
+        (despesasFluxo || []).forEach(item => {
+            if (item.categoria) {
+                // Extrair número da obra da categoria (pode ser "0001/2025" ou apenas "0001")
+                const categoriaLimpa = item.categoria.split('/')[0].trim();
+                if (!despesasPorObra[categoriaLimpa]) {
+                    despesasPorObra[categoriaLimpa] = 0;
+                }
+                // Somar apenas despesas com status PG (pagas)
+                if (item.status === 'PG') {
+                    despesasPorObra[categoriaLimpa] += parseFloat(item.valor) || 0;
+                }
+            }
+        });
+        
+        console.log('💰 Despesas por obra:', despesasPorObra);
 
         // Transformar dados
         return (data || []).map(obra => {
@@ -254,6 +282,13 @@ class DashboardHVC {
             // Calcular percentual de andamento
             const percentualAndamento = valorContratado > 0 ? (valorMedido / valorContratado) * 100 : 0;
 
+            // Buscar despesas para esta obra (pelo número da obra)
+            const numeroObraLimpo = (obra.numero_obra || '').split('/')[0].trim();
+            const despesasObra = despesasPorObra[numeroObraLimpo] || 0;
+            
+            // Calcular resultado (recebido - despesas)
+            const resultado = valorRecebido - despesasObra;
+            
             return {
                 id: obra.id,
                 numero: obra.numero_obra,
@@ -263,7 +298,8 @@ class DashboardHVC {
                 valor_medido: valorMedido,
                 valor_recebido: valorRecebido,
                 percentual_andamento: percentualAndamento,
-                despesas: 0, // Campo para futuro uso
+                despesas: despesasObra,
+                resultado: resultado,
                 created_at: obra.created_at
             };
         });
@@ -1047,8 +1083,9 @@ class DashboardHVC {
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'valor_contratado')">CONTRATADO ${sortIcon('valor_contratado')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'valor_medido')">MEDIDO ${sortIcon('valor_medido')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'valor_recebido')">RECEBIDO ${sortIcon('valor_recebido')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'despesas')">DESPESAS ${sortIcon('despesas')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'resultado')">RESULTADO ${sortIcon('resultado')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('obras', 'percentual_andamento')">ANDAMENTO ${sortIcon('percentual_andamento')}</th>
-                            <th>DESPESAS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1060,8 +1097,9 @@ class DashboardHVC {
                                 <td>${this.formatarMoeda(obra.valor_contratado)}</td>
                                 <td>${this.formatarMoeda(obra.valor_medido)}</td>
                                 <td class="${obra.valor_recebido > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(obra.valor_recebido)}</td>
+                                <td class="valor-negativo">${this.formatarMoeda(obra.despesas)}</td>
+                                <td class="${obra.resultado >= 0 ? 'valor-positivo' : 'valor-negativo'}">${this.formatarMoeda(obra.resultado)}</td>
                                 <td class="percentual-cell">${obra.percentual_andamento.toFixed(1)}%</td>
-                                <td class="despesas-cell">-</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -1474,8 +1512,9 @@ class DashboardHVC {
                             <th>CONTRATADO</th>
                             <th>MEDIDO</th>
                             <th>RECEBIDO</th>
-                            <th>ANDAMENTO</th>
                             <th>DESPESAS</th>
+                            <th>RESULTADO</th>
+                            <th>ANDAMENTO</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -1487,8 +1526,9 @@ class DashboardHVC {
                                 <td>${this.formatarMoeda(obra.valor_contratado)}</td>
                                 <td>${this.formatarMoeda(obra.valor_medido)}</td>
                                 <td class="${obra.valor_recebido > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(obra.valor_recebido)}</td>
+                                <td class="valor-negativo">${this.formatarMoeda(obra.despesas)}</td>
+                                <td class="${obra.resultado >= 0 ? 'valor-positivo' : 'valor-negativo'}">${this.formatarMoeda(obra.resultado)}</td>
                                 <td class="percentual-cell">${obra.percentual_andamento.toFixed(1)}%</td>
-                                <td class="despesas-cell">-</td>
                             </tr>
                         `).join('')}
                     </tbody>
