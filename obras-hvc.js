@@ -1586,17 +1586,18 @@ class ObrasManager {
             // Calcular valor total contratado
             const valorContratado = parseFloat(this.obraAtual.valor_total) || 0;
             
-            // SITUAÇÃO ATUAL: RECEBIDO - DESPESAS PAGAS - RETENSÕES TOTAIS
-            const resultadoAtual = valorRecebido - totalDespesasPagas - retensoesTotais;
+            // SITUAÇÃO ATUAL: RECEBIDO - DESPESAS PAGAS (retenções NÃO são despesas)
+            const resultadoAtual = valorRecebido - totalDespesasPagas;
             
-            // PREVISÃO FUTURA: A RECEBER = TOTAL CONTRATADO - TOTAL JÁ RECEBIDO
-            const valorAReceber = valorContratado - valorRecebido;
+            // PREVISÃO FUTURA: A RECEBER = TOTAL CONTRATADO - TOTAL JÁ RECEBIDO - RETENSÕES TOTAIS
+            // (retenções são subtraídas do que ainda tem a receber)
+            const valorAReceber = valorContratado - valorRecebido - retensoesTotais;
             // RESULTADO PREVISTO = A RECEBER - DESPESAS PENDENTES
             const resultadoPrevisto = valorAReceber - totalDespesasPendentes;
             
-            // Cálculos consolidados
+            // Cálculos consolidados (retenções NÃO entram em TOTAL SAÍDAS)
             const totalEntradas = valorRecebido + valorAReceber;
-            const totalSaidas = totalDespesasPagas + totalDespesasPendentes + retensoesTotais;
+            const totalSaidas = totalDespesasPagas + totalDespesasPendentes;
             const balancoFinal = totalEntradas - totalSaidas;
             const margem = totalEntradas > 0 ? (balancoFinal / totalEntradas) * 100 : 0;
             
@@ -4309,16 +4310,17 @@ fecharModalAjustarQuantidade() {
         // Calcular valor total contratado
         const valorContratado = parseFloat(obra.valor_total) || 0;
         
-        // PREVISÃO FUTURA: A RECEBER = TOTAL CONTRATADO - TOTAL JÁ RECEBIDO
-        const valorAReceber = valorContratado - valorRecebido;
+        // PREVISÃO FUTURA: A RECEBER = TOTAL CONTRATADO - TOTAL JÁ RECEBIDO - RETENSÕES TOTAIS
+        const valorAReceber = valorContratado - valorRecebido - retensoesTotais;
         
         // Resultados financeiros
-        // SITUAÇÃO ATUAL: RECEBIDO - DESPESAS PAGAS - RETENSÕES TOTAIS
-        const resultadoAtual = valorRecebido - totalDespesasPagas - retensoesTotais;
+        // SITUAÇÃO ATUAL: RECEBIDO - DESPESAS PAGAS (retenções NÃO são despesas)
+        const resultadoAtual = valorRecebido - totalDespesasPagas;
         // RESULTADO PREVISTO = A RECEBER - DESPESAS PENDENTES
         const resultadoPrevisto = valorAReceber - totalDespesasPendentes;
         const totalEntradas = valorRecebido + valorAReceber;
-        const totalSaidas = totalDespesasPagas + totalDespesasPendentes + retensoesTotais;
+        // Total saídas NÃO inclui retenções
+        const totalSaidas = totalDespesasPagas + totalDespesasPendentes;
         const balancoFinal = totalEntradas - totalSaidas;
         const margem = totalEntradas > 0 ? (balancoFinal / totalEntradas) * 100 : 0;
         
