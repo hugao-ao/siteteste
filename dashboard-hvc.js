@@ -48,7 +48,7 @@ class DashboardHVC {
 
         // Carregar dados e renderizar
         await this.carregarDados();
-        this.renderizarDashboard();
+        await this.renderizarDashboard();
         
         // Mostrar conteudo e esconder loading
         const loading = document.getElementById('dashboard-loading');
@@ -149,7 +149,7 @@ class DashboardHVC {
                     document.getElementById('periodo-personalizado').style.display = 'none';
                     this.definirPeriodo(valor);
                     await this.carregarDados();
-                    this.renderizarDashboard();
+                    await this.renderizarDashboard();
                 }
             });
         }
@@ -164,7 +164,7 @@ class DashboardHVC {
                 if (dataInicio && dataFim) {
                     this.definirPeriodo('personalizado', dataInicio, dataFim);
                     await this.carregarDados();
-                    this.renderizarDashboard();
+                    await this.renderizarDashboard();
                 }
             });
         }
@@ -335,8 +335,19 @@ class DashboardHVC {
                 }
             });
 
-            // Calcular percentual de andamento
-            const percentualAndamento = valorContratado > 0 ? (valorMedido / valorContratado) * 100 : 0;
+            // Calcular percentual de andamento baseado em quantidade produzida vs quantidade contratada
+            let totalQuantidadeContratada = 0;
+            let totalQuantidadeProduzida = 0;
+            
+            Object.entries(itensProposta).forEach(([itemId, item]) => {
+                totalQuantidadeContratada += item.quantidade;
+                const qtdProduzida = quantidadesObra[itemId] || 0;
+                totalQuantidadeProduzida += qtdProduzida;
+            });
+            
+            const percentualAndamento = totalQuantidadeContratada > 0 
+                ? (totalQuantidadeProduzida / totalQuantidadeContratada) * 100 
+                : 0;
 
             // Buscar despesas para esta obra (pelo número da obra) - APENAS STATUS PG
             const numeroObraLimpo = (obra.numero_obra || '').split('/')[0].trim();
@@ -879,9 +890,73 @@ class DashboardHVC {
             }
         });
         
+        // Buscar custos dos integrantes para calcular custo por equipe
+        // Custo de cada integrante é dividido pela quantidade de equipes que ele participa
+        const { data: despesasFluxo, error: errDespesas } = await supabaseClient
+            .from('fluxo_caixa_hvc')
+            .select('categoria, valor, status')
+            .eq('tipo', 'pagamento')
+            .eq('status', 'PG');
+        
+        // Buscar integrantes para mapear nome -> id
+        const { data: integrantes, error: errInt } = await supabaseClient
+            .from('integrantes_hvc')
+            .select('id, nome');
+        
+        // Criar mapa de nome do integrante -> custo total
+        const custoIntegranteMap = {};
+        (integrantes || []).forEach(int => {
+            custoIntegranteMap[int.nome.toUpperCase()] = { id: int.id, custo: 0 };
+        });
+        
+        // Somar custos por integrante (categoria = nome do integrante)
+        (despesasFluxo || []).forEach(item => {
+            if (item.categoria) {
+                const categoriaUpper = item.categoria.toUpperCase();
+                if (custoIntegranteMap[categoriaUpper]) {
+                    custoIntegranteMap[categoriaUpper].custo += parseFloat(item.valor) || 0;
+                }
+            }
+        });
+        
+        // Criar mapa de integrante_id -> quantidade de equipes que participa
+        const integranteQtdEquipesMap = {};
+        (relacoes || []).forEach(rel => {
+            const intId = String(rel.integrante_id);
+            if (!integranteQtdEquipesMap[intId]) {
+                integranteQtdEquipesMap[intId] = new Set();
+            }
+            integranteQtdEquipesMap[intId].add(String(rel.equipe_id));
+        });
+        
+        // Calcular custo por equipe
+        // Custo da equipe = soma dos (custo de cada integrante / quantidade de equipes que ele participa)
+        const custoPorEquipe = {};
+        (relacoes || []).forEach(rel => {
+            const equipeId = String(rel.equipe_id);
+            const intId = String(rel.integrante_id);
+            
+            // Encontrar o integrante e seu custo
+            const integrante = (integrantes || []).find(i => String(i.id) === intId);
+            if (integrante) {
+                const custoInfo = custoIntegranteMap[integrante.nome.toUpperCase()];
+                if (custoInfo && custoInfo.custo > 0) {
+                    const qtdEquipes = integranteQtdEquipesMap[intId]?.size || 1;
+                    const custoProporcional = custoInfo.custo / qtdEquipes;
+                    
+                    if (!custoPorEquipe[equipeId]) {
+                        custoPorEquipe[equipeId] = 0;
+                    }
+                    custoPorEquipe[equipeId] += custoProporcional;
+                }
+            }
+        });
+        
         // Montar resultado
         return (equipes || []).map(eq => {
             const eqId = String(eq.id);
+            const custo = custoPorEquipe[eqId] || 0;
+            const totalValor = produtividadeMap[eqId]?.totalValor || 0;
             return {
                 id: eq.id,
                 numero: eq.numero,
@@ -889,9 +964,11 @@ class DashboardHVC {
                 totalIntegrantes: integrantesPorEquipe[eqId]?.size || 0,
                 totalProducoes: produtividadeMap[eqId]?.totalProducoes || 0,
                 totalQuantidade: produtividadeMap[eqId]?.totalQuantidade || 0,
-                totalValor: produtividadeMap[eqId]?.totalValor || 0,
+                totalValor: totalValor,
                 totalObras: produtividadeMap[eqId]?.obras?.size || 0,
-                servicosPorObra: produtividadeMap[eqId]?.servicosPorObra || {}
+                servicosPorObra: produtividadeMap[eqId]?.servicosPorObra || {},
+                custo: custo,
+                rpri: custo > 0 ? (totalValor / custo) * 100 : 0
             };
         }).sort((a, b) => b.totalValor - a.totalValor);
     }
@@ -1059,8 +1136,8 @@ class DashboardHVC {
     // =========================================================================
     // RENDERIZAÇÃO
     // =========================================================================
-    renderizarDashboard() {
-        this.renderizarKPIs();
+    async renderizarDashboard() {
+        await this.renderizarKPIs();
         this.renderizarRankingObras();
         this.renderizarProdutividadeIntegrantes();
         this.renderizarProdutividadeEquipes();
@@ -1068,67 +1145,229 @@ class DashboardHVC {
         this.renderizarAnalisePropostas();
     }
 
-    renderizarKPIs() {
+    async renderizarKPIs() {
         const obras = this.dataCache.resumoObras || [];
-        const obrasAtivas = obras.filter(o => o.status === 'ANDAMENTO' || o.status === 'PLANEJAMENTO');
+        
+        // Calcular obras por status baseado no percentual de andamento
+        const obrasAtivas = obras.filter(o => o.percentual_andamento > 0 && o.percentual_andamento < 100);
+        const obrasConcluidas = obras.filter(o => o.percentual_andamento >= 100);
+        const obrasAIniciar = obras.filter(o => o.percentual_andamento <= 0);
         
         let totalContratado = 0;
         let totalMedido = 0;
         let totalRecebido = 0;
+        let totalProduzido = 0;
+        let totalDespesas = 0;
 
         obras.forEach(obra => {
-            totalContratado += obra.valor_contratado;
-            totalMedido += obra.valor_medido;
-            totalRecebido += obra.valor_recebido;
+            totalContratado += obra.valor_contratado || 0;
+            totalMedido += obra.valor_medido || 0;
+            totalRecebido += obra.valor_recebido || 0;
+            totalProduzido += obra.valor_produzido || 0;
+            totalDespesas += obra.despesas || 0;
         });
 
         const retencao = totalMedido - totalRecebido;
         const taxaRecebimento = totalMedido > 0 ? (totalRecebido / totalMedido) * 100 : 0;
+        
+        // Buscar dados de propostas
+        const { data: propostas, error: errProp } = await supabaseClient
+            .from('propostas_hvc')
+            .select('id, total_proposta, status');
+        
+        let totalPropostas = 0;
+        let valorTotalPropostas = 0;
+        let propostasAprovadas = 0;
+        let valorPropostasAprovadas = 0;
+        let propostasRecusadas = 0;
+        let valorPropostasRecusadas = 0;
+        
+        (propostas || []).forEach(p => {
+            totalPropostas++;
+            valorTotalPropostas += parseFloat(p.total_proposta) || 0;
+            
+            if (p.status === 'APROVADA' || p.status === 'CONTRATADA') {
+                propostasAprovadas++;
+                valorPropostasAprovadas += parseFloat(p.total_proposta) || 0;
+            } else if (p.status === 'RECUSADA') {
+                propostasRecusadas++;
+                valorPropostasRecusadas += parseFloat(p.total_proposta) || 0;
+            }
+        });
+        
+        // Buscar dados de produções e medições
+        const { data: producoes, error: errProd } = await supabaseClient
+            .from('producoes_diarias_hvc')
+            .select('id');
+        
+        const { data: medicoes, error: errMed } = await supabaseClient
+            .from('medicoes_hvc')
+            .select('id');
+        
+        const totalProducoes = (producoes || []).length;
+        const totalMedicoes = (medicoes || []).length;
+        
+        // Buscar pagamentos pendentes e recebimentos aguardando
+        const { data: fluxoCaixa, error: errFluxo } = await supabaseClient
+            .from('fluxo_caixa_hvc')
+            .select('tipo, valor, status');
+        
+        let pagamentosPendentes = 0;
+        let recebimentosAguardando = 0;
+        
+        (fluxoCaixa || []).forEach(item => {
+            const valor = parseFloat(item.valor) || 0;
+            if (item.tipo === 'pagamento' && item.status === 'PENDENTE') {
+                pagamentosPendentes += valor;
+            } else if (item.tipo === 'recebimento' && item.status === 'AGUARDANDO') {
+                recebimentosAguardando += valor;
+            }
+        });
+        
+        // Cálculos de diferenças
+        const diffContratadoProduzido = totalContratado - totalProduzido;
+        const diffContratadoMedido = totalContratado - totalMedido;
+        const diffProduzidoMedido = totalProduzido - totalMedido;
+        const diffRecebimentosPagamentos = recebimentosAguardando - pagamentosPendentes;
 
         const container = document.getElementById('kpis-container');
         if (!container) return;
 
         container.innerHTML = `
-            <div class="kpi-card">
-                <div class="kpi-icon">🏗️</div>
-                <div class="kpi-content">
-                    <div class="kpi-value">${obrasAtivas.length}</div>
-                    <div class="kpi-label">Obras Ativas</div>
+            <!-- LINHA 1: Status das Obras -->
+            <div class="kpi-section">
+                <h4 class="kpi-section-title">🏗️ Status das Obras</h4>
+                <div class="kpi-row">
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #28a745;">${obrasAtivas.length}</div>
+                            <div class="kpi-label">Ativas</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #17a2b8;">${obrasConcluidas.length}</div>
+                            <div class="kpi-label">Concluídas</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #ffc107;">${obrasAIniciar.length}</div>
+                            <div class="kpi-label">A Iniciar</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">📝</div>
-                <div class="kpi-content">
-                    <div class="kpi-value">${this.formatarMoeda(totalContratado)}</div>
-                    <div class="kpi-label">Total Contratado</div>
+            
+            <!-- LINHA 2: Propostas -->
+            <div class="kpi-section">
+                <h4 class="kpi-section-title">📝 Propostas</h4>
+                <div class="kpi-row">
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value">${totalPropostas}</div>
+                            <div class="kpi-label">Total (${this.formatarMoeda(valorTotalPropostas)})</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #28a745;">${propostasAprovadas}</div>
+                            <div class="kpi-label">Aprovadas (${this.formatarMoeda(valorPropostasAprovadas)})</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #dc3545;">${propostasRecusadas}</div>
+                            <div class="kpi-label">Recusadas (${this.formatarMoeda(valorPropostasRecusadas)})</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">📊</div>
-                <div class="kpi-content">
-                    <div class="kpi-value">${this.formatarMoeda(totalMedido)}</div>
-                    <div class="kpi-label">Total Medido</div>
+            
+            <!-- LINHA 3: Produção e Medição -->
+            <div class="kpi-section">
+                <h4 class="kpi-section-title">📊 Produção e Medição</h4>
+                <div class="kpi-row">
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value">${totalProducoes}</div>
+                            <div class="kpi-label">Produções</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value">${totalMedicoes}</div>
+                            <div class="kpi-label">Medições</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #28a745;">${this.formatarMoeda(totalRecebido)}</div>
+                            <div class="kpi-label">Total Recebido</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #ffc107;">${this.formatarMoeda(retencao)}</div>
+                            <div class="kpi-label">Total Retido</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #dc3545;">${this.formatarMoeda(totalDespesas)}</div>
+                            <div class="kpi-label">Despesas Totais</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">💰</div>
-                <div class="kpi-content">
-                    <div class="kpi-value">${this.formatarMoeda(totalRecebido)}</div>
-                    <div class="kpi-label">Total Recebido</div>
+            
+            <!-- LINHA 4: Diferenças -->
+            <div class="kpi-section">
+                <h4 class="kpi-section-title">📉 Análise de Diferenças</h4>
+                <div class="kpi-row">
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: ${diffContratadoProduzido >= 0 ? '#ffc107' : '#28a745'};">${this.formatarMoeda(diffContratadoProduzido)}</div>
+                            <div class="kpi-label">Contratado - Produzido</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: ${diffContratadoMedido >= 0 ? '#ffc107' : '#28a745'};">${this.formatarMoeda(diffContratadoMedido)}</div>
+                            <div class="kpi-label">Contratado - Medido</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: ${diffProduzidoMedido >= 0 ? '#17a2b8' : '#dc3545'};">${this.formatarMoeda(diffProduzidoMedido)}</div>
+                            <div class="kpi-label">Produzido - Medido</div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">🔒</div>
-                <div class="kpi-content">
-                    <div class="kpi-value">${this.formatarMoeda(retencao)}</div>
-                    <div class="kpi-label">Retenção</div>
-                </div>
-            </div>
-            <div class="kpi-card">
-                <div class="kpi-icon">📈</div>
-                <div class="kpi-content">
-                    <div class="kpi-value">${taxaRecebimento.toFixed(1)}%</div>
-                    <div class="kpi-label">Taxa Recebimento</div>
+            
+            <!-- LINHA 5: Fluxo de Caixa Pendente -->
+            <div class="kpi-section">
+                <h4 class="kpi-section-title">💸 Fluxo de Caixa Pendente</h4>
+                <div class="kpi-row">
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #dc3545;">${this.formatarMoeda(pagamentosPendentes)}</div>
+                            <div class="kpi-label">Pagamentos Pendentes</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: #28a745;">${this.formatarMoeda(recebimentosAguardando)}</div>
+                            <div class="kpi-label">Recebimentos Aguardando</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card kpi-small">
+                        <div class="kpi-content">
+                            <div class="kpi-value" style="color: ${diffRecebimentosPagamentos >= 0 ? '#28a745' : '#dc3545'};">${this.formatarMoeda(diffRecebimentosPagamentos)}</div>
+                            <div class="kpi-label">Saldo Previsto</div>
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -1227,10 +1466,13 @@ class DashboardHVC {
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalQuantidade')">QTD. TOTAL ${sortIcon('totalQuantidade')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'totalValor')">VALOR PRODUZIDO ${sortIcon('totalValor')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'custo')">CUSTO ${sortIcon('custo')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('integrantes', 'rpri')">RPRI ${sortIcon('rpri')}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${integrantesExibir.map((int, idx) => `
+                        ${integrantesExibir.map((int, idx) => {
+                            const rpri = int.custo > 0 ? (int.totalValor / int.custo) * 100 : 0;
+                            return `
                             <tr>
                                 <td class="pos-cell">${idx + 1}º</td>
                                 <td class="nome-clicavel" onclick="window.dashboardHVC.abrirModalDetalhesIntegrante('${int.id}')" style="cursor: pointer; color: #add8e6; text-decoration: underline;">${int.nome}</td>
@@ -1239,8 +1481,9 @@ class DashboardHVC {
                                 <td>${int.totalQuantidade.toFixed(2)}</td>
                                 <td class="${int.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(int.totalValor)}</td>
                                 <td style="color: #dc3545;">${this.formatarMoeda(int.custo || 0)}</td>
+                                <td style="color: ${rpri >= 100 ? '#28a745' : '#ffc107'}; font-weight: bold;">${rpri.toFixed(1)}%</td>
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1281,11 +1524,15 @@ class DashboardHVC {
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'totalProducoes')">PRODUÇÕES ${sortIcon('totalProducoes')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'totalObras')">OBRAS ${sortIcon('totalObras')}</th>
                             <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'totalValor')">VALOR PRODUZIDO ${sortIcon('totalValor')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'custo')">CUSTO ${sortIcon('custo')}</th>
+                            <th class="sortable-header" onclick="window.dashboardHVC.ordenarDados('equipes', 'rpri')">RPRI ${sortIcon('rpri')}</th>
                             <th>DETALHES</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${equipesExibir.map((eq, idx) => `
+                        ${equipesExibir.map((eq, idx) => {
+                            const rpri = eq.custo > 0 ? (eq.totalValor / eq.custo) * 100 : 0;
+                            return `
                             <tr>
                                 <td class="pos-cell">${idx + 1}º</td>
                                 <td>Equipe ${eq.numero || 'N/A'}</td>
@@ -1293,13 +1540,15 @@ class DashboardHVC {
                                 <td>${eq.totalProducoes}</td>
                                 <td>${eq.totalObras}</td>
                                 <td class="${eq.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(eq.totalValor)}</td>
+                                <td style="color: #dc3545;">${this.formatarMoeda(eq.custo || 0)}</td>
+                                <td style="color: ${rpri >= 100 ? '#28a745' : '#ffc107'}; font-weight: bold;">${rpri.toFixed(1)}%</td>
                                 <td>
                                     <button class="btn-detalhes" onclick="window.dashboardHVC.abrirModalDetalhesEquipe('${eq.id}')" title="Ver detalhes">
                                         📊
                                     </button>
                                 </td>
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1646,10 +1895,13 @@ class DashboardHVC {
                             <th>QTD. TOTAL</th>
                             <th>VALOR PRODUZIDO</th>
                             <th>CUSTO</th>
+                            <th>RPRI</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${integrantes.map((int, idx) => `
+                        ${integrantes.map((int, idx) => {
+                            const rpri = int.custo > 0 ? (int.totalValor / int.custo) * 100 : 0;
+                            return `
                             <tr>
                                 <td class="pos-cell">${idx + 1}º</td>
                                 <td class="nome-clicavel" onclick="window.dashboardHVC.fecharModal('modal-ver-todos'); window.dashboardHVC.abrirModalDetalhesIntegrante('${int.id}');" style="cursor: pointer; color: #add8e6; text-decoration: underline;">${int.nome}</td>
@@ -1658,8 +1910,9 @@ class DashboardHVC {
                                 <td>${int.totalQuantidade.toFixed(2)}</td>
                                 <td class="${int.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(int.totalValor)}</td>
                                 <td style="color: #dc3545;">${this.formatarMoeda(int.custo || 0)}</td>
+                                <td style="color: ${rpri >= 100 ? '#28a745' : '#ffc107'}; font-weight: bold;">${rpri.toFixed(1)}%</td>
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
             </div>
@@ -1686,11 +1939,15 @@ class DashboardHVC {
                             <th>PRODUÇÕES</th>
                             <th>OBRAS</th>
                             <th>VALOR PRODUZIDO</th>
+                            <th>CUSTO</th>
+                            <th>RPRI</th>
                             <th>DETALHES</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${equipes.map((eq, idx) => `
+                        ${equipes.map((eq, idx) => {
+                            const rpri = eq.custo > 0 ? (eq.totalValor / eq.custo) * 100 : 0;
+                            return `
                             <tr>
                                 <td class="pos-cell">${idx + 1}º</td>
                                 <td>Equipe ${eq.numero || 'N/A'}</td>
@@ -1698,13 +1955,15 @@ class DashboardHVC {
                                 <td>${eq.totalProducoes}</td>
                                 <td>${eq.totalObras}</td>
                                 <td class="${eq.totalValor > 0 ? 'valor-positivo' : 'valor-zero'}">${this.formatarMoeda(eq.totalValor)}</td>
+                                <td style="color: #dc3545;">${this.formatarMoeda(eq.custo || 0)}</td>
+                                <td style="color: ${rpri >= 100 ? '#28a745' : '#ffc107'}; font-weight: bold;">${rpri.toFixed(1)}%</td>
                                 <td>
                                     <button class="btn-detalhes" onclick="window.dashboardHVC.fecharModal('modal-ver-todos'); window.dashboardHVC.abrirModalDetalhesEquipe('${eq.id}');" title="Ver detalhes">
                                         📊
                                     </button>
                                 </td>
                             </tr>
-                        `).join('')}
+                        `}).join('')}
                     </tbody>
                 </table>
             </div>
