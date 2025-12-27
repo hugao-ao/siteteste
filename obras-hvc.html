@@ -1051,12 +1051,12 @@
         </div>
       </div>
       
-      <!-- Seção de Despesas -->
+      <!-- Seção de Estatísticas -->
       <div id="secao-despesas" style="margin-top: 2rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-          <h4 style="color: #dc3545; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
-            <i class="fas fa-money-bill-wave"></i>
-            Despesas da Obra
+          <h4 style="color: #add8e6; margin: 0; display: flex; align-items: center; gap: 0.5rem;">
+            <i class="fas fa-chart-line"></i>
+            Estatísticas da Obra
           </h4>
         </div>
         
@@ -1066,7 +1066,7 @@
             <i class="fas fa-check-circle"></i>
             SITUAÇÃO ATUAL (Realizado)
           </h5>
-          <div id="resumo-financeiro-atual" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 10px; border: 1px solid rgba(40, 167, 69, 0.3);">
+          <div id="resumo-financeiro-atual" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 10px; border: 1px solid rgba(40, 167, 69, 0.3);">
             <div style="text-align: center;">
               <div style="color: #28a745; font-size: 0.8rem;">RECEBIDO</div>
               <div id="valor-recebido-atual" style="color: #28a745; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
@@ -1074,6 +1074,10 @@
             <div style="text-align: center;">
               <div style="color: #dc3545; font-size: 0.8rem;">DESPESAS PAGAS</div>
               <div id="valor-despesas-pagas" style="color: #dc3545; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
+            </div>
+            <div style="text-align: center;">
+              <div style="color: #9b59b6; font-size: 0.8rem;">RETENSÕES TOTAIS</div>
+              <div id="valor-retensoes-totais" style="color: #9b59b6; font-size: 1.1rem; font-weight: bold;">R$ 0,00</div>
             </div>
             <div style="text-align: center;">
               <div style="color: #17a2b8; font-size: 0.8rem;">RESULTADO ATUAL</div>
@@ -1137,13 +1141,13 @@
         <!-- Despesas Pagas -->
         <div style="margin-bottom: 1rem;">
           <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <h5 style="color: #28a745; margin: 0; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
+            <h5 style="color: #dc3545; margin: 0; font-size: 0.9rem; display: flex; align-items: center; gap: 0.5rem;">
               <i class="fas fa-check"></i>
               Despesas Pagas (PG)
             </h5>
-            <span id="total-despesas-pagas-label" style="color: #28a745; font-weight: bold; font-size: 0.9rem;">R$ 0,00</span>
+            <span id="total-despesas-pagas-label" style="color: #dc3545; font-weight: bold; font-size: 0.9rem;">R$ 0,00</span>
           </div>
-          <div id="lista-despesas-pagas" style="max-height: 150px; overflow-y: auto; border: 1px solid rgba(40, 167, 69, 0.3); border-radius: 8px; background: rgba(40, 167, 69, 0.05);">
+          <div id="lista-despesas-pagas" style="max-height: 150px; overflow-y: auto; border: 1px solid rgba(220, 53, 69, 0.3); border-radius: 8px; background: rgba(220, 53, 69, 0.05);">
             <!-- Despesas pagas serão carregadas aqui -->
           </div>
         </div>
