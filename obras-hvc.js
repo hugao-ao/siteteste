@@ -1562,16 +1562,24 @@ class ObrasManager {
             // Buscar medições para calcular retenções totais
             const { data: medicoes } = await supabaseClient
                 .from('medicoes_hvc')
-                .select('recebimentos')
+                .select('valor_total, valor_bruto, recebimentos')
                 .eq('obra_id', this.currentObraId);
             
             // Calcular retenções totais (soma de todas retenções de todas medições)
+            // Retenção = valor_total - soma dos recebimentos
             let retensoesTotais = 0;
             (medicoes || []).forEach(med => {
+                const valorMedicao = parseFloat(med.valor_bruto) || parseFloat(med.valor_total) || 0;
+                let totalRecebidoMedicao = 0;
                 if (med.recebimentos && Array.isArray(med.recebimentos)) {
                     med.recebimentos.forEach(rec => {
-                        retensoesTotais += parseFloat(rec.retencao) || 0;
+                        totalRecebidoMedicao += parseFloat(rec.valor) || 0;
                     });
+                }
+                // Retenção desta medição = valor da medição - total recebido
+                const retencaoMedicao = valorMedicao - totalRecebidoMedicao;
+                if (retencaoMedicao > 0) {
+                    retensoesTotais += retencaoMedicao;
                 }
             });
             
@@ -4277,16 +4285,24 @@ fecharModalAjustarQuantidade() {
         // Buscar medições para calcular retenções totais
         const { data: medicoesRetencao } = await supabaseClient
             .from('medicoes_hvc')
-            .select('recebimentos')
+            .select('valor_total, valor_bruto, recebimentos')
             .eq('obra_id', obra.id);
         
         // Calcular retenções totais (soma de todas retenções de todas medições)
+        // Retenção = valor_total - soma dos recebimentos
         let retensoesTotais = 0;
         (medicoesRetencao || []).forEach(med => {
+            const valorMedicao = parseFloat(med.valor_bruto) || parseFloat(med.valor_total) || 0;
+            let totalRecebidoMedicao = 0;
             if (med.recebimentos && Array.isArray(med.recebimentos)) {
                 med.recebimentos.forEach(rec => {
-                    retensoesTotais += parseFloat(rec.retencao) || 0;
+                    totalRecebidoMedicao += parseFloat(rec.valor) || 0;
                 });
+            }
+            // Retenção desta medição = valor da medição - total recebido
+            const retencaoMedicao = valorMedicao - totalRecebidoMedicao;
+            if (retencaoMedicao > 0) {
+                retensoesTotais += retencaoMedicao;
             }
         });
         
