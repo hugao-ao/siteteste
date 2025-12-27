@@ -1030,6 +1030,9 @@ class ObrasManager {
         
         // Popular filtro de equipes/integrantes
         await this.populateFiltroEquipeProducao();
+        
+        // ✅ NOVO: Carregar despesas da obra
+        await this.carregarDespesasObraModal();
     }
 }
     hideModalAndamento() {
@@ -1402,7 +1405,7 @@ class ObrasManager {
         if (obras.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 2rem; color: #888;">
+                    <td colspan="11" style="text-align: center; padding: 2rem; color: #888;">
                         <i class="fas fa-building" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
                         Nenhuma obra encontrada. Clique em "Nova Obra" para começar.
                     </td>
@@ -1410,6 +1413,9 @@ class ObrasManager {
             `;
             return;
         }
+        
+        // Buscar despesas do fluxo de caixa para todas as obras
+        const despesasPorObra = await this.carregarDespesasObras();
 
         for (const obra of obras) {
             // Extrair clientes únicos
@@ -1428,6 +1434,11 @@ class ObrasManager {
             const valorMedido = await this.calcularValorMedido(obra.id);
             const valorRecebido = await this.calcularValorRecebido(obra.id);
             
+            // ✅ NOVO: Buscar despesas e calcular resultado
+            const numeroObraLimpo = (obra.numero_obra || '').split('/')[0].trim();
+            const despesas = despesasPorObra[numeroObraLimpo] || 0;
+            const resultado = valorRecebido - despesas;
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>
@@ -1439,6 +1450,8 @@ class ObrasManager {
                 <td><strong style="color: #add8e6;">${this.formatMoney(valorProduzido)}</strong></td>
                 <td><strong style="color: #ffc107;">${this.formatMoney(valorMedido)}</strong></td>
                 <td><strong style="color: #28a745;">${this.formatMoney(valorRecebido)}</strong></td>
+                <td><strong style="color: #dc3545;">${this.formatMoney(despesas)}</strong></td>
+                <td><strong style="color: ${resultado >= 0 ? '#17a2b8' : '#dc3545'};">${this.formatMoney(resultado)}</strong></td>
                 <td class="percentual-cell">
                     <div class="percentual-container">
                         <div class="percentual-bar">
@@ -1471,6 +1484,142 @@ class ObrasManager {
                 </td>
             `;
             tbody.appendChild(row);
+        }
+    }
+    
+    // ✅ NOVO: Função para carregar despesas de todas as obras do fluxo de caixa
+    async carregarDespesasObras() {
+        try {
+            const { data: despesasFluxo, error } = await supabaseClient
+                .from('fluxo_caixa_hvc')
+                .select('categoria, valor, status')
+                .eq('tipo', 'pagamento');
+            
+            if (error) {
+                console.error('⚠️ Erro ao buscar despesas:', error);
+                return {};
+            }
+            
+            // Criar mapa de despesas por número de obra (categoria)
+            const despesasPorObra = {};
+            (despesasFluxo || []).forEach(item => {
+                if (item.categoria) {
+                    // Extrair número da obra da categoria (pode ser "0001/2025" ou apenas "0001")
+                    const categoriaLimpa = item.categoria.split('/')[0].trim();
+                    if (!despesasPorObra[categoriaLimpa]) {
+                        despesasPorObra[categoriaLimpa] = 0;
+                    }
+                    // Somar apenas despesas com status PG (pagas)
+                    if (item.status === 'PG') {
+                        despesasPorObra[categoriaLimpa] += parseFloat(item.valor) || 0;
+                    }
+                }
+            });
+            
+            return despesasPorObra;
+        } catch (error) {
+            console.error('⚠️ Erro ao carregar despesas:', error);
+            return {};
+        }
+    }
+    
+    // ✅ NOVO: Função para carregar despesas de uma obra específica no modal de andamento
+    async carregarDespesasObraModal() {
+        try {
+            if (!this.obraAtual || !this.obraAtual.numero_obra) {
+                console.warn('⚠️ Obra atual não definida');
+                return;
+            }
+            
+            const numeroObraLimpo = (this.obraAtual.numero_obra || '').split('/')[0].trim();
+            
+            // Buscar despesas do fluxo de caixa para esta obra
+            const { data: despesas, error } = await supabaseClient
+                .from('fluxo_caixa_hvc')
+                .select('*')
+                .eq('tipo', 'pagamento')
+                .ilike('categoria', `${numeroObraLimpo}%`)
+                .order('data_vencimento', { ascending: false });
+            
+            if (error) {
+                console.error('⚠️ Erro ao buscar despesas da obra:', error);
+                return;
+            }
+            
+            // Calcular totais
+            let totalDespesas = 0;
+            let totalDespesasPagas = 0;
+            (despesas || []).forEach(d => {
+                if (d.status === 'PG') {
+                    totalDespesasPagas += parseFloat(d.valor) || 0;
+                }
+                totalDespesas += parseFloat(d.valor) || 0;
+            });
+            
+            // Calcular valor recebido
+            const valorRecebido = await this.calcularValorRecebido(this.currentObraId);
+            
+            // Calcular resultado
+            const resultado = valorRecebido - totalDespesasPagas;
+            
+            // Atualizar resumo financeiro
+            const valorRecebidoEl = document.getElementById('valor-recebido-resumo');
+            const valorDespesasEl = document.getElementById('valor-despesas-resumo');
+            const valorResultadoEl = document.getElementById('valor-resultado-resumo');
+            const totalDespesasEl = document.getElementById('total-despesas-obra');
+            
+            if (valorRecebidoEl) valorRecebidoEl.textContent = this.formatMoney(valorRecebido);
+            if (valorDespesasEl) valorDespesasEl.textContent = this.formatMoney(totalDespesasPagas);
+            if (valorResultadoEl) {
+                valorResultadoEl.textContent = this.formatMoney(resultado);
+                valorResultadoEl.style.color = resultado >= 0 ? '#17a2b8' : '#dc3545';
+            }
+            if (totalDespesasEl) totalDespesasEl.textContent = `Total: ${this.formatMoney(totalDespesas)}`;
+            
+            // Renderizar lista de despesas
+            const listaDespesas = document.getElementById('lista-despesas-obra');
+            if (listaDespesas) {
+                if (!despesas || despesas.length === 0) {
+                    listaDespesas.innerHTML = `
+                        <div style="padding: 2rem; text-align: center; color: #888;">
+                            <i class="fas fa-money-bill-wave" style="font-size: 2rem; margin-bottom: 1rem; display: block;"></i>
+                            Nenhuma despesa encontrada para esta obra.
+                        </div>
+                    `;
+                } else {
+                    listaDespesas.innerHTML = `
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead style="background: rgba(220, 53, 69, 0.2); position: sticky; top: 0;">
+                                <tr>
+                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Nome</th>
+                                    <th style="padding: 0.75rem; text-align: left; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Detalhe</th>
+                                    <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Data</th>
+                                    <th style="padding: 0.75rem; text-align: center; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Status</th>
+                                    <th style="padding: 0.75rem; text-align: right; border-bottom: 1px solid rgba(220, 53, 69, 0.3); color: #dc3545;">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${despesas.map(d => `
+                                    <tr style="border-bottom: 1px solid rgba(173, 216, 230, 0.1);">
+                                        <td style="padding: 0.75rem; color: #e0e0e0;">${d.nome || '-'}</td>
+                                        <td style="padding: 0.75rem; color: #c0c0c0; font-size: 0.85rem;">${d.detalhe || '-'}</td>
+                                        <td style="padding: 0.75rem; text-align: center; color: #c0c0c0;">${d.data_vencimento ? new Date(d.data_vencimento).toLocaleDateString('pt-BR') : '-'}</td>
+                                        <td style="padding: 0.75rem; text-align: center;">
+                                            <span style="padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; background: ${d.status === 'PG' ? 'rgba(40, 167, 69, 0.3)' : 'rgba(255, 193, 7, 0.3)'}; color: ${d.status === 'PG' ? '#28a745' : '#ffc107'};">
+                                                ${d.status || 'PENDENTE'}
+                                            </span>
+                                        </td>
+                                        <td style="padding: 0.75rem; text-align: right; color: #dc3545; font-weight: bold;">${this.formatMoney(parseFloat(d.valor) || 0)}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    `;
+                }
+            }
+            
+        } catch (error) {
+            console.error('⚠️ Erro ao carregar despesas do modal:', error);
         }
     }
 
@@ -4053,6 +4202,24 @@ fecharModalAjustarQuantidade() {
         const valorMedido = await this.calcularValorMedido(obra.id);
         const valorRecebido = await this.calcularValorRecebido(obra.id);
         
+        // ✅ NOVO: Buscar despesas da obra
+        const numeroObraLimpo = (obra.numero_obra || '').split('/')[0].trim();
+        const { data: despesasObra } = await supabaseClient
+            .from('fluxo_caixa_hvc')
+            .select('*')
+            .eq('tipo', 'pagamento')
+            .ilike('categoria', `${numeroObraLimpo}%`)
+            .order('data_vencimento', { ascending: false });
+        
+        // Calcular total de despesas pagas
+        let totalDespesasPagas = 0;
+        (despesasObra || []).forEach(d => {
+            if (d.status === 'PG') {
+                totalDespesasPagas += parseFloat(d.valor) || 0;
+            }
+        });
+        const resultadoFinanceiro = valorRecebido - totalDespesasPagas;
+        
         // Buscar produções diárias (query simples para evitar erro 400)
         const { data: producoes, error: producoesError } = await supabaseClient
             .from('producoes_diarias_hvc')
@@ -4161,6 +4328,9 @@ fecharModalAjustarQuantidade() {
             valorProduzido,
             valorMedido,
             valorRecebido,
+            despesas: despesasObra || [],
+            totalDespesas: totalDespesasPagas,
+            resultadoFinanceiro,
             producoes: producoes || [],
             medicoes: medicoes || [],
             clientes: clientesUnicos,
@@ -4370,6 +4540,14 @@ fecharModalAjustarQuantidade() {
                             <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Valor Recebido</td>
                             <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #28a745; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.valorRecebido)}</td>
                         </tr>
+                        <tr style="background: #f9f9f9;">
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px;">Total de Despesas (Pagas)</td>
+                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: #dc3545; font-weight: bold; font-size: 11px;">${this.formatMoney(dados.totalDespesas || 0)}</td>
+                        </tr>
+                        <tr style="background: ${dados.resultadoFinanceiro >= 0 ? '#d4edda' : '#f8d7da'};">
+                            <td style="padding: 6px; border: 0.5px solid #ccc; font-size: 11px; font-weight: bold;">RESULTADO (Recebido - Despesas)</td>
+                            <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; color: ${dados.resultadoFinanceiro >= 0 ? '#28a745' : '#dc3545'}; font-weight: bold; font-size: 12px;">${this.formatMoney(dados.resultadoFinanceiro || 0)}</td>
+                        </tr>
                     </table>
                 </div>
                 
@@ -4499,6 +4677,45 @@ fecharModalAjustarQuantidade() {
                                     </tr>
                                 `;
                             }).join('')}
+                        </table>
+                    </div>
+                ` : ''}
+                
+                <!-- Despesas da Obra -->
+                ${dados.despesas && dados.despesas.length > 0 ? `
+                    <div style="margin-bottom: 15px; page-break-inside: avoid;">
+                        <h3 style="color: #dc3545; border-bottom: 1px solid #dc3545; padding-bottom: 3px; font-size: 12px; margin-bottom: 8px;">Despesas da Obra (${dados.despesas.length})</h3>
+                        <table style="width: 100%; border-collapse: collapse; background: white;">
+                            <tr style="background: #dc3545;">
+                                <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">NOME</th>
+                                <th style="padding: 5px; text-align: left; color: white; font-size: 10px;">DETALHE</th>
+                                <th style="padding: 5px; text-align: center; color: white; font-size: 10px;">DATA</th>
+                                <th style="padding: 5px; text-align: center; color: white; font-size: 10px;">STATUS</th>
+                                <th style="padding: 5px; text-align: right; color: white; font-size: 10px;">VALOR</th>
+                            </tr>
+                            ${dados.despesas.map((d, i) => {
+                                let dataFormatada = '-';
+                                if (d.data_vencimento) {
+                                    const [ano, mes, dia] = d.data_vencimento.split('-');
+                                    dataFormatada = `${dia}/${mes}/${ano}`;
+                                }
+                                const statusColor = d.status === 'PG' ? '#28a745' : '#ffc107';
+                                return `
+                                    <tr style="background: ${i % 2 === 0 ? '#f9f9f9' : 'white'};">
+                                        <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 9px;">${d.nome || '-'}</td>
+                                        <td style="padding: 5px; border: 0.5px solid #ccc; font-size: 8px; color: #666;">${d.detalhe || '-'}</td>
+                                        <td style="padding: 5px; text-align: center; border: 0.5px solid #ccc; font-size: 9px;">${dataFormatada}</td>
+                                        <td style="padding: 5px; text-align: center; border: 0.5px solid #ccc;">
+                                            <span style="background: ${statusColor}; color: white; padding: 2px 6px; border-radius: 8px; font-size: 8px;">${d.status || 'PENDENTE'}</span>
+                                        </td>
+                                        <td style="padding: 5px; text-align: right; border: 0.5px solid #ccc; font-size: 9px; color: #dc3545; font-weight: bold;">${this.formatMoney(parseFloat(d.valor) || 0)}</td>
+                                    </tr>
+                                `;
+                            }).join('')}
+                            <tr style="background: #f8d7da;">
+                                <td colspan="4" style="padding: 6px; border: 0.5px solid #ccc; font-size: 10px; font-weight: bold; text-align: right;">TOTAL DE DESPESAS (PAGAS):</td>
+                                <td style="padding: 6px; text-align: right; border: 0.5px solid #ccc; font-size: 11px; color: #dc3545; font-weight: bold;">${this.formatMoney(dados.totalDespesas || 0)}</td>
+                            </tr>
                         </table>
                     </div>
                 ` : ''}
