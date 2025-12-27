@@ -510,8 +510,9 @@ class FluxoCaixaSync {
         console.log('✅ Total de contas encontradas:', accounts.length, accounts.map(a => a.email));
 
         const todosEventos = [];
+        // Buscar eventos de um período mais amplo: do início do ano atual até 2 anos no futuro
         const inicioAno = new Date(this.anoAtual, 0, 1);
-        const fimAno = new Date(this.anoAtual, 11, 31, 23, 59, 59);
+        const fimAno = new Date(this.anoAtual + 2, 11, 31, 23, 59, 59);
 
         // Keywords para filtrar eventos (mesmo padrão da página de fluxo de caixa)
         const keywords = ['pagamento', 'pagamentos', 'recebimento', 'recebimentos', 'hvc'];
