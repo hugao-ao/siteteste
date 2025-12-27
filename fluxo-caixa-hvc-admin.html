@@ -9152,6 +9152,11 @@
             let tableKey = null;
             
             if (tipo === 'INTERNO') {
+                // Adicionar subtipos padrão para INTERNO (relacionados a integrantes)
+                subtipoSelect.innerHTML += '<option value="FOLHA">FOLHA</option>';
+                subtipoSelect.innerHTML += '<option value="ALMOÇO E PASSAGEM">ALMOÇO E PASSAGEM</option>';
+                subtipoSelect.innerHTML += '<option value="GRATIFICAÇÃO">GRATIFICAÇÃO</option>';
+                subtipoSelect.innerHTML += '<option value="RECONHECIMENTOS">RECONHECIMENTOS</option>';
                 tableKey = 'pagamento_interno_subtipos';
             } else if (tipo === 'EXTERNO') {
                 // Adicionar OBRA primeiro
@@ -9186,6 +9191,9 @@
             // Limpar CATEGORIA
             categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
             
+            // Subtipos que requerem lista de integrantes
+            const subtiposIntegrantes = ['FOLHA', 'ALMOÇO E PASSAGEM', 'GRATIFICAÇÃO', 'RECONHECIMENTOS'];
+            
             // Se SUBTIPO = OBRA, carregar obras do Supabase
             if (subtipo === 'OBRA') {
                 categoriaSelect.innerHTML = '<option value="">Carregando obras...</option>';
@@ -9211,6 +9219,32 @@
                 } catch (error) {
                     console.error('Erro ao carregar obras:', error);
                     categoriaSelect.innerHTML = '<option value="">Erro ao carregar obras</option>';
+                }
+            } else if (subtiposIntegrantes.includes(subtipo)) {
+                // Se SUBTIPO for um dos que requer integrantes, carregar lista de integrantes
+                categoriaSelect.innerHTML = '<option value="">Carregando integrantes...</option>';
+                
+                try {
+                    const { data: integrantes, error } = await supabase
+                        .from('integrantes_hvc')
+                        .select('*')
+                        .order('nome', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
+                    
+                    if (integrantes && integrantes.length > 0) {
+                        integrantes.forEach(integrante => {
+                            const nome = integrante.nome || `Integrante ${integrante.id}`;
+                            categoriaSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
+                        });
+                    } else {
+                        categoriaSelect.innerHTML = '<option value="">Nenhum integrante cadastrado</option>';
+                    }
+                } catch (error) {
+                    console.error('Erro ao carregar integrantes:', error);
+                    categoriaSelect.innerHTML = '<option value="">Erro ao carregar integrantes</option>';
                 }
             } else if (subtipo) {
                 // Senão, carregar categorias personalizadas baseado no TIPO
@@ -9300,8 +9334,14 @@ window.openManageCategoriasPayment = function() {
             // Limpar SUBTIPO
             subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
             
-            // Se TIPO = EXTERNO, adicionar OBRA
-            if (tipo === 'EXTERNO') {
+            // Se TIPO = INTERNO, adicionar subtipos padrão para integrantes
+            if (tipo === 'INTERNO') {
+                subtipoSelect.innerHTML += '<option value="FOLHA">FOLHA</option>';
+                subtipoSelect.innerHTML += '<option value="ALMOÇO E PASSAGEM">ALMOÇO E PASSAGEM</option>';
+                subtipoSelect.innerHTML += '<option value="GRATIFICAÇÃO">GRATIFICAÇÃO</option>';
+                subtipoSelect.innerHTML += '<option value="RECONHECIMENTOS">RECONHECIMENTOS</option>';
+            } else if (tipo === 'EXTERNO') {
+                // Se TIPO = EXTERNO, adicionar OBRA
                 subtipoSelect.innerHTML += '<option value="OBRA">OBRA</option>';
             }
             
@@ -9746,8 +9786,14 @@ window.openManageCategoriasPayment = function() {
             subtipoSelect.innerHTML = '<option value="">Nenhum</option>';
             categoriaSelect.innerHTML = '<option value="">Nenhum</option>';
             
-            // Se TIPO = EXTERNO, adicionar OBRA
-            if (tipo === 'EXTERNO') {
+            // Se TIPO = INTERNO, adicionar subtipos padrão para integrantes
+            if (tipo === 'INTERNO') {
+                subtipoSelect.innerHTML += '<option value="FOLHA">FOLHA</option>';
+                subtipoSelect.innerHTML += '<option value="ALMOÇO E PASSAGEM">ALMOÇO E PASSAGEM</option>';
+                subtipoSelect.innerHTML += '<option value="GRATIFICAÇÃO">GRATIFICAÇÃO</option>';
+                subtipoSelect.innerHTML += '<option value="RECONHECIMENTOS">RECONHECIMENTOS</option>';
+            } else if (tipo === 'EXTERNO') {
+                // Se TIPO = EXTERNO, adicionar OBRA
                 subtipoSelect.innerHTML += '<option value="OBRA">OBRA</option>';
             }
             
@@ -9786,6 +9832,9 @@ window.openManageCategoriasPayment = function() {
             // Salvar valor atual
             const currentValue = categoriaSelect.value;
             
+            // Subtipos que requerem lista de integrantes
+            const subtiposIntegrantes = ['FOLHA', 'ALMOÇO E PASSAGEM', 'GRATIFICAÇÃO', 'RECONHECIMENTOS'];
+            
             if (subtipo === 'OBRA') {
                 // Carregar obras do Supabase
                 categoriaSelect.innerHTML = '<option value="">Carregando obras...</option>';
@@ -9819,6 +9868,40 @@ window.openManageCategoriasPayment = function() {
                 } catch (error) {
                     console.error('Erro ao carregar obras:', error);
                     categoriaSelect.innerHTML = '<option value="">Erro ao carregar obras</option>';
+                }
+            } else if (subtiposIntegrantes.includes(subtipo)) {
+                // Carregar integrantes do Supabase
+                categoriaSelect.innerHTML = '<option value="">Carregando integrantes...</option>';
+                btnManage.disabled = true;
+                btnManage.style.opacity = '0.5';
+                
+                try {
+                    const { data: integrantes, error } = await supabase
+                        .from('integrantes_hvc')
+                        .select('*')
+                        .order('nome', { ascending: true });
+                    
+                    if (error) throw error;
+                    
+                    categoriaSelect.innerHTML = '<option value="">Selecione um integrante...</option>';
+                    
+                    if (integrantes && integrantes.length > 0) {
+                        integrantes.forEach(integrante => {
+                            const nome = integrante.nome || `Integrante ${integrante.id}`;
+                            categoriaSelect.innerHTML += `<option value="${nome}">${nome}</option>`;
+                        });
+                    } else {
+                        categoriaSelect.innerHTML = '<option value="">Nenhum integrante cadastrado</option>';
+                    }
+                    
+                    // Restaurar valor se existir
+                    if (currentValue) {
+                        categoriaSelect.value = currentValue;
+                    }
+                    
+                } catch (error) {
+                    console.error('Erro ao carregar integrantes:', error);
+                    categoriaSelect.innerHTML = '<option value="">Erro ao carregar integrantes</option>';
                 }
             } else {
                 // Usar lista personalizada
