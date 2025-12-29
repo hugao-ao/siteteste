@@ -3369,23 +3369,54 @@
         async function loadFilteredEvents() {
             try {
                 const now = new Date();
-                const startOfYear = new Date(now.getFullYear(), 0, 1);
-                const endOfYear = new Date(now.getFullYear(), 11, 31);
+                // ✅ CORREÇÃO: Expandir período para 2 anos no passado e 2 anos no futuro
+                const inicioAno = new Date(now.getFullYear() - 2, 0, 1); // 2 anos atrás
+                const fimAno = new Date(now.getFullYear() + 2, 11, 31); // 2 anos à frente
+                
+                console.log(`📅 Buscando eventos de ${inicioAno.toISOString()} até ${fimAno.toISOString()}`);
 
-                const response = await gapi.client.calendar.events.list({
-                    calendarId: 'primary',
-                    timeMin: startOfYear.toISOString(),
-                    timeMax: endOfYear.toISOString(),
-                    showDeleted: false,
-                    singleEvents: true,
-                    maxResults: 250,
-                    orderBy: 'startTime'
-                });
+                // ✅ CORREÇÃO: Implementar paginação para buscar TODOS os eventos
+                let allEvents = [];
+                let pageToken = null;
+                let pageCount = 0;
+                const maxPages = 20; // Limite de segurança para evitar loops infinitos
+                
+                do {
+                    const requestParams = {
+                        calendarId: 'primary',
+                        timeMin: inicioAno.toISOString(),
+                        timeMax: fimAno.toISOString(),
+                        showDeleted: false,
+                        singleEvents: true,
+                        maxResults: 2500, // ✅ Aumentado de 250 para 2500
+                        orderBy: 'startTime'
+                    };
+                    
+                    // Adicionar pageToken se existir (para paginação)
+                    if (pageToken) {
+                        requestParams.pageToken = pageToken;
+                    }
+                    
+                    const response = await gapi.client.calendar.events.list(requestParams);
+                    
+                    const pageEvents = response.result.items || [];
+                    allEvents = allEvents.concat(pageEvents);
+                    
+                    // Verificar se há mais páginas
+                    pageToken = response.result.nextPageToken;
+                    pageCount++;
+                    
+                    console.log(`📄 Página ${pageCount}: ${pageEvents.length} eventos (Total acumulado: ${allEvents.length})`);
+                    
+                } while (pageToken && pageCount < maxPages);
+                
+                if (pageToken) {
+                    console.warn(`⚠️ Limite de páginas atingido (${maxPages}). Alguns eventos podem não ter sido carregados.`);
+                }
 
-                const allEvents = response.result.items || [];
                 filteredEvents = filterEvents(allEvents);
                 
-                console.log(`✅ Eventos carregados: ${allEvents.length} total, ${filteredEvents.length} filtrados`);
+                console.log(`✅ Eventos carregados: ${allEvents.length} total, ${filteredEvents.length} filtrados (${pageCount} páginas)`);
                 
                 updateFilterStats(allEvents.length, filteredEvents.length);
                 updateMonthlySummary(); // Atualizar resumo mensal
