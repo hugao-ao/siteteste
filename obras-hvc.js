@@ -4004,12 +4004,12 @@ fecharModalAjustarQuantidade() {
             // Buscar clientes das propostas
             const clientesUnicos = [...new Set((propostasAtualizadas || []).map(p => p.clientes_hvc?.nome).filter(Boolean))];
             
-            // Buscar despesas da obra (pagamentos com categoria = numero da obra)
+            // ✅ CORREÇÃO: Buscar despesas da obra usando busca exata pelo número completo
             const { data: despesasObra } = await supabaseClient
                 .from('fluxo_caixa_hvc')
                 .select('*')
                 .eq('tipo', 'pagamento')
-                .ilike('categoria', `${obra.numero_obra}%`);
+                .eq('categoria', (obra.numero_obra || '').trim());
             
             // Separar despesas pagas e pendentes
             const despesasPagas = (despesasObra || []).filter(d => d.status === 'PG');
