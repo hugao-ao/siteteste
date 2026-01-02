@@ -1420,10 +1420,10 @@ class ObrasManager {
     async atualizarValorTotalNoBanco(obraId, valorTotal) {
         
         try {
-            // Salvar em reais (não multiplicar por 100)
+            // ✅ CORREÇÃO: Arredondar para inteiro pois campo é bigint no banco
             const { error } = await supabaseClient
                 .from('obras_hvc')
-                .update({ valor_total: valorTotal })
+                .update({ valor_total: Math.round(valorTotal) })
                 .eq('id', obraId);
 
             if (error) {
@@ -1498,9 +1498,10 @@ class ObrasManager {
             const valorMedido = await this.calcularValorMedido(obra.id);
             const valorRecebido = await this.calcularValorRecebido(obra.id);
             
-            // ✅ NOVO: Buscar despesas e calcular resultado
-            const numeroObraLimpo = (obra.numero_obra || '').split('/')[0].trim();
-            const despesas = despesasPorObra[numeroObraLimpo] || 0;
+            // ✅ CORREÇÃO: Usar número completo da obra para buscar despesas
+            // Isso evita que obras com mesmo número mas anos diferentes compartilhem despesas
+            const numeroObraCompleto = (obra.numero_obra || '').trim();
+            const despesas = despesasPorObra[numeroObraCompleto] || 0;
             const resultado = valorRecebido - despesas;
             
             // ✅ NOVO: Calcular DTE e RFE
@@ -1574,8 +1575,9 @@ class ObrasManager {
             const despesasPorObra = {};
             (despesasFluxo || []).forEach(item => {
                 if (item.categoria) {
-                    // Extrair número da obra da categoria (pode ser "0001/2025" ou apenas "0001")
-                    const categoriaLimpa = item.categoria.split('/')[0].trim();
+                    // ✅ CORREÇÃO: Usar categoria completa (ex: "0001/2025") ao invés de apenas o número
+                    // Isso evita que obras com mesmo número mas anos diferentes compartilhem despesas
+                    const categoriaLimpa = item.categoria.trim();
                     if (!despesasPorObra[categoriaLimpa]) {
                         despesasPorObra[categoriaLimpa] = 0;
                     }
@@ -1601,14 +1603,15 @@ class ObrasManager {
                 return;
             }
             
-            const numeroObraLimpo = (this.obraAtual.numero_obra || '').split('/')[0].trim();
+            // ✅ CORREÇÃO: Usar número completo da obra para buscar despesas
+            const numeroObraCompleto = (this.obraAtual.numero_obra || '').trim();
             
-            // Buscar despesas do fluxo de caixa para esta obra
+            // Buscar despesas do fluxo de caixa para esta obra (busca exata pelo número completo)
             const { data: despesas, error } = await supabaseClient
                 .from('fluxo_caixa_hvc')
                 .select('*')
                 .eq('tipo', 'pagamento')
-                .ilike('categoria', `${numeroObraLimpo}%`)
+                .eq('categoria', numeroObraCompleto)
                 .order('data_vencimento', { ascending: false });
             
             if (error) {
@@ -1795,7 +1798,8 @@ class ObrasManager {
             nome_obra: document.getElementById('nome-obra-select').value || null,
             status: document.getElementById('status-obra').value,
             observacoes: document.getElementById('observacoes-obra').value || null,
-            valor_total: valorTotalCorreto // Salvar em reais (preco_total já está em reais)
+            // ✅ CORREÇÃO: Arredondar para inteiro pois campo é bigint no banco
+            valor_total: Math.round(valorTotalCorreto)
         };
 
 
@@ -4381,13 +4385,13 @@ fecharModalAjustarQuantidade() {
         const valorMedido = await this.calcularValorMedido(obra.id);
         const valorRecebido = await this.calcularValorRecebido(obra.id);
         
-        // ✅ NOVO: Buscar despesas da obra
-        const numeroObraLimpo = (obra.numero_obra || '').split('/')[0].trim();
+        // ✅ CORREÇÃO: Usar número completo da obra para buscar despesas
+        const numeroObraCompleto = (obra.numero_obra || '').trim();
         const { data: despesasObra } = await supabaseClient
             .from('fluxo_caixa_hvc')
             .select('*')
             .eq('tipo', 'pagamento')
-            .ilike('categoria', `${numeroObraLimpo}%`)
+            .eq('categoria', numeroObraCompleto)
             .order('data_vencimento', { ascending: false });
         
         // Separar despesas por status
