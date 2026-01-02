@@ -1011,6 +1011,90 @@ class ObrasManager {
         }
     }
 
+    // ✅ NOVO: Calcular status automático baseado nas produções diárias
+    // PLANEJAMENTO: Nenhum serviço tem produção (todos em 0%)
+    // CONCLUÍDA: Todos os serviços têm 100% ou mais de produção
+    // ANDAMENTO: Qualquer outro caso
+    async calcularStatusAutomatico(obraId) {
+        try {
+            // PASSO 1: Buscar propostas da obra
+            const { data: obrasPropostas, error: errorObrasPropostas } = await supabaseClient
+                .from('obras_propostas')
+                .select('proposta_id')
+                .eq('obra_id', obraId);
+
+            if (errorObrasPropostas || !obrasPropostas || obrasPropostas.length === 0) {
+                return 'PLANEJAMENTO'; // Sem propostas = planejamento
+            }
+
+            const propostaIds = obrasPropostas.map(op => op.proposta_id);
+
+            // PASSO 2: Buscar todos os itens das propostas
+            const { data: itensPropostas, error: errorItens } = await supabaseClient
+                .from('itens_proposta_hvc')
+                .select('id, quantidade')
+                .in('proposta_id', propostaIds);
+
+            if (errorItens || !itensPropostas || itensPropostas.length === 0) {
+                return 'PLANEJAMENTO'; // Sem itens = planejamento
+            }
+
+            // PASSO 3: Buscar produções diárias da obra
+            const { data: producoes, error: prodError } = await supabaseClient
+                .from('producoes_diarias_hvc')
+                .select('quantidades_servicos')
+                .eq('obra_id', obraId);
+
+            if (prodError) {
+                return 'PLANEJAMENTO';
+            }
+
+            // PASSO 4: Verificar status de cada serviço
+            let algumServicoComProducao = false;
+            let todosServicosCompletos = true;
+
+            for (const item of itensPropostas) {
+                const quantidadeContratada = parseFloat(item.quantidade) || 0;
+                
+                if (quantidadeContratada === 0) continue; // Ignorar itens sem quantidade
+
+                // Calcular quanto foi produzido deste item
+                let quantidadeProduzida = 0;
+                if (producoes && producoes.length > 0) {
+                    producoes.forEach(producao => {
+                        const quantidades = producao.quantidades_servicos || {};
+                        if (quantidades[item.id]) {
+                            quantidadeProduzida += parseFloat(quantidades[item.id]) || 0;
+                        }
+                    });
+                }
+
+                const percentualItem = (quantidadeProduzida / quantidadeContratada) * 100;
+
+                if (quantidadeProduzida > 0) {
+                    algumServicoComProducao = true;
+                }
+
+                if (percentualItem < 100) {
+                    todosServicosCompletos = false;
+                }
+            }
+
+            // PASSO 5: Determinar status
+            if (!algumServicoComProducao) {
+                return 'PLANEJAMENTO';
+            } else if (todosServicosCompletos) {
+                return 'CONCLUÍDA';
+            } else {
+                return 'ANDAMENTO';
+            }
+
+        } catch (error) {
+            console.error('Erro ao calcular status automático:', error);
+            return 'PLANEJAMENTO';
+        }
+    }
+
     // === MODAL DE ANDAMENTO ===
     async showModalAndamento() {
     if (!this.currentObraId) {
@@ -1508,6 +1592,9 @@ class ObrasManager {
             const dte = await this.calcularDTE(obra.id);
             const rfe = valorObra - dte;
             
+            // ✅ NOVO: Calcular status automático baseado nas produções
+            const statusAutomatico = await this.calcularStatusAutomatico(obra.id);
+            
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>
@@ -1532,8 +1619,8 @@ class ObrasManager {
                     </div>
                 </td>
                 <td>
-                    <span class="status-badge status-${obra.status.toLowerCase()}">
-                        ${obra.status}
+                    <span class="status-badge status-${statusAutomatico.toLowerCase().replace('í', 'i')}">
+                        ${statusAutomatico}
                     </span>
                 </td>
                 <td class="actions-cell">
