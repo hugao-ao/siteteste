@@ -1064,7 +1064,7 @@ const QUESTOES_SUITABILITY = [
   {
     id: 'A1',
     secao: 'A',
-    texto: 'Qual é a sua idade atual e em quanto tempo você pretende parar de trabalhar?',
+    texto: 'Por mais quanto tempo você conseguirá exercer sua força de trabalho?',
     alternativas: [
       { valor: 1, texto: 'Faltam 10 anos ou menos' },
       { valor: 2, texto: 'Faltam entre 10 e 15 anos' },
