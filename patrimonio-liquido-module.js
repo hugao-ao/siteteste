@@ -1473,7 +1473,7 @@ function renderGraficos() {
           legend: {
             position: 'bottom',
             labels: {
-              color: '#FFD700',
+              color: '#FFFFFF',
               font: {
                 size: 12,
                 weight: 'bold'
@@ -1565,7 +1565,7 @@ function renderGraficos() {
                 legend: {
                   position: 'bottom',
                   labels: {
-                    color: '#FFD700',
+                    color: '#FFFFFF',
                     font: {
                       size: 12,
                       weight: 'bold'
