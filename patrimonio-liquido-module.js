@@ -1064,7 +1064,7 @@ const QUESTOES_SUITABILITY = [
   {
     id: 'A1',
     secao: 'A',
-    texto: 'Por mais quanto tempo você conseguirá exercer sua força de trabalho?',
+    texto: 'Qual é a sua idade atual e em quanto tempo você pretende parar de trabalhar?',
     alternativas: [
       { valor: 1, texto: 'Faltam 10 anos ou menos' },
       { valor: 2, texto: 'Faltam entre 10 e 15 anos' },
@@ -1473,10 +1473,14 @@ function renderGraficos() {
           legend: {
             position: 'bottom',
             labels: {
-              color: '#e0e0e0',
+              color: '#FFD700',
               font: {
-                size: 10
+                size: 12,
+                weight: 'bold'
               },
+              padding: 15,
+              usePointStyle: true,
+              pointStyle: 'rectRounded',
               generateLabels: function(chart) {
                 const data = chart.data;
                 if (data.labels.length && data.datasets.length) {
@@ -1487,6 +1491,8 @@ function renderGraficos() {
                     return {
                       text: `${label}: ${formatarMoeda(value)} (${percentage}%)`,
                       fillStyle: data.datasets[0].backgroundColor[i],
+                      strokeStyle: '#ffffff',
+                      lineWidth: 1,
                       hidden: false,
                       index: i
                     };
@@ -1497,6 +1503,13 @@ function renderGraficos() {
             }
           },
           tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            titleColor: '#FFD700',
+            bodyColor: '#ffffff',
+            titleFont: { size: 14, weight: 'bold' },
+            bodyFont: { size: 13 },
+            padding: 12,
+            cornerRadius: 8,
             callbacks: {
               label: function(context) {
                 const label = context.label || '';
@@ -1552,10 +1565,14 @@ function renderGraficos() {
                 legend: {
                   position: 'bottom',
                   labels: {
-                    color: '#e0e0e0',
+                    color: '#FFD700',
                     font: {
-                      size: 10
+                      size: 12,
+                      weight: 'bold'
                     },
+                    padding: 15,
+                    usePointStyle: true,
+                    pointStyle: 'rectRounded',
                     generateLabels: function(chart) {
                       const data = chart.data;
                       if (data.labels.length && data.datasets.length) {
@@ -1564,6 +1581,8 @@ function renderGraficos() {
                           return {
                             text: `${label}: ${value}%`,
                             fillStyle: data.datasets[0].backgroundColor[i],
+                            strokeStyle: '#ffffff',
+                            lineWidth: 1,
                             hidden: false,
                             index: i
                           };
@@ -1574,6 +1593,13 @@ function renderGraficos() {
                   }
                 },
                 tooltip: {
+                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
+                  titleColor: '#FFD700',
+                  bodyColor: '#ffffff',
+                  titleFont: { size: 14, weight: 'bold' },
+                  bodyFont: { size: 13 },
+                  padding: 12,
+                  cornerRadius: 8,
                   callbacks: {
                     label: function(context) {
                       return `${context.label}: ${context.parsed}%`;
