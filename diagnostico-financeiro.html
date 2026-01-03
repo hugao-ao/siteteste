@@ -2351,6 +2351,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           }
         }
         
+        // Carregar respostas do teste de suitability se existirem
+        if (diagnostico.respostas_suitability) {
+          try {
+            const respostas = typeof diagnostico.respostas_suitability === 'string' 
+              ? JSON.parse(diagnostico.respostas_suitability) 
+              : diagnostico.respostas_suitability;
+            if (window.setRespostasSuitabilityData) {
+              window.setRespostasSuitabilityData(respostas);
+            }
+          } catch (e) {
+            console.log('Erro ao carregar respostas do suitability:', e);
+          }
+        }
+        
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
         
@@ -2539,7 +2553,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           pessoas_renda: JSON.stringify(pessoasRendaData), // Salvar como JSON
           dependentes: JSON.stringify(dependentesData), // Salvar como JSON
           patrimonios: JSON.stringify(patrimoniosData), // Salvar como JSON
-          patrimonios_liquidos: JSON.stringify(window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : []) // Salvar investimentos
+          patrimonios_liquidos: JSON.stringify(window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : []), // Salvar investimentos
+          respostas_suitability: window.getRespostasSuitabilityData ? window.getRespostasSuitabilityData() : {} // Salvar respostas do teste de perfil
         };
         
         const { data, error } = await supabase
