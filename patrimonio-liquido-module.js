@@ -1,6 +1,6 @@
 // =========================================
-// PATRIMÔNIO LÍQUIDO - Módulo JavaScript v2
-// Com classificação de risco e gráficos
+// PATRIMÔNIO LÍQUIDO - Módulo JavaScript v3
+// Com classificação de risco, gráficos e distribuição ideal
 // =========================================
 
 import { supabase } from './supabase.js';
@@ -14,7 +14,7 @@ let instituicoes = [];
 // Dados do teste de suitability
 let respostasSuitability = {}; // { 'Nome da Pessoa': { A1: 3, A2: 4, ... } }
 
-// Mapeamento de classificação de risco
+// Mapeamento de classificação de risco (10 níveis conforme documento)
 const CLASSIFICACAO_RISCO = {
   'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': { label: 'Risco Muito Baixo (Garantia Soberana)', cor: '#006400', ordem: 1 },
   'RISCO_MUITO_BAIXO_GARANTIA_FGC': { label: 'Risco Muito Baixo (Garantia FGC)', cor: '#228B22', ordem: 2 },
@@ -26,6 +26,115 @@ const CLASSIFICACAO_RISCO = {
   'RISCO_MUITO_ALTO_PROTECAO_MRP': { label: 'Risco Muito Alto (Proteção MRP)', cor: '#FF6347', ordem: 8 },
   'RISCO_MUITO_ALTO_SEM_GARANTIA': { label: 'Risco Muito Alto', cor: '#DC143C', ordem: 9 },
   'RISCO_ABSOLUTO_SEM_GARANTIA': { label: 'Risco Absoluto', cor: '#8B0000', ordem: 10 }
+};
+
+// Alocação ideal por perfil de investidor (baseado no documento 7 Perfis)
+const ALOCACAO_IDEAL_POR_PERFIL = {
+  1: { // Ultra-Conservador
+    nome: 'Ultra-Conservador',
+    alocacao: {
+      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 100,
+      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
+      'RISCO_BAIXO_GARANTIA_FGC': 0,
+      'RISCO_BAIXO_SEM_GARANTIA': 0,
+      'RISCO_MEDIO_SEM_GARANTIA': 0,
+      'RISCO_ALTO_PROTECAO_MRP': 0,
+      'RISCO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_MUITO_ALTO_PROTECAO_MRP': 0,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+    }
+  },
+  2: { // Conservador
+    nome: 'Conservador',
+    alocacao: {
+      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 50,
+      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 40,
+      'RISCO_BAIXO_GARANTIA_FGC': 10,
+      'RISCO_BAIXO_SEM_GARANTIA': 0,
+      'RISCO_MEDIO_SEM_GARANTIA': 0,
+      'RISCO_ALTO_PROTECAO_MRP': 0,
+      'RISCO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_MUITO_ALTO_PROTECAO_MRP': 0,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+    }
+  },
+  3: { // Conservador-Moderado
+    nome: 'Conservador-Moderado',
+    alocacao: {
+      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 35,
+      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 25,
+      'RISCO_BAIXO_GARANTIA_FGC': 10,
+      'RISCO_BAIXO_SEM_GARANTIA': 10,
+      'RISCO_MEDIO_SEM_GARANTIA': 10,
+      'RISCO_ALTO_PROTECAO_MRP': 10,
+      'RISCO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_MUITO_ALTO_PROTECAO_MRP': 0,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+    }
+  },
+  4: { // Moderado
+    nome: 'Moderado',
+    alocacao: {
+      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 15,
+      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 15,
+      'RISCO_BAIXO_GARANTIA_FGC': 10,
+      'RISCO_BAIXO_SEM_GARANTIA': 15,
+      'RISCO_MEDIO_SEM_GARANTIA': 15,
+      'RISCO_ALTO_PROTECAO_MRP': 20,
+      'RISCO_ALTO_SEM_GARANTIA': 10,
+      'RISCO_MUITO_ALTO_PROTECAO_MRP': 0,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+    }
+  },
+  5: { // Moderado-Arrojado
+    nome: 'Moderado-Arrojado',
+    alocacao: {
+      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 10,
+      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 5,
+      'RISCO_BAIXO_GARANTIA_FGC': 0,
+      'RISCO_BAIXO_SEM_GARANTIA': 10,
+      'RISCO_MEDIO_SEM_GARANTIA': 15,
+      'RISCO_ALTO_PROTECAO_MRP': 30,
+      'RISCO_ALTO_SEM_GARANTIA': 20,
+      'RISCO_MUITO_ALTO_PROTECAO_MRP': 10,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 0,
+      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+    }
+  },
+  6: { // Arrojado
+    nome: 'Arrojado',
+    alocacao: {
+      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 5,
+      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
+      'RISCO_BAIXO_GARANTIA_FGC': 0,
+      'RISCO_BAIXO_SEM_GARANTIA': 5,
+      'RISCO_MEDIO_SEM_GARANTIA': 10,
+      'RISCO_ALTO_PROTECAO_MRP': 35,
+      'RISCO_ALTO_SEM_GARANTIA': 25,
+      'RISCO_MUITO_ALTO_PROTECAO_MRP': 15,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 5,
+      'RISCO_ABSOLUTO_SEM_GARANTIA': 0
+    }
+  },
+  7: { // Ultra-Arrojado
+    nome: 'Ultra-Arrojado',
+    alocacao: {
+      'RISCO_MUITO_BAIXO_GARANTIA_SOBERANA': 5,
+      'RISCO_MUITO_BAIXO_GARANTIA_FGC': 0,
+      'RISCO_BAIXO_GARANTIA_FGC': 0,
+      'RISCO_BAIXO_SEM_GARANTIA': 0,
+      'RISCO_MEDIO_SEM_GARANTIA': 5,
+      'RISCO_ALTO_PROTECAO_MRP': 25,
+      'RISCO_ALTO_SEM_GARANTIA': 20,
+      'RISCO_MUITO_ALTO_PROTECAO_MRP': 25,
+      'RISCO_MUITO_ALTO_SEM_GARANTIA': 15,
+      'RISCO_ABSOLUTO_SEM_GARANTIA': 5
+    }
+  }
 };
 
 // =========================================
@@ -391,29 +500,8 @@ async function salvarEdicaoProduto(id) {
     abrirModalGerenciarProdutos();
     renderPatrimoniosLiquidos();
   } catch (error) {
-    console.error('Erro ao editar produto:', error);
-    alert('Erro ao editar produto: ' + error.message);
-  }
-}
-
-async function excluirProduto(id) {
-  if (!confirm('Tem certeza que deseja excluir este produto?')) return;
-  
-  try {
-    const { error } = await supabase
-      .from('tipos_produtos_investimento')
-      .update({ ativo: false })
-      .eq('id', id);
-    
-    if (error) throw error;
-    
-    await carregarTiposProdutos();
-    document.querySelector('.modal-overlay')?.remove();
-    abrirModalGerenciarProdutos();
-    renderPatrimoniosLiquidos();
-  } catch (error) {
-    console.error('Erro ao excluir produto:', error);
-    alert('Erro ao excluir produto: ' + error.message);
+    console.error('Erro ao atualizar produto:', error);
+    alert('Erro ao atualizar produto: ' + error.message);
   }
 }
 
@@ -479,8 +567,29 @@ async function salvarEdicaoInstituicao(id) {
     abrirModalGerenciarInstituicoes();
     renderPatrimoniosLiquidos();
   } catch (error) {
-    console.error('Erro ao editar instituição:', error);
-    alert('Erro ao editar instituição: ' + error.message);
+    console.error('Erro ao atualizar instituição:', error);
+    alert('Erro ao atualizar instituição: ' + error.message);
+  }
+}
+
+async function excluirProduto(id) {
+  if (!confirm('Tem certeza que deseja excluir este produto?')) return;
+  
+  try {
+    const { error } = await supabase
+      .from('tipos_produtos_investimento')
+      .update({ ativo: false })
+      .eq('id', id);
+    
+    if (error) throw error;
+    
+    await carregarTiposProdutos();
+    document.querySelector('.modal-overlay')?.remove();
+    abrirModalGerenciarProdutos();
+    renderPatrimoniosLiquidos();
+  } catch (error) {
+    console.error('Erro ao excluir produto:', error);
+    alert('Erro ao excluir produto: ' + error.message);
   }
 }
 
@@ -736,7 +845,10 @@ function getFinalidadeBadgeClass(finalidade) {
 }
 
 function getRiscoInfo(classificacao) {
-  return CLASSIFICACAO_RISCO[classificacao] || { label: 'Não classificado', cor: '#999', ordem: 99 };
+  if (!classificacao || !CLASSIFICACAO_RISCO[classificacao]) {
+    return { label: 'Não classificado', cor: '#999', ordem: 99 };
+  }
+  return CLASSIFICACAO_RISCO[classificacao];
 }
 
 // =========================================
@@ -1074,6 +1186,8 @@ const PERFIS_INVESTIDOR = [
 ];
 
 function calcularPerfilInvestidor(respostas) {
+  if (!respostas) return null;
+  
   const questoesObrigatorias = ['A1', 'A2', 'A3', 'B1', 'B2', 'B3', 'C1', 'C2', 'C3'];
   for (const q of questoesObrigatorias) {
     if (!respostas[q] || respostas[q] === 0) {
@@ -1089,17 +1203,38 @@ function calcularPerfilInvestidor(respostas) {
   const PBN = ((PB - 3) / 12) * 100;
   const PCN = ((PC - 3) / 12) * 100;
   
-  const PFP = (PAN * 0.25) + (PBN * 0.50) + (PCN * 0.25);
+  let PFP = (PAN * 0.25) + (PBN * 0.50) + (PCN * 0.25);
   
+  // Garantir que PFP esteja entre 0 e 100
+  PFP = Math.max(0, Math.min(100, PFP));
+  
+  // Encontrar o perfil correspondente
   let perfil = PERFIS_INVESTIDOR.find(p => PFP >= p.pfpMin && PFP <= p.pfpMax);
   
-  // Regras de precedência
-  if (PA <= 4 && perfil.id > 2) perfil = PERFIS_INVESTIDOR[1];
-  if (PB <= 4 && perfil.id > 1) perfil = PERFIS_INVESTIDOR[0];
-  if (PC <= 4 && perfil.id > 3) perfil = PERFIS_INVESTIDOR[2];
-  if (PA <= 5 && PC <= 5 && perfil.id > 2) perfil = PERFIS_INVESTIDOR[1];
+  // Se não encontrou (caso de borda), usar o primeiro ou último perfil
+  if (!perfil) {
+    if (PFP <= 0) {
+      perfil = PERFIS_INVESTIDOR[0]; // Ultra-Conservador
+    } else {
+      perfil = PERFIS_INVESTIDOR[PERFIS_INVESTIDOR.length - 1]; // Ultra-Arrojado
+    }
+  }
   
-  return { perfil, PFP: PFP.toFixed(2) };
+  // Regras de precedência (override)
+  if (PA <= 4 && perfil.id > 2) {
+    perfil = PERFIS_INVESTIDOR.find(p => p.id === 2); // Conservador
+  }
+  if (PB <= 4 && perfil.id > 1) {
+    perfil = PERFIS_INVESTIDOR.find(p => p.id === 1); // Ultra-Conservador
+  }
+  if (PC <= 4 && perfil.id > 3) {
+    perfil = PERFIS_INVESTIDOR.find(p => p.id === 3); // Conservador-Moderado
+  }
+  if (PA <= 5 && PC <= 5 && perfil.id > 2) {
+    perfil = PERFIS_INVESTIDOR.find(p => p.id === 2); // Conservador
+  }
+  
+  return { perfil, PFP: PFP.toFixed(2), PA, PB, PC };
 }
 
 function obterPessoasComInvestimentos() {
@@ -1148,7 +1283,7 @@ function renderTesteSuitability() {
     html += `<td style="padding: 0.8rem; color: var(--text-light); border: 1px solid var(--border-color); font-size: 0.85rem;"><strong style="color: var(--accent-color);">${questao.id}:</strong> ${questao.texto}</td>`;
     
     pessoas.forEach(pessoa => {
-      const valorSelecionado = respostasSuitability[pessoa][questao.id] || 0;
+      const valorSelecionado = respostasSuitability[pessoa]?.[questao.id] || 0;
       html += `<td style="padding: 0.5rem; border: 1px solid var(--border-color);">`;
       html += `<select onchange="updateRespostaSuitability('${pessoa}', '${questao.id}', this.value)" style="width: 100%; padding: 0.5rem; background: var(--surface-bg); color: var(--text-light); border: 1px solid var(--border-color); border-radius: 5px; font-size: 0.85rem; cursor: pointer;">`;
       html += `<option value="0" ${valorSelecionado == 0 ? 'selected' : ''}>Selecione...</option>`;
@@ -1170,10 +1305,10 @@ function renderTesteSuitability() {
   
   pessoas.forEach(pessoa => {
     const resultado = calcularPerfilInvestidor(respostasSuitability[pessoa]);
-    if (resultado) {
+    if (resultado && resultado.perfil) {
       html += `<td style="padding: 1.2rem; text-align: center; border: 1px solid var(--border-color); background-color: ${resultado.perfil.cor}; color: white;">`;
       html += `<div style="font-size: 1rem; font-weight: bold; margin-bottom: 0.3rem;">${resultado.perfil.nome}</div>`;
-      html += `<div style="font-size: 0.75rem; opacity: 0.9;">PFP: ${resultado.PFP}</div>`;
+      html += `<div style="font-size: 0.75rem; opacity: 0.9;">PFP: ${resultado.PFP}%</div>`;
       html += `</td>`;
     } else {
       html += `<td style="padding: 1.2rem; text-align: center; color: var(--text-light); border: 1px solid var(--border-color); font-style: italic; font-size: 0.85rem;">Preencha todas as questões</td>`;
@@ -1191,6 +1326,7 @@ function updateRespostaSuitability(pessoa, questaoId, valor) {
   }
   respostasSuitability[pessoa][questaoId] = parseInt(valor);
   renderTesteSuitability();
+  renderGraficos(); // Atualizar gráficos quando o perfil mudar
 }
 
 function getRespostasSuitabilityData() {
@@ -1218,20 +1354,25 @@ function renderGraficos() {
   patrimoniosLiquidos.forEach(pl => {
     if (!pl.classificacao_risco || pl.valor_atual <= 0) return;
     
-    const chaveProprietarios = pl.donos.sort().join(' + ') || 'Sem proprietário';
+    const chaveProprietarios = pl.donos && pl.donos.length > 0 
+      ? pl.donos.sort().join(' + ') 
+      : 'Sem proprietário';
     
     if (!gruposPorProprietarios[chaveProprietarios]) {
       gruposPorProprietarios[chaveProprietarios] = {};
     }
     
     const riscoInfo = getRiscoInfo(pl.classificacao_risco);
+    if (!riscoInfo || !riscoInfo.label) return;
+    
     const riscoLabel = riscoInfo.label;
     
     if (!gruposPorProprietarios[chaveProprietarios][riscoLabel]) {
       gruposPorProprietarios[chaveProprietarios][riscoLabel] = {
         valor: 0,
         cor: riscoInfo.cor,
-        ordem: riscoInfo.ordem
+        ordem: riscoInfo.ordem,
+        classificacao: pl.classificacao_risco
       };
     }
     
@@ -1246,20 +1387,57 @@ function renderGraficos() {
   
   container.innerHTML = Object.keys(gruposPorProprietarios).map((proprietarios, index) => {
     const dados = gruposPorProprietarios[proprietarios];
-    const canvasId = `grafico-${index}`;
+    const canvasIdAtual = `grafico-atual-${index}`;
+    const canvasIdIdeal = `grafico-ideal-${index}`;
     
     // Calcular total
     const total = Object.values(dados).reduce((sum, val) => sum + val.valor, 0);
     
+    // Obter perfil do investidor (se houver apenas um proprietário)
+    const proprietariosSplit = proprietarios.split(' + ');
+    let perfilInvestidor = null;
+    let alocacaoIdeal = null;
+    
+    if (proprietariosSplit.length === 1 && proprietariosSplit[0] !== 'Sem proprietário') {
+      const resultado = calcularPerfilInvestidor(respostasSuitability[proprietariosSplit[0]]);
+      if (resultado && resultado.perfil) {
+        perfilInvestidor = resultado.perfil;
+        alocacaoIdeal = ALOCACAO_IDEAL_POR_PERFIL[perfilInvestidor.id];
+      }
+    }
+    
     return `
-      <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.5rem;">
+      <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
         <h4 style="color: var(--accent-color); margin-bottom: 0.5rem; text-align: center;">
           <i class="fas fa-user-circle"></i> ${proprietarios}
         </h4>
         <p style="color: var(--accent-color); margin-bottom: 1rem; text-align: center; font-size: 1.2rem; font-weight: bold;">
           Total: ${formatarMoeda(total)}
         </p>
-        <canvas id="${canvasId}" style="max-height: 300px;"></canvas>
+        
+        <div style="display: grid; grid-template-columns: ${alocacaoIdeal ? '1fr 1fr' : '1fr'}; gap: 2rem;">
+          <div>
+            <h5 style="color: var(--text-light); text-align: center; margin-bottom: 1rem;">
+              <i class="fas fa-chart-pie"></i> Distribuição Atual
+            </h5>
+            <canvas id="${canvasIdAtual}" style="max-height: 300px;"></canvas>
+          </div>
+          
+          ${alocacaoIdeal ? `
+          <div>
+            <h5 style="color: var(--text-light); text-align: center; margin-bottom: 1rem;">
+              <i class="fas fa-star"></i> Distribuição Ideal (${perfilInvestidor.nome})
+            </h5>
+            <canvas id="${canvasIdIdeal}" style="max-height: 300px;"></canvas>
+          </div>
+          ` : ''}
+        </div>
+        
+        ${!alocacaoIdeal && proprietariosSplit.length === 1 && proprietariosSplit[0] !== 'Sem proprietário' ? `
+        <p style="text-align: center; color: var(--text-light); opacity: 0.7; margin-top: 1rem; font-size: 0.85rem;">
+          <i class="fas fa-info-circle"></i> Preencha o teste de suitability para ver a distribuição ideal recomendada.
+        </p>
+        ` : ''}
       </div>
     `;
   }).join('');
@@ -1267,15 +1445,17 @@ function renderGraficos() {
   // Criar gráficos com Chart.js
   Object.keys(gruposPorProprietarios).forEach((proprietarios, index) => {
     const dados = gruposPorProprietarios[proprietarios];
-    const canvasId = `grafico-${index}`;
-    const ctx = document.getElementById(canvasId);
+    const canvasIdAtual = `grafico-atual-${index}`;
+    const canvasIdIdeal = `grafico-ideal-${index}`;
+    const ctxAtual = document.getElementById(canvasIdAtual);
     
-    if (!ctx) return;
+    if (!ctxAtual) return;
     
     // Ordenar por ordem de risco
     const dadosOrdenados = Object.entries(dados).sort((a, b) => a[1].ordem - b[1].ordem);
     
-    new Chart(ctx, {
+    // Gráfico de distribuição atual
+    new Chart(ctxAtual, {
       type: 'pie',
       data: {
         labels: dadosOrdenados.map(([label]) => label),
@@ -1293,9 +1473,9 @@ function renderGraficos() {
           legend: {
             position: 'bottom',
             labels: {
-              color: 'var(--text-light)',
+              color: '#e0e0e0',
               font: {
-                size: 11
+                size: 10
               },
               generateLabels: function(chart) {
                 const data = chart.data;
@@ -1330,6 +1510,82 @@ function renderGraficos() {
         }
       }
     });
+    
+    // Gráfico de distribuição ideal (se houver perfil)
+    const proprietariosSplit = proprietarios.split(' + ');
+    if (proprietariosSplit.length === 1 && proprietariosSplit[0] !== 'Sem proprietário') {
+      const resultado = calcularPerfilInvestidor(respostasSuitability[proprietariosSplit[0]]);
+      if (resultado && resultado.perfil) {
+        const alocacaoIdeal = ALOCACAO_IDEAL_POR_PERFIL[resultado.perfil.id];
+        const ctxIdeal = document.getElementById(canvasIdIdeal);
+        
+        if (ctxIdeal && alocacaoIdeal) {
+          // Filtrar apenas alocações > 0
+          const alocacoesNaoZero = Object.entries(alocacaoIdeal.alocacao)
+            .filter(([, percentual]) => percentual > 0)
+            .map(([classificacao, percentual]) => {
+              const riscoInfo = CLASSIFICACAO_RISCO[classificacao];
+              return {
+                label: riscoInfo.label,
+                percentual: percentual,
+                cor: riscoInfo.cor,
+                ordem: riscoInfo.ordem
+              };
+            })
+            .sort((a, b) => a.ordem - b.ordem);
+          
+          new Chart(ctxIdeal, {
+            type: 'pie',
+            data: {
+              labels: alocacoesNaoZero.map(a => a.label),
+              datasets: [{
+                data: alocacoesNaoZero.map(a => a.percentual),
+                backgroundColor: alocacoesNaoZero.map(a => a.cor),
+                borderColor: 'var(--dark-bg)',
+                borderWidth: 2
+              }]
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: true,
+              plugins: {
+                legend: {
+                  position: 'bottom',
+                  labels: {
+                    color: '#e0e0e0',
+                    font: {
+                      size: 10
+                    },
+                    generateLabels: function(chart) {
+                      const data = chart.data;
+                      if (data.labels.length && data.datasets.length) {
+                        return data.labels.map((label, i) => {
+                          const value = data.datasets[0].data[i];
+                          return {
+                            text: `${label}: ${value}%`,
+                            fillStyle: data.datasets[0].backgroundColor[i],
+                            hidden: false,
+                            index: i
+                          };
+                        });
+                      }
+                      return [];
+                    }
+                  }
+                },
+                tooltip: {
+                  callbacks: {
+                    label: function(context) {
+                      return `${context.label}: ${context.parsed}%`;
+                    }
+                  }
+                }
+              }
+            }
+          });
+        }
+      }
+    }
   });
 }
 
