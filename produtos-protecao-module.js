@@ -759,11 +759,12 @@ function coletarObjetosDoDiagnostico() {
   if (patrimoniosContainer) {
     const patrimoniosCards = patrimoniosContainer.querySelectorAll('.patrimonio-card');
     patrimoniosCards.forEach(card => {
-      const tipoSelect = card.querySelector('select[id$="_tipo"]');
+      // O tipo é um input de texto, não um select
+      const tipoInput = card.querySelector('input[id$="_tipo"]');
       const valorInput = card.querySelector('input[id$="_valor"]');
       const detalhesInput = card.querySelector('input[id$="_detalhes"]');
       
-      const tipoPatrimonio = tipoSelect ? tipoSelect.options[tipoSelect.selectedIndex]?.text : '';
+      const tipoPatrimonio = tipoInput ? tipoInput.value : '';
       const valorPatrimonio = valorInput ? valorInput.value : '';
       const detalhesPatrimonio = detalhesInput ? detalhesInput.value : '';
       
@@ -786,8 +787,9 @@ function coletarObjetosDoDiagnostico() {
     patrimoniosLiquidos.forEach(pl => {
       // Formatar valor
       const valorFormatado = pl.valor_atual ? `R$ ${parseFloat(pl.valor_atual).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
-      const tipoProduto = pl.tipo_produto || '';
-      const instituicao = pl.instituicao || '';
+      // Usar os campos _nome que contêm os nomes legíveis
+      const tipoProduto = pl.tipo_produto_nome || '';
+      const instituicao = pl.instituicao_nome || '';
       
       if (valorFormatado || tipoProduto) {
         let descricao = valorFormatado || '';
