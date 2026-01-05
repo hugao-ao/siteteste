@@ -46,31 +46,58 @@ async function carregarTiposProdutosProtecao() {
 
 function formatarMoeda(valor) {
   if (!valor && valor !== 0) return 'R$ 0,00';
-  
-  // Se for string, limpar e converter
-  if (typeof valor === 'string') {
-    valor = valor.replace(/[^\d,.-]/g, '').replace(',', '.');
-    valor = parseFloat(valor) || 0;
-  }
-  
-  return valor.toLocaleString('pt-BR', {
+  const numero = typeof valor === 'string' ? parseFloat(valor.replace(/[^\d,-]/g, '').replace(',', '.')) : valor;
+  if (isNaN(numero)) return 'R$ 0,00';
+  return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
     currency: 'BRL'
-  });
+  }).format(numero);
 }
+
+function desformatarMoeda(valorFormatado) {
+  if (!valorFormatado) return 0;
+  const valor = valorFormatado.toString()
+    .replace('R$', '')
+    .replace(/\./g, '')
+    .replace(',', '.')
+    .trim();
+  return parseFloat(valor) || 0;
+}
+
+function aplicarMascaraMoeda(event) {
+  const input = event.target;
+  let valor = input.value.replace(/\D/g, '');
+  
+  // Se está vazio, não fazer nada
+  if (valor === '') {
+    return;
+  }
+  
+  // Converter para número e formatar
+  const numeroEmCentavos = parseInt(valor);
+  const numeroEmReais = numeroEmCentavos / 100;
+  
+  input.value = formatarMoeda(numeroEmReais);
+}
+
+function limparCampoMoeda(event) {
+  const input = event.target;
+  if (input.value === 'R$ 0,00') {
+    input.value = '';
+  }
+}
+
+// Função global para limpar campo de moeda
+window.limparCampoMoedaProtecao = function(input) {
+  if (input.value === 'R$ 0,00') {
+    input.value = '';
+  }
+};
 
 function parseMoeda(valor) {
   if (!valor) return 0;
   if (typeof valor === 'number') return valor;
-  
-  // Remover R$, espaços e pontos de milhar, trocar vírgula por ponto
-  const valorLimpo = valor
-    .replace(/R\$\s?/g, '')
-    .replace(/\./g, '')
-    .replace(',', '.')
-    .trim();
-  
-  return parseFloat(valorLimpo) || 0;
+  return desformatarMoeda(valor);
 }
 
 function renderProdutosProtecao() {
@@ -159,6 +186,7 @@ function createProdutoProtecaoCard(produto, index) {
                  id="${produtoId}_custo" 
                  value="${produto.custo ? formatarMoeda(produto.custo) : ''}"
                  oninput="updateProdutoProtecaoCusto(${index})"
+                 onfocus="limparCampoMoedaProtecao(this)"
                  placeholder="R$ 0,00"
                  style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
         </div>
@@ -268,6 +296,7 @@ function addProdutoProtecao(dadosPrePreenchidos = null) {
     periodicidade: dadosPrePreenchidos?.periodicidade || 'anual',
     vencimento: dadosPrePreenchidos?.vencimento || '',
     seguradora: dadosPrePreenchidos?.seguradora || '',
+    cotou_analisou: dadosPrePreenchidos?.cotou_analisou || false,
     observacoes: dadosPrePreenchidos?.observacoes || '',
     origem_patrimonio: dadosPrePreenchidos?.origem_patrimonio || null
   };
@@ -320,14 +349,16 @@ function updateProdutoProtecaoField(index, campo, valor) {
   }
 }
 
-function updateProdutoProtecaoCusto(index) {
+function updateProdutoProtecaoCusto(index, event) {
   const produtoId = `produto_protecao_${index}`;
   const custoInput = document.getElementById(`${produtoId}_custo`);
   
   if (custoInput && produtosProtecao[index]) {
-    const valorFormatado = formatarMoeda(custoInput.value);
-    custoInput.value = valorFormatado;
-    produtosProtecao[index].custo = parseMoeda(valorFormatado);
+    // Aplicar máscara de moeda
+    aplicarMascaraMoeda({ target: custoInput });
+    
+    // Salvar valor numérico
+    produtosProtecao[index].custo = desformatarMoeda(custoInput.value);
     
     // Atualizar título e total
     updateProdutoProtecaoField(index, 'custo', produtosProtecao[index].custo);
