@@ -929,6 +929,31 @@
             </div>
           </div>
 
+          <!-- ========================================= -->
+          <!-- SEÇÃO: PRODUTOS DE PROTEÇÃO -->
+          <!-- ========================================= -->
+          <div class="form-container" id="secao-produtos-protecao" style="margin-top: 1.5rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+                <i class="fas fa-shield-alt"></i> Produtos de Proteção
+              </h3>
+              <div id="produtos-protecao-total" class="patrimonio-total" style="text-align: right;">
+                <div style="font-size: 0.8rem; color: var(--text-light);">Mensal: R$ 0,00</div>
+                <div style="font-size: 1rem; color: var(--accent-color); font-weight: bold;">Anual: R$ 0,00</div>
+              </div>
+            </div>
+            
+            <div id="produtos-protecao-container">
+              <!-- Produtos de proteção serão inseridos aqui dinamicamente -->
+            </div>
+            
+            <div style="text-align: center; margin-top: 1rem;">
+              <button type="button" id="add-produto-protecao-btn" class="add-btn">
+                <i class="fas fa-plus"></i> Adicionar Produto de Proteção
+              </button>
+            </div>
+          </div>
+
         </form>
       </div>
 
@@ -2043,8 +2068,27 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
       
       if (seguroSelect && vencimentoGroup && patrimonios[index]) {
         const temSeguro = seguroSelect.value === 'true';
+        const tinhaSeguroAntes = patrimonios[index].seguro;
         patrimonios[index].seguro = temSeguro;
         vencimentoGroup.style.display = temSeguro ? 'block' : 'none';
+        
+        // Integração com Produtos de Proteção
+        if (temSeguro && !tinhaSeguroAntes) {
+          // Marcou SIM - criar produto de proteção automaticamente
+          if (window.criarProdutoProtecaoDePatrimonio) {
+            const vencimentoInput = document.getElementById(`${patrimonioId}_seguro_vencimento`);
+            const patrimonioAtualizado = {
+              ...patrimonios[index],
+              seguro_vencimento: vencimentoInput ? vencimentoInput.value : ''
+            };
+            window.criarProdutoProtecaoDePatrimonio(patrimonioAtualizado);
+          }
+        } else if (!temSeguro && tinhaSeguroAntes) {
+          // Marcou NÃO - remover produto de proteção vinculado
+          if (window.removerProdutoProtecaoDePatrimonio) {
+            window.removerProdutoProtecaoDePatrimonio(patrimonios[index]);
+          }
+        }
       }
     }
 
@@ -2365,6 +2409,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           }
         }
         
+        // Carregar produtos de proteção se existirem
+        if (diagnostico.produtos_protecao) {
+          try {
+            const produtos = typeof diagnostico.produtos_protecao === 'string' 
+              ? JSON.parse(diagnostico.produtos_protecao) 
+              : diagnostico.produtos_protecao;
+            if (window.setProdutosProtecaoData) {
+              window.setProdutosProtecaoData(produtos);
+            }
+          } catch (e) {
+            console.log('Erro ao carregar produtos de proteção:', e);
+          }
+        }
+        
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
         
@@ -2554,7 +2612,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           dependentes: JSON.stringify(dependentesData), // Salvar como JSON
           patrimonios: JSON.stringify(patrimoniosData), // Salvar como JSON
           patrimonios_liquidos: JSON.stringify(window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : []), // Salvar investimentos
-          respostas_suitability: window.getRespostasSuitabilityData ? window.getRespostasSuitabilityData() : {} // Salvar respostas do teste de perfil
+          respostas_suitability: window.getRespostasSuitabilityData ? window.getRespostasSuitabilityData() : {}, // Salvar respostas do teste de perfil
+          produtos_protecao: JSON.stringify(window.getProdutosProtecaoData ? window.getProdutosProtecaoData() : []) // Salvar produtos de proteção
         };
         
         const { data, error } = await supabase
@@ -2677,6 +2736,7 @@ window.voltarParaCliente = voltarParaCliente;
   </script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script type="module" src="patrimonio-liquido-module.js"></script>
+  <script type="module" src="produtos-protecao-module.js"></script>
 </body>
 </html>
 
