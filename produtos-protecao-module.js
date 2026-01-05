@@ -728,7 +728,7 @@ function coletarObjetosDoDiagnostico() {
   // 3. Pessoas com Renda (acessar via variável global ou DOM)
   const pessoasRendaContainer = document.getElementById('pessoas-renda-container');
   if (pessoasRendaContainer) {
-    const pessoasCards = pessoasRendaContainer.querySelectorAll('[id^="pessoa_"]');
+    const pessoasCards = pessoasRendaContainer.querySelectorAll('.pessoa-card');
     pessoasCards.forEach(card => {
       const nomeInput = card.querySelector('input[id$="_nome"]');
       if (nomeInput && nomeInput.value) {
@@ -742,10 +742,10 @@ function coletarObjetosDoDiagnostico() {
     });
   }
   
-  // 4. Dependentes
+  // 4. Dependentes - buscar pelos cards com classe dependente-card
   const dependentesContainer = document.getElementById('dependentes-container');
   if (dependentesContainer) {
-    const dependentesCards = dependentesContainer.querySelectorAll('[id^="dependente_"]');
+    const dependentesCards = dependentesContainer.querySelectorAll('.dependente-card');
     dependentesCards.forEach(card => {
       const nomeInput = card.querySelector('input[id$="_nome"]');
       if (nomeInput && nomeInput.value) {
@@ -754,27 +754,50 @@ function coletarObjetosDoDiagnostico() {
     });
   }
   
-  // 5. Patrimônios Físicos
+  // 5. Patrimônios Físicos - formato: [tipo] - [valor] - [detalhe se tiver]
   const patrimoniosContainer = document.getElementById('patrimonios-container');
   if (patrimoniosContainer) {
-    const patrimoniosCards = patrimoniosContainer.querySelectorAll('[id^="patrimonio_"]');
+    const patrimoniosCards = patrimoniosContainer.querySelectorAll('.patrimonio-card');
     patrimoniosCards.forEach(card => {
-      const detalhesInput = card.querySelector('input[id$="_detalhes"]');
       const tipoSelect = card.querySelector('select[id$="_tipo"]');
-      if (detalhesInput && detalhesInput.value) {
-        const tipoPatrimonio = tipoSelect ? tipoSelect.options[tipoSelect.selectedIndex]?.text : 'Patrimônio';
-        objetos.push({ tipo: 'Patrimônio Físico', valor: detalhesInput.value, categoria: tipoPatrimonio });
+      const valorInput = card.querySelector('input[id$="_valor"]');
+      const detalhesInput = card.querySelector('input[id$="_detalhes"]');
+      
+      const tipoPatrimonio = tipoSelect ? tipoSelect.options[tipoSelect.selectedIndex]?.text : '';
+      const valorPatrimonio = valorInput ? valorInput.value : '';
+      const detalhesPatrimonio = detalhesInput ? detalhesInput.value : '';
+      
+      if (tipoPatrimonio || valorPatrimonio) {
+        let descricao = tipoPatrimonio || 'Patrimônio';
+        if (valorPatrimonio) {
+          descricao += ` - ${valorPatrimonio}`;
+        }
+        if (detalhesPatrimonio) {
+          descricao += ` - ${detalhesPatrimonio}`;
+        }
+        objetos.push({ tipo: 'Patrimônio Físico', valor: descricao, categoria: tipoPatrimonio || 'Patrimônio' });
       }
     });
   }
   
-  // 6. Patrimônios Líquidos (Investimentos)
+  // 6. Patrimônios Líquidos (Investimentos) - formato: [valor] - [tipo] - [instituição]
   if (window.getPatrimoniosLiquidosData) {
     const patrimoniosLiquidos = window.getPatrimoniosLiquidosData();
     patrimoniosLiquidos.forEach(pl => {
-      const descricao = pl.nome_produto || pl.tipo_produto || 'Investimento';
-      if (descricao) {
-        objetos.push({ tipo: 'Patrimônio Líquido', valor: descricao, categoria: pl.tipo_produto || 'Investimento' });
+      // Formatar valor
+      const valorFormatado = pl.valor_atual ? `R$ ${parseFloat(pl.valor_atual).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '';
+      const tipoProduto = pl.tipo_produto || '';
+      const instituicao = pl.instituicao || '';
+      
+      if (valorFormatado || tipoProduto) {
+        let descricao = valorFormatado || '';
+        if (tipoProduto) {
+          descricao += descricao ? ` - ${tipoProduto}` : tipoProduto;
+        }
+        if (instituicao) {
+          descricao += ` - ${instituicao}`;
+        }
+        objetos.push({ tipo: 'Patrimônio Líquido', valor: descricao, categoria: tipoProduto || 'Investimento' });
       }
     });
   }
