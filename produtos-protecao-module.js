@@ -501,10 +501,9 @@ function abrirModalNovoTipoProtecao() {
           <div class="form-group" style="margin-bottom: 1rem;">
             <label style="display: block; color: var(--accent-color); font-weight: 600; margin-bottom: 0.5rem;">Categoria *</label>
             <select id="novo-tipo-protecao-categoria" style="width: 100%; padding: 0.8rem; background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 8px; color: var(--text-light); font-size: 1rem; cursor: pointer;">
-              <option value="Seguros">Seguros</option>
-              <option value="Saúde">Saúde</option>
-              <option value="Previdência">Previdência</option>
-              <option value="Outros">Outros</option>
+<option value="Seguros">Seguros</option>
+                <option value="Saúde">Saúde</option>
+                <option value="Outros">Outros</option>
             </select>
           </div>
         </div>
