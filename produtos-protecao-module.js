@@ -172,10 +172,15 @@ function createProdutoProtecaoCard(produto, index) {
           </label>
           <input type="text" 
                  id="${produtoId}_objeto" 
+                 list="${produtoId}_objeto_list"
                  value="${produto.objeto || ''}"
                  onchange="updateProdutoProtecaoField(${index}, 'objeto', this.value)"
-                 placeholder="Ex: Honda Civic 2022, Apartamento Centro..."
+                 onfocus="atualizarListaObjetosProtecao(${index})"
+                 placeholder="Selecione ou digite..."
                  style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
+          <datalist id="${produtoId}_objeto_list">
+            <!-- Opções serão preenchidas dinamicamente -->
+          </datalist>
         </div>
         
         <div class="form-group">
@@ -702,6 +707,116 @@ function setProdutosProtecaoData(data) {
 }
 
 // =========================================
+// FUNÇÕES PARA LISTA DE OBJETOS DO DIAGNÓSTICO
+// =========================================
+
+function coletarObjetosDoDiagnostico() {
+  const objetos = [];
+  
+  // 1. Cliente (nome do formulário principal)
+  const clienteNome = document.getElementById('cliente_nome');
+  if (clienteNome && clienteNome.value) {
+    objetos.push({ tipo: 'Pessoa', valor: clienteNome.value, categoria: 'Cliente' });
+  }
+  
+  // 2. Cônjuge
+  const conjugeNome = document.getElementById('conjuge_nome');
+  if (conjugeNome && conjugeNome.value) {
+    objetos.push({ tipo: 'Pessoa', valor: conjugeNome.value, categoria: 'Cônjuge' });
+  }
+  
+  // 3. Pessoas com Renda (acessar via variável global ou DOM)
+  const pessoasRendaContainer = document.getElementById('pessoas-renda-container');
+  if (pessoasRendaContainer) {
+    const pessoasCards = pessoasRendaContainer.querySelectorAll('[id^="pessoa_"]');
+    pessoasCards.forEach(card => {
+      const nomeInput = card.querySelector('input[id$="_nome"]');
+      if (nomeInput && nomeInput.value) {
+        objetos.push({ tipo: 'Pessoa', valor: nomeInput.value, categoria: 'Pessoa com Renda' });
+      }
+      // Cônjuge da pessoa com renda
+      const conjugeInput = card.querySelector('input[id$="_conjuge_nome"]');
+      if (conjugeInput && conjugeInput.value) {
+        objetos.push({ tipo: 'Pessoa', valor: conjugeInput.value, categoria: 'Cônjuge (Pessoa com Renda)' });
+      }
+    });
+  }
+  
+  // 4. Dependentes
+  const dependentesContainer = document.getElementById('dependentes-container');
+  if (dependentesContainer) {
+    const dependentesCards = dependentesContainer.querySelectorAll('[id^="dependente_"]');
+    dependentesCards.forEach(card => {
+      const nomeInput = card.querySelector('input[id$="_nome"]');
+      if (nomeInput && nomeInput.value) {
+        objetos.push({ tipo: 'Pessoa', valor: nomeInput.value, categoria: 'Dependente' });
+      }
+    });
+  }
+  
+  // 5. Patrimônios Físicos
+  const patrimoniosContainer = document.getElementById('patrimonios-container');
+  if (patrimoniosContainer) {
+    const patrimoniosCards = patrimoniosContainer.querySelectorAll('[id^="patrimonio_"]');
+    patrimoniosCards.forEach(card => {
+      const detalhesInput = card.querySelector('input[id$="_detalhes"]');
+      const tipoSelect = card.querySelector('select[id$="_tipo"]');
+      if (detalhesInput && detalhesInput.value) {
+        const tipoPatrimonio = tipoSelect ? tipoSelect.options[tipoSelect.selectedIndex]?.text : 'Patrimônio';
+        objetos.push({ tipo: 'Patrimônio Físico', valor: detalhesInput.value, categoria: tipoPatrimonio });
+      }
+    });
+  }
+  
+  // 6. Patrimônios Líquidos (Investimentos)
+  if (window.getPatrimoniosLiquidosData) {
+    const patrimoniosLiquidos = window.getPatrimoniosLiquidosData();
+    patrimoniosLiquidos.forEach(pl => {
+      const descricao = pl.nome_produto || pl.tipo_produto || 'Investimento';
+      if (descricao) {
+        objetos.push({ tipo: 'Patrimônio Líquido', valor: descricao, categoria: pl.tipo_produto || 'Investimento' });
+      }
+    });
+  }
+  
+  return objetos;
+}
+
+function atualizarListaObjetosProtecao(index) {
+  const produtoId = `produto_protecao_${index}`;
+  const datalist = document.getElementById(`${produtoId}_objeto_list`);
+  
+  if (!datalist) return;
+  
+  const objetos = coletarObjetosDoDiagnostico();
+  
+  // Agrupar por tipo
+  const objetosPorTipo = {};
+  objetos.forEach(obj => {
+    if (!objetosPorTipo[obj.tipo]) {
+      objetosPorTipo[obj.tipo] = [];
+    }
+    objetosPorTipo[obj.tipo].push(obj);
+  });
+  
+  // Construir opções do datalist
+  let html = '';
+  
+  // Ordem de exibição
+  const ordemTipos = ['Pessoa', 'Patrimônio Físico', 'Patrimônio Líquido'];
+  
+  ordemTipos.forEach(tipo => {
+    if (objetosPorTipo[tipo] && objetosPorTipo[tipo].length > 0) {
+      objetosPorTipo[tipo].forEach(obj => {
+        html += `<option value="${obj.valor}" label="${obj.categoria}">${obj.valor}</option>`;
+      });
+    }
+  });
+  
+  datalist.innerHTML = html;
+}
+
+// =========================================
 // INICIALIZAÇÃO
 // =========================================
 
@@ -742,3 +857,4 @@ window.editarTipoProtecao = editarTipoProtecao;
 window.fecharModalEditarTipoProtecao = fecharModalEditarTipoProtecao;
 window.salvarEdicaoTipoProtecao = salvarEdicaoTipoProtecao;
 window.excluirTipoProtecao = excluirTipoProtecao;
+window.atualizarListaObjetosProtecao = atualizarListaObjetosProtecao;
