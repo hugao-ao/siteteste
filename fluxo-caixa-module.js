@@ -520,6 +520,7 @@ function calcularValorAnual(valor, qtdRecorrencia, undRecorrencia) {
 
 /**
  * Calcula investimentos por pessoa baseado nos aportes do patrimônio líquido
+ * Campos do patrimônio líquido: aporte_valor, aporte_frequencia (NENHUM, MENSAL, ANUAL), donos
  */
 function calcularInvestimentosPorPessoa(pessoas) {
   const investimentos = {};
@@ -533,23 +534,28 @@ function calcularInvestimentosPorPessoa(pessoas) {
     const patrimonios = window.getPatrimoniosLiquidosData() || [];
     
     patrimonios.forEach(pl => {
-      const aporteMensal = parseFloat(pl.aporte_mensal) || 0;
-      const aporteAnual = parseFloat(pl.aporte_anual) || 0;
+      const aporteValor = parseFloat(pl.aporte_valor) || 0;
+      const aporteFrequencia = pl.aporte_frequencia || 'NENHUM';
       const donos = pl.donos || [];
       
-      if ((aporteMensal > 0 || aporteAnual > 0) && donos.length > 0) {
+      if (aporteValor > 0 && aporteFrequencia !== 'NENHUM' && donos.length > 0) {
         // Dividir igualmente entre os donos
-        const aporteMensalPorDono = aporteMensal / donos.length;
-        const aporteAnualPorDono = aporteAnual / donos.length;
+        const aporteValorPorDono = aporteValor / donos.length;
         
         donos.forEach(donoNome => {
           // Encontrar o ID da pessoa pelo nome
           const pessoa = pessoas.find(p => p.nome === donoNome);
           if (pessoa && investimentos[pessoa.id]) {
-            // Mensal: apenas aporte mensal (anual NÃO entra)
-            investimentos[pessoa.id].mes += aporteMensalPorDono;
-            // Anual: aporte anual + (aporte mensal × 12)
-            investimentos[pessoa.id].ano += aporteAnualPorDono + (aporteMensalPorDono * 12);
+            if (aporteFrequencia === 'MENSAL') {
+              // Aporte mensal: entra no cálculo mensal
+              investimentos[pessoa.id].mes += aporteValorPorDono;
+              // Anual: aporte mensal × 12
+              investimentos[pessoa.id].ano += aporteValorPorDono * 12;
+            } else if (aporteFrequencia === 'ANUAL') {
+              // Aporte anual: NÃO entra no cálculo mensal
+              // Anual: apenas o aporte anual
+              investimentos[pessoa.id].ano += aporteValorPorDono;
+            }
           }
         });
       }
@@ -685,6 +691,102 @@ function calcularDistribuicao(fluxoGeral) {
       investimentos: investimentosAtual - investimentosIdeal
     }
   };
+}
+
+// ========================================
+// TABELA DE INVESTIMENTOS/APORTES
+// ========================================
+
+function renderTabelaInvestimentos(pessoas) {
+  if (!window.getPatrimoniosLiquidosData) {
+    return `
+      <div style="margin-bottom: 2rem;">
+        <h4 style="color: #007bff; margin: 0 0 1rem 0;">
+          <i class="fas fa-piggy-bank"></i> INVESTIMENTOS/APORTES
+        </h4>
+        <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
+          <i class="fas fa-info-circle"></i> Módulo de patrimônio líquido não carregado.
+        </p>
+      </div>
+    `;
+  }
+  
+  const patrimonios = window.getPatrimoniosLiquidosData() || [];
+  const investimentos = [];
+  
+  patrimonios.forEach(pl => {
+    const aporteValor = parseFloat(pl.aporte_valor) || 0;
+    const aporteFrequencia = pl.aporte_frequencia || 'NENHUM';
+    const donos = pl.donos || [];
+    
+    if (aporteValor > 0 && aporteFrequencia !== 'NENHUM' && donos.length > 0) {
+      const aporteValorPorDono = aporteValor / donos.length;
+      
+      donos.forEach(donoNome => {
+        const pessoa = pessoas.find(p => p.nome === donoNome);
+        if (pessoa) {
+          investimentos.push({
+            nome: pl.nome_produto_customizado || pl.tipo_produto_nome || 'Investimento',
+            instituicao: pl.instituicao_nome || '-',
+            valor: aporteValorPorDono,
+            frequencia: aporteFrequencia,
+            titular: pessoa.nome,
+            titularId: pessoa.id,
+            valorMensal: aporteFrequencia === 'MENSAL' ? aporteValorPorDono : 0,
+            valorAnual: aporteFrequencia === 'MENSAL' ? aporteValorPorDono * 12 : aporteValorPorDono
+          });
+        }
+      });
+    }
+  });
+  
+  return `
+    <div style="margin-bottom: 2rem;">
+      <h4 style="color: #007bff; margin: 0 0 1rem 0;">
+        <i class="fas fa-piggy-bank"></i> INVESTIMENTOS/APORTES
+        <span style="font-size: 0.8rem; font-weight: normal; opacity: 0.7;">(importados do Patrimônio Líquido)</span>
+      </h4>
+      
+      <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">
+          <thead>
+            <tr style="background: rgba(0, 123, 255, 0.2);">
+              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Investimento</th>
+              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Instituição</th>
+              <th style="padding: 0.6rem; text-align: right; border: 1px solid var(--border-color);">Aporte</th>
+              <th style="padding: 0.6rem; text-align: center; border: 1px solid var(--border-color);">Frequência</th>
+              <th style="padding: 0.6rem; text-align: left; border: 1px solid var(--border-color);">Titular</th>
+              <th style="padding: 0.6rem; text-align: right; border: 1px solid var(--border-color);">Valor/Mês</th>
+              <th style="padding: 0.6rem; text-align: right; border: 1px solid var(--border-color);">Valor/Ano</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${investimentos.length === 0 ? `
+              <tr>
+                <td colspan="7" style="padding: 1rem; text-align: center; color: var(--text-light); opacity: 0.7; border: 1px solid var(--border-color);">
+                  Nenhum aporte cadastrado no Patrimônio Líquido.
+                </td>
+              </tr>
+            ` : investimentos.map(inv => `
+              <tr>
+                <td style="padding: 0.4rem; border: 1px solid var(--border-color);">${inv.nome}</td>
+                <td style="padding: 0.4rem; border: 1px solid var(--border-color);">${inv.instituicao}</td>
+                <td style="padding: 0.4rem; text-align: right; border: 1px solid var(--border-color);">${formatarMoedaFluxo(inv.valor)}</td>
+                <td style="padding: 0.4rem; text-align: center; border: 1px solid var(--border-color);">
+                  <span style="background: ${inv.frequencia === 'MENSAL' ? '#28a745' : '#ffc107'}; color: ${inv.frequencia === 'MENSAL' ? 'white' : '#333'}; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem;">
+                    ${inv.frequencia}
+                  </span>
+                </td>
+                <td style="padding: 0.4rem; border: 1px solid var(--border-color);">${inv.titular}</td>
+                <td style="padding: 0.4rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(inv.valorMensal)}</td>
+                <td style="padding: 0.4rem; text-align: right; border: 1px solid var(--border-color); color: #007bff; font-weight: 600;">${formatarMoedaFluxo(inv.valorAnual)}</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
 }
 
 // ========================================
@@ -925,6 +1027,9 @@ function renderFluxoCaixa() {
         </table>
       </div>
     </div>
+    
+    <!-- INVESTIMENTOS/APORTES -->
+    ${renderTabelaInvestimentos(pessoas)}
     
     <!-- Botão Finalizar -->
     <div style="text-align: center; margin-top: 2rem; padding-top: 1rem; border-top: 2px solid var(--border-color);">
