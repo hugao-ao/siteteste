@@ -1395,16 +1395,14 @@ function renderGraficos() {
     gruposPorProprietarios[chaveProprietarios][riscoLabel].valor += parseFloat(pl.valor_atual);
   });
   
-  // Renderizar gráficos
+  // Renderizar tabelas comparativas
   if (Object.keys(gruposPorProprietarios).length === 0) {
-    container.innerHTML = '<p style="text-align: center; color: var(--text-light); opacity: 0.7;">Adicione investimentos com proprietários e classificação de risco para ver os gráficos.</p>';
+    container.innerHTML = '<p style="text-align: center; color: var(--text-light); opacity: 0.7;">Adicione investimentos com proprietários e classificação de risco para ver a distribuição.</p>';
     return;
   }
   
   container.innerHTML = Object.keys(gruposPorProprietarios).map((proprietarios, index) => {
     const dados = gruposPorProprietarios[proprietarios];
-    const canvasIdAtual = `grafico-atual-${index}`;
-    const canvasIdIdeal = `grafico-ideal-${index}`;
     
     // Calcular total
     const total = Object.values(dados).reduce((sum, val) => sum + val.valor, 0);
@@ -1414,12 +1412,48 @@ function renderGraficos() {
     let perfilInvestidor = null;
     let alocacaoIdeal = null;
     
+    // Só mostra comparação ideal se for um único proprietário
     if (proprietariosSplit.length === 1 && proprietariosSplit[0] !== 'Sem proprietário') {
       const resultado = calcularPerfilInvestidor(respostasSuitability[proprietariosSplit[0]]);
       if (resultado && resultado.perfil) {
         perfilInvestidor = resultado.perfil;
         alocacaoIdeal = ALOCACAO_IDEAL_POR_PERFIL[perfilInvestidor.id];
       }
+    }
+    
+    // Ordenar por ordem de risco
+    const dadosOrdenados = Object.entries(dados).sort((a, b) => a[1].ordem - b[1].ordem);
+    
+    // Gerar tabela de distribuição atual
+    const tabelaAtual = dadosOrdenados.map(([label, info]) => {
+      const percentual = ((info.valor / total) * 100).toFixed(1);
+      return { label, valor: info.valor, percentual: parseFloat(percentual), cor: info.cor, ordem: info.ordem, classificacao: info.classificacao };
+    });
+    
+    // Se houver perfil, gerar tabela comparativa
+    let tabelaComparativa = null;
+    if (alocacaoIdeal) {
+      // Obter todas as classificações de risco ordenadas
+      const todasClassificacoes = Object.entries(CLASSIFICACAO_RISCO).sort((a, b) => a[1].ordem - b[1].ordem);
+      
+      tabelaComparativa = todasClassificacoes.map(([classificacao, riscoInfo]) => {
+        const percentualIdeal = alocacaoIdeal.alocacao[classificacao] || 0;
+        const dadoAtual = tabelaAtual.find(d => d.classificacao === classificacao);
+        const percentualAtual = dadoAtual ? dadoAtual.percentual : 0;
+        const valorAtual = dadoAtual ? dadoAtual.valor : 0;
+        const valorIdeal = (total * percentualIdeal) / 100;
+        const diferenca = percentualAtual - percentualIdeal;
+        
+        return {
+          label: riscoInfo.label,
+          cor: riscoInfo.cor,
+          percentualIdeal,
+          percentualAtual,
+          valorIdeal,
+          valorAtual,
+          diferenca
+        };
+      }).filter(item => item.percentualIdeal > 0 || item.percentualAtual > 0); // Filtrar linhas vazias
     }
     
     return `
@@ -1431,204 +1465,90 @@ function renderGraficos() {
           Total: ${formatarMoeda(total)}
         </p>
         
-        <div style="display: grid; grid-template-columns: ${alocacaoIdeal ? '1fr 1fr' : '1fr'}; gap: 2rem;">
-          <div>
-            <h5 style="color: var(--text-light); text-align: center; margin-bottom: 1rem;">
-              <i class="fas fa-chart-pie"></i> Distribuição Atual
-            </h5>
-            <canvas id="${canvasIdAtual}" style="max-height: 300px;"></canvas>
-          </div>
-          
-          ${alocacaoIdeal ? `
-          <div>
-            <h5 style="color: var(--text-light); text-align: center; margin-bottom: 1rem;">
-              <i class="fas fa-star"></i> Distribuição Ideal (${perfilInvestidor.nome})
-            </h5>
-            <canvas id="${canvasIdIdeal}" style="max-height: 300px;"></canvas>
-          </div>
-          ` : ''}
+        ${tabelaComparativa ? `
+        <!-- Tabela Comparativa: Ideal vs Atual -->
+        <h5 style="color: var(--text-light); text-align: center; margin-bottom: 1rem;">
+          <i class="fas fa-balance-scale"></i> Comparação: Ideal (${perfilInvestidor.nome}) vs Atual
+        </h5>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+              <tr style="background: rgba(212, 175, 55, 0.2);">
+                <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border-color);">Nível de Risco</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Ideal (%)</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Atual (%)</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Valor Ideal</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Valor Atual</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Diferença</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tabelaComparativa.map(item => {
+                const corDiferenca = item.diferenca > 5 ? '#dc3545' : item.diferenca < -5 ? '#ffc107' : '#28a745';
+                const sinalDiferenca = item.diferenca > 0 ? '+' : '';
+                return `
+                  <tr>
+                    <td style="padding: 0.5rem; border: 1px solid var(--border-color);">
+                      <span style="display: inline-block; width: 12px; height: 12px; background: ${item.cor}; border-radius: 3px; margin-right: 0.5rem;"></span>
+                      ${item.label}
+                    </td>
+                    <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 600;">${item.percentualIdeal.toFixed(1)}%</td>
+                    <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">${item.percentualAtual.toFixed(1)}%</td>
+                    <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">${formatarMoeda(item.valorIdeal)}</td>
+                    <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">${formatarMoeda(item.valorAtual)}</td>
+                    <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: ${corDiferenca}; font-weight: 600;">
+                      ${sinalDiferenca}${item.diferenca.toFixed(1)}%
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
+            </tbody>
+          </table>
         </div>
-        
-        ${!alocacaoIdeal && proprietariosSplit.length === 1 && proprietariosSplit[0] !== 'Sem proprietário' ? `
-        <p style="text-align: center; color: var(--text-light); opacity: 0.7; margin-top: 1rem; font-size: 0.85rem;">
-          <i class="fas fa-info-circle"></i> Preencha o teste de suitability para ver a distribuição ideal recomendada.
+        <p style="text-align: center; font-size: 0.75rem; color: var(--text-light); opacity: 0.7; margin-top: 0.5rem;">
+          <i class="fas fa-info-circle"></i> Diferença positiva = acima do ideal | Diferença negativa = abaixo do ideal
         </p>
-        ` : ''}
+        ` : `
+        <!-- Tabela de Distribuição Atual (sem comparação) -->
+        <h5 style="color: var(--text-light); text-align: center; margin-bottom: 1rem;">
+          <i class="fas fa-table"></i> Distribuição Atual por Risco
+        </h5>
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+              <tr style="background: rgba(212, 175, 55, 0.2);">
+                <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border-color);">Nível de Risco</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Valor</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Percentual</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${tabelaAtual.map(item => `
+                <tr>
+                  <td style="padding: 0.5rem; border: 1px solid var(--border-color);">
+                    <span style="display: inline-block; width: 12px; height: 12px; background: ${item.cor}; border-radius: 3px; margin-right: 0.5rem;"></span>
+                    ${item.label}
+                  </td>
+                  <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">${formatarMoeda(item.valor)}</td>
+                  <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 600;">${item.percentual.toFixed(1)}%</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        ${proprietariosSplit.length === 1 && proprietariosSplit[0] !== 'Sem proprietário' ? `
+        <p style="text-align: center; color: var(--text-light); opacity: 0.7; margin-top: 1rem; font-size: 0.85rem;">
+          <i class="fas fa-info-circle"></i> Preencha o teste de suitability para ver a comparação com a distribuição ideal.
+        </p>
+        ` : `
+        <p style="text-align: center; color: var(--text-light); opacity: 0.7; margin-top: 1rem; font-size: 0.85rem;">
+          <i class="fas fa-info-circle"></i> Investimentos com múltiplos proprietários exibem apenas a distribuição atual.
+        </p>
+        `}
+        `}
       </div>
     `;
   }).join('');
-  
-  // Criar gráficos com Chart.js
-  Object.keys(gruposPorProprietarios).forEach((proprietarios, index) => {
-    const dados = gruposPorProprietarios[proprietarios];
-    const canvasIdAtual = `grafico-atual-${index}`;
-    const canvasIdIdeal = `grafico-ideal-${index}`;
-    const ctxAtual = document.getElementById(canvasIdAtual);
-    
-    if (!ctxAtual) return;
-    
-    // Ordenar por ordem de risco
-    const dadosOrdenados = Object.entries(dados).sort((a, b) => a[1].ordem - b[1].ordem);
-    
-    // Gráfico de distribuição atual
-    new Chart(ctxAtual, {
-      type: 'pie',
-      data: {
-        labels: dadosOrdenados.map(([label]) => label),
-        datasets: [{
-          data: dadosOrdenados.map(([, info]) => info.valor),
-          backgroundColor: dadosOrdenados.map(([, info]) => info.cor),
-          borderColor: 'var(--dark-bg)',
-          borderWidth: 2
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              color: '#FFFFFF',
-              font: {
-                size: 12,
-                weight: 'bold'
-              },
-              padding: 15,
-              usePointStyle: true,
-              pointStyle: 'rectRounded',
-              generateLabels: function(chart) {
-                const data = chart.data;
-                if (data.labels.length && data.datasets.length) {
-                  const total = data.datasets[0].data.reduce((a, b) => a + b, 0);
-                  return data.labels.map((label, i) => {
-                    const value = data.datasets[0].data[i];
-                    const percentage = ((value / total) * 100).toFixed(1);
-                    return {
-                      text: `${label}: ${formatarMoeda(value)} (${percentage}%)`,
-                      fillStyle: data.datasets[0].backgroundColor[i],
-                      strokeStyle: '#ffffff',
-                      lineWidth: 1,
-                      hidden: false,
-                      index: i
-                    };
-                  });
-                }
-                return [];
-              }
-            }
-          },
-          tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.9)',
-            titleColor: '#FFD700',
-            bodyColor: '#ffffff',
-            titleFont: { size: 14, weight: 'bold' },
-            bodyFont: { size: 13 },
-            padding: 12,
-            cornerRadius: 8,
-            callbacks: {
-              label: function(context) {
-                const label = context.label || '';
-                const value = formatarMoeda(context.parsed);
-                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                const percentage = ((context.parsed / total) * 100).toFixed(1);
-                return `${label}: ${value} (${percentage}%)`;
-              }
-            }
-          }
-        }
-      }
-    });
-    
-    // Gráfico de distribuição ideal (se houver perfil)
-    const proprietariosSplit = proprietarios.split(' + ');
-    if (proprietariosSplit.length === 1 && proprietariosSplit[0] !== 'Sem proprietário') {
-      const resultado = calcularPerfilInvestidor(respostasSuitability[proprietariosSplit[0]]);
-      if (resultado && resultado.perfil) {
-        const alocacaoIdeal = ALOCACAO_IDEAL_POR_PERFIL[resultado.perfil.id];
-        const ctxIdeal = document.getElementById(canvasIdIdeal);
-        
-        if (ctxIdeal && alocacaoIdeal) {
-          // Filtrar apenas alocações > 0
-          const alocacoesNaoZero = Object.entries(alocacaoIdeal.alocacao)
-            .filter(([, percentual]) => percentual > 0)
-            .map(([classificacao, percentual]) => {
-              const riscoInfo = CLASSIFICACAO_RISCO[classificacao];
-              return {
-                label: riscoInfo.label,
-                percentual: percentual,
-                cor: riscoInfo.cor,
-                ordem: riscoInfo.ordem
-              };
-            })
-            .sort((a, b) => a.ordem - b.ordem);
-          
-          new Chart(ctxIdeal, {
-            type: 'pie',
-            data: {
-              labels: alocacoesNaoZero.map(a => a.label),
-              datasets: [{
-                data: alocacoesNaoZero.map(a => a.percentual),
-                backgroundColor: alocacoesNaoZero.map(a => a.cor),
-                borderColor: 'var(--dark-bg)',
-                borderWidth: 2
-              }]
-            },
-            options: {
-              responsive: true,
-              maintainAspectRatio: true,
-              plugins: {
-                legend: {
-                  position: 'bottom',
-                  labels: {
-                    color: '#FFFFFF',
-                    font: {
-                      size: 12,
-                      weight: 'bold'
-                    },
-                    padding: 15,
-                    usePointStyle: true,
-                    pointStyle: 'rectRounded',
-                    generateLabels: function(chart) {
-                      const data = chart.data;
-                      if (data.labels.length && data.datasets.length) {
-                        return data.labels.map((label, i) => {
-                          const value = data.datasets[0].data[i];
-                          return {
-                            text: `${label}: ${value}%`,
-                            fillStyle: data.datasets[0].backgroundColor[i],
-                            strokeStyle: '#ffffff',
-                            lineWidth: 1,
-                            hidden: false,
-                            index: i
-                          };
-                        });
-                      }
-                      return [];
-                    }
-                  }
-                },
-                tooltip: {
-                  backgroundColor: 'rgba(0, 0, 0, 0.9)',
-                  titleColor: '#FFD700',
-                  bodyColor: '#ffffff',
-                  titleFont: { size: 14, weight: 'bold' },
-                  bodyFont: { size: 13 },
-                  padding: 12,
-                  cornerRadius: 8,
-                  callbacks: {
-                    label: function(context) {
-                      return `${context.label}: ${context.parsed}%`;
-                    }
-                  }
-                }
-              }
-            }
-          });
-        }
-      }
-    }
-  });
 }
 
 // =========================================
