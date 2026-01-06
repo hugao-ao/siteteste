@@ -1003,6 +1003,20 @@
             </div>
           </div>
 
+          <!-- Seção de Imposto de Renda -->
+          <div class="form-container" id="secao-ir" style="margin-top: 1.5rem;">
+            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
+              <i class="fas fa-file-invoice-dollar"></i> Imposto de Renda
+            </h3>
+            
+            <div id="ir-container">
+              <!-- Os cards de IR serão renderizados aqui dinamicamente -->
+              <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
+                <i class="fas fa-info-circle"></i> As declarações de IR serão exibidas automaticamente para o cliente, cônjuge (se não for dependente), pessoas com renda e seus cônjuges (se não forem dependentes).
+              </p>
+            </div>
+          </div>
+
           <!-- ========================================= -->
           <!-- SEÇÃO: CONTAS & CARTÕES DE CRÉDITO -->
           <!-- ========================================= -->
@@ -1022,17 +1036,16 @@
             </div>
           </div>
 
-          <!-- Seção de Imposto de Renda -->
-          <div class="form-container" id="secao-ir" style="margin-top: 1.5rem;">
+          <!-- ========================================= -->
+          <!-- SEÇÃO: FLUXO DE CAIXA -->
+          <!-- ========================================= -->
+          <div class="form-container" id="secao-fluxo-caixa" style="margin-top: 1.5rem;">
             <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-              <i class="fas fa-file-invoice-dollar"></i> Imposto de Renda
+              <i class="fas fa-chart-line"></i> Fluxo de Caixa
             </h3>
             
-            <div id="ir-container">
-              <!-- Os cards de IR serão renderizados aqui dinamicamente -->
-              <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
-                <i class="fas fa-info-circle"></i> As declarações de IR serão exibidas automaticamente para o cliente, cônjuge (se não for dependente), pessoas com renda e seus cônjuges (se não forem dependentes).
-              </p>
+            <div id="fluxo-caixa-container">
+              <!-- Fluxo de caixa será renderizado aqui dinamicamente -->
             </div>
           </div>
 
@@ -2628,6 +2641,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           }
         }
         
+        // Carregar fluxo de caixa
+        if (diagnostico.fluxo_caixa) {
+          try {
+            const fluxoCaixa = typeof diagnostico.fluxo_caixa === 'string' 
+              ? JSON.parse(diagnostico.fluxo_caixa) 
+              : diagnostico.fluxo_caixa;
+            if (window.setFluxoCaixaData) {
+              window.setFluxoCaixaData(fluxoCaixa);
+            }
+          } catch (e) {
+            console.log('Erro ao carregar fluxo de caixa:', e);
+          }
+        }
+        
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
         
@@ -2824,7 +2851,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           declaracoes_ir: JSON.stringify(window.getDeclaracoesIRData ? window.getDeclaracoesIRData() : []), // Salvar declarações de IR
           dividas: JSON.stringify(window.getDividasData ? window.getDividasData() : []), // Salvar dívidas
           dados_sucessao: JSON.stringify(window.getSucessaoData ? window.getSucessaoData() : {}), // Salvar dados de sucessão
-          contas_cartoes: JSON.stringify(window.getContasCartoesData ? window.getContasCartoesData() : []) // Salvar contas e cartões
+          contas_cartoes: JSON.stringify(window.getContasCartoesData ? window.getContasCartoesData() : []), // Salvar contas e cartões
+          fluxo_caixa: JSON.stringify(window.getFluxoCaixaData ? window.getFluxoCaixaData() : {}) // Salvar fluxo de caixa
         };
         
         const { data, error } = await supabase
@@ -2960,6 +2988,7 @@ window.voltarParaCliente = voltarParaCliente;
   <script type="module" src="sucessao-module.js"></script>
   <script type="module" src="contas-cartoes-module.js"></script>
   <script type="module" src="ir-module.js"></script>
+  <script type="module" src="fluxo-caixa-module.js"></script>
 </body>
 </html>
 
