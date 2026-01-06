@@ -128,6 +128,79 @@ function getContasCartoesParaFluxo() {
   return [];
 }
 
+// Função para identificar o titular baseado no objeto do produto
+function identificarTitularPorObjeto(objetoNome, pessoas) {
+  if (!objetoNome) return ['titular'];
+  
+  // 1. Verificar se é um integrante direto (cliente, cônjuge, pessoa com renda, cônjuge da pessoa)
+  const pessoaEncontrada = pessoas.find(p => p.nome === objetoNome);
+  if (pessoaEncontrada) {
+    return [pessoaEncontrada.id];
+  }
+  
+  // 2. Verificar se é um dependente - buscar de quem é o dependente
+  const dependentesContainer = document.getElementById('dependentes-container');
+  if (dependentesContainer) {
+    const dependentesCards = dependentesContainer.querySelectorAll('.dependente-card');
+    for (const card of dependentesCards) {
+      const nomeInput = card.querySelector('input[id$="_nome"]');
+      const responsavelSelect = card.querySelector('select[id$="_responsavel"]');
+      
+      if (nomeInput && nomeInput.value === objetoNome && responsavelSelect && responsavelSelect.value) {
+        return [responsavelSelect.value];
+      }
+    }
+  }
+  
+  // Também verificar no array de dependentes global
+  if (window.dependentes && Array.isArray(window.dependentes)) {
+    const dependente = window.dependentes.find(d => d.nome === objetoNome);
+    if (dependente && dependente.responsavel) {
+      return [dependente.responsavel];
+    }
+  }
+  
+  // 3. Verificar se é um patrimônio físico - buscar os proprietários
+  if (window.patrimonios && Array.isArray(window.patrimonios)) {
+    for (const patrimonio of window.patrimonios) {
+      // Verificar se o nome do objeto contém informações do patrimônio
+      const patrimonioDesc = `${patrimonio.tipo || ''} - ${patrimonio.valor || ''} - ${patrimonio.detalhes || ''}`.trim();
+      if (objetoNome.includes(patrimonio.tipo) || objetoNome.includes(patrimonio.detalhes) || objetoNome === patrimonioDesc) {
+        const proprietarios = patrimonio.proprietarios || [];
+        if (proprietarios.length > 0) {
+          // Converter nomes de proprietários para IDs
+          return proprietarios.map(propNome => {
+            const pessoa = pessoas.find(p => p.nome === propNome);
+            return pessoa ? pessoa.id : 'titular';
+          });
+        }
+      }
+    }
+  }
+  
+  // 4. Verificar se é um patrimônio líquido - buscar os donos
+  if (window.getPatrimoniosLiquidosData) {
+    const patrimoniosLiquidos = window.getPatrimoniosLiquidosData() || [];
+    for (const pl of patrimoniosLiquidos) {
+      // Verificar se o nome do objeto contém informações do patrimônio líquido
+      const plDesc = `${pl.valor || ''} - ${pl.tipo_produto || ''} - ${pl.instituicao || ''}`.trim();
+      if (objetoNome.includes(pl.tipo_produto) || objetoNome.includes(pl.instituicao) || objetoNome === plDesc) {
+        const donos = pl.donos || [];
+        if (donos.length > 0) {
+          // Converter nomes de donos para IDs
+          return donos.map(donoNome => {
+            const pessoa = pessoas.find(p => p.nome === donoNome);
+            return pessoa ? pessoa.id : 'titular';
+          });
+        }
+      }
+    }
+  }
+  
+  // Se não encontrou, retornar titular como padrão
+  return ['titular'];
+}
+
 // ========================================
 // RECEITAS
 // ========================================
@@ -264,26 +337,34 @@ function sincronizarDespesasAutomaticas() {
   if (window.getProdutosProtecaoData) {
     const produtos = window.getProdutosProtecaoData() || [];
     produtos.forEach(produto => {
-      if (produto.valor_mensal > 0 || produto.valor_anual > 0) {
-        const id = ++despesaCounter;
-        const valorMensal = parseFloat(produto.valor_mensal) || 0;
-        const valorAnual = parseFloat(produto.valor_anual) || 0;
+      const custo = parseFloat(produto.custo) || 0;
+      if (custo > 0) {
+        // Identificar titulares baseado no objeto do produto
+        const titulares = identificarTitularPorObjeto(produto.objeto, pessoas);
+        const valorPorTitular = custo / titulares.length;
         
-        // Usar valor mensal se disponível, senão calcular do anual
-        const valor = valorMensal > 0 ? valorMensal : (valorAnual / 12);
+        // Determinar periodicidade
+        const periodicidade = produto.periodicidade || 'anual';
+        const qtdRecorrencia = 1;
+        const undRecorrencia = periodicidade === 'mensal' ? 'mes' : 'ano';
         
-        despesas.push({
-          id: id,
-          nome: `${produto.tipo || 'Produto'} - ${produto.seguradora || 'Proteção'}`,
-          valor: valor,
-          tipo: 'fixa',
-          qtd_recorrencia: 1,
-          und_recorrencia: 'mes',
-          forma_pagamento: '',
-          titular: produto.titular || 'titular',
-          automatica: true,
-          origem: 'produto_protecao',
-          origem_id: produto.id
+        // Criar uma despesa para cada titular (dividindo o valor)
+        titulares.forEach(titularId => {
+          const id = ++despesaCounter;
+          
+          despesas.push({
+            id: id,
+            nome: `${produto.tipo_produto || 'Produto'} - ${produto.seguradora || produto.objeto || 'Proteção'}`,
+            valor: valorPorTitular,
+            tipo: 'fixa',
+            qtd_recorrencia: qtdRecorrencia,
+            und_recorrencia: undRecorrencia,
+            forma_pagamento: '',
+            titular: titularId,
+            automatica: true,
+            origem: 'produto_protecao',
+            origem_id: produto.id
+          });
         });
       }
     });
@@ -299,22 +380,26 @@ function sincronizarDespesasAutomaticas() {
       
       // Só adicionar se ainda tem parcelas a pagar
       if (valorParcela > 0 && parcelasPagas < prazo) {
-        const id = ++despesaCounter;
         const responsaveis = divida.responsaveis || [];
-        const titular = responsaveis.length > 0 ? responsaveis[0] : 'titular';
+        const titulares = responsaveis.length > 0 ? responsaveis : ['titular'];
+        const valorPorTitular = valorParcela / titulares.length;
         
-        despesas.push({
-          id: id,
-          nome: `Dívida: ${divida.motivo || 'Parcela'} - ${divida.credor || 'Credor'}`,
-          valor: valorParcela,
-          tipo: 'fixa',
-          qtd_recorrencia: 1,
-          und_recorrencia: 'mes',
-          forma_pagamento: '',
-          titular: titular,
-          automatica: true,
-          origem: 'divida',
-          origem_id: divida.id
+        titulares.forEach(titularId => {
+          const id = ++despesaCounter;
+          
+          despesas.push({
+            id: id,
+            nome: `Dívida: ${divida.motivo || 'Parcela'} - ${divida.credor || 'Credor'}`,
+            valor: valorPorTitular,
+            tipo: 'fixa',
+            qtd_recorrencia: 1,
+            und_recorrencia: 'mes',
+            forma_pagamento: '',
+            titular: titularId,
+            automatica: true,
+            origem: 'divida',
+            origem_id: divida.id
+          });
         });
       }
     });
