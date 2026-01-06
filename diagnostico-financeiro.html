@@ -1629,6 +1629,18 @@
                      value="${dependente.parentesco || ''}"
                      placeholder="Ex: filho(a), enteado(a), pet, etc.">
             </div>
+
+            <div class="form-group">
+              <label for="${dependenteId}_responsavel">
+                <i class="fas fa-user-friends"></i> De quem é dependente?
+              </label>
+              <select id="${dependenteId}_responsavel" 
+                      name="${dependenteId}_responsavel"
+                      onchange="updateDependenteResponsavel(${index}, this.value)">
+                <option value="">Selecione...</option>
+                ${getResponsaveisDependenteOptions(dependente.responsavel)}
+              </select>
+            </div>
           </div>
         </div>
       `;
@@ -1638,7 +1650,8 @@
       const novoDependente = {
         nome: '',
         data_nascimento: '',
-        parentesco: ''
+        parentesco: '',
+        responsavel: ''
       };
       
       dependentes.push(novoDependente);
@@ -1680,6 +1693,46 @@
             `;
           }
         }
+      }
+    }
+
+    // Função para obter lista de responsáveis disponíveis para dependentes
+    function getResponsaveisDependenteOptions(valorSelecionado) {
+      let options = '';
+      
+      // Cliente
+      const clienteNome = document.getElementById('nome_diagnostico')?.value;
+      if (clienteNome) {
+        options += `<option value="titular" ${valorSelecionado === 'titular' ? 'selected' : ''}>${clienteNome} (Cliente)</option>`;
+      }
+      
+      // Cônjuge do cliente
+      const estadoCivil = document.getElementById('estado_civil')?.value;
+      const conjugeNome = document.getElementById('conjuge_nome')?.value;
+      if ((estadoCivil === 'Casado(a)' || estadoCivil === 'União Estável') && conjugeNome) {
+        options += `<option value="conjuge" ${valorSelecionado === 'conjuge' ? 'selected' : ''}>${conjugeNome} (Cônjuge)</option>`;
+      }
+      
+      // Pessoas com renda e seus cônjuges
+      if (window.pessoasRenda && Array.isArray(window.pessoasRenda)) {
+        window.pessoasRenda.forEach((pessoa, idx) => {
+          if (pessoa.nome) {
+            options += `<option value="pessoa_${idx}" ${valorSelecionado === `pessoa_${idx}` ? 'selected' : ''}>${pessoa.nome} (Pessoa c/ Renda)</option>`;
+            
+            if ((pessoa.estado_civil === 'Casado(a)' || pessoa.estado_civil === 'União Estável') && pessoa.conjuge_nome) {
+              options += `<option value="pessoa_${idx}_conjuge" ${valorSelecionado === `pessoa_${idx}_conjuge` ? 'selected' : ''}>${pessoa.conjuge_nome} (Cônjuge)</option>`;
+            }
+          }
+        });
+      }
+      
+      return options;
+    }
+    
+    // Função para atualizar o responsável do dependente
+    function updateDependenteResponsavel(index, valor) {
+      if (dependentes[index]) {
+        dependentes[index].responsavel = valor;
       }
     }
 
@@ -1734,6 +1787,8 @@
     window.deleteDependente = deleteDependente;
     window.updateDependenteNome = updateDependenteNome;
     window.updateDependenteIdade = updateDependenteIdade;
+    window.updateDependenteResponsavel = updateDependenteResponsavel;
+    window.getResponsaveisDependenteOptions = getResponsaveisDependenteOptions;
 
     // Funções para gerenciar patrimônio
     function formatarMoeda(valor) {
