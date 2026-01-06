@@ -714,7 +714,7 @@ function coletarObjetosDoDiagnostico() {
   const objetos = [];
   
   // 1. Cliente (nome do formulário principal)
-  const clienteNome = document.getElementById('cliente_nome');
+  const clienteNome = document.getElementById('nome_diagnostico');
   if (clienteNome && clienteNome.value) {
     objetos.push({ tipo: 'Pessoa', valor: clienteNome.value, categoria: 'Cliente' });
   }
