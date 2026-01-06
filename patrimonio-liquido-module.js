@@ -1484,7 +1484,7 @@ function renderGraficos() {
             </thead>
             <tbody>
               ${tabelaComparativa.map(item => {
-                const corDiferenca = item.diferenca > 5 ? '#dc3545' : item.diferenca < -5 ? '#ffc107' : '#28a745';
+                const corDiferenca = item.diferenca < 0 ? '#dc3545' : item.diferenca > 0 ? '#28a745' : '#ffffff';
                 const sinalDiferenca = item.diferenca > 0 ? '+' : '';
                 return `
                   <tr>
