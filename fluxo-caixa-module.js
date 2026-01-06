@@ -461,6 +461,54 @@ function sincronizarDespesasAutomaticas() {
     });
   }
   
+  // 4. Imposto de Renda (resultado anual)
+  // Remover receitas automáticas de IR antigas
+  receitas = receitas.filter(r => r.origem !== 'ir_restituicao');
+  
+  if (window.getDeclaracoesIRData) {
+    const declaracoes = window.getDeclaracoesIRData() || [];
+    declaracoes.forEach(declaracao => {
+      const resultadoTipo = declaracao.resultado_tipo || '';
+      const resultadoValor = parseFloat(declaracao.resultado_valor) || 0;
+      const pessoaId = declaracao.pessoa_id || 'titular';
+      
+      if (resultadoValor > 0 && resultadoTipo) {
+        if (resultadoTipo === 'restitui') {
+          // Restituição = RECEITA anual
+          const id = ++receitaCounter;
+          receitas.push({
+            id: id,
+            nome: `Restituição IR - ${declaracao.pessoa_nome || 'Declarante'}`,
+            valor: resultadoValor,
+            tipo: 'restituicao',
+            qtd_recorrencia: 1,
+            und_recorrencia: 'ano',
+            titular: pessoaId,
+            automatica: true,
+            origem: 'ir_restituicao',
+            origem_id: declaracao.pessoa_id
+          });
+        } else if (resultadoTipo === 'paga') {
+          // Imposto a pagar = DESPESA FIXA anual
+          const id = ++despesaCounter;
+          despesas.push({
+            id: id,
+            nome: `Imposto de Renda - ${declaracao.pessoa_nome || 'Declarante'}`,
+            valor: resultadoValor,
+            tipo: 'fixa',
+            qtd_recorrencia: 1,
+            und_recorrencia: 'ano',
+            forma_pagamento: '',
+            titular: pessoaId,
+            automatica: true,
+            origem: 'ir_pagamento',
+            origem_id: declaracao.pessoa_id
+          });
+        }
+      }
+    });
+  }
+  
   renderFluxoCaixa();
 }
 
