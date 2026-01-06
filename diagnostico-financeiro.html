@@ -1173,6 +1173,26 @@
             </div>
           </div>
 
+          <!-- ========================================= -->
+          <!-- SEÇÃO: OBJETIVOS -->
+          <!-- ========================================= -->
+          <div class="form-container" id="secao-objetivos" style="margin-top: 1.5rem;">
+            <div class="section-header" onclick="toggleSection('objetivos')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
+                <i class="fas fa-bullseye"></i> Objetivos Financeiros
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-objetivos">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
+            
+            <div class="section-content expanded" id="content-objetivos">
+              <div id="objetivos-container">
+                <!-- Objetivos serão renderizados aqui dinamicamente -->
+              </div>
+            </div>
+          </div>
+
         </form>
       </div>
 
@@ -2853,6 +2873,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           }
         }
         
+        // Carregar objetivos
+        if (diagnostico.objetivos) {
+          try {
+            const objetivos = typeof diagnostico.objetivos === 'string' 
+              ? JSON.parse(diagnostico.objetivos) 
+              : diagnostico.objetivos;
+            if (window.setObjetivosData) {
+              window.setObjetivosData(objetivos);
+            }
+          } catch (e) {
+            console.log('Erro ao carregar objetivos:', e);
+          }
+        }
+        
         // Mostrar campos do cônjuge se necessário
         toggleConjugeFields();
         
@@ -3050,7 +3084,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           dividas: JSON.stringify(window.getDividasData ? window.getDividasData() : []), // Salvar dívidas
           dados_sucessao: JSON.stringify(window.getSucessaoData ? window.getSucessaoData() : {}), // Salvar dados de sucessão
           contas_cartoes: JSON.stringify(window.getContasCartoesData ? window.getContasCartoesData() : []), // Salvar contas e cartões
-          fluxo_caixa: JSON.stringify(window.getFluxoCaixaData ? window.getFluxoCaixaData() : {}) // Salvar fluxo de caixa
+          fluxo_caixa: JSON.stringify(window.getFluxoCaixaData ? window.getFluxoCaixaData() : {}), // Salvar fluxo de caixa
+          objetivos: JSON.stringify(window.getObjetivosData ? window.getObjetivosData() : {}) // Salvar objetivos
         };
         
         const { data, error } = await supabase
@@ -3187,6 +3222,7 @@ window.voltarParaCliente = voltarParaCliente;
   <script type="module" src="contas-cartoes-module.js"></script>
   <script type="module" src="ir-module.js"></script>
   <script type="module" src="fluxo-caixa-module.js"></script>
+  <script type="module" src="objetivos-module.js"></script>
 </body>
 </html>
 
