@@ -826,6 +826,18 @@
                        name="conjuge_email" 
                        placeholder="email@conjuge.com">
               </div>
+
+              <div class="form-group">
+                <label for="conjuge_dependente_ir">
+                  <i class="fas fa-file-invoice-dollar"></i> É dependente no IR?
+                </label>
+                <select id="conjuge_dependente_ir" 
+                        name="conjuge_dependente_ir"
+                        onchange="atualizarSecaoIR()">
+                  <option value="nao" selected>Não</option>
+                  <option value="sim">Sim</option>
+                </select>
+              </div>
             </div>
           </div>
 
@@ -954,6 +966,20 @@
             </div>
           </div>
 
+          <!-- Seção de Imposto de Renda -->
+          <div class="form-container" id="secao-ir" style="margin-top: 1.5rem;">
+            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
+              <i class="fas fa-file-invoice-dollar"></i> Imposto de Renda
+            </h3>
+            
+            <div id="ir-container">
+              <!-- Os cards de IR serão renderizados aqui dinamicamente -->
+              <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
+                <i class="fas fa-info-circle"></i> As declarações de IR serão exibidas automaticamente para o cliente, cônjuge (se não for dependente), pessoas com renda e seus cônjuges (se não forem dependentes).
+              </p>
+            </div>
+          </div>
+
         </form>
       </div>
 
@@ -997,6 +1023,7 @@
     const conjugeProfissaoInput = document.getElementById('conjuge_profissao');
     const conjugeTelefoneInput = document.getElementById('conjuge_telefone');
     const conjugeEmailInput = document.getElementById('conjuge_email');
+    const conjugeDependenteIRInput = document.getElementById('conjuge_dependente_ir');
     
     // Elementos do sistema de múltiplas pessoas
     const pessoasRendaContainer = document.getElementById('pessoas-renda-container');
@@ -1020,6 +1047,9 @@
     let pessoaCounter = 0;
     let dependenteCounter = 0;
     let patrimonioCounter = 0;
+    
+    // Expor pessoasRenda globalmente para o módulo de IR
+    window.pessoasRenda = pessoasRenda;
     
     // Funções utilitárias
     function showError(message) {
@@ -1106,7 +1136,10 @@
         conjugeProfissaoInput.value = '';
         conjugeTelefoneInput.value = '';
         conjugeEmailInput.value = '';
+        conjugeDependenteIRInput.value = 'nao';
       }
+      // Atualizar seção de IR
+      if (window.atualizarSecaoIR) window.atualizarSecaoIR();
     }
 
     // Funções para gerenciar múltiplas pessoas com renda
@@ -1301,6 +1334,18 @@
                        value="${pessoa.conjuge_email || ''}"
                        placeholder="email@conjuge.com">
               </div>
+
+              <div class="form-group">
+                <label for="${pessoaId}_conjuge_dependente_ir">
+                  <i class="fas fa-file-invoice-dollar"></i> É dependente no IR?
+                </label>
+                <select id="${pessoaId}_conjuge_dependente_ir" 
+                        name="${pessoaId}_conjuge_dependente_ir"
+                        onchange="updatePessoaConjugeDependenteIR(${index})">
+                  <option value="nao" ${pessoa.conjuge_dependente_ir !== 'sim' ? 'selected' : ''}>Não</option>
+                  <option value="sim" ${pessoa.conjuge_dependente_ir === 'sim' ? 'selected' : ''}>Sim</option>
+                </select>
+              </div>
             </div>
           </div>
         </div>
@@ -1322,17 +1367,24 @@
         conjuge_data_nascimento: '',
         conjuge_profissao: '',
         conjuge_telefone: '',
-        conjuge_email: ''
+        conjuge_email: '',
+        conjuge_dependente_ir: 'nao'
       };
       
       pessoasRenda.push(novaPessoa);
+      window.pessoasRenda = pessoasRenda; // Atualizar referência global
       renderPessoas();
+      // Atualizar seção de IR
+      if (window.atualizarSecaoIR) window.atualizarSecaoIR();
     }
 
     function deletePessoa(index) {
       if (confirm('Tem certeza que deseja excluir esta pessoa?')) {
         pessoasRenda.splice(index, 1);
+        window.pessoasRenda = pessoasRenda; // Atualizar referência global
         renderPessoas();
+        // Atualizar seção de IR
+        if (window.atualizarSecaoIR) window.atualizarSecaoIR();
       }
     }
 
@@ -1366,10 +1418,14 @@
         document.getElementById(`${pessoaId}_conjuge_profissao`).value = '';
         document.getElementById(`${pessoaId}_conjuge_telefone`).value = '';
         document.getElementById(`${pessoaId}_conjuge_email`).value = '';
+        document.getElementById(`${pessoaId}_conjuge_dependente_ir`).value = 'nao';
       }
       
       // Atualizar dados da pessoa
       pessoasRenda[index].estado_civil = estadoCivil;
+      window.pessoasRenda = pessoasRenda; // Atualizar referência global
+      // Atualizar seção de IR
+      if (window.atualizarSecaoIR) window.atualizarSecaoIR();
     }
 
     function renderPessoas() {
@@ -2349,15 +2405,18 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         conjugeProfissaoInput.value = diagnostico.conjuge_profissao || '';
         conjugeTelefoneInput.value = diagnostico.conjuge_telefone || '';
         conjugeEmailInput.value = diagnostico.conjuge_email || '';
+        conjugeDependenteIRInput.value = diagnostico.conjuge_dependente_ir || 'nao';
         
         // Carregar pessoas com renda se existirem
         if (diagnostico.pessoas_renda) {
           try {
             pessoasRenda = JSON.parse(diagnostico.pessoas_renda);
+            window.pessoasRenda = pessoasRenda; // Atualizar referência global
             renderPessoas();
           } catch (e) {
             console.log('Erro ao carregar pessoas com renda:', e);
             pessoasRenda = [];
+            window.pessoasRenda = pessoasRenda;
           }
         }
         
@@ -2420,6 +2479,20 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             }
           } catch (e) {
             console.log('Erro ao carregar produtos de proteção:', e);
+          }
+        }
+        
+        // Carregar declarações de IR se existirem
+        if (diagnostico.declaracoes_ir) {
+          try {
+            const declaracoes = typeof diagnostico.declaracoes_ir === 'string' 
+              ? JSON.parse(diagnostico.declaracoes_ir) 
+              : diagnostico.declaracoes_ir;
+            if (window.setDeclaracoesIRData) {
+              window.setDeclaracoesIRData(declaracoes);
+            }
+          } catch (e) {
+            console.log('Erro ao carregar declarações de IR:', e);
           }
         }
         
@@ -2513,7 +2586,8 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           conjuge_data_nascimento: document.getElementById(`${pessoaId}_conjuge_data_nascimento`)?.value || '',
           conjuge_profissao: document.getElementById(`${pessoaId}_conjuge_profissao`)?.value.trim() || '',
           conjuge_telefone: document.getElementById(`${pessoaId}_conjuge_telefone`)?.value.replace(/\D/g, '') || '',
-          conjuge_email: document.getElementById(`${pessoaId}_conjuge_email`)?.value.trim() || ''
+          conjuge_email: document.getElementById(`${pessoaId}_conjuge_email`)?.value.trim() || '',
+          conjuge_dependente_ir: document.getElementById(`${pessoaId}_conjuge_dependente_ir`)?.value || 'nao'
         };
         
         // Validar nome obrigatório para pessoas com renda
@@ -2608,12 +2682,14 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           conjuge_profissao: conjugeProfissaoInput.value.trim(),
           conjuge_telefone: conjugeTelefoneInput.value.replace(/\D/g, ''), // Salvar só números
           conjuge_email: conjugeEmailInput.value.trim(),
+          conjuge_dependente_ir: conjugeDependenteIRInput.value || 'nao',
           pessoas_renda: JSON.stringify(pessoasRendaData), // Salvar como JSON
           dependentes: JSON.stringify(dependentesData), // Salvar como JSON
           patrimonios: JSON.stringify(patrimoniosData), // Salvar como JSON
           patrimonios_liquidos: JSON.stringify(window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : []), // Salvar investimentos
           respostas_suitability: window.getRespostasSuitabilityData ? window.getRespostasSuitabilityData() : {}, // Salvar respostas do teste de perfil
-          produtos_protecao: JSON.stringify(window.getProdutosProtecaoData ? window.getProdutosProtecaoData() : []) // Salvar produtos de proteção
+          produtos_protecao: JSON.stringify(window.getProdutosProtecaoData ? window.getProdutosProtecaoData() : []), // Salvar produtos de proteção
+          declaracoes_ir: JSON.stringify(window.getDeclaracoesIRData ? window.getDeclaracoesIRData() : []) // Salvar declarações de IR
         };
         
         const { data, error } = await supabase
@@ -2680,6 +2756,14 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         // Event listeners para atualizar lista de proprietários automaticamente
         document.getElementById('nome')?.addEventListener('input', updateAllPatrimoniosProprietarios);
         document.getElementById('conjuge_nome')?.addEventListener('input', updateAllPatrimoniosProprietarios);
+        
+        // Event listeners para atualizar seção de IR quando nome do cliente ou cônjuge mudar
+        document.getElementById('nome_diagnostico')?.addEventListener('input', function() {
+          if (window.atualizarSecaoIR) setTimeout(window.atualizarSecaoIR, 100);
+        });
+        document.getElementById('conjuge_nome')?.addEventListener('input', function() {
+          if (window.atualizarSecaoIR) setTimeout(window.atualizarSecaoIR, 100);
+        });
 
         // Sobrescrever funções de pessoas e dependentes para incluir atualização
         const originalRenderPessoas = renderPessoas;
@@ -2737,6 +2821,7 @@ window.voltarParaCliente = voltarParaCliente;
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <script type="module" src="patrimonio-liquido-module.js"></script>
   <script type="module" src="produtos-protecao-module.js"></script>
+  <script type="module" src="ir-module.js"></script>
 </body>
 </html>
 
