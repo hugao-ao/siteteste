@@ -410,40 +410,40 @@ function atualizarSecaoSucessao() {
     ${cardsHTML || '<p style="text-align: center; color: var(--text-light); opacity: 0.7; padding: 1rem;"><i class="fas fa-info-circle"></i> Nenhum patrimônio ou dívida atribuído a proprietários.</p>'}
     
     <!-- Resumo Geral -->
-    <div style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%); border-radius: 10px; padding: 1.5rem; margin-top: 1.5rem;">
-      <h4 style="color: white; font-size: 1.2rem; margin: 0 0 1rem 0; text-align: center;">
+    <div style="background: var(--dark-bg); border: 2px solid var(--accent-color); border-radius: 10px; padding: 1.5rem; margin-top: 1.5rem;">
+      <h4 style="color: var(--accent-color); font-size: 1.2rem; margin: 0 0 1rem 0; text-align: center;">
         <i class="fas fa-calculator"></i> RESUMO GERAL DA SUCESSÃO
       </h4>
       
       <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
-        <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; text-align: center;">
-          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.8); margin-bottom: 0.3rem;">Patrimônio Líquido Inv.</div>
-          <div style="font-size: 1rem; font-weight: 600; color: white;">${formatarMoedaSucessao(totalPatrimonioLiquidoInv)}</div>
+        <div style="background: rgba(40, 167, 69, 0.15); border: 1px solid rgba(40, 167, 69, 0.4); border-radius: 8px; padding: 1rem; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">Patrimônio Líquido Inv.</div>
+          <div style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarMoedaSucessao(totalPatrimonioLiquidoInv)}</div>
         </div>
-        <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; text-align: center;">
-          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.8); margin-bottom: 0.3rem;">Patrimônio Físico Inv.</div>
-          <div style="font-size: 1rem; font-weight: 600; color: white;">${formatarMoedaSucessao(totalPatrimonioFisicoInv)}</div>
+        <div style="background: rgba(0, 123, 255, 0.15); border: 1px solid rgba(0, 123, 255, 0.4); border-radius: 8px; padding: 1rem; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">Patrimônio Físico Inv.</div>
+          <div style="font-size: 1rem; font-weight: 600; color: #007bff;">${formatarMoedaSucessao(totalPatrimonioFisicoInv)}</div>
         </div>
-        <div style="background: rgba(255,255,255,0.1); border-radius: 8px; padding: 1rem; text-align: center;">
-          <div style="font-size: 0.8rem; color: rgba(255,255,255,0.8); margin-bottom: 0.3rem;">Dívidas Inv.</div>
-          <div style="font-size: 1rem; font-weight: 600; color: #ff6b6b;">${formatarMoedaSucessao(totalDividasInv)}</div>
+        <div style="background: rgba(220, 53, 69, 0.15); border: 1px solid rgba(220, 53, 69, 0.4); border-radius: 8px; padding: 1rem; text-align: center;">
+          <div style="font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">Dívidas Inv.</div>
+          <div style="font-size: 1rem; font-weight: 700; color: #dc3545;">${formatarMoedaSucessao(totalDividasInv)}</div>
         </div>
       </div>
       
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.2);">
-        <div style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 1rem; text-align: center;">
-          <div style="font-size: 0.9rem; color: rgba(255,255,255,0.9); margin-bottom: 0.3rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center;">
+          <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.3rem;">
             <i class="fas fa-wallet"></i> SALDO TOTAL DO PATRIMÔNIO
           </div>
-          <div style="font-size: 1.4rem; font-weight: 700; color: white;">
+          <div style="font-size: 1.4rem; font-weight: 700; color: var(--accent-color);">
             ${formatarMoedaSucessao(totalSaldoPatrimonio)}
           </div>
         </div>
-        <div style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 1rem; text-align: center;">
-          <div style="font-size: 0.9rem; color: rgba(255,255,255,0.9); margin-bottom: 0.3rem;">
+        <div style="background: rgba(255, 255, 255, 0.05); border: 1px solid var(--border-color); border-radius: 8px; padding: 1rem; text-align: center;">
+          <div style="font-size: 0.9rem; color: var(--text-light); margin-bottom: 0.3rem;">
             <i class="fas fa-receipt"></i> CUSTO TOTAL DO INVENTÁRIO
           </div>
-          <div style="font-size: 1.4rem; font-weight: 700; color: #ffd93d;">
+          <div style="font-size: 1.4rem; font-weight: 700; color: var(--warning-color);">
             ${custoTotalDisplay}
           </div>
         </div>
