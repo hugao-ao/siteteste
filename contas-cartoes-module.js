@@ -6,18 +6,36 @@
 let contasCartoes = [];
 let contaCartaoCounter = 0;
 
-// Bandeiras de cartão
-const BANDEIRAS = [
-  { id: 'visa', nome: 'Visa' },
-  { id: 'mastercard', nome: 'Mastercard' },
-  { id: 'elo', nome: 'Elo' },
-  { id: 'amex', nome: 'American Express' },
-  { id: 'hipercard', nome: 'Hipercard' },
-  { id: 'diners', nome: 'Diners Club' },
-  { id: 'discover', nome: 'Discover' },
-  { id: 'jcb', nome: 'JCB' },
-  { id: 'aura', nome: 'Aura' },
-  { id: 'outra', nome: 'Outra' }
+// Tipos de cartão (lista gerenciável)
+let tiposCartao = [
+  // Visa
+  { id: 'visa_classic', nome: 'Visa Classic' },
+  { id: 'visa_gold', nome: 'Visa Gold' },
+  { id: 'visa_platinum', nome: 'Visa Platinum' },
+  { id: 'visa_signature', nome: 'Visa Signature' },
+  { id: 'visa_infinite', nome: 'Visa Infinite' },
+  // Mastercard
+  { id: 'mastercard_standard', nome: 'Mastercard Standard' },
+  { id: 'mastercard_gold', nome: 'Mastercard Gold' },
+  { id: 'mastercard_platinum', nome: 'Mastercard Platinum' },
+  { id: 'mastercard_black', nome: 'Mastercard Black' },
+  // Elo
+  { id: 'elo_basico', nome: 'Elo Básico' },
+  { id: 'elo_mais', nome: 'Elo Mais' },
+  { id: 'elo_grafite', nome: 'Elo Grafite' },
+  { id: 'elo_nanquim', nome: 'Elo Nanquim' },
+  { id: 'elo_diners', nome: 'Elo Diners Club' },
+  // American Express
+  { id: 'amex_green', nome: 'Amex Green' },
+  { id: 'amex_gold', nome: 'Amex Gold' },
+  { id: 'amex_platinum', nome: 'Amex Platinum' },
+  { id: 'amex_centurion', nome: 'Amex Centurion (Black)' },
+  // Hipercard
+  { id: 'hipercard_basico', nome: 'Hipercard Básico' },
+  { id: 'hipercard_platinum', nome: 'Hipercard Platinum' },
+  // Outros
+  { id: 'diners_club', nome: 'Diners Club' },
+  { id: 'outro', nome: 'Outro' }
 ];
 
 // Inicialização do módulo
@@ -33,6 +51,12 @@ function initContasCartoesModule() {
   window.renderContasCartoes = renderContasCartoes;
   window.formatarMoedaContaCartao = formatarMoedaContaCartao;
   window.limparCampoContaCartao = limparCampoContaCartao;
+  window.addTipoCartao = addTipoCartao;
+  window.removeTipoCartao = removeTipoCartao;
+  window.getTiposCartao = getTiposCartao;
+  window.setTiposCartao = setTiposCartao;
+  window.abrirModalTiposCartao = abrirModalTiposCartao;
+  window.fecharModalTiposCartao = fecharModalTiposCartao;
   
   // Renderizar a seção
   renderContasCartoes();
@@ -129,6 +153,128 @@ function getPessoasParaContasCartoes() {
   return pessoas;
 }
 
+// Funções para gerenciar tipos de cartão
+function addTipoCartao(nome) {
+  if (!nome || nome.trim() === '') return false;
+  
+  const id = nome.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
+  
+  // Verificar se já existe
+  if (tiposCartao.find(t => t.id === id || t.nome.toLowerCase() === nome.toLowerCase())) {
+    alert('Este tipo de cartão já existe!');
+    return false;
+  }
+  
+  tiposCartao.push({ id, nome: nome.trim() });
+  renderModalTiposCartao();
+  renderContasCartoes();
+  return true;
+}
+
+function removeTipoCartao(id) {
+  // Verificar se está em uso
+  const emUso = contasCartoes.some(c => c.tipo_cartao === id);
+  if (emUso) {
+    alert('Este tipo de cartão está em uso e não pode ser removido!');
+    return false;
+  }
+  
+  tiposCartao = tiposCartao.filter(t => t.id !== id);
+  renderModalTiposCartao();
+  return true;
+}
+
+function getTiposCartao() {
+  return tiposCartao;
+}
+
+function setTiposCartao(tipos) {
+  if (Array.isArray(tipos)) {
+    tiposCartao = tipos;
+  }
+}
+
+// Modal para gerenciar tipos de cartão
+function abrirModalTiposCartao() {
+  // Criar modal se não existir
+  let modal = document.getElementById('modal-tipos-cartao');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'modal-tipos-cartao';
+    modal.style.cssText = `
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.8);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+    `;
+    document.body.appendChild(modal);
+  }
+  
+  modal.innerHTML = `
+    <div style="background: var(--card-bg, #1a2e1a); border: 2px solid var(--accent-color, #d4af37); border-radius: 12px; padding: 1.5rem; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color, #2d4a2d);">
+        <h3 style="color: var(--accent-color, #d4af37); margin: 0;">
+          <i class="fas fa-credit-card"></i> Gerenciar Tipos de Cartão
+        </h3>
+        <button onclick="fecharModalTiposCartao()" style="background: none; border: none; color: var(--text-light, #e8e8e8); font-size: 1.5rem; cursor: pointer;">&times;</button>
+      </div>
+      
+      <!-- Adicionar novo tipo -->
+      <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+        <input type="text" id="novo-tipo-cartao" placeholder="Nome do novo tipo de cartão" 
+               style="flex: 1; padding: 0.6rem; border: 2px solid var(--border-color, #2d4a2d); border-radius: 6px; background: var(--dark-bg, #0d1f0d); color: var(--text-light, #e8e8e8);">
+        <button onclick="const input = document.getElementById('novo-tipo-cartao'); if(addTipoCartao(input.value)) input.value = '';" 
+                style="background: var(--success-color, #28a745); color: white; border: none; padding: 0.6rem 1rem; border-radius: 6px; cursor: pointer;">
+          <i class="fas fa-plus"></i> Adicionar
+        </button>
+      </div>
+      
+      <!-- Lista de tipos -->
+      <div id="lista-tipos-cartao" style="max-height: 400px; overflow-y: auto;">
+        ${renderListaTiposCartao()}
+      </div>
+    </div>
+  `;
+  
+  modal.style.display = 'flex';
+}
+
+function fecharModalTiposCartao() {
+  const modal = document.getElementById('modal-tipos-cartao');
+  if (modal) {
+    modal.style.display = 'none';
+  }
+}
+
+function renderModalTiposCartao() {
+  const lista = document.getElementById('lista-tipos-cartao');
+  if (lista) {
+    lista.innerHTML = renderListaTiposCartao();
+  }
+}
+
+function renderListaTiposCartao() {
+  return tiposCartao.map(tipo => {
+    const emUso = contasCartoes.some(c => c.tipo_cartao === tipo.id);
+    return `
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; border-bottom: 1px solid var(--border-color, #2d4a2d);">
+        <span style="color: var(--text-light, #e8e8e8);">${tipo.nome}</span>
+        <button onclick="removeTipoCartao('${tipo.id}')" 
+                style="background: ${emUso ? '#6c757d' : '#dc3545'}; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: ${emUso ? 'not-allowed' : 'pointer'}; font-size: 0.8rem;"
+                ${emUso ? 'disabled title="Em uso"' : ''}>
+          <i class="fas fa-trash"></i>
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
 // Função para adicionar nova conta/cartão
 function addContaCartao() {
   const id = ++contaCartaoCounter;
@@ -137,7 +283,7 @@ function addContaCartao() {
     id: id,
     tipo: 'cartao', // 'cartao' ou 'conta'
     titular: '',
-    bandeira: '',
+    tipo_cartao: '',
     instituicao: '',
     tarifa_anuidade: 0,
     pontos_por_dolar: 0,
@@ -176,7 +322,7 @@ function renderContasCartoes() {
   container.innerHTML = contasCartoes.map(item => {
     const isCartao = item.tipo === 'cartao';
     const titularNome = pessoasDisponiveis.find(p => p.id === item.titular)?.nome || item.titular || 'Não informado';
-    const bandeiraNome = BANDEIRAS.find(b => b.id === item.bandeira)?.nome || item.bandeira || '';
+    const tipoCartaoNome = tiposCartao.find(t => t.id === item.tipo_cartao)?.nome || item.tipo_cartao || '';
     
     return `
       <div class="conta-cartao-card" data-cc-id="${item.id}" style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem;">
@@ -184,7 +330,7 @@ function renderContasCartoes() {
           <h4 style="color: var(--accent-color); font-size: 1.1rem; font-weight: 600; margin: 0;">
             <i class="fas ${isCartao ? 'fa-credit-card' : 'fa-university'}"></i> 
             ${isCartao ? 'Cartão' : 'Conta'} ${item.instituicao || `#${item.id}`}
-            ${bandeiraNome ? `<span style="font-size: 0.85rem; opacity: 0.8;"> - ${bandeiraNome}</span>` : ''}
+            ${tipoCartaoNome ? `<span style="font-size: 0.85rem; opacity: 0.8;"> - ${tipoCartaoNome}</span>` : ''}
           </h4>
           <button type="button" onclick="deleteContaCartao(${item.id})" 
                   style="background: #dc3545; color: white; border: none; padding: 0.4rem 0.8rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
@@ -221,18 +367,23 @@ function renderContasCartoes() {
             </select>
           </div>
           
-          <!-- Bandeira (só para cartão) -->
+          <!-- Tipo de Cartão (só para cartão) -->
           ${isCartao ? `
             <div class="form-group">
-              <label for="cc_${item.id}_bandeira">
-                <i class="fas fa-flag"></i> Bandeira
+              <label for="cc_${item.id}_tipo_cartao">
+                <i class="fas fa-credit-card"></i> Tipo de Cartão
+                <button type="button" onclick="abrirModalTiposCartao()" 
+                        style="background: none; border: none; color: var(--accent-color); cursor: pointer; font-size: 0.8rem; margin-left: 0.3rem;" 
+                        title="Gerenciar tipos de cartão">
+                  <i class="fas fa-cog"></i>
+                </button>
               </label>
-              <select id="cc_${item.id}_bandeira" 
-                      onchange="updateContaCartaoField(${item.id}, 'bandeira', this.value)">
+              <select id="cc_${item.id}_tipo_cartao" 
+                      onchange="updateContaCartaoField(${item.id}, 'tipo_cartao', this.value)">
                 <option value="">Selecione...</option>
-                ${BANDEIRAS.map(bandeira => `
-                  <option value="${bandeira.id}" ${item.bandeira === bandeira.id ? 'selected' : ''}>
-                    ${bandeira.nome}
+                ${tiposCartao.map(tipo => `
+                  <option value="${tipo.id}" ${item.tipo_cartao === tipo.id ? 'selected' : ''}>
+                    ${tipo.nome}
                   </option>
                 `).join('')}
               </select>
@@ -314,12 +465,26 @@ function renderContasCartoes() {
 
 // Funções para obter e definir dados
 function getContasCartoesData() {
-  return contasCartoes;
+  return {
+    contasCartoes: contasCartoes,
+    tiposCartao: tiposCartao
+  };
 }
 
 function setContasCartoesData(data) {
-  if (Array.isArray(data)) {
-    contasCartoes = data;
+  if (data) {
+    // Compatibilidade com formato antigo (array direto) e novo (objeto)
+    if (Array.isArray(data)) {
+      contasCartoes = data;
+    } else {
+      if (Array.isArray(data.contasCartoes)) {
+        contasCartoes = data.contasCartoes;
+      }
+      if (Array.isArray(data.tiposCartao)) {
+        tiposCartao = data.tiposCartao;
+      }
+    }
+    
     // Atualizar contador
     if (contasCartoes.length > 0) {
       contaCartaoCounter = Math.max(...contasCartoes.map(c => c.id || 0));
@@ -340,5 +505,7 @@ export {
   initContasCartoesModule,
   getContasCartoesData,
   setContasCartoesData,
-  renderContasCartoes
+  renderContasCartoes,
+  getTiposCartao,
+  setTiposCartao
 };
