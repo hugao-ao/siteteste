@@ -705,7 +705,8 @@ function addPatrimonioLiquido() {
     finalidade: 'SEM_FINALIDADE',
     aporte_valor: 0,
     aporte_frequencia: 'NENHUM',
-    donos: []
+    donos: [],
+    inventariavel: true
   };
   
   patrimoniosLiquidos.push(patrimonioLiquido);
@@ -745,6 +746,10 @@ function updatePatrimonioLiquidoField(id, field, value) {
   } else if (field === 'donos') {
     const select = document.querySelector(`[data-patrimonio-liquido-id="${id}"] select[name="donos"]`);
     patrimonioLiquido.donos = Array.from(select.selectedOptions).map(opt => opt.value);
+  } else if (field === 'inventariavel') {
+    patrimonioLiquido.inventariavel = value === true || value === 'true';
+    // Atualizar seção de sucessão se existir
+    if (window.atualizarSecaoSucessao) window.atualizarSecaoSucessao();
   } else {
     patrimonioLiquido[field] = value;
   }
@@ -1035,6 +1040,17 @@ function renderPatrimoniosLiquidos() {
               </option>
             `).join('')}
           </select>
+        </div>
+        
+        <div class="form-group" style="display: flex; align-items: center; gap: 0.5rem;">
+          <input type="checkbox" 
+                 id="pl_${pl.id}_inventariavel" 
+                 ${pl.inventariavel !== false ? 'checked' : ''}
+                 onchange="updatePatrimonioLiquidoField(${pl.id}, 'inventariavel', this.checked)"
+                 style="width: 18px; height: 18px; cursor: pointer;">
+          <label for="pl_${pl.id}_inventariavel" style="cursor: pointer; margin: 0;">
+            <i class="fas fa-gavel"></i> Inventariável
+          </label>
         </div>
       </div>
     </div>
