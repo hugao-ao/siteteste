@@ -1090,11 +1090,17 @@ function renderResultadosFluxo(container) {
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(dados.investimentos.ano)}</td>
               </tr>
               <tr style="background: rgba(212, 175, 55, 0.2);">
-                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 700; color: var(--accent-color);">
+                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 700; color: #ffffff;">
                   <i class="fas fa-wallet"></i> SALDO/SOBRA
                 </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: ${dados.saldo.mes >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaFluxo(dados.saldo.mes)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: ${dados.saldo.ano >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaFluxo(dados.saldo.ano)}</td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: #ffffff;">
+                  ${formatarMoedaFluxo(dados.saldo.mes)} 
+                  <span style="font-size: 0.8rem; opacity: 0.8;">(${dados.receitas.mes > 0 ? ((dados.saldo.mes / dados.receitas.mes) * 100).toFixed(1) : '0.0'}%)</span>
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: #ffffff;">
+                  ${formatarMoedaFluxo(dados.saldo.ano)} 
+                  <span style="font-size: 0.8rem; opacity: 0.8;">(${dados.receitas.ano > 0 ? ((dados.saldo.ano / dados.receitas.ano) * 100).toFixed(1) : '0.0'}%)</span>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -1259,14 +1265,18 @@ function getFluxoCaixaData() {
 
 function setFluxoCaixaData(data) {
   if (data) {
+    // Carregar receitas manuais
     if (Array.isArray(data.receitas)) {
       receitas = data.receitas;
       if (receitas.length > 0) {
         receitaCounter = Math.max(...receitas.map(r => r.id || 0));
       }
     }
+    // Carregar despesas manuais (não automáticas)
     if (Array.isArray(data.despesas)) {
-      despesas = data.despesas;
+      // Filtrar apenas despesas manuais do banco
+      const despesasManuais = data.despesas.filter(d => !d.automatica);
+      despesas = despesasManuais;
       if (despesas.length > 0) {
         despesaCounter = Math.max(...despesas.map(d => d.id || 0));
       }
@@ -1274,7 +1284,13 @@ function setFluxoCaixaData(data) {
     if (typeof data.fluxoFinalizado === 'boolean') {
       fluxoFinalizado = data.fluxoFinalizado;
     }
-    renderFluxoCaixa();
+    
+    // Sincronizar despesas automáticas após carregar dados
+    // Aguardar um pouco para garantir que outros módulos estejam carregados
+    setTimeout(() => {
+      sincronizarDespesasAutomaticas();
+      renderFluxoCaixa();
+    }, 500);
   }
 }
 
