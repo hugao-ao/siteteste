@@ -2,12 +2,21 @@
 // MÓDULO DE FLUXO DE CAIXA
 // ========================================
 
+import { supabase } from './supabase.js';
+
 // Dados do fluxo de caixa
 let receitas = [];
 let despesas = [];
 let receitaCounter = 0;
 let despesaCounter = 0;
 let fluxoFinalizado = false;
+
+// Variáveis de gestão financeira (carregadas do Supabase)
+let variaveisGestao = {
+  despesas_fixas: 50,
+  despesas_variaveis: 30,
+  investimentos: 20
+};
 
 // Tipos de receita
 const TIPOS_RECEITA = [
@@ -33,15 +42,47 @@ const TIPOS_DESPESA = [
 
 // Unidades de recorrência
 const UNIDADES_RECORRENCIA = [
-  { id: 'dia', nome: 'Dia(s)', fatorDia: 1, fatorSemana: 7, fatorMes: 30, fatorAno: 365 },
-  { id: 'semana', nome: 'Semana(s)', fatorDia: null, fatorSemana: 1, fatorMes: 4, fatorAno: 52 },
-  { id: 'mes', nome: 'Mês(es)', fatorDia: null, fatorSemana: null, fatorMes: 1, fatorAno: 12 },
-  { id: 'ano', nome: 'Ano(s)', fatorDia: null, fatorSemana: null, fatorMes: null, fatorAno: 1 }
+  { id: 'dia', nome: 'Dia(s)' },
+  { id: 'semana', nome: 'Semana(s)' },
+  { id: 'mes', nome: 'Mês(es)' },
+  { id: 'ano', nome: 'Ano(s)' }
 ];
 
+// ========================================
+// CARREGAR VARIÁVEIS DE GESTÃO FINANCEIRA
+// ========================================
+
+async function carregarVariaveisGestao() {
+  try {
+    const { data, error } = await supabase
+      .from('variaveis_gestao_financeira')
+      .select('*')
+      .single();
+    
+    if (error) {
+      console.log('Usando valores padrão para variáveis de gestão:', error.message);
+      return;
+    }
+    
+    if (data) {
+      variaveisGestao = {
+        despesas_fixas: parseFloat(data.despesas_fixas) || 50,
+        despesas_variaveis: parseFloat(data.despesas_variaveis) || 30,
+        investimentos: parseFloat(data.investimentos) || 20
+      };
+      console.log('Variáveis de gestão carregadas:', variaveisGestao);
+    }
+  } catch (error) {
+    console.error('Erro ao carregar variáveis de gestão:', error);
+  }
+}
+
 // Inicialização do módulo
-function initFluxoCaixaModule() {
+async function initFluxoCaixaModule() {
   console.log('Módulo de Fluxo de Caixa carregado');
+  
+  // Carregar variáveis de gestão financeira
+  await carregarVariaveisGestao();
   
   // Expor funções globalmente
   window.addReceita = addReceita;
@@ -132,13 +173,21 @@ function getContasCartoesParaFluxo() {
 function identificarTitularPorObjeto(objetoNome, pessoas) {
   if (!objetoNome) return ['titular'];
   
-  // 1. Verificar se é um integrante direto (cliente, cônjuge, pessoa com renda, cônjuge da pessoa)
+  // 1. Verificar se é um integrante direto (cliente, cônjuge, pessoa com renda)
   const pessoaEncontrada = pessoas.find(p => p.nome === objetoNome);
   if (pessoaEncontrada) {
     return [pessoaEncontrada.id];
   }
   
   // 2. Verificar se é um dependente - buscar de quem é o dependente
+  if (window.dependentes && Array.isArray(window.dependentes)) {
+    const dependente = window.dependentes.find(d => d.nome === objetoNome);
+    if (dependente && dependente.responsavel) {
+      return [dependente.responsavel];
+    }
+  }
+  
+  // Também verificar no DOM
   const dependentesContainer = document.getElementById('dependentes-container');
   if (dependentesContainer) {
     const dependentesCards = dependentesContainer.querySelectorAll('.dependente-card');
@@ -152,23 +201,13 @@ function identificarTitularPorObjeto(objetoNome, pessoas) {
     }
   }
   
-  // Também verificar no array de dependentes global
-  if (window.dependentes && Array.isArray(window.dependentes)) {
-    const dependente = window.dependentes.find(d => d.nome === objetoNome);
-    if (dependente && dependente.responsavel) {
-      return [dependente.responsavel];
-    }
-  }
-  
   // 3. Verificar se é um patrimônio físico - buscar os proprietários
   if (window.patrimonios && Array.isArray(window.patrimonios)) {
     for (const patrimonio of window.patrimonios) {
-      // Verificar se o nome do objeto contém informações do patrimônio
       const patrimonioDesc = `${patrimonio.tipo || ''} - ${patrimonio.valor || ''} - ${patrimonio.detalhes || ''}`.trim();
       if (objetoNome.includes(patrimonio.tipo) || objetoNome.includes(patrimonio.detalhes) || objetoNome === patrimonioDesc) {
         const proprietarios = patrimonio.proprietarios || [];
         if (proprietarios.length > 0) {
-          // Converter nomes de proprietários para IDs
           return proprietarios.map(propNome => {
             const pessoa = pessoas.find(p => p.nome === propNome);
             return pessoa ? pessoa.id : 'titular';
@@ -182,12 +221,10 @@ function identificarTitularPorObjeto(objetoNome, pessoas) {
   if (window.getPatrimoniosLiquidosData) {
     const patrimoniosLiquidos = window.getPatrimoniosLiquidosData() || [];
     for (const pl of patrimoniosLiquidos) {
-      // Verificar se o nome do objeto contém informações do patrimônio líquido
       const plDesc = `${pl.valor || ''} - ${pl.tipo_produto || ''} - ${pl.instituicao || ''}`.trim();
       if (objetoNome.includes(pl.tipo_produto) || objetoNome.includes(pl.instituicao) || objetoNome === plDesc) {
         const donos = pl.donos || [];
         if (donos.length > 0) {
-          // Converter nomes de donos para IDs
           return donos.map(donoNome => {
             const pessoa = pessoas.find(p => p.nome === donoNome);
             return pessoa ? pessoa.id : 'titular';
@@ -197,7 +234,6 @@ function identificarTitularPorObjeto(objetoNome, pessoas) {
     }
   }
   
-  // Se não encontrou, retornar titular como padrão
   return ['titular'];
 }
 
@@ -271,9 +307,9 @@ function addDespesa() {
     qtd_recorrencia: 1,
     und_recorrencia: 'mes',
     forma_pagamento: '',
-    titular: '', // Será preenchido automaticamente baseado na forma de pagamento
+    titular: '',
     automatica: false,
-    origem: null // 'produto_protecao', 'divida', 'conta_cartao'
+    origem: null
   };
   
   despesas.push(novaDespesa);
@@ -310,7 +346,6 @@ function updateDespesaField(id, field, valor) {
     despesa[field] = parseInt(valor) || 1;
   } else if (field === 'forma_pagamento') {
     despesa[field] = valor;
-    // Atualizar titular automaticamente baseado na forma de pagamento
     const contasCartoes = getContasCartoesParaFluxo();
     const contaCartao = contasCartoes.find(cc => cc.id == valor);
     if (contaCartao) {
@@ -331,7 +366,6 @@ function sincronizarDespesasAutomaticas() {
   despesas = despesas.filter(d => !d.automatica);
   
   const pessoas = getPessoasParaFluxo();
-  const contasCartoes = getContasCartoesParaFluxo();
   
   // 1. Produtos & Proteção
   if (window.getProdutosProtecaoData) {
@@ -339,16 +373,13 @@ function sincronizarDespesasAutomaticas() {
     produtos.forEach(produto => {
       const custo = parseFloat(produto.custo) || 0;
       if (custo > 0) {
-        // Identificar titulares baseado no objeto do produto
         const titulares = identificarTitularPorObjeto(produto.objeto, pessoas);
         const valorPorTitular = custo / titulares.length;
         
-        // Determinar periodicidade
         const periodicidade = produto.periodicidade || 'anual';
         const qtdRecorrencia = 1;
         const undRecorrencia = periodicidade === 'mensal' ? 'mes' : 'ano';
         
-        // Criar uma despesa para cada titular (dividindo o valor)
         titulares.forEach(titularId => {
           const id = ++despesaCounter;
           
@@ -378,7 +409,6 @@ function sincronizarDespesasAutomaticas() {
       const parcelasPagas = parseInt(divida.parcelas_pagas) || 0;
       const prazo = parseInt(divida.prazo) || 0;
       
-      // Só adicionar se ainda tem parcelas a pagar
       if (valorParcela > 0 && parcelasPagas < prazo) {
         const responsaveis = divida.responsaveis || [];
         const titulares = responsaveis.length > 0 ? responsaveis : ['titular'];
@@ -438,30 +468,100 @@ function sincronizarDespesasAutomaticas() {
 // CÁLCULOS DO FLUXO DE CAIXA
 // ========================================
 
-function calcularValorPorPeriodo(valor, qtdRecorrencia, undRecorrencia, periodoPara) {
-  // Converte o valor para o período desejado
+/**
+ * Calcula o valor MENSAL de um item
+ * - Diário: valor × (30 / qtd_recorrencia)
+ * - Semanal: valor × (4 / qtd_recorrencia)
+ * - Mensal: valor / qtd_recorrencia
+ * - Anual: NÃO ENTRA no cálculo mensal
+ */
+function calcularValorMensal(valor, qtdRecorrencia, undRecorrencia) {
   const v = parseFloat(valor) || 0;
   const qtd = parseInt(qtdRecorrencia) || 1;
   
-  // Fatores de conversão
-  const fatores = {
-    dia: { dia: 1, semana: 7, mes: 30, ano: 365 },
-    semana: { dia: 1/7, semana: 1, mes: 4, ano: 52 },
-    mes: { dia: 1/30, semana: 1/4, mes: 1, ano: 12 },
-    ano: { dia: 1/365, semana: 1/52, mes: 1/12, ano: 1 }
-  };
+  switch (undRecorrencia) {
+    case 'dia':
+      return v * (30 / qtd);
+    case 'semana':
+      return v * (4 / qtd);
+    case 'mes':
+      return v / qtd;
+    case 'ano':
+      return 0; // Anuais NÃO entram no mensal
+    default:
+      return v;
+  }
+}
+
+/**
+ * Calcula o valor ANUAL de um item
+ * - Diário: valor × (365 / qtd_recorrencia)
+ * - Semanal: valor × (52 / qtd_recorrencia)
+ * - Mensal: valor × (12 / qtd_recorrencia)
+ * - Anual: valor / qtd_recorrencia
+ */
+function calcularValorAnual(valor, qtdRecorrencia, undRecorrencia) {
+  const v = parseFloat(valor) || 0;
+  const qtd = parseInt(qtdRecorrencia) || 1;
   
-  // Valor por unidade de recorrência
-  const valorPorUnidade = v / qtd;
+  switch (undRecorrencia) {
+    case 'dia':
+      return v * (365 / qtd);
+    case 'semana':
+      return v * (52 / qtd);
+    case 'mes':
+      return v * (12 / qtd);
+    case 'ano':
+      return v / qtd;
+    default:
+      return v;
+  }
+}
+
+/**
+ * Calcula investimentos por pessoa baseado nos aportes do patrimônio líquido
+ */
+function calcularInvestimentosPorPessoa(pessoas) {
+  const investimentos = {};
   
-  // Converter para o período desejado
-  const fator = fatores[undRecorrencia]?.[periodoPara] || 0;
+  // Inicializar
+  pessoas.forEach(pessoa => {
+    investimentos[pessoa.id] = { mes: 0, ano: 0 };
+  });
   
-  return valorPorUnidade * fator;
+  if (window.getPatrimoniosLiquidosData) {
+    const patrimonios = window.getPatrimoniosLiquidosData() || [];
+    
+    patrimonios.forEach(pl => {
+      const aporteMensal = parseFloat(pl.aporte_mensal) || 0;
+      const aporteAnual = parseFloat(pl.aporte_anual) || 0;
+      const donos = pl.donos || [];
+      
+      if ((aporteMensal > 0 || aporteAnual > 0) && donos.length > 0) {
+        // Dividir igualmente entre os donos
+        const aporteMensalPorDono = aporteMensal / donos.length;
+        const aporteAnualPorDono = aporteAnual / donos.length;
+        
+        donos.forEach(donoNome => {
+          // Encontrar o ID da pessoa pelo nome
+          const pessoa = pessoas.find(p => p.nome === donoNome);
+          if (pessoa && investimentos[pessoa.id]) {
+            // Mensal: apenas aporte mensal (anual NÃO entra)
+            investimentos[pessoa.id].mes += aporteMensalPorDono;
+            // Anual: aporte anual + (aporte mensal × 12)
+            investimentos[pessoa.id].ano += aporteAnualPorDono + (aporteMensalPorDono * 12);
+          }
+        });
+      }
+    });
+  }
+  
+  return investimentos;
 }
 
 function calcularFluxoPorPessoa() {
   const pessoas = getPessoasParaFluxo();
+  const investimentosPorPessoa = calcularInvestimentosPorPessoa(pessoas);
   const resultado = {};
   
   // Inicializar resultado para cada pessoa
@@ -469,11 +569,11 @@ function calcularFluxoPorPessoa() {
     resultado[pessoa.id] = {
       nome: pessoa.nome,
       tipo: pessoa.tipo,
-      receitas: { dia: 0, semana: 0, mes: 0, ano: 0 },
-      despesas_fixas: { dia: 0, semana: 0, mes: 0, ano: 0 },
-      despesas_variaveis: { dia: 0, semana: 0, mes: 0, ano: 0 },
-      investimentos: { dia: 0, semana: 0, mes: 0, ano: 0 },
-      saldo: { dia: 0, semana: 0, mes: 0, ano: 0 }
+      receitas: { mes: 0, ano: 0 },
+      despesas_fixas: { mes: 0, ano: 0 },
+      despesas_variaveis: { mes: 0, ano: 0 },
+      investimentos: investimentosPorPessoa[pessoa.id] || { mes: 0, ano: 0 },
+      saldo: { mes: 0, ano: 0 }
     };
   });
   
@@ -481,14 +581,12 @@ function calcularFluxoPorPessoa() {
   receitas.forEach(receita => {
     const pessoaId = receita.titular;
     if (resultado[pessoaId]) {
-      ['dia', 'semana', 'mes', 'ano'].forEach(periodo => {
-        resultado[pessoaId].receitas[periodo] += calcularValorPorPeriodo(
-          receita.valor, 
-          receita.qtd_recorrencia, 
-          receita.und_recorrencia, 
-          periodo
-        );
-      });
+      resultado[pessoaId].receitas.mes += calcularValorMensal(
+        receita.valor, receita.qtd_recorrencia, receita.und_recorrencia
+      );
+      resultado[pessoaId].receitas.ano += calcularValorAnual(
+        receita.valor, receita.qtd_recorrencia, receita.und_recorrencia
+      );
     }
   });
   
@@ -497,47 +595,18 @@ function calcularFluxoPorPessoa() {
     const pessoaId = despesa.titular;
     if (resultado[pessoaId]) {
       const tipoDespesa = despesa.tipo === 'fixa' ? 'despesas_fixas' : 'despesas_variaveis';
-      ['dia', 'semana', 'mes', 'ano'].forEach(periodo => {
-        resultado[pessoaId][tipoDespesa][periodo] += calcularValorPorPeriodo(
-          despesa.valor, 
-          despesa.qtd_recorrencia, 
-          despesa.und_recorrencia, 
-          periodo
-        );
-      });
+      resultado[pessoaId][tipoDespesa].mes += calcularValorMensal(
+        despesa.valor, despesa.qtd_recorrencia, despesa.und_recorrencia
+      );
+      resultado[pessoaId][tipoDespesa].ano += calcularValorAnual(
+        despesa.valor, despesa.qtd_recorrencia, despesa.und_recorrencia
+      );
     }
   });
   
-  // Calcular investimentos (aportes do patrimônio líquido)
-  if (window.getPatrimoniosLiquidosData) {
-    const patrimonios = window.getPatrimoniosLiquidosData() || [];
-    patrimonios.forEach(pl => {
-      const aporteMensal = parseFloat(pl.aporte_mensal) || 0;
-      const aporteAnual = parseFloat(pl.aporte_anual) || 0;
-      const donos = pl.donos || [];
-      
-      if ((aporteMensal > 0 || aporteAnual > 0) && donos.length > 0) {
-        // Calcular valor total de aporte mensal
-        const valorMensal = aporteMensal + (aporteAnual / 12);
-        const valorPorDono = valorMensal / donos.length;
-        
-        donos.forEach(donoNome => {
-          // Encontrar o ID da pessoa pelo nome
-          const pessoa = pessoas.find(p => p.nome === donoNome);
-          if (pessoa && resultado[pessoa.id]) {
-            resultado[pessoa.id].investimentos.mes += valorPorDono;
-            resultado[pessoa.id].investimentos.ano += valorPorDono * 12;
-            resultado[pessoa.id].investimentos.semana += valorPorDono / 4;
-            resultado[pessoa.id].investimentos.dia += valorPorDono / 30;
-          }
-        });
-      }
-    });
-  }
-  
   // Calcular saldo por pessoa
   Object.keys(resultado).forEach(pessoaId => {
-    ['dia', 'semana', 'mes', 'ano'].forEach(periodo => {
+    ['mes', 'ano'].forEach(periodo => {
       resultado[pessoaId].saldo[periodo] = 
         resultado[pessoaId].receitas[periodo] - 
         resultado[pessoaId].despesas_fixas[periodo] - 
@@ -553,15 +622,15 @@ function calcularFluxoGeral() {
   const fluxoPorPessoa = calcularFluxoPorPessoa();
   
   const geral = {
-    receitas: { dia: 0, semana: 0, mes: 0, ano: 0 },
-    despesas_fixas: { dia: 0, semana: 0, mes: 0, ano: 0 },
-    despesas_variaveis: { dia: 0, semana: 0, mes: 0, ano: 0 },
-    investimentos: { dia: 0, semana: 0, mes: 0, ano: 0 },
-    saldo: { dia: 0, semana: 0, mes: 0, ano: 0 }
+    receitas: { mes: 0, ano: 0 },
+    despesas_fixas: { mes: 0, ano: 0 },
+    despesas_variaveis: { mes: 0, ano: 0 },
+    investimentos: { mes: 0, ano: 0 },
+    saldo: { mes: 0, ano: 0 }
   };
   
   Object.values(fluxoPorPessoa).forEach(pessoa => {
-    ['dia', 'semana', 'mes', 'ano'].forEach(periodo => {
+    ['mes', 'ano'].forEach(periodo => {
       geral.receitas[periodo] += pessoa.receitas[periodo];
       geral.despesas_fixas[periodo] += pessoa.despesas_fixas[periodo];
       geral.despesas_variaveis[periodo] += pessoa.despesas_variaveis[periodo];
@@ -571,6 +640,51 @@ function calcularFluxoGeral() {
   });
   
   return geral;
+}
+
+/**
+ * Calcula a distribuição atual e compara com a ideal
+ */
+function calcularDistribuicao(fluxoGeral) {
+  const rendaTotal = fluxoGeral.receitas.ano;
+  
+  if (rendaTotal <= 0) {
+    return null;
+  }
+  
+  // Distribuição atual (saldo/sobra vai para despesas variáveis em valor absoluto)
+  const despesasFixasAtual = fluxoGeral.despesas_fixas.ano;
+  const despesasVariaveisAtual = fluxoGeral.despesas_variaveis.ano + Math.abs(fluxoGeral.saldo.ano);
+  const investimentosAtual = fluxoGeral.investimentos.ano;
+  
+  // Percentuais atuais
+  const percDespesasFixasAtual = (despesasFixasAtual / rendaTotal) * 100;
+  const percDespesasVariaveisAtual = (despesasVariaveisAtual / rendaTotal) * 100;
+  const percInvestimentosAtual = (investimentosAtual / rendaTotal) * 100;
+  
+  // Valores ideais baseados nas variáveis de gestão
+  const despesasFixasIdeal = (rendaTotal * variaveisGestao.despesas_fixas) / 100;
+  const despesasVariaveisIdeal = (rendaTotal * variaveisGestao.despesas_variaveis) / 100;
+  const investimentosIdeal = (rendaTotal * variaveisGestao.investimentos) / 100;
+  
+  return {
+    rendaTotal,
+    atual: {
+      despesas_fixas: { valor: despesasFixasAtual, percentual: percDespesasFixasAtual },
+      despesas_variaveis: { valor: despesasVariaveisAtual, percentual: percDespesasVariaveisAtual },
+      investimentos: { valor: investimentosAtual, percentual: percInvestimentosAtual }
+    },
+    ideal: {
+      despesas_fixas: { valor: despesasFixasIdeal, percentual: variaveisGestao.despesas_fixas },
+      despesas_variaveis: { valor: despesasVariaveisIdeal, percentual: variaveisGestao.despesas_variaveis },
+      investimentos: { valor: investimentosIdeal, percentual: variaveisGestao.investimentos }
+    },
+    diferenca: {
+      despesas_fixas: despesasFixasAtual - despesasFixasIdeal,
+      despesas_variaveis: despesasVariaveisAtual - despesasVariaveisIdeal,
+      investimentos: investimentosAtual - investimentosIdeal
+    }
+  };
 }
 
 // ========================================
@@ -741,7 +855,6 @@ function renderFluxoCaixa() {
                 </td>
               </tr>
             ` : despesas.map(despesa => {
-              const contaCartao = contasCartoes.find(cc => cc.id == despesa.forma_pagamento);
               const titularNome = pessoas.find(p => p.id === despesa.titular)?.nome || despesa.titular || '-';
               
               return `
@@ -826,9 +939,9 @@ function renderFluxoCaixa() {
 function renderResultadosFluxo(container) {
   const fluxoPorPessoa = calcularFluxoPorPessoa();
   const fluxoGeral = calcularFluxoGeral();
-  const pessoas = getPessoasParaFluxo();
+  const distribuicao = calcularDistribuicao(fluxoGeral);
   
-  // Função auxiliar para renderizar tabela de fluxo
+  // Função auxiliar para renderizar tabela de fluxo (apenas MÊS e ANO)
   function renderTabelaFluxo(dados, titulo, corTitulo) {
     return `
       <div style="margin-bottom: 1.5rem;">
@@ -838,8 +951,6 @@ function renderResultadosFluxo(container) {
             <thead>
               <tr style="background: rgba(212, 175, 55, 0.2);">
                 <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border-color);"></th>
-                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">DIA</th>
-                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">SEMANA</th>
                 <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">MÊS</th>
                 <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">ANO</th>
               </tr>
@@ -849,8 +960,6 @@ function renderResultadosFluxo(container) {
                 <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #28a745;">
                   <i class="fas fa-arrow-up"></i> Entradas
                 </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #28a745;">${formatarMoedaFluxo(dados.receitas.dia)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #28a745;">${formatarMoedaFluxo(dados.receitas.semana)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #28a745;">${formatarMoedaFluxo(dados.receitas.mes)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #28a745;">${formatarMoedaFluxo(dados.receitas.ano)}</td>
               </tr>
@@ -858,8 +967,6 @@ function renderResultadosFluxo(container) {
                 <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #dc3545;">
                   <i class="fas fa-arrow-down"></i> Despesas Fixas
                 </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #dc3545;">${formatarMoedaFluxo(dados.despesas_fixas.dia)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #dc3545;">${formatarMoedaFluxo(dados.despesas_fixas.semana)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #dc3545;">${formatarMoedaFluxo(dados.despesas_fixas.mes)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #dc3545;">${formatarMoedaFluxo(dados.despesas_fixas.ano)}</td>
               </tr>
@@ -867,8 +974,6 @@ function renderResultadosFluxo(container) {
                 <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #ffc107;">
                   <i class="fas fa-random"></i> Despesas Variáveis
                 </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #ffc107;">${formatarMoedaFluxo(dados.despesas_variaveis.dia)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #ffc107;">${formatarMoedaFluxo(dados.despesas_variaveis.semana)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #ffc107;">${formatarMoedaFluxo(dados.despesas_variaveis.mes)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #ffc107;">${formatarMoedaFluxo(dados.despesas_variaveis.ano)}</td>
               </tr>
@@ -876,8 +981,6 @@ function renderResultadosFluxo(container) {
                 <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #007bff;">
                   <i class="fas fa-piggy-bank"></i> Investimentos
                 </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(dados.investimentos.dia)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(dados.investimentos.semana)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(dados.investimentos.mes)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); color: #007bff;">${formatarMoedaFluxo(dados.investimentos.ano)}</td>
               </tr>
@@ -885,14 +988,110 @@ function renderResultadosFluxo(container) {
                 <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 700; color: var(--accent-color);">
                   <i class="fas fa-wallet"></i> SALDO/SOBRA
                 </td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: ${dados.saldo.dia >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaFluxo(dados.saldo.dia)}</td>
-                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: ${dados.saldo.semana >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaFluxo(dados.saldo.semana)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: ${dados.saldo.mes >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaFluxo(dados.saldo.mes)}</td>
                 <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color); font-weight: 700; color: ${dados.saldo.ano >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaFluxo(dados.saldo.ano)}</td>
               </tr>
             </tbody>
           </table>
         </div>
+      </div>
+    `;
+  }
+  
+  // Função para renderizar comparação de distribuição
+  function renderComparacaoDistribuicao() {
+    if (!distribuicao) {
+      return `
+        <div style="text-align: center; padding: 1rem; color: var(--text-light); opacity: 0.7;">
+          <i class="fas fa-info-circle"></i> Não há receitas cadastradas para calcular a distribuição.
+        </div>
+      `;
+    }
+    
+    const formatarDiferenca = (valor) => {
+      const cor = valor > 0 ? '#dc3545' : valor < 0 ? '#28a745' : 'var(--text-light)';
+      const sinal = valor > 0 ? '+' : '';
+      return `<span style="color: ${cor}; font-weight: 600;">${sinal}${formatarMoedaFluxo(valor)}</span>`;
+    };
+    
+    return `
+      <div style="margin-top: 2rem; padding: 1.2rem; background: var(--dark-bg); border: 2px solid var(--info-color, #17a2b8); border-radius: 10px;">
+        <h4 style="color: var(--info-color, #17a2b8); margin: 0 0 1rem 0; text-align: center;">
+          <i class="fas fa-balance-scale"></i> COMPARAÇÃO COM DISTRIBUIÇÃO IDEAL
+        </h4>
+        <p style="text-align: center; font-size: 0.85rem; color: var(--text-light); opacity: 0.8; margin-bottom: 1rem;">
+          Baseado nas variáveis de gestão financeira: Despesas Fixas ${variaveisGestao.despesas_fixas}% | Despesas Variáveis ${variaveisGestao.despesas_variaveis}% | Investimentos ${variaveisGestao.investimentos}%
+        </p>
+        <p style="text-align: center; font-size: 0.9rem; margin-bottom: 1rem;">
+          <strong>Renda Total Anual:</strong> ${formatarMoedaFluxo(distribuicao.rendaTotal)}
+        </p>
+        
+        <div style="overflow-x: auto;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+            <thead>
+              <tr style="background: rgba(23, 162, 184, 0.2);">
+                <th style="padding: 0.5rem; text-align: left; border: 1px solid var(--border-color);">Categoria</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Ideal (Anual)</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Atual (Anual)</th>
+                <th style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">Diferença</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #dc3545;">
+                  <i class="fas fa-arrow-down"></i> Despesas Fixas
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarMoedaFluxo(distribuicao.ideal.despesas_fixas.valor)}
+                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.ideal.despesas_fixas.percentual.toFixed(1)}%)</span>
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarMoedaFluxo(distribuicao.atual.despesas_fixas.valor)}
+                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.atual.despesas_fixas.percentual.toFixed(1)}%)</span>
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarDiferenca(distribuicao.diferenca.despesas_fixas)}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #ffc107;">
+                  <i class="fas fa-random"></i> Despesas Variáveis + Saldo
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarMoedaFluxo(distribuicao.ideal.despesas_variaveis.valor)}
+                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.ideal.despesas_variaveis.percentual.toFixed(1)}%)</span>
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarMoedaFluxo(distribuicao.atual.despesas_variaveis.valor)}
+                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.atual.despesas_variaveis.percentual.toFixed(1)}%)</span>
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarDiferenca(distribuicao.diferenca.despesas_variaveis)}
+                </td>
+              </tr>
+              <tr>
+                <td style="padding: 0.5rem; border: 1px solid var(--border-color); font-weight: 600; color: #007bff;">
+                  <i class="fas fa-piggy-bank"></i> Investimentos
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarMoedaFluxo(distribuicao.ideal.investimentos.valor)}
+                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.ideal.investimentos.percentual.toFixed(1)}%)</span>
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarMoedaFluxo(distribuicao.atual.investimentos.valor)}
+                  <span style="font-size: 0.75rem; opacity: 0.7;"> (${distribuicao.atual.investimentos.percentual.toFixed(1)}%)</span>
+                </td>
+                <td style="padding: 0.5rem; text-align: right; border: 1px solid var(--border-color);">
+                  ${formatarDiferenca(distribuicao.diferenca.investimentos)}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <p style="text-align: center; font-size: 0.8rem; color: var(--text-light); opacity: 0.7; margin-top: 1rem;">
+          <i class="fas fa-info-circle"></i> Valores negativos na diferença indicam que você está gastando/investindo menos que o ideal.
+        </p>
       </div>
     `;
   }
@@ -915,8 +1114,11 @@ function renderResultadosFluxo(container) {
       ${renderTabelaFluxo(fluxoGeral, null, null)}
     </div>
     
+    <!-- COMPARAÇÃO COM DISTRIBUIÇÃO IDEAL -->
+    ${renderComparacaoDistribuicao()}
+    
     <!-- RESULTADOS SECUNDÁRIOS (POR PESSOA) -->
-    <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.2rem;">
+    <div style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.2rem; margin-top: 2rem;">
       <h4 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
         <i class="fas fa-users"></i> ANÁLISE POR INTEGRANTE
       </h4>
