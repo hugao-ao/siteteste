@@ -7,9 +7,17 @@ let declaracoesIR = [];
 
 // Tipos de declaração
 const TIPOS_DECLARACAO = [
-  { id: 'simplificada', nome: 'Declaração Simplificada' },
-  { id: 'completa', nome: 'Declaração Completa' },
-  { id: 'isento', nome: 'Isento / Não Declara' }
+  { id: 'nao_declara', nome: 'Não Declara' },
+  { id: 'isento', nome: 'Declara Isento' },
+  { id: 'simplificada', nome: 'Declara Simplificado' },
+  { id: 'completa', nome: 'Declara Completa' }
+];
+
+// Tipos de resultado
+const TIPOS_RESULTADO = [
+  { id: '', nome: 'Selecione...' },
+  { id: 'paga', nome: 'Paga' },
+  { id: 'restitui', nome: 'Restitui' }
 ];
 
 // Inicialização do módulo
@@ -24,6 +32,7 @@ function initIRModule() {
   window.setDeclaracoesIRData = setDeclaracoesIRData;
   window.formatarMoedaIR = formatarMoedaIR;
   window.limparCampoMoedaIR = limparCampoMoedaIR;
+  window.toggleIRCampos = toggleIRCampos;
   
   // Renderizar a seção de IR após um pequeno delay para garantir que os dados estejam carregados
   setTimeout(() => {
@@ -72,6 +81,24 @@ function updateIRMoedaField(pessoaKey, field, valor) {
   }
 }
 
+// Função para alternar visibilidade dos campos de IR
+function toggleIRCampos(pessoaKey) {
+  const declaracao = declaracoesIR.find(d => d.pessoa_key === pessoaKey);
+  const tipoSelect = document.getElementById(`ir_${pessoaKey}_tipo_declaracao`);
+  const camposContainer = document.getElementById(`ir_${pessoaKey}_campos`);
+  
+  if (declaracao && tipoSelect && camposContainer) {
+    declaracao.tipo_declaracao = tipoSelect.value;
+    
+    // Se "Não Declara", ocultar campos
+    if (tipoSelect.value === 'nao_declara') {
+      camposContainer.style.display = 'none';
+    } else {
+      camposContainer.style.display = 'block';
+    }
+  }
+}
+
 // Função para atualizar campo de IR
 function updateIRField(pessoaKey, field, valor) {
   const declaracao = declaracoesIR.find(d => d.pessoa_key === pessoaKey);
@@ -80,7 +107,7 @@ function updateIRField(pessoaKey, field, valor) {
     const camposMonetarios = [
       'renda_bruta_anual', 'total_recolhido_ir', 'contribuicao_previdencia_oficial',
       'gastos_instrucao', 'gastos_medicos', 'livro_caixa', 'pensao_alimenticia',
-      'previdencia_privada', 'outras_deducoes', 'imposto_restituir', 'imposto_pagar'
+      'contribuicao_nao_oficial', 'outras_deducoes', 'resultado_valor'
     ];
     
     if (camposMonetarios.includes(field)) {
@@ -185,7 +212,7 @@ function sincronizarDeclaracoes(pessoasIR) {
         pessoa_key: pessoa.key,
         pessoa_nome: pessoa.nome,
         pessoa_tipo: pessoa.tipo,
-        tipo_declaracao: 'simplificada',
+        tipo_declaracao: 'nao_declara',
         renda_bruta_anual: 0,
         total_recolhido_ir: 0,
         contribuicao_previdencia_oficial: 0,
@@ -194,10 +221,10 @@ function sincronizarDeclaracoes(pessoasIR) {
         gastos_medicos: 0,
         livro_caixa: 0,
         pensao_alimenticia: 0,
-        previdencia_privada: 0,
+        contribuicao_nao_oficial: 0,
         outras_deducoes: 0,
-        imposto_restituir: 0,
-        imposto_pagar: 0,
+        resultado_tipo: '',
+        resultado_valor: 0,
         observacoes: ''
       });
     } else {
@@ -237,25 +264,27 @@ function renderIRCard(pessoa) {
     `;
   }
   
+  // Verificar se deve mostrar os campos (não mostrar se "Não Declara")
+  const mostrarCampos = declaracao.tipo_declaracao && declaracao.tipo_declaracao !== 'nao_declara';
+  
   return `
     <div class="ir-card" style="background: var(--dark-bg); border: 2px solid var(--border-color); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem;">
-      <div class="ir-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
+      <div class="ir-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-color);">
         <h4 style="color: var(--accent-color); font-size: 1.1rem; font-weight: 600; margin: 0;">
           <i class="fas fa-user"></i> ${pessoa.nome}
           <span style="background: var(--success-color); color: white; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; font-weight: 600; margin-left: 0.5rem;">
             ${pessoa.tipo}
           </span>
         </h4>
-      </div>
-      
-      <div class="form-grid-3">
-        <!-- Tipo de Declaração -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_tipo_declaracao">
-            <i class="fas fa-file-alt"></i> Tipo de Declaração *
+        
+        <!-- Tipo de Declaração no cabeçalho -->
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <label for="ir_${pessoaKey}_tipo_declaracao" style="color: var(--text-light); font-size: 0.9rem; margin: 0;">
+            <i class="fas fa-file-alt"></i> Tipo:
           </label>
           <select id="ir_${pessoaKey}_tipo_declaracao" 
-                  onchange="updateIRField('${pessoaKey}', 'tipo_declaracao', this.value)">
+                  style="padding: 0.4rem 0.8rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;"
+                  onchange="toggleIRCampos('${pessoaKey}')">
             ${TIPOS_DECLARACAO.map(tipo => `
               <option value="${tipo.id}" ${declaracao.tipo_declaracao === tipo.id ? 'selected' : ''}>
                 ${tipo.nome}
@@ -263,175 +292,182 @@ function renderIRCard(pessoa) {
             `).join('')}
           </select>
         </div>
-        
-        <!-- Renda Bruta Anual -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_renda_bruta_anual">
-            <i class="fas fa-dollar-sign"></i> Renda Bruta Tributável Anual
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_renda_bruta_anual" 
-                 value="R$ ${formatarMoedaIR(declaracao.renda_bruta_anual || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'renda_bruta_anual', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Total Recolhido de IR -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_total_recolhido_ir">
-            <i class="fas fa-hand-holding-usd"></i> Total Recolhido de IR
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_total_recolhido_ir" 
-                 value="R$ ${formatarMoedaIR(declaracao.total_recolhido_ir || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'total_recolhido_ir', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Contribuição Previdência Oficial -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_contribuicao_previdencia_oficial">
-            <i class="fas fa-university"></i> Contribuição Previdência Oficial
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_contribuicao_previdencia_oficial" 
-                 value="R$ ${formatarMoedaIR(declaracao.contribuicao_previdencia_oficial || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'contribuicao_previdencia_oficial', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Total de Dependentes -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_total_dependentes">
-            <i class="fas fa-users"></i> Total de Dependentes
-          </label>
-          <input type="number" 
-                 id="ir_${pessoaKey}_total_dependentes" 
-                 value="${declaracao.total_dependentes || 0}"
-                 onchange="updateIRField('${pessoaKey}', 'total_dependentes', this.value)"
-                 min="0"
-                 placeholder="0">
-        </div>
-        
-        <!-- Gastos com Instrução -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_gastos_instrucao">
-            <i class="fas fa-graduation-cap"></i> Gastos com Instrução
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_gastos_instrucao" 
-                 value="R$ ${formatarMoedaIR(declaracao.gastos_instrucao || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'gastos_instrucao', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Gastos com Despesas Médicas -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_gastos_medicos">
-            <i class="fas fa-heartbeat"></i> Despesas Médicas
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_gastos_medicos" 
-                 value="R$ ${formatarMoedaIR(declaracao.gastos_medicos || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'gastos_medicos', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Livro Caixa -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_livro_caixa">
-            <i class="fas fa-book"></i> Livro Caixa
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_livro_caixa" 
-                 value="R$ ${formatarMoedaIR(declaracao.livro_caixa || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'livro_caixa', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Pensão Alimentícia -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_pensao_alimenticia">
-            <i class="fas fa-child"></i> Pensão Alimentícia
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_pensao_alimenticia" 
-                 value="R$ ${formatarMoedaIR(declaracao.pensao_alimenticia || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'pensao_alimenticia', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Previdência Privada -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_previdencia_privada">
-            <i class="fas fa-piggy-bank"></i> Previdência Privada (PGBL)
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_previdencia_privada" 
-                 value="R$ ${formatarMoedaIR(declaracao.previdencia_privada || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'previdencia_privada', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Outras Deduções -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_outras_deducoes">
-            <i class="fas fa-minus-circle"></i> Outras Deduções
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_outras_deducoes" 
-                 value="R$ ${formatarMoedaIR(declaracao.outras_deducoes || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'outras_deducoes', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00">
-        </div>
-        
-        <!-- Imposto a Restituir -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_imposto_restituir">
-            <i class="fas fa-arrow-down" style="color: #28a745;"></i> Imposto a Restituir
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_imposto_restituir" 
-                 value="R$ ${formatarMoedaIR(declaracao.imposto_restituir || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'imposto_restituir', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00"
-                 style="border-color: #28a745;">
-        </div>
-        
-        <!-- Imposto a Pagar -->
-        <div class="form-group">
-          <label for="ir_${pessoaKey}_imposto_pagar">
-            <i class="fas fa-arrow-up" style="color: #dc3545;"></i> Imposto a Pagar
-          </label>
-          <input type="text" 
-                 id="ir_${pessoaKey}_imposto_pagar" 
-                 value="R$ ${formatarMoedaIR(declaracao.imposto_pagar || 0)}"
-                 oninput="updateIRField('${pessoaKey}', 'imposto_pagar', this.value)"
-                 onfocus="limparCampoMoedaIR(this)"
-                 placeholder="R$ 0,00"
-                 style="border-color: #dc3545;">
-        </div>
-        
-        <!-- Observações -->
-        <div class="form-group full-width">
-          <label for="ir_${pessoaKey}_observacoes">
-            <i class="fas fa-sticky-note"></i> Observações
-          </label>
-          <textarea id="ir_${pessoaKey}_observacoes" 
-                    rows="2"
-                    onchange="updateIRField('${pessoaKey}', 'observacoes', this.value)"
-                    placeholder="Observações sobre a declaração de IR..."
-                    style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem; resize: vertical;">${declaracao.observacoes || ''}</textarea>
+      </div>
+      
+      <!-- Campos de preenchimento (ocultos se "Não Declara") -->
+      <div id="ir_${pessoaKey}_campos" style="display: ${mostrarCampos ? 'block' : 'none'};">
+        <div class="form-grid-3">
+          <!-- Renda Bruta Anual -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_renda_bruta_anual">
+              <i class="fas fa-dollar-sign"></i> Renda Bruta Tributável Anual
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_renda_bruta_anual" 
+                   value="R$ ${formatarMoedaIR(declaracao.renda_bruta_anual || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'renda_bruta_anual', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Total Recolhido de IR -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_total_recolhido_ir">
+              <i class="fas fa-hand-holding-usd"></i> Total Recolhido de IR
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_total_recolhido_ir" 
+                   value="R$ ${formatarMoedaIR(declaracao.total_recolhido_ir || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'total_recolhido_ir', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Contribuição Previdência Oficial -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_contribuicao_previdencia_oficial">
+              <i class="fas fa-university"></i> Contribuição Previdência Oficial
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_contribuicao_previdencia_oficial" 
+                   value="R$ ${formatarMoedaIR(declaracao.contribuicao_previdencia_oficial || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'contribuicao_previdencia_oficial', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Total de Dependentes -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_total_dependentes">
+              <i class="fas fa-users"></i> Total de Dependentes
+            </label>
+            <input type="number" 
+                   id="ir_${pessoaKey}_total_dependentes" 
+                   value="${declaracao.total_dependentes || 0}"
+                   onchange="updateIRField('${pessoaKey}', 'total_dependentes', this.value)"
+                   min="0"
+                   placeholder="0">
+          </div>
+          
+          <!-- Gastos com Instrução -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_gastos_instrucao">
+              <i class="fas fa-graduation-cap"></i> Gastos com Instrução
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_gastos_instrucao" 
+                   value="R$ ${formatarMoedaIR(declaracao.gastos_instrucao || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'gastos_instrucao', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Gastos com Despesas Médicas -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_gastos_medicos">
+              <i class="fas fa-heartbeat"></i> Despesas Médicas
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_gastos_medicos" 
+                   value="R$ ${formatarMoedaIR(declaracao.gastos_medicos || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'gastos_medicos', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Livro Caixa -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_livro_caixa">
+              <i class="fas fa-book"></i> Livro Caixa
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_livro_caixa" 
+                   value="R$ ${formatarMoedaIR(declaracao.livro_caixa || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'livro_caixa', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Pensão Alimentícia -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_pensao_alimenticia">
+              <i class="fas fa-child"></i> Pensão Alimentícia
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_pensao_alimenticia" 
+                   value="R$ ${formatarMoedaIR(declaracao.pensao_alimenticia || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'pensao_alimenticia', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Contribuição Não Oficial -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_contribuicao_nao_oficial">
+              <i class="fas fa-piggy-bank"></i> Contribuição Não Oficial
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_contribuicao_nao_oficial" 
+                   value="R$ ${formatarMoedaIR(declaracao.contribuicao_nao_oficial || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'contribuicao_nao_oficial', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Outras Deduções -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_outras_deducoes">
+              <i class="fas fa-minus-circle"></i> Outras Deduções
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_outras_deducoes" 
+                   value="R$ ${formatarMoedaIR(declaracao.outras_deducoes || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'outras_deducoes', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00">
+          </div>
+          
+          <!-- Resultado - Tipo -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_resultado_tipo">
+              <i class="fas fa-balance-scale"></i> Resultado
+            </label>
+            <select id="ir_${pessoaKey}_resultado_tipo" 
+                    onchange="updateIRField('${pessoaKey}', 'resultado_tipo', this.value)"
+                    style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem;">
+              ${TIPOS_RESULTADO.map(tipo => `
+                <option value="${tipo.id}" ${declaracao.resultado_tipo === tipo.id ? 'selected' : ''}>
+                  ${tipo.nome}
+                </option>
+              `).join('')}
+            </select>
+          </div>
+          
+          <!-- Resultado - Valor -->
+          <div class="form-group">
+            <label for="ir_${pessoaKey}_resultado_valor">
+              <i class="fas fa-coins"></i> Valor do Resultado
+            </label>
+            <input type="text" 
+                   id="ir_${pessoaKey}_resultado_valor" 
+                   value="R$ ${formatarMoedaIR(declaracao.resultado_valor || 0)}"
+                   oninput="updateIRField('${pessoaKey}', 'resultado_valor', this.value)"
+                   onfocus="limparCampoMoedaIR(this)"
+                   placeholder="R$ 0,00"
+                   style="${declaracao.resultado_tipo === 'paga' ? 'border-color: #dc3545;' : declaracao.resultado_tipo === 'restitui' ? 'border-color: #28a745;' : ''}">
+          </div>
+          
+          <!-- Observações -->
+          <div class="form-group full-width">
+            <label for="ir_${pessoaKey}_observacoes">
+              <i class="fas fa-sticky-note"></i> Observações
+            </label>
+            <textarea id="ir_${pessoaKey}_observacoes" 
+                      rows="2"
+                      onchange="updateIRField('${pessoaKey}', 'observacoes', this.value)"
+                      placeholder="Observações sobre a declaração de IR..."
+                      style="width: 100%; padding: 0.7rem; border: 2px solid var(--border-color); border-radius: 8px; background: var(--dark-bg); color: var(--text-light); font-size: 0.9rem; resize: vertical;">${declaracao.observacoes || ''}</textarea>
+          </div>
         </div>
       </div>
     </div>
