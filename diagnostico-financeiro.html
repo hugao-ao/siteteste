@@ -349,6 +349,68 @@
       gap: 0.5rem;
     }
 
+    /* ========================================= */
+    /* SEÇÕES EXPANSÍVEIS/RETRÁTEIS */
+    /* ========================================= */
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      padding: 0.5rem 0;
+      user-select: none;
+    }
+
+    .section-header:hover {
+      opacity: 0.9;
+    }
+
+    .section-toggle-btn {
+      background: transparent;
+      border: 2px solid var(--accent-color);
+      color: var(--accent-color);
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+      flex-shrink: 0;
+    }
+
+    .section-toggle-btn:hover {
+      background: var(--accent-color);
+      color: var(--dark-bg);
+    }
+
+    .section-toggle-btn i {
+      transition: transform 0.3s ease;
+    }
+
+    .section-toggle-btn.collapsed i {
+      transform: rotate(-90deg);
+    }
+
+    .section-content {
+      transition: max-height 0.4s ease, opacity 0.3s ease, padding 0.3s ease;
+      overflow: hidden;
+    }
+
+    .section-content.collapsed {
+      max-height: 0 !important;
+      opacity: 0;
+      padding-top: 0 !important;
+      padding-bottom: 0 !important;
+    }
+
+    .section-content.expanded {
+      max-height: none;
+      opacity: 1;
+    }
+
     .edit-btn, .delete-btn {
       background: none;
       border: none;
@@ -843,57 +905,76 @@
 
           <!-- Sistema de Múltiplas Pessoas com Renda -->
           <div class="form-container" style="margin-top: 1.5rem;">
-            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-              <i class="fas fa-users"></i> Outras Pessoas com Renda no Planejamento
-            </h3>
-            
-            <div id="pessoas-renda-container">
-              <!-- Pessoas adicionais serão inseridas aqui dinamicamente -->
+            <div class="section-header" onclick="toggleSection('pessoas-renda')">
+              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+                <i class="fas fa-users"></i> Outras Pessoas com Renda no Planejamento
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-pessoas-renda">
+                <i class="fas fa-chevron-down"></i>
+              </button>
             </div>
             
-            <div style="text-align: center; margin-top: 1rem;">
-              <button type="button" id="add-pessoa-btn" class="add-btn">
-                <i class="fas fa-plus"></i> Adicionar Pessoa com Renda
-              </button>
+            <div class="section-content expanded" id="content-pessoas-renda">
+              <div id="pessoas-renda-container">
+                <!-- Pessoas adicionais serão inseridas aqui dinamicamente -->
+              </div>
+              
+              <div style="text-align: center; margin-top: 1rem;">
+                <button type="button" id="add-pessoa-btn" class="add-btn">
+                  <i class="fas fa-plus"></i> Adicionar Pessoa com Renda
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- Sistema de Dependentes -->
           <div class="form-container" style="margin-top: 1.5rem;">
-            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-              <i class="fas fa-baby"></i> Dependentes
-            </h3>
-            
-            <div id="dependentes-container">
-              <!-- Dependentes serão inseridos aqui dinamicamente -->
+            <div class="section-header" onclick="toggleSection('dependentes')">
+              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+                <i class="fas fa-baby"></i> Dependentes
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-dependentes">
+                <i class="fas fa-chevron-down"></i>
+              </button>
             </div>
             
-            <div style="text-align: center; margin-top: 1rem;">
-              <button type="button" id="add-dependente-btn" class="add-btn">
-                <i class="fas fa-plus"></i> Adicionar Dependente
-              </button>
+            <div class="section-content expanded" id="content-dependentes">
+              <div id="dependentes-container">
+                <!-- Dependentes serão inseridos aqui dinamicamente -->
+              </div>
+              
+              <div style="text-align: center; margin-top: 1rem;">
+                <button type="button" id="add-dependente-btn" class="add-btn">
+                  <i class="fas fa-plus"></i> Adicionar Dependente
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- Sistema de Patrimônio Físico -->
           <div class="form-container" style="margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+            <div class="section-header" onclick="toggleSection('patrimonio-fisico')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-home"></i> Patrimônio Físico
               </h3>
-              <div id="patrimonio-total" class="patrimonio-total">
+              <div id="patrimonio-total" class="patrimonio-total" style="margin-right: 1rem;">
                 Total: R$ 0,00
               </div>
-            </div>
-            
-            <div id="patrimonios-container">
-              <!-- Patrimônios serão inseridos aqui dinamicamente -->
-            </div>
-            
-            <div style="text-align: center; margin-top: 1rem;">
-              <button type="button" id="add-patrimonio-btn" class="add-btn">
-                <i class="fas fa-plus"></i> Adicionar Patrimônio
+              <button type="button" class="section-toggle-btn" id="toggle-patrimonio-fisico">
+                <i class="fas fa-chevron-down"></i>
               </button>
+            </div>
+            
+            <div class="section-content expanded" id="content-patrimonio-fisico">
+              <div id="patrimonios-container">
+                <!-- Patrimônios serão inseridos aqui dinamicamente -->
+              </div>
+              
+              <div style="text-align: center; margin-top: 1rem;">
+                <button type="button" id="add-patrimonio-btn" class="add-btn">
+                  <i class="fas fa-plus"></i> Adicionar Patrimônio
+                </button>
+              </div>
             </div>
           </div>
 
@@ -901,42 +982,47 @@
           <!-- SEÇÃO: PATRIMÔNIO LÍQUIDO -->
           <!-- ========================================= -->
           <div class="form-container" id="secao-patrimonio-liquido" style="margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+            <div class="section-header" onclick="toggleSection('patrimonio-liquido')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-wallet"></i> Patrimônio Líquido (Investimentos)
               </h3>
-              <div id="patrimonio-liquido-total" class="patrimonio-total">
+              <div id="patrimonio-liquido-total" class="patrimonio-total" style="margin-right: 1rem;">
                 Total: R$ 0,00
               </div>
-            </div>
-            
-            <div id="patrimonios-liquidos-container">
-              <!-- Patrimônios líquidos serão inseridos aqui dinamicamente -->
-            </div>
-            
-            <div style="text-align: center; margin-top: 1rem;">
-              <button type="button" id="add-patrimonio-liquido-btn" class="add-btn">
-                <i class="fas fa-plus"></i> Adicionar Investimento
+              <button type="button" class="section-toggle-btn" id="toggle-patrimonio-liquido">
+                <i class="fas fa-chevron-down"></i>
               </button>
             </div>
             
-            <!-- Teste de Suitability -->
-            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
-              <h4 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
-                <i class="fas fa-clipboard-check"></i> Teste de Perfil de Investidor (Suitability)
-              </h4>
-              <div id="teste-suitability-container">
-                <!-- Tabela será inserida aqui dinamicamente -->
+            <div class="section-content expanded" id="content-patrimonio-liquido">
+              <div id="patrimonios-liquidos-container">
+                <!-- Patrimônios líquidos serão inseridos aqui dinamicamente -->
               </div>
-            </div>
-            
-            <!-- Gráficos de Distribuição -->
-            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
-              <h4 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
-                <i class="fas fa-chart-pie"></i> Distribuição por Risco e Proprietário
-              </h4>
-              <div id="graficos-patrimonio-liquido" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
-                <!-- Gráficos serão inseridos aqui dinamicamente -->
+              
+              <div style="text-align: center; margin-top: 1rem;">
+                <button type="button" id="add-patrimonio-liquido-btn" class="add-btn">
+                  <i class="fas fa-plus"></i> Adicionar Investimento
+                </button>
+              </div>
+              
+              <!-- Teste de Suitability -->
+              <div style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
+                <h4 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
+                  <i class="fas fa-clipboard-check"></i> Teste de Perfil de Investidor (Suitability)
+                </h4>
+                <div id="teste-suitability-container">
+                  <!-- Tabela será inserida aqui dinamicamente -->
+                </div>
+              </div>
+              
+              <!-- Distribuição por Risco e Proprietário -->
+              <div style="margin-top: 2rem; padding-top: 2rem; border-top: 3px solid var(--border-color);">
+                <h4 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
+                  <i class="fas fa-table"></i> Distribuição por Risco e Proprietário
+                </h4>
+                <div id="graficos-patrimonio-liquido">
+                  <!-- Tabelas de distribuição serão inseridas aqui dinamicamente -->
+                </div>
               </div>
             </div>
           </div>
@@ -945,23 +1031,28 @@
           <!-- SEÇÃO: DÍVIDAS -->
           <!-- ========================================= -->
           <div class="form-container" id="secao-dividas" style="margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+            <div class="section-header" onclick="toggleSection('dividas')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-file-invoice-dollar"></i> Dívidas
               </h3>
-              <div id="dividas-total" class="patrimonio-total" style="color: #dc3545;">
+              <div id="dividas-total" class="patrimonio-total" style="color: #dc3545; margin-right: 1rem;">
                 Total: R$ 0,00
               </div>
-            </div>
-            
-            <div id="dividas-container">
-              <!-- Dívidas serão inseridas aqui dinamicamente -->
-            </div>
-            
-            <div style="text-align: center; margin-top: 1rem;">
-              <button type="button" id="add-divida-btn" class="add-btn" onclick="addDivida()">
-                <i class="fas fa-plus"></i> Adicionar Dívida
+              <button type="button" class="section-toggle-btn" id="toggle-dividas">
+                <i class="fas fa-chevron-down"></i>
               </button>
+            </div>
+            
+            <div class="section-content expanded" id="content-dividas">
+              <div id="dividas-container">
+                <!-- Dívidas serão inseridas aqui dinamicamente -->
+              </div>
+              
+              <div style="text-align: center; margin-top: 1rem;">
+                <button type="button" id="add-divida-btn" class="add-btn" onclick="addDivida()">
+                  <i class="fas fa-plus"></i> Adicionar Dívida
+                </button>
+              </div>
             </div>
           </div>
 
@@ -969,12 +1060,19 @@
           <!-- SEÇÃO: SUCESSÃO PATRIMONIAL -->
           <!-- ========================================= -->
           <div class="form-container" id="secao-sucessao" style="margin-top: 1.5rem;">
-            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-              <i class="fas fa-gavel"></i> Sucessão Patrimonial
-            </h3>
+            <div class="section-header" onclick="toggleSection('sucessao')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
+                <i class="fas fa-gavel"></i> Sucessão Patrimonial
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-sucessao">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
             
-            <div id="sucessao-container">
-              <!-- Cálculos de sucessão serão inseridos aqui dinamicamente -->
+            <div class="section-content expanded" id="content-sucessao">
+              <div id="sucessao-container">
+                <!-- Cálculos de sucessão serão inseridos aqui dinamicamente -->
+              </div>
             </div>
           </div>
 
@@ -982,38 +1080,50 @@
           <!-- SEÇÃO: PRODUTOS DE PROTEÇÃO -->
           <!-- ========================================= -->
           <div class="form-container" id="secao-produtos-protecao" style="margin-top: 1.5rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <h3 style="color: var(--accent-color); margin: 0; text-align: center; flex-grow: 1;">
+            <div class="section-header" onclick="toggleSection('produtos-protecao')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
                 <i class="fas fa-shield-alt"></i> Produtos & Proteção
               </h3>
-              <div id="produtos-protecao-total" class="patrimonio-total" style="text-align: right;">
+              <div id="produtos-protecao-total" class="patrimonio-total" style="text-align: right; margin-right: 1rem;">
                 <div style="font-size: 0.8rem; color: var(--text-light);">Mensal: R$ 0,00</div>
                 <div style="font-size: 1rem; color: var(--accent-color); font-weight: bold;">Anual: R$ 0,00</div>
               </div>
-            </div>
-            
-            <div id="produtos-protecao-container">
-              <!-- Produtos de proteção serão inseridos aqui dinamicamente -->
-            </div>
-            
-            <div style="text-align: center; margin-top: 1rem;">
-              <button type="button" id="add-produto-protecao-btn" class="add-btn">
-                <i class="fas fa-plus"></i> Adicionar Produto
+              <button type="button" class="section-toggle-btn" id="toggle-produtos-protecao">
+                <i class="fas fa-chevron-down"></i>
               </button>
+            </div>
+            
+            <div class="section-content expanded" id="content-produtos-protecao">
+              <div id="produtos-protecao-container">
+                <!-- Produtos de proteção serão inseridos aqui dinamicamente -->
+              </div>
+              
+              <div style="text-align: center; margin-top: 1rem;">
+                <button type="button" id="add-produto-protecao-btn" class="add-btn">
+                  <i class="fas fa-plus"></i> Adicionar Produto
+                </button>
+              </div>
             </div>
           </div>
 
           <!-- Seção de Imposto de Renda -->
           <div class="form-container" id="secao-ir" style="margin-top: 1.5rem;">
-            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-              <i class="fas fa-file-invoice-dollar"></i> Imposto de Renda
-            </h3>
+            <div class="section-header" onclick="toggleSection('ir')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
+                <i class="fas fa-file-invoice-dollar"></i> Imposto de Renda
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-ir">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
             
-            <div id="ir-container">
-              <!-- Os cards de IR serão renderizados aqui dinamicamente -->
-              <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
-                <i class="fas fa-info-circle"></i> As declarações de IR serão exibidas automaticamente para o cliente, cônjuge (se não for dependente), pessoas com renda e seus cônjuges (se não forem dependentes).
-              </p>
+            <div class="section-content expanded" id="content-ir">
+              <div id="ir-container">
+                <!-- Os cards de IR serão renderizados aqui dinamicamente -->
+                <p style="text-align: center; color: var(--text-light); opacity: 0.7;">
+                  <i class="fas fa-info-circle"></i> As declarações de IR serão exibidas automaticamente para o cliente, cônjuge (se não for dependente), pessoas com renda e seus cônjuges (se não forem dependentes).
+                </p>
+              </div>
             </div>
           </div>
 
@@ -1021,18 +1131,25 @@
           <!-- SEÇÃO: CONTAS & CARTÕES DE CRÉDITO -->
           <!-- ========================================= -->
           <div class="form-container" id="secao-contas-cartoes" style="margin-top: 1.5rem;">
-            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-              <i class="fas fa-credit-card"></i> Contas & Cartões de Crédito
-            </h3>
-            
-            <div id="contas-cartoes-container">
-              <!-- Contas e cartões serão inseridos aqui dinamicamente -->
+            <div class="section-header" onclick="toggleSection('contas-cartoes')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
+                <i class="fas fa-credit-card"></i> Contas & Cartões de Crédito
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-contas-cartoes">
+                <i class="fas fa-chevron-down"></i>
+              </button>
             </div>
             
-            <div style="text-align: center; margin-top: 1rem;">
-              <button type="button" id="add-conta-cartao-btn" class="add-btn" onclick="addContaCartao()">
-                <i class="fas fa-plus"></i> Adicionar Conta/Cartão
-              </button>
+            <div class="section-content expanded" id="content-contas-cartoes">
+              <div id="contas-cartoes-container">
+                <!-- Contas e cartões serão inseridos aqui dinamicamente -->
+              </div>
+              
+              <div style="text-align: center; margin-top: 1rem;">
+                <button type="button" id="add-conta-cartao-btn" class="add-btn" onclick="addContaCartao()">
+                  <i class="fas fa-plus"></i> Adicionar Conta/Cartão
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1040,12 +1157,19 @@
           <!-- SEÇÃO: FLUXO DE CAIXA -->
           <!-- ========================================= -->
           <div class="form-container" id="secao-fluxo-caixa" style="margin-top: 1.5rem;">
-            <h3 style="color: var(--accent-color); margin: 0 0 1rem 0; text-align: center;">
-              <i class="fas fa-chart-line"></i> Fluxo de Caixa
-            </h3>
+            <div class="section-header" onclick="toggleSection('fluxo-caixa')">
+              <h3 style="color: var(--accent-color); margin: 0; flex-grow: 1;">
+                <i class="fas fa-chart-line"></i> Fluxo de Caixa
+              </h3>
+              <button type="button" class="section-toggle-btn" id="toggle-fluxo-caixa">
+                <i class="fas fa-chevron-down"></i>
+              </button>
+            </div>
             
-            <div id="fluxo-caixa-container">
-              <!-- Fluxo de caixa será renderizado aqui dinamicamente -->
+            <div class="section-content expanded" id="content-fluxo-caixa">
+              <div id="fluxo-caixa-container">
+                <!-- Fluxo de caixa será renderizado aqui dinamicamente -->
+              </div>
             </div>
           </div>
 
@@ -1789,6 +1913,25 @@
     window.updateDependenteIdade = updateDependenteIdade;
     window.updateDependenteResponsavel = updateDependenteResponsavel;
     window.getResponsaveisDependenteOptions = getResponsaveisDependenteOptions;
+
+    // Função para expandir/retrair seções
+    function toggleSection(sectionId) {
+      const content = document.getElementById(`content-${sectionId}`);
+      const toggleBtn = document.getElementById(`toggle-${sectionId}`);
+      
+      if (!content || !toggleBtn) return;
+      
+      if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        content.classList.add('collapsed');
+        toggleBtn.classList.add('collapsed');
+      } else {
+        content.classList.remove('collapsed');
+        content.classList.add('expanded');
+        toggleBtn.classList.remove('collapsed');
+      }
+    }
+    window.toggleSection = toggleSection;
 
     // Funções para gerenciar patrimônio
     function formatarMoeda(valor) {
