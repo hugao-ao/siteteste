@@ -2865,12 +2865,18 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
             const fluxoCaixa = typeof diagnostico.fluxo_caixa === 'string' 
               ? JSON.parse(diagnostico.fluxo_caixa) 
               : diagnostico.fluxo_caixa;
+            console.log('Dados do fluxo de caixa carregados do banco:', fluxoCaixa);
             if (window.setFluxoCaixaData) {
               window.setFluxoCaixaData(fluxoCaixa);
+              console.log('setFluxoCaixaData chamado com sucesso');
+            } else {
+              console.warn('window.setFluxoCaixaData não disponível');
             }
           } catch (e) {
             console.log('Erro ao carregar fluxo de caixa:', e);
           }
+        } else {
+          console.log('Nenhum dado de fluxo de caixa no diagnóstico');
         }
         
         // Carregar objetivos
@@ -3084,7 +3090,11 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
           dividas: JSON.stringify(window.getDividasData ? window.getDividasData() : []), // Salvar dívidas
           dados_sucessao: JSON.stringify(window.getSucessaoData ? window.getSucessaoData() : {}), // Salvar dados de sucessão
           contas_cartoes: JSON.stringify(window.getContasCartoesData ? window.getContasCartoesData() : []), // Salvar contas e cartões
-          fluxo_caixa: JSON.stringify(window.getFluxoCaixaData ? window.getFluxoCaixaData() : {}), // Salvar fluxo de caixa
+          fluxo_caixa: (() => {
+            const fluxoData = window.getFluxoCaixaData ? window.getFluxoCaixaData() : {};
+            console.log('Salvando fluxo de caixa:', fluxoData);
+            return JSON.stringify(fluxoData);
+          })(), // Salvar fluxo de caixa
           objetivos: JSON.stringify(window.getObjetivosData ? window.getObjetivosData() : {}) // Salvar objetivos
         };
         
@@ -3110,9 +3120,42 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
       }
     }
     
+    // Função para aguardar módulos carregarem
+    async function waitForModules(maxWait = 5000) {
+      const moduleFunctions = [
+        'setFluxoCaixaData',
+        'setObjetivosData',
+        'setPatrimoniosLiquidosData',
+        'setContasCartoesData'
+      ];
+      
+      const startTime = Date.now();
+      
+      while (Date.now() - startTime < maxWait) {
+        const allLoaded = moduleFunctions.every(fn => typeof window[fn] === 'function');
+        if (allLoaded) {
+          console.log('Todos os módulos carregados com sucesso');
+          return true;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      
+      // Log quais módulos não carregaram
+      moduleFunctions.forEach(fn => {
+        if (typeof window[fn] !== 'function') {
+          console.warn(`Módulo não carregado: ${fn}`);
+        }
+      });
+      
+      return false;
+    }
+    
     // Inicialização
     document.addEventListener("DOMContentLoaded", async () => {
       try {
+        // Aguardar módulos carregarem
+        await waitForModules();
+        
         await loadDiagnostico();
         
         // Mostrar conteúdo principal e esconder loading
