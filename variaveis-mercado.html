@@ -263,10 +263,18 @@
           </div>
         </div>
         
-        <!-- Seção de Rentabilidades 10 anos - 7 Perfis -->
+        <!-- Seção de Rentabilidades 10 anos - 9 Perfis -->
         <div class="form-section">
-          <h3><i class="fas fa-chart-line"></i> Rentabilidades 10 anos (%) - 7 Perfis</h3>
+          <h3><i class="fas fa-chart-line"></i> Rentabilidades 10 anos (%) - 9 Perfis</h3>
           <div class="form-grid-7">
+            <div class="form-group">
+              <label for="rent_sem_conhecimento_10_anos" class="perfil-label">0. Sem Conhecimento</label>
+              <input type="number" id="rent_sem_conhecimento_10_anos" name="rent_sem_conhecimento_10_anos" class="calculated-field" disabled readonly>
+            </div>
+            <div class="form-group">
+              <label for="rent_iniciante_10_anos" class="perfil-label">0.5. Iniciante</label>
+              <input type="number" id="rent_iniciante_10_anos" name="rent_iniciante_10_anos" class="calculated-field" disabled readonly>
+            </div>
             <div class="form-group">
               <label for="rent_ultra_cons_10_anos" class="perfil-label">1. Ultra-Conservador</label>
               <input type="number" id="rent_ultra_cons_10_anos" name="rent_ultra_cons_10_anos" class="calculated-field" disabled readonly>
@@ -298,10 +306,18 @@
           </div>
         </div>
         
-        <!-- Seção de Rentabilidades Atuais - 7 Perfis -->
+        <!-- Seção de Rentabilidades Atuais - 9 Perfis -->
         <div class="form-section">
-          <h3><i class="fas fa-chart-bar"></i> Rentabilidades Atuais (%) - 7 Perfis</h3>
+          <h3><i class="fas fa-chart-bar"></i> Rentabilidades Atuais (%) - 9 Perfis</h3>
           <div class="form-grid-7">
+            <div class="form-group">
+              <label for="rent_sem_conhecimento" class="perfil-label">0. Sem Conhecimento</label>
+              <input type="number" id="rent_sem_conhecimento" name="rent_sem_conhecimento" class="calculated-field" disabled readonly>
+            </div>
+            <div class="form-group">
+              <label for="rent_iniciante" class="perfil-label">0.5. Iniciante</label>
+              <input type="number" id="rent_iniciante" name="rent_iniciante" class="calculated-field" disabled readonly>
+            </div>
             <div class="form-group">
               <label for="rent_ultra_cons" class="perfil-label">1. Ultra-Conservador</label>
               <input type="number" id="rent_ultra_cons" name="rent_ultra_cons" class="calculated-field" disabled readonly>
@@ -369,7 +385,9 @@
     const ipcaAaMedio10Input = document.getElementById('ipca_aa_medio_10_anos');
     const rentMensalAposentadoriaInput = document.getElementById('rent_mensal_aposentadoria');
     
-    // Rentabilidades 10 anos - 7 Perfis
+    // Rentabilidades 10 anos - 9 Perfis
+    const rentSemConhecimento10Input = document.getElementById('rent_sem_conhecimento_10_anos');
+    const rentIniciante10Input = document.getElementById('rent_iniciante_10_anos');
     const rentUltraCons10Input = document.getElementById('rent_ultra_cons_10_anos');
     const rentCons10Input = document.getElementById('rent_cons_10_anos');
     const rentConsMod10Input = document.getElementById('rent_cons_mod_10_anos');
@@ -378,7 +396,9 @@
     const rentArro10Input = document.getElementById('rent_arro_10_anos');
     const rentUltraArro10Input = document.getElementById('rent_ultra_arro_10_anos');
     
-    // Rentabilidades atuais - 7 Perfis
+    // Rentabilidades atuais - 9 Perfis
+    const rentSemConhecimentoInput = document.getElementById('rent_sem_conhecimento');
+    const rentInicianteInput = document.getElementById('rent_iniciante');
     const rentUltraConsInput = document.getElementById('rent_ultra_cons');
     const rentConsInput = document.getElementById('rent_cons');
     const rentConsModInput = document.getElementById('rent_cons_mod');
@@ -403,16 +423,18 @@
       successContainer.innerHTML = '';
     }
     
-    // Multiplicadores para os 7 perfis baseados no CDI
+    // Multiplicadores para os 9 perfis baseados no CDI
     // Estimativas realistas baseadas na exposição a renda variável de cada perfil
     const PERFIL_MULTIPLICADORES = {
-      ultra_cons: 0.97,      // 97% CDI - Só renda fixa de baixíssimo risco
-      cons: 1.00,            // 100% CDI - Renda fixa tradicional
-      cons_mod: 1.03,        // 103% CDI - Pequena exposição (até 10% RV)
-      mod: 1.08,             // 108% CDI - Exposição moderada (até 30% RV)
-      mod_arro: 1.15,        // 115% CDI - Exposição significativa (até 50% RV)
-      arro: 1.25,            // 125% CDI - Alta exposição (até 70% RV)
-      ultra_arro: 1.40       // 140% CDI - Exposição máxima (até 95% RV)
+      sem_conhecimento: 0.80, // 80% CDI - Sem conhecimento financeiro
+      iniciante: 0.95,        // 95% CDI - Iniciante em investimentos
+      ultra_cons: 0.97,       // 97% CDI - Só renda fixa de baixíssimo risco
+      cons: 1.00,             // 100% CDI - Renda fixa tradicional
+      cons_mod: 1.03,         // 103% CDI - Pequena exposição (até 10% RV)
+      mod: 1.08,              // 108% CDI - Exposição moderada (até 30% RV)
+      mod_arro: 1.15,         // 115% CDI - Exposição significativa (até 50% RV)
+      arro: 1.25,             // 125% CDI - Alta exposição (até 70% RV)
+      ultra_arro: 1.40        // 140% CDI - Exposição máxima (até 95% RV)
     };
     
     // Função para calcular todas as variáveis automaticamente
@@ -439,7 +461,9 @@
       const rentMensalAposentadoria = (Math.pow(1 + (rentAnualAposentadoria / 100), 1/12) - 1) * 100;
       rentMensalAposentadoriaInput.value = rentMensalAposentadoria.toFixed(4);
       
-      // Rentabilidades 10 anos - 7 Perfis
+      // Rentabilidades 10 anos - 9 Perfis
+      rentSemConhecimento10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.sem_conhecimento).toFixed(4);
+      rentIniciante10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.iniciante).toFixed(4);
       rentUltraCons10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.ultra_cons).toFixed(4);
       rentCons10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.cons).toFixed(4);
       rentConsMod10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.cons_mod).toFixed(4);
@@ -448,7 +472,9 @@
       rentArro10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.arro).toFixed(4);
       rentUltraArro10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.ultra_arro).toFixed(4);
       
-      // Rentabilidades atuais - 7 Perfis
+      // Rentabilidades atuais - 9 Perfis
+      rentSemConhecimentoInput.value = (cdi * PERFIL_MULTIPLICADORES.sem_conhecimento).toFixed(4);
+      rentInicianteInput.value = (cdi * PERFIL_MULTIPLICADORES.iniciante).toFixed(4);
       rentUltraConsInput.value = (cdi * PERFIL_MULTIPLICADORES.ultra_cons).toFixed(4);
       rentConsInput.value = (cdi * PERFIL_MULTIPLICADORES.cons).toFixed(4);
       rentConsModInput.value = (cdi * PERFIL_MULTIPLICADORES.cons_mod).toFixed(4);
@@ -523,7 +549,9 @@
           ipca_aa_medio_10_anos: parseFloat(ipcaAaMedio10Input.value),
           rent_anual_aposentadoria: parseFloat(rentAnualAposentadoriaInput.value),
           rent_mensal_aposentadoria: parseFloat(rentMensalAposentadoriaInput.value),
-          // Rentabilidades 10 anos - 7 Perfis
+          // Rentabilidades 10 anos - 9 Perfis
+          rent_sem_conhecimento_10_anos: parseFloat(rentSemConhecimento10Input.value),
+          rent_iniciante_10_anos: parseFloat(rentIniciante10Input.value),
           rent_ultra_cons_10_anos: parseFloat(rentUltraCons10Input.value),
           rent_cons_10_anos: parseFloat(rentCons10Input.value),
           rent_cons_mod_10_anos: parseFloat(rentConsMod10Input.value),
@@ -531,7 +559,9 @@
           rent_mod_arro_10_anos: parseFloat(rentModArro10Input.value),
           rent_arro_10_anos: parseFloat(rentArro10Input.value),
           rent_ultra_arro_10_anos: parseFloat(rentUltraArro10Input.value),
-          // Rentabilidades atuais - 7 Perfis
+          // Rentabilidades atuais - 9 Perfis
+          rent_sem_conhecimento: parseFloat(rentSemConhecimentoInput.value),
+          rent_iniciante: parseFloat(rentInicianteInput.value),
           rent_ultra_cons: parseFloat(rentUltraConsInput.value),
           rent_cons: parseFloat(rentConsInput.value),
           rent_cons_mod: parseFloat(rentConsModInput.value),
