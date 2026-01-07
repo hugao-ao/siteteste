@@ -33,7 +33,7 @@
       padding: 2rem;
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       margin-top: 1.5rem;
-      max-width: 1200px;
+      max-width: 1400px;
     }
     
     .form-section {
@@ -53,9 +53,28 @@
     
     .form-grid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
       gap: 1rem;
       margin-top: 1rem;
+    }
+    
+    .form-grid-7 {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 0.8rem;
+      margin-top: 1rem;
+    }
+    
+    @media (max-width: 1200px) {
+      .form-grid-7 {
+        grid-template-columns: repeat(4, 1fr);
+      }
+    }
+    
+    @media (max-width: 800px) {
+      .form-grid-7 {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
     
     .form-group {
@@ -67,6 +86,7 @@
       font-weight: bold;
       margin-bottom: 0.5rem;
       color: var(--text-light);
+      font-size: 0.85rem;
     }
     
     .form-group input {
@@ -94,6 +114,11 @@
     .calculated-field {
       background-color: #f8f9fa;
       border-color: #6c757d;
+    }
+    
+    .aposentadoria-field {
+      background-color: #fff3cd;
+      border-color: #ffc107;
     }
     
     .save-btn {
@@ -163,6 +188,11 @@
       border-radius: 4px;
       margin-bottom: 1rem;
     }
+    
+    .perfil-label {
+      font-size: 0.75rem !important;
+      line-height: 1.2;
+    }
   </style>
 </head>
 <body>
@@ -203,6 +233,10 @@
               <label for="ipca_120_meses">IPCA 120 meses (%)</label>
               <input type="number" id="ipca_120_meses" name="ipca_120_meses" step="0.0001" min="0" required>
             </div>
+            <div class="form-group">
+              <label for="rent_anual_aposentadoria"><i class="fas fa-umbrella-beach"></i> Rent Anual Aposentadoria (%)</label>
+              <input type="number" id="rent_anual_aposentadoria" name="rent_anual_aposentadoria" step="0.0001" min="0" class="aposentadoria-field" required>
+            </div>
           </div>
         </div>
         
@@ -222,59 +256,79 @@
               <label for="ipca_aa_medio_10_anos">IPCA a.a. Médio 10 anos (%)</label>
               <input type="number" id="ipca_aa_medio_10_anos" name="ipca_aa_medio_10_anos" class="calculated-field" disabled readonly>
             </div>
+            <div class="form-group">
+              <label for="rent_mensal_aposentadoria"><i class="fas fa-umbrella-beach"></i> Rent Mensal Aposentadoria (%)</label>
+              <input type="number" id="rent_mensal_aposentadoria" name="rent_mensal_aposentadoria" class="calculated-field aposentadoria-field" disabled readonly>
+            </div>
           </div>
         </div>
         
-        <!-- Seção de Rentabilidades 10 anos -->
+        <!-- Seção de Rentabilidades 10 anos - 7 Perfis -->
         <div class="form-section">
-          <h3><i class="fas fa-chart-line"></i> Rentabilidades 10 anos (%)</h3>
-          <div class="form-grid">
+          <h3><i class="fas fa-chart-line"></i> Rentabilidades 10 anos (%) - 7 Perfis</h3>
+          <div class="form-grid-7">
             <div class="form-group">
-              <label for="rent_ultra_cons_10_anos">Rent Ultra Cons 10 anos</label>
+              <label for="rent_ultra_cons_10_anos" class="perfil-label">1. Ultra-Conservador</label>
               <input type="number" id="rent_ultra_cons_10_anos" name="rent_ultra_cons_10_anos" class="calculated-field" disabled readonly>
             </div>
             <div class="form-group">
-              <label for="rent_cons_10_anos">Rent Cons 10 anos</label>
+              <label for="rent_cons_10_anos" class="perfil-label">2. Conservador</label>
               <input type="number" id="rent_cons_10_anos" name="rent_cons_10_anos" class="calculated-field" disabled readonly>
             </div>
             <div class="form-group">
-              <label for="rent_mod_10_anos">Rent Mod 10 anos</label>
+              <label for="rent_cons_mod_10_anos" class="perfil-label">3. Conservador-Moderado</label>
+              <input type="number" id="rent_cons_mod_10_anos" name="rent_cons_mod_10_anos" class="calculated-field" disabled readonly>
+            </div>
+            <div class="form-group">
+              <label for="rent_mod_10_anos" class="perfil-label">4. Moderado</label>
               <input type="number" id="rent_mod_10_anos" name="rent_mod_10_anos" class="calculated-field" disabled readonly>
             </div>
             <div class="form-group">
-              <label for="rent_arro_10_anos">Rent Arro 10 anos</label>
+              <label for="rent_mod_arro_10_anos" class="perfil-label">5. Moderado-Arrojado</label>
+              <input type="number" id="rent_mod_arro_10_anos" name="rent_mod_arro_10_anos" class="calculated-field" disabled readonly>
+            </div>
+            <div class="form-group">
+              <label for="rent_arro_10_anos" class="perfil-label">6. Arrojado</label>
               <input type="number" id="rent_arro_10_anos" name="rent_arro_10_anos" class="calculated-field" disabled readonly>
             </div>
             <div class="form-group">
-              <label for="rent_agre_10_anos">Rent Agre 10 anos</label>
-              <input type="number" id="rent_agre_10_anos" name="rent_agre_10_anos" class="calculated-field" disabled readonly>
+              <label for="rent_ultra_arro_10_anos" class="perfil-label">7. Ultra-Arrojado</label>
+              <input type="number" id="rent_ultra_arro_10_anos" name="rent_ultra_arro_10_anos" class="calculated-field" disabled readonly>
             </div>
           </div>
         </div>
         
-        <!-- Seção de Rentabilidades Atuais -->
+        <!-- Seção de Rentabilidades Atuais - 7 Perfis -->
         <div class="form-section">
-          <h3><i class="fas fa-chart-bar"></i> Rentabilidades Atuais (%)</h3>
-          <div class="form-grid">
+          <h3><i class="fas fa-chart-bar"></i> Rentabilidades Atuais (%) - 7 Perfis</h3>
+          <div class="form-grid-7">
             <div class="form-group">
-              <label for="rent_ultra_cons">Rent Ultra Cons</label>
+              <label for="rent_ultra_cons" class="perfil-label">1. Ultra-Conservador</label>
               <input type="number" id="rent_ultra_cons" name="rent_ultra_cons" class="calculated-field" disabled readonly>
             </div>
             <div class="form-group">
-              <label for="rent_cons">Rent Cons</label>
+              <label for="rent_cons" class="perfil-label">2. Conservador</label>
               <input type="number" id="rent_cons" name="rent_cons" class="calculated-field" disabled readonly>
             </div>
             <div class="form-group">
-              <label for="rent_mod">Rent Mod</label>
+              <label for="rent_cons_mod" class="perfil-label">3. Conservador-Moderado</label>
+              <input type="number" id="rent_cons_mod" name="rent_cons_mod" class="calculated-field" disabled readonly>
+            </div>
+            <div class="form-group">
+              <label for="rent_mod" class="perfil-label">4. Moderado</label>
               <input type="number" id="rent_mod" name="rent_mod" class="calculated-field" disabled readonly>
             </div>
             <div class="form-group">
-              <label for="rent_arro">Rent Arro</label>
+              <label for="rent_mod_arro" class="perfil-label">5. Moderado-Arrojado</label>
+              <input type="number" id="rent_mod_arro" name="rent_mod_arro" class="calculated-field" disabled readonly>
+            </div>
+            <div class="form-group">
+              <label for="rent_arro" class="perfil-label">6. Arrojado</label>
               <input type="number" id="rent_arro" name="rent_arro" class="calculated-field" disabled readonly>
             </div>
             <div class="form-group">
-              <label for="rent_agre">Rent Agre</label>
-              <input type="number" id="rent_agre" name="rent_agre" class="calculated-field" disabled readonly>
+              <label for="rent_ultra_arro" class="perfil-label">7. Ultra-Arrojado</label>
+              <input type="number" id="rent_ultra_arro" name="rent_ultra_arro" class="calculated-field" disabled readonly>
             </div>
           </div>
         </div>
@@ -307,25 +361,31 @@
     const cdi120Input = document.getElementById('cdi_120_meses');
     const ipcaInput = document.getElementById('ipca');
     const ipca120Input = document.getElementById('ipca_120_meses');
+    const rentAnualAposentadoriaInput = document.getElementById('rent_anual_aposentadoria');
     
     // Campos calculados
     const cdiInput = document.getElementById('cdi');
     const cdiAaMedio10Input = document.getElementById('cdi_aa_medio_10_anos');
     const ipcaAaMedio10Input = document.getElementById('ipca_aa_medio_10_anos');
+    const rentMensalAposentadoriaInput = document.getElementById('rent_mensal_aposentadoria');
     
-    // Rentabilidades 10 anos
+    // Rentabilidades 10 anos - 7 Perfis
     const rentUltraCons10Input = document.getElementById('rent_ultra_cons_10_anos');
     const rentCons10Input = document.getElementById('rent_cons_10_anos');
+    const rentConsMod10Input = document.getElementById('rent_cons_mod_10_anos');
     const rentMod10Input = document.getElementById('rent_mod_10_anos');
+    const rentModArro10Input = document.getElementById('rent_mod_arro_10_anos');
     const rentArro10Input = document.getElementById('rent_arro_10_anos');
-    const rentAgre10Input = document.getElementById('rent_agre_10_anos');
+    const rentUltraArro10Input = document.getElementById('rent_ultra_arro_10_anos');
     
-    // Rentabilidades atuais
+    // Rentabilidades atuais - 7 Perfis
     const rentUltraConsInput = document.getElementById('rent_ultra_cons');
     const rentConsInput = document.getElementById('rent_cons');
+    const rentConsModInput = document.getElementById('rent_cons_mod');
     const rentModInput = document.getElementById('rent_mod');
+    const rentModArroInput = document.getElementById('rent_mod_arro');
     const rentArroInput = document.getElementById('rent_arro');
-    const rentAgreInput = document.getElementById('rent_agre');
+    const rentUltraArroInput = document.getElementById('rent_ultra_arro');
     
     // Funções utilitárias
     function showError(message) {
@@ -343,13 +403,17 @@
       successContainer.innerHTML = '';
     }
     
-    function formatPercentage(value) {
-      return (value * 100).toFixed(4);
-    }
-    
-    function parsePercentage(value) {
-      return parseFloat(value) / 100;
-    }
+    // Multiplicadores para os 7 perfis baseados no CDI
+    // Estimativas realistas baseadas na exposição a renda variável de cada perfil
+    const PERFIL_MULTIPLICADORES = {
+      ultra_cons: 0.97,      // 97% CDI - Só renda fixa de baixíssimo risco
+      cons: 1.00,            // 100% CDI - Renda fixa tradicional
+      cons_mod: 1.03,        // 103% CDI - Pequena exposição (até 10% RV)
+      mod: 1.08,             // 108% CDI - Exposição moderada (até 30% RV)
+      mod_arro: 1.15,        // 115% CDI - Exposição significativa (até 50% RV)
+      arro: 1.25,            // 125% CDI - Alta exposição (até 70% RV)
+      ultra_arro: 1.40       // 140% CDI - Exposição máxima (até 95% RV)
+    };
     
     // Função para calcular todas as variáveis automaticamente
     function calculateVariables() {
@@ -357,54 +421,45 @@
       const cdi120 = parseFloat(cdi120Input.value) || 0;
       const ipca = parseFloat(ipcaInput.value) || 0;
       const ipca120 = parseFloat(ipca120Input.value) || 0;
+      const rentAnualAposentadoria = parseFloat(rentAnualAposentadoriaInput.value) || 0;
       
       // 1. CDI = SELIC - 0,1%
       const cdi = selic - 0.1;
       cdiInput.value = cdi.toFixed(4);
       
-      // 2. CDI a.a. Médio 10 anos = POTÊNCIA(1+[CDI 120 meses];1/10)-1)
+      // 2. CDI a.a. Médio 10 anos = POTÊNCIA(1+[CDI 120 meses]/100;1/10)-1) * 100
       const cdiAaMedio10 = (Math.pow(1 + (cdi120 / 100), 1/10) - 1) * 100;
       cdiAaMedio10Input.value = cdiAaMedio10.toFixed(4);
       
-      // 13. IPCA a.a. Médio 10 anos = POTÊNCIA(1+[IPCA 120 meses];1/10)-1)
+      // 3. IPCA a.a. Médio 10 anos = POTÊNCIA(1+[IPCA 120 meses]/100;1/10)-1) * 100
       const ipcaAaMedio10 = (Math.pow(1 + (ipca120 / 100), 1/10) - 1) * 100;
       ipcaAaMedio10Input.value = ipcaAaMedio10.toFixed(4);
       
-      // Rentabilidades 10 anos
-      // 3. Rent Ultra Cons 10 anos = [CDI a.a. Médio 10 anos]
-      rentUltraCons10Input.value = cdiAaMedio10.toFixed(4);
+      // 4. Rent Mensal Aposentadoria = ((1 + rentAnual/100)^(1/12) - 1) * 100
+      const rentMensalAposentadoria = (Math.pow(1 + (rentAnualAposentadoria / 100), 1/12) - 1) * 100;
+      rentMensalAposentadoriaInput.value = rentMensalAposentadoria.toFixed(4);
       
-      // 4. Rent Cons 10 anos = [CDI a.a. Médio 10 anos] × 1,05
-      rentCons10Input.value = (cdiAaMedio10 * 1.05).toFixed(4);
+      // Rentabilidades 10 anos - 7 Perfis
+      rentUltraCons10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.ultra_cons).toFixed(4);
+      rentCons10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.cons).toFixed(4);
+      rentConsMod10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.cons_mod).toFixed(4);
+      rentMod10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.mod).toFixed(4);
+      rentModArro10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.mod_arro).toFixed(4);
+      rentArro10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.arro).toFixed(4);
+      rentUltraArro10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.ultra_arro).toFixed(4);
       
-      // 5. Rent Mod 10 anos = [CDI a.a. Médio 10 anos] × 1,10
-      rentMod10Input.value = (cdiAaMedio10 * 1.10).toFixed(4);
-      
-      // 6. Rent Arro 10 anos = [CDI a.a. Médio 10 anos] × 1,20
-      rentArro10Input.value = (cdiAaMedio10 * 1.20).toFixed(4);
-      
-      // 7. Rent Agre 10 anos = [CDI a.a. Médio 10 anos] × 1,30
-      rentAgre10Input.value = (cdiAaMedio10 * 1.30).toFixed(4);
-      
-      // Rentabilidades atuais
-      // 8. Rent Ultra Cons = [CDI]
-      rentUltraConsInput.value = cdi.toFixed(4);
-      
-      // 9. Rent Cons = [CDI] × 1,05
-      rentConsInput.value = (cdi * 1.05).toFixed(4);
-      
-      // 10. Rent Mod = [CDI] × 1,10
-      rentModInput.value = (cdi * 1.10).toFixed(4);
-      
-      // 11. Rent Arro = [CDI] × 1,20
-      rentArroInput.value = (cdi * 1.20).toFixed(4);
-      
-      // 12. Rent Agre = [CDI] × 1,30
-      rentAgreInput.value = (cdi * 1.30).toFixed(4);
+      // Rentabilidades atuais - 7 Perfis
+      rentUltraConsInput.value = (cdi * PERFIL_MULTIPLICADORES.ultra_cons).toFixed(4);
+      rentConsInput.value = (cdi * PERFIL_MULTIPLICADORES.cons).toFixed(4);
+      rentConsModInput.value = (cdi * PERFIL_MULTIPLICADORES.cons_mod).toFixed(4);
+      rentModInput.value = (cdi * PERFIL_MULTIPLICADORES.mod).toFixed(4);
+      rentModArroInput.value = (cdi * PERFIL_MULTIPLICADORES.mod_arro).toFixed(4);
+      rentArroInput.value = (cdi * PERFIL_MULTIPLICADORES.arro).toFixed(4);
+      rentUltraArroInput.value = (cdi * PERFIL_MULTIPLICADORES.ultra_arro).toFixed(4);
     }
     
     // Adicionar listeners para recalcular quando os valores de entrada mudarem
-    [selicInput, cdi120Input, ipcaInput, ipca120Input].forEach(input => {
+    [selicInput, cdi120Input, ipcaInput, ipca120Input, rentAnualAposentadoriaInput].forEach(input => {
       input.addEventListener('input', calculateVariables);
     });
     
@@ -422,11 +477,12 @@
         if (data && data.length > 0) {
           const latest = data[0];
           
-          // Preencher campos de entrada
-          selicInput.value = (latest.selic * 100).toFixed(4);
-          cdi120Input.value = (latest.cdi_120_meses * 100).toFixed(4);
-          ipcaInput.value = (latest.ipca * 100).toFixed(4);
-          ipca120Input.value = (latest.ipca_120_meses * 100).toFixed(4);
+          // Preencher campos de entrada (valores já estão em percentual no banco)
+          selicInput.value = parseFloat(latest.selic || 0).toFixed(4);
+          cdi120Input.value = parseFloat(latest.cdi_120_meses || 0).toFixed(4);
+          ipcaInput.value = parseFloat(latest.ipca || 0).toFixed(4);
+          ipca120Input.value = parseFloat(latest.ipca_120_meses || 0).toFixed(4);
+          rentAnualAposentadoriaInput.value = parseFloat(latest.rent_anual_aposentadoria || 0).toFixed(4);
           
           // Recalcular variáveis
           calculateVariables();
@@ -456,24 +512,33 @@
       saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
       
       try {
+        // Salvar valores diretamente como percentuais (ex: 14.75 para 14,75%)
         const dataToSave = {
-          selic: parsePercentage(selicInput.value),
-          cdi_120_meses: parsePercentage(cdi120Input.value),
-          ipca: parsePercentage(ipcaInput.value),
-          ipca_120_meses: parsePercentage(ipca120Input.value),
-          cdi: parsePercentage(cdiInput.value),
-          cdi_aa_medio_10_anos: parsePercentage(cdiAaMedio10Input.value),
-          rent_ultra_cons_10_anos: parsePercentage(rentUltraCons10Input.value),
-          rent_cons_10_anos: parsePercentage(rentCons10Input.value),
-          rent_mod_10_anos: parsePercentage(rentMod10Input.value),
-          rent_arro_10_anos: parsePercentage(rentArro10Input.value),
-          rent_agre_10_anos: parsePercentage(rentAgre10Input.value),
-          rent_ultra_cons: parsePercentage(rentUltraConsInput.value),
-          rent_cons: parsePercentage(rentConsInput.value),
-          rent_mod: parsePercentage(rentModInput.value),
-          rent_arro: parsePercentage(rentArroInput.value),
-          rent_agre: parsePercentage(rentAgreInput.value),
-          ipca_aa_medio_10_anos: parsePercentage(ipcaAaMedio10Input.value),
+          selic: parseFloat(selicInput.value),
+          cdi_120_meses: parseFloat(cdi120Input.value),
+          ipca: parseFloat(ipcaInput.value),
+          ipca_120_meses: parseFloat(ipca120Input.value),
+          cdi: parseFloat(cdiInput.value),
+          cdi_aa_medio_10_anos: parseFloat(cdiAaMedio10Input.value),
+          ipca_aa_medio_10_anos: parseFloat(ipcaAaMedio10Input.value),
+          rent_anual_aposentadoria: parseFloat(rentAnualAposentadoriaInput.value),
+          rent_mensal_aposentadoria: parseFloat(rentMensalAposentadoriaInput.value),
+          // Rentabilidades 10 anos - 7 Perfis
+          rent_ultra_cons_10_anos: parseFloat(rentUltraCons10Input.value),
+          rent_cons_10_anos: parseFloat(rentCons10Input.value),
+          rent_cons_mod_10_anos: parseFloat(rentConsMod10Input.value),
+          rent_mod_10_anos: parseFloat(rentMod10Input.value),
+          rent_mod_arro_10_anos: parseFloat(rentModArro10Input.value),
+          rent_arro_10_anos: parseFloat(rentArro10Input.value),
+          rent_ultra_arro_10_anos: parseFloat(rentUltraArro10Input.value),
+          // Rentabilidades atuais - 7 Perfis
+          rent_ultra_cons: parseFloat(rentUltraConsInput.value),
+          rent_cons: parseFloat(rentConsInput.value),
+          rent_cons_mod: parseFloat(rentConsModInput.value),
+          rent_mod: parseFloat(rentModInput.value),
+          rent_mod_arro: parseFloat(rentModArroInput.value),
+          rent_arro: parseFloat(rentArroInput.value),
+          rent_ultra_arro: parseFloat(rentUltraArroInput.value),
           atualizado_por_id: userId
         };
         
@@ -538,4 +603,3 @@
   </script>
 </body>
 </html>
-
