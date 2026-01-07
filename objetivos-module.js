@@ -16,8 +16,10 @@ let variaveisMercado = {
   ipca: 5.44,
   ipca_120_meses: 70.88,
   cdi: 14.65,
-  cdi_medio_10_anos: 9.2666,
-  ipca_medio_10_anos: 5.504,
+  cdi_aa_medio_10_anos: 9.2666,
+  ipca_aa_medio_10_anos: 5.504,
+  rent_anual_aposentadoria: 6.0,
+  rent_mensal_aposentadoria: 0.4868,
   ultima_atualizacao: null
 };
 
@@ -30,20 +32,23 @@ async function carregarVariaveisMercado() {
     const { data, error } = await supabase
       .from('variaveis_mercado')
       .select('*')
-      .order('created_at', { ascending: false })
+      .order('data_ultima_atualizacao', { ascending: false })
       .limit(1)
       .single();
     
     if (data && !error) {
+      // Os valores já estão em percentual no banco (ex: 14.75 para 14,75%)
       variaveisMercado = {
         selic: parseFloat(data.selic) || 14.75,
         cdi_120_meses: parseFloat(data.cdi_120_meses) || 142.59,
         ipca: parseFloat(data.ipca) || 5.44,
         ipca_120_meses: parseFloat(data.ipca_120_meses) || 70.88,
         cdi: parseFloat(data.cdi) || 14.65,
-        cdi_medio_10_anos: parseFloat(data.cdi_medio_10_anos) || 9.2666,
-        ipca_medio_10_anos: parseFloat(data.ipca_medio_10_anos) || 5.504,
-        ultima_atualizacao: data.updated_at || data.created_at
+        cdi_aa_medio_10_anos: parseFloat(data.cdi_aa_medio_10_anos) || 9.2666,
+        ipca_aa_medio_10_anos: parseFloat(data.ipca_aa_medio_10_anos) || 5.504,
+        rent_anual_aposentadoria: parseFloat(data.rent_anual_aposentadoria) || 6.0,
+        rent_mensal_aposentadoria: parseFloat(data.rent_mensal_aposentadoria) || 0.4868,
+        ultima_atualizacao: data.data_ultima_atualizacao || data.created_at
       };
     }
   } catch (error) {
@@ -361,26 +366,34 @@ function renderObjetivos() {
         <i class="fas fa-chart-line"></i> Variáveis de Mercado
         ${variaveisMercado.ultima_atualizacao ? `<span style="font-size: 0.75rem; font-weight: normal; opacity: 0.7; margin-left: 1rem;">Última atualização: ${new Date(variaveisMercado.ultima_atualizacao).toLocaleString('pt-BR')}</span>` : ''}
       </h4>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.8rem;">
         <div style="text-align: center; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">SELIC (%)</div>
-          <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.selic)}</div>
+          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">SELIC (%)</div>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.selic)}</div>
         </div>
         <div style="text-align: center; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">CDI (%)</div>
-          <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.cdi)}</div>
+          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">CDI (%)</div>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.cdi)}</div>
         </div>
         <div style="text-align: center; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">CDI Médio 10 anos (%)</div>
-          <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.cdi_medio_10_anos)}</div>
+          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">CDI Médio 10 anos (%)</div>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.cdi_aa_medio_10_anos)}</div>
         </div>
         <div style="text-align: center; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">IPCA (%)</div>
-          <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.ipca)}</div>
+          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">IPCA (%)</div>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.ipca)}</div>
         </div>
         <div style="text-align: center; padding: 0.5rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
-          <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">IPCA Médio 10 anos (%)</div>
-          <div style="font-size: 1.1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.ipca_medio_10_anos)}</div>
+          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">IPCA Médio 10 anos (%)</div>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-color);">${formatarPercentual(variaveisMercado.ipca_aa_medio_10_anos)}</div>
+        </div>
+        <div style="text-align: center; padding: 0.5rem; background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; border-radius: 6px;">
+          <div style="font-size: 0.7rem; color: #28a745; opacity: 0.9;">Rent Anual Aposent. (%)</div>
+          <div style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarPercentual(variaveisMercado.rent_anual_aposentadoria)}</div>
+        </div>
+        <div style="text-align: center; padding: 0.5rem; background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; border-radius: 6px;">
+          <div style="font-size: 0.7rem; color: #28a745; opacity: 0.9;">Rent Mensal Aposent. (%)</div>
+          <div style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarPercentual(variaveisMercado.rent_mensal_aposentadoria)}</div>
         </div>
       </div>
     </div>
@@ -464,8 +477,9 @@ function renderCardAposentadoria(obj, pessoas) {
     });
   }
   
-  // Capital necessário = Renda anual / 0,5%
-  const capitalNecessario = rendaAnual / 0.005;
+  // Capital necessário = Renda anual / Rent Anual Aposentadoria (em decimal)
+  const rentAnualDecimal = variaveisMercado.rent_anual_aposentadoria / 100;
+  const capitalNecessario = rentAnualDecimal > 0 ? rendaAnual / rentAnualDecimal : 0;
   
   // Calcular meses até a aposentadoria
   let mesesRestantes = 0;
@@ -527,11 +541,12 @@ function renderCardAposentadoria(obj, pessoas) {
         <!-- Capital Necessário -->
         <div>
           <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
-            <i class="fas fa-piggy-bank"></i> Capital Necessário (Renda ÷ 0,5%)
+            <i class="fas fa-piggy-bank"></i> Capital Necessário
           </label>
           <div style="padding: 0.6rem; background: rgba(212, 175, 55, 0.1); border: 1px solid var(--accent-color); border-radius: 6px; color: var(--accent-color); font-weight: 600;">
             ${formatarMoedaObj(capitalNecessario)}
           </div>
+          <small style="color: var(--text-light); opacity: 0.7; font-size: 0.65rem;">Renda ÷ ${formatarPercentual(variaveisMercado.rent_anual_aposentadoria)}</small>
         </div>
       </div>
       
@@ -748,16 +763,16 @@ function renderAnaliseAposentadoria(obj, pessoas) {
     });
   }
   
-  // Capital necessário
-  const capitalNecessario = rendaAnual / 0.005;
+  // Capital necessário usando Rent Anual Aposentadoria
+  const rentAnualDecimal = variaveisMercado.rent_anual_aposentadoria / 100;
+  const capitalNecessario = rentAnualDecimal > 0 ? rendaAnual / rentAnualDecimal : 0;
   
   // Meses restantes
   const anosAteAposentadoria = obj.prazo_valor - idadeAtual;
   const mesesRestantes = Math.max(1, anosAteAposentadoria * 12);
   
-  // Rendimento = 90% do CDI médio 10 anos (anual)
-  const rendimentoAnual = (variaveisMercado.cdi_medio_10_anos / 100) * 0.9;
-  const rendimentoMensal = Math.pow(1 + rendimentoAnual, 1/12) - 1;
+  // Rendimento mensal para cálculo de aporte
+  const rendimentoMensal = variaveisMercado.rent_mensal_aposentadoria / 100;
   
   // Patrimônio atual para aposentadoria
   let patrimonioAposentadoria = 0;
@@ -774,8 +789,6 @@ function renderAnaliseAposentadoria(obj, pessoas) {
   }
   
   // Calcular aporte mensal necessário (PMT)
-  // FV = PV * (1+r)^n + PMT * ((1+r)^n - 1) / r
-  // PMT = (FV - PV * (1+r)^n) * r / ((1+r)^n - 1)
   const fv = capitalNecessario;
   const pv = patrimonioAposentadoria;
   const r = rendimentoMensal;
@@ -786,22 +799,6 @@ function renderAnaliseAposentadoria(obj, pessoas) {
     const fator = Math.pow(1 + r, n);
     aporteMensal = (fv - pv * fator) * r / (fator - 1);
     if (aporteMensal < 0) aporteMensal = 0;
-  }
-  
-  // Gerar dados para gráfico de evolução
-  const dadosEvolucao = [];
-  let saldoAcumulado = pv;
-  for (let mes = 0; mes <= mesesRestantes; mes += Math.max(1, Math.floor(mesesRestantes / 20))) {
-    dadosEvolucao.push({
-      mes: mes,
-      ano: Math.floor(mes / 12),
-      saldo: saldoAcumulado
-    });
-    // Simular próximos meses
-    const mesesAteProximo = Math.min(Math.max(1, Math.floor(mesesRestantes / 20)), mesesRestantes - mes);
-    for (let i = 0; i < mesesAteProximo; i++) {
-      saldoAcumulado = saldoAcumulado * (1 + r) + aporteMensal;
-    }
   }
   
   return `
@@ -832,8 +829,8 @@ function renderAnaliseAposentadoria(obj, pessoas) {
       <div style="padding: 1rem; background: var(--dark-bg); border-radius: 8px; margin-bottom: 1rem;">
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
           <div>
-            <div style="font-size: 0.85rem; color: var(--text-light); opacity: 0.8;">Rendimento considerado (90% CDI médio 10 anos)</div>
-            <div style="font-size: 1rem; font-weight: 600; color: var(--text-light);">${formatarPercentual(rendimentoAnual * 100)} a.a.</div>
+            <div style="font-size: 0.85rem; color: var(--text-light); opacity: 0.8;">Rendimento considerado (Rent Anual Aposentadoria)</div>
+            <div style="font-size: 1rem; font-weight: 600; color: var(--text-light);">${formatarPercentual(variaveisMercado.rent_anual_aposentadoria)} a.a. (${formatarPercentual(variaveisMercado.rent_mensal_aposentadoria)} a.m.)</div>
           </div>
           <div style="text-align: right;">
             <div style="font-size: 0.85rem; color: var(--text-light); opacity: 0.8;">Aporte Mensal Necessário</div>
@@ -904,10 +901,6 @@ function renderAnaliseObjetivo(obj, pessoas) {
   const valorInicial = parseFloat(obj.valor_inicial) || 0;
   
   // Calcular aporte mensal necessário considerando IR de 15% sobre rendimento
-  // Meta líquida = Meta / (1 - 0.15 * (rendimento_total / valor_final))
-  // Simplificando: precisamos acumular mais para compensar o IR
-  
-  // Primeiro, calcular sem IR
   const fv = metaReajustada;
   const pv = valorInicial;
   const r = rendimentoMensal;
@@ -921,10 +914,6 @@ function renderAnaliseObjetivo(obj, pessoas) {
   }
   
   // Ajustar para IR de 15% sobre rendimento
-  // Rendimento total = FV - (PV + aportes totais)
-  // IR = 15% * rendimento
-  // Precisamos que FV - IR >= meta
-  // Então FV_bruto = meta / 0.85 (aproximação)
   const fvBrutoNecessario = metaReajustada / 0.85;
   
   let aporteMensalAjustado = 0;
@@ -1042,9 +1031,9 @@ function renderResumoGeralObjetivos(objetivosAposentadoria, objetivosNormais) {
       });
     }
     
-    const capitalNecessario = rendaAnual / 0.005;
-    const rendimentoAnual = (variaveisMercado.cdi_medio_10_anos / 100) * 0.9;
-    const rendimentoMensal = Math.pow(1 + rendimentoAnual, 1/12) - 1;
+    const rentAnualDecimal = variaveisMercado.rent_anual_aposentadoria / 100;
+    const capitalNecessario = rentAnualDecimal > 0 ? rendaAnual / rentAnualDecimal : 0;
+    const rendimentoMensal = variaveisMercado.rent_mensal_aposentadoria / 100;
     
     let patrimonioAposentadoria = 0;
     if (window.getPatrimoniosLiquidosData) {
