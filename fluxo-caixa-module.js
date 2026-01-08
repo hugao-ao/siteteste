@@ -462,15 +462,32 @@ function sincronizarDespesasAutomaticas() {
   }
   
   // 4. Imposto de Renda (resultado anual)
-  // Remover receitas automáticas de IR antigas
+  // Remover receitas e despesas automáticas de IR antigas
   receitas = receitas.filter(r => r.origem !== 'ir_restituicao');
+  despesas = despesas.filter(d => d.origem !== 'ir_pagamento');
   
   if (window.getDeclaracoesIRData) {
     const declaracoes = window.getDeclaracoesIRData() || [];
     declaracoes.forEach(declaracao => {
       const resultadoTipo = declaracao.resultado_tipo || '';
       const resultadoValor = parseFloat(declaracao.resultado_valor) || 0;
-      const pessoaId = declaracao.pessoa_id || 'titular';
+      
+      // Mapear pessoa_key do IR para titular do fluxo de caixa
+      // IR usa: 'cliente', 'conjuge_cliente', 'pessoa_0', 'conjuge_pessoa_0'
+      // Fluxo usa: 'titular', 'conjuge', 'pessoa_0', 'pessoa_0_conjuge'
+      let pessoaId = 'titular';
+      const pessoaKey = declaracao.pessoa_key || '';
+      if (pessoaKey === 'cliente') {
+        pessoaId = 'titular';
+      } else if (pessoaKey === 'conjuge_cliente') {
+        pessoaId = 'conjuge';
+      } else if (pessoaKey.startsWith('conjuge_pessoa_')) {
+        // conjuge_pessoa_0 -> pessoa_0_conjuge
+        const idx = pessoaKey.replace('conjuge_pessoa_', '');
+        pessoaId = `pessoa_${idx}_conjuge`;
+      } else if (pessoaKey.startsWith('pessoa_')) {
+        pessoaId = pessoaKey;
+      }
       
       if (resultadoValor > 0 && resultadoTipo) {
         if (resultadoTipo === 'restitui') {
@@ -486,7 +503,7 @@ function sincronizarDespesasAutomaticas() {
             titular: pessoaId,
             automatica: true,
             origem: 'ir_restituicao',
-            origem_id: declaracao.pessoa_id
+            origem_id: pessoaKey
           });
         } else if (resultadoTipo === 'paga') {
           // Imposto a pagar = DESPESA FIXA anual
@@ -502,7 +519,7 @@ function sincronizarDespesasAutomaticas() {
             titular: pessoaId,
             automatica: true,
             origem: 'ir_pagamento',
-            origem_id: declaracao.pessoa_id
+            origem_id: pessoaKey
           });
         }
       }
