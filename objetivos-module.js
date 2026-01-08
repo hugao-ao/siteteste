@@ -75,6 +75,21 @@ const DROPDOWN_STYLE = `
 `;
 
 // ========================================
+// FUNÇÕES AUXILIARES
+// ========================================
+
+// Formatar data curta (dd/mm/aaaa)
+function formatarDataCurta(data) {
+  if (!data) return '';
+  const d = new Date(data);
+  if (isNaN(d.getTime())) return '';
+  const dia = String(d.getDate()).padStart(2, '0');
+  const mes = String(d.getMonth() + 1).padStart(2, '0');
+  const ano = d.getFullYear();
+  return `${dia}/${mes}/${ano}`;
+}
+
+// ========================================
 // CARREGAMENTO DE VARIÁVEIS DE MERCADO
 // ========================================
 
@@ -158,6 +173,18 @@ function formatarMoedaObj(valor) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor || 0);
 }
 
+// Formatar moeda de forma compacta (para tabelas)
+function formatarMoedaCompacta(valor) {
+  const num = parseFloat(valor) || 0;
+  if (num >= 1000000) {
+    return `R$ ${(num / 1000000).toFixed(2).replace('.', ',')}M`;
+  } else if (num >= 1000) {
+    return `R$ ${(num / 1000).toFixed(1).replace('.', ',')}K`;
+  } else {
+    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(num);
+  }
+}
+
 function formatarPercentual(valor) {
   return `${(valor || 0).toFixed(2)}%`;
 }
@@ -197,6 +224,29 @@ function formatarInputMoedaObj(input, objetivoId, field) {
   }
   
   updateObjetivoField(objetivoId, field, valorNumerico);
+  
+  // Atualizar displays dinâmicos se for valor_inicial
+  if (field === 'valor_inicial') {
+    atualizarDisplaysPatrimonio();
+  }
+}
+
+function atualizarDisplaysPatrimonio() {
+  const patrimonioObjetivos = calcularPatrimonioParaObjetivos();
+  const valorAlocado = calcularValorInicialAlocado();
+  const saldoRestante = Math.max(0, patrimonioObjetivos - valorAlocado);
+  
+  const displayPatrimonio = document.getElementById('patrimonio-objetivos-display');
+  const displayAlocado = document.getElementById('valor-alocado-display');
+  const displaySaldo = document.getElementById('saldo-disponivel-display');
+  
+  if (displayPatrimonio) displayPatrimonio.textContent = formatarMoedaObj(patrimonioObjetivos);
+  if (displayAlocado) displayAlocado.textContent = formatarMoedaObj(valorAlocado);
+  if (displaySaldo) {
+    displaySaldo.textContent = formatarMoedaObj(saldoRestante);
+    displaySaldo.style.color = saldoRestante >= 0 ? '#28a745' : '#dc3545';
+    displaySaldo.parentElement.style.borderColor = saldoRestante >= 0 ? '#28a745' : '#dc3545';
+  }
 }
 
 // ========================================
@@ -220,7 +270,7 @@ function getPessoasDisponiveis() {
   
   // Cônjuge do cliente
   const estadoCivil = document.getElementById('estado_civil')?.value;
-  if (estadoCivil && ['casado', 'uniao_estavel'].includes(estadoCivil)) {
+  if (estadoCivil && (estadoCivil === 'Casado(a)' || estadoCivil === 'União Estável')) {
     const nomeConjuge = document.getElementById('conjuge_nome')?.value || 'Cônjuge';
     const dataNascConjuge = document.getElementById('conjuge_data_nascimento')?.value;
     const idadeConjuge = calcularIdade(dataNascConjuge);
@@ -246,7 +296,7 @@ function getPessoasDisponiveis() {
     });
     
     // Cônjuge da pessoa com renda
-    if (pessoa.estado_civil && ['casado', 'uniao_estavel'].includes(pessoa.estado_civil)) {
+    if (pessoa.estado_civil && (pessoa.estado_civil === 'Casado(a)' || pessoa.estado_civil === 'União Estável')) {
       const idadeConjugePessoa = calcularIdade(pessoa.conjuge_data_nascimento);
       pessoas.push({ 
         id: `pessoa_${index}_conjuge`, 
@@ -782,20 +832,26 @@ function renderObjetivos() {
       </div>
     </div>
     
-    <!-- Patrimônio Destinado para Aposentadoria -->
+    <!-- Patrimônio Destinado para Aposentadoria (só pessoas com metas cadastradas) -->
+    ${objetivosAposentadoria.length > 0 ? `
     <div style="background: var(--dark-bg); border: 1px solid #28a745; border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
       <h4 style="color: #28a745; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
         <i class="fas fa-seedling"></i> Patrimônio Destinado para Aposentadoria
       </h4>
       <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
-        ${pessoas.map(p => `
+        ${objetivosAposentadoria.map(obj => {
+          const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa);
+          const nomePessoa = pessoa ? pessoa.nome : 'N/A';
+          const patrimonio = patrimonioAposentadoriaPorPessoa[obj.prazo_pessoa] || 0;
+          return `
           <div style="text-align: center; padding: 0.5rem 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px; min-width: 120px;">
-            <div style="font-size: 0.7rem; color: var(--text-light);">${p.nome}</div>
-            <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(patrimonioAposentadoriaPorPessoa[p.id] || 0)}</div>
-          </div>
-        `).join('')}
+            <div style="font-size: 0.7rem; color: var(--text-light);">${nomePessoa}</div>
+            <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(patrimonio)}</div>
+          </div>`;
+        }).join('')}
       </div>
     </div>
+    ` : ''}
     
     <!-- Metas de Aposentadoria -->
     <div style="margin-bottom: 2rem;">
@@ -940,7 +996,7 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
       </div>
       
       <!-- Linha 1: Descrição, Importância, Responsáveis, Prazo -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr 200px 120px; gap: 1rem; margin-bottom: 1rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr 180px 200px; gap: 1rem; margin-bottom: 1rem;">
         <div>
           <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
             <i class="fas fa-flag"></i> Qual é o objetivo? *
@@ -972,25 +1028,25 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
           <div style="font-size: 0.65rem; color: var(--text-light); opacity: 0.7; margin-top: 0.2rem;">Segure Ctrl/Cmd para múltiplos</div>
         </div>
         
-        <div>
+        <div style="overflow: hidden;">
           <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
             <i class="fas fa-calendar"></i> Prazo
           </label>
-          <div style="display: flex; gap: 0.3rem;">
+          <div style="display: flex; flex-direction: column; gap: 0.3rem;">
             <select onchange="updateObjetivoField(${obj.id}, 'prazo_tipo', this.value); renderObjetivos();"
-                    style="width: 110px; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
-              <option value="meses" ${(obj.prazo_tipo || 'meses') === 'meses' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Daqui a X meses</option>
-              <option value="anos" ${obj.prazo_tipo === 'anos' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Daqui a X anos</option>
-              <option value="data" ${obj.prazo_tipo === 'data' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Data específica</option>
+                    style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8; font-size: 0.8rem;">
+              <option value="meses" ${(obj.prazo_tipo || 'meses') === 'meses' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Meses</option>
+              <option value="anos" ${obj.prazo_tipo === 'anos' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Anos</option>
+              <option value="data" ${obj.prazo_tipo === 'data' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Data</option>
             </select>
             ${(obj.prazo_tipo || 'meses') === 'data' ? `
               <input type="date" value="${obj.prazo_data || ''}"
                      onchange="updateObjetivoField(${obj.id}, 'prazo_data', this.value)"
-                     style="flex: 1; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+                     style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
             ` : `
               <input type="number" value="${obj.prazo_tipo === 'anos' ? Math.round((obj.prazo_meses || 60) / 12) : (obj.prazo_meses || 60)}" min="1" max="${obj.prazo_tipo === 'anos' ? 50 : 600}"
                      onchange="updateObjetivoField(${obj.id}, 'prazo_meses', ${obj.prazo_tipo === 'anos' ? 'parseInt(this.value) * 12' : 'parseInt(this.value)'})"
-                     style="width: 60px; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+                     style="width: 100%; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
             `}
           </div>
         </div>
