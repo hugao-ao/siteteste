@@ -1,5 +1,5 @@
 // ========================================
-// MÓDULO DE OBJETIVOS - VERSÃO 2.0
+// MÓDULO DE OBJETIVOS - VERSÃO 3.0
 // ========================================
 
 import { supabase } from './supabase.js';
@@ -20,16 +20,36 @@ let variaveisMercado = {
   ipca_aa_medio_10_anos: 5.504,
   rent_anual_aposentadoria: 6.0,
   rent_mensal_aposentadoria: 0.4868,
-  // Rentabilidades dos 9 perfis (7 originais + 2 novos)
-  rent_sem_conhecimento: 0, // 80% CDI
-  rent_iniciante: 0, // 95% CDI
-  rent_ultra_cons: 0, // 97% CDI
-  rent_cons: 0, // 100% CDI
-  rent_cons_mod: 0, // 103% CDI
-  rent_mod: 0, // 108% CDI
-  rent_mod_arro: 0, // 115% CDI
-  rent_arro: 0, // 125% CDI
-  rent_ultra_arro: 0, // 140% CDI
+  // Rentabilidades atuais dos 9 perfis
+  rent_sem_conhecimento: 0,
+  rent_iniciante: 0,
+  rent_ultra_cons: 0,
+  rent_cons: 0,
+  rent_cons_mod: 0,
+  rent_mod: 0,
+  rent_mod_arro: 0,
+  rent_arro: 0,
+  rent_ultra_arro: 0,
+  // Rentabilidades 10 anos dos 9 perfis
+  rent_sem_conhecimento_10_anos: 0,
+  rent_iniciante_10_anos: 0,
+  rent_ultra_cons_10_anos: 0,
+  rent_cons_10_anos: 0,
+  rent_cons_mod_10_anos: 0,
+  rent_mod_10_anos: 0,
+  rent_mod_arro_10_anos: 0,
+  rent_arro_10_anos: 0,
+  rent_ultra_arro_10_anos: 0,
+  // Multiplicadores
+  mult_sem_conhecimento: 80,
+  mult_iniciante: 95,
+  mult_ultra_cons: 100,
+  mult_cons: 103,
+  mult_cons_mod: 106,
+  mult_mod: 110,
+  mult_mod_arro: 115,
+  mult_arro: 120,
+  mult_ultra_arro: 130,
   ultima_atualizacao: null
 };
 
@@ -37,13 +57,13 @@ let variaveisMercado = {
 const PERFIS_RENTABILIDADE = [
   { id: 'sem_conhecimento', nome: 'Sem Conhecimento', percentCDI: 80 },
   { id: 'iniciante', nome: 'Iniciante', percentCDI: 95 },
-  { id: 'ultra_cons', nome: 'Ultra-Conservador', percentCDI: 97 },
-  { id: 'cons', nome: 'Conservador', percentCDI: 100 },
-  { id: 'cons_mod', nome: 'Conservador-Moderado', percentCDI: 103 },
-  { id: 'mod', nome: 'Moderado', percentCDI: 108 },
+  { id: 'ultra_cons', nome: 'Ultra-Conservador', percentCDI: 100 },
+  { id: 'cons', nome: 'Conservador', percentCDI: 103 },
+  { id: 'cons_mod', nome: 'Conservador-Moderado', percentCDI: 106 },
+  { id: 'mod', nome: 'Moderado', percentCDI: 110 },
   { id: 'mod_arro', nome: 'Moderado-Arrojado', percentCDI: 115 },
-  { id: 'arro', nome: 'Arrojado', percentCDI: 125 },
-  { id: 'ultra_arro', nome: 'Ultra-Arrojado', percentCDI: 140 }
+  { id: 'arro', nome: 'Arrojado', percentCDI: 120 },
+  { id: 'ultra_arro', nome: 'Ultra-Arrojado', percentCDI: 130 }
 ];
 
 // ========================================
@@ -60,27 +80,60 @@ async function carregarVariaveisMercado() {
       .single();
     
     if (data && !error) {
-      // Os valores já estão em percentual no banco (ex: 14.75 para 14,75%)
+      const cdi = parseFloat(data.cdi) || 14.65;
+      const cdi10 = parseFloat(data.cdi_aa_medio_10_anos) || 9.2666;
+      
+      // Multiplicadores (carregados ou padrão)
+      const multSemConhecimento = parseFloat(data.mult_sem_conhecimento) || 80;
+      const multIniciante = parseFloat(data.mult_iniciante) || 95;
+      const multUltraCons = parseFloat(data.mult_ultra_cons) || 100;
+      const multCons = parseFloat(data.mult_cons) || 103;
+      const multConsMod = parseFloat(data.mult_cons_mod) || 106;
+      const multMod = parseFloat(data.mult_mod) || 110;
+      const multModArro = parseFloat(data.mult_mod_arro) || 115;
+      const multArro = parseFloat(data.mult_arro) || 120;
+      const multUltraArro = parseFloat(data.mult_ultra_arro) || 130;
+      
       variaveisMercado = {
         selic: parseFloat(data.selic) || 14.75,
         cdi_120_meses: parseFloat(data.cdi_120_meses) || 142.59,
         ipca: parseFloat(data.ipca) || 5.44,
         ipca_120_meses: parseFloat(data.ipca_120_meses) || 70.88,
-        cdi: parseFloat(data.cdi) || 14.65,
-        cdi_aa_medio_10_anos: parseFloat(data.cdi_aa_medio_10_anos) || 9.2666,
+        cdi: cdi,
+        cdi_aa_medio_10_anos: cdi10,
         ipca_aa_medio_10_anos: parseFloat(data.ipca_aa_medio_10_anos) || 5.504,
         rent_anual_aposentadoria: parseFloat(data.rent_anual_aposentadoria) || 6.0,
         rent_mensal_aposentadoria: parseFloat(data.rent_mensal_aposentadoria) || 0.4868,
-        // Rentabilidades dos perfis (carregadas ou calculadas)
-        rent_sem_conhecimento: parseFloat(data.rent_sem_conhecimento) || (parseFloat(data.cdi) || 14.65) * 0.80,
-        rent_iniciante: parseFloat(data.rent_iniciante) || (parseFloat(data.cdi) || 14.65) * 0.95,
-        rent_ultra_cons: parseFloat(data.rent_ultra_cons) || (parseFloat(data.cdi) || 14.65) * 0.97,
-        rent_cons: parseFloat(data.rent_cons) || (parseFloat(data.cdi) || 14.65) * 1.00,
-        rent_cons_mod: parseFloat(data.rent_cons_mod) || (parseFloat(data.cdi) || 14.65) * 1.03,
-        rent_mod: parseFloat(data.rent_mod) || (parseFloat(data.cdi) || 14.65) * 1.08,
-        rent_mod_arro: parseFloat(data.rent_mod_arro) || (parseFloat(data.cdi) || 14.65) * 1.15,
-        rent_arro: parseFloat(data.rent_arro) || (parseFloat(data.cdi) || 14.65) * 1.25,
-        rent_ultra_arro: parseFloat(data.rent_ultra_arro) || (parseFloat(data.cdi) || 14.65) * 1.40,
+        // Rentabilidades atuais
+        rent_sem_conhecimento: parseFloat(data.rent_sem_conhecimento) || cdi * (multSemConhecimento / 100),
+        rent_iniciante: parseFloat(data.rent_iniciante) || cdi * (multIniciante / 100),
+        rent_ultra_cons: parseFloat(data.rent_ultra_cons) || cdi * (multUltraCons / 100),
+        rent_cons: parseFloat(data.rent_cons) || cdi * (multCons / 100),
+        rent_cons_mod: parseFloat(data.rent_cons_mod) || cdi * (multConsMod / 100),
+        rent_mod: parseFloat(data.rent_mod) || cdi * (multMod / 100),
+        rent_mod_arro: parseFloat(data.rent_mod_arro) || cdi * (multModArro / 100),
+        rent_arro: parseFloat(data.rent_arro) || cdi * (multArro / 100),
+        rent_ultra_arro: parseFloat(data.rent_ultra_arro) || cdi * (multUltraArro / 100),
+        // Rentabilidades 10 anos
+        rent_sem_conhecimento_10_anos: parseFloat(data.rent_sem_conhecimento_10_anos) || cdi10 * (multSemConhecimento / 100),
+        rent_iniciante_10_anos: parseFloat(data.rent_iniciante_10_anos) || cdi10 * (multIniciante / 100),
+        rent_ultra_cons_10_anos: parseFloat(data.rent_ultra_cons_10_anos) || cdi10 * (multUltraCons / 100),
+        rent_cons_10_anos: parseFloat(data.rent_cons_10_anos) || cdi10 * (multCons / 100),
+        rent_cons_mod_10_anos: parseFloat(data.rent_cons_mod_10_anos) || cdi10 * (multConsMod / 100),
+        rent_mod_10_anos: parseFloat(data.rent_mod_10_anos) || cdi10 * (multMod / 100),
+        rent_mod_arro_10_anos: parseFloat(data.rent_mod_arro_10_anos) || cdi10 * (multModArro / 100),
+        rent_arro_10_anos: parseFloat(data.rent_arro_10_anos) || cdi10 * (multArro / 100),
+        rent_ultra_arro_10_anos: parseFloat(data.rent_ultra_arro_10_anos) || cdi10 * (multUltraArro / 100),
+        // Multiplicadores
+        mult_sem_conhecimento: multSemConhecimento,
+        mult_iniciante: multIniciante,
+        mult_ultra_cons: multUltraCons,
+        mult_cons: multCons,
+        mult_cons_mod: multConsMod,
+        mult_mod: multMod,
+        mult_mod_arro: multModArro,
+        mult_arro: multArro,
+        mult_ultra_arro: multUltraArro,
         ultima_atualizacao: data.data_ultima_atualizacao || data.created_at
       };
     }
@@ -94,7 +147,7 @@ async function carregarVariaveisMercado() {
 // ========================================
 
 async function initObjetivosModule() {
-  console.log('Módulo de Objetivos carregado');
+  console.log('Módulo de Objetivos v3.0 carregado');
   
   // Carregar variáveis de mercado
   await carregarVariaveisMercado();
@@ -110,7 +163,8 @@ async function initObjetivosModule() {
   window.renderObjetivos = renderObjetivos;
   window.mostrarAnaliseObjetivos = mostrarAnaliseObjetivos;
   window.voltarEdicaoObjetivos = voltarEdicaoObjetivos;
-  window.formatarInputMoeda = formatarInputMoeda;
+  window.formatarInputMoedaObj = formatarInputMoedaObj;
+  window.atualizarPatrimonioObjetivos = atualizarPatrimonioObjetivos;
   
   // Renderizar a seção
   setTimeout(() => {
@@ -143,8 +197,13 @@ function formatarPercentual(valor) {
 }
 
 // Função para formatar input de moeda em tempo real
-function formatarInputMoeda(input, objetivoId, campo) {
+function formatarInputMoedaObj(input, objetivoId, campo) {
+  // Salvar posição do cursor
+  const cursorPos = input.selectionStart;
+  const valorAnterior = input.value;
+  
   let valor = input.value.replace(/\D/g, '');
+  if (valor === '') valor = '0';
   valor = (parseInt(valor) / 100).toFixed(2);
   valor = valor.replace('.', ',');
   valor = valor.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
@@ -152,7 +211,50 @@ function formatarInputMoeda(input, objetivoId, campo) {
   
   // Atualizar o objetivo
   const valorNumerico = parseMoedaObj(input.value);
-  updateObjetivoField(objetivoId, campo, valorNumerico);
+  
+  // Atualizar objetivo sem re-renderizar
+  const objetivo = objetivos.find(o => o.id === objetivoId);
+  if (objetivo) {
+    objetivo[campo] = valorNumerico;
+    
+    // Atualizar displays de patrimônio em tempo real
+    atualizarPatrimonioObjetivos();
+  }
+}
+
+// Função para atualizar displays de patrimônio em tempo real
+function atualizarPatrimonioObjetivos() {
+  const patrimonio = calcularPatrimonioLiquido();
+  const valorAlocado = calcularValorInicialAlocado();
+  const saldoRestante = patrimonio.excetoAposentadoria - valorAlocado;
+  
+  // Atualizar displays
+  const displayPatrimonio = document.getElementById('display-patrimonio-liquido');
+  const displayAlocado = document.getElementById('display-valor-alocado');
+  const displaySaldo = document.getElementById('display-saldo-disponivel');
+  
+  if (displayPatrimonio) displayPatrimonio.textContent = formatarMoedaObj(patrimonio.excetoAposentadoria);
+  if (displayAlocado) displayAlocado.textContent = formatarMoedaObj(valorAlocado);
+  if (displaySaldo) {
+    displaySaldo.textContent = formatarMoedaObj(saldoRestante);
+    displaySaldo.style.color = saldoRestante >= 0 ? '#28a745' : '#dc3545';
+  }
+  
+  // Atualizar disponível em cada objetivo
+  document.querySelectorAll('.display-disponivel-objetivo').forEach(el => {
+    el.textContent = `Disponível: ${formatarMoedaObj(Math.max(0, saldoRestante))}`;
+  });
+  
+  // Atualizar capital necessário das aposentadorias
+  objetivos.filter(o => o.tipo === 'aposentadoria').forEach(obj => {
+    const displayCapital = document.getElementById(`capital-necessario-${obj.id}`);
+    if (displayCapital) {
+      const rendaAnual = obj.renda_anual || 0;
+      const rentAnual = variaveisMercado.rent_anual_aposentadoria || 6.0;
+      const capitalNecessario = rentAnual > 0 ? rendaAnual / (rentAnual / 100) : 0;
+      displayCapital.textContent = formatarMoedaObj(capitalNecessario);
+    }
+  });
 }
 
 // Obter lista de pessoas disponíveis (TODOS: cliente, cônjuges, pessoas com renda e dependentes)
@@ -180,7 +282,7 @@ function getPessoasDisponiveis() {
     pessoas.push({ 
       id: 'conjuge', 
       nome: nomeConjuge, 
-      tipo: 'Cônjuge', 
+      tipo: 'Cônjuge do Cliente', 
       idade: idadeConjuge,
       dataNascimento: dataNascConjuge
     });
@@ -318,21 +420,49 @@ function calcularValorInicialAlocado(excluirId = null) {
     .reduce((total, obj) => total + (parseFloat(obj.valor_inicial) || 0), 0);
 }
 
+// Gerar opções de perfil de rentabilidade (atuais e 10 anos)
+function gerarOpcoesPerfilRentabilidade() {
+  let options = '<optgroup label="Rentabilidades Atuais">';
+  
+  PERFIS_RENTABILIDADE.forEach(perfil => {
+    const mult = variaveisMercado[`mult_${perfil.id}`] || perfil.percentCDI;
+    const rent = variaveisMercado[`rent_${perfil.id}`] || (variaveisMercado.cdi * mult / 100);
+    options += `<option value="${perfil.id}">${perfil.nome} (${mult}% CDI = ${formatarPercentual(rent)})</option>`;
+  });
+  
+  options += '</optgroup><optgroup label="Rentabilidades Médias 10 Anos">';
+  
+  PERFIS_RENTABILIDADE.forEach(perfil => {
+    const mult = variaveisMercado[`mult_${perfil.id}`] || perfil.percentCDI;
+    const rent = variaveisMercado[`rent_${perfil.id}_10_anos`] || (variaveisMercado.cdi_aa_medio_10_anos * mult / 100);
+    options += `<option value="${perfil.id}_10_anos">${perfil.nome} 10a (${mult}% CDI = ${formatarPercentual(rent)})</option>`;
+  });
+  
+  options += '</optgroup>';
+  return options;
+}
+
 // Obter rentabilidade de um perfil
 function getRentabilidadePerfil(perfilId) {
-  const cdi = variaveisMercado.cdi || 14.65;
-  const perfil = PERFIS_RENTABILIDADE.find(p => p.id === perfilId);
-  if (!perfil) return cdi;
+  if (!perfilId) return variaveisMercado.cdi || 14.65;
   
-  // Verificar se existe valor salvo no banco
-  const chave = `rent_${perfilId}`;
+  // Verificar se é perfil de 10 anos
+  const is10Anos = perfilId.endsWith('_10_anos');
+  const perfilBase = is10Anos ? perfilId.replace('_10_anos', '') : perfilId;
+  
+  const chave = is10Anos ? `rent_${perfilBase}_10_anos` : `rent_${perfilBase}`;
+  
   if (variaveisMercado[chave] && variaveisMercado[chave] > 0) {
     return variaveisMercado[chave];
   }
   
-  // Calcular baseado no percentual do CDI
-  return cdi * (perfil.percentCDI / 100);
+  // Calcular baseado no multiplicador
+  const cdiBase = is10Anos ? variaveisMercado.cdi_aa_medio_10_anos : variaveisMercado.cdi;
+  const mult = variaveisMercado[`mult_${perfilBase}`] || 100;
+  return cdiBase * (mult / 100);
 }
+
+
 
 // ========================================
 // CRUD DE OBJETIVOS
@@ -348,15 +478,15 @@ function addObjetivo() {
     descricao: '',
     importancia: '',
     responsaveis: ['titular'],
-    prazo_tipo: 'anos', // 'anos' ou 'idade'
+    prazo_tipo: 'anos',
     prazo_valor: 5,
-    prazo_pessoa: 'titular', // pessoa de referência para idade
+    prazo_pessoa: 'titular',
     valor_inicial: 0,
     valor_final: 0,
     meta_acumulo: 0,
     prioridade: proximaPrioridade,
-    perfil_atual: 'sem_conhecimento', // Perfil do cliente atual
-    perfil_consultoria: 'mod' // Perfil com consultoria
+    perfil_atual: 'sem_conhecimento',
+    perfil_consultoria: 'mod'
   });
   
   renderObjetivos();
@@ -369,7 +499,7 @@ function addObjetivoAposentadoria() {
   // Verificar se já existe aposentadoria para cada pessoa
   const pessoasComAposentadoria = objetivos
     .filter(o => o.tipo === 'aposentadoria')
-    .map(o => o.responsaveis[0]);
+    .map(o => o.prazo_pessoa || o.responsaveis[0]);
   
   // Encontrar primeira pessoa sem aposentadoria
   const pessoaSemAposentadoria = pessoas.find(p => !pessoasComAposentadoria.includes(p.id));
@@ -395,7 +525,7 @@ function addObjetivoAposentadoria() {
     valor_final: 0,
     meta_acumulo: 0,
     prioridade: 0,
-    renda_anual: rendaAnualInicial, // Renda anual editável
+    renda_anual: rendaAnualInicial,
     perfil_atual: 'sem_conhecimento',
     perfil_consultoria: 'mod'
   });
@@ -406,7 +536,6 @@ function addObjetivoAposentadoria() {
 function deleteObjetivo(id) {
   const objetivo = objetivos.find(o => o.id === id);
   
-  // Verificar se é o último objetivo de aposentadoria
   if (objetivo && objetivo.tipo === 'aposentadoria') {
     const totalAposentadorias = objetivos.filter(o => o.tipo === 'aposentadoria').length;
     if (totalAposentadorias <= 1) {
@@ -441,21 +570,21 @@ function updateObjetivoField(id, field, value) {
     objetivo[field] = value;
   }
   
-  // Se mudou o prazo_pessoa em aposentadoria, atualizar descrição e renda
+  // Se mudou a pessoa em aposentadoria, atualizar descrição e renda
   if (objetivo.tipo === 'aposentadoria' && field === 'prazo_pessoa') {
     const pessoas = getPessoasDisponiveis();
     const pessoa = pessoas.find(p => p.id === value);
     if (pessoa) {
       objetivo.descricao = `Aposentadoria de ${pessoa.nome}`;
       objetivo.responsaveis = [value];
-      // Atualizar renda anual com o valor da pessoa selecionada
       objetivo.renda_anual = calcularRendaAnualPessoa(value);
+      renderObjetivos();
     }
   }
   
-  // Não re-renderizar para campos de texto (evitar perder foco)
-  if (!['descricao', 'importancia'].includes(field)) {
-    // Apenas atualizar valores calculados sem re-renderizar completamente
+  // Atualizar patrimônio em tempo real
+  if (['valor_inicial', 'valor_final', 'meta_acumulo', 'renda_anual'].includes(field)) {
+    atualizarPatrimonioObjetivos();
   }
 }
 
@@ -468,17 +597,14 @@ function updateObjetivoPrioridade(id, novaPrioridade) {
   
   if (prioridadeAtual === novaPrioridade) return;
   
-  // Reordenar outros objetivos
   objetivos.forEach(obj => {
     if (obj.id === id || obj.tipo === 'aposentadoria') return;
     
     if (novaPrioridade < prioridadeAtual) {
-      // Movendo para cima
       if (obj.prioridade >= novaPrioridade && obj.prioridade < prioridadeAtual) {
         obj.prioridade++;
       }
     } else {
-      // Movendo para baixo
       if (obj.prioridade > prioridadeAtual && obj.prioridade <= novaPrioridade) {
         obj.prioridade--;
       }
@@ -520,9 +646,8 @@ function renderObjetivos() {
   
   // Calcular patrimônio de aposentadoria por pessoa
   const patrimonioAposentadoriaPorPessoa = {};
-  objetivosAposentadoria.forEach(obj => {
-    const pessoaId = obj.prazo_pessoa || obj.responsaveis[0];
-    patrimonioAposentadoriaPorPessoa[pessoaId] = calcularPatrimonioAposentadoriaPorPessoa(pessoaId);
+  pessoas.forEach(p => {
+    patrimonioAposentadoriaPorPessoa[p.id] = calcularPatrimonioAposentadoriaPorPessoa(p.id);
   });
   
   container.innerHTML = `
@@ -568,304 +693,290 @@ function renderObjetivos() {
     <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--dark-bg); border: 2px solid ${saldoRestante >= 0 ? '#28a745' : '#dc3545'}; border-radius: 8px;">
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; text-align: center;">
         <div>
-          <div style="font-size: 0.85rem; color: var(--text-light); opacity: 0.8;">Patrimônio Líquido (exceto Aposentadoria)</div>
-          <div style="font-size: 1.3rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(patrimonio.excetoAposentadoria)}</div>
+          <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">Patrimônio Líquido (exceto Aposentadoria)</div>
+          <div id="display-patrimonio-liquido" style="font-size: 1.1rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(patrimonio.excetoAposentadoria)}</div>
         </div>
         <div>
-          <div style="font-size: 0.85rem; color: var(--text-light); opacity: 0.8;">Já Alocado em Objetivos</div>
-          <div style="font-size: 1.3rem; font-weight: 600; color: #ffc107;">${formatarMoedaObj(valorAlocado)}</div>
+          <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">Já Alocado em Objetivos</div>
+          <div id="display-valor-alocado" style="font-size: 1.1rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(valorAlocado)}</div>
         </div>
         <div>
-          <div style="font-size: 0.85rem; color: var(--text-light); opacity: 0.8;">Saldo Disponível</div>
-          <div style="font-size: 1.3rem; font-weight: 600; color: ${saldoRestante >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaObj(saldoRestante)}</div>
+          <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">Saldo Disponível</div>
+          <div id="display-saldo-disponivel" style="font-size: 1.1rem; font-weight: 600; color: ${saldoRestante >= 0 ? '#28a745' : '#dc3545'};">${formatarMoedaObj(saldoRestante)}</div>
         </div>
       </div>
-      ${saldoRestante < 0 ? `<div style="margin-top: 0.5rem; color: #dc3545; font-size: 0.85rem; text-align: center;"><i class="fas fa-exclamation-triangle"></i> O valor alocado excede o saldo disponível!</div>` : ''}
     </div>
     
-    <!-- Patrimônio destinado para Aposentadoria por pessoa -->
-    ${objetivosAposentadoria.length > 0 ? `
-    <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--dark-bg); border: 1px solid #28a745; border-radius: 8px;">
-      <h5 style="color: #28a745; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
+    <!-- Patrimônio Destinado para Aposentadoria -->
+    <div style="margin-bottom: 1.5rem; padding: 1rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px;">
+      <h4 style="color: #28a745; margin: 0 0 1rem 0; font-size: 0.9rem;">
         <i class="fas fa-piggy-bank"></i> Patrimônio Destinado para Aposentadoria
-      </h5>
-      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.8rem;">
-        ${objetivosAposentadoria.map(obj => {
-          const pessoaId = obj.prazo_pessoa || obj.responsaveis[0];
-          const pessoa = pessoas.find(p => p.id === pessoaId);
-          const patrimonioAposent = patrimonioAposentadoriaPorPessoa[pessoaId] || 0;
+      </h4>
+      <div style="display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center;">
+        ${pessoas.map(p => {
+          const patrimonioAposent = patrimonioAposentadoriaPorPessoa[p.id] || 0;
           return `
-            <div style="text-align: center; padding: 0.6rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
-              <div style="font-size: 0.75rem; color: var(--text-light); opacity: 0.8;">${pessoa?.nome || 'Pessoa'}</div>
-              <div style="font-size: 1.1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(patrimonioAposent)}</div>
+            <div style="text-align: center; padding: 0.5rem 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px; min-width: 120px;">
+              <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">${p.nome}</div>
+              <div style="font-size: 0.95rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(patrimonioAposent)}</div>
             </div>
           `;
         }).join('')}
       </div>
     </div>
-    ` : ''}
     
     <!-- Metas de Aposentadoria -->
     <div style="margin-bottom: 1.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h4 style="color: #28a745; margin: 0;">
+        <h4 style="color: #28a745; margin: 0; font-size: 0.95rem;">
           <i class="fas fa-umbrella-beach"></i> Metas de Aposentadoria
         </h4>
         <button onclick="addObjetivoAposentadoria()" style="background: #28a745; color: white; border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
-          <i class="fas fa-plus"></i> Adicionar Aposentadoria
+          + Adicionar Aposentadoria
         </button>
       </div>
-      ${objetivosAposentadoria.map(obj => renderCardAposentadoria(obj, pessoas)).join('')}
+      ${objetivosAposentadoria.map(obj => renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa)).join('')}
     </div>
     
     <!-- Outros Objetivos -->
     <div style="margin-bottom: 1.5rem;">
       <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-        <h4 style="color: var(--accent-color); margin: 0;">
+        <h4 style="color: var(--accent-color); margin: 0; font-size: 0.95rem;">
           <i class="fas fa-bullseye"></i> Outros Objetivos
         </h4>
         <button onclick="addObjetivo()" style="background: var(--accent-color); color: var(--dark-bg); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer; font-size: 0.85rem;">
-          <i class="fas fa-plus"></i> Adicionar Objetivo
+          + Adicionar Objetivo
         </button>
       </div>
       ${objetivosNormais.length === 0 ? `
-        <div style="text-align: center; padding: 2rem; color: var(--text-light); opacity: 0.7;">
+        <div style="text-align: center; padding: 2rem; background: var(--dark-bg); border-radius: 8px; opacity: 0.7;">
           <i class="fas fa-flag" style="font-size: 2rem; margin-bottom: 0.5rem;"></i>
           <p>Nenhum objetivo cadastrado. Clique em "Adicionar Objetivo" para começar.</p>
         </div>
-      ` : objetivosNormais.map(obj => renderCardObjetivo(obj, pessoas, objetivosNormais.length, saldoRestante)).join('')}
+      ` : objetivosNormais.map(obj => renderCardObjetivo(obj, pessoas, saldoRestante)).join('')}
     </div>
     
-    <!-- Botão de Análise -->
+    <!-- Botão Analisar -->
     <div style="text-align: center; margin-top: 2rem;">
-      <button onclick="mostrarAnaliseObjetivos()" style="background: linear-gradient(135deg, var(--accent-color), #c9a227); color: var(--dark-bg); border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;">
-        <i class="fas fa-calculator"></i> ANALISAR OBJETIVOS
+      <button onclick="mostrarAnaliseObjetivos()" style="background: var(--accent-color); color: var(--dark-bg); border: none; padding: 1rem 2rem; border-radius: 8px; cursor: pointer; font-size: 1rem; font-weight: 600;">
+        <i class="fas fa-chart-bar"></i> ANALISAR OBJETIVOS
       </button>
     </div>
   `;
 }
 
 
+
 // ========================================
 // RENDERIZAÇÃO DE CARDS
 // ========================================
 
-function renderCardAposentadoria(obj, pessoas) {
-  const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa) || pessoas[0];
-  const idadeAtual = pessoa?.idade || 30;
+function renderCardAposentadoria(obj, pessoas, patrimonioAposentadoriaPorPessoa) {
+  const pessoaSelecionada = pessoas.find(p => p.id === obj.prazo_pessoa) || pessoas[0];
+  const idadeAtual = pessoaSelecionada.idade;
+  const idadeAposentadoria = obj.prazo_valor || 65;
+  const anosRestantes = Math.max(0, idadeAposentadoria - idadeAtual);
+  const mesesRestantes = anosRestantes * 12;
   
-  // Usar renda anual editável ou calcular
-  const rendaAnual = obj.renda_anual !== undefined ? obj.renda_anual : calcularRendaAnualPessoa(obj.prazo_pessoa);
-  
-  // Capital necessário = Renda anual / Rent Anual Aposentadoria (em decimal)
-  const rentAnualDecimal = variaveisMercado.rent_anual_aposentadoria / 100;
-  const capitalNecessario = rentAnualDecimal > 0 ? rendaAnual / rentAnualDecimal : 0;
-  
-  // Calcular meses até a aposentadoria
-  let mesesRestantes = 0;
-  if (obj.prazo_tipo === 'idade') {
-    const anosAteAposentadoria = obj.prazo_valor - idadeAtual;
-    mesesRestantes = Math.max(0, anosAteAposentadoria * 12);
-  } else {
-    mesesRestantes = obj.prazo_valor * 12;
-  }
-  
-  const anosRestantes = Math.floor(mesesRestantes / 12);
-  const mesesRestantesResto = mesesRestantes % 12;
-  
-  const totalAposentadorias = objetivos.filter(o => o.tipo === 'aposentadoria').length;
+  const rendaAnual = obj.renda_anual || 0;
+  const rentAnual = variaveisMercado.rent_anual_aposentadoria || 6.0;
+  const capitalNecessario = rentAnual > 0 ? rendaAnual / (rentAnual / 100) : 0;
+  const patrimonioAtual = patrimonioAposentadoriaPorPessoa[obj.prazo_pessoa] || 0;
   
   return `
-    <div style="background: var(--card-bg); border: 2px solid #28a745; border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-        <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <i class="fas fa-umbrella-beach" style="color: #28a745; font-size: 1.2rem;"></i>
-          <span style="font-weight: 600; color: #28a745;">Meta de Aposentadoria</span>
-        </div>
-        ${totalAposentadorias > 1 ? `
-          <button onclick="deleteObjetivo(${obj.id})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 1rem;" title="Excluir">
+    <div style="margin-bottom: 1rem; padding: 1rem; background: var(--dark-bg); border: 1px solid #28a745; border-radius: 8px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h5 style="color: #28a745; margin: 0; font-size: 0.9rem;">
+          <i class="fas fa-umbrella-beach"></i> Meta de Aposentadoria
+        </h5>
+        ${objetivos.filter(o => o.tipo === 'aposentadoria').length > 1 ? `
+          <button onclick="deleteObjetivo(${obj.id})" style="background: #dc3545; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
             <i class="fas fa-trash"></i>
           </button>
         ` : ''}
       </div>
       
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; margin-bottom: 1rem;">
         <!-- De quem é -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
-            <i class="fas fa-user"></i> De quem é *
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+            <i class="fas fa-user"></i> De quem é? *
           </label>
-          <select onchange="updateObjetivoField(${obj.id}, 'prazo_pessoa', this.value); renderObjetivos();" 
-                  style="width: 100%; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light);">
-            ${pessoas.map(p => `<option value="${p.id}" ${obj.prazo_pessoa === p.id ? 'selected' : ''}>${p.nome} (${p.tipo})</option>`).join('')}
+          <select onchange="updateObjetivoField(${obj.id}, 'prazo_pessoa', this.value)" 
+                  style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
+            ${pessoas.map(p => `
+              <option value="${p.id}" ${obj.prazo_pessoa === p.id ? 'selected' : ''}>${p.nome} (${p.tipo})</option>
+            `).join('')}
           </select>
         </div>
         
-        <!-- Prazo -->
+        <!-- Aposentar com quantos anos -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
             <i class="fas fa-calendar"></i> Aposentar com quantos anos
           </label>
-          <input type="number" value="${obj.prazo_valor}" min="1" max="100"
+          <input type="number" value="${obj.prazo_valor}" min="40" max="100"
                  onchange="updateObjetivoField(${obj.id}, 'prazo_valor', this.value); renderObjetivos();"
-                 style="width: 100%; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light);">
+                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
         </div>
         
-        <!-- Renda Anual Atual (editável) -->
+        <!-- Renda Anual Atual -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
             <i class="fas fa-money-bill-wave"></i> Renda Anual Atual
           </label>
-          <input type="text" value="${formatarMoedaObj(rendaAnual)}" 
-                 id="renda_anual_${obj.id}"
-                 oninput="formatarInputMoeda(this, ${obj.id}, 'renda_anual')"
-                 style="width: 100%; padding: 0.6rem; background: var(--dark-bg); border: 1px solid #28a745; border-radius: 6px; color: #28a745;">
+          <input type="text" value="${formatarMoedaObj(rendaAnual)}"
+                 oninput="formatarInputMoedaObj(this, ${obj.id}, 'renda_anual')"
+                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid #28a745; border-radius: 4px; color: #28a745;">
         </div>
         
-        <!-- Capital Necessário (calculado) -->
+        <!-- Capital Necessário -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
-            <i class="fas fa-coins"></i> Capital Necessário
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+            <i class="fas fa-piggy-bank"></i> Capital Necessário
           </label>
-          <input type="text" value="${formatarMoedaObj(capitalNecessario)}" disabled readonly
-                 style="width: 100%; padding: 0.6rem; background: rgba(212, 175, 55, 0.2); border: 1px solid var(--accent-color); border-radius: 6px; color: var(--accent-color); font-weight: 600;">
+          <div id="capital-necessario-${obj.id}" style="padding: 0.5rem; background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; border-radius: 4px; color: #28a745; font-weight: 600;">
+            ${formatarMoedaObj(capitalNecessario)}
+          </div>
         </div>
       </div>
       
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1rem; padding-top: 0.8rem; border-top: 1px solid var(--border-color);">
-        <div style="font-size: 0.85rem; color: var(--text-light);">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
+        <div style="font-size: 0.8rem; color: var(--text-light);">
           <i class="fas fa-clock"></i> Idade atual: <strong>${idadeAtual} anos</strong>
         </div>
-        <div style="font-size: 0.85rem; color: var(--text-light);">
-          <i class="fas fa-hourglass-half"></i> Tempo restante: <strong>${anosRestantes} anos e ${mesesRestantesResto} meses</strong>
+        <div style="font-size: 0.8rem; color: var(--accent-color);">
+          <i class="fas fa-hourglass-half"></i> Tempo restante: <strong>${anosRestantes} anos e ${mesesRestantes % 12} meses</strong>
         </div>
       </div>
     </div>
   `;
 }
 
-function renderCardObjetivo(obj, pessoas, totalObjetivos, saldoRestante) {
-  // Calcular meses restantes
-  const pessoaSelecionada = pessoas.find(p => obj.responsaveis.includes(p.id)) || pessoas[0];
-  const idadeAtual = pessoaSelecionada?.idade || 30;
+function renderCardObjetivo(obj, pessoas, saldoDisponivel) {
+  const totalObjetivos = objetivos.filter(o => o.tipo !== 'aposentadoria').length;
   
-  let mesesRestantes = 0;
-  if (obj.prazo_tipo === 'idade') {
-    mesesRestantes = Math.max(1, (obj.prazo_valor - idadeAtual) * 12);
+  // Calcular prazo em meses
+  let prazoMeses = 0;
+  if (obj.prazo_tipo === 'anos') {
+    prazoMeses = (obj.prazo_valor || 0) * 12;
   } else {
-    mesesRestantes = Math.max(1, obj.prazo_valor * 12);
+    const pessoaRef = pessoas.find(p => p.id === obj.prazo_pessoa) || pessoas[0];
+    const idadeAtual = pessoaRef.idade;
+    const anosRestantes = Math.max(0, (obj.prazo_valor || 0) - idadeAtual);
+    prazoMeses = anosRestantes * 12;
   }
   
-  // Opções de prioridade
-  const prioridadeOptions = Array.from({length: totalObjetivos}, (_, i) => i + 1)
-    .map(p => `<option value="${p}" ${obj.prioridade === p ? 'selected' : ''}>${p}º</option>`)
-    .join('');
-  
   return `
-    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.2rem; margin-bottom: 1rem;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
+    <div style="margin-bottom: 1rem; padding: 1rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px;">
+      <!-- Header com prioridade -->
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
-          <select onchange="updateObjetivoPrioridade(${obj.id}, this.value)"
-                  style="padding: 0.3rem 0.5rem; background: var(--accent-color); color: var(--dark-bg); border: none; border-radius: 4px; font-weight: 600; cursor: pointer;">
-            ${prioridadeOptions}
+          <select onchange="updateObjetivoPrioridade(${obj.id}, this.value)" 
+                  style="padding: 0.3rem; background: var(--accent-color); color: var(--dark-bg); border: none; border-radius: 4px; font-weight: 600;">
+            ${Array.from({length: totalObjetivos}, (_, i) => i + 1).map(n => `
+              <option value="${n}" ${obj.prioridade === n ? 'selected' : ''}>${n}º</option>
+            `).join('')}
           </select>
-          <span style="font-weight: 600; color: var(--accent-color);">Prioridade</span>
+          <span style="color: var(--accent-color); font-weight: 600;">Prioridade</span>
         </div>
-        <button onclick="deleteObjetivo(${obj.id})" style="background: transparent; border: none; color: #dc3545; cursor: pointer; font-size: 1rem;" title="Excluir">
+        <button onclick="deleteObjetivo(${obj.id})" style="background: #dc3545; color: white; border: none; padding: 0.3rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.75rem;">
           <i class="fas fa-trash"></i>
         </button>
       </div>
       
-      <div style="display: grid; grid-template-columns: 2fr 2fr 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-        <!-- Qual é o objetivo -->
+      <!-- Linha 1: Descrição, Importância, Responsáveis, Prazo -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr 200px 200px; gap: 1rem; margin-bottom: 1rem;">
+        <!-- Descrição -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
             <i class="fas fa-flag"></i> Qual é o objetivo? *
           </label>
-          <input type="text" value="${obj.descricao || ''}" placeholder="Ex: Comprar um carro..."
+          <input type="text" value="${obj.descricao || ''}" placeholder="Ex: Comprar uma casa"
                  onchange="updateObjetivoField(${obj.id}, 'descricao', this.value)"
-                 style="width: 100%; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light);">
+                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
         </div>
         
-        <!-- Por que é importante -->
+        <!-- Importância -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
             <i class="fas fa-heart"></i> Por que é importante?
           </label>
           <textarea onchange="updateObjetivoField(${obj.id}, 'importancia', this.value)"
                     placeholder="Descreva a importância..."
-                    style="width: 100%; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light); min-height: 38px; resize: vertical;">${obj.importancia || ''}</textarea>
+                    style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); resize: vertical; min-height: 38px;">${obj.importancia || ''}</textarea>
         </div>
         
-        <!-- De quem é -->
+        <!-- Responsáveis -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
             <i class="fas fa-users"></i> De quem é? *
           </label>
           <select multiple onchange="updateObjetivoField(${obj.id}, 'responsaveis', Array.from(this.selectedOptions).map(o => o.value))"
-                  style="width: 100%; padding: 0.4rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light); min-height: 70px; font-size: 0.8rem;">
-            ${pessoas.map(p => `<option value="${p.id}" ${obj.responsaveis.includes(p.id) ? 'selected' : ''}>${p.nome} (${p.tipo})</option>`).join('')}
+                  style="width: 100%; padding: 0.3rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); min-height: 60px;">
+            ${pessoas.map(p => `
+              <option value="${p.id}" ${(obj.responsaveis || []).includes(p.id) ? 'selected' : ''}>${p.nome} (${p.tipo})</option>
+            `).join('')}
           </select>
-          <small style="color: var(--text-light); opacity: 0.7; font-size: 0.65rem;">Ctrl/Cmd para múltiplos</small>
+          <div style="font-size: 0.65rem; color: var(--text-light); opacity: 0.7; margin-top: 0.2rem;">Segure Ctrl/Cmd para múltiplos</div>
         </div>
         
         <!-- Prazo -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
-            <i class="fas fa-calendar"></i> Prazo
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+            <i class="fas fa-calendar-alt"></i> Prazo
           </label>
-          <div style="display: flex; gap: 0.3rem; margin-bottom: 0.3rem;">
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
             <select onchange="updateObjetivoField(${obj.id}, 'prazo_tipo', this.value); renderObjetivos();"
-                    style="flex: 1; padding: 0.4rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light); font-size: 0.8rem;">
+                    style="padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
               <option value="anos" ${obj.prazo_tipo === 'anos' ? 'selected' : ''}>Daqui a X anos</option>
               <option value="idade" ${obj.prazo_tipo === 'idade' ? 'selected' : ''}>Até X idade</option>
             </select>
-            <input type="number" value="${obj.prazo_valor}" min="1" max="100"
+            <input type="number" value="${obj.prazo_valor || 5}" min="1" max="100"
                    onchange="updateObjetivoField(${obj.id}, 'prazo_valor', this.value); renderObjetivos();"
-                   style="width: 50px; padding: 0.4rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light); font-size: 0.8rem;">
+                   style="width: 60px; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
           </div>
-          <small style="color: var(--text-light); opacity: 0.7; font-size: 0.7rem;">${mesesRestantes} meses restantes</small>
+          <div style="font-size: 0.7rem; color: var(--accent-color); margin-top: 0.3rem;">${prazoMeses} meses restantes</div>
         </div>
       </div>
       
+      <!-- Linha 2: Valores -->
       <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
         <!-- Valor Inicial -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
             <i class="fas fa-wallet"></i> Valor Inicial
           </label>
-          <input type="text" value="${formatarMoedaObj(obj.valor_inicial)}"
-                 id="valor_inicial_${obj.id}"
-                 oninput="formatarInputMoeda(this, ${obj.id}, 'valor_inicial')"
-                 style="width: 100%; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light);">
-          <small style="color: ${saldoRestante >= 0 ? '#28a745' : '#dc3545'}; font-size: 0.7rem;">Disponível: ${formatarMoedaObj(saldoRestante + (parseFloat(obj.valor_inicial) || 0))}</small>
+          <input type="text" value="${formatarMoedaObj(obj.valor_inicial || 0)}"
+                 oninput="formatarInputMoedaObj(this, ${obj.id}, 'valor_inicial')"
+                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
+          <div class="display-disponivel-objetivo" style="font-size: 0.7rem; color: #28a745; margin-top: 0.3rem;">Disponível: ${formatarMoedaObj(Math.max(0, saldoDisponivel))}</div>
         </div>
         
         <!-- Valor Final -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
-            <i class="fas fa-tag"></i> Valor Final do Objetivo
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+            <i class="fas fa-bullseye"></i> Valor Final do Objetivo
           </label>
-          <input type="text" value="${formatarMoedaObj(obj.valor_final)}"
-                 id="valor_final_${obj.id}"
-                 oninput="formatarInputMoeda(this, ${obj.id}, 'valor_final')"
-                 style="width: 100%; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light);">
+          <input type="text" value="${formatarMoedaObj(obj.valor_final || 0)}"
+                 oninput="formatarInputMoedaObj(this, ${obj.id}, 'valor_final')"
+                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
         </div>
         
         <!-- Meta de Acúmulo -->
         <div>
-          <label style="display: block; font-size: 0.8rem; color: var(--text-light); margin-bottom: 0.3rem;">
-            <i class="fas fa-bullseye"></i> Meta de Acúmulo
+          <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
+            <i class="fas fa-chart-line"></i> Meta de Acúmulo
           </label>
-          <input type="text" value="${formatarMoedaObj(obj.meta_acumulo)}"
-                 id="meta_acumulo_${obj.id}"
-                 oninput="formatarInputMoeda(this, ${obj.id}, 'meta_acumulo')"
-                 style="width: 100%; padding: 0.6rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-light);">
+          <input type="text" value="${formatarMoedaObj(obj.meta_acumulo || 0)}"
+                 oninput="formatarInputMoedaObj(this, ${obj.id}, 'meta_acumulo')"
+                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
         </div>
       </div>
     </div>
   `;
 }
+
 
 
 // ========================================
@@ -884,369 +995,395 @@ function voltarEdicaoObjetivos() {
 
 function renderAnaliseObjetivos(container) {
   const pessoas = getPessoasDisponiveis();
-  
-  // Separar objetivos
   const objetivosAposentadoria = objetivos.filter(o => o.tipo === 'aposentadoria');
   const objetivosNormais = objetivos.filter(o => o.tipo !== 'aposentadoria')
     .sort((a, b) => a.prioridade - b.prioridade);
   
+  const opcoesPerfilRent = gerarOpcoesPerfilRentabilidade();
+  
   container.innerHTML = `
-    <div style="text-align: right; margin-bottom: 1rem;">
-      <button onclick="voltarEdicaoObjetivos()" style="background: var(--accent-color); color: var(--dark-bg); border: none; padding: 0.6rem 1.2rem; border-radius: 6px; cursor: pointer;">
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 1rem;">
+      <button onclick="voltarEdicaoObjetivos()" style="background: var(--accent-color); color: var(--dark-bg); border: none; padding: 0.5rem 1rem; border-radius: 6px; cursor: pointer;">
         <i class="fas fa-arrow-left"></i> Voltar para Edição
       </button>
     </div>
     
-    <!-- Análise de Aposentadorias -->
-    <div style="margin-bottom: 2rem;">
-      <h4 style="color: #28a745; margin: 0 0 1rem 0;">
-        <i class="fas fa-umbrella-beach"></i> Análise das Metas de Aposentadoria
-      </h4>
-      ${objetivosAposentadoria.map(obj => renderAnaliseAposentadoria(obj, pessoas)).join('')}
-    </div>
+    <!-- Análise das Metas de Aposentadoria -->
+    <h4 style="color: #28a745; margin-bottom: 1rem;">
+      <i class="fas fa-umbrella-beach"></i> Análise das Metas de Aposentadoria
+    </h4>
+    ${objetivosAposentadoria.map(obj => renderAnaliseAposentadoria(obj, pessoas, opcoesPerfilRent)).join('')}
     
-    <!-- Análise de Outros Objetivos -->
-    ${objetivosNormais.length > 0 ? `
-      <div style="margin-bottom: 2rem;">
-        <h4 style="color: var(--accent-color); margin: 0 0 1rem 0;">
-          <i class="fas fa-bullseye"></i> Análise dos Objetivos
-        </h4>
-        ${objetivosNormais.map(obj => renderAnaliseObjetivo(obj, pessoas)).join('')}
+    <!-- Análise dos Objetivos -->
+    <h4 style="color: var(--accent-color); margin: 2rem 0 1rem 0;">
+      <i class="fas fa-bullseye"></i> Análise dos Objetivos
+    </h4>
+    ${objetivosNormais.length === 0 ? `
+      <div style="text-align: center; padding: 2rem; background: var(--dark-bg); border-radius: 8px; opacity: 0.7;">
+        <p>Nenhum objetivo cadastrado para análise.</p>
       </div>
-    ` : ''}
+    ` : objetivosNormais.map(obj => renderAnaliseObjetivo(obj, pessoas, opcoesPerfilRent)).join('')}
     
     <!-- Resumo Geral -->
-    ${renderResumoGeralObjetivos(objetivosAposentadoria, objetivosNormais, pessoas)}
+    ${renderResumoGeral(objetivosAposentadoria, objetivosNormais)}
   `;
-}
-
-function renderAnaliseAposentadoria(obj, pessoas) {
-  const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa) || pessoas[0];
-  const idadeAtual = pessoa?.idade || 30;
   
-  // Usar renda anual editável
-  const rendaAnual = obj.renda_anual !== undefined ? obj.renda_anual : calcularRendaAnualPessoa(obj.prazo_pessoa);
-  
-  // Capital necessário usando Rent Anual Aposentadoria
-  const rentAnualDecimal = variaveisMercado.rent_anual_aposentadoria / 100;
-  const capitalNecessario = rentAnualDecimal > 0 ? rendaAnual / rentAnualDecimal : 0;
-  
-  // Meses restantes
-  const anosAteAposentadoria = obj.prazo_valor - idadeAtual;
-  const mesesRestantes = Math.max(1, anosAteAposentadoria * 12);
-  
-  // Patrimônio atual para aposentadoria
-  const patrimonioAposentadoria = calcularPatrimonioAposentadoriaPorPessoa(obj.prazo_pessoa);
-  
-  // Rendimento mensal para cálculo de aporte
-  const rendimentoMensal = variaveisMercado.rent_mensal_aposentadoria / 100;
-  
-  // Calcular aporte mensal necessário (PMT)
-  const fv = capitalNecessario;
-  const pv = patrimonioAposentadoria;
-  const r = rendimentoMensal;
-  const n = mesesRestantes;
-  
-  let aporteMensal = 0;
-  if (r > 0 && n > 0) {
-    const fator = Math.pow(1 + r, n);
-    aporteMensal = (fv - pv * fator) * r / (fator - 1);
-    if (aporteMensal < 0) aporteMensal = 0;
-  }
-  
-  // Gerar tabela mensal (primeiros 5 meses visíveis, resto com scroll)
-  const tabelaMensal = gerarTabelaMensalAposentadoria(pv, aporteMensal, r, n, capitalNecessario, idadeAtual);
-  
-  return `
-    <div style="background: var(--card-bg); border: 2px solid #28a745; border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
-      <h5 style="color: #28a745; margin: 0 0 1rem 0;">
-        <i class="fas fa-user"></i> ${pessoa?.nome || 'Pessoa'} - Aposentadoria aos ${obj.prazo_valor} anos
-      </h5>
-      
-      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
-        <div style="text-align: center; padding: 1rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.8rem; color: var(--text-light); opacity: 0.8;">Renda Anual Atual</div>
-          <div style="font-size: 1.2rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(rendaAnual)}</div>
-        </div>
-        <div style="text-align: center; padding: 1rem; background: rgba(212, 175, 55, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.8rem; color: var(--text-light); opacity: 0.8;">Capital Necessário</div>
-          <div style="font-size: 1.2rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(capitalNecessario)}</div>
-        </div>
-        <div style="text-align: center; padding: 1rem; background: rgba(0, 123, 255, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.8rem; color: var(--text-light); opacity: 0.8;">Patrimônio Atual</div>
-          <div style="font-size: 1.2rem; font-weight: 600; color: #007bff;">${formatarMoedaObj(patrimonioAposentadoria)}</div>
-        </div>
-        <div style="text-align: center; padding: 1rem; background: rgba(255, 193, 7, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.8rem; color: var(--text-light); opacity: 0.8;">Tempo Restante</div>
-          <div style="font-size: 1.2rem; font-weight: 600; color: #ffc107;">${anosAteAposentadoria} anos</div>
-        </div>
-      </div>
-      
-      <div style="padding: 1rem; background: var(--dark-bg); border-radius: 8px; margin-bottom: 1rem;">
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
-          <div>
-            <div style="font-size: 0.85rem; color: var(--text-light); opacity: 0.8;">Rendimento considerado (Rent Anual Aposentadoria)</div>
-            <div style="font-size: 0.9rem; color: var(--text-light);">${formatarPercentual(variaveisMercado.rent_anual_aposentadoria)} a.a. (${formatarPercentual(variaveisMercado.rent_mensal_aposentadoria)} a.m.)</div>
-          </div>
-          <div style="text-align: right;">
-            <div style="font-size: 0.85rem; color: var(--text-light); opacity: 0.8;">Aporte Mensal Necessário</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: ${aporteMensal > 0 ? 'var(--accent-color)' : '#28a745'};">${formatarMoedaObj(aporteMensal)}</div>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Tabela Mensal com Scroll -->
-      ${tabelaMensal}
-    </div>
-  `;
-}
-
-function gerarTabelaMensalAposentadoria(patrimonioInicial, aporteMensal, rendimentoMensal, totalMeses, meta, idadeInicial) {
-  let saldo = patrimonioInicial;
-  const linhas = [];
-  
-  for (let mes = 0; mes <= totalMeses; mes++) {
-    if (mes > 0) {
-      const rendimento = saldo * rendimentoMensal;
-      const imposto = rendimento * 0.15; // IR 15%
-      saldo = saldo + rendimento - imposto + aporteMensal;
-    }
-    
-    const percentualMeta = meta > 0 ? (saldo / meta) * 100 : 0;
-    const ano = Math.floor(mes / 12);
-    const mesDoAno = mes % 12;
-    const idade = idadeInicial + ano;
-    
-    linhas.push({
-      mes,
-      ano,
-      mesDoAno,
-      idade,
-      saldoBruto: saldo,
-      aporte: mes > 0 ? aporteMensal : 0,
-      imposto: mes > 0 ? (saldo * rendimentoMensal * 0.15) : 0,
-      meta,
-      percentualMeta
+  // Adicionar event listeners para os seletores de perfil
+  setTimeout(() => {
+    document.querySelectorAll('.perfil-selector').forEach(select => {
+      select.addEventListener('change', () => {
+        const objId = parseInt(select.dataset.objId);
+        const tipo = select.dataset.tipo;
+        const obj = objetivos.find(o => o.id === objId);
+        if (obj) {
+          if (tipo === 'atual') {
+            obj.perfil_atual = select.value;
+          } else {
+            obj.perfil_consultoria = select.value;
+          }
+          renderAnaliseObjetivos(container);
+        }
+      });
     });
-  }
-  
-  return `
-    <div style="margin-top: 1rem;">
-      <h6 style="color: var(--text-light); margin: 0 0 0.5rem 0; font-size: 0.85rem;">
-        <i class="fas fa-table"></i> Evolução Mensal do Patrimônio
-      </h6>
-      <div style="max-height: 250px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 6px;">
-        <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
-          <thead style="position: sticky; top: 0; background: rgba(212, 175, 55, 0.3);">
-            <tr>
-              <th style="padding: 0.5rem; text-align: left; border-bottom: 1px solid var(--border-color);">Mês</th>
-              <th style="padding: 0.5rem; text-align: center; border-bottom: 1px solid var(--border-color);">Idade</th>
-              <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid var(--border-color);">Saldo Bruto</th>
-              <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid var(--border-color);">Aporte</th>
-              <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid var(--border-color);">IR (15%)</th>
-              <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid var(--border-color);">Meta</th>
-              <th style="padding: 0.5rem; text-align: right; border-bottom: 1px solid var(--border-color);">% Meta</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${linhas.map((l, idx) => `
-              <tr style="background: ${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)'};">
-                <td style="padding: 0.4rem; border-bottom: 1px solid var(--border-color);">Mês ${l.mes}</td>
-                <td style="padding: 0.4rem; text-align: center; border-bottom: 1px solid var(--border-color);">${l.idade} anos</td>
-                <td style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color); color: var(--accent-color);">${formatarMoedaObj(l.saldoBruto)}</td>
-                <td style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color); color: #28a745;">${formatarMoedaObj(l.aporte)}</td>
-                <td style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color); color: #dc3545;">${formatarMoedaObj(l.imposto)}</td>
-                <td style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color); color: #ffc107;">${formatarMoedaObj(l.meta)}</td>
-                <td style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color); color: ${l.percentualMeta >= 100 ? '#28a745' : '#ffc107'};">${l.percentualMeta.toFixed(1)}%</td>
-              </tr>
-            `).join('')}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  `;
+  }, 100);
 }
 
-function renderAnaliseObjetivo(obj, pessoas) {
-  const pessoaSelecionada = pessoas.find(p => obj.responsaveis.includes(p.id)) || pessoas[0];
-  const idadeAtual = pessoaSelecionada?.idade || 30;
+function renderAnaliseAposentadoria(obj, pessoas, opcoesPerfilRent) {
+  const pessoaSelecionada = pessoas.find(p => p.id === obj.prazo_pessoa) || pessoas[0];
+  const idadeAtual = pessoaSelecionada.idade;
+  const idadeAposentadoria = obj.prazo_valor || 65;
+  const anosRestantes = Math.max(0, idadeAposentadoria - idadeAtual);
+  const mesesRestantes = anosRestantes * 12;
   
-  // Calcular meses restantes
-  let mesesRestantes = 0;
-  if (obj.prazo_tipo === 'idade') {
-    mesesRestantes = Math.max(1, (obj.prazo_valor - idadeAtual) * 12);
-  } else {
-    mesesRestantes = Math.max(1, obj.prazo_valor * 12);
-  }
+  const rendaAnual = obj.renda_anual || 0;
+  const rentAnualAposent = variaveisMercado.rent_anual_aposentadoria || 6.0;
+  const capitalNecessario = rentAnualAposent > 0 ? rendaAnual / (rentAnualAposent / 100) : 0;
+  const patrimonioAtual = calcularPatrimonioAposentadoriaPorPessoa(obj.prazo_pessoa);
   
-  const anosRestantes = mesesRestantes / 12;
-  
-  // Meta reajustada pelo IPCA
-  const ipcaAnual = variaveisMercado.ipca / 100;
-  const metaReajustada = obj.meta_acumulo * Math.pow(1 + ipcaAnual, anosRestantes);
-  
-  const valorInicial = parseFloat(obj.valor_inicial) || 0;
-  
-  // Perfis de rentabilidade para comparação
+  // Perfis selecionados
   const perfilAtual = obj.perfil_atual || 'sem_conhecimento';
   const perfilConsultoria = obj.perfil_consultoria || 'mod';
   
+  // Rentabilidades
   const rentAtual = getRentabilidadePerfil(perfilAtual);
   const rentConsultoria = getRentabilidadePerfil(perfilConsultoria);
+  const rentMensalAtual = Math.pow(1 + rentAtual / 100, 1/12) - 1;
+  const rentMensalConsultoria = Math.pow(1 + rentConsultoria / 100, 1/12) - 1;
   
-  // Calcular aportes para ambos os cenários
-  const calcularAporte = (rentAnual) => {
-    const r = Math.pow(1 + rentAnual / 100, 1/12) - 1;
-    const fvBruto = metaReajustada / 0.85; // Considerando IR 15%
-    
-    if (r > 0 && mesesRestantes > 0) {
-      const fator = Math.pow(1 + r, mesesRestantes);
-      const aporte = (fvBruto - valorInicial * fator) * r / (fator - 1);
-      return Math.max(0, aporte);
-    }
-    return 0;
-  };
+  // Calcular aportes necessários
+  const metaFinal = capitalNecessario;
+  const valorInicial = patrimonioAtual;
   
-  const aporteAtual = calcularAporte(rentAtual);
-  const aporteConsultoria = calcularAporte(rentConsultoria);
-  const economia = aporteAtual - aporteConsultoria;
+  const aporteAtual = calcularAporteMensal(valorInicial, metaFinal, mesesRestantes, rentMensalAtual);
+  const aporteConsultoria = calcularAporteMensal(valorInicial, metaFinal, mesesRestantes, rentMensalConsultoria);
   
-  // Gerar tabelas mensais para ambos os cenários
-  const tabelaAtual = gerarTabelaMensalObjetivo(valorInicial, aporteAtual, rentAtual, mesesRestantes, metaReajustada, obj.meta_acumulo, ipcaAnual);
-  const tabelaConsultoria = gerarTabelaMensalObjetivo(valorInicial, aporteConsultoria, rentConsultoria, mesesRestantes, metaReajustada, obj.meta_acumulo, ipcaAnual);
+  // Gerar tabelas mensais
+  const tabelaAtual = gerarTabelaMensal(valorInicial, aporteAtual, mesesRestantes, rentMensalAtual, metaFinal, idadeAtual);
+  const tabelaConsultoria = gerarTabelaMensal(valorInicial, aporteConsultoria, mesesRestantes, rentMensalConsultoria, metaFinal, idadeAtual);
   
   return `
-    <div style="background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
-      <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem;">
-        <div>
-          <span style="background: var(--accent-color); color: var(--dark-bg); padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: 600;">${obj.prioridade}º Prioridade</span>
-          <h5 style="color: var(--accent-color); margin: 0.5rem 0 0 0;">${obj.descricao || 'Objetivo sem nome'}</h5>
-          ${obj.importancia ? `<p style="color: var(--text-light); opacity: 0.8; font-size: 0.85rem; margin: 0.3rem 0 0 0;">${obj.importancia}</p>` : ''}
-        </div>
-      </div>
+    <div style="margin-bottom: 2rem; padding: 1.5rem; background: var(--dark-bg); border: 1px solid #28a745; border-radius: 8px;">
+      <h5 style="color: #28a745; margin: 0 0 1rem 0;">
+        <i class="fas fa-user"></i> ${pessoaSelecionada.nome} - Aposentadoria aos ${idadeAposentadoria} anos
+      </h5>
       
-      <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.8rem; margin-bottom: 1.5rem;">
-        <div style="text-align: center; padding: 0.8rem; background: rgba(212, 175, 55, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">Valor Final</div>
-          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(obj.valor_final)}</div>
+      <!-- Resumo -->
+      <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+        <div style="text-align: center; padding: 0.8rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
+          <div style="font-size: 0.7rem; color: var(--text-light);">Renda Anual Atual</div>
+          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(rendaAnual)}</div>
         </div>
-        <div style="text-align: center; padding: 0.8rem; background: rgba(212, 175, 55, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">Meta de Acúmulo</div>
-          <div style="font-size: 1rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(obj.meta_acumulo)}</div>
+        <div style="text-align: center; padding: 0.8rem; background: rgba(40, 167, 69, 0.2); border-radius: 6px;">
+          <div style="font-size: 0.7rem; color: var(--text-light);">Capital Necessário</div>
+          <div style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(capitalNecessario)}</div>
         </div>
-        <div style="text-align: center; padding: 0.8rem; background: rgba(255, 193, 7, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">Meta Reajustada (IPCA)</div>
-          <div style="font-size: 1rem; font-weight: 600; color: #ffc107;">${formatarMoedaObj(metaReajustada)}</div>
+        <div style="text-align: center; padding: 0.8rem; background: rgba(23, 162, 184, 0.2); border-radius: 6px;">
+          <div style="font-size: 0.7rem; color: var(--text-light);">Patrimônio Atual</div>
+          <div style="font-size: 1rem; font-weight: 600; color: #17a2b8;">${formatarMoedaObj(patrimonioAtual)}</div>
         </div>
-        <div style="text-align: center; padding: 0.8rem; background: rgba(0, 123, 255, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">Valor Inicial</div>
-          <div style="font-size: 1rem; font-weight: 600; color: #007bff;">${formatarMoedaObj(valorInicial)}</div>
-        </div>
-        <div style="text-align: center; padding: 0.8rem; background: rgba(40, 167, 69, 0.1); border-radius: 8px;">
-          <div style="font-size: 0.7rem; color: var(--text-light); opacity: 0.8;">Prazo</div>
-          <div style="font-size: 1rem; font-weight: 600; color: #28a745;">${anosRestantes.toFixed(1)} anos</div>
-        </div>
-        <div style="text-align: center; padding: 0.8rem; background: rgba(40, 167, 69, 0.2); border: 1px solid #28a745; border-radius: 8px;">
-          <div style="font-size: 0.7rem; color: #28a745;">Economia Mensal</div>
-          <div style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(economia)}</div>
+        <div style="text-align: center; padding: 0.8rem; background: rgba(255, 193, 7, 0.2); border-radius: 6px;">
+          <div style="font-size: 0.7rem; color: var(--text-light);">Tempo Restante</div>
+          <div style="font-size: 1rem; font-weight: 600; color: #ffc107;">${anosRestantes} anos</div>
         </div>
       </div>
       
       <!-- Comparação de Cenários -->
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
         <!-- Cenário Atual -->
-        <div style="background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; border-radius: 8px; padding: 1rem;">
-          <h6 style="color: #dc3545; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
+        <div style="padding: 1rem; background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; border-radius: 8px;">
+          <h6 style="color: #dc3545; margin: 0 0 1rem 0; text-align: center;">
             <i class="fas fa-user-times"></i> Cenário Atual (Sem Consultoria)
           </h6>
-          <div style="margin-bottom: 0.8rem;">
+          <div style="margin-bottom: 1rem;">
             <label style="font-size: 0.75rem; color: var(--text-light);">Perfil de Rentabilidade:</label>
-            <select onchange="updateObjetivoField(${obj.id}, 'perfil_atual', this.value); renderObjetivos();"
-                    style="width: 100%; padding: 0.4rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem; margin-top: 0.3rem;">
-              ${PERFIS_RENTABILIDADE.map(p => `<option value="${p.id}" ${perfilAtual === p.id ? 'selected' : ''}>${p.nome} (${p.percentCDI}% CDI = ${formatarPercentual(getRentabilidadePerfil(p.id))})</option>`).join('')}
+            <select class="perfil-selector" data-obj-id="${obj.id}" data-tipo="atual"
+                    style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); margin-top: 0.3rem;">
+              ${opcoesPerfilRent.replace(`value="${perfilAtual}"`, `value="${perfilAtual}" selected`)}
             </select>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--dark-bg); border-radius: 4px;">
-            <span style="font-size: 0.8rem; color: var(--text-light);">Aporte Mensal:</span>
-            <span style="font-size: 1.1rem; font-weight: 600; color: #dc3545;">${formatarMoedaObj(aporteAtual)}</span>
+          <div style="text-align: center; margin-bottom: 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-light);">Rentabilidade: ${formatarPercentual(rentAtual)} a.a.</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: #dc3545;">Aporte: ${formatarMoedaObj(aporteAtual)}/mês</div>
           </div>
-          ${tabelaAtual}
+          ${renderTabelaMensal(tabelaAtual, '#dc3545')}
         </div>
         
-        <!-- Cenário com Consultoria -->
-        <div style="background: rgba(40, 167, 69, 0.1); border: 1px solid #28a745; border-radius: 8px; padding: 1rem;">
-          <h6 style="color: #28a745; margin: 0 0 0.8rem 0; font-size: 0.9rem;">
-            <i class="fas fa-user-check"></i> Cenário com Consultoria
+        <!-- Cenário Com Consultoria -->
+        <div style="padding: 1rem; background: rgba(40, 167, 69, 0.1); border: 1px solid #28a745; border-radius: 8px;">
+          <h6 style="color: #28a745; margin: 0 0 1rem 0; text-align: center;">
+            <i class="fas fa-user-check"></i> Cenário Com Consultoria
           </h6>
-          <div style="margin-bottom: 0.8rem;">
+          <div style="margin-bottom: 1rem;">
             <label style="font-size: 0.75rem; color: var(--text-light);">Perfil de Rentabilidade:</label>
-            <select onchange="updateObjetivoField(${obj.id}, 'perfil_consultoria', this.value); renderObjetivos();"
-                    style="width: 100%; padding: 0.4rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); font-size: 0.8rem; margin-top: 0.3rem;">
-              ${PERFIS_RENTABILIDADE.map(p => `<option value="${p.id}" ${perfilConsultoria === p.id ? 'selected' : ''}>${p.nome} (${p.percentCDI}% CDI = ${formatarPercentual(getRentabilidadePerfil(p.id))})</option>`).join('')}
+            <select class="perfil-selector" data-obj-id="${obj.id}" data-tipo="consultoria"
+                    style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); margin-top: 0.3rem;">
+              ${opcoesPerfilRent.replace(`value="${perfilConsultoria}"`, `value="${perfilConsultoria}" selected`)}
             </select>
           </div>
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.5rem; background: var(--dark-bg); border-radius: 4px;">
-            <span style="font-size: 0.8rem; color: var(--text-light);">Aporte Mensal:</span>
-            <span style="font-size: 1.1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(aporteConsultoria)}</span>
+          <div style="text-align: center; margin-bottom: 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-light);">Rentabilidade: ${formatarPercentual(rentConsultoria)} a.a.</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: #28a745;">Aporte: ${formatarMoedaObj(aporteConsultoria)}/mês</div>
           </div>
-          ${tabelaConsultoria}
+          ${renderTabelaMensal(tabelaConsultoria, '#28a745')}
         </div>
       </div>
+      
+      <!-- Economia -->
+      ${aporteAtual > aporteConsultoria ? `
+        <div style="margin-top: 1rem; padding: 1rem; background: rgba(40, 167, 69, 0.2); border: 2px solid #28a745; border-radius: 8px; text-align: center;">
+          <div style="font-size: 0.9rem; color: #28a745; font-weight: 600;">
+            <i class="fas fa-piggy-bank"></i> Economia com Consultoria: 
+            <strong>${formatarMoedaObj(aporteAtual - aporteConsultoria)}/mês</strong> | 
+            <strong>${formatarMoedaObj((aporteAtual - aporteConsultoria) * 12)}/ano</strong>
+          </div>
+        </div>
+      ` : ''}
     </div>
   `;
 }
 
-function gerarTabelaMensalObjetivo(valorInicial, aporteMensal, rentAnual, totalMeses, metaReajustada, metaOriginal, ipcaAnual) {
-  const rendimentoMensal = Math.pow(1 + rentAnual / 100, 1/12) - 1;
-  let saldoBruto = valorInicial;
+function renderAnaliseObjetivo(obj, pessoas, opcoesPerfilRent) {
+  // Calcular prazo em meses
+  let prazoMeses = 0;
+  if (obj.prazo_tipo === 'anos') {
+    prazoMeses = (obj.prazo_valor || 0) * 12;
+  } else {
+    const pessoaRef = pessoas.find(p => p.id === obj.prazo_pessoa) || pessoas[0];
+    const idadeAtual = pessoaRef.idade;
+    prazoMeses = Math.max(0, (obj.prazo_valor || 0) - idadeAtual) * 12;
+  }
+  
+  const metaAcumulo = obj.meta_acumulo || 0;
+  const valorInicial = obj.valor_inicial || 0;
+  const valorFinal = obj.valor_final || 0;
+  
+  // Perfis selecionados
+  const perfilAtual = obj.perfil_atual || 'sem_conhecimento';
+  const perfilConsultoria = obj.perfil_consultoria || 'mod';
+  
+  // Rentabilidades
+  const rentAtual = getRentabilidadePerfil(perfilAtual);
+  const rentConsultoria = getRentabilidadePerfil(perfilConsultoria);
+  const rentMensalAtual = Math.pow(1 + rentAtual / 100, 1/12) - 1;
+  const rentMensalConsultoria = Math.pow(1 + rentConsultoria / 100, 1/12) - 1;
+  
+  // IPCA para reajuste da meta
+  const ipca = variaveisMercado.ipca || 5.0;
+  const ipcaMensal = Math.pow(1 + ipca / 100, 1/12) - 1;
+  const metaReajustada = metaAcumulo * Math.pow(1 + ipcaMensal, prazoMeses);
+  
+  // Calcular aportes necessários
+  const aporteAtual = calcularAporteMensal(valorInicial, metaReajustada, prazoMeses, rentMensalAtual);
+  const aporteConsultoria = calcularAporteMensal(valorInicial, metaReajustada, prazoMeses, rentMensalConsultoria);
+  
+  // Gerar tabelas mensais
+  const tabelaAtual = gerarTabelaMensalObjetivo(valorInicial, aporteAtual, prazoMeses, rentMensalAtual, metaAcumulo, ipcaMensal);
+  const tabelaConsultoria = gerarTabelaMensalObjetivo(valorInicial, aporteConsultoria, prazoMeses, rentMensalConsultoria, metaAcumulo, ipcaMensal);
+  
+  return `
+    <div style="margin-bottom: 2rem; padding: 1.5rem; background: var(--dark-bg); border: 1px solid var(--border-color); border-radius: 8px;">
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 1rem;">
+        <span style="background: var(--accent-color); color: var(--dark-bg); padding: 0.2rem 0.5rem; border-radius: 4px; font-weight: 600; font-size: 0.8rem;">${obj.prioridade}º Prioridade</span>
+        <h5 style="color: var(--accent-color); margin: 0;">${obj.descricao || 'Objetivo sem nome'}</h5>
+      </div>
+      <p style="color: var(--text-light); opacity: 0.8; margin: 0 0 1rem 0; font-size: 0.85rem;">${obj.importancia || ''}</p>
+      
+      <!-- Resumo -->
+      <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.8rem; margin-bottom: 1.5rem;">
+        <div style="text-align: center; padding: 0.6rem; background: rgba(220, 53, 69, 0.1); border-radius: 6px;">
+          <div style="font-size: 0.65rem; color: var(--text-light);">Valor Final</div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: #dc3545;">${formatarMoedaObj(valorFinal)}</div>
+        </div>
+        <div style="text-align: center; padding: 0.6rem; background: rgba(212, 175, 55, 0.1); border-radius: 6px;">
+          <div style="font-size: 0.65rem; color: var(--text-light);">Meta de Acúmulo</div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: var(--accent-color);">${formatarMoedaObj(metaAcumulo)}</div>
+        </div>
+        <div style="text-align: center; padding: 0.6rem; background: rgba(255, 193, 7, 0.1); border-radius: 6px;">
+          <div style="font-size: 0.65rem; color: var(--text-light);">Meta Reajustada (IPCA)</div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: #ffc107;">${formatarMoedaObj(metaReajustada)}</div>
+        </div>
+        <div style="text-align: center; padding: 0.6rem; background: rgba(40, 167, 69, 0.1); border-radius: 6px;">
+          <div style="font-size: 0.65rem; color: var(--text-light);">Valor Inicial</div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(valorInicial)}</div>
+        </div>
+        <div style="text-align: center; padding: 0.6rem; background: rgba(23, 162, 184, 0.1); border-radius: 6px;">
+          <div style="font-size: 0.65rem; color: var(--text-light);">Prazo</div>
+          <div style="font-size: 0.9rem; font-weight: 600; color: #17a2b8;">${(prazoMeses / 12).toFixed(1)} anos</div>
+        </div>
+      </div>
+      
+      <!-- Comparação de Cenários -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+        <!-- Cenário Atual -->
+        <div style="padding: 1rem; background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; border-radius: 8px;">
+          <h6 style="color: #dc3545; margin: 0 0 1rem 0; text-align: center;">
+            <i class="fas fa-user-times"></i> Cenário Atual
+          </h6>
+          <div style="margin-bottom: 1rem;">
+            <label style="font-size: 0.75rem; color: var(--text-light);">Perfil de Rentabilidade:</label>
+            <select class="perfil-selector" data-obj-id="${obj.id}" data-tipo="atual"
+                    style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); margin-top: 0.3rem;">
+              ${opcoesPerfilRent.replace(`value="${perfilAtual}"`, `value="${perfilAtual}" selected`)}
+            </select>
+          </div>
+          <div style="text-align: center; margin-bottom: 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-light);">Rentabilidade: ${formatarPercentual(rentAtual)} a.a. | IR 15%</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: #dc3545;">Aporte: ${formatarMoedaObj(aporteAtual)}/mês</div>
+          </div>
+          ${renderTabelaMensalObjetivo(tabelaAtual, '#dc3545')}
+        </div>
+        
+        <!-- Cenário Com Consultoria -->
+        <div style="padding: 1rem; background: rgba(40, 167, 69, 0.1); border: 1px solid #28a745; border-radius: 8px;">
+          <h6 style="color: #28a745; margin: 0 0 1rem 0; text-align: center;">
+            <i class="fas fa-user-check"></i> Com Consultoria
+          </h6>
+          <div style="margin-bottom: 1rem;">
+            <label style="font-size: 0.75rem; color: var(--text-light);">Perfil de Rentabilidade:</label>
+            <select class="perfil-selector" data-obj-id="${obj.id}" data-tipo="consultoria"
+                    style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light); margin-top: 0.3rem;">
+              ${opcoesPerfilRent.replace(`value="${perfilConsultoria}"`, `value="${perfilConsultoria}" selected`)}
+            </select>
+          </div>
+          <div style="text-align: center; margin-bottom: 1rem;">
+            <div style="font-size: 0.75rem; color: var(--text-light);">Rentabilidade: ${formatarPercentual(rentConsultoria)} a.a. | IR 15%</div>
+            <div style="font-size: 1.2rem; font-weight: 700; color: #28a745;">Aporte: ${formatarMoedaObj(aporteConsultoria)}/mês</div>
+          </div>
+          ${renderTabelaMensalObjetivo(tabelaConsultoria, '#28a745')}
+        </div>
+      </div>
+      
+      <!-- Economia -->
+      ${aporteAtual > aporteConsultoria ? `
+        <div style="margin-top: 1rem; padding: 1rem; background: rgba(40, 167, 69, 0.2); border: 2px solid #28a745; border-radius: 8px; text-align: center;">
+          <div style="font-size: 0.9rem; color: #28a745; font-weight: 600;">
+            <i class="fas fa-piggy-bank"></i> Economia: 
+            <strong>${formatarMoedaObj(aporteAtual - aporteConsultoria)}/mês</strong> | 
+            <strong>${formatarMoedaObj((aporteAtual - aporteConsultoria) * 12)}/ano</strong>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+
+
+// ========================================
+// FUNÇÕES DE CÁLCULO E TABELAS
+// ========================================
+
+function calcularAporteMensal(valorInicial, metaFinal, meses, taxaMensal) {
+  if (meses <= 0) return 0;
+  if (taxaMensal <= 0) return (metaFinal - valorInicial) / meses;
+  
+  // PMT = (VF - VP * (1+i)^n) * i / ((1+i)^n - 1)
+  const fator = Math.pow(1 + taxaMensal, meses);
+  const valorFuturoInicial = valorInicial * fator;
+  const diferenca = metaFinal - valorFuturoInicial;
+  
+  if (diferenca <= 0) return 0; // Já tem o suficiente
+  
+  const aporte = diferenca * taxaMensal / (fator - 1);
+  return Math.max(0, aporte);
+}
+
+function gerarTabelaMensal(valorInicial, aporteMensal, totalMeses, taxaMensal, metaFinal, idadeInicial) {
   const linhas = [];
+  let saldo = valorInicial;
   
   for (let mes = 0; mes <= totalMeses; mes++) {
-    if (mes > 0) {
-      const rendimento = saldoBruto * rendimentoMensal;
-      saldoBruto = saldoBruto + rendimento + aporteMensal;
-    }
-    
-    const imposto = (saldoBruto - valorInicial - (aporteMensal * mes)) * 0.15;
-    const saldoLiquido = saldoBruto - Math.max(0, imposto);
-    const metaNoMes = metaOriginal * Math.pow(1 + ipcaAnual, mes / 12);
-    const percentualMeta = metaNoMes > 0 ? (saldoLiquido / metaNoMes) * 100 : 0;
+    const idadeAtual = idadeInicial + Math.floor(mes / 12);
+    const rendimento = mes > 0 ? saldo * taxaMensal : 0;
+    const aporte = mes > 0 ? aporteMensal : 0;
+    const ir = rendimento * 0.15;
+    saldo = saldo + rendimento - ir + aporte;
     
     linhas.push({
       mes,
-      saldoBruto,
-      aporte: mes > 0 ? aporteMensal : 0,
-      imposto: Math.max(0, imposto),
-      metaAjustada: metaNoMes,
-      saldoLiquido,
-      percentualMeta
+      idade: idadeAtual,
+      saldoBruto: saldo + ir,
+      aporte,
+      ir,
+      meta: metaFinal,
+      saldoLiquido: saldo,
+      percentMeta: metaFinal > 0 ? (saldo / metaFinal) * 100 : 0
     });
   }
   
+  return linhas;
+}
+
+function gerarTabelaMensalObjetivo(valorInicial, aporteMensal, totalMeses, taxaMensal, metaBase, ipcaMensal) {
+  const linhas = [];
+  let saldo = valorInicial;
+  
+  for (let mes = 0; mes <= totalMeses; mes++) {
+    const metaReajustada = metaBase * Math.pow(1 + ipcaMensal, mes);
+    const rendimento = mes > 0 ? saldo * taxaMensal : 0;
+    const aporte = mes > 0 ? aporteMensal : 0;
+    const ir = rendimento * 0.15;
+    saldo = saldo + rendimento - ir + aporte;
+    
+    linhas.push({
+      mes,
+      saldoBruto: saldo + ir,
+      aporte,
+      ir,
+      metaReajustada,
+      saldoLiquido: saldo,
+      percentMeta: metaReajustada > 0 ? (saldo / metaReajustada) * 100 : 0
+    });
+  }
+  
+  return linhas;
+}
+
+function renderTabelaMensal(linhas, cor) {
   return `
-    <div style="margin-top: 0.8rem; max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
-      <table style="width: 100%; border-collapse: collapse; font-size: 0.7rem;">
-        <thead style="position: sticky; top: 0; background: rgba(212, 175, 55, 0.3);">
+    <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
+        <thead style="position: sticky; top: 0; background: var(--card-bg);">
           <tr>
-            <th style="padding: 0.4rem; text-align: left;">Mês</th>
-            <th style="padding: 0.4rem; text-align: right;">Bruto</th>
-            <th style="padding: 0.4rem; text-align: right;">Aporte</th>
-            <th style="padding: 0.4rem; text-align: right;">IR</th>
-            <th style="padding: 0.4rem; text-align: right;">Meta Aj.</th>
-            <th style="padding: 0.4rem; text-align: right;">Líquido</th>
-            <th style="padding: 0.4rem; text-align: right;">%</th>
+            <th style="padding: 0.4rem; text-align: left; border-bottom: 1px solid var(--border-color);">MÊS</th>
+            <th style="padding: 0.4rem; text-align: center; border-bottom: 1px solid var(--border-color);">IDADE</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">SALDO BRUTO</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">APORTE</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">IR (15%)</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">META</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">% META</th>
           </tr>
         </thead>
         <tbody>
-          ${linhas.map((l, idx) => `
-            <tr style="background: ${idx % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.03)'};">
-              <td style="padding: 0.3rem;">${l.mes}</td>
-              <td style="padding: 0.3rem; text-align: right;">${formatarMoedaObj(l.saldoBruto)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: #28a745;">${formatarMoedaObj(l.aporte)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: #dc3545;">${formatarMoedaObj(l.imposto)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: #ffc107;">${formatarMoedaObj(l.metaAjustada)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: var(--accent-color);">${formatarMoedaObj(l.saldoLiquido)}</td>
-              <td style="padding: 0.3rem; text-align: right; color: ${l.percentualMeta >= 100 ? '#28a745' : '#ffc107'};">${l.percentualMeta.toFixed(1)}%</td>
+          ${linhas.map((l, i) => `
+            <tr style="background: ${i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)'};">
+              <td style="padding: 0.3rem 0.4rem;">Mês ${l.mes}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: center;">${l.idade} anos</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right; color: ${cor};">${formatarMoedaObj(l.saldoBruto)}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right;">${formatarMoedaObj(l.aporte)}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right; color: #dc3545;">${formatarMoedaObj(l.ir)}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right;">${formatarMoedaObj(l.meta)}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right; color: ${l.percentMeta >= 100 ? '#28a745' : cor};">${l.percentMeta.toFixed(1)}%</td>
             </tr>
           `).join('')}
         </tbody>
@@ -1255,139 +1392,160 @@ function gerarTabelaMensalObjetivo(valorInicial, aporteMensal, rentAnual, totalM
   `;
 }
 
+function renderTabelaMensalObjetivo(linhas, cor) {
+  return `
+    <div style="max-height: 200px; overflow-y: auto; border: 1px solid var(--border-color); border-radius: 4px;">
+      <table style="width: 100%; border-collapse: collapse; font-size: 0.75rem;">
+        <thead style="position: sticky; top: 0; background: var(--card-bg);">
+          <tr>
+            <th style="padding: 0.4rem; text-align: left; border-bottom: 1px solid var(--border-color);">MÊS</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">SALDO BRUTO</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">APORTE</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">IR (15%)</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">META AJUST.</th>
+            <th style="padding: 0.4rem; text-align: right; border-bottom: 1px solid var(--border-color);">% META</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${linhas.map((l, i) => `
+            <tr style="background: ${i % 2 === 0 ? 'transparent' : 'rgba(255,255,255,0.02)'};">
+              <td style="padding: 0.3rem 0.4rem;">Mês ${l.mes}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right; color: ${cor};">${formatarMoedaObj(l.saldoBruto)}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right;">${formatarMoedaObj(l.aporte)}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right; color: #dc3545;">${formatarMoedaObj(l.ir)}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right;">${formatarMoedaObj(l.metaReajustada)}</td>
+              <td style="padding: 0.3rem 0.4rem; text-align: right; color: ${l.percentMeta >= 100 ? '#28a745' : cor};">${l.percentMeta.toFixed(1)}%</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
 
-function renderResumoGeralObjetivos(objetivosAposentadoria, objetivosNormais, pessoas) {
-  // Calcular total de aportes mensais necessários
-  let totalAportesAposentadoria = 0;
-  let totalAportesObjetivosAtual = 0;
-  let totalAportesObjetivosConsultoria = 0;
+function renderResumoGeral(objetivosAposentadoria, objetivosNormais) {
+  // Calcular totais para cenário atual
+  let totalAporteAtualAposent = 0;
+  let totalAporteConsultoriaAposent = 0;
   
-  // Aportes de aposentadoria
   objetivosAposentadoria.forEach(obj => {
-    const pessoa = pessoas.find(p => p.id === obj.prazo_pessoa) || pessoas[0];
-    const idadeAtual = pessoa?.idade || 30;
-    const anosAteAposentadoria = obj.prazo_valor - idadeAtual;
-    const mesesRestantes = Math.max(1, anosAteAposentadoria * 12);
+    const pessoaId = obj.prazo_pessoa || obj.responsaveis[0];
+    const pessoas = getPessoasDisponiveis();
+    const pessoa = pessoas.find(p => p.id === pessoaId);
+    const idadeAtual = pessoa ? pessoa.idade : 30;
+    const anosRestantes = Math.max(0, (obj.prazo_valor || 65) - idadeAtual);
+    const mesesRestantes = anosRestantes * 12;
     
-    const rendaAnual = obj.renda_anual !== undefined ? obj.renda_anual : calcularRendaAnualPessoa(obj.prazo_pessoa);
-    const rentAnualDecimal = variaveisMercado.rent_anual_aposentadoria / 100;
-    const capitalNecessario = rentAnualDecimal > 0 ? rendaAnual / rentAnualDecimal : 0;
-    const rendimentoMensal = variaveisMercado.rent_mensal_aposentadoria / 100;
+    const rendaAnual = obj.renda_anual || 0;
+    const rentAnual = variaveisMercado.rent_anual_aposentadoria || 6.0;
+    const capitalNecessario = rentAnual > 0 ? rendaAnual / (rentAnual / 100) : 0;
+    const patrimonioAtual = calcularPatrimonioAposentadoriaPorPessoa(pessoaId);
     
-    const patrimonioAposentadoria = calcularPatrimonioAposentadoriaPorPessoa(obj.prazo_pessoa);
+    const rentAtual = getRentabilidadePerfil(obj.perfil_atual || 'sem_conhecimento');
+    const rentConsultoria = getRentabilidadePerfil(obj.perfil_consultoria || 'mod');
+    const rentMensalAtual = Math.pow(1 + rentAtual / 100, 1/12) - 1;
+    const rentMensalConsultoria = Math.pow(1 + rentConsultoria / 100, 1/12) - 1;
     
-    if (rendimentoMensal > 0 && mesesRestantes > 0) {
-      const fator = Math.pow(1 + rendimentoMensal, mesesRestantes);
-      const aporte = (capitalNecessario - patrimonioAposentadoria * fator) * rendimentoMensal / (fator - 1);
-      totalAportesAposentadoria += Math.max(0, aporte);
-    }
+    totalAporteAtualAposent += calcularAporteMensal(patrimonioAtual, capitalNecessario, mesesRestantes, rentMensalAtual);
+    totalAporteConsultoriaAposent += calcularAporteMensal(patrimonioAtual, capitalNecessario, mesesRestantes, rentMensalConsultoria);
   });
   
-  // Aportes de objetivos normais (cenário atual e consultoria)
+  let totalAporteAtualObj = 0;
+  let totalAporteConsultoriaObj = 0;
+  
   objetivosNormais.forEach(obj => {
-    const pessoaSelecionada = pessoas.find(p => obj.responsaveis.includes(p.id)) || pessoas[0];
-    const idadeAtual = pessoaSelecionada?.idade || 30;
-    
-    let mesesRestantes = 0;
-    if (obj.prazo_tipo === 'idade') {
-      mesesRestantes = Math.max(1, (obj.prazo_valor - idadeAtual) * 12);
+    const pessoas = getPessoasDisponiveis();
+    let prazoMeses = 0;
+    if (obj.prazo_tipo === 'anos') {
+      prazoMeses = (obj.prazo_valor || 0) * 12;
     } else {
-      mesesRestantes = Math.max(1, obj.prazo_valor * 12);
+      const pessoaRef = pessoas.find(p => p.id === obj.prazo_pessoa) || pessoas[0];
+      prazoMeses = Math.max(0, (obj.prazo_valor || 0) - pessoaRef.idade) * 12;
     }
     
-    const anosRestantes = mesesRestantes / 12;
-    const ipcaAnual = variaveisMercado.ipca / 100;
-    const metaReajustada = obj.meta_acumulo * Math.pow(1 + ipcaAnual, anosRestantes);
-    const fvBrutoNecessario = metaReajustada / 0.85;
-    const valorInicial = parseFloat(obj.valor_inicial) || 0;
+    const metaAcumulo = obj.meta_acumulo || 0;
+    const valorInicial = obj.valor_inicial || 0;
+    const ipca = variaveisMercado.ipca || 5.0;
+    const ipcaMensal = Math.pow(1 + ipca / 100, 1/12) - 1;
+    const metaReajustada = metaAcumulo * Math.pow(1 + ipcaMensal, prazoMeses);
     
-    const perfilAtual = obj.perfil_atual || 'sem_conhecimento';
-    const perfilConsultoria = obj.perfil_consultoria || 'mod';
+    const rentAtual = getRentabilidadePerfil(obj.perfil_atual || 'sem_conhecimento');
+    const rentConsultoria = getRentabilidadePerfil(obj.perfil_consultoria || 'mod');
+    const rentMensalAtual = Math.pow(1 + rentAtual / 100, 1/12) - 1;
+    const rentMensalConsultoria = Math.pow(1 + rentConsultoria / 100, 1/12) - 1;
     
-    const rentAtual = getRentabilidadePerfil(perfilAtual);
-    const rentConsultoria = getRentabilidadePerfil(perfilConsultoria);
-    
-    // Cenário atual
-    const rAtual = Math.pow(1 + rentAtual / 100, 1/12) - 1;
-    if (rAtual > 0 && mesesRestantes > 0) {
-      const fator = Math.pow(1 + rAtual, mesesRestantes);
-      const aporte = (fvBrutoNecessario - valorInicial * fator) * rAtual / (fator - 1);
-      totalAportesObjetivosAtual += Math.max(0, aporte);
-    }
-    
-    // Cenário consultoria
-    const rConsultoria = Math.pow(1 + rentConsultoria / 100, 1/12) - 1;
-    if (rConsultoria > 0 && mesesRestantes > 0) {
-      const fator = Math.pow(1 + rConsultoria, mesesRestantes);
-      const aporte = (fvBrutoNecessario - valorInicial * fator) * rConsultoria / (fator - 1);
-      totalAportesObjetivosConsultoria += Math.max(0, aporte);
-    }
+    totalAporteAtualObj += calcularAporteMensal(valorInicial, metaReajustada, prazoMeses, rentMensalAtual);
+    totalAporteConsultoriaObj += calcularAporteMensal(valorInicial, metaReajustada, prazoMeses, rentMensalConsultoria);
   });
   
-  const totalAtual = totalAportesAposentadoria + totalAportesObjetivosAtual;
-  const totalConsultoria = totalAportesAposentadoria + totalAportesObjetivosConsultoria;
-  const economiaTotal = totalAtual - totalConsultoria;
+  const totalAtual = totalAporteAtualAposent + totalAporteAtualObj;
+  const totalConsultoria = totalAporteConsultoriaAposent + totalAporteConsultoriaObj;
+  const economia = totalAtual - totalConsultoria;
   
   return `
-    <div style="margin-top: 2rem; padding: 1.5rem; background: var(--dark-bg); border: 2px solid var(--accent-color); border-radius: 10px;">
+    <div style="margin-top: 2rem; padding: 1.5rem; background: linear-gradient(135deg, rgba(40, 167, 69, 0.2), rgba(212, 175, 55, 0.2)); border: 2px solid var(--accent-color); border-radius: 12px;">
       <h4 style="color: var(--accent-color); margin: 0 0 1.5rem 0; text-align: center;">
         <i class="fas fa-chart-pie"></i> RESUMO GERAL DOS OBJETIVOS
       </h4>
       
-      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem; margin-bottom: 1.5rem;">
+      <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 2rem; margin-bottom: 1.5rem;">
         <!-- Cenário Atual -->
         <div style="padding: 1rem; background: rgba(220, 53, 69, 0.1); border: 1px solid #dc3545; border-radius: 8px;">
-          <h5 style="color: #dc3545; margin: 0 0 1rem 0; text-align: center;">
-            <i class="fas fa-user-times"></i> Cenário Atual
-          </h5>
-          <div style="display: grid; gap: 0.8rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.85rem; color: var(--text-light);">Aportes Aposentadoria:</span>
-              <span style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(totalAportesAposentadoria)}/mês</span>
+          <h5 style="color: #dc3545; margin: 0 0 1rem 0; text-align: center;">Cenário Atual</h5>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; text-align: center;">
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-light);">Aportes Aposentadoria</div>
+              <div style="font-size: 1rem; font-weight: 600; color: #dc3545;">${formatarMoedaObj(totalAporteAtualAposent)}/mês</div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.85rem; color: var(--text-light);">Aportes Objetivos:</span>
-              <span style="font-size: 1rem; font-weight: 600; color: #dc3545;">${formatarMoedaObj(totalAportesObjetivosAtual)}/mês</span>
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-light);">Aportes Objetivos</div>
+              <div style="font-size: 1rem; font-weight: 600; color: #dc3545;">${formatarMoedaObj(totalAporteAtualObj)}/mês</div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
-              <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-light);">TOTAL:</span>
-              <span style="font-size: 1.2rem; font-weight: 700; color: #dc3545;">${formatarMoedaObj(totalAtual)}/mês</span>
-            </div>
+          </div>
+          <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #dc3545; text-align: center;">
+            <div style="font-size: 0.8rem; color: var(--text-light);">TOTAL DE APORTES</div>
+            <div style="font-size: 1.3rem; font-weight: 700; color: #dc3545;">${formatarMoedaObj(totalAtual)}/mês</div>
           </div>
         </div>
         
-        <!-- Cenário com Consultoria -->
+        <!-- Cenário Com Consultoria -->
         <div style="padding: 1rem; background: rgba(40, 167, 69, 0.1); border: 1px solid #28a745; border-radius: 8px;">
-          <h5 style="color: #28a745; margin: 0 0 1rem 0; text-align: center;">
-            <i class="fas fa-user-check"></i> Com Consultoria
-          </h5>
-          <div style="display: grid; gap: 0.8rem;">
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.85rem; color: var(--text-light);">Aportes Aposentadoria:</span>
-              <span style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(totalAportesAposentadoria)}/mês</span>
+          <h5 style="color: #28a745; margin: 0 0 1rem 0; text-align: center;">Com Consultoria</h5>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; text-align: center;">
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-light);">Aportes Aposentadoria</div>
+              <div style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(totalAporteConsultoriaAposent)}/mês</div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center;">
-              <span style="font-size: 0.85rem; color: var(--text-light);">Aportes Objetivos:</span>
-              <span style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(totalAportesObjetivosConsultoria)}/mês</span>
+            <div>
+              <div style="font-size: 0.7rem; color: var(--text-light);">Aportes Objetivos</div>
+              <div style="font-size: 1rem; font-weight: 600; color: #28a745;">${formatarMoedaObj(totalAporteConsultoriaObj)}/mês</div>
             </div>
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 0.5rem; border-top: 1px solid var(--border-color);">
-              <span style="font-size: 0.9rem; font-weight: 600; color: var(--text-light);">TOTAL:</span>
-              <span style="font-size: 1.2rem; font-weight: 700; color: #28a745;">${formatarMoedaObj(totalConsultoria)}/mês</span>
-            </div>
+          </div>
+          <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #28a745; text-align: center;">
+            <div style="font-size: 0.8rem; color: var(--text-light);">TOTAL DE APORTES</div>
+            <div style="font-size: 1.3rem; font-weight: 700; color: #28a745;">${formatarMoedaObj(totalConsultoria)}/mês</div>
           </div>
         </div>
       </div>
       
-      <!-- Economia -->
-      <div style="text-align: center; padding: 1.5rem; background: rgba(40, 167, 69, 0.2); border: 2px solid #28a745; border-radius: 8px;">
-        <div style="font-size: 1rem; color: var(--text-light); margin-bottom: 0.5rem;">
-          <i class="fas fa-piggy-bank"></i> ECONOMIA MENSAL COM CONSULTORIA
+      <!-- Economia Total -->
+      ${economia > 0 ? `
+        <div style="padding: 1.5rem; background: rgba(40, 167, 69, 0.3); border: 2px solid #28a745; border-radius: 8px; text-align: center;">
+          <div style="font-size: 1rem; color: #28a745; margin-bottom: 0.5rem;">
+            <i class="fas fa-piggy-bank"></i> ECONOMIA TOTAL COM CONSULTORIA
+          </div>
+          <div style="display: flex; justify-content: center; gap: 3rem;">
+            <div>
+              <div style="font-size: 0.8rem; color: var(--text-light);">Por Mês</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;">${formatarMoedaObj(economia)}</div>
+            </div>
+            <div>
+              <div style="font-size: 0.8rem; color: var(--text-light);">Por Ano</div>
+              <div style="font-size: 1.5rem; font-weight: 700; color: #28a745;">${formatarMoedaObj(economia * 12)}</div>
+            </div>
+          </div>
         </div>
-        <div style="font-size: 2rem; font-weight: 700; color: #28a745;">${formatarMoedaObj(economiaTotal)}/mês</div>
-        <div style="font-size: 0.85rem; color: var(--text-light); margin-top: 0.5rem;">
-          Economia anual: <strong style="color: #28a745;">${formatarMoedaObj(economiaTotal * 12)}</strong>
-        </div>
-      </div>
+      ` : ''}
     </div>
   `;
 }
@@ -1399,42 +1557,38 @@ function renderResumoGeralObjetivos(objetivosAposentadoria, objetivosNormais, pe
 function getObjetivosData() {
   return {
     objetivos: objetivos,
-    analiseVisivel: analiseVisivel
+    counter: objetivoCounter
   };
 }
 
 function setObjetivosData(data) {
-  if (data) {
-    if (Array.isArray(data.objetivos)) {
-      objetivos = data.objetivos;
-      if (objetivos.length > 0) {
-        objetivoCounter = Math.max(...objetivos.map(o => o.id || 0));
-      }
-    }
-    if (typeof data.analiseVisivel === 'boolean') {
-      analiseVisivel = data.analiseVisivel;
-    }
-    
-    // Garantir pelo menos uma aposentadoria
-    setTimeout(() => {
-      renderObjetivos();
-    }, 500);
+  if (!data) return;
+  
+  if (data.objetivos && Array.isArray(data.objetivos)) {
+    objetivos = data.objetivos;
   }
+  if (data.counter) {
+    objetivoCounter = data.counter;
+  }
+  
+  // Garantir que o counter seja maior que o maior ID
+  const maxId = objetivos.reduce((max, obj) => Math.max(max, obj.id || 0), 0);
+  if (objetivoCounter < maxId) {
+    objetivoCounter = maxId;
+  }
+  
+  renderObjetivos();
 }
 
 // ========================================
 // INICIALIZAÇÃO
 // ========================================
 
+// Inicializar quando o DOM estiver pronto
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initObjetivosModule);
 } else {
   initObjetivosModule();
 }
 
-export {
-  initObjetivosModule,
-  getObjetivosData,
-  setObjetivosData,
-  renderObjetivos
-};
+export { getObjetivosData, setObjetivosData, renderObjetivos };
