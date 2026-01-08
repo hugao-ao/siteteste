@@ -779,6 +779,50 @@ function renderTabelaInvestimentos(pessoas) {
   const patrimonios = window.getPatrimoniosLiquidosData() || [];
   const investimentos = [];
   
+  // Adicionar restituições de IR como "investimentos" (aportes anuais)
+  if (window.getDeclaracoesIRData) {
+    const declaracoes = window.getDeclaracoesIRData() || [];
+    declaracoes.forEach(declaracao => {
+      const resultadoTipo = declaracao.resultado_tipo || '';
+      const resultadoValor = parseFloat(declaracao.resultado_valor) || 0;
+      
+      if (resultadoTipo === 'restitui' && resultadoValor > 0) {
+        // Mapear pessoa_key para encontrar o nome
+        let titularNome = declaracao.pessoa_nome || 'Declarante';
+        let titularId = 'titular';
+        const pessoaKey = declaracao.pessoa_key || '';
+        
+        if (pessoaKey === 'cliente') {
+          titularId = 'titular';
+        } else if (pessoaKey === 'conjuge_cliente') {
+          titularId = 'conjuge';
+        } else if (pessoaKey.startsWith('conjuge_pessoa_')) {
+          const idx = pessoaKey.replace('conjuge_pessoa_', '');
+          titularId = `pessoa_${idx}_conjuge`;
+        } else if (pessoaKey.startsWith('pessoa_')) {
+          titularId = pessoaKey;
+        }
+        
+        const pessoa = pessoas.find(p => p.id === titularId);
+        if (pessoa) {
+          titularNome = pessoa.nome;
+        }
+        
+        investimentos.push({
+          nome: 'Restituição IR',
+          instituicao: 'Receita Federal',
+          valor: resultadoValor,
+          frequencia: 'ANUAL',
+          titular: titularNome,
+          titularId: titularId,
+          valorMensal: 0,
+          valorAnual: resultadoValor,
+          isRestituicaoIR: true
+        });
+      }
+    });
+  }
+  
   patrimonios.forEach(pl => {
     const aporteValor = parseFloat(pl.aporte_valor) || 0;
     const aporteFrequencia = pl.aporte_frequencia || 'NENHUM';
