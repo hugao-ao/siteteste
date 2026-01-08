@@ -17,15 +17,14 @@
     #main-content-mercado {
       flex-grow: 1;
       padding: 2rem;
-      margin-left: 250px; /* Default margin for expanded sidebar */
+      margin-left: 250px;
       transition: margin-left 0.3s ease;
       background-color: var(--bg-surface);
       color: var(--text-light);
     }
     #main-content-mercado.sidebar-collapsed {
-      margin-left: 60px; /* Margin for collapsed sidebar */
+      margin-left: 60px;
     }
-    /* --- End Sidebar Integration Styles --- */
     
     .mercado-container {
       background-color: var(--bg-card);
@@ -58,21 +57,27 @@
       margin-top: 1rem;
     }
     
-    .form-grid-7 {
+    .form-grid-9 {
       display: grid;
-      grid-template-columns: repeat(7, 1fr);
+      grid-template-columns: repeat(9, 1fr);
       gap: 0.8rem;
       margin-top: 1rem;
     }
     
-    @media (max-width: 1200px) {
-      .form-grid-7 {
-        grid-template-columns: repeat(4, 1fr);
+    @media (max-width: 1400px) {
+      .form-grid-9 {
+        grid-template-columns: repeat(5, 1fr);
       }
     }
     
-    @media (max-width: 800px) {
-      .form-grid-7 {
+    @media (max-width: 900px) {
+      .form-grid-9 {
+        grid-template-columns: repeat(3, 1fr);
+      }
+    }
+    
+    @media (max-width: 600px) {
+      .form-grid-9 {
         grid-template-columns: repeat(2, 1fr);
       }
     }
@@ -121,6 +126,11 @@
       border-color: #ffc107;
     }
     
+    .cdi-input-field {
+      background-color: #e8f5e9 !important;
+      border-color: #4caf50 !important;
+    }
+    
     .save-btn {
       background-color: var(--accent-color);
       color: white;
@@ -146,6 +156,59 @@
       box-shadow: none;
     }
     
+    .btn-secondary {
+      background-color: #6c757d;
+      color: white;
+      border: none;
+      padding: 0.6rem 1.2rem;
+      border-radius: 5px;
+      font-size: 0.9rem;
+      font-weight: bold;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      margin-right: 0.5rem;
+    }
+    
+    .btn-secondary:hover {
+      background-color: #5a6268;
+    }
+    
+    .btn-success {
+      background-color: #28a745;
+    }
+    
+    .btn-success:hover {
+      background-color: #218838;
+    }
+    
+    .btn-warning {
+      background-color: #ffc107;
+      color: #212529;
+    }
+    
+    .btn-warning:hover {
+      background-color: #e0a800;
+    }
+    
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    
+    .section-header h3 {
+      margin: 0;
+      border: none;
+      padding: 0;
+    }
+    
+    .section-buttons {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
     .last-update {
       background-color: #e3f2fd;
       border: 1px solid #2196f3;
@@ -157,7 +220,7 @@
     }
     
     .theme-planejamento .save-btn {
-      background-color: #006400; /* Verde Planejamento */
+      background-color: #006400;
     }
     
     .theme-planejamento .form-section h3 {
@@ -193,10 +256,16 @@
       font-size: 0.75rem !important;
       line-height: 1.2;
     }
+    
+    .info-text {
+      font-size: 0.8rem;
+      color: #666;
+      margin-top: 0.5rem;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
-  <!-- Sidebar será injetada aqui pelo sidebar.js -->
   <main id="main-content-mercado">
     <h1>Variáveis de Mercado</h1>
     
@@ -263,10 +332,64 @@
           </div>
         </div>
         
+        <!-- Seção de Multiplicadores % CDI por Perfil -->
+        <div class="form-section">
+          <div class="section-header">
+            <h3><i class="fas fa-sliders-h"></i> Multiplicadores % do CDI por Perfil</h3>
+            <div class="section-buttons">
+              <button type="button" id="btn-usar-padrao" class="btn-secondary btn-warning">
+                <i class="fas fa-undo"></i> Usar Padrão
+              </button>
+              <button type="button" id="btn-salvar-padrao" class="btn-secondary btn-success">
+                <i class="fas fa-save"></i> Salvar como Padrão
+              </button>
+            </div>
+          </div>
+          <p class="info-text">Defina o percentual do CDI que cada perfil de investidor deve render. Os cálculos de rentabilidade serão baseados nesses valores.</p>
+          <div class="form-grid-9">
+            <div class="form-group">
+              <label for="mult_sem_conhecimento" class="perfil-label">0. Sem Conhecimento (%)</label>
+              <input type="number" id="mult_sem_conhecimento" name="mult_sem_conhecimento" step="1" min="0" max="200" class="cdi-input-field" value="80">
+            </div>
+            <div class="form-group">
+              <label for="mult_iniciante" class="perfil-label">0.5. Iniciante (%)</label>
+              <input type="number" id="mult_iniciante" name="mult_iniciante" step="1" min="0" max="200" class="cdi-input-field" value="95">
+            </div>
+            <div class="form-group">
+              <label for="mult_ultra_cons" class="perfil-label">1. Ultra-Conservador (%)</label>
+              <input type="number" id="mult_ultra_cons" name="mult_ultra_cons" step="1" min="0" max="200" class="cdi-input-field" value="100">
+            </div>
+            <div class="form-group">
+              <label for="mult_cons" class="perfil-label">2. Conservador (%)</label>
+              <input type="number" id="mult_cons" name="mult_cons" step="1" min="0" max="200" class="cdi-input-field" value="103">
+            </div>
+            <div class="form-group">
+              <label for="mult_cons_mod" class="perfil-label">3. Conservador-Moderado (%)</label>
+              <input type="number" id="mult_cons_mod" name="mult_cons_mod" step="1" min="0" max="200" class="cdi-input-field" value="106">
+            </div>
+            <div class="form-group">
+              <label for="mult_mod" class="perfil-label">4. Moderado (%)</label>
+              <input type="number" id="mult_mod" name="mult_mod" step="1" min="0" max="200" class="cdi-input-field" value="110">
+            </div>
+            <div class="form-group">
+              <label for="mult_mod_arro" class="perfil-label">5. Moderado-Arrojado (%)</label>
+              <input type="number" id="mult_mod_arro" name="mult_mod_arro" step="1" min="0" max="200" class="cdi-input-field" value="115">
+            </div>
+            <div class="form-group">
+              <label for="mult_arro" class="perfil-label">6. Arrojado (%)</label>
+              <input type="number" id="mult_arro" name="mult_arro" step="1" min="0" max="200" class="cdi-input-field" value="120">
+            </div>
+            <div class="form-group">
+              <label for="mult_ultra_arro" class="perfil-label">7. Ultra-Arrojado (%)</label>
+              <input type="number" id="mult_ultra_arro" name="mult_ultra_arro" step="1" min="0" max="200" class="cdi-input-field" value="130">
+            </div>
+          </div>
+        </div>
+        
         <!-- Seção de Rentabilidades 10 anos - 9 Perfis -->
         <div class="form-section">
           <h3><i class="fas fa-chart-line"></i> Rentabilidades 10 anos (%) - 9 Perfis</h3>
-          <div class="form-grid-7">
+          <div class="form-grid-9">
             <div class="form-group">
               <label for="rent_sem_conhecimento_10_anos" class="perfil-label">0. Sem Conhecimento</label>
               <input type="number" id="rent_sem_conhecimento_10_anos" name="rent_sem_conhecimento_10_anos" class="calculated-field" disabled readonly>
@@ -309,7 +432,7 @@
         <!-- Seção de Rentabilidades Atuais - 9 Perfis -->
         <div class="form-section">
           <h3><i class="fas fa-chart-bar"></i> Rentabilidades Atuais (%) - 9 Perfis</h3>
-          <div class="form-grid-7">
+          <div class="form-grid-9">
             <div class="form-group">
               <label for="rent_sem_conhecimento" class="perfil-label">0. Sem Conhecimento</label>
               <input type="number" id="rent_sem_conhecimento" name="rent_sem_conhecimento" class="calculated-field" disabled readonly>
@@ -360,7 +483,6 @@
     import { injectSidebar } from './sidebar.js';
     import { supabase } from './supabase.js';
     
-    // Injetar a sidebar com contexto do projeto Planejamento
     injectSidebar("main-content-mercado", "Planejamento");
     
     // Elementos DOM
@@ -371,6 +493,8 @@
     const lastUpdateDate = document.getElementById('last-update-date');
     const mercadoForm = document.getElementById('mercado-form');
     const saveBtn = document.getElementById('save-btn');
+    const btnUsarPadrao = document.getElementById('btn-usar-padrao');
+    const btnSalvarPadrao = document.getElementById('btn-salvar-padrao');
     
     // Campos de entrada
     const selicInput = document.getElementById('selic');
@@ -384,6 +508,17 @@
     const cdiAaMedio10Input = document.getElementById('cdi_aa_medio_10_anos');
     const ipcaAaMedio10Input = document.getElementById('ipca_aa_medio_10_anos');
     const rentMensalAposentadoriaInput = document.getElementById('rent_mensal_aposentadoria');
+    
+    // Campos de multiplicadores % CDI
+    const multSemConhecimentoInput = document.getElementById('mult_sem_conhecimento');
+    const multInicianteInput = document.getElementById('mult_iniciante');
+    const multUltraConsInput = document.getElementById('mult_ultra_cons');
+    const multConsInput = document.getElementById('mult_cons');
+    const multConsModInput = document.getElementById('mult_cons_mod');
+    const multModInput = document.getElementById('mult_mod');
+    const multModArroInput = document.getElementById('mult_mod_arro');
+    const multArroInput = document.getElementById('mult_arro');
+    const multUltraArroInput = document.getElementById('mult_ultra_arro');
     
     // Rentabilidades 10 anos - 9 Perfis
     const rentSemConhecimento10Input = document.getElementById('rent_sem_conhecimento_10_anos');
@@ -407,6 +542,20 @@
     const rentArroInput = document.getElementById('rent_arro');
     const rentUltraArroInput = document.getElementById('rent_ultra_arro');
     
+    // Valores padrão dos multiplicadores (realistas)
+    // Ultra-Conservador = 100% CDI como base
+    const MULTIPLICADORES_PADRAO = {
+      sem_conhecimento: 80,   // 80% CDI - Poupança e afins
+      iniciante: 95,          // 95% CDI - CDBs de bancos grandes
+      ultra_cons: 100,        // 100% CDI - Tesouro Selic, CDBs 100%
+      cons: 103,              // 103% CDI - CDBs acima de 100%, LCIs/LCAs
+      cons_mod: 106,          // 106% CDI - Pequena exposição RV (até 10%)
+      mod: 110,               // 110% CDI - Exposição moderada (até 30% RV)
+      mod_arro: 115,          // 115% CDI - Exposição significativa (até 50% RV)
+      arro: 120,              // 120% CDI - Alta exposição (até 70% RV)
+      ultra_arro: 130         // 130% CDI - Exposição máxima (até 95% RV)
+    };
+    
     // Funções utilitárias
     function showError(message) {
       errorContainer.innerHTML = `<div class="error-message"><i class="fas fa-exclamation-triangle"></i> ${message}</div>`;
@@ -423,19 +572,20 @@
       successContainer.innerHTML = '';
     }
     
-    // Multiplicadores para os 9 perfis baseados no CDI
-    // Estimativas realistas baseadas na exposição a renda variável de cada perfil
-    const PERFIL_MULTIPLICADORES = {
-      sem_conhecimento: 0.80, // 80% CDI - Sem conhecimento financeiro
-      iniciante: 0.95,        // 95% CDI - Iniciante em investimentos
-      ultra_cons: 0.97,       // 97% CDI - Só renda fixa de baixíssimo risco
-      cons: 1.00,             // 100% CDI - Renda fixa tradicional
-      cons_mod: 1.03,         // 103% CDI - Pequena exposição (até 10% RV)
-      mod: 1.08,              // 108% CDI - Exposição moderada (até 30% RV)
-      mod_arro: 1.15,         // 115% CDI - Exposição significativa (até 50% RV)
-      arro: 1.25,             // 125% CDI - Alta exposição (até 70% RV)
-      ultra_arro: 1.40        // 140% CDI - Exposição máxima (até 95% RV)
-    };
+    // Função para obter multiplicadores atuais dos inputs
+    function getMultiplicadores() {
+      return {
+        sem_conhecimento: parseFloat(multSemConhecimentoInput.value) / 100 || 0.80,
+        iniciante: parseFloat(multInicianteInput.value) / 100 || 0.95,
+        ultra_cons: parseFloat(multUltraConsInput.value) / 100 || 1.00,
+        cons: parseFloat(multConsInput.value) / 100 || 1.03,
+        cons_mod: parseFloat(multConsModInput.value) / 100 || 1.06,
+        mod: parseFloat(multModInput.value) / 100 || 1.10,
+        mod_arro: parseFloat(multModArroInput.value) / 100 || 1.15,
+        arro: parseFloat(multArroInput.value) / 100 || 1.20,
+        ultra_arro: parseFloat(multUltraArroInput.value) / 100 || 1.30
+      };
+    }
     
     // Função para calcular todas as variáveis automaticamente
     function calculateVariables() {
@@ -445,49 +595,114 @@
       const ipca120 = parseFloat(ipca120Input.value) || 0;
       const rentAnualAposentadoria = parseFloat(rentAnualAposentadoriaInput.value) || 0;
       
+      // Obter multiplicadores dos inputs
+      const mult = getMultiplicadores();
+      
       // 1. CDI = SELIC - 0,1%
       const cdi = selic - 0.1;
       cdiInput.value = cdi.toFixed(4);
       
-      // 2. CDI a.a. Médio 10 anos = POTÊNCIA(1+[CDI 120 meses]/100;1/10)-1) * 100
+      // 2. CDI a.a. Médio 10 anos
       const cdiAaMedio10 = (Math.pow(1 + (cdi120 / 100), 1/10) - 1) * 100;
       cdiAaMedio10Input.value = cdiAaMedio10.toFixed(4);
       
-      // 3. IPCA a.a. Médio 10 anos = POTÊNCIA(1+[IPCA 120 meses]/100;1/10)-1) * 100
+      // 3. IPCA a.a. Médio 10 anos
       const ipcaAaMedio10 = (Math.pow(1 + (ipca120 / 100), 1/10) - 1) * 100;
       ipcaAaMedio10Input.value = ipcaAaMedio10.toFixed(4);
       
-      // 4. Rent Mensal Aposentadoria = ((1 + rentAnual/100)^(1/12) - 1) * 100
+      // 4. Rent Mensal Aposentadoria
       const rentMensalAposentadoria = (Math.pow(1 + (rentAnualAposentadoria / 100), 1/12) - 1) * 100;
       rentMensalAposentadoriaInput.value = rentMensalAposentadoria.toFixed(4);
       
       // Rentabilidades 10 anos - 9 Perfis
-      rentSemConhecimento10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.sem_conhecimento).toFixed(4);
-      rentIniciante10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.iniciante).toFixed(4);
-      rentUltraCons10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.ultra_cons).toFixed(4);
-      rentCons10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.cons).toFixed(4);
-      rentConsMod10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.cons_mod).toFixed(4);
-      rentMod10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.mod).toFixed(4);
-      rentModArro10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.mod_arro).toFixed(4);
-      rentArro10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.arro).toFixed(4);
-      rentUltraArro10Input.value = (cdiAaMedio10 * PERFIL_MULTIPLICADORES.ultra_arro).toFixed(4);
+      rentSemConhecimento10Input.value = (cdiAaMedio10 * mult.sem_conhecimento).toFixed(4);
+      rentIniciante10Input.value = (cdiAaMedio10 * mult.iniciante).toFixed(4);
+      rentUltraCons10Input.value = (cdiAaMedio10 * mult.ultra_cons).toFixed(4);
+      rentCons10Input.value = (cdiAaMedio10 * mult.cons).toFixed(4);
+      rentConsMod10Input.value = (cdiAaMedio10 * mult.cons_mod).toFixed(4);
+      rentMod10Input.value = (cdiAaMedio10 * mult.mod).toFixed(4);
+      rentModArro10Input.value = (cdiAaMedio10 * mult.mod_arro).toFixed(4);
+      rentArro10Input.value = (cdiAaMedio10 * mult.arro).toFixed(4);
+      rentUltraArro10Input.value = (cdiAaMedio10 * mult.ultra_arro).toFixed(4);
       
       // Rentabilidades atuais - 9 Perfis
-      rentSemConhecimentoInput.value = (cdi * PERFIL_MULTIPLICADORES.sem_conhecimento).toFixed(4);
-      rentInicianteInput.value = (cdi * PERFIL_MULTIPLICADORES.iniciante).toFixed(4);
-      rentUltraConsInput.value = (cdi * PERFIL_MULTIPLICADORES.ultra_cons).toFixed(4);
-      rentConsInput.value = (cdi * PERFIL_MULTIPLICADORES.cons).toFixed(4);
-      rentConsModInput.value = (cdi * PERFIL_MULTIPLICADORES.cons_mod).toFixed(4);
-      rentModInput.value = (cdi * PERFIL_MULTIPLICADORES.mod).toFixed(4);
-      rentModArroInput.value = (cdi * PERFIL_MULTIPLICADORES.mod_arro).toFixed(4);
-      rentArroInput.value = (cdi * PERFIL_MULTIPLICADORES.arro).toFixed(4);
-      rentUltraArroInput.value = (cdi * PERFIL_MULTIPLICADORES.ultra_arro).toFixed(4);
+      rentSemConhecimentoInput.value = (cdi * mult.sem_conhecimento).toFixed(4);
+      rentInicianteInput.value = (cdi * mult.iniciante).toFixed(4);
+      rentUltraConsInput.value = (cdi * mult.ultra_cons).toFixed(4);
+      rentConsInput.value = (cdi * mult.cons).toFixed(4);
+      rentConsModInput.value = (cdi * mult.cons_mod).toFixed(4);
+      rentModInput.value = (cdi * mult.mod).toFixed(4);
+      rentModArroInput.value = (cdi * mult.mod_arro).toFixed(4);
+      rentArroInput.value = (cdi * mult.arro).toFixed(4);
+      rentUltraArroInput.value = (cdi * mult.ultra_arro).toFixed(4);
     }
     
-    // Adicionar listeners para recalcular quando os valores de entrada mudarem
-    [selicInput, cdi120Input, ipcaInput, ipca120Input, rentAnualAposentadoriaInput].forEach(input => {
+    // Função para usar valores padrão
+    function usarPadrao() {
+      multSemConhecimentoInput.value = MULTIPLICADORES_PADRAO.sem_conhecimento;
+      multInicianteInput.value = MULTIPLICADORES_PADRAO.iniciante;
+      multUltraConsInput.value = MULTIPLICADORES_PADRAO.ultra_cons;
+      multConsInput.value = MULTIPLICADORES_PADRAO.cons;
+      multConsModInput.value = MULTIPLICADORES_PADRAO.cons_mod;
+      multModInput.value = MULTIPLICADORES_PADRAO.mod;
+      multModArroInput.value = MULTIPLICADORES_PADRAO.mod_arro;
+      multArroInput.value = MULTIPLICADORES_PADRAO.arro;
+      multUltraArroInput.value = MULTIPLICADORES_PADRAO.ultra_arro;
+      calculateVariables();
+      showSuccess('Valores padrão aplicados!');
+    }
+    
+    // Função para salvar como padrão (localStorage)
+    function salvarComoPadrao() {
+      const customPadrao = {
+        sem_conhecimento: parseInt(multSemConhecimentoInput.value),
+        iniciante: parseInt(multInicianteInput.value),
+        ultra_cons: parseInt(multUltraConsInput.value),
+        cons: parseInt(multConsInput.value),
+        cons_mod: parseInt(multConsModInput.value),
+        mod: parseInt(multModInput.value),
+        mod_arro: parseInt(multModArroInput.value),
+        arro: parseInt(multArroInput.value),
+        ultra_arro: parseInt(multUltraArroInput.value)
+      };
+      localStorage.setItem('multiplicadores_padrao_custom', JSON.stringify(customPadrao));
+      showSuccess('Valores salvos como padrão personalizado!');
+    }
+    
+    // Função para carregar padrão personalizado
+    function carregarPadraoPersonalizado() {
+      const saved = localStorage.getItem('multiplicadores_padrao_custom');
+      if (saved) {
+        try {
+          const custom = JSON.parse(saved);
+          multSemConhecimentoInput.value = custom.sem_conhecimento || MULTIPLICADORES_PADRAO.sem_conhecimento;
+          multInicianteInput.value = custom.iniciante || MULTIPLICADORES_PADRAO.iniciante;
+          multUltraConsInput.value = custom.ultra_cons || MULTIPLICADORES_PADRAO.ultra_cons;
+          multConsInput.value = custom.cons || MULTIPLICADORES_PADRAO.cons;
+          multConsModInput.value = custom.cons_mod || MULTIPLICADORES_PADRAO.cons_mod;
+          multModInput.value = custom.mod || MULTIPLICADORES_PADRAO.mod;
+          multModArroInput.value = custom.mod_arro || MULTIPLICADORES_PADRAO.mod_arro;
+          multArroInput.value = custom.arro || MULTIPLICADORES_PADRAO.arro;
+          multUltraArroInput.value = custom.ultra_arro || MULTIPLICADORES_PADRAO.ultra_arro;
+          return true;
+        } catch (e) {
+          console.error('Erro ao carregar padrão personalizado:', e);
+        }
+      }
+      return false;
+    }
+    
+    // Adicionar listeners para recalcular quando os valores mudarem
+    [selicInput, cdi120Input, ipcaInput, ipca120Input, rentAnualAposentadoriaInput,
+     multSemConhecimentoInput, multInicianteInput, multUltraConsInput, multConsInput,
+     multConsModInput, multModInput, multModArroInput, multArroInput, multUltraArroInput
+    ].forEach(input => {
       input.addEventListener('input', calculateVariables);
     });
+    
+    // Listeners para botões
+    btnUsarPadrao.addEventListener('click', usarPadrao);
+    btnSalvarPadrao.addEventListener('click', salvarComoPadrao);
     
     // Função para carregar dados existentes
     async function loadExistingData() {
@@ -503,12 +718,28 @@
         if (data && data.length > 0) {
           const latest = data[0];
           
-          // Preencher campos de entrada (valores já estão em percentual no banco)
+          // Preencher campos de entrada
           selicInput.value = parseFloat(latest.selic || 0).toFixed(4);
           cdi120Input.value = parseFloat(latest.cdi_120_meses || 0).toFixed(4);
           ipcaInput.value = parseFloat(latest.ipca || 0).toFixed(4);
           ipca120Input.value = parseFloat(latest.ipca_120_meses || 0).toFixed(4);
           rentAnualAposentadoriaInput.value = parseFloat(latest.rent_anual_aposentadoria || 0).toFixed(4);
+          
+          // Carregar multiplicadores salvos ou usar padrão personalizado
+          if (latest.mult_sem_conhecimento !== null && latest.mult_sem_conhecimento !== undefined) {
+            multSemConhecimentoInput.value = latest.mult_sem_conhecimento;
+            multInicianteInput.value = latest.mult_iniciante;
+            multUltraConsInput.value = latest.mult_ultra_cons;
+            multConsInput.value = latest.mult_cons;
+            multConsModInput.value = latest.mult_cons_mod;
+            multModInput.value = latest.mult_mod;
+            multModArroInput.value = latest.mult_mod_arro;
+            multArroInput.value = latest.mult_arro;
+            multUltraArroInput.value = latest.mult_ultra_arro;
+          } else if (!carregarPadraoPersonalizado()) {
+            // Se não tem dados salvos nem padrão personalizado, usar padrão
+            usarPadrao();
+          }
           
           // Recalcular variáveis
           calculateVariables();
@@ -517,10 +748,19 @@
           const updateDate = new Date(latest.data_ultima_atualizacao);
           lastUpdateDate.textContent = updateDate.toLocaleString('pt-BR');
           lastUpdateInfo.style.display = 'block';
+        } else {
+          // Sem dados, carregar padrão personalizado ou usar padrão
+          if (!carregarPadraoPersonalizado()) {
+            usarPadrao();
+          }
         }
       } catch (error) {
         console.error('Erro ao carregar dados:', error);
         showError('Erro ao carregar dados existentes: ' + error.message);
+        // Em caso de erro, usar padrão
+        if (!carregarPadraoPersonalizado()) {
+          usarPadrao();
+        }
       }
     }
     
@@ -538,7 +778,6 @@
       saveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Salvando...';
       
       try {
-        // Salvar valores diretamente como percentuais (ex: 14.75 para 14,75%)
         const dataToSave = {
           selic: parseFloat(selicInput.value),
           cdi_120_meses: parseFloat(cdi120Input.value),
@@ -549,6 +788,16 @@
           ipca_aa_medio_10_anos: parseFloat(ipcaAaMedio10Input.value),
           rent_anual_aposentadoria: parseFloat(rentAnualAposentadoriaInput.value),
           rent_mensal_aposentadoria: parseFloat(rentMensalAposentadoriaInput.value),
+          // Multiplicadores % CDI
+          mult_sem_conhecimento: parseInt(multSemConhecimentoInput.value),
+          mult_iniciante: parseInt(multInicianteInput.value),
+          mult_ultra_cons: parseInt(multUltraConsInput.value),
+          mult_cons: parseInt(multConsInput.value),
+          mult_cons_mod: parseInt(multConsModInput.value),
+          mult_mod: parseInt(multModInput.value),
+          mult_mod_arro: parseInt(multModArroInput.value),
+          mult_arro: parseInt(multArroInput.value),
+          mult_ultra_arro: parseInt(multUltraArroInput.value),
           // Rentabilidades 10 anos - 9 Perfis
           rent_sem_conhecimento_10_anos: parseFloat(rentSemConhecimento10Input.value),
           rent_iniciante_10_anos: parseFloat(rentIniciante10Input.value),
@@ -581,7 +830,6 @@
         
         showSuccess('Variáveis de mercado salvas com sucesso!');
         
-        // Atualizar data da última atualização
         const updateDate = new Date();
         lastUpdateDate.textContent = updateDate.toLocaleString('pt-BR');
         lastUpdateInfo.style.display = 'block';
@@ -597,7 +845,6 @@
     
     // Inicialização
     document.addEventListener("DOMContentLoaded", async () => {
-      // Verificar se é admin
       const userLevel = sessionStorage.getItem("nivel");
       if (userLevel !== 'admin') {
         showError("Acesso não autorizado.");
@@ -607,12 +854,9 @@
         return;
       }
       
-      // Aplicar tema do projeto Planejamento
       const mainContent = document.getElementById('main-content-mercado');
       if (mainContent) {
         mainContent.classList.add('theme-planejamento');
-        
-        // Se a sidebar já foi injetada, tenta aplicar o tema nela também
         const sidebar = document.getElementById('sidebar');
         if(sidebar) {
           sidebar.classList.remove('theme-admin', 'theme-argos', 'theme-hvc', 'theme-planejamento', 'theme-default');
@@ -620,14 +864,11 @@
         }
       }
       
-      // Carregar dados existentes
       await loadExistingData();
       
-      // Mostrar formulário e esconder loading
       loadingEl.style.display = 'none';
       mercadoForm.style.display = 'block';
       
-      // Adicionar listener para o formulário
       mercadoForm.addEventListener('submit', saveData);
     });
   </script>
