@@ -210,11 +210,30 @@ function formatarInputMoedaObj(input, objetivoId, campo) {
   input.value = 'R$ ' + valor;
   
   // Atualizar o objetivo
-  const valorNumerico = parseMoedaObj(input.value);
+  let valorNumerico = parseMoedaObj(input.value);
   
   // Atualizar objetivo sem re-renderizar
   const objetivo = objetivos.find(o => o.id === objetivoId);
   if (objetivo) {
+    // Validação para valor_inicial: não pode ser maior que saldo disponível
+    if (campo === 'valor_inicial' && objetivo.tipo !== 'aposentadoria') {
+      const patrimonio = calcularPatrimonioLiquido();
+      const valorAlocadoOutros = calcularValorInicialAlocado(objetivoId);
+      const saldoDisponivel = patrimonio.excetoAposentadoria - valorAlocadoOutros;
+      
+      if (valorNumerico > saldoDisponivel) {
+        // Limitar ao saldo disponível
+        valorNumerico = Math.max(0, saldoDisponivel);
+        input.value = formatarMoedaObj(valorNumerico);
+        
+        // Mostrar alerta visual
+        input.style.borderColor = '#dc3545';
+        setTimeout(() => {
+          input.style.borderColor = 'var(--border-color)';
+        }, 2000);
+      }
+    }
+    
     objetivo[campo] = valorNumerico;
     
     // Atualizar displays de patrimônio em tempo real
@@ -226,7 +245,8 @@ function formatarInputMoedaObj(input, objetivoId, campo) {
 function atualizarPatrimonioObjetivos() {
   const patrimonio = calcularPatrimonioLiquido();
   const valorAlocado = calcularValorInicialAlocado();
-  const saldoRestante = patrimonio.excetoAposentadoria - valorAlocado;
+  // Saldo não pode ser negativo - se for, significa que os valores iniciais precisam ser ajustados
+  const saldoRestante = Math.max(0, patrimonio.excetoAposentadoria - valorAlocado);
   
   // Atualizar displays
   const displayPatrimonio = document.getElementById('display-patrimonio-liquido');
@@ -341,10 +361,14 @@ function calcularIdade(dataNascimento) {
   return idade || 30;
 }
 
-// Calcular patrimônio líquido (exceto aposentadoria)
+// Calcular patrimônio líquido baseado na Finalidade
+// APOSENTADORIA -> soma para aposentadoria
+// RESERVA_OBJETIVOS -> soma para objetivos
+// RESERVA_EMERGENCIA e SEM_FINALIDADE -> não conta para nenhum
 function calcularPatrimonioLiquido() {
-  let patrimonioTotal = 0;
   let patrimonioAposentadoria = 0;
+  let patrimonioObjetivos = 0;
+  let patrimonioTotal = 0;
   
   if (window.getPatrimoniosLiquidosData) {
     const patrimonios = window.getPatrimoniosLiquidosData() || [];
@@ -352,36 +376,65 @@ function calcularPatrimonioLiquido() {
       const valor = parseFloat(p.valor) || 0;
       patrimonioTotal += valor;
       
-      if (p.finalidade === 'aposentadoria' || p.finalidade === 'Aposentadoria') {
+      if (p.finalidade === 'APOSENTADORIA') {
         patrimonioAposentadoria += valor;
+      } else if (p.finalidade === 'RESERVA_OBJETIVOS') {
+        patrimonioObjetivos += valor;
       }
+      // RESERVA_EMERGENCIA e SEM_FINALIDADE não são contabilizados
     });
   }
   
   return {
     total: patrimonioTotal,
     aposentadoria: patrimonioAposentadoria,
-    excetoAposentadoria: patrimonioTotal - patrimonioAposentadoria
+    objetivos: patrimonioObjetivos,
+    excetoAposentadoria: patrimonioObjetivos // Apenas RESERVA_OBJETIVOS disponível para objetivos
   };
 }
 
 // Calcular patrimônio destinado para aposentadoria por pessoa
+// Divide o valor igualmente entre os donos se houver múltiplos
 function calcularPatrimonioAposentadoriaPorPessoa(pessoaId) {
   let patrimonioAposentadoria = 0;
   
   if (window.getPatrimoniosLiquidosData) {
     const patrimonios = window.getPatrimoniosLiquidosData() || [];
     patrimonios.forEach(p => {
-      if ((p.finalidade === 'aposentadoria' || p.finalidade === 'Aposentadoria') && 
-          p.donos && p.donos.includes(pessoaId)) {
-        const valor = parseFloat(p.valor) || 0;
-        const qtdDonos = p.donos.length || 1;
-        patrimonioAposentadoria += valor / qtdDonos;
+      if (p.finalidade === 'APOSENTADORIA' && p.donos && p.donos.length > 0) {
+        // Verificar se a pessoa é uma das donas
+        if (p.donos.includes(pessoaId)) {
+          const valor = parseFloat(p.valor) || 0;
+          const qtdDonos = p.donos.length;
+          patrimonioAposentadoria += valor / qtdDonos;
+        }
       }
     });
   }
   
   return patrimonioAposentadoria;
+}
+
+// Calcular patrimônio destinado para objetivos por pessoa
+// Divide o valor igualmente entre os donos se houver múltiplos
+function calcularPatrimonioObjetivosPorPessoa(pessoaId) {
+  let patrimonioObjetivos = 0;
+  
+  if (window.getPatrimoniosLiquidosData) {
+    const patrimonios = window.getPatrimoniosLiquidosData() || [];
+    patrimonios.forEach(p => {
+      if (p.finalidade === 'RESERVA_OBJETIVOS' && p.donos && p.donos.length > 0) {
+        // Verificar se a pessoa é uma das donas
+        if (p.donos.includes(pessoaId)) {
+          const valor = parseFloat(p.valor) || 0;
+          const qtdDonos = p.donos.length;
+          patrimonioObjetivos += valor / qtdDonos;
+        }
+      }
+    });
+  }
+  
+  return patrimonioObjetivos;
 }
 
 // Calcular renda anual de uma pessoa
