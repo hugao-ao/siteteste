@@ -410,7 +410,8 @@ function calcularPatrimonioParaObjetivos() {
     const patrimonios = window.getPatrimoniosLiquidosData() || [];
     patrimonios.forEach(p => {
       if (p.finalidade === 'RESERVA_OBJETIVOS') {
-        const valor = parseFloat(p.valor) || 0;
+        // Usar valor_atual que é o campo correto do patrimônio líquido
+        const valor = parseFloat(p.valor_atual) || 0;
         total += valor;
       }
     });
@@ -421,15 +422,23 @@ function calcularPatrimonioParaObjetivos() {
 
 // Calcular patrimônio por pessoa e finalidade
 // Divide o valor igualmente entre os donos se houver múltiplos
+// NOTA: donos no patrimônio líquido são armazenados por NOME, não por ID
 function calcularPatrimonioPorPessoaEFinalidade(pessoaId, finalidade) {
   let total = 0;
+  
+  // Primeiro, obter o NOME da pessoa pelo ID
+  const pessoas = getPessoasDisponiveis();
+  const pessoa = pessoas.find(p => p.id === pessoaId);
+  const nomePessoa = pessoa ? pessoa.nome : pessoaId;
   
   if (window.getPatrimoniosLiquidosData) {
     const patrimonios = window.getPatrimoniosLiquidosData() || [];
     patrimonios.forEach(p => {
       if (p.finalidade === finalidade && p.donos && p.donos.length > 0) {
-        if (p.donos.includes(pessoaId)) {
-          const valor = parseFloat(p.valor) || 0;
+        // Comparar por NOME (donos contém nomes, não IDs)
+        if (p.donos.includes(nomePessoa)) {
+          // Usar valor_atual que é o campo correto
+          const valor = parseFloat(p.valor_atual) || 0;
           const qtdDonos = p.donos.length;
           total += valor / qtdDonos;
         }
@@ -463,27 +472,39 @@ function calcularSaldoDisponivelParaObjetivo(objetivoId) {
 // CÁLCULOS DE APORTES DO FLUXO DE CAIXA
 // ========================================
 
-// Obter aportes mensais e anuais de uma pessoa do fluxo de caixa
+// Obter aportes mensais e anuais de uma pessoa
+// Busca do PATRIMÔNIO LÍQUIDO (campos: aporte_valor, aporte_frequencia, donos)
 function getAportesPessoa(pessoaId) {
   let aporteMensal = 0;
   let aporteAnual = 0;
   
-  if (window.getFluxoCaixaData) {
-    const fluxoData = window.getFluxoCaixaData();
-    const receitas = fluxoData.receitas || [];
+  // Obter o NOME da pessoa pelo ID
+  const pessoas = getPessoasDisponiveis();
+  const pessoa = pessoas.find(p => p.id === pessoaId);
+  const nomePessoa = pessoa ? pessoa.nome : pessoaId;
+  
+  if (window.getPatrimoniosLiquidosData) {
+    const patrimonios = window.getPatrimoniosLiquidosData() || [];
     
-    // Filtrar receitas que são aportes/investimentos da pessoa
-    receitas.forEach(r => {
-      const titularReceita = r.titular || 'titular';
-      if (titularReceita === pessoaId || (pessoaId === 'titular' && titularReceita === 'titular')) {
-        // Verificar se é um aporte (categoria de investimento ou similar)
-        const categoria = (r.categoria || '').toLowerCase();
-        if (categoria.includes('aporte') || categoria.includes('investimento') || categoria.includes('poupança')) {
-          const valor = parseFloat(r.valor) || 0;
-          if (r.und_recorrencia === 'ano') {
-            aporteAnual += valor;
-          } else if (r.und_recorrencia === 'mes') {
-            aporteMensal += valor;
+    patrimonios.forEach(pl => {
+      const aporteValor = parseFloat(pl.aporte_valor) || 0;
+      const aporteFrequencia = pl.aporte_frequencia || 'NENHUM';
+      const donos = pl.donos || [];
+      
+      // Verificar se a pessoa é dona deste patrimônio e se tem aporte
+      if (aporteValor > 0 && aporteFrequencia !== 'NENHUM' && donos.length > 0) {
+        // Comparar por NOME (donos contém nomes)
+        if (donos.includes(nomePessoa)) {
+          // Dividir igualmente entre os donos
+          const aporteValorPorDono = aporteValor / donos.length;
+          
+          if (aporteFrequencia === 'MENSAL') {
+            aporteMensal += aporteValorPorDono;
+            // Anual: aporte mensal × 12
+            aporteAnual += aporteValorPorDono * 12;
+          } else if (aporteFrequencia === 'ANUAL') {
+            // Aporte anual: NÃO entra no cálculo mensal
+            aporteAnual += aporteValorPorDono;
           }
         }
       }
