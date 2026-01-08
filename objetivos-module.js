@@ -200,13 +200,20 @@ function parseMoedaObj(str) {
 }
 
 function formatarInputMoedaObj(input, objetivoId, field) {
-  let valor = input.value.replace(/\D/g, '');
-  valor = (parseInt(valor) / 100).toFixed(2);
-  valor = valor.replace('.', ',');
-  valor = valor.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-  input.value = 'R$ ' + valor;
+  // Remover tudo que não é dígito
+  let valorStr = input.value.replace(/\D/g, '');
   
-  const valorNumerico = parseMoedaObj(input.value);
+  console.log('formatarInputMoedaObj - input.value:', input.value, '- valorStr:', valorStr);
+  
+  // Se vazio, definir como 0
+  if (!valorStr || valorStr === '') {
+    valorStr = '0';
+  }
+  
+  // Converter para número (centavos) e depois para reais
+  let valorNumerico = parseInt(valorStr, 10) / 100;
+  
+  console.log('formatarInputMoedaObj - valorNumerico:', valorNumerico, '- field:', field);
   
   // Validação para valor inicial - não pode exceder saldo disponível
   if (field === 'valor_inicial') {
@@ -215,14 +222,16 @@ function formatarInputMoedaObj(input, objetivoId, field) {
     const saldoDisponivel = Math.max(0, patrimonioObjetivos - valorAlocadoOutros);
     
     if (valorNumerico > saldoDisponivel) {
-      input.value = formatarMoedaObj(saldoDisponivel).replace('R$', 'R$ ');
+      valorNumerico = saldoDisponivel;
       input.style.borderColor = '#dc3545';
       setTimeout(() => { input.style.borderColor = ''; }, 2000);
-      updateObjetivoField(objetivoId, field, saldoDisponivel);
-      return;
     }
   }
   
+  // Formatar o valor para exibição
+  input.value = formatarMoedaObj(valorNumerico).replace('R$', 'R$ ');
+  
+  // Atualizar o campo no objeto
   updateObjetivoField(objetivoId, field, valorNumerico);
   
   // Atualizar displays dinâmicos se for valor_inicial
@@ -432,6 +441,36 @@ function getAportesPessoa(pessoaId) {
           } else if (aporteFrequencia === 'ANUAL') {
             aporteAnual += aporteValorPorDono;
           }
+        }
+      }
+    });
+  }
+  
+  // Adicionar restituições de IR como aportes anuais
+  if (window.getDeclaracoesIRData) {
+    const declaracoes = window.getDeclaracoesIRData() || [];
+    declaracoes.forEach(declaracao => {
+      const resultadoTipo = declaracao.resultado_tipo || '';
+      const resultadoValor = parseFloat(declaracao.resultado_valor) || 0;
+      
+      if (resultadoTipo === 'restitui' && resultadoValor > 0) {
+        // Mapear pessoa_key para o ID usado nos objetivos
+        let titularId = 'titular';
+        const pessoaKey = declaracao.pessoa_key || '';
+        
+        if (pessoaKey === 'cliente') {
+          titularId = 'titular';
+        } else if (pessoaKey === 'conjuge_cliente') {
+          titularId = 'conjuge';
+        } else if (pessoaKey.startsWith('conjuge_pessoa_')) {
+          const idx = pessoaKey.replace('conjuge_pessoa_', '');
+          titularId = `pessoa_${idx}_conjuge`;
+        } else if (pessoaKey.startsWith('pessoa_')) {
+          titularId = pessoaKey;
+        }
+        
+        if (titularId === pessoaId) {
+          aporteAnual += resultadoValor;
         }
       }
     });
@@ -1630,19 +1669,24 @@ function getObjetivosData() {
 }
 
 function setObjetivosData(data) {
+  console.log('setObjetivosData - dados recebidos:', JSON.stringify(data));
   if (Array.isArray(data)) {
     // Garantir que os valores numéricos sejam parseados corretamente
-    objetivos = data.map(obj => ({
-      ...obj,
-      valor_inicial: parseFloat(obj.valor_inicial) || 0,
-      valor_final: parseFloat(obj.valor_final) || 0,
-      meta_acumulo: parseFloat(obj.meta_acumulo) || 0,
-      renda_anual: parseFloat(obj.renda_anual) || 0,
-      prazo_meses: parseInt(obj.prazo_meses) || 60,
-      prazo_idade: parseInt(obj.prazo_idade) || 65,
-      prioridade: parseInt(obj.prioridade) || 1,
-      id: parseInt(obj.id) || 0
-    }));
+    objetivos = data.map(obj => {
+      const parsed = {
+        ...obj,
+        valor_inicial: parseFloat(obj.valor_inicial) || 0,
+        valor_final: parseFloat(obj.valor_final) || 0,
+        meta_acumulo: parseFloat(obj.meta_acumulo) || 0,
+        renda_anual: parseFloat(obj.renda_anual) || 0,
+        prazo_meses: parseInt(obj.prazo_meses) || 60,
+        prazo_idade: parseInt(obj.prazo_idade) || 65,
+        prioridade: parseInt(obj.prioridade) || 1,
+        id: parseInt(obj.id) || 0
+      };
+      console.log('Objetivo parseado:', obj.descricao, '- valor_inicial original:', obj.valor_inicial, '- parseado:', parsed.valor_inicial);
+      return parsed;
+    });
     if (objetivos.length > 0) {
       objetivoCounter = Math.max(...objetivos.map(o => o.id || 0));
     }
