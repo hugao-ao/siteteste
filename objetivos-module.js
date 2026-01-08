@@ -600,7 +600,13 @@ function updateObjetivoField(id, field, value) {
   const objetivo = objetivos.find(o => o.id === id);
   if (!objetivo) return;
   
-  objetivo[field] = value;
+  // Garantir que campos numéricos sejam sempre números
+  const camposNumericos = ['valor_inicial', 'valor_final', 'meta_acumulo', 'renda_anual', 'prazo_meses', 'prazo_idade', 'prioridade'];
+  if (camposNumericos.includes(field)) {
+    objetivo[field] = parseFloat(value) || 0;
+  } else {
+    objetivo[field] = value;
+  }
   
   // Atualizar descrição e renda ao mudar pessoa da aposentadoria
   if (objetivo.tipo === 'aposentadoria' && field === 'prazo_pessoa') {
@@ -614,14 +620,8 @@ function updateObjetivoField(id, field, value) {
     }
   }
   
-  // Recalcular meta de acúmulo quando valor final muda
-  if (field === 'valor_final') {
-    objetivo.meta_acumulo = Math.max(0, (objetivo.valor_final || 0) - (objetivo.valor_inicial || 0));
-    const metaInput = document.getElementById(`meta-acumulo-${id}`);
-    if (metaInput) {
-      metaInput.value = formatarMoedaObj(objetivo.meta_acumulo).replace('R$', 'R$ ');
-    }
-  }
+  // NÃO recalcular meta de acúmulo automaticamente - usuário deve definir manualmente
+  // A meta de acúmulo é independente do valor final
   
   if (['valor_inicial', 'valor_final', 'meta_acumulo', 'renda_anual'].includes(field)) {
     atualizarPatrimonioObjetivos();
@@ -1631,7 +1631,18 @@ function getObjetivosData() {
 
 function setObjetivosData(data) {
   if (Array.isArray(data)) {
-    objetivos = data;
+    // Garantir que os valores numéricos sejam parseados corretamente
+    objetivos = data.map(obj => ({
+      ...obj,
+      valor_inicial: parseFloat(obj.valor_inicial) || 0,
+      valor_final: parseFloat(obj.valor_final) || 0,
+      meta_acumulo: parseFloat(obj.meta_acumulo) || 0,
+      renda_anual: parseFloat(obj.renda_anual) || 0,
+      prazo_meses: parseInt(obj.prazo_meses) || 60,
+      prazo_idade: parseInt(obj.prazo_idade) || 65,
+      prioridade: parseInt(obj.prioridade) || 1,
+      id: parseInt(obj.id) || 0
+    }));
     if (objetivos.length > 0) {
       objetivoCounter = Math.max(...objetivos.map(o => o.id || 0));
     }
