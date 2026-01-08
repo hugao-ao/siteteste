@@ -627,6 +627,37 @@ function calcularInvestimentosPorPessoa(pessoas) {
     });
   }
   
+  // Adicionar restituições de IR como investimentos anuais
+  if (window.getDeclaracoesIRData) {
+    const declaracoes = window.getDeclaracoesIRData() || [];
+    declaracoes.forEach(declaracao => {
+      const resultadoTipo = declaracao.resultado_tipo || '';
+      const resultadoValor = parseFloat(declaracao.resultado_valor) || 0;
+      
+      if (resultadoTipo === 'restitui' && resultadoValor > 0) {
+        // Mapear pessoa_key para o ID usado no fluxo
+        let titularId = 'titular';
+        const pessoaKey = declaracao.pessoa_key || '';
+        
+        if (pessoaKey === 'cliente') {
+          titularId = 'titular';
+        } else if (pessoaKey === 'conjuge_cliente') {
+          titularId = 'conjuge';
+        } else if (pessoaKey.startsWith('conjuge_pessoa_')) {
+          const idx = pessoaKey.replace('conjuge_pessoa_', '');
+          titularId = `pessoa_${idx}_conjuge`;
+        } else if (pessoaKey.startsWith('pessoa_')) {
+          titularId = pessoaKey;
+        }
+        
+        if (investimentos[titularId]) {
+          // Restituição é anual, não entra no mensal
+          investimentos[titularId].ano += resultadoValor;
+        }
+      }
+    });
+  }
+  
   return investimentos;
 }
 
