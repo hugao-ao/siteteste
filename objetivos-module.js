@@ -308,7 +308,8 @@ function calcularPatrimonioParaObjetivos() {
   if (window.getPatrimoniosLiquidosData) {
     const patrimonios = window.getPatrimoniosLiquidosData() || [];
     patrimonios.forEach(p => {
-      if (p.finalidade === 'RESERVA_OBJETIVOS') {
+      // Soma TODOS os itens que NÃO são aposentadoria (independente do dono)
+      if (p.finalidade !== 'APOSENTADORIA') {
         const valor = parseFloat(p.valor_atual) || 0;
         total += valor;
       }
@@ -498,6 +499,8 @@ function addObjetivoNormal() {
     importancia: '',
     responsaveis: [],
     prazo_meses: 60,
+    prazo_tipo: 'meses', // 'meses', 'anos', 'data'
+    prazo_data: null, // Data específica se prazo_tipo === 'data'
     valor_inicial: 0,
     valor_final: 0,
     meta_acumulo: 0,
@@ -971,11 +974,25 @@ function renderCardObjetivo(obj, pessoas, todosObjetivos, saldoDisponivel) {
         
         <div>
           <label style="font-size: 0.75rem; color: var(--accent-color); display: block; margin-bottom: 0.3rem;">
-            <i class="fas fa-calendar"></i> Prazo (meses)
+            <i class="fas fa-calendar"></i> Prazo
           </label>
-          <input type="number" value="${obj.prazo_meses || 60}" min="1" max="600"
-                 onchange="updateObjetivoField(${obj.id}, 'prazo_meses', parseInt(this.value))"
-                 style="width: 100%; padding: 0.5rem; background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 4px; color: var(--text-light);">
+          <div style="display: flex; gap: 0.3rem;">
+            <select onchange="updateObjetivoField(${obj.id}, 'prazo_tipo', this.value); renderObjetivos();"
+                    style="width: 110px; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+              <option value="meses" ${(obj.prazo_tipo || 'meses') === 'meses' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Daqui a X meses</option>
+              <option value="anos" ${obj.prazo_tipo === 'anos' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Daqui a X anos</option>
+              <option value="data" ${obj.prazo_tipo === 'data' ? 'selected' : ''} style="background: #0d3320; color: #e8e8e8;">Data específica</option>
+            </select>
+            ${(obj.prazo_tipo || 'meses') === 'data' ? `
+              <input type="date" value="${obj.prazo_data || ''}"
+                     onchange="updateObjetivoField(${obj.id}, 'prazo_data', this.value)"
+                     style="flex: 1; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+            ` : `
+              <input type="number" value="${obj.prazo_tipo === 'anos' ? Math.round((obj.prazo_meses || 60) / 12) : (obj.prazo_meses || 60)}" min="1" max="${obj.prazo_tipo === 'anos' ? 50 : 600}"
+                     onchange="updateObjetivoField(${obj.id}, 'prazo_meses', ${obj.prazo_tipo === 'anos' ? 'parseInt(this.value) * 12' : 'parseInt(this.value)'})"
+                     style="width: 60px; padding: 0.5rem; background: #0d3320; border: 1px solid var(--border-color); border-radius: 4px; color: #e8e8e8;">
+            `}
+          </div>
         </div>
       </div>
       
@@ -1547,113 +1564,6 @@ function renderResumoGeral(aposentadorias, objetivosNormais) {
   `;
 }
 
-
-// ========================================
-// FUNÇÕES AUXILIARES
-// ========================================
-
-function formatarMoedaObj(valor) {
-  if (valor === null || valor === undefined || isNaN(valor)) return 'R$ 0,00';
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function formatarMoedaCompacta(valor) {
-  if (valor === null || valor === undefined || isNaN(valor)) return 'R$ 0';
-  if (valor >= 1000000) {
-    return `R$ ${(valor / 1000000).toFixed(2)}M`;
-  } else if (valor >= 1000) {
-    return `R$ ${(valor / 1000).toFixed(1)}k`;
-  }
-  return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
-
-function formatarPercentual(valor) {
-  if (valor === null || valor === undefined || isNaN(valor)) return '0,00%';
-  return `${valor.toFixed(2).replace('.', ',')}%`;
-}
-
-function formatarData(dataStr) {
-  if (!dataStr) return '';
-  const data = new Date(dataStr);
-  return data.toLocaleDateString('pt-BR');
-}
-
-function formatarDataCurta(data) {
-  if (!data) return '';
-  return `${String(data.getDate()).padStart(2, '0')}/${String(data.getMonth() + 1).padStart(2, '0')}/${data.getFullYear()}`;
-}
-
-function parseMoeda(valor) {
-  if (typeof valor === 'number') return valor;
-  if (!valor) return 0;
-  return parseFloat(valor.replace(/[R$\s.]/g, '').replace(',', '.')) || 0;
-}
-
-function formatarInputMoedaObj(input, id, field) {
-  let valor = input.value.replace(/[^\d]/g, '');
-  valor = (parseInt(valor) || 0) / 100;
-  
-  // Validar se é valor inicial e não excede o saldo disponível
-  if (field === 'valor_inicial') {
-    const objetivo = objetivos.find(o => o.id === id);
-    if (objetivo && objetivo.tipo !== 'aposentadoria') {
-      const valorAlocadoOutros = calcularValorInicialAlocadoExceto(id);
-      const patrimonioObjetivos = calcularPatrimonioParaObjetivos();
-      const saldoDisponivel = Math.max(0, patrimonioObjetivos - valorAlocadoOutros);
-      
-      if (valor > saldoDisponivel) {
-        valor = saldoDisponivel;
-        input.style.borderColor = '#dc3545';
-        setTimeout(() => { input.style.borderColor = ''; }, 2000);
-      }
-    }
-  }
-  
-  input.value = formatarMoedaObj(valor).replace('R$', 'R$ ');
-  updateObjetivoField(id, field, valor);
-}
-
-function calcularValorInicialAlocadoExceto(idExcluir) {
-  return objetivos
-    .filter(o => o.tipo !== 'aposentadoria' && o.id !== idExcluir)
-    .reduce((sum, o) => sum + (o.valor_inicial || 0), 0);
-}
-
-function calcularValorInicialAlocado() {
-  return objetivos
-    .filter(o => o.tipo !== 'aposentadoria')
-    .reduce((sum, o) => sum + (o.valor_inicial || 0), 0);
-}
-
-function calcularAportesTotaisDisponiveis() {
-  const patrimonios = window.getPatrimoniosLiquidosData ? window.getPatrimoniosLiquidosData() : [];
-  let totalMensal = 0;
-  let totalAnual = 0;
-  
-  patrimonios.forEach(p => {
-    const valor = parseFloat(p.aporte_valor) || 0;
-    if (p.aporte_frequencia === 'MENSAL') {
-      totalMensal += valor;
-    } else if (p.aporte_frequencia === 'ANUAL') {
-      totalAnual += valor;
-    }
-  });
-  
-  return { mensal: totalMensal, anual: totalAnual };
-}
-
-function getAportesResponsaveis(responsaveis) {
-  let totalMensal = 0;
-  let totalAnual = 0;
-  
-  responsaveis.forEach(pessoaId => {
-    const aportes = getAportesPessoa(pessoaId);
-    totalMensal += aportes.mensal;
-    totalAnual += aportes.anual;
-  });
-  
-  return { mensal: totalMensal, anual: totalAnual };
-}
 
 // ========================================
 // FUNÇÕES DE DADOS (EXPORTADAS)
