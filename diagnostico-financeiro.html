@@ -1264,6 +1264,9 @@
     // Expor pessoasRenda globalmente para o módulo de IR
     window.pessoasRenda = pessoasRenda;
     
+    // Expor dependentes globalmente para o módulo de objetivos
+    window.dependentes = dependentes;
+    
     // Expor patrimonios globalmente para o módulo de sucessão
     window.patrimonios = patrimonios;
     
@@ -1799,12 +1802,14 @@
       };
       
       dependentes.push(novoDependente);
+      window.dependentes = dependentes; // Atualizar referência global
       renderDependentes();
     }
 
     function deleteDependente(index) {
       if (confirm('Tem certeza que deseja excluir este dependente?')) {
         dependentes.splice(index, 1);
+        window.dependentes = dependentes; // Atualizar referência global
         renderDependentes();
       }
     }
@@ -2743,6 +2748,7 @@ console.log('=== FIM DEBUG PESSOAS COM RENDA ===');
         if (diagnostico.dependentes) {
           try {
             dependentes = JSON.parse(diagnostico.dependentes);
+            window.dependentes = dependentes; // Atualizar referência global
             renderDependentes();
           } catch (e) {
             console.log('Erro ao carregar dependentes:', e);
