@@ -181,15 +181,17 @@ function calcularCustoInventario(dados) {
   const emolumentos = dadosSucessao.emolumentos / 100;
   const honorarios = dadosSucessao.honorarios / 100;
   
-  // Patrimônio inventariável líquido (para ITCMD)
+  // Patrimônio inventáriavel líquido (para ITCMD)
   const patrimonioInvLiquido = dados.patrimonio_liquido_inv + dados.patrimonio_fisico_inv - dados.dividas_inv;
   
   // Patrimônio total (para emolumentos e honorários)
   const patrimonioTotal = dados.patrimonio_liquido_inv + dados.patrimonio_liquido_nao_inv + 
                           dados.patrimonio_fisico_inv + dados.patrimonio_fisico_nao_inv;
   
-  // Saldo do patrimônio (inventariável - dívidas inventariáveis)
-  const saldoPatrimonio = dados.patrimonio_liquido_inv + dados.patrimonio_fisico_inv - dados.dividas_inv;
+  // Saldo do patrimônio = (Patrimônio Líquido + Físico, inventáriavel e não inventáriavel) - (Dívidas INVENTÁRIÁVEIS apenas)
+  const saldoPatrimonio = dados.patrimonio_liquido_inv + dados.patrimonio_liquido_nao_inv + 
+                          dados.patrimonio_fisico_inv + dados.patrimonio_fisico_nao_inv - 
+                          dados.dividas_inv;
   
   // Cálculo do custo
   // [Patrimônio inventariável - dívidas inventariáveis] * ITCMD + 
