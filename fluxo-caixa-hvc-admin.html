@@ -6368,9 +6368,9 @@
         async function loadFilteredEvents() {
             try {
                 const now = new Date();
-                // Buscar eventos de um período mais amplo: do início do ano atual até 2 anos no futuro
-                const startOfYear = new Date(now.getFullYear(), 0, 1);
-                const endOfYear = new Date(now.getFullYear() + 2, 11, 31);
+                // ✅ CORREÇÃO: Buscar eventos de 2 anos no passado até 2 anos no futuro
+                const startOfYear = new Date(now.getFullYear() - 2, 0, 1); // 2 anos atrás
+                const endOfYear = new Date(now.getFullYear() + 2, 11, 31); // 2 anos à frente
 
                 // ✅ NOVO: Verificar se há múltiplas contas conectadas
                 const connectedAccounts = (typeof googleAuth !== 'undefined' && googleAuth) ? googleAuth.getAccounts() : [];
