@@ -49,6 +49,7 @@ function createAdminSidebarHTML(projectContext = null) {
         projectSpecificLinks = `
             <li class="sub-menu"><a href="atualizacao-variaveis.html" id="nav-atualizacao-variaveis"><i class="fas fa-sliders-h"></i> <span>Atualização de Variáveis</span></a></li>
             <li class="sub-menu"><a href="clientes-dashboard.html" id="nav-gerenciar-clientes-planejamento"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+            <li class="sub-menu"><a href="aquisicao-bens.html" id="nav-aquisicao-bens-planejamento"><i class="fas fa-shopping-cart"></i> <span>Aquisição de Bens</span></a></li>
             <li class="sub-menu"><a href="mensagens-whats.html" id="nav-mensagens-whats-planejamento"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
         `;
     }
@@ -108,6 +109,7 @@ function createUserSidebarHTML(userProject) {
     } else if (userProject === 'Planejamento') {
         projectSpecificLinks = `
             <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+            <li><a href="aquisicao-bens.html" id="nav-aquisicao-bens"><i class="fas fa-shopping-cart"></i> <span>Aquisição de Bens</span></a></li>
             <li><a href="mensagens-whats.html" id="nav-mensagens-whats-usuario"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
         `;
     } else {
@@ -159,6 +161,7 @@ function createAdminViewingUserSidebarHTML(viewedUserProject) {
         projectSpecificLinks = `
             <li><a href="atualizacao-variaveis.html" id="nav-atualizacao-variaveis"><i class="fas fa-sliders-h"></i> <span>Atualização de Variáveis</span></a></li>
             <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
+            <li><a href="aquisicao-bens.html" id="nav-aquisicao-bens"><i class="fas fa-shopping-cart"></i> <span>Aquisição de Bens</span></a></li>
             <li><a href="mensagens-whats.html" id="nav-mensagens-whats"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
         `;
     } else {
