@@ -11,22 +11,26 @@
   
   <style>
     /* Estilos específicos para a página de notificações */
-    /* Ajuste para garantir que o conteúdo não fique atrás da sidebar */
+    
+    /* LAYOUT RESPONSIVO: Ajuste para garantir que o conteúdo não fique atrás da sidebar */
     .main-content {
         margin-left: 250px; /* Largura padrão da sidebar */
         padding: 20px;
         transition: margin-left 0.3s;
+        width: calc(100% - 250px); /* Garante que o conteúdo ocupe o espaço restante */
+        box-sizing: border-box; /* Inclui padding na largura total */
     }
 
     @media (max-width: 768px) {
         .main-content {
             margin-left: 0; /* Em mobile, a sidebar geralmente recolhe */
+            width: 100%;
         }
     }
 
     .notifications-container {
-        padding: 20px;
-        max-width: 1200px;
+        padding: 0; /* Padding já tratado no main-content */
+        max-width: 100%; /* Ocupa toda a largura disponível */
         margin: 0 auto;
     }
 
@@ -129,11 +133,19 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 20px;
+        flex-wrap: wrap; /* Permite quebrar linha em telas pequenas */
+        gap: 10px;
     }
 
     .cyclopay-header h2 {
         color: #d4af37;
         font-size: 1.5rem;
+        margin: 0;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch; /* Rolagem suave em mobile */
     }
 
     .cyclopay-table {
@@ -142,6 +154,7 @@
         background-color: #1e1e1e;
         border-radius: 8px;
         overflow: hidden;
+        min-width: 800px; /* Garante largura mínima para não quebrar colunas */
     }
 
     .cyclopay-table th, .cyclopay-table td {
@@ -149,6 +162,7 @@
         text-align: left;
         border-bottom: 1px solid #333;
         color: #ddd;
+        white-space: nowrap; /* Evita quebra de linha indesejada */
     }
 
     .cyclopay-table th {
@@ -237,25 +251,27 @@
       <div class="cyclopay-section">
         <div class="cyclopay-header">
             <h2><i class="fas fa-sync-alt"></i> Integração Cyclopay (Clientes Recentes)</h2>
-            <button onclick="loadCyclopayClients()" style="background: transparent; border: 1px solid #d4af37; color: #d4af37; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+            <button onclick="loadCyclopayData()" style="background: transparent; border: 1px solid #d4af37; color: #d4af37; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
                 <i class="fas fa-refresh"></i> Atualizar Lista
             </button>
         </div>
         
-        <div style="overflow-x: auto;">
+        <div class="table-responsive">
             <table class="cyclopay-table">
                 <thead>
                     <tr>
                         <th>Nome</th>
                         <th>Email</th>
                         <th>Data Criação</th>
+                        <th>Última Cobrança</th>
+                        <th>Próxima Cobrança</th>
                         <th>Status</th>
                         <th>Ações</th>
                     </tr>
                 </thead>
                 <tbody id="cyclopay-list">
                     <tr>
-                        <td colspan="5" style="text-align: center; color: #888;">Carregando dados da Cyclopay...</td>
+                        <td colspan="7" style="text-align: center; color: #888;">Carregando dados da Cyclopay...</td>
                     </tr>
                 </tbody>
             </table>
@@ -275,26 +291,11 @@
   <script>
     // Configuração do Supabase
     const SUPABASE_URL = 'https://ivnlm4ro8pe406l9i5tz2.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2bmxtNHJvOHBlNDA2bDlpNXR6MiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM5NTM4NjkwLCJleHAiOjIwNTUxMTQ2OTB9.Db_...'; // (Chave anon truncada por segurança, mas funcional no contexto do usuário se já estiver configurada)
     // NOTA: Para evitar conflito com a variável global 'supabase' do CDN, usamos 'supabaseClient'
-    // Se a chave acima não funcionar, substitua pela sua chave anon pública do projeto 'siteteste'
-    
-    // Tenta inicializar o cliente Supabase. Se falhar (por falta de chave válida), avisa no console.
     let supabaseClient;
     try {
-        // Recria o cliente usando a chave pública (anon key) que você deve ter no seu projeto
-        // Se você não tiver a chave aqui, o código abaixo vai falhar ao tentar conectar.
-        // Vou usar uma verificação simples.
         if (window.supabase) {
-            // Substitua pela sua chave real se esta for inválida
-            const REAL_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2bmxtNHJvOHBlNDA2bDlpNXR6MiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM5NTM4NjkwLCJleHAiOjIwNTUxMTQ2OTB9.Db_...'; 
-            // O usuário deve colocar a chave correta aqui se não estiver funcionando
-            
-            // Para este exemplo, vou assumir que o usuário configurou ou vai configurar a chave correta no arquivo supabase.js ou aqui.
-            // Como não tenho a chave completa aqui, vou usar window.supabase.createClient se o usuário já tiver configurado globalmente em outro lugar,
-            // mas como este é um arquivo isolado, preciso da chave.
-            
-            // VOU USAR A CHAVE QUE O USUÁRIO JÁ TEM NO PROJETO (buscando de supabase.js se possível, mas aqui vou deixar o placeholder para ele preencher se falhar)
+             // Tenta usar a chave já configurada no projeto ou um placeholder
              supabaseClient = window.supabase.createClient('https://ivnlm4ro8pe406l9i5tz2.supabase.co', 'YOUR_SUPABASE_ANON_KEY');
         }
     } catch (e) {
@@ -312,10 +313,10 @@
         }
         
         // 2. Carrega Notificações do Supabase (se configurado)
-        // loadNotifications(); // Comentado para não quebrar se a chave estiver errada. Descomente após configurar.
+        // loadNotifications(); // Descomente após configurar a chave Supabase
         
-        // 3. Carrega Clientes da Cyclopay
-        loadCyclopayClients();
+        // 3. Carrega Dados da Cyclopay (Clientes + Assinaturas)
+        loadCyclopayData();
     });
 
     let notifications = [];
@@ -399,10 +400,8 @@
         let tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
         tasks[key] = checked;
         
-        // Atualiza no banco
         await supabaseClient.from('hvsf_tasks').update({ tasks }).eq('id', id);
         
-        // Atualiza estado local e UI
         notif.tasks = tasks;
         const btn = document.getElementById(`btn-${id}`);
         if (btn) btn.disabled = !Object.values(tasks).every(v=>v);
@@ -411,7 +410,7 @@
     async function finalizeProcess(id) {
         if(confirm('Tem certeza que deseja finalizar este processo? O cliente será marcado como ativo.')) {
             await supabaseClient.from('hvsf_tasks').update({ status: 'completed' }).eq('id', id);
-            loadNotifications(); // Recarrega a lista
+            loadNotifications(); 
         }
     }
 
@@ -433,35 +432,51 @@
     }
 
     // --- LÓGICA CYCLOPAY (REAL) ---
-    async function loadCyclopayClients() {
+    async function loadCyclopayData() {
         const tbody = document.getElementById('cyclopay-list');
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Carregando...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Carregando dados da Cyclopay...</td></tr>';
         
-        // --- CONFIGURAÇÃO DA API ---
-        const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492'; // Chave fornecida pelo usuário
-        const CYCLOPAY_API_URL = 'https://api.cyclopay.com/v1/customers'; 
+        const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492'; 
+        const CUSTOMERS_URL = 'https://api.cyclopay.com/v1/customers'; 
+        const SUBSCRIPTIONS_URL = 'https://api.cyclopay.com/v1/subscriptions';
 
         try {
-            const response = await fetch(CYCLOPAY_API_URL, {
+            // 1. Busca Clientes
+            const customersResponse = await fetch(CUSTOMERS_URL, {
                 method: 'GET',
-                headers: {
-                    'api_key': CYCLOPAY_API_KEY, // Header correto conforme documentação
-                    'Accept': 'application/json'
-                }
+                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
             });
 
-            if (!response.ok) {
-                throw new Error(`Erro na API Cyclopay: ${response.status} - ${response.statusText}`);
-            }
+            if (!customersResponse.ok) throw new Error(`Erro ao buscar clientes: ${customersResponse.status}`);
+            const customersData = await customersResponse.json();
+            const customers = customersData.items || [];
 
-            const data = await response.json();
-            // A resposta da Cyclopay tem a estrutura { items: [...] }
-            const clients = data.items || []; 
-            renderCyclopayTable(clients);
+            // 2. Busca Assinaturas (para pegar as datas de cobrança)
+            const subscriptionsResponse = await fetch(SUBSCRIPTIONS_URL, {
+                method: 'GET',
+                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
+            });
+
+            if (!subscriptionsResponse.ok) throw new Error(`Erro ao buscar assinaturas: ${subscriptionsResponse.status}`);
+            const subscriptionsData = await subscriptionsResponse.json();
+            const subscriptions = subscriptionsData.items || [];
+
+            // 3. Cruza os dados
+            const mergedData = customers.map(customer => {
+                // Encontra a assinatura correspondente ao cliente
+                const sub = subscriptions.find(s => s.customer_id === customer.customer_id);
+                return {
+                    ...customer,
+                    last_charge_date: sub ? sub.last_charge_date : null,
+                    next_charge: sub ? sub.next_charge : null
+                };
+            });
+
+            renderCyclopayTable(mergedData);
 
         } catch (error) {
-            console.error('Erro ao carregar clientes da Cyclopay:', error);
-            tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: #ff4d4d;">Erro ao carregar dados: ${error.message}</td></tr>`;
+            console.error('Erro ao carregar dados da Cyclopay:', error);
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ff4d4d;">Erro ao carregar dados: ${error.message}</td></tr>`;
         }
     }
 
@@ -470,21 +485,26 @@
         tbody.innerHTML = '';
         
         if (!clients || clients.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="5" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
         clients.forEach(client => {
-                // Mapeamento de campos conforme documentação
                 const statusClass = client.active ? 'badge-active' : 'badge-inactive';
                 const statusLabel = client.active ? 'Ativo' : 'Inativo';
                 const createdDate = client.create_date ? new Date(client.create_date).toLocaleDateString('pt-BR') : '-';
+                
+                // Formata datas de cobrança
+                const lastCharge = client.last_charge_date ? new Date(client.last_charge_date).toLocaleDateString('pt-BR') : '-';
+                const nextCharge = client.next_charge ? new Date(client.next_charge).toLocaleDateString('pt-BR') : '-';
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
                     <td>${client.email}</td>
                     <td>${createdDate}</td>
+                    <td>${lastCharge}</td>
+                    <td>${nextCharge}</td>
                     <td><span class="badge ${statusClass}">${statusLabel}</span></td>
                     <td>
                         <button class="btn-import" onclick="importarCliente('${client.first_name} ${client.last_name || ''}', '${client.email}')" title="Iniciar Onboarding">
@@ -505,7 +525,7 @@
         if(confirm(`Deseja iniciar o processo de onboarding para ${nome}?`)) {
             const newTask = {
                 client_name: nome,
-                plan: 'Importado Cyclopay', // Poderia vir da API se tivesse endpoint de assinaturas
+                plan: 'Importado Cyclopay', 
                 tasks: { login: false, email: false, form: false },
                 status: 'pending'
             };
@@ -516,7 +536,7 @@
                 alert('Erro ao importar: ' + error.message);
             } else {
                 alert('Cliente importado com sucesso! Verifique a lista de notificações.');
-                loadNotifications(); // Atualiza a lista de cima
+                loadNotifications(); 
             }
         }
     }
