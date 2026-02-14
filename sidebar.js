@@ -425,14 +425,5 @@ if (typeof module !== 'undefined' && module.exports) {
     };
 }
 
-// Export ES6 (para páginas que usam import)
-export { 
-    injectSidebar, 
-    injectSidebarWithAutoDetection, 
-    applyProjectTheme,
-    createAdminSidebarHTML,
-    createUserSidebarHTML,
-    createAdminViewingUserSidebarHTML,
-    injectSidebarCSS,
-    initializeSidebar
-};
+// Export ES6 removido para compatibilidade com carregamento via script tag
+// As funções já estão disponíveis no objeto window acima
