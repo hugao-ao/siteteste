@@ -1,252 +1,358 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Notificações SITE HVSF - Admin</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="sidebar.css">
-    <style>
-        .notification-card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 20px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-            border-left: 5px solid #ff4444;
+  <meta charset="UTF-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Notificações SITE HVSF</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" integrity="sha512-9usAa10IRO0HhonpyAIVpjrylPvoDwiPUiKdWk5t3PyolY1cOd4DSE0Ga+ri4AuTroPR5aQvXU9xC6qOPnzFeg==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+  <style>
+    body {
+      display: flex;
+      margin: 0;
+      min-height: 100vh;
+    }
+
+    #main-content {
+      flex-grow: 1;
+      padding: 2rem;
+      margin-left: 250px;
+      transition: margin-left 0.3s ease;
+      background-color: var(--theme-bg-surface);
+      color: var(--theme-text-light);
+    }
+
+    #main-content.sidebar-collapsed {
+      margin-left: 60px;
+    }
+
+    @media (max-width: 768px) {
+        #main-content {
+            margin-left: 60px !important;
         }
-        .notification-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 15px;
-        }
-        .notification-title {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #333;
-        }
-        .notification-date {
-            color: #666;
-            font-size: 0.9em;
-        }
-        .task-list {
-            list-style: none;
-            padding: 0;
-        }
-        .task-item {
-            margin: 10px 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .task-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-        }
-        .task-item label {
-            cursor: pointer;
-            font-size: 1em;
-        }
-        .task-item.completed label {
-            text-decoration: line-through;
-            color: #888;
-        }
-        .btn-finalize {
-            background-color: #28a745;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 15px;
-            opacity: 0.5;
-            pointer-events: none;
-        }
-        .btn-finalize.active {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        .btn-finalize:hover {
-            background-color: #218838;
-        }
-        .empty-state {
-            text-align: center;
-            padding: 50px;
-            color: #666;
-        }
-        .empty-state i {
-            font-size: 3em;
-            color: #ccc;
-            margin-bottom: 15px;
-        }
-    </style>
+    }
+
+    /* Estilos específicos para esta página */
+    .notification-card {
+      background-color: var(--theme-bg-dark);
+      border: 1px solid var(--theme-border-color);
+      border-radius: 8px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border-left: 5px solid #ff4444; /* Vermelho para pendente */
+      position: relative;
+    }
+
+    .notification-card.completed {
+      border-left-color: #00C851; /* Verde para concluído */
+      opacity: 0.7;
+    }
+
+    .notification-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 1rem;
+    }
+
+    .notification-title {
+      font-size: 1.2rem;
+      font-weight: bold;
+      color: var(--theme-text-light);
+    }
+
+    .notification-meta {
+      font-size: 0.9rem;
+      color: var(--theme-text-muted);
+    }
+
+    .task-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .task-item {
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .task-item input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .task-item label {
+      cursor: pointer;
+    }
+
+    .btn-finalize {
+      background-color: #00C851;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+
+    .btn-finalize:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .status-badge {
+      position: absolute;
+      top: 1rem;
+      right: 1rem;
+      font-size: 1.2rem;
+    }
+  </style>
+  
+  <!-- Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-    <div id="sidebar-container"></div>
-
-    <div class="main-content">
-        <header>
-            <div class="header-left">
-                <h1><i class="fas fa-bell"></i> Notificações SITE HVSF</h1>
-            </div>
-            <div class="user-info">
-                <span>Admin</span>
-                <i class="fas fa-user-circle"></i>
-            </div>
-        </header>
-
-        <div class="content-wrapper">
-            <div id="notifications-container">
-                <!-- Notificações serão inseridas aqui via JS -->
-            </div>
-        </div>
+  <!-- Sidebar será injetada dinamicamente por sidebar.js -->
+  
+  <main id="main-content">
+    <h1><i class="fas fa-bell"></i> Notificações SITE HVSF</h1>
+    <p>Gerencie aqui as tarefas de onboarding para novos clientes do Plano Financeiro.</p>
+    
+    <div id="notifications-container">
+      <!-- Notificações serão carregadas aqui via JS -->
+      <p>Carregando notificações...</p>
     </div>
+    
+    <!-- Botão para simular nova venda (apenas para teste) -->
+    <div style="margin-top: 3rem; border-top: 1px solid #ccc; padding-top: 1rem;">
+      <h3>Simular Nova Venda (Teste)</h3>
+      <button onclick="simularVenda()" style="padding: 10px; background: #33b5e5; color: white; border: none; border-radius: 4px; cursor: pointer;">
+        Simular Venda Nível II
+      </button>
+    </div>
+  </main>
 
-    <script src="sidebar.js"></script>
-    <script>
-        // Simulação de Dados (Substituir por chamada ao Supabase depois)
-        const mockNotifications = [
-            {
-                id: 1,
-                clientName: "João da Silva",
-                plan: "Nível II",
-                date: "14/02/2026 10:30",
-                tasks: [
-                    { id: "t1", text: "Criar Login e Senha no Admin", done: false },
-                    { id: "t2", text: "Criar E-mail Seguro (joao.silva@hvsf...)", done: false },
-                    { id: "t3", text: "Enviar Formulário de Diagnóstico via WhatsApp", done: false }
-                ],
-                status: "pending"
-            },
-            {
-                id: 2,
-                clientName: "Maria Oliveira",
-                plan: "Nível IV",
-                date: "14/02/2026 11:15",
-                tasks: [
-                    { id: "t1", text: "Criar Login e Senha no Admin", done: false },
-                    { id: "t2", text: "Criar E-mail Seguro (maria.oliveira@hvsf...)", done: false },
-                    { id: "t3", text: "Enviar Formulário de Diagnóstico via WhatsApp", done: false },
-                    { id: "t4", text: "Agendar Reunião de Boas-vindas (Prioridade Máxima)", done: false }
-                ],
-                status: "pending"
-            }
-        ];
-
-        // Carregar notificações do LocalStorage ou usar Mock
-        let notifications = JSON.parse(localStorage.getItem('hvsf_notifications')) || mockNotifications;
-
-        function renderNotifications() {
-            const container = document.getElementById('notifications-container');
-            container.innerHTML = '';
-
-            const pendingNotifications = notifications.filter(n => n.status === 'pending');
-
-            // Atualizar Badge na Sidebar
-            updateSidebarBadge(pendingNotifications.length);
-
-            if (pendingNotifications.length === 0) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="fas fa-check-circle"></i>
-                        <h3>Tudo em dia!</h3>
-                        <p>Nenhuma notificação pendente no momento.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            pendingNotifications.forEach(notif => {
-                const card = document.createElement('div');
-                card.className = 'notification-card';
-                
-                const allTasksDone = notif.tasks.every(t => t.done);
-
-                let tasksHtml = notif.tasks.map((task, index) => `
-                    <li class="task-item ${task.done ? 'completed' : ''}">
-                        <input type="checkbox" id="task-${notif.id}-${index}" 
-                               ${task.done ? 'checked' : ''} 
-                               onchange="toggleTask(${notif.id}, ${index})">
-                        <label for="task-${notif.id}-${index}">${task.text}</label>
-                    </li>
-                `).join('');
-
-                card.innerHTML = `
-                    <div class="notification-header">
-                        <div>
-                            <div class="notification-title">Novo Cliente: ${notif.clientName}</div>
-                            <div class="notification-date">Plano: ${notif.plan} • ${notif.date}</div>
-                        </div>
-                        <i class="fas fa-exclamation-circle" style="color: #ff4444; font-size: 1.5em;"></i>
-                    </div>
-                    <ul class="task-list">
-                        ${tasksHtml}
-                    </ul>
-                    <button class="btn-finalize ${allTasksDone ? 'active' : ''}" 
-                            onclick="finalizeNotification(${notif.id})">
-                        <i class="fas fa-check"></i> Finalizar Processo
-                    </button>
-                `;
-                container.appendChild(card);
-            });
+  <!-- Scripts -->
+  <script src="sidebar.js"></script>
+  <script>
+    // Configuração do Supabase
+    const SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // Inicialização da Sidebar
+    document.addEventListener('DOMContentLoaded', function() {
+        // Injeta a sidebar com contexto 'Planejamento'
+        if (typeof injectSidebar === 'function') {
+            injectSidebar('Planejamento');
+        } else if (typeof createAdminSidebarHTML === 'function') {
+             // Fallback se injectSidebar não estiver disponível (versão antiga do sidebar.js)
+             const sidebarHTML = createAdminSidebarHTML('Planejamento');
+             const sidebarContainer = document.createElement('div');
+             sidebarContainer.innerHTML = sidebarHTML;
+             document.body.insertBefore(sidebarContainer.firstElementChild, document.body.firstChild);
+             
+             // Inicializa toggle
+             const toggleBtn = document.getElementById('sidebar-toggle');
+             if(toggleBtn) {
+                 toggleBtn.addEventListener('click', function() {
+                     document.getElementById('sidebar').classList.toggle('collapsed');
+                     document.getElementById('main-content').classList.toggle('sidebar-collapsed');
+                 });
+             }
+        } else {
+            console.error('Função de sidebar não encontrada. Verifique sidebar.js');
         }
+        
+        // Carrega as notificações
+        loadNotifications();
+    });
 
-        function toggleTask(notifId, taskIndex) {
-            const notif = notifications.find(n => n.id === notifId);
-            if (notif) {
-                notif.tasks[taskIndex].done = !notif.tasks[taskIndex].done;
-                saveNotifications();
-                renderNotifications();
-            }
-        }
+    let notifications = [];
 
-        function finalizeNotification(notifId) {
-            if (confirm('Tem certeza que deseja finalizar este processo? O cliente será considerado ativo.')) {
-                const notif = notifications.find(n => n.id === notifId);
-                if (notif) {
-                    notif.status = 'completed';
-                    saveNotifications();
-                    renderNotifications();
-                }
-            }
-        }
+    async function loadNotifications() {
+        const container = document.getElementById('notifications-container');
+        container.innerHTML = '<p>Carregando notificações...</p>';
 
-        function saveNotifications() {
-            localStorage.setItem('hvsf_notifications', JSON.stringify(notifications));
-        }
+        try {
+            const { data, error } = await supabase
+                .from('hvsf_tasks')
+                .select('*')
+                .eq('status', 'pending')
+                .order('created_at', { ascending: false });
 
-        function updateSidebarBadge(count) {
-            const badge = document.getElementById('badge-notificacoes-hvsf');
-            if (badge) {
-                badge.innerText = count;
-                badge.style.display = count > 0 ? 'block' : 'none';
-            }
-        }
+            if (error) throw error;
 
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-            // Injetar Sidebar
-            const sidebarContainer = document.getElementById('sidebar-container');
-            if (sidebarContainer && typeof createAdminSidebarHTML === 'function') {
-                sidebarContainer.innerHTML = createAdminSidebarHTML('Planejamento');
-                
-                // Inicializar Toggle da Sidebar
-                const toggleBtn = document.getElementById('sidebar-toggle');
-                const sidebar = document.getElementById('sidebar');
-                if (toggleBtn && sidebar) {
-                    toggleBtn.addEventListener('click', () => {
-                        sidebar.classList.toggle('collapsed');
-                        document.querySelector('.main-content').classList.toggle('expanded');
-                    });
-                }
-            }
-
+            notifications = data;
             renderNotifications();
+        } catch (err) {
+            console.error('Erro ao carregar notificações:', err);
+            container.innerHTML = '<p style="color: red;">Erro ao carregar notificações. Verifique o console.</p>';
+        }
+    }
+
+    function renderNotifications() {
+        const container = document.getElementById('notifications-container');
+        container.innerHTML = '';
+
+        if (notifications.length === 0) {
+            container.innerHTML = '<p>Nenhuma notificação pendente.</p>';
+            updateBadge(0);
+            return;
+        }
+
+        notifications.forEach(notif => {
+            const card = document.createElement('div');
+            card.className = 'notification-card';
+            
+            // Parse tasks if it's a string (JSON stored as text) or use directly if object
+            let tasks = notif.tasks;
+            if (typeof tasks === 'string') {
+                try { tasks = JSON.parse(tasks); } catch(e) { tasks = {}; }
+            }
+
+            card.innerHTML = `
+                <div class="notification-header">
+                    <div>
+                        <div class="notification-title">Novo Cliente: ${notif.client_name}</div>
+                        <div class="notification-meta">Plano: ${notif.plan} • ${new Date(notif.created_at).toLocaleString('pt-BR')}</div>
+                    </div>
+                    <div class="status-badge"><i class="fas fa-exclamation-circle" style="color: #ff4444;"></i></div>
+                </div>
+                <ul class="task-list">
+                    <li class="task-item">
+                        <input type="checkbox" id="task-login-${notif.id}" ${tasks.login ? 'checked' : ''} onchange="updateTask(${notif.id}, 'login', this.checked)">
+                        <label for="task-login-${notif.id}">Criar Login e Senha no Admin</label>
+                    </li>
+                    <li class="task-item">
+                        <input type="checkbox" id="task-email-${notif.id}" ${tasks.email ? 'checked' : ''} onchange="updateTask(${notif.id}, 'email', this.checked)">
+                        <label for="task-email-${notif.id}">Criar E-mail Seguro (${notif.client_name.split(' ')[0].toLowerCase()}@hvsf...)</label>
+                    </li>
+                    <li class="task-item">
+                        <input type="checkbox" id="task-form-${notif.id}" ${tasks.form ? 'checked' : ''} onchange="updateTask(${notif.id}, 'form', this.checked)">
+                        <label for="task-form-${notif.id}">Enviar Formulário de Diagnóstico via WhatsApp</label>
+                    </li>
+                    ${notif.plan === 'Nível IV' ? `
+                    <li class="task-item">
+                        <input type="checkbox" id="task-meeting-${notif.id}" ${tasks.meeting ? 'checked' : ''} onchange="updateTask(${notif.id}, 'meeting', this.checked)">
+                        <label for="task-meeting-${notif.id}">Agendar Reunião de Boas-vindas (Prioridade Máxima)</label>
+                    </li>
+                    ` : ''}
+                </ul>
+                <button class="btn-finalize" id="btn-finalize-${notif.id}" onclick="finalizeProcess(${notif.id})" ${isAllChecked(tasks) ? '' : 'disabled'}>
+                    <i class="fas fa-check"></i> Finalizar Processo
+                </button>
+            `;
+            container.appendChild(card);
         });
-    </script>
+        
+        updateBadge(notifications.length);
+    }
+
+    async function updateTask(id, taskKey, checked) {
+        const notif = notifications.find(n => n.id === id);
+        if (notif) {
+            // Update local state
+            if (typeof notif.tasks === 'string') {
+                 try { notif.tasks = JSON.parse(notif.tasks); } catch(e) { notif.tasks = {}; }
+            }
+            notif.tasks[taskKey] = checked;
+            
+            // Update UI button state immediately
+            const btn = document.getElementById(`btn-finalize-${id}`);
+            if (isAllChecked(notif.tasks)) {
+                btn.disabled = false;
+            } else {
+                btn.disabled = true;
+            }
+
+            // Update Supabase
+            try {
+                const { error } = await supabase
+                    .from('hvsf_tasks')
+                    .update({ tasks: notif.tasks })
+                    .eq('id', id);
+                
+                if (error) throw error;
+            } catch (err) {
+                console.error('Erro ao atualizar tarefa:', err);
+                alert('Erro ao salvar alteração. Verifique sua conexão.');
+            }
+        }
+    }
+
+    function isAllChecked(tasks) {
+        return Object.values(tasks).every(v => v === true);
+    }
+
+    async function finalizeProcess(id) {
+        if (confirm('Tem certeza que deseja finalizar este processo? A notificação será arquivada.')) {
+            try {
+                const { error } = await supabase
+                    .from('hvsf_tasks')
+                    .update({ status: 'completed' })
+                    .eq('id', id);
+
+                if (error) throw error;
+
+                // Reload list
+                loadNotifications();
+            } catch (err) {
+                console.error('Erro ao finalizar processo:', err);
+                alert('Erro ao finalizar. Tente novamente.');
+            }
+        }
+    }
+    
+    function updateBadge(count) {
+        // Atualiza o badge na sidebar (se existir)
+        const badge = document.getElementById('badge-notificacoes-hvsf');
+        if (badge) {
+            badge.textContent = count;
+            badge.style.display = count > 0 ? 'inline-block' : 'none';
+        }
+    }
+
+    async function simularVenda() {
+        const nomes = ['Carlos Souza', 'Ana Pereira', 'Roberto Lima', 'Fernanda Costa'];
+        const planos = ['Nível I', 'Nível II', 'Nível III', 'Nível IV'];
+        const nome = nomes[Math.floor(Math.random() * nomes.length)];
+        const plano = planos[Math.floor(Math.random() * planos.length)];
+        
+        const initialTasks = {
+            login: false,
+            email: false,
+            form: false
+        };
+        if (plano === 'Nível IV') {
+            initialTasks.meeting = false;
+        }
+
+        try {
+            const { error } = await supabase
+                .from('hvsf_tasks')
+                .insert([{
+                    client_name: nome,
+                    plan: plano,
+                    tasks: initialTasks,
+                    status: 'pending'
+                }]);
+
+            if (error) throw error;
+
+            alert('Nova venda simulada! A lista será atualizada.');
+            loadNotifications();
+        } catch (err) {
+            console.error('Erro ao simular venda:', err);
+            alert('Erro ao criar simulação.');
+        }
+    }
+  </script>
 </body>
 </html>
