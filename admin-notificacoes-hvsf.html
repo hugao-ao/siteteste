@@ -494,43 +494,43 @@
     // --- LÓGICA CYCLOPAY (REAL) ---
     async function loadCyclopayData() {
         const tbody = document.getElementById('cyclopay-list');
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Carregando dados da Cyclopay...</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Carregando TODOS os dados da Cyclopay... (Isso pode levar alguns segundos)</td></tr>';
         
         const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492'; 
-        const CUSTOMERS_URL = 'https://api.cyclopay.com/v1/customers'; 
-        const SUBSCRIPTIONS_URL = 'https://api.cyclopay.com/v1/subscriptions';
-        const TRANSACTIONS_URL = 'https://api.cyclopay.com/v1/transactions?orderDir=desc&count=100'; // Busca as 100 últimas transações
+        const BASE_URL = 'https://api.cyclopay.com/v1';
 
         try {
-            // 1. Busca Clientes
-            const customersResponse = await fetch(CUSTOMERS_URL, {
-                method: 'GET',
-                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
-            });
+            // Função auxiliar para buscar TODAS as páginas
+            async function fetchAllPages(endpoint) {
+                let allItems = [];
+                let page = 1;
+                let hasMore = true;
+                
+                while (hasMore) {
+                    const response = await fetch(`${BASE_URL}${endpoint}${endpoint.includes('?') ? '&' : '?'}page=${page}&count=100`, {
+                        method: 'GET',
+                        headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
+                    });
+                    
+                    if (!response.ok) throw new Error(`Erro ao buscar ${endpoint}: ${response.status}`);
+                    
+                    const data = await response.json();
+                    const items = data.items || [];
+                    allItems = allItems.concat(items);
+                    
+                    // Verifica se há mais páginas (se retornou menos que o limite, acabou)
+                    if (items.length < 100) hasMore = false;
+                    else page++;
+                }
+                return allItems;
+            }
 
-            if (!customersResponse.ok) throw new Error(`Erro ao buscar clientes: ${customersResponse.status}`);
-            const customersData = await customersResponse.json();
-            const customers = customersData.items || [];
-
-            // 2. Busca Assinaturas (para pegar as datas de cobrança)
-            const subscriptionsResponse = await fetch(SUBSCRIPTIONS_URL, {
-                method: 'GET',
-                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
-            });
-
-            if (!subscriptionsResponse.ok) throw new Error(`Erro ao buscar assinaturas: ${subscriptionsResponse.status}`);
-            const subscriptionsData = await subscriptionsResponse.json();
-            const subscriptions = subscriptionsData.items || [];
-
-            // 3. Busca Transações (para pegar o status da última cobrança)
-            const transactionsResponse = await fetch(TRANSACTIONS_URL, {
-                method: 'GET',
-                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
-            });
-
-            if (!transactionsResponse.ok) throw new Error(`Erro ao buscar transações: ${transactionsResponse.status}`);
-            const transactionsData = await transactionsResponse.json();
-            const transactions = transactionsData.items || [];
+            // 1. Busca TODOS os Clientes, Assinaturas e Transações em paralelo
+            const [customers, subscriptions, transactions] = await Promise.all([
+                fetchAllPages('/customers'),
+                fetchAllPages('/subscriptions'),
+                fetchAllPages('/transactions?orderDir=desc') // Busca transações ordenadas para pegar as recentes
+            ]);
 
             // 4. Cruza os dados
             const mergedData = customers.map(customer => {
@@ -538,11 +538,25 @@
                 const sub = subscriptions.find(s => s.customer_id === customer.customer_id);
                 
                 // Encontra a transação mais recente do cliente
-                const lastTransaction = transactions.find(t => t.customer && t.customer.customer_id === customer.customer_id);
+                // Como buscamos todas as transações, filtramos pelo cliente e pegamos a primeira (mais recente)
+                const clientTransactions = transactions.filter(t => t.customer && t.customer.customer_id === customer.customer_id);
+                // Ordena por data decrescente para garantir (caso a API não garanta)
+                clientTransactions.sort((a, b) => new Date(b.create_date) - new Date(a.create_date));
+                
+                const lastTransaction = clientTransactions.length > 0 ? clientTransactions[0] : null;
+
+                // Lógica para Data da Última Cobrança:
+                // Prioriza a data da última transação se existir, senão usa a da assinatura
+                let lastChargeDate = null;
+                if (lastTransaction) {
+                    lastChargeDate = lastTransaction.create_date;
+                } else if (sub && sub.last_charge_date) {
+                    lastChargeDate = sub.last_charge_date;
+                }
 
                 return {
                     ...customer,
-                    last_charge_date: sub ? sub.last_charge_date : null,
+                    last_charge_date: lastChargeDate,
                     next_charge: sub ? sub.next_charge : null,
                     last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null
                 };
@@ -591,11 +605,22 @@
                     }
                 }
 
+                // Tratamento do CPF (pode vir como objeto ou string)
+                let cpfDisplay = '-';
+                if (client.document) {
+                    if (typeof client.document === 'object') {
+                        // Tenta pegar 'number', 'value', 'cpf', ou 'cnpj'
+                        cpfDisplay = client.document.number || client.document.value || client.document.cpf || client.document.cnpj || JSON.stringify(client.document);
+                    } else {
+                        cpfDisplay = client.document;
+                    }
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
                     <td>${client.email}</td>
-                    <td>${client.document || '-'}</td>
+                    <td>${cpfDisplay}</td>
                     <td>${createdDate}</td>
                     <td>${lastCharge} ${statusIcon}</td>
                     <td>${nextCharge}</td>
@@ -645,7 +670,15 @@
         const filteredData = window.allCyclopayData.filter(client => {
             const name = (client.first_name + ' ' + (client.last_name || '')).toLowerCase();
             const email = (client.email || '').toLowerCase();
-            const cpf = (client.document || '').toLowerCase();
+            
+            let cpf = '';
+            if (client.document) {
+                if (typeof client.document === 'object') {
+                    cpf = (client.document.number || client.document.value || client.document.cpf || client.document.cnpj || '').toLowerCase();
+                } else {
+                    cpf = String(client.document).toLowerCase();
+                }
+            }
             
             return name.includes(filter) || email.includes(filter) || cpf.includes(filter);
         });
