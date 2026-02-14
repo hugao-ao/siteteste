@@ -382,8 +382,10 @@
   <script type="module" src="supabase.js"></script>
   <script type="module" src="admin.js"></script>
   <!-- Script para injetar a sidebar (mantido do original) -->
+  <script src="sidebar.js"></script>
   <script type="module">
-    import { injectSidebar } from './sidebar.js';
+    // import { injectSidebar } from './sidebar.js';
+    const { injectSidebar } = window;
     injectSidebar("main-content"); // Passa o ID do container principal
   </script>
 
