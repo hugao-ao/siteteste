@@ -607,12 +607,28 @@
 
                 // Tratamento do CPF (pode vir como objeto ou string)
                 let cpfDisplay = '-';
+                let rawDocument = '';
+                
                 if (client.document) {
                     if (typeof client.document === 'object') {
                         // Tenta pegar 'number', 'value', 'cpf', ou 'cnpj'
-                        cpfDisplay = client.document.number || client.document.value || client.document.cpf || client.document.cnpj || JSON.stringify(client.document);
+                        rawDocument = client.document.number || client.document.value || client.document.cpf || client.document.cnpj || '';
                     } else {
-                        cpfDisplay = client.document;
+                        rawDocument = String(client.document);
+                    }
+                }
+
+                // Aplica máscara de CPF ou CNPJ
+                if (rawDocument) {
+                    const cleanDoc = rawDocument.replace(/\D/g, ''); // Remove não-números
+                    if (cleanDoc.length === 11) {
+                        // CPF: 000.000.000-00
+                        cpfDisplay = cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                    } else if (cleanDoc.length === 14) {
+                        // CNPJ: 00.000.000/0000-00
+                        cpfDisplay = cleanDoc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                    } else {
+                        cpfDisplay = rawDocument; // Retorna original se não bater tamanho
                     }
                 }
 
