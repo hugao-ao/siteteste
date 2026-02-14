@@ -352,13 +352,17 @@
 
   <script>
     // Configuração do Supabase
-    const SUPABASE_URL = 'https://ivnlm4ro8pe406l9i5tz2.supabase.co';
+    const SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+    
     // NOTA: Para evitar conflito com a variável global 'supabase' do CDN, usamos 'supabaseClient'
     let supabaseClient;
     try {
-        if (window.supabase) {
-             // Tenta usar a chave já configurada no projeto ou um placeholder
-             supabaseClient = window.supabase.createClient('https://ivnlm4ro8pe406l9i5tz2.supabase.co', 'YOUR_SUPABASE_ANON_KEY');
+        if (window.supabase && window.supabase.createClient) {
+             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+             console.log('Supabase inicializado com sucesso em admin-notificacoes-hvsf.html');
+        } else {
+            console.error('Biblioteca Supabase não carregada corretamente.');
         }
     } catch (e) {
         console.error('Erro ao inicializar Supabase:', e);
@@ -375,7 +379,7 @@
         }
         
         // 2. Carrega Notificações do Supabase (se configurado)
-        // loadNotifications(); // Descomente após configurar a chave Supabase
+        loadNotifications();
         
         // 3. Carrega Dados da Cyclopay (Clientes + Assinaturas + Transações)
         loadCyclopayData();
@@ -537,8 +541,9 @@
                 .from('formularios_clientes')
                 .select('cliente_id');
 
-            const existingClientIds = new Set(supabaseClients?.map(c => c.id) || []);
-            const clientsWithForms = new Set(supabaseForms?.map(f => f.cliente_id) || []);
+            // Salva dados do Supabase no escopo global para acesso na renderização
+            window.supabaseClients = supabaseClients || [];
+            window.clientsWithForms = new Set(supabaseForms?.map(f => f.cliente_id) || []);
 
             // 1. Busca TODOS os Clientes, Assinaturas e Transações em paralelo
             const [customers, subscriptions, transactions] = await Promise.all([
@@ -655,13 +660,17 @@
                 let isAdcs = false;
                 let hasForm = false;
                 
+                // Recupera dados do Supabase do escopo global
+                const sbClients = window.supabaseClients || [];
+                const sbForms = window.clientsWithForms || new Set();
+
                 // Tenta achar cliente no Supabase (por email, já que CPF pode não existir na tabela clientes)
                 // Se a tabela clientes tiver CPF, a comparação seria: c.cpf === cleanDoc
-                const sbClient = supabaseClients?.find(c => c.email === client.email || (cleanDoc && c.cpf === cleanDoc)); 
+                const sbClient = sbClients.find(c => c.email === client.email || (cleanDoc && c.cpf === cleanDoc)); 
                 
                 if (sbClient) {
                     isAdcs = true;
-                    if (clientsWithForms.has(sbClient.id)) {
+                    if (sbForms.has(sbClient.id)) {
                         hasForm = true;
                     }
                 }
