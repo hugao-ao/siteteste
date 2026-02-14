@@ -211,6 +211,17 @@
         background-color: #d4af37;
         color: #000;
     }
+
+    /* Ícones de Status de Pagamento */
+    .status-icon {
+        margin-left: 8px;
+        font-size: 0.9rem;
+    }
+    .status-paid { color: #28a745; } /* Verde */
+    .status-refused { color: #dc3545; } /* Vermelho */
+    .status-pending { color: #ffc107; } /* Amarelo */
+    .status-unknown { color: #6c757d; } /* Cinza */
+
   </style>
 </head>
 <body>
@@ -315,7 +326,7 @@
         // 2. Carrega Notificações do Supabase (se configurado)
         // loadNotifications(); // Descomente após configurar a chave Supabase
         
-        // 3. Carrega Dados da Cyclopay (Clientes + Assinaturas)
+        // 3. Carrega Dados da Cyclopay (Clientes + Assinaturas + Transações)
         loadCyclopayData();
     });
 
@@ -439,6 +450,7 @@
         const CYCLOPAY_API_KEY = 'ak_aeb26f6be167cc077eb227c128262e731523d492'; 
         const CUSTOMERS_URL = 'https://api.cyclopay.com/v1/customers'; 
         const SUBSCRIPTIONS_URL = 'https://api.cyclopay.com/v1/subscriptions';
+        const TRANSACTIONS_URL = 'https://api.cyclopay.com/v1/transactions?orderDir=desc&count=100'; // Busca as 100 últimas transações
 
         try {
             // 1. Busca Clientes
@@ -461,14 +473,29 @@
             const subscriptionsData = await subscriptionsResponse.json();
             const subscriptions = subscriptionsData.items || [];
 
-            // 3. Cruza os dados
+            // 3. Busca Transações (para pegar o status da última cobrança)
+            const transactionsResponse = await fetch(TRANSACTIONS_URL, {
+                method: 'GET',
+                headers: { 'api_key': CYCLOPAY_API_KEY, 'Accept': 'application/json' }
+            });
+
+            if (!transactionsResponse.ok) throw new Error(`Erro ao buscar transações: ${transactionsResponse.status}`);
+            const transactionsData = await transactionsResponse.json();
+            const transactions = transactionsData.items || [];
+
+            // 4. Cruza os dados
             const mergedData = customers.map(customer => {
                 // Encontra a assinatura correspondente ao cliente
                 const sub = subscriptions.find(s => s.customer_id === customer.customer_id);
+                
+                // Encontra a transação mais recente do cliente
+                const lastTransaction = transactions.find(t => t.customer && t.customer.customer_id === customer.customer_id);
+
                 return {
                     ...customer,
                     last_charge_date: sub ? sub.last_charge_date : null,
-                    next_charge: sub ? sub.next_charge : null
+                    next_charge: sub ? sub.next_charge : null,
+                    last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null
                 };
             });
 
@@ -498,12 +525,26 @@
                 const lastCharge = client.last_charge_date ? new Date(client.last_charge_date).toLocaleDateString('pt-BR') : '-';
                 const nextCharge = client.next_charge ? new Date(client.next_charge).toLocaleDateString('pt-BR') : '-';
                 
+                // Ícone de status da última cobrança
+                let statusIcon = '';
+                if (client.last_transaction_status) {
+                    if (client.last_transaction_status === 'paid' || client.last_transaction_status === 'authorized') {
+                        statusIcon = '<i class="fas fa-check-circle status-icon status-paid" title="Pago"></i>';
+                    } else if (client.last_transaction_status === 'refused' || client.last_transaction_status === 'failed') {
+                        statusIcon = '<i class="fas fa-times-circle status-icon status-refused" title="Falhou"></i>';
+                    } else if (client.last_transaction_status === 'pending' || client.last_transaction_status === 'waiting_payment') {
+                        statusIcon = '<i class="fas fa-clock status-icon status-pending" title="Pendente"></i>';
+                    } else {
+                        statusIcon = `<i class="fas fa-question-circle status-icon status-unknown" title="${client.last_transaction_status}"></i>`;
+                    }
+                }
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
                     <td>${client.email}</td>
                     <td>${createdDate}</td>
-                    <td>${lastCharge}</td>
+                    <td>${lastCharge} ${statusIcon}</td>
                     <td>${nextCharge}</td>
                     <td><span class="badge ${statusClass}">${statusLabel}</span></td>
                     <td>
