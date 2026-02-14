@@ -320,7 +320,8 @@
                 <thead>
                     <tr>
                         <th onclick="sortTable(0)">Nome <i class="fas fa-sort"></i></th>
-                        <th onclick="sortTable(1)">Email <i class="fas fa-sort"></i></th>
+                        <th>Plano</th>
+                        <th onclick="sortTable(1)">Telefone <i class="fas fa-sort"></i></th>
                         <th onclick="sortTable(2)">CPF <i class="fas fa-sort"></i></th>
                         <th title="Adicionado ao Sistema">ADCS</th>
                         <th title="Formulário Preenchido">FORM</th>
@@ -737,10 +738,47 @@
                     formIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Formulário respondido"></i>';
                 }
 
+                // Formata Telefone
+                let phoneDisplay = '-';
+                if (client.phone) {
+                    // Se for objeto (mobile_phone) ou string
+                    const rawPhone = client.mobile_phone || client.phone || '';
+                    // Remove caracteres não numéricos
+                    const cleanPhone = String(rawPhone).replace(/\D/g, '');
+                    if (cleanPhone.length >= 10) {
+                        // Formata (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+                        if (cleanPhone.length === 11) {
+                            phoneDisplay = `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,7)}-${cleanPhone.substring(7)}`;
+                        } else {
+                            phoneDisplay = `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,6)}-${cleanPhone.substring(6)}`;
+                        }
+                    } else {
+                        phoneDisplay = rawPhone;
+                    }
+                }
+
+                // Obtém nome do Plano (se disponível na assinatura)
+                let planName = '-';
+                // Tenta pegar da assinatura vinculada
+                // Precisamos achar a assinatura correta no array de subscriptions
+                // Como já cruzamos os dados, podemos ter salvo o objeto de assinatura no cliente ou buscar novamente
+                // No código atual, 'client' já tem dados mesclados, mas não salvamos o objeto de assinatura completo, apenas datas.
+                // Vamos ajustar o map lá em cima para incluir o nome do plano ou buscar aqui.
+                // Melhor ajustar o map principal para incluir 'plan_name'.
+                
+                // Ajuste rápido: buscar no array global de subscriptions se disponível, ou usar o que tiver.
+                // Como 'client' é um objeto mesclado, vamos ver se tem info do plano.
+                // Se não tiver, vamos exibir '-' por enquanto e ajustar o map principal no próximo passo se necessário.
+                // Mas espere, o 'mergedData' é criado mapeando 'customers'.
+                // Vamos ver se 'subscriptions' tem o nome do plano.
+                // A API da Cyclopay retorna 'product_name' ou 'plan_name' na assinatura?
+                // Geralmente sim. Vou assumir que precisamos pegar isso no map.
+                
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
-                    <td>${client.email}</td>
+                    <td>${client.plan_name || '-'}</td>
+                    <td>${phoneDisplay}</td>
                     <td>${cpfDisplay}</td>
                     <td style="text-align: center;">${adcsIcon}</td>
                     <td style="text-align: center;">${formIcon}</td>
