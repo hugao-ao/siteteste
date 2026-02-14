@@ -536,14 +536,29 @@
                 .from('clientes')
                 .select('id, nome, whatsapp, projeto'); // Assumindo que não tem CPF, vamos tentar comparar por outros meios se possível, mas o ideal seria ter CPF.
             
-            // Buscar formulários
+            // Buscar formulários (trazendo todos os campos para verificar preenchimento)
             const { data: supabaseForms, error: sbFormError } = await supabaseClient
                 .from('formularios_clientes')
-                .select('cliente_id');
+                .select('*'); // Traz tudo para inspecionar estrutura
+
+            if (supabaseForms && supabaseForms.length > 0) {
+                console.log('Estrutura de formularios_clientes:', supabaseForms[0]);
+            }
 
             // Salva dados do Supabase no escopo global para acesso na renderização
             window.supabaseClients = supabaseClients || [];
-            window.clientsWithForms = new Set(supabaseForms?.map(f => f.cliente_id) || []);
+            // Mapeia formulários por cliente_id para acesso rápido
+            window.formsByClientId = {};
+            if (supabaseForms) {
+                supabaseForms.forEach(form => {
+                    // Se o cliente tiver múltiplos formulários, guarda o mais recente ou uma lista
+                    // Aqui vamos guardar uma lista para poder verificar todos
+                    if (!window.formsByClientId[form.cliente_id]) {
+                        window.formsByClientId[form.cliente_id] = [];
+                    }
+                    window.formsByClientId[form.cliente_id].push(form);
+                });
+            }
 
             // 1. Busca TODOS os Clientes, Assinaturas e Transações em paralelo
             const [customers, subscriptions, transactions] = await Promise.all([
@@ -654,29 +669,73 @@
                 }
 
                 // Lógica ADCS e FORM
-                // Tenta encontrar no Supabase pelo CPF (se tiver coluna) ou Email
-                // Como não tenho certeza da coluna CPF no Supabase, vou usar Email como chave primária de comparação
-                // Se o usuário confirmar que tem CPF, mudamos para CPF.
                 let isAdcs = false;
-                let hasForm = false;
+                let formStatus = 'none'; // none, created, answered
                 
                 // Recupera dados do Supabase do escopo global
                 const sbClients = window.supabaseClients || [];
-                const sbForms = window.clientsWithForms || new Set();
+                const formsMap = window.formsByClientId || {};
 
-                // Tenta achar cliente no Supabase (por email, já que CPF pode não existir na tabela clientes)
-                // Se a tabela clientes tiver CPF, a comparação seria: c.cpf === cleanDoc
+                // Tenta achar cliente no Supabase (por email ou CPF)
                 const sbClient = sbClients.find(c => c.email === client.email || (cleanDoc && c.cpf === cleanDoc)); 
                 
                 if (sbClient) {
                     isAdcs = true;
-                    if (sbForms.has(sbClient.id)) {
-                        hasForm = true;
+                    const clientForms = formsMap[sbClient.id];
+                    
+                    if (clientForms && clientForms.length > 0) {
+                        // Verifica se algum formulário foi respondido
+                        // Critério: Verifica se existe algum campo de resposta preenchido.
+                        // Assumindo campos comuns como 'respostas', 'dados', 'status' ou simplesmente se o objeto não está vazio além dos metadados.
+                        // Como não sei a estrutura exata, vou usar uma heurística genérica:
+                        // Se tiver um campo 'status' == 'concluido' ou 'respondido'
+                        // OU se tiver um campo 'respostas' ou 'dados' que não seja null/vazio
+                        
+                        const hasAnsweredForm = clientForms.some(f => {
+                            // Tenta detectar se foi respondido
+                            const hasData = f.respostas || f.dados || f.json_respostas;
+                            const isCompleted = f.status === 'concluido' || f.status === 'respondido' || f.status === 'finalizado';
+                            
+                            // Se não tiver campos explícitos, assume que a existência do registro já indica criação.
+                            // Para diferenciar "criado" de "respondido", precisamos saber se o formulário é criado vazio primeiro.
+                            // Se o sistema cria o registro APENAS quando o cliente responde, então sempre será "respondido".
+                            // Se o sistema cria um "convite" (registro vazio), então precisamos checar preenchimento.
+                            
+                            // Vou assumir a lógica mais comum em sistemas de "envio de formulário":
+                            // 1. Admin envia -> Cria registro (status='enviado' ou dados vazios)
+                            // 2. Cliente responde -> Atualiza registro (status='respondido' ou preenche dados)
+                            
+                            return hasData || isCompleted; 
+                        });
+
+                        if (hasAnsweredForm) {
+                            formStatus = 'answered';
+                        } else {
+                            formStatus = 'created';
+                        }
                     }
                 }
 
-                const adcsIcon = isAdcs ? '<i class="fas fa-check-circle" style="color: #28a745;" title="Cliente encontrado no sistema"></i>' : '<i class="fas fa-minus" style="color: #6c757d;"></i>';
-                const formIcon = hasForm ? '<i class="fas fa-file-alt" style="color: #007bff;" title="Formulário preenchido"></i>' : '<i class="fas fa-minus" style="color: #6c757d;"></i>';
+                // Ícone ADCS
+                const adcsIcon = isAdcs 
+                    ? '<i class="fas fa-check-circle" style="color: #28a745;" title="Cliente encontrado no sistema"></i>' 
+                    : '<i class="fas fa-times-circle" style="color: #dc3545;" title="Cliente NÃO encontrado"></i>';
+
+                // Ícone FORM
+                let formIcon = '';
+                if (!isAdcs) {
+                    // Cliente não encontrado -> X Vermelho
+                    formIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Cliente não encontrado"></i>';
+                } else if (formStatus === 'none') {
+                    // Cliente encontrado, mas sem formulário -> X Vermelho
+                    formIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Formulário não criado"></i>';
+                } else if (formStatus === 'created') {
+                    // Formulário criado, mas não respondido -> ! Amarelo
+                    formIcon = '<i class="fas fa-exclamation-triangle" style="color: #ffc107;" title="Aguardando resposta"></i>';
+                } else {
+                    // Formulário respondido -> Check Verde
+                    formIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Formulário respondido"></i>';
+                }
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
