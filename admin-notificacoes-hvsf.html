@@ -11,6 +11,19 @@
   
   <style>
     /* Estilos específicos para a página de notificações */
+    /* Ajuste para garantir que o conteúdo não fique atrás da sidebar */
+    .main-content {
+        margin-left: 250px; /* Largura padrão da sidebar */
+        padding: 20px;
+        transition: margin-left 0.3s;
+    }
+
+    @media (max-width: 768px) {
+        .main-content {
+            margin-left: 0; /* Em mobile, a sidebar geralmente recolhe */
+        }
+    }
+
     .notifications-container {
         padding: 20px;
         max-width: 1200px;
