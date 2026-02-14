@@ -322,6 +322,8 @@
                         <th onclick="sortTable(0)">Nome <i class="fas fa-sort"></i></th>
                         <th onclick="sortTable(1)">Email <i class="fas fa-sort"></i></th>
                         <th onclick="sortTable(2)">CPF <i class="fas fa-sort"></i></th>
+                        <th title="Adicionado ao Sistema">ADCS</th>
+                        <th title="Formulário Preenchido">FORM</th>
                         <th onclick="sortTable(3)">Data Criação <i class="fas fa-sort"></i></th>
                         <th onclick="sortTable(4)">Última Cobrança <i class="fas fa-sort"></i></th>
                         <th onclick="sortTable(5)">Próxima Cobrança <i class="fas fa-sort"></i></th>
@@ -525,6 +527,19 @@
                 return allItems;
             }
 
+            // 0. Buscar dados do Supabase para comparação (ADCS e FORM)
+            const { data: supabaseClients, error: sbError } = await supabaseClient
+                .from('clientes')
+                .select('id, nome, whatsapp, projeto'); // Assumindo que não tem CPF, vamos tentar comparar por outros meios se possível, mas o ideal seria ter CPF.
+            
+            // Buscar formulários
+            const { data: supabaseForms, error: sbFormError } = await supabaseClient
+                .from('formularios_clientes')
+                .select('cliente_id');
+
+            const existingClientIds = new Set(supabaseClients?.map(c => c.id) || []);
+            const clientsWithForms = new Set(supabaseForms?.map(f => f.cliente_id) || []);
+
             // 1. Busca TODOS os Clientes, Assinaturas e Transações em paralelo
             const [customers, subscriptions, transactions] = await Promise.all([
                 fetchAllPages('/customers'),
@@ -619,8 +634,9 @@
                 }
 
                 // Aplica máscara de CPF ou CNPJ
+                let cleanDoc = '';
                 if (rawDocument) {
-                    const cleanDoc = rawDocument.replace(/\D/g, ''); // Remove não-números
+                    cleanDoc = rawDocument.replace(/\D/g, ''); // Remove não-números
                     if (cleanDoc.length === 11) {
                         // CPF: 000.000.000-00
                         cpfDisplay = cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
@@ -632,11 +648,34 @@
                     }
                 }
 
+                // Lógica ADCS e FORM
+                // Tenta encontrar no Supabase pelo CPF (se tiver coluna) ou Email
+                // Como não tenho certeza da coluna CPF no Supabase, vou usar Email como chave primária de comparação
+                // Se o usuário confirmar que tem CPF, mudamos para CPF.
+                let isAdcs = false;
+                let hasForm = false;
+                
+                // Tenta achar cliente no Supabase (por email, já que CPF pode não existir na tabela clientes)
+                // Se a tabela clientes tiver CPF, a comparação seria: c.cpf === cleanDoc
+                const sbClient = supabaseClients?.find(c => c.email === client.email || (cleanDoc && c.cpf === cleanDoc)); 
+                
+                if (sbClient) {
+                    isAdcs = true;
+                    if (clientsWithForms.has(sbClient.id)) {
+                        hasForm = true;
+                    }
+                }
+
+                const adcsIcon = isAdcs ? '<i class="fas fa-check-circle" style="color: #28a745;" title="Cliente encontrado no sistema"></i>' : '<i class="fas fa-minus" style="color: #6c757d;"></i>';
+                const formIcon = hasForm ? '<i class="fas fa-file-alt" style="color: #007bff;" title="Formulário preenchido"></i>' : '<i class="fas fa-minus" style="color: #6c757d;"></i>';
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
                     <td>${client.email}</td>
                     <td>${cpfDisplay}</td>
+                    <td style="text-align: center;">${adcsIcon}</td>
+                    <td style="text-align: center;">${formIcon}</td>
                     <td>${createdDate}</td>
                     <td>${lastCharge} ${statusIcon}</td>
                     <td>${nextCharge}</td>
