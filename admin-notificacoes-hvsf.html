@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Notificações SITE HVSF - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="sidebar.css">
+    <style>
+        .notification-card {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            border-left: 5px solid #ff4444;
+        }
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .notification-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #333;
+        }
+        .notification-date {
+            color: #666;
+            font-size: 0.9em;
+        }
+        .task-list {
+            list-style: none;
+            padding: 0;
+        }
+        .task-item {
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .task-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        .task-item label {
+            cursor: pointer;
+            font-size: 1em;
+        }
+        .task-item.completed label {
+            text-decoration: line-through;
+            color: #888;
+        }
+        .btn-finalize {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            opacity: 0.5;
+            pointer-events: none;
+        }
+        .btn-finalize.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .btn-finalize:hover {
+            background-color: #218838;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        .empty-state i {
+            font-size: 3em;
+            color: #ccc;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div id="sidebar-container"></div>
+
+    <div class="main-content">
+        <header>
+            <div class="header-left">
+                <h1><i class="fas fa-bell"></i> Notificações SITE HVSF</h1>
+            </div>
+            <div class="user-info">
+                <span>Admin</span>
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </header>
+
+        <div class="content-wrapper">
+            <div id="notifications-container">
+                <!-- Notificações serão inseridas aqui via JS -->
+            </div>
+        </div>
+    </div>
+
+    <script src="sidebar.js"></script>
+    <script>
+        // Simulação de Dados (Substituir por chamada ao Supabase depois)
+        const mockNotifications = [
+            {
+                id: 1,
+                clientName: "João da Silva",
+                plan: "Nível II",
+                date: "14/02/2026 10:30",
+                tasks: [
+                    { id: "t1", text: "Criar Login e Senha no Admin", done: false },
+                    { id: "t2", text: "Criar E-mail Seguro (joao.silva@hvsf...)", done: false },
+                    { id: "t3", text: "Enviar Formulário de Diagnóstico via WhatsApp", done: false }
+                ],
+                status: "pending"
+            },
+            {
+                id: 2,
+                clientName: "Maria Oliveira",
+                plan: "Nível IV",
+                date: "14/02/2026 11:15",
+                tasks: [
+                    { id: "t1", text: "Criar Login e Senha no Admin", done: false },
+                    { id: "t2", text: "Criar E-mail Seguro (maria.oliveira@hvsf...)", done: false },
+                    { id: "t3", text: "Enviar Formulário de Diagnóstico via WhatsApp", done: false },
+                    { id: "t4", text: "Agendar Reunião de Boas-vindas (Prioridade Máxima)", done: false }
+                ],
+                status: "pending"
+            }
+        ];
+
+        // Carregar notificações do LocalStorage ou usar Mock
+        let notifications = JSON.parse(localStorage.getItem('hvsf_notifications')) || mockNotifications;
+
+        function renderNotifications() {
+            const container = document.getElementById('notifications-container');
+            container.innerHTML = '';
+
+            const pendingNotifications = notifications.filter(n => n.status === 'pending');
+
+            // Atualizar Badge na Sidebar
+            updateSidebarBadge(pendingNotifications.length);
+
+            if (pendingNotifications.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <h3>Tudo em dia!</h3>
+                        <p>Nenhuma notificação pendente no momento.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            pendingNotifications.forEach(notif => {
+                const card = document.createElement('div');
+                card.className = 'notification-card';
+                
+                const allTasksDone = notif.tasks.every(t => t.done);
+
+                let tasksHtml = notif.tasks.map((task, index) => `
+                    <li class="task-item ${task.done ? 'completed' : ''}">
+                        <input type="checkbox" id="task-${notif.id}-${index}" 
+                               ${task.done ? 'checked' : ''} 
+                               onchange="toggleTask(${notif.id}, ${index})">
+                        <label for="task-${notif.id}-${index}">${task.text}</label>
+                    </li>
+                `).join('');
+
+                card.innerHTML = `
+                    <div class="notification-header">
+                        <div>
+                            <div class="notification-title">Novo Cliente: ${notif.clientName}</div>
+                            <div class="notification-date">Plano: ${notif.plan} • ${notif.date}</div>
+                        </div>
+                        <i class="fas fa-exclamation-circle" style="color: #ff4444; font-size: 1.5em;"></i>
+                    </div>
+                    <ul class="task-list">
+                        ${tasksHtml}
+                    </ul>
+                    <button class="btn-finalize ${allTasksDone ? 'active' : ''}" 
+                            onclick="finalizeNotification(${notif.id})">
+                        <i class="fas fa-check"></i> Finalizar Processo
+                    </button>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function toggleTask(notifId, taskIndex) {
+            const notif = notifications.find(n => n.id === notifId);
+            if (notif) {
+                notif.tasks[taskIndex].done = !notif.tasks[taskIndex].done;
+                saveNotifications();
+                renderNotifications();
+            }
+        }
+
+        function finalizeNotification(notifId) {
+            if (confirm('Tem certeza que deseja finalizar este processo? O cliente será considerado ativo.')) {
+                const notif = notifications.find(n => n.id === notifId);
+                if (notif) {
+                    notif.status = 'completed';
+                    saveNotifications();
+                    renderNotifications();
+                }
+            }
+        }
+
+        function saveNotifications() {
+            localStorage.setItem('hvsf_notifications', JSON.stringify(notifications));
+        }
+
+        function updateSidebarBadge(count) {
+            const badge = document.getElementById('badge-notificacoes-hvsf');
+            if (badge) {
+                badge.innerText = count;
+                badge.style.display = count > 0 ? 'block' : 'none';
+            }
+        }
+
+        // Inicialização
+        document.addEventListener('DOMContentLoaded', () => {
+            // Injetar Sidebar
+            const sidebarContainer = document.getElementById('sidebar-container');
+            if (sidebarContainer && typeof createAdminSidebarHTML === 'function') {
+                sidebarContainer.innerHTML = createAdminSidebarHTML('Planejamento');
+                
+                // Inicializar Toggle da Sidebar
+                const toggleBtn = document.getElementById('sidebar-toggle');
+                const sidebar = document.getElementById('sidebar');
+                if (toggleBtn && sidebar) {
+                    toggleBtn.addEventListener('click', () => {
+                        sidebar.classList.toggle('collapsed');
+                        document.querySelector('.main-content').classList.toggle('expanded');
+                    });
+                }
+            }
+
+            renderNotifications();
+        });
+    </script>
+</body>
+</html>
