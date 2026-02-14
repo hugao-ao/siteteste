@@ -143,6 +143,51 @@
         margin: 0;
     }
 
+    .cyclopay-controls {
+        display: flex;
+        gap: 10px;
+    }
+
+    .search-input {
+        padding: 8px 12px;
+        border-radius: 5px;
+        border: 1px solid #444;
+        background-color: #2a2a2a;
+        color: #fff;
+        outline: none;
+    }
+
+    .search-input:focus {
+        border-color: #d4af37;
+    }
+
+    .cyclopay-table th {
+        background-color: #2a2a2a;
+        color: #d4af37;
+        font-weight: bold;
+        cursor: pointer; /* Indica que é clicável */
+        user-select: none;
+    }
+
+    .cyclopay-table th:hover {
+        background-color: #333;
+    }
+
+    .cyclopay-table th i {
+        margin-left: 5px;
+        font-size: 0.8rem;
+        color: #666;
+    }
+
+    .cyclopay-table th.sorted-asc i {
+        color: #d4af37;
+        transform: rotate(180deg);
+    }
+
+    .cyclopay-table th.sorted-desc i {
+        color: #d4af37;
+    }
+
     .table-responsive {
         overflow-x: auto;
         -webkit-overflow-scrolling: touch; /* Rolagem suave em mobile */
@@ -262,21 +307,25 @@
       <div class="cyclopay-section">
         <div class="cyclopay-header">
             <h2><i class="fas fa-sync-alt"></i> Integração Cyclopay (Clientes Recentes)</h2>
-            <button onclick="loadCyclopayData()" style="background: transparent; border: 1px solid #d4af37; color: #d4af37; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
-                <i class="fas fa-refresh"></i> Atualizar Lista
-            </button>
+            <div class="cyclopay-controls">
+                <input type="text" id="searchInput" class="search-input" placeholder="Buscar por nome, email ou CPF..." onkeyup="filterTable()">
+                <button onclick="loadCyclopayData()" style="background: transparent; border: 1px solid #d4af37; color: #d4af37; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
+                    <i class="fas fa-refresh"></i> Atualizar
+                </button>
+            </div>
         </div>
         
         <div class="table-responsive">
             <table class="cyclopay-table">
                 <thead>
                     <tr>
-                        <th>Nome</th>
-                        <th>Email</th>
-                        <th>Data Criação</th>
-                        <th>Última Cobrança</th>
-                        <th>Próxima Cobrança</th>
-                        <th>Status</th>
+                        <th onclick="sortTable(0)">Nome <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(1)">Email <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(2)">CPF <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(3)">Data Criação <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(4)">Última Cobrança <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(5)">Próxima Cobrança <i class="fas fa-sort"></i></th>
+                        <th onclick="sortTable(6)">Status <i class="fas fa-sort"></i></th>
                         <th>Ações</th>
                     </tr>
                 </thead>
@@ -498,6 +547,9 @@
                     last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null
                 };
             });
+            
+            // Salva dados globais para filtragem
+            window.allCyclopayData = mergedData;
 
             renderCyclopayTable(mergedData);
 
@@ -543,6 +595,7 @@
                 tr.innerHTML = `
                     <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
                     <td>${client.email}</td>
+                    <td>${client.document || '-'}</td>
                     <td>${createdDate}</td>
                     <td>${lastCharge} ${statusIcon}</td>
                     <td>${nextCharge}</td>
@@ -580,6 +633,77 @@
                 loadNotifications(); 
             }
         }
+    }
+
+    // --- FUNÇÕES DE FILTRO E ORDENAÇÃO ---
+    function filterTable() {
+        const input = document.getElementById('searchInput');
+        const filter = input.value.toLowerCase();
+        
+        if (!window.allCyclopayData) return;
+
+        const filteredData = window.allCyclopayData.filter(client => {
+            const name = (client.first_name + ' ' + (client.last_name || '')).toLowerCase();
+            const email = (client.email || '').toLowerCase();
+            const cpf = (client.document || '').toLowerCase();
+            
+            return name.includes(filter) || email.includes(filter) || cpf.includes(filter);
+        });
+
+        renderCyclopayTable(filteredData);
+    }
+
+    let currentSort = { column: null, direction: 'asc' };
+
+    function sortTable(columnIndex) {
+        const table = document.querySelector('.cyclopay-table');
+        const tbody = document.getElementById('cyclopay-list');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+        
+        // Remove ícones de ordenação anteriores
+        table.querySelectorAll('th').forEach(th => {
+            th.classList.remove('sorted-asc', 'sorted-desc');
+            const icon = th.querySelector('i');
+            if(icon) icon.className = 'fas fa-sort';
+        });
+
+        // Define direção
+        if (currentSort.column === columnIndex) {
+            currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+        } else {
+            currentSort.column = columnIndex;
+            currentSort.direction = 'asc';
+        }
+
+        // Atualiza ícone da coluna atual
+        const th = table.querySelectorAll('th')[columnIndex];
+        th.classList.add(currentSort.direction === 'asc' ? 'sorted-asc' : 'sorted-desc');
+        th.querySelector('i').className = currentSort.direction === 'asc' ? 'fas fa-sort-up' : 'fas fa-sort-down';
+
+        // Ordena
+        rows.sort((a, b) => {
+            const aText = a.children[columnIndex].innerText.trim();
+            const bText = b.children[columnIndex].innerText.trim();
+
+            // Tenta ordenar como data (DD/MM/YYYY)
+            if (aText.match(/^\d{2}\/\d{2}\/\d{4}/)) {
+                const dateA = parseDate(aText);
+                const dateB = parseDate(bText);
+                return currentSort.direction === 'asc' ? dateA - dateB : dateB - dateA;
+            }
+
+            return currentSort.direction === 'asc' 
+                ? aText.localeCompare(bText) 
+                : bText.localeCompare(aText);
+        });
+
+        rows.forEach(row => tbody.appendChild(row));
+    }
+
+    function parseDate(dateStr) {
+        if (!dateStr || dateStr === '-') return 0;
+        const parts = dateStr.split(' ')[0].split('/'); // Remove ícones/espaços extras
+        return new Date(parts[2], parts[1] - 1, parts[0]).getTime();
     }
   </script>
 </body>
