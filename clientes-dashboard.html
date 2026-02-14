@@ -340,22 +340,24 @@
   <!-- Scripts -->
   <script type="module" src="supabase.js"></script>
   <script type="module" src="clientes.js"></script> <!-- Apenas carrega o script, ele se inicializa sozinho -->
-  <script type="module">
-    // Importa função para injetar a sidebar
-    import { injectSidebar } from './sidebar.js';
-
+  <script src="sidebar.js"></script>
+  <script>
     // Verifica se deve injetar sidebar (só se for admin ou user normal, não admin vendo como user)
     const isAdminViewingAsUser = sessionStorage.getItem("viewing_user_id") && sessionStorage.getItem("nivel") === 'admin';
     
     if (!isAdminViewingAsUser) {
         // Se não for admin vendo como user, injeta a sidebar normalmente
         console.log("clientes-dashboard.html: Injetando sidebar...");
-        injectSidebar("main-content-clientes"); 
-        // O script clientes.js agora inicializa sozinho via DOMContentLoaded
+        if (typeof injectSidebarWithAutoDetection === 'function') {
+             injectSidebarWithAutoDetection("main-content-clientes");
+        } else if (typeof injectSidebar === 'function') {
+             injectSidebar("main-content-clientes"); 
+        } else {
+             console.error("Função injectSidebar não encontrada!");
+        }
     } else {
         // Se for admin vendo como user, não injeta sidebar
         console.log("clientes-dashboard.html: Admin visualizando como usuário, sidebar não injetada.");
-        // O script clientes.js agora inicializa sozinho via DOMContentLoaded
     }
   </script>
 
