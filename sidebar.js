@@ -49,8 +49,14 @@ function createAdminSidebarHTML(projectContext = null) {
         projectSpecificLinks = `
             <li class="sub-menu"><a href="atualizacao-variaveis.html" id="nav-atualizacao-variaveis"><i class="fas fa-sliders-h"></i> <span>Atualização de Variáveis</span></a></li>
             <li class="sub-menu"><a href="clientes-dashboard.html" id="nav-gerenciar-clientes-planejamento"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li class="sub-menu"><a href="aquisicao-bens.html" id="nav-aquisicao-bens-planejamento"><i class="fas fa-shopping-cart"></i> <span>Aquisição de Bens</span></a></li>
             <li class="sub-menu"><a href="mensagens-whats.html" id="nav-mensagens-whats-planejamento"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
+            <li class="sub-menu">
+                <a href="admin-notificacoes-hvsf.html" id="nav-notificacoes-hvsf" style="position: relative;">
+                    <i class="fas fa-bell"></i> 
+                    <span>SITE HVSF</span>
+                    <span id="badge-notificacoes-hvsf" style="display: none; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background-color: #ff4444; color: white; border-radius: 50%; padding: 2px 6px; font-size: 10px; font-weight: bold;">0</span>
+                </a>
+            </li>
         `;
     }
 
@@ -109,7 +115,6 @@ function createUserSidebarHTML(userProject) {
     } else if (userProject === 'Planejamento') {
         projectSpecificLinks = `
             <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li><a href="aquisicao-bens.html" id="nav-aquisicao-bens"><i class="fas fa-shopping-cart"></i> <span>Aquisição de Bens</span></a></li>
             <li><a href="mensagens-whats.html" id="nav-mensagens-whats-usuario"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
         `;
     } else {
@@ -161,7 +166,6 @@ function createAdminViewingUserSidebarHTML(viewedUserProject) {
         projectSpecificLinks = `
             <li><a href="atualizacao-variaveis.html" id="nav-atualizacao-variaveis"><i class="fas fa-sliders-h"></i> <span>Atualização de Variáveis</span></a></li>
             <li><a href="clientes-dashboard.html" id="nav-gerenciar-clientes"><i class="fas fa-briefcase"></i> <span>Gerenciar Clientes</span></a></li>
-            <li><a href="aquisicao-bens.html" id="nav-aquisicao-bens"><i class="fas fa-shopping-cart"></i> <span>Aquisição de Bens</span></a></li>
             <li><a href="mensagens-whats.html" id="nav-mensagens-whats"><i class="fab fa-whatsapp"></i> <span>Mensagens Whats</span></a></li>
         `;
     } else {
