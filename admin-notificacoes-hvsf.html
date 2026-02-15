@@ -569,9 +569,26 @@
             ]);
 
             // 4. Cruza os dados
+            if (customers.length > 0) {
+                console.log('Exemplo de Cliente Cyclopay:', customers[0]);
+            }
+            if (subscriptions.length > 0) {
+                console.log('Exemplo de Assinatura Cyclopay:', subscriptions[0]);
+            }
+
             const mergedData = customers.map(customer => {
                 // Encontra a assinatura correspondente ao cliente
-                const sub = subscriptions.find(s => s.customer_id === customer.customer_id);
+                // Pode haver múltiplas assinaturas, vamos tentar pegar a ativa ou a mais recente
+                const customerSubs = subscriptions.filter(s => s.customer_id === customer.customer_id);
+                
+                // Ordena por data de criação (mais recente primeiro) ou status (ativa primeiro)
+                customerSubs.sort((a, b) => {
+                    if (a.status === 'active' && b.status !== 'active') return -1;
+                    if (a.status !== 'active' && b.status === 'active') return 1;
+                    return new Date(b.created_at || b.start_date) - new Date(a.created_at || a.start_date);
+                });
+
+                const sub = customerSubs.length > 0 ? customerSubs[0] : null;
                 
                 // Encontra a transação mais recente do cliente
                 // Como buscamos todas as transações, filtramos pelo cliente e pegamos a primeira (mais recente)
@@ -590,11 +607,34 @@
                     lastChargeDate = sub.last_charge_date;
                 }
 
+                // Tenta obter o nome do plano/produto
+                let planName = '-';
+                if (sub) {
+                    // Tenta várias propriedades possíveis para o nome do plano
+                    planName = sub.product_name || sub.plan_name || sub.name || (sub.product ? sub.product.name : null) || '-';
+                }
+
+                // Tenta obter o telefone de várias fontes
+                let phone = null;
+                if (customer.mobile_phone) phone = customer.mobile_phone;
+                else if (customer.phone) phone = customer.phone;
+                else if (customer.phones && Array.isArray(customer.phones) && customer.phones.length > 0) {
+                    // Pega o primeiro telefone da lista
+                    phone = customer.phones[0]; 
+                }
+                
+                // Se ainda não achou, tenta pegar da assinatura (às vezes o dado de contato fica lá)
+                if (!phone && sub && sub.customer) {
+                     phone = sub.customer.mobile_phone || sub.customer.phone;
+                }
+
                 return {
                     ...customer,
                     last_charge_date: lastChargeDate,
                     next_charge: sub ? sub.next_charge : null,
-                    last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null
+                    last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null,
+                    plan_name: planName,
+                    phone: phone
                 };
             });
             
