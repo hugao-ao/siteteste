@@ -103,11 +103,14 @@
     </main>
 
     <!-- Scripts -->
+    <script src="sidebar.js"></script>
     <script type="module" src="supabase.js"></script>
     <script type="module" src="dashboard-hvc.js"></script>
     <script type="module">
-        import { injectSidebar } from './sidebar.js';
-        injectSidebar("main-content-dashboard-hvc");
+        // Injetar a sidebar (agora global)
+        if (typeof injectSidebar === 'function') {
+            injectSidebar("main-content-dashboard-hvc", "Dashboard");
+        }
         
         // Aguardar um pouco para garantir que tudo carregou
         setTimeout(function() {
