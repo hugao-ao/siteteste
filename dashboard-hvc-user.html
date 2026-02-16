@@ -100,9 +100,11 @@
     <!-- Scripts -->
     <script type="module" src="supabase.js"></script>
     <script type="module" src="dashboard-hvc.js"></script>
-    <script type="module">
-        import { injectSidebar } from './sidebar.js';
-        injectSidebar("main-content-dashboard-hvc");
+    <script src="sidebar.js"></script>
+    <script>
+        if (window.injectSidebar) {
+            window.injectSidebar("main-content-dashboard-hvc");
+        }
     </script>
 </body>
 </html>
