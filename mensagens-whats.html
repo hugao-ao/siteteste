@@ -269,12 +269,18 @@
     </div>
   </main>
 
+  <!-- Carrega Sidebar -->
+  <script src="sidebar.js"></script>
+
   <script type="module">
-    import { injectSidebar } from './sidebar.js';
     import { supabase } from './supabase.js';
     
-    // Injetar a sidebar
-    injectSidebar("main-content-mensagens");
+    // Injetar a sidebar (agora global)
+    if (typeof injectSidebar === 'function') {
+        injectSidebar("main-content-mensagens", "Mensagens");
+    } else {
+        console.error("injectSidebar não encontrado");
+    }
     
     // Elementos DOM
     const clientesTableContainer = document.getElementById('clientes-table-container');
