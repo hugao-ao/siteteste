@@ -573,6 +573,12 @@
                 // Encontra a assinatura correspondente ao cliente
                 const sub = subscriptions.find(s => s.customer_id === customer.customer_id);
                 
+                // Extrai nome do plano da assinatura (se existir)
+                let planName = null;
+                if (sub) {
+                    planName = sub.product_name || sub.plan_name || (sub.product ? sub.product.name : null);
+                }
+
                 // Encontra a transação mais recente do cliente
                 // Como buscamos todas as transações, filtramos pelo cliente e pegamos a primeira (mais recente)
                 const clientTransactions = transactions.filter(t => t.customer && t.customer.customer_id === customer.customer_id);
@@ -594,7 +600,10 @@
                     ...customer,
                     last_charge_date: lastChargeDate,
                     next_charge: sub ? sub.next_charge : null,
-                    last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null
+                    last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null,
+                    plan_name: planName, // Adiciona o nome do plano ao objeto mesclado
+                    // Garante que telefone esteja acessível (prioriza mobile_phone)
+                    phone: customer.mobile_phone || customer.phone
                 };
             });
             
