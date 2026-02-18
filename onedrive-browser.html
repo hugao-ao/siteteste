@@ -512,10 +512,9 @@
     <script type="module" src="supabase.js"></script>
     <script src="onedrive-auth.js"></script>
     <script src="onedrive-browser.js"></script>
-    <script type="module">
+    <script src="sidebar.js"></script>
+    <script>
         // Carregar sidebar após o DOM estar pronto
-        import { injectSidebar } from './sidebar.js';
-        
         document.addEventListener('DOMContentLoaded', async () => {
             // Injetar sidebar para projeto HVC
             injectSidebar('main-content', 'Hvc');
