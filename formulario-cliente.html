@@ -126,8 +126,9 @@
         text-align: left;
         margin-bottom: 1.5rem;
         display: flex;
-        flex-wrap: wrap;
-        gap: 1rem;
+        flex-direction: column; /* Força os itens a ficarem um abaixo do outro */
+        gap: 0.8rem;
+        margin-top: 0.5rem; /* Espaço entre a pergunta e as opções */
     }
     
     .radio-group label {
@@ -138,24 +139,33 @@
         color: var(--mithra-text-primary);
         cursor: pointer;
         background: rgba(255, 255, 255, 0.05);
-        padding: 0.5rem 1rem;
-        border-radius: 6px;
-        border: 1px solid transparent;
+        padding: 0.8rem 1rem; /* Aumentado para melhor toque em mobile */
+        border-radius: 8px;
+        border: 1px solid var(--mithra-border); /* Borda sempre visível mas sutil */
         transition: all 0.2s ease;
+        width: 100%; /* Ocupa toda a largura disponível */
+        box-sizing: border-box;
     }
 
     .radio-group label:hover {
         background: rgba(255, 255, 255, 0.1);
-        border-color: var(--mithra-border);
+        border-color: var(--mithra-gold); /* Destaque dourado no hover */
+    }
+
+    /* Estilo para quando o radio está selecionado (requer JS ou seletor :has) */
+    .radio-group label:has(input:checked) {
+        background: rgba(212, 175, 55, 0.15);
+        border-color: var(--mithra-gold);
+        box-shadow: 0 0 10px rgba(212, 175, 55, 0.1);
     }
 
     .radio-group input[type="radio"],
     .radio-group input[type="checkbox"] {
         width: auto;
-        margin-right: 0.6rem;
+        margin-right: 1rem;
         margin-bottom: 0;
-        accent-color: var(--mithra-gold); /* Cor nativa do browser para inputs */
-        transform: scale(1.2);
+        accent-color: var(--mithra-gold);
+        transform: scale(1.3); /* Um pouco maior para destaque */
     }
 
     /* Botões Principais */
