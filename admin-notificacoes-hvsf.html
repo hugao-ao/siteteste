@@ -312,8 +312,14 @@
                 <button onclick="loadCyclopayData()" style="background: transparent; border: 1px solid #d4af37; color: #d4af37; padding: 8px 15px; border-radius: 5px; cursor: pointer;">
                     <i class="fas fa-refresh"></i> Atualizar
                 </button>
+                <button onclick="showDiagnosticData()" style="background: transparent; border: 1px solid #007bff; color: #007bff; padding: 8px 15px; border-radius: 5px; cursor: pointer; margin-left: 10px;">
+                    <i class="fas fa-bug"></i> Diagnóstico
+                </button>
             </div>
         </div>
+        
+        <!-- Área de Diagnóstico (Oculta por padrão) -->
+        <pre id="diagnostic-area" style="display: none; margin-top: 20px; padding: 15px; background: #000; border: 1px solid #444; border-radius: 5px; color: #0f0; font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto;"></pre>
         
         <div class="table-responsive">
             <table class="cyclopay-table">
@@ -609,12 +615,55 @@
             
             // Salva dados globais para filtragem
             window.allCyclopayData = mergedData;
+            
+            // Salva dados brutos para diagnóstico
+            window.rawCustomers = customers;
+            window.rawSubscriptions = subscriptions;
 
             renderCyclopayTable(mergedData);
 
         } catch (error) {
             console.error('Erro ao carregar dados da Cyclopay:', error);
             tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ff4d4d;">Erro ao carregar dados: ${error.message}</td></tr>`;
+        }
+    }
+
+    function showDiagnosticData() {
+        const diagnosticArea = document.getElementById('diagnostic-area');
+        if (diagnosticArea.style.display === 'none') {
+            diagnosticArea.style.display = 'block';
+            
+            let output = "=== DIAGNÓSTICO DE DADOS CYCLOPAY ===\n\n";
+            
+            if (window.rawCustomers && window.rawCustomers.length > 0) {
+                const sampleCustomer = window.rawCustomers[0];
+                output += "EXEMPLO DE CLIENTE (RAW):\n";
+                output += JSON.stringify(sampleCustomer, null, 2);
+                output += "\n\n-----------------------------------\n\n";
+            } else {
+                output += "Nenhum dado de cliente carregado.\n\n";
+            }
+            
+            if (window.rawSubscriptions && window.rawSubscriptions.length > 0) {
+                const sampleSub = window.rawSubscriptions[0];
+                output += "EXEMPLO DE ASSINATURA (RAW):\n";
+                output += JSON.stringify(sampleSub, null, 2);
+                output += "\n\n-----------------------------------\n\n";
+            } else {
+                output += "Nenhum dado de assinatura carregado.\n\n";
+            }
+
+            if (window.allCyclopayData && window.allCyclopayData.length > 0) {
+                const sampleMerged = window.allCyclopayData[0];
+                output += "DADO MESCLADO (USADO NA TABELA):\n";
+                output += JSON.stringify(sampleMerged, null, 2);
+            } else {
+                output += "Nenhum dado mesclado disponível.";
+            }
+
+            diagnosticArea.textContent = output;
+        } else {
+            diagnosticArea.style.display = 'none';
         }
     }
 
