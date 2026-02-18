@@ -122,7 +122,10 @@
     }
 
     /* Radio Buttons e Checkboxes - Estilo Separado (Imagem 03) */
-    .radio-group {
+    /* Aplica-se a .radio-group e também aos containers dinâmicos como .radio-options-inline */
+    .radio-group, 
+    .radio-options-inline,
+    .radio-options-inline-patrimonio {
         text-align: left;
         margin-bottom: 1.5rem;
         display: flex;
@@ -131,112 +134,53 @@
         gap: 1.5rem; /* Espaço maior entre as opções */
         margin-top: 0.8rem;
         align-items: center; /* Alinha verticalmente */
+        padding-left: 10px; /* Um pouco de respiro */
     }
     
-    .radio-group label {
+    /* A pergunta (label que não é opção) deve ocupar 100% da largura */
+    .radio-group > label:first-child:not([for]),
+    .form-group > label:first-child {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        margin-left: 0;
+        padding: 0;
+        background: none;
+        border: none;
+        font-weight: 500;
+        color: var(--mithra-text-secondary);
+        font-size: 0.95rem;
+        display: block;
+        flex: 0 0 100%; /* Força quebra de linha */
+    }
+
+    /* Estilo para os labels das opções (Sim/Não) */
+    .radio-group label[for],
+    .radio-options-inline label[for],
+    .radio-options-inline-patrimonio label[for] {
         display: flex;
         align-items: center;
-        margin-right: 0;
-        font-weight: normal;
-        color: var(--mithra-text-primary);
-        cursor: pointer;
-        background: transparent; /* Remove fundo do label container */
-        padding: 0;
-        border: none; /* Remove borda do label container */
+        justify-content: center;
+        padding: 0.8rem 1rem;
+        margin-left: 35px; /* Espaço reservado para a bolinha */
+        position: relative;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid var(--mithra-border);
+        border-radius: 8px;
+        width: auto;
         flex: 1;
-        min-width: 140px;
-        position: relative; /* Para posicionamento */
+        min-width: 100px;
+        cursor: pointer;
+        transition: all 0.2s;
+        color: var(--mithra-text-primary);
     }
 
     /* O input radio (a bolinha) */
     .radio-group input[type="radio"],
-    .radio-group input[type="checkbox"] {
-        appearance: none; /* Remove estilo padrão */
-        -webkit-appearance: none;
-        width: 20px;
-        height: 20px;
-        border: 2px solid var(--mithra-text-secondary);
-        border-radius: 50%;
-        margin-right: 15px; /* Espaço entre a bolinha e a caixa de texto */
-        outline: none;
-        cursor: pointer;
-        position: relative;
-        flex-shrink: 0; /* Não encolher */
-        background-color: transparent;
-    }
-
-    /* Estado checado da bolinha */
-    .radio-group input[type="radio"]:checked,
-    .radio-group input[type="checkbox"]:checked {
-        border-color: var(--mithra-gold);
-        background-color: var(--mithra-gold);
-        box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2); /* Halo ao redor */
-    }
-
-    /* A caixa de texto (Sim/Não) */
-    .radio-group label span, 
-    .radio-group label:not(:has(span)) { /* Fallback se não tiver span, mas idealmente deveria ter */
-        /* Como o texto está solto no HTML original, precisamos estilizar o texto em si ou criar um pseudo-elemento visual se não pudermos alterar o HTML.
-           Mas como podemos alterar o CSS, vamos usar um truque: estilizar o label mas tirar o estilo da parte do input.
-           Melhor: Vamos estilizar o label como a caixa, mas fazer o input "sair" visualmente dela? Não, o input está dentro.
-           
-           Solução para HTML existente (input + texto dentro do label):
-           Vamos usar flexbox no label. O input é o primeiro filho. O texto é um nó de texto.
-           Não dá para estilizar nó de texto diretamente.
-           
-           Vou assumir que o texto está solto. Vou criar um visual de caixa para o label, mas deslocar o input para fora?
-           Não, o input está dentro do label.
-           
-           Vou fazer o seguinte: O label será transparente. O input será a bolinha.
-           E vou criar um ::after no label que será a caixa de texto? Não, o texto ficaria em cima.
-           
-           Vou usar uma abordagem diferente:
-           O label continua sendo o container.
-           O input fica à esquerda.
-           O texto precisa de um container para ter borda.
-           Como não posso mudar o HTML de todos os labels facilmente via CSS (o texto está solto),
-           vou usar uma técnica de background no label, mas com padding-left grande para "expulsar" o input da área do background?
-           Não, o input está dentro.
-           
-           Vou tentar simular a caixa de texto usando box-shadow ou background com clip?
-           
-           Vamos tentar isso:
-           O label é o container flex.
-           O input tem margem direita.
-           O texto... infelizmente sem um <span> em volta do texto, é difícil dar borda SÓ para o texto.
-           
-           Mas espere, na imagem 03, a bolinha está FORA da caixa.
-           Se o HTML é <label><input> Texto</label>, o input e o texto são irmãos (ou pai/filho).
-           
-           Se eu não puder mudar o HTML para <label><input> <span>Texto</span></label>,
-           terei que estilizar o label inteiro como a caixa, e fazer o input parecer que está fora?
-           Posso usar `position: absolute` no input e mover ele para a esquerda, fora do label.
-           E dar margem esquerda ao label para compensar.
-        */
-        display: block;
-        width: 100%;
-        padding: 0.8rem 1rem;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--mithra-border);
-        border-radius: 8px;
-        text-align: center;
-        transition: all 0.2s;
-    }
-    
-    /* Ajuste para a estrutura HTML atual: <label><input> Texto</label> */
-    .radio-group label {
-        position: relative;
-        padding-left: 40px; /* Espaço para a bolinha */
-        background: transparent;
-        border: none;
-        overflow: visible; /* Permitir que a bolinha saia se necessário, mas aqui ela vai ficar no padding */
-    }
-
-    /* A bolinha (input) posicionada absolutamente à esquerda */
-    .radio-group input[type="radio"],
-    .radio-group input[type="checkbox"] {
+    .radio-group input[type="checkbox"],
+    .radio-options-inline input[type="radio"],
+    .radio-options-inline-patrimonio input[type="radio"] {
         position: absolute;
-        left: 0;
+        left: -40px; /* Move a bolinha para fora da caixa, à esquerda */
         top: 50%;
         transform: translateY(-50%);
         margin: 0;
@@ -253,65 +197,36 @@
 
     /* Estado checado da bolinha */
     .radio-group input[type="radio"]:checked,
-    .radio-group input[type="checkbox"]:checked {
+    .radio-group input[type="checkbox"]:checked,
+    .radio-options-inline input[type="radio"]:checked,
+    .radio-options-inline-patrimonio input[type="radio"]:checked {
         border-color: var(--mithra-gold);
         background-color: var(--mithra-gold);
         box-shadow: inset 0 0 0 4px var(--mithra-bg); /* Cria o efeito de "olho" */
     }
 
-    /* A "caixa" visual que contém o texto. 
-       Como não temos um span, vamos usar o próprio label, mas precisamos tirar o input da jogada visualmente (já tiramos com absolute).
-       Mas o texto está solto no label. Se dermos background no label, vai cobrir a área do input se não cuidarmos.
-       
-       Vamos usar um pseudo-elemento ::after para criar a caixa atrás do texto?
-       Não, o texto ficaria na frente.
-       
-       Vamos estilizar o label como a caixa, mas com margin-left para afastar da bolinha.
-    */
-    .radio-group label {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 0.8rem 1rem;
-        margin-left: 35px; /* Espaço reservado para a bolinha que está absolute à esquerda DESTE elemento? Não, se movermos o label, o input move junto. */
-        
-        /* Resetando a estratégia anterior */
-        position: relative;
-        padding-left: 0;
-        background: rgba(255, 255, 255, 0.05);
-        border: 1px solid var(--mithra-border);
-        border-radius: 8px;
-        width: auto;
-        flex: 1;
-    }
-
-    /* Agora, tirar o input de dentro da caixa visualmente */
-    .radio-group input[type="radio"],
-    .radio-group input[type="checkbox"] {
-        position: absolute;
-        left: -40px; /* Move a bolinha para fora da caixa, à esquerda */
-        top: 50%;
-        transform: translateY(-50%);
-        margin: 0;
-    }
-
-    /* Container do label precisa ter margem esquerda para não cortar a bolinha que está fora */
-    .radio-group {
-        padding-left: 10px; /* Um pouco de respiro */
-    }
-    
-    .radio-group label {
-        margin-left: 30px; /* Espaço para a bolinha não sobrepor o label anterior ou a margem */
-    }
-
     /* Hover na caixa de texto */
-    .radio-group label:hover {
+    .radio-group label[for]:hover,
+    .radio-options-inline label[for]:hover,
+    .radio-options-inline-patrimonio label[for]:hover {
         background: rgba(255, 255, 255, 0.1);
         border-color: var(--mithra-gold);
     }
 
     /* Estado selecionado da caixa de texto */
-    .radio-group label:has(input:checked) {
+    /* Nota: Como o input está fora do label no HTML (input + label), precisamos usar o seletor de irmão adjacente */
+    .radio-group input[type="radio"]:checked + label,
+    .radio-group input[type="checkbox"]:checked + label,
+    .radio-options-inline input[type="radio"]:checked + label,
+    .radio-options-inline-patrimonio input[type="radio"]:checked + label {
+        background: rgba(212, 175, 55, 0.15);
+        border-color: var(--mithra-gold);
+    }
+    
+    /* Ajuste específico para quando o input está DENTRO do label (alguns casos legados ou JS dinâmico) */
+    .radio-group label:has(input:checked),
+    .radio-options-inline label:has(input:checked),
+    .radio-options-inline-patrimonio label:has(input:checked) {
         background: rgba(212, 175, 55, 0.15);
         border-color: var(--mithra-gold);
     }
