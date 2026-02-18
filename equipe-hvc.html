@@ -2499,13 +2499,12 @@ function filtrarIntegrantes() {
     console.log('✅ Sistema de Equipes HVC carregado com sucesso!');
   </script>
 
-  <!-- SIDEBAR USANDO SIDEBAR.JS IGUAL AO FLUXO-CAIXA-HVC.HTML -->
-  <script type="module" src="sidebar.js"></script>
-  <script type="module">
-    import { injectSidebar } from './sidebar.js';
+  <!-- SIDEBAR USANDO SIDEBAR.JS GLOBAL -->
+  <script src="sidebar.js"></script>
+  <script>
     document.addEventListener('DOMContentLoaded', () => {
-      if (typeof injectSidebar === 'function') {
-        injectSidebar('main-content-equipe-hvc');
+      if (window.injectSidebar) {
+        window.injectSidebar('main-content-equipe-hvc');
       } else {
         console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
       }
