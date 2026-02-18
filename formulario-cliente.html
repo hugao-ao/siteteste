@@ -126,24 +126,27 @@
         text-align: left;
         margin-bottom: 1.5rem;
         display: flex;
-        flex-direction: column; /* Força os itens a ficarem um abaixo do outro */
-        gap: 0.8rem;
+        flex-direction: row; /* Itens lado a lado */
+        flex-wrap: wrap; /* Permite quebra de linha se não couber */
+        gap: 1rem;
         margin-top: 0.5rem; /* Espaço entre a pergunta e as opções */
     }
     
     .radio-group label {
         display: flex;
         align-items: center;
+        justify-content: center; /* Centraliza o conteúdo do botão */
         margin-right: 0;
         font-weight: normal;
         color: var(--mithra-text-primary);
         cursor: pointer;
         background: rgba(255, 255, 255, 0.05);
-        padding: 0.8rem 1rem; /* Aumentado para melhor toque em mobile */
+        padding: 0.8rem 1.5rem;
         border-radius: 8px;
-        border: 1px solid var(--mithra-border); /* Borda sempre visível mas sutil */
+        border: 1px solid var(--mithra-border);
         transition: all 0.2s ease;
-        width: 100%; /* Ocupa toda a largura disponível */
+        flex: 1; /* Faz com que os botões ocupem espaço igual */
+        min-width: 120px; /* Largura mínima para não ficar muito apertado */
         box-sizing: border-box;
     }
 
