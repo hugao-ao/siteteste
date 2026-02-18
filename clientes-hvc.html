@@ -503,9 +503,11 @@
   <!-- Scripts -->
   <script type="module" src="supabase.js"></script>
   <script type="module" src="clientes-hvc.js"></script>
-  <script type="module">
-    import { injectSidebar } from './sidebar.js';
-    injectSidebar("main-content-clientes-hvc");
+  <script src="sidebar.js"></script>
+  <script>
+    if (window.injectSidebar) {
+        window.injectSidebar("main-content-clientes-hvc");
+    }
   </script>
 </body>
 </html>
