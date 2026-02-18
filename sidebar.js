@@ -311,7 +311,7 @@ async function injectSidebar(mainContentElementId, forceProject = null) { // Tor
             projectFromUrl = 'Argos';
         } else if (currentPage.includes('planejamento')) {
             projectFromUrl = 'Planejamento';
-        } else if (currentPage === 'clientes-dashboard.html' || currentPage === 'cliente-detalhes.html') {
+        } else if (currentPage === 'clientes-dashboard.html' || currentPage === 'cliente-detalhes.html' || currentPage === 'mensagens-whats.html') {
             // Para páginas genéricas, assumir Planejamento como padrão se não especificado
             projectFromUrl = 'Planejamento';
         }
@@ -390,6 +390,8 @@ function injectSidebarWithAutoDetection(mainContentElementId) {
         } else if (currentPage.includes('argos')) {
             project = 'Argos';
         } else if (currentPage.includes('planejamento')) {
+            project = 'Planejamento';
+        } else if (currentPage === 'mensagens-whats.html') {
             project = 'Planejamento';
         }
     }
