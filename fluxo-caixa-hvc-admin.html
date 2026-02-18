@@ -11578,12 +11578,10 @@ window.openManageCategoriasPayment = function() {
     <script src="google-calendar-modal-opener.js"></script>
     
     <script type="module" src="supabase.js"></script>
-    <script type="module" src="dashboard-hvc.js"></script>
-    <script type="module">
-        import { injectSidebar } from './sidebar.js';
-        injectSidebar("main-content-fluxo-caixa-hvc");
-
-        // Função para renderizar campos TIPO, SUBTIPO e CATEGORIA na edição do modal
+    <script type="module" src="dashboard-hvc.js"></scr    <script src="sidebar.js"></script>
+    <script>
+        injectSidebar('main-content-fluxo-caixa-hvc-admin');
+    </script>nção para renderizar campos TIPO, SUBTIPO e CATEGORIA na edição do modal
         window.renderEditFieldsBasedOnEventType = function(eventType, itemData) {
             const tipoInput = document.querySelector('#editItemForm input[placeholder*="Tipo"]')?.closest('.form-group');
             const subtipoInput = document.querySelector('#editItemForm input[placeholder*="Subtipo"]')?.closest('.form-group');
