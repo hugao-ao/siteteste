@@ -907,15 +907,17 @@
   <!-- MSAL para integração com OneDrive -->
   <script src="https://alcdn.msauth.net/browser/2.30.0/js/msal-browser.min.js"></script>
   
-  <script type="module" src="sidebar.js"></script>
+  <script src="sidebar.js"></script>
   <script type="module" src="supabase.js"></script>
   <script type="module" src="medicoes-hvc.js"></script>
-  <script type="module">
-    import { injectSidebar } from './sidebar.js';
-    
+  <script>
     // Injetar sidebar quando a página carregar
     document.addEventListener('DOMContentLoaded', function() {
-      injectSidebar('main-content-medicoes-hvc', 'Hvc');
+      if (window.injectSidebar) {
+        window.injectSidebar('main-content-medicoes-hvc', 'Hvc');
+      } else {
+        console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
+      }
     });
   </script>
 </body>
