@@ -871,14 +871,12 @@ function attachFormEventListeners(formId) {
     if (temDependentesSimRadio) {
         temDependentesSimRadio.addEventListener("change", () => {
             if(dependentesContainerEl) dependentesContainerEl.style.display = "block";
-            updateDynamicFormSections();
         });
     }
     if (temDependentesNaoRadio) {
         temDependentesNaoRadio.addEventListener("change", () => {
             if(dependentesContainerEl) dependentesContainerEl.style.display = "none";
             if(dependentesListEl) dependentesListEl.innerHTML = '';
-            updateDynamicFormSections();
         });
     }
     if (addDependenteBtn) {
@@ -896,29 +894,23 @@ function attachFormEventListeners(formId) {
             dependentesListEl.appendChild(newDependenteEntry);
 
             const nomeDependenteInput = newDependenteEntry.querySelector('input[name="dep_nome"]');
-            if (nomeDependenteInput) {
-                nomeDependenteInput.addEventListener('input', updateDynamicFormSections);
-            }
+            // Removed updateDynamicFormSections listener as it is not needed for dependents
 
             newDependenteEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => {
                 newDependenteEntry.remove();
-                updateDynamicFormSections();
             });
-            updateDynamicFormSections();
         });
     }
 
     if (temPatrimonioSimRadio) {
         temPatrimonioSimRadio.addEventListener("change", () => {
             if(patrimonioListContainerEl) patrimonioListContainerEl.style.display = "block";
-            updateDynamicFormSections();
         });
     }
     if (temPatrimonioNaoRadio) {
         temPatrimonioNaoRadio.addEventListener("change", () => {
             if(patrimonioListContainerEl) patrimonioListContainerEl.style.display = "none";
             if(patrimonioListEl) patrimonioListEl.innerHTML = '';
-            updateDynamicFormSections();
         });
     }
     if (addPatrimonioBtn) {
@@ -928,14 +920,12 @@ function attachFormEventListeners(formId) {
     if (temPatrimonioLiquidoSimRadio) {
         temPatrimonioLiquidoSimRadio.addEventListener("change", () => {
             if(patrimonioLiquidoListContainerEl) patrimonioLiquidoListContainerEl.style.display = "block";
-            updateDynamicFormSections();
         });
     }
     if (temPatrimonioLiquidoNaoRadio) {
         temPatrimonioLiquidoNaoRadio.addEventListener("change", () => {
             if(patrimonioLiquidoListContainerEl) patrimonioLiquidoListContainerEl.style.display = "none";
             if(patrimonioLiquidoListEl) patrimonioLiquidoListEl.innerHTML = '';
-            updateDynamicFormSections();
         });
     }
     if (addPatrimonioLiquidoBtn) {
@@ -945,14 +935,12 @@ function attachFormEventListeners(formId) {
     if (temDividasSimRadio) {
         temDividasSimRadio.addEventListener("change", () => {
             if(dividasListContainerEl) dividasListContainerEl.style.display = "block";
-            updateDynamicFormSections();
         });
     }
     if (temDividasNaoRadio) {
         temDividasNaoRadio.addEventListener("change", () => {
             if(dividasListContainerEl) dividasListContainerEl.style.display = "none";
             if(dividasListEl) dividasListEl.innerHTML = '';
-            updateDynamicFormSections();
         });
     }
     if (addDividaBtn) {
