@@ -1374,16 +1374,15 @@
 </div>
   </main>
 
-  <script type="module" src="sidebar.js"></script>
+  <script src="sidebar.js"></script>
 <script type="module" src="supabase.js"></script>
 <script defer src="propostas-hvc.js"></script>
 <script defer src="propostas-pdf-generator.js"></script>
 <script defer src="onedrive-auth.js"></script>
-<script type="module">
-  import { injectSidebar } from './sidebar.js';
+<script>
   document.addEventListener('DOMContentLoaded', () => {
-    if (typeof injectSidebar === 'function') {
-      injectSidebar('main-content-propostas-hvc');
+    if (window.injectSidebar) {
+      window.injectSidebar('main-content-propostas-hvc');
     } else {
       console.error('injectSidebar function not found. Sidebar might not be loaded correctly.');
     }
