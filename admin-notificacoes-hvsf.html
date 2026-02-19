@@ -323,6 +323,8 @@
                         <th>Plano</th>
                         <th onclick="sortTable(1)">Telefone <i class="fas fa-sort"></i></th>
                         <th onclick="sortTable(2)">CPF <i class="fas fa-sort"></i></th>
+                        <th title="Login Criado">LOGIN</th>
+                        <th title="Email Criado">EMAIL</th>
                         <th title="Adicionado ao Sistema">ADCS</th>
                         <th title="Formulário Preenchido">FORM</th>
                         <th onclick="sortTable(3)">Data Criação <i class="fas fa-sort"></i></th>
@@ -437,12 +439,17 @@
                 </div>
                 <h4 style="color: #d4af37; margin: 15px 0 10px;">Tarefas de Onboarding:</h4>
                 <ul class="task-list">
-                    ${Object.keys(tasks).map(key => `
+                    ${Object.keys(tasks).filter(key => key !== 'client_data').map(key => `
                         <li class="task-item">
                             <input type="checkbox" ${tasks[key] ? 'checked' : ''} onchange="updateTask(${notif.id}, '${key}', this.checked)">
                             <label>${formatTaskName(key)}</label>
                         </li>
                     `).join('')}
+                    <li class="task-item" style="background: #333; border: 1px solid #d4af37;">
+                        <button onclick="lancarClienteNoSistema(${notif.id})" style="width: 100%; background: transparent; border: none; color: #d4af37; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                            <i class="fas fa-user-plus"></i> LANÇAR CLIENTE NO SISTEMA
+                        </button>
+                    </li>
                 </ul>
                 <button class="btn-finalize" id="btn-${notif.id}" onclick="finalizeProcess(${notif.id})" ${Object.values(tasks).every(v=>v) ? '' : 'disabled'}>
                     <i class="fas fa-check"></i> Finalizar Processo
@@ -498,6 +505,81 @@
         else loadNotifications();
     }
 
+    async function lancarClienteNoSistema(notifId) {
+        const notif = notifications.find(n => n.id === notifId);
+        if (!notif) return;
+
+        const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
+        const clientData = tasks.client_data || {};
+        
+        // Limpar dados para formato correto
+        const nome = notif.client_name;
+        const cpf = clientData.cpf && clientData.cpf !== '-' ? clientData.cpf.replace(/\D/g, '') : '';
+        const whatsapp = clientData.whatsapp && clientData.whatsapp !== '-' ? clientData.whatsapp.replace(/\D/g, '') : '';
+        
+        // Verifica duplicidade de CPF antes de criar
+        if (cpf) {
+            const { data: existingCpf } = await supabaseClient
+                .from('dados_cadastrais')
+                .select('id')
+                .eq('cpf', cpf);
+            
+            if (existingCpf && existingCpf.length > 0) {
+                alert('ERRO: Já existe um cliente cadastrado com este CPF no sistema.');
+                return;
+            }
+        }
+
+        if (!confirm(`Deseja criar o cliente "${nome}" no sistema?\n\nIsso irá:\n1. Criar o cliente no projeto Planejamento\n2. Preencher os Dados Cadastrais (Nome, CPF, WhatsApp)`)) {
+            return;
+        }
+
+        try {
+            // 1. Criar Cliente na tabela 'clientes'
+            const { data: newClient, error: clientError } = await supabaseClient
+                .from('clientes')
+                .insert([{
+                    nome: nome,
+                    whatsapp: whatsapp, // Salva whatsapp no cliente também se disponível
+                    projeto: 'Planejamento',
+                    // created_by: sessionStorage.getItem('user_id') // Se necessário
+                }])
+                .select()
+                .single();
+
+            if (clientError) throw new Error('Erro ao criar cliente: ' + clientError.message);
+
+            const clientId = newClient.id;
+
+            // 2. Criar registro em 'dados_cadastrais'
+            const { error: dadosError } = await supabaseClient
+                .from('dados_cadastrais')
+                .insert([{
+                    cliente_id: clientId,
+                    nome_completo: nome,
+                    cpf: cpf,
+                    whatsapp: whatsapp,
+                    email: '', // Deixa em branco conforme solicitado
+                    conjuge: null // Deixa em branco
+                }]);
+
+            if (dadosError) {
+                // Se falhar, tenta avisar mas não bloqueia totalmente (o cliente já foi criado)
+                console.error('Erro ao salvar dados cadastrais:', dadosError);
+                alert('Cliente criado, mas houve erro ao salvar dados cadastrais: ' + dadosError.message);
+            } else {
+                alert('Cliente lançado com sucesso no sistema!');
+            }
+
+            // Opcional: Marcar alguma tarefa como concluída ou atualizar a notificação
+            // await updateTask(notifId, 'login', true); // Exemplo
+
+        } catch (error) {
+            console.error('Erro ao lançar cliente:', error);
+            alert('Erro: ' + error.message);
+        }
+    }
+
     // --- LÓGICA CYCLOPAY (REAL) ---
     async function loadCyclopayData() {
         const tbody = document.getElementById('cyclopay-list');
@@ -532,28 +614,39 @@
                 return allItems;
             }
 
-            // 0. Buscar dados do Supabase para comparação (ADCS e FORM)
+            // 0. Buscar dados do Supabase para comparação (ADCS, FORM, CPF, Tarefas)
             const { data: supabaseClients, error: sbError } = await supabaseClient
                 .from('clientes')
-                .select('id, nome, whatsapp, projeto'); // Assumindo que não tem CPF, vamos tentar comparar por outros meios se possível, mas o ideal seria ter CPF.
+                .select('id, nome, whatsapp, projeto');
+
+            // Buscar dados cadastrais para verificar CPF duplicado
+            const { data: supabaseDados, error: sbDadosError } = await supabaseClient
+                .from('dados_cadastrais')
+                .select('cliente_id, cpf');
+
+            // Buscar tarefas existentes para verificar Login e Email
+            const { data: supabaseTasks, error: sbTasksError } = await supabaseClient
+                .from('hvsf_tasks')
+                .select('*');
             
-            // Buscar formulários (trazendo todos os campos para verificar preenchimento)
+            // Buscar formulários
             const { data: supabaseForms, error: sbFormError } = await supabaseClient
                 .from('formularios_clientes')
-                .select('*'); // Traz tudo para inspecionar estrutura
+                .select('*');
 
             if (supabaseForms && supabaseForms.length > 0) {
                 console.log('Estrutura de formularios_clientes:', supabaseForms[0]);
             }
 
-            // Salva dados do Supabase no escopo global para acesso na renderização
+            // Salva dados do Supabase no escopo global
             window.supabaseClients = supabaseClients || [];
-            // Mapeia formulários por cliente_id para acesso rápido
+            window.supabaseDados = supabaseDados || [];
+            window.supabaseTasks = supabaseTasks || [];
+
+            // Mapeia formulários por cliente_id
             window.formsByClientId = {};
             if (supabaseForms) {
                 supabaseForms.forEach(form => {
-                    // Se o cliente tiver múltiplos formulários, guarda o mais recente ou uma lista
-                    // Aqui vamos guardar uma lista para poder verificar todos
                     if (!window.formsByClientId[form.cliente_id]) {
                         window.formsByClientId[form.cliente_id] = [];
                     }
@@ -684,16 +777,37 @@
                     }
                 }
 
-                // Lógica ADCS e FORM
+                // Lógica ADCS, FORM, Duplicidade e Tarefas
                 let isAdcs = false;
-                let formStatus = 'none'; // none, created, answered
-                
+                let formStatus = 'none';
+                let isDuplicateCpf = false;
+                let existingClientId = null;
+
+                // Verifica duplicidade por CPF
+                if (cleanDoc) {
+                    const foundInDados = window.supabaseDados.find(d => d.cpf && d.cpf.replace(/\D/g, '') === cleanDoc);
+                    if (foundInDados) {
+                        isDuplicateCpf = true;
+                        existingClientId = foundInDados.cliente_id;
+                    }
+                }
+
                 // Recupera dados do Supabase do escopo global
                 const sbClients = window.supabaseClients || [];
                 const formsMap = window.formsByClientId || {};
 
-                // Tenta achar cliente no Supabase (por email ou CPF)
-                const sbClient = sbClients.find(c => c.email === client.email || (cleanDoc && c.cpf === cleanDoc)); 
+                // Tenta achar cliente no Supabase
+                let sbClient = null;
+                if (existingClientId) {
+                    sbClient = sbClients.find(c => c.id === existingClientId);
+                } else {
+                    // Fallback por nome se não achou por CPF (ou se CPF não existe na Cyclopay)
+                    sbClient = sbClients.find(c => 
+                        c.nome && client.first_name && 
+                        c.nome.toLowerCase().includes(client.first_name.toLowerCase()) &&
+                        (client.last_name ? c.nome.toLowerCase().includes(client.last_name.toLowerCase()) : true)
+                    );
+                }
                 
                 if (sbClient) {
                     isAdcs = true;
@@ -753,6 +867,23 @@
                     formIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Formulário respondido"></i>';
                 }
 
+                // Verifica Status de Login e Email (Tarefas)
+                let loginIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Pendente"></i>';
+                let emailIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Pendente"></i>';
+                let taskExists = false;
+
+                // Procura tarefa pelo nome do cliente
+                const clientFullName = `${client.first_name} ${client.last_name || ''}`.trim();
+                const existingTask = window.supabaseTasks.find(t => t.client_name === clientFullName);
+
+                if (existingTask) {
+                    taskExists = true;
+                    const tasks = typeof existingTask.tasks === 'string' ? JSON.parse(existingTask.tasks) : existingTask.tasks;
+                    
+                    if (tasks.login) loginIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Login Criado"></i>';
+                    if (tasks.email) emailIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Email Criado"></i>';
+                }
+
                 // Formata Telefone
                 let phoneDisplay = '-';
                 if (client.phone) {
@@ -795,6 +926,8 @@
                     <td>${client.plan_name || '-'}</td>
                     <td>${phoneDisplay}</td>
                     <td>${cpfDisplay}</td>
+                    <td style="text-align: center;">${loginIcon}</td>
+                    <td style="text-align: center;">${emailIcon}</td>
                     <td style="text-align: center;">${adcsIcon}</td>
                     <td style="text-align: center;">${formIcon}</td>
                     <td>${createdDate}</td>
@@ -802,26 +935,63 @@
                     <td>${nextCharge}</td>
                     <td><span class="badge ${statusClass}">${statusLabel}</span></td>
                     <td>
-                        <button class="btn-import" onclick="importarCliente('${client.first_name} ${client.last_name || ''}', '${client.email}')" title="Iniciar Onboarding">
-                            <i class="fas fa-file-import"></i> Importar
-                        </button>
+                        ${isDuplicateCpf ? 
+                            `<span class="badge badge-active" style="background-color: #28a745; color: white;">Cadastrado</span>` : 
+                            (taskExists ? 
+                                `<span class="badge badge-pending" style="background-color: #ffc107; color: black;">Em Onboarding</span>` :
+                                `<button class="btn-import" onclick="importarCliente('${client.first_name} ${client.last_name || ''}', '${client.email}', '${cpfDisplay}', '${phoneDisplay}')" title="Iniciar Onboarding">
+                                    <i class="fas fa-file-import"></i> Importar
+                                </button>`
+                            )
+                        }
                     </td>
                 `;
                 tbody.appendChild(tr);
         });
     }
 
-    async function importarCliente(nome, email) {
+    async function importarCliente(nome, email, cpf, whatsapp) {
         if (!supabaseClient) {
             alert('Supabase não configurado! Configure a chave API no código para salvar.');
             return;
+        }
+
+        // Verifica duplicidade de tarefa antes de criar (por nome)
+        const { data: existingTasks } = await supabaseClient
+            .from('hvsf_tasks')
+            .select('*')
+            .eq('client_name', nome);
+
+        if (existingTasks && existingTasks.length > 0) {
+            alert('Já existe um processo de onboarding para este cliente (verificado por nome).');
+            return;
+        }
+
+        // Verifica duplicidade de CPF em dados_cadastrais (para avisar se já é cliente)
+        if (cpf) {
+            const cleanCpf = cpf.replace(/\D/g, '');
+            const { data: existingClient } = await supabaseClient
+                .from('dados_cadastrais')
+                .select('id')
+                .eq('cpf', cleanCpf);
+            
+            if (existingClient && existingClient.length > 0) {
+                if (!confirm('ATENÇÃO: Este CPF já está cadastrado como cliente no sistema. Deseja criar uma nova tarefa de onboarding mesmo assim?')) {
+                    return;
+                }
+            }
         }
 
         if(confirm(`Deseja iniciar o processo de onboarding para ${nome}?`)) {
             const newTask = {
                 client_name: nome,
                 plan: 'Importado Cyclopay', 
-                tasks: { login: false, email: false, form: false },
+                tasks: { 
+                    login: false, 
+                    email: false, 
+                    form: false,
+                    client_data: { cpf: cpf, whatsapp: whatsapp } // Armazena dados extras
+                },
                 status: 'pending'
             };
             
@@ -832,6 +1002,8 @@
             } else {
                 alert('Cliente importado com sucesso! Verifique a lista de notificações.');
                 loadNotifications(); 
+                // Recarrega a lista da Cyclopay para atualizar os status (badges e ícones)
+                loadCyclopayData();
             }
         }
     }
