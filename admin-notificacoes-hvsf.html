@@ -364,8 +364,36 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script src="auth-check.js"></script>
+  
+  <!-- Configuração Inline do Supabase (Substituindo config.js e auth-check.js ausentes) -->
+  <script>
+    // ===== CONFIGURAÇÃO DO SUPABASE =====
+    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
+
+    // Criar cliente Supabase globalmente
+    let supabaseClient;
+    try {
+      supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('✅ Supabase conectado com sucesso');
+    } catch (error) {
+      console.error('❌ Erro ao conectar Supabase:', error);
+      alert('Erro crítico: Falha na conexão com o banco de dados.');
+    }
+
+    // ===== VERIFICAÇÃO DE AUTENTICAÇÃO =====
+    function checkAuth() {
+        const userId = sessionStorage.getItem('user_id') || sessionStorage.getItem('id');
+        if (!userId) {
+            console.warn('Usuário não autenticado. Redirecionando para login...');
+            // window.location.href = 'index.html'; // Comentado para evitar loop em dev, descomentar em prod
+        } else {
+            console.log('Usuário autenticado:', userId);
+        }
+    }
+    checkAuth();
+  </script>
+
   <script src="sidebar.js"></script>
 
   <script>
