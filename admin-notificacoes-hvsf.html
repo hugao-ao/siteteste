@@ -519,14 +519,16 @@
         const nome = notif.client_name;
         
         // Extração robusta de CPF e WhatsApp
-        let cpf = '';
+        let cpf = null;
         if (clientData.cpf && clientData.cpf !== '-') {
-            cpf = String(clientData.cpf).replace(/\D/g, '');
+            const cleanCpf = String(clientData.cpf).replace(/\D/g, '');
+            if (cleanCpf) cpf = cleanCpf;
         }
         
-        let whatsapp = '';
+        let whatsapp = null;
         if (clientData.whatsapp && clientData.whatsapp !== '-') {
-            whatsapp = String(clientData.whatsapp).replace(/\D/g, '');
+            const cleanWhatsapp = String(clientData.whatsapp).replace(/\D/g, '');
+            if (cleanWhatsapp) whatsapp = cleanWhatsapp;
         }
 
         console.log(`DEBUG: CPF extraído: "${cpf}", WhatsApp extraído: "${whatsapp}"`);
