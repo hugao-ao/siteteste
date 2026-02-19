@@ -988,7 +988,7 @@ function attachFormEventListeners(formId) {
                 if (!nomeCompleto || !rendaUnica || !temDependentes || !temPatrimonio || !temPatrimonioLiquido || !temDividas) {
                     showMessage("error", "Por favor, preencha todos os campos obrigatórios das seções iniciais.");
                     // Rolar para o topo para o usuário ver a mensagem
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                    // window.scrollTo({ top: 0, behavior: 'smooth' });
                     return;
                 }
 
@@ -1190,13 +1190,13 @@ function attachFormEventListeners(formId) {
                     </div>
                 `;
                 // Rolar para o topo para o usuário ver a mensagem
-                 window.scrollTo({ top: 0, behavior: 'smooth' });
+                 // window.scrollTo({ top: 0, behavior: 'smooth' });
 
             } catch (error) {
                 console.error("Erro ao enviar formulário:", error);
                 showMessage("error", `Erro ao enviar formulário: ${error.message}`);
                  // Rolar para o topo para o usuário ver a mensagem
-                 window.scrollTo({ top: 0, behavior: 'smooth' });
+                 // window.scrollTo({ top: 0, behavior: 'smooth' });
             }
         });
     }
