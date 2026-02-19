@@ -480,7 +480,7 @@
                 container.appendChild(card);
                 
                 // Inicializa o max-height para cards abertos por padrão
-                const tasksContainerId = `tasks-${notif.id}`;
+                // tasksContainerId já foi declarado acima
                 const tasksContainer = card.querySelector(`#${tasksContainerId}`);
                 if (tasksContainer) {
                      // Pequeno delay para garantir que o elemento foi renderizado e tem altura
