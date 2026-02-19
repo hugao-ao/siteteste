@@ -613,10 +613,25 @@ async function deleteClient(id) {
             .eq("cliente_id", id);
         if (dadosError) console.warn("Aviso: Erro ao excluir dados cadastrais (pode não existir):", dadosError);
 
-        // 4. Excluir Cliente
+        // 4. Excluir Tarefas de Onboarding (hvsf_tasks) - Busca pelo NOME do cliente
+        // NOTA: Como hvsf_tasks não tem client_id, usamos o nome. Isso é uma medida de limpeza.
+        if (clientData.nome) {
+            const { error: tasksError } = await supabase
+                .from("hvsf_tasks")
+                .delete()
+                .eq("client_name", clientData.nome);
+            if (tasksError) console.warn("Aviso: Erro ao excluir tarefas de onboarding (pode não existir):", tasksError);
+            else console.log(`clientes.js: Tarefas de onboarding para "${clientData.nome}" excluídas.`);
+        }
+
+        // 5. Excluir Cliente
         const { error: deleteError } = await supabase.from("clientes").delete().eq("id", id);
         if (deleteError) {
             console.error("clientes.js: Erro ao excluir cliente (Supabase):", deleteError);
+            // Se for erro de FK, avisa explicitamente
+            if (deleteError.code === '23503') { // foreign_key_violation
+                throw new Error(`Não foi possível excluir o cliente pois existem outros dados vinculados (Erro FK: ${deleteError.details}). Contate o suporte.`);
+            }
             throw deleteError;
         }
 
