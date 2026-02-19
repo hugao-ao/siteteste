@@ -131,10 +131,10 @@
         display: flex;
         flex-direction: row;
         flex-wrap: wrap;
-        gap: 1.5rem; /* Espaço maior entre as opções */
+        gap: 1rem; /* Reduzido de 1.5rem para 1rem */
         margin-top: 0.8rem;
         align-items: center; /* Alinha verticalmente */
-        padding-left: 10px; /* Um pouco de respiro */
+        padding-left: 5px; /* Reduzido de 10px para 5px */
         position: relative; /* CRUCIAL: Mantém os inputs absolutos dentro deste container */
     }
     
@@ -161,18 +161,19 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 0.8rem 1rem;
-        margin-left: 0; /* REMOVIDO: Não precisa mais reservar espaço pois a bolinha não é absoluta */
+        padding: 0.5rem 0.7rem; /* Reduzido em ~30% (era 0.8rem 1rem) */
+        margin-left: 0; 
         position: relative;
         background: rgba(255, 255, 255, 0.05);
         border: 1px solid var(--mithra-border);
-        border-radius: 8px;
+        border-radius: 6px; /* Levemente reduzido */
         width: auto;
         flex: 1;
-        min-width: 100px;
+        min-width: 70px; /* Reduzido de 100px para 70px */
         cursor: pointer;
         transition: all 0.2s;
         color: var(--mithra-text-primary);
+        font-size: 0.9rem; /* Texto um pouco menor para acompanhar */
     }
 
     /* O input radio (a bolinha) */
@@ -185,14 +186,14 @@
         appearance: none;
         -webkit-appearance: none;
         margin: 0;
-        margin-right: 10px; /* Espaço entre bolinha e texto */
+        margin-right: 8px; /* Reduzido de 10px para 8px */
         position: relative; /* Volta ao fluxo normal */
         top: 0;
         left: 0;
         transform: none;
         margin: 0;
-        width: 24px;
-        height: 24px;
+        width: 20px; /* Reduzido de 24px para 20px */
+        height: 20px; /* Reduzido de 24px para 20px */
         border: 2px solid var(--mithra-text-secondary);
         border-radius: 50%;
         appearance: none;
