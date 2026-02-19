@@ -625,7 +625,13 @@ async function deleteClient(id) {
         }
 
         // 5. Excluir Cliente
-        const { error: deleteError } = await supabase.from("clientes").delete().eq("id", id);
+        // Adicionamos .select() para saber quantos registros foram realmente apagados
+        const { data: deletedData, error: deleteError } = await supabase
+            .from("clientes")
+            .delete()
+            .eq("id", id)
+            .select();
+
         if (deleteError) {
             console.error("clientes.js: Erro ao excluir cliente (Supabase):", deleteError);
             // Se for erro de FK, avisa explicitamente
@@ -633,6 +639,13 @@ async function deleteClient(id) {
                 throw new Error(`Não foi possível excluir o cliente pois existem outros dados vinculados (Erro FK: ${deleteError.details}). Contate o suporte.`);
             }
             throw deleteError;
+        }
+
+        // Verificação de RLS (Row Level Security)
+        if (!deletedData || deletedData.length === 0) {
+            console.warn("clientes.js: Comando de exclusão executado, mas nenhum registro foi removido. Verifique as políticas RLS no Supabase.");
+            alert("ERRO: O cliente não foi excluído do banco de dados. Isso geralmente acontece por falta de permissão (RLS Policy). Verifique se você está logado corretamente ou contate o administrador.");
+            return; // Não remove da tela se não apagou do banco
         }
 
         alert("Cliente e todos os dados associados foram excluídos com sucesso!");
