@@ -206,6 +206,7 @@ function restoreImpostoRendaSelections() {
 
 // Função para renderizar as perguntas de imposto de renda
 function renderImpostoRendaQuestions() {
+    console.log("[DEBUG] renderImpostoRendaQuestions called");
     saveImpostoRendaSelections();
     const container = document.getElementById("imposto-renda-section-content");
     if (!container) return;
@@ -435,6 +436,7 @@ function restorePlanoSaudeSelections() {
 }
 
 function renderPlanoSaudeQuestions() {
+    console.log("[DEBUG] renderPlanoSaudeQuestions called");
     savePlanoSaudeSelections();
     const container = document.getElementById("plano-saude-section-content");
     if (!container) return;
@@ -522,6 +524,7 @@ function restoreSeguroVidaSelections() {
 }
 
 function renderSeguroVidaQuestions() {
+    console.log("[DEBUG] renderSeguroVidaQuestions called");
     saveSeguroVidaSelections();
     const container = document.getElementById("seguro-vida-section-content");
     if (!container) return;
@@ -763,6 +766,8 @@ function addObjetivoEntry() {
 
 // --- Função Principal de Atualização Dinâmica --- (MODIFICADA)
 function updateDynamicFormSections(source) {
+    console.log(`[DEBUG] updateDynamicFormSections called. Source: ${source}`);
+    
     // Atualiza labels que dependem de "Renda Única" e "Outras Pessoas"
     // Essas atualizações são leves e não causam problemas de layout
     updatePerguntaDependentesLabel();
@@ -774,9 +779,12 @@ function updateDynamicFormSections(source) {
     // Fontes que afetam: 'nome_completo', 'renda_unica', 'outras_pessoas'
     // Fontes que NÃO afetam: 'tem_dependentes', 'tem_patrimonio', 'tem_dividas', etc.
     if (!source || source === 'nome_completo' || source === 'renda_unica' || source === 'outras_pessoas') {
+        console.log(`[DEBUG] Re-rendering dynamic sections (Plano, Seguro, IR) because source is ${source}`);
         renderPlanoSaudeQuestions();
         renderSeguroVidaQuestions();
         renderImpostoRendaQuestions();
+    } else {
+        console.log(`[DEBUG] Skipping re-render of dynamic sections because source ${source} does not require it.`);
     }
 }
 
@@ -1218,6 +1226,20 @@ function attachFormEventListeners(formId) {
         }
     });
 }
+
+// --- Debug Scroll Listener ---
+let lastScrollY = window.scrollY;
+window.addEventListener('scroll', () => {
+    const currentScrollY = window.scrollY;
+    if (Math.abs(currentScrollY - lastScrollY) > 100) {
+        console.log(`[DEBUG] Large scroll detected! From ${lastScrollY} to ${currentScrollY}`);
+    }
+    lastScrollY = currentScrollY;
+});
+
+document.addEventListener('click', (e) => {
+    console.log(`[DEBUG] Click detected on element:`, e.target);
+});
 
 // --- Inicialização --- (Mantida)
 async function initForm() {
