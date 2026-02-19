@@ -299,13 +299,7 @@
           <p style="color: #888;">Carregando notificações...</p>
       </div>
 
-      <!-- Seção de Teste Manual -->
-      <div style="margin-top: 30px; padding: 20px; background: #2a2a2a; border-radius: 8px;">
-          <h3 style="color: #d4af37; margin-top: 0;">Simular Nova Venda (Teste)</h3>
-          <button onclick="simularVenda()" style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
-              Simular Venda Nível II
-          </button>
-      </div>
+
 
       <!-- Seção de Integração Cyclopay -->
       <div class="cyclopay-section">
@@ -480,7 +474,6 @@
                 container.appendChild(card);
                 
                 // Inicializa o max-height para cards abertos por padrão
-                // tasksContainerId já foi declarado acima
                 const tasksContainer = card.querySelector(`#${tasksContainerId}`);
                 if (tasksContainer) {
                      // Pequeno delay para garantir que o elemento foi renderizado e tem altura
