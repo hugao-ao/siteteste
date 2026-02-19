@@ -606,7 +606,7 @@ async function saveAllClientChanges() {
     }
 }
 
-// --- Excluir Cliente --- 
+// --- Excluir Cliente (COM CASCATA) --- 
 async function deleteClient(id) {
     console.log(`clientes.js: deleteClient() chamado para Cliente ID: ${id}`);
     if (!id) {
@@ -615,10 +615,10 @@ async function deleteClient(id) {
     }
 
     try {
-        // MODIFICADO: Verificar permissões antes de excluir
+        // Verificar permissões antes de excluir
         const { data: clientData, error: clientError } = await supabase
             .from('clientes')
-            .select('criado_por_id, visibility, projeto')
+            .select('criado_por_id, visibility, projeto, nome')
             .eq('id', id)
             .single();
             
@@ -637,32 +637,73 @@ async function deleteClient(id) {
         }
 
         // Verificar se há formulários associados
-        let count = 0;
-        const { data: countData, error: countError } = await supabase
+        let formCount = 0;
+        const { count: formsCount, error: countError } = await supabase
             .from('formularios_clientes')
-            .select('id', { count: 'exact', head: true })
+            .select('*', { count: 'exact', head: true })
             .eq('cliente_id', id);
-        if (countError) {
-            console.error("clientes.js: Erro ao contar formulários para exclusão:", countError);
-            // Não lança erro aqui, permite excluir cliente mesmo se contagem falhar
-        } else if (countData) {
-            count = countData.count || 0;
-        }
+        if (!countError && formsCount !== null) formCount = formsCount;
 
-        let confirmMessage = "Excluir este cliente?";
-        if (count > 0) confirmMessage += `\n\nATENÇÃO: ${count} formulário(s) associado(s) também serão excluídos!`;
+        // Verificar se há diagnóstico financeiro
+        let hasDiagnostico = false;
+        const { count: diagCount, error: diagCountError } = await supabase
+            .from('diagnosticos_financeiros')
+            .select('*', { count: 'exact', head: true })
+            .eq('cliente_id', id);
+        if (!diagCountError && diagCount !== null && diagCount > 0) hasDiagnostico = true;
+
+        // Verificar se há dados cadastrais
+        let hasDadosCadastrais = false;
+        const { count: dadosCount, error: dadosCountError } = await supabase
+            .from('dados_cadastrais')
+            .select('*', { count: 'exact', head: true })
+            .eq('cliente_id', id);
+        if (!dadosCountError && dadosCount !== null && dadosCount > 0) hasDadosCadastrais = true;
+
+        // Montar mensagem detalhada
+        let confirmMessage = `Tem certeza que deseja excluir o cliente "${clientData.nome}"?\n\n`;
+        confirmMessage += `⚠️ ESTA AÇÃO É IRREVERSÍVEL e apagará:\n`;
+        
+        if (formCount > 0) confirmMessage += `- ${formCount} Formulário(s) preenchido(s)\n`;
+        if (hasDiagnostico) confirmMessage += `- Diagnóstico Financeiro completo\n`;
+        if (hasDadosCadastrais) confirmMessage += `- Dados Cadastrais (CPF, Endereço, etc.)\n`;
+        
+        confirmMessage += `\nSe você confirmar, todos esses dados serão perdidos para sempre.`;
+        
         if (!confirm(confirmMessage)) {
             console.log("clientes.js: Exclusão cancelada pelo usuário.");
             return;
         }
 
+        // 1. Excluir Diagnósticos Financeiros
+        const { error: diagError } = await supabase
+            .from("diagnosticos_financeiros")
+            .delete()
+            .eq("cliente_id", id);
+        if (diagError) console.warn("Aviso: Erro ao excluir diagnósticos (pode não existir):", diagError);
+
+        // 2. Excluir Formulários
+        const { error: formError } = await supabase
+            .from("formularios_clientes")
+            .delete()
+            .eq("cliente_id", id);
+        if (formError) console.warn("Aviso: Erro ao excluir formulários (pode não existir):", formError);
+
+        // 3. Excluir Dados Cadastrais
+        const { error: dadosError } = await supabase
+            .from("dados_cadastrais")
+            .delete()
+            .eq("cliente_id", id);
+        if (dadosError) console.warn("Aviso: Erro ao excluir dados cadastrais (pode não existir):", dadosError);
+
+        // 4. Excluir Cliente
         const { error: deleteError } = await supabase.from("clientes").delete().eq("id", id);
         if (deleteError) {
             console.error("clientes.js: Erro ao excluir cliente (Supabase):", deleteError);
             throw deleteError;
         }
 
-        alert("Cliente e formulários associados excluídos!");
+        alert("Cliente e todos os dados associados foram excluídos com sucesso!");
         const rowToRemove = clientsTableBody.querySelector(`tr[data-client-id="${id}"]`);
         if (rowToRemove) rowToRemove.remove();
         modifiedClientIds.delete(id);
