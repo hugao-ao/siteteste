@@ -201,6 +201,7 @@
 
     .cyclopay-table th.sorted-desc i {
         color: #d4af37;
+        transform: rotate(180deg);
     }
 
     .table-responsive {
@@ -401,6 +402,15 @@
     let allExpanded = true;
 
     document.addEventListener('DOMContentLoaded', () => {
+        // --- INJEÇÃO DA SIDEBAR ---
+        // Verifica se a função injectSidebar existe (carregada do sidebar.js)
+        if (typeof injectSidebar === 'function') {
+            // Injeta a sidebar no elemento 'main-content' e força o contexto 'Planejamento'
+            injectSidebar('main-content', 'Planejamento');
+        } else {
+            console.error('Erro: Função injectSidebar não encontrada. Verifique se sidebar.js foi carregado corretamente.');
+        }
+
         loadNotifications();
         loadCyclopayData();
     });
