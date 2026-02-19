@@ -285,9 +285,13 @@
     <div class="notifications-container">
       <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
           <i class="fas fa-bell fa-3x" style="color: #d4af37;"></i>
-          <div>
+          <div style="flex-grow: 1;">
               <h1 style="margin: 0; color: #d4af37;">Notificações SITE HVSF</h1>
               <p style="color: #aaa; margin: 5px 0 0 0;">Gerencie aqui as tarefas de onboarding para novos clientes do Plano Financeiro.</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 10px;">
+              <input type="checkbox" id="hide-completed" onchange="loadNotifications()" style="transform: scale(1.5); cursor: pointer;">
+              <label for="hide-completed" style="color: #ddd; cursor: pointer; user-select: none;">Ocultar Concluídos</label>
           </div>
       </div>
 
@@ -369,6 +373,13 @@
 
     // Carrega notificações ao iniciar
     document.addEventListener('DOMContentLoaded', () => {
+        // Injeta a sidebar automaticamente
+        if (typeof injectSidebarWithAutoDetection === 'function') {
+            injectSidebarWithAutoDetection('main-content');
+        } else {
+            console.error('Função injectSidebarWithAutoDetection não encontrada. Verifique se sidebar.js foi carregado.');
+        }
+
         loadNotifications();
         loadCyclopayData();
     });
@@ -394,9 +405,14 @@
             // Salva notificações no escopo global para acesso posterior
             window.notifications = notifications;
 
+            const hideCompleted = document.getElementById('hide-completed').checked;
+
             notifications.forEach(notif => {
                 const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
                 const isCompleted = notif.status === 'completed';
+
+                // Se o filtro estiver ativo e a notificação estiver concluída, pula
+                if (hideCompleted && isCompleted) return;
                 
                 // Verifica status individuais
                 const loginChecked = tasks.login ? 'checked' : '';
