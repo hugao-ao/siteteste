@@ -361,13 +361,16 @@
       }
 
       .radio-group {
-        flex-direction: column;
+        flex-direction: row; /* Alterado de column para row para permitir lado a lado */
+        flex-wrap: wrap;     /* Permite quebrar linha se não couber */
         gap: 0.5rem;
     }
       
       .radio-group label {
-        width: 100%;
+        width: auto;         /* Alterado de 100% para auto */
+        flex: 1;             /* Cresce para ocupar espaço disponível */
         box-sizing: border-box;
+        min-width: 45%;      /* Garante que caibam 2 por linha (com gap) */
       }
     }
 
