@@ -512,10 +512,24 @@
         const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
         const clientData = tasks.client_data || {};
         
+        console.log('DEBUG: Dados da notificação:', notif);
+        console.log('DEBUG: Dados do cliente (clientData):', clientData);
+
         // Limpar dados para formato correto
         const nome = notif.client_name;
-        const cpf = clientData.cpf && clientData.cpf !== '-' ? clientData.cpf.replace(/\D/g, '') : '';
-        const whatsapp = clientData.whatsapp && clientData.whatsapp !== '-' ? clientData.whatsapp.replace(/\D/g, '') : '';
+        
+        // Extração robusta de CPF e WhatsApp
+        let cpf = '';
+        if (clientData.cpf && clientData.cpf !== '-') {
+            cpf = String(clientData.cpf).replace(/\D/g, '');
+        }
+        
+        let whatsapp = '';
+        if (clientData.whatsapp && clientData.whatsapp !== '-') {
+            whatsapp = String(clientData.whatsapp).replace(/\D/g, '');
+        }
+
+        console.log(`DEBUG: CPF extraído: "${cpf}", WhatsApp extraído: "${whatsapp}"`);
         
         // Verifica duplicidade de CPF antes de criar
         if (cpf) {
@@ -562,23 +576,31 @@
             const clientId = newClient.id;
 
             // 2. Criar registro em 'dados_cadastrais'
-            const { error: dadosError } = await supabaseClient
+            console.log('DEBUG: Tentando inserir em dados_cadastrais:', {
+                cliente_id: clientId,
+                nome_completo: nome,
+                cpf: cpf,
+                whatsapp: whatsapp
+            });
+
+            const { data: dadosResult, error: dadosError } = await supabaseClient
                 .from('dados_cadastrais')
                 .insert([{
                     cliente_id: clientId,
                     nome_completo: nome,
                     cpf: cpf,
                     whatsapp: whatsapp,
-                    email: '', // Deixa em branco conforme solicitado
-                    conjuge: null // Deixa em branco
-                }]);
+                    email: '', 
+                    conjuge: null 
+                }])
+                .select();
 
             if (dadosError) {
-                // Se falhar, tenta avisar mas não bloqueia totalmente (o cliente já foi criado)
                 console.error('Erro ao salvar dados cadastrais:', dadosError);
-                alert('Cliente criado, mas houve erro ao salvar dados cadastrais: ' + dadosError.message);
+                alert('Cliente criado, mas houve erro ao salvar dados cadastrais: ' + dadosError.message + '\n\nVerifique se o CPF já existe ou se há restrições no banco.');
             } else {
-                alert('Cliente lançado com sucesso no sistema!');
+                console.log('DEBUG: Dados cadastrais salvos com sucesso:', dadosResult);
+                alert('Cliente lançado com sucesso no sistema! (Dados Cadastrais OK)');
             }
 
             // Opcional: Marcar alguma tarefa como concluída ou atualizar a notificação
