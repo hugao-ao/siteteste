@@ -342,162 +342,138 @@
             </table>
         </div>
       </div>
-
     </div>
   </div>
 
   <!-- Scripts -->
-  <!-- Carrega Supabase via CDN -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
-  <!-- Carrega Sidebar -->
+  <script src="supabase.js"></script>
   <script src="sidebar.js"></script>
 
   <script>
-    // Configuração do Supabase
-    const SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
-    
-    // NOTA: Para evitar conflito com a variável global 'supabase' do CDN, usamos 'supabaseClient'
-    let supabaseClient;
-    try {
-        if (window.supabase && window.supabase.createClient) {
-             supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-             console.log('Supabase inicializado com sucesso em admin-notificacoes-hvsf.html');
-        } else {
-            console.error('Biblioteca Supabase não carregada corretamente.');
-        }
-    } catch (e) {
-        console.error('Erro ao inicializar Supabase:', e);
+    // Verifica autenticação
+    if (!sessionStorage.getItem('user_id') && !sessionStorage.getItem('id')) {
+        window.location.href = 'index.html';
     }
 
-    // --- INICIALIZAÇÃO ---
-    document.addEventListener('DOMContentLoaded', function() {
-        // 1. Injeta a Sidebar
-        if (typeof injectSidebar === 'function') {
-            // Passa o ID do container principal ('main-content') e o contexto do projeto ('Planejamento')
-            injectSidebar('main-content', 'Planejamento'); 
-        } else {
-            console.error('Função injectSidebar não encontrada. Verifique se sidebar.js foi carregado.');
-        }
-        
-        // 2. Carrega Notificações do Supabase (se configurado)
+    // Carrega notificações ao iniciar
+    document.addEventListener('DOMContentLoaded', () => {
         loadNotifications();
-        
-        // 3. Carrega Dados da Cyclopay (Clientes + Assinaturas + Transações)
         loadCyclopayData();
     });
 
-    let notifications = [];
-
     async function loadNotifications() {
         const container = document.getElementById('notifications-list');
-        if (!supabaseClient) {
-            container.innerHTML = '<p style="color: red;">Erro: Supabase não configurado. Verifique a chave API no código.</p>';
-            return;
-        }
+        
+        try {
+            const { data: notifications, error } = await supabaseClient
+                .from('hvsf_tasks')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-        const { data, error } = await supabaseClient
-            .from('hvsf_tasks')
-            .select('*')
-            .order('created_at', { ascending: false });
+            if (error) throw error;
 
-        if (error) {
-            console.error('Erro ao carregar:', error);
-            container.innerHTML = '<p>Erro ao carregar notificações.</p>';
-            return;
-        }
+            if (!notifications || notifications.length === 0) {
+                container.innerHTML = '<p style="color: #888;">Nenhuma notificação pendente.</p>';
+                return;
+            }
 
-        notifications = data;
-        renderNotifications();
-    }
-
-    function renderNotifications() {
-        const container = document.getElementById('notifications-list');
-        container.innerHTML = '';
-
-        if (notifications.length === 0) {
-            container.innerHTML = '<p>Nenhuma notificação pendente.</p>';
-            return;
-        }
-
-        notifications.forEach(notif => {
-            if (notif.status === 'completed') return; // Opcional: esconder concluídos
-
-            const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
+            container.innerHTML = '';
             
-            const card = document.createElement('div');
-            card.className = `notification-card ${notif.status}`;
-            card.innerHTML = `
-                <div class="card-header">
-                    <h3>Novo Cliente: ${notif.client_name}</h3>
-                    <span class="badge badge-pending">Pendente</span>
-                </div>
-                <div class="card-meta">
-                    <i class="fas fa-tag"></i> ${notif.plan} | 
-                    <i class="fas fa-clock"></i> ${new Date(notif.created_at).toLocaleString()}
-                </div>
-                <h4 style="color: #d4af37; margin: 15px 0 10px;">Tarefas de Onboarding:</h4>
-                <ul class="task-list">
-                    ${Object.keys(tasks).filter(key => key !== 'client_data').map(key => `
+            // Salva notificações no escopo global para acesso posterior
+            window.notifications = notifications;
+
+            notifications.forEach(notif => {
+                const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
+                const isCompleted = notif.status === 'completed';
+                
+                // Verifica status individuais
+                const loginChecked = tasks.login ? 'checked' : '';
+                const emailChecked = tasks.email ? 'checked' : '';
+                const formChecked = tasks.form ? 'checked' : '';
+                
+                // Verifica se todos estão marcados para habilitar o botão
+                const allChecked = tasks.login && tasks.email && tasks.form;
+                const btnDisabled = !allChecked || isCompleted;
+
+                const card = document.createElement('div');
+                card.className = `notification-card ${isCompleted ? 'completed' : ''}`;
+                card.innerHTML = `
+                    <div class="card-header">
+                        <h3>${notif.client_name} <span style="font-size: 0.8rem; color: #d4af37;">(${notif.plan})</span></h3>
+                        <div class="card-meta">
+                            ${new Date(notif.created_at).toLocaleDateString('pt-BR')}
+                            ${isCompleted ? '<i class="fas fa-check-circle" style="color: #28a745; margin-left: 10px;"></i>' : ''}
+                        </div>
+                    </div>
+                    
+                    <ul class="task-list">
                         <li class="task-item">
-                            <input type="checkbox" ${tasks[key] ? 'checked' : ''} onchange="updateTask(${notif.id}, '${key}', this.checked)">
-                            <label>${formatTaskName(key)}</label>
+                            <input type="checkbox" id="task-login-${notif.id}" ${loginChecked} onchange="updateTask(${notif.id}, 'login', this.checked)">
+                            <label for="task-login-${notif.id}">Criar Login</label>
                         </li>
-                    `).join('')}
-                    <li class="task-item" style="background: #333; border: 1px solid #d4af37;">
-                        <button onclick="lancarClienteNoSistema(${notif.id})" style="width: 100%; background: transparent; border: none; color: #d4af37; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 10px;">
-                            <i class="fas fa-user-plus"></i> LANÇAR CLIENTE NO SISTEMA
+                        <li class="task-item">
+                            <input type="checkbox" id="task-email-${notif.id}" ${emailChecked} onchange="updateTask(${notif.id}, 'email', this.checked)">
+                            <label for="task-email-${notif.id}">Criar Email</label>
+                        </li>
+                        <li class="task-item">
+                            <input type="checkbox" id="task-form-${notif.id}" ${formChecked} onchange="updateTask(${notif.id}, 'form', this.checked)">
+                            <label for="task-form-${notif.id}">Enviar Formulário</label>
+                        </li>
+                    </ul>
+
+                    ${!isCompleted ? `
+                        <button id="btn-finalize-${notif.id}" class="btn-finalize" onclick="lancarClienteNoSistema(${notif.id})" ${!allChecked ? 'disabled' : ''}>
+                            <i class="fas fa-check"></i> Lançar Cliente no Sistema
                         </button>
-                    </li>
-                </ul>
-                <button class="btn-finalize" id="btn-${notif.id}" onclick="finalizeProcess(${notif.id})" ${Object.values(tasks).every(v=>v) ? '' : 'disabled'}>
-                    <i class="fas fa-check"></i> Finalizar Processo
-                </button>
-            `;
-            container.appendChild(card);
-        });
+                    ` : ''}
+                `;
+                container.appendChild(card);
+            });
+
+        } catch (error) {
+            console.error('Erro ao carregar notificações:', error);
+            container.innerHTML = '<p style="color: #ff4d4d;">Erro ao carregar notificações.</p>';
+        }
     }
 
-    function formatTaskName(key) {
-        const names = {
-            'login': 'Criar Login e Senha no Admin',
-            'email': 'Criar E-mail Seguro (@hvsf...)',
-            'form': 'Enviar Formulário de Diagnóstico via WhatsApp',
-            'meeting': 'Agendar Reunião de Kick-off'
-        };
-        return names[key] || key;
-    }
+    async function updateTask(id, taskType, isChecked) {
+        const notif = window.notifications.find(n => n.id === id);
+        if (!notif) return;
 
-    async function updateTask(id, key, checked) {
-        const notif = notifications.find(n => n.id === id);
-        let tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
-        tasks[key] = checked;
-        
-        await supabaseClient.from('hvsf_tasks').update({ tasks }).eq('id', id);
-        
-        notif.tasks = tasks;
-        const btn = document.getElementById(`btn-${id}`);
-        if (btn) btn.disabled = !Object.values(tasks).every(v=>v);
-    }
+        const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
+        tasks[taskType] = isChecked;
 
-    async function finalizeProcess(id) {
-        if(confirm('Tem certeza que deseja finalizar este processo? O cliente será marcado como ativo.')) {
-            await supabaseClient.from('hvsf_tasks').update({ status: 'completed' }).eq('id', id);
-            loadNotifications(); 
+        // Verifica se todos estão marcados
+        const allChecked = tasks.login && tasks.email && tasks.form;
+        const btn = document.getElementById(`btn-finalize-${id}`);
+        if (btn) btn.disabled = !allChecked;
+
+        try {
+            const { error } = await supabaseClient
+                .from('hvsf_tasks')
+                .update({ tasks: tasks })
+                .eq('id', id);
+
+            if (error) throw error;
+            
+            // Atualiza objeto local
+            notif.tasks = tasks;
+
+        } catch (error) {
+            console.error('Erro ao atualizar tarefa:', error);
+            alert('Erro ao salvar alteração.');
+            // Reverte checkbox visualmente
+            document.getElementById(`task-${taskType}-${id}`).checked = !isChecked;
         }
     }
 
     async function simularVenda() {
-        if (!supabaseClient) {
-            alert('Supabase não configurado!');
-            return;
-        }
         const fakeData = {
-            client_name: 'Cliente Teste ' + Math.floor(Math.random() * 1000),
-            plan: 'Plano Financeiro Nível II',
-            tasks: { login: false, email: false, form: false },
-            status: 'pending'
+            client_name: "Cliente Teste " + Math.floor(Math.random() * 1000),
+            plan: "Nível II - Construção",
+            tasks: { login: false, email: false, form: false, client_data: { cpf: '000.000.000-00', whatsapp: '(00) 00000-0000' } },
+            status: "pending"
         };
         
         const { error } = await supabaseClient.from('hvsf_tasks').insert([fakeData]);
@@ -506,7 +482,7 @@
     }
 
     async function lancarClienteNoSistema(notifId) {
-        const notif = notifications.find(n => n.id === notifId);
+        const notif = window.notifications.find(n => n.id === notifId);
         if (!notif) return;
 
         const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
@@ -518,17 +494,17 @@
         // Limpar dados para formato correto
         const nome = notif.client_name;
         
-        // Extração robusta de CPF e WhatsApp
+        // Extração robusta de CPF e WhatsApp (MANTENDO FORMATAÇÃO)
         let cpf = null;
         if (clientData.cpf && clientData.cpf !== '-') {
-            const cleanCpf = String(clientData.cpf).replace(/\D/g, '');
-            if (cleanCpf) cpf = cleanCpf;
+            // Mantém o valor original formatado se existir
+            cpf = String(clientData.cpf).trim();
         }
         
         let whatsapp = null;
         if (clientData.whatsapp && clientData.whatsapp !== '-') {
-            const cleanWhatsapp = String(clientData.whatsapp).replace(/\D/g, '');
-            if (cleanWhatsapp) whatsapp = cleanWhatsapp;
+            // Mantém o valor original formatado se existir
+            whatsapp = String(clientData.whatsapp).trim();
         }
 
         console.log(`DEBUG: CPF extraído: "${cpf}", WhatsApp extraído: "${whatsapp}"`);
@@ -561,11 +537,20 @@
                 return;
             }
 
+            // CORREÇÃO CRÍTICA: Garantir que whatsappValue NUNCA seja null
+            // Se whatsapp for null, undefined ou vazio, usa o placeholder
+            let whatsappValue = "00000000000";
+            if (whatsapp && String(whatsapp).trim().length > 0) {
+                whatsappValue = whatsapp;
+            }
+            
+            console.log(`DEBUG: Valor final do WhatsApp para insert: "${whatsappValue}"`);
+
             const { data: newClient, error: clientError } = await supabaseClient
                 .from('clientes')
                 .insert([{
                     nome: nome,
-                    whatsapp: whatsapp, 
+                    whatsapp: whatsappValue, 
                     projeto: 'Planejamento',
                     criado_por_id: userId, // Campo obrigatório para FK
                     created_at: new Date().toISOString()
@@ -603,10 +588,15 @@
             } else {
                 console.log('DEBUG: Dados cadastrais salvos com sucesso:', dadosResult);
                 alert('Cliente lançado com sucesso no sistema! (Dados Cadastrais OK)');
+                
+                // Atualiza status da notificação para completed
+                await supabaseClient
+                    .from('hvsf_tasks')
+                    .update({ status: 'completed' })
+                    .eq('id', notifId);
+                
+                loadNotifications();
             }
-
-            // Opcional: Marcar alguma tarefa como concluída ou atualizar a notificação
-            // await updateTask(notifId, 'login', true); // Exemplo
 
         } catch (error) {
             console.error('Erro ao lançar cliente:', error);
@@ -715,8 +705,6 @@
                 // Encontra a transação mais recente do cliente
                 // Como buscamos todas as transações, filtramos pelo cliente e pegamos a primeira (mais recente)
                 const clientTransactions = transactions.filter(t => t.customer && t.customer.customer_id === customer.customer_id);
-                // Ordena por data decrescente para garantir (caso a API não garanta)
-                clientTransactions.sort((a, b) => new Date(b.create_date) - new Date(a.create_date));
                 
                 const lastTransaction = clientTransactions.length > 0 ? clientTransactions[0] : null;
 
@@ -849,26 +837,9 @@
                     
                     if (clientForms && clientForms.length > 0) {
                         // Verifica se algum formulário foi respondido
-                        // Critério: Verifica se existe algum campo de resposta preenchido.
-                        // Assumindo campos comuns como 'respostas', 'dados', 'status' ou simplesmente se o objeto não está vazio além dos metadados.
-                        // Como não sei a estrutura exata, vou usar uma heurística genérica:
-                        // Se tiver um campo 'status' == 'concluido' ou 'respondido'
-                        // OU se tiver um campo 'respostas' ou 'dados' que não seja null/vazio
-                        
                         const hasAnsweredForm = clientForms.some(f => {
-                            // Tenta detectar se foi respondido
                             const hasData = f.respostas || f.dados || f.json_respostas;
                             const isCompleted = f.status === 'concluido' || f.status === 'respondido' || f.status === 'finalizado';
-                            
-                            // Se não tiver campos explícitos, assume que a existência do registro já indica criação.
-                            // Para diferenciar "criado" de "respondido", precisamos saber se o formulário é criado vazio primeiro.
-                            // Se o sistema cria o registro APENAS quando o cliente responde, então sempre será "respondido".
-                            // Se o sistema cria um "convite" (registro vazio), então precisamos checar preenchimento.
-                            
-                            // Vou assumir a lógica mais comum em sistemas de "envio de formulário":
-                            // 1. Admin envia -> Cria registro (status='enviado' ou dados vazios)
-                            // 2. Cliente responde -> Atualiza registro (status='respondido' ou preenche dados)
-                            
                             return hasData || isCompleted; 
                         });
 
@@ -921,8 +892,7 @@
                 // Formata Telefone
                 let phoneDisplay = '-';
                 if (client.phone) {
-                    // Se for objeto (mobile_phone) ou string
-                    const rawPhone = client.mobile_phone || client.phone || '';
+                    const rawPhone = client.phone;
                     // Remove caracteres não numéricos
                     const cleanPhone = String(rawPhone).replace(/\D/g, '');
                     if (cleanPhone.length >= 10) {
@@ -938,26 +908,12 @@
                 }
 
                 // Obtém nome do Plano (se disponível na assinatura)
-                let planName = '-';
-                // Tenta pegar da assinatura vinculada
-                // Precisamos achar a assinatura correta no array de subscriptions
-                // Como já cruzamos os dados, podemos ter salvo o objeto de assinatura no cliente ou buscar novamente
-                // No código atual, 'client' já tem dados mesclados, mas não salvamos o objeto de assinatura completo, apenas datas.
-                // Vamos ajustar o map lá em cima para incluir o nome do plano ou buscar aqui.
-                // Melhor ajustar o map principal para incluir 'plan_name'.
-                
-                // Ajuste rápido: buscar no array global de subscriptions se disponível, ou usar o que tiver.
-                // Como 'client' é um objeto mesclado, vamos ver se tem info do plano.
-                // Se não tiver, vamos exibir '-' por enquanto e ajustar o map principal no próximo passo se necessário.
-                // Mas espere, o 'mergedData' é criado mapeando 'customers'.
-                // Vamos ver se 'subscriptions' tem o nome do plano.
-                // A API da Cyclopay retorna 'product_name' ou 'plan_name' na assinatura?
-                // Geralmente sim. Vou assumir que precisamos pegar isso no map.
+                let planName = client.plan_name || '-';
                 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                     <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
-                    <td>${client.plan_name || '-'}</td>
+                    <td>${planName}</td>
                     <td>${phoneDisplay}</td>
                     <td>${cpfDisplay}</td>
                     <td style="text-align: center;">${loginIcon}</td>
@@ -989,6 +945,8 @@
             alert('Supabase não configurado! Configure a chave API no código para salvar.');
             return;
         }
+        
+        console.log('DEBUG: importarCliente chamado com:', { nome, email, cpf, whatsapp });
 
         // Verifica duplicidade de tarefa antes de criar (por nome)
         const { data: existingTasks } = await supabaseClient
@@ -1002,12 +960,16 @@
         }
 
         // Verifica duplicidade de CPF em dados_cadastrais (para avisar se já é cliente)
-        if (cpf) {
-            const cleanCpf = cpf.replace(/\D/g, '');
+        if (cpf && cpf !== '-') {
+            // Para verificação de duplicidade, comparamos apenas números ou tentamos match exato
+            // Como o banco pode ter salvo formatado ou não, o ideal seria limpar para comparar, 
+            // mas se o banco salva formatado, precisamos comparar formatado.
+            // Vou assumir que a verificação deve ser flexível, mas por segurança vou buscar pelo valor exato primeiro.
+            
             const { data: existingClient } = await supabaseClient
                 .from('dados_cadastrais')
                 .select('id')
-                .eq('cpf', cleanCpf);
+                .eq('cpf', cpf); // Tenta match exato primeiro
             
             if (existingClient && existingClient.length > 0) {
                 if (!confirm('ATENÇÃO: Este CPF já está cadastrado como cliente no sistema. Deseja criar uma nova tarefa de onboarding mesmo assim?')) {
@@ -1024,10 +986,15 @@
                     login: false, 
                     email: false, 
                     form: false,
-                    client_data: { cpf: cpf, whatsapp: whatsapp } // Armazena dados extras
+                    client_data: { 
+                        cpf: cpf || '', 
+                        whatsapp: whatsapp || '' 
+                    } // Armazena dados extras
                 },
                 status: 'pending'
             };
+            
+            console.log('DEBUG: Criando nova tarefa:', newTask);
             
             const { error } = await supabaseClient.from('hvsf_tasks').insert([newTask]);
             
