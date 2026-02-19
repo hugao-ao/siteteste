@@ -371,6 +371,22 @@
         window.location.href = 'index.html';
     }
 
+    // Função para alternar a visibilidade do card
+    function toggleCard(containerId, headerElement) {
+        const container = document.getElementById(containerId);
+        const icon = headerElement.querySelector('.toggle-icon');
+        
+        if (container.style.maxHeight) {
+            // Está aberto, vamos fechar
+            container.style.maxHeight = null;
+            icon.style.transform = 'rotate(-90deg)';
+        } else {
+            // Está fechado (ou null), vamos abrir
+            container.style.maxHeight = container.scrollHeight + "px";
+            icon.style.transform = 'rotate(0deg)';
+        }
+    }
+
     // Carrega notificações ao iniciar
     document.addEventListener('DOMContentLoaded', () => {
         // Injeta a sidebar automaticamente
@@ -424,37 +440,54 @@
 
                 const card = document.createElement('div');
                 card.className = `notification-card ${isCompleted ? 'completed' : ''}`;
+                const tasksContainerId = `tasks-${notif.id}`;
+                
                 card.innerHTML = `
-                    <div class="card-header">
-                        <h3>${notif.client_name} <span style="font-size: 0.8rem; color: #d4af37;">(${notif.plan})</span></h3>
+                    <div class="card-header" style="cursor: pointer;" onclick="toggleCard('${tasksContainerId}', this)">
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <i class="fas fa-chevron-down toggle-icon" style="transition: transform 0.3s; color: #d4af37;"></i>
+                            <h3>${notif.client_name} <span style="font-size: 0.8rem; color: #d4af37;">(${notif.plan})</span></h3>
+                        </div>
                         <div class="card-meta">
                             ${new Date(notif.created_at).toLocaleDateString('pt-BR')}
                             ${isCompleted ? '<i class="fas fa-check-circle" style="color: #28a745; margin-left: 10px;"></i>' : ''}
                         </div>
                     </div>
                     
-                    <ul class="task-list">
-                        <li class="task-item">
-                            <input type="checkbox" id="task-login-${notif.id}" ${loginChecked} onchange="updateTask(${notif.id}, 'login', this.checked)">
-                            <label for="task-login-${notif.id}">Criar Login</label>
-                        </li>
-                        <li class="task-item">
-                            <input type="checkbox" id="task-email-${notif.id}" ${emailChecked} onchange="updateTask(${notif.id}, 'email', this.checked)">
-                            <label for="task-email-${notif.id}">Criar Email</label>
-                        </li>
-                        <li class="task-item">
-                            <input type="checkbox" id="task-form-${notif.id}" ${formChecked} onchange="updateTask(${notif.id}, 'form', this.checked)">
-                            <label for="task-form-${notif.id}">Enviar Formulário</label>
-                        </li>
-                    </ul>
+                    <div id="${tasksContainerId}" class="tasks-container" style="transition: max-height 0.3s ease-out; overflow: hidden;">
+                        <ul class="task-list">
+                            <li class="task-item">
+                                <input type="checkbox" id="task-login-${notif.id}" ${loginChecked} onchange="updateTask(${notif.id}, 'login', this.checked)">
+                                <label for="task-login-${notif.id}">Criar Login</label>
+                            </li>
+                            <li class="task-item">
+                                <input type="checkbox" id="task-email-${notif.id}" ${emailChecked} onchange="updateTask(${notif.id}, 'email', this.checked)">
+                                <label for="task-email-${notif.id}">Criar Email</label>
+                            </li>
+                            <li class="task-item">
+                                <input type="checkbox" id="task-form-${notif.id}" ${formChecked} onchange="updateTask(${notif.id}, 'form', this.checked)">
+                                <label for="task-form-${notif.id}">Enviar Formulário</label>
+                            </li>
+                        </ul>
 
-                    ${!isCompleted ? `
-                        <button id="btn-finalize-${notif.id}" class="btn-finalize" onclick="lancarClienteNoSistema(${notif.id})">
-                            <i class="fas fa-check"></i> Lançar Cliente no Sistema
-                        </button>
-                    ` : ''}
+                        ${!isCompleted ? `
+                            <button id="btn-finalize-${notif.id}" class="btn-finalize" onclick="lancarClienteNoSistema(${notif.id})">
+                                <i class="fas fa-check"></i> Lançar Cliente no Sistema
+                            </button>
+                        ` : ''}
+                    </div>
                 `;
                 container.appendChild(card);
+                
+                // Inicializa o max-height para cards abertos por padrão
+                const tasksContainerId = `tasks-${notif.id}`;
+                const tasksContainer = card.querySelector(`#${tasksContainerId}`);
+                if (tasksContainer) {
+                     // Pequeno delay para garantir que o elemento foi renderizado e tem altura
+                    setTimeout(() => {
+                        tasksContainer.style.maxHeight = tasksContainer.scrollHeight + "px";
+                    }, 10);
+                }
             });
 
         } catch (error) {
@@ -493,18 +526,7 @@
         }
     }
 
-    async function simularVenda() {
-        const fakeData = {
-            client_name: "Cliente Teste " + Math.floor(Math.random() * 1000),
-            plan: "Nível II - Construção",
-            tasks: { login: false, email: false, form: false, client_data: { cpf: '000.000.000-00', whatsapp: '(00) 00000-0000' } },
-            status: "pending"
-        };
-        
-        const { error } = await supabaseClient.from('hvsf_tasks').insert([fakeData]);
-        if (error) alert('Erro ao criar: ' + error.message);
-        else loadNotifications();
-    }
+
 
     async function lancarClienteNoSistema(notifId) {
         const notif = window.notifications.find(n => n.id === notifId);
