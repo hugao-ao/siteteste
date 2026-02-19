@@ -347,7 +347,18 @@
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="supabase.js"></script>
+  
+  <!-- Inicialização do Supabase (Inline para evitar erros de módulo) -->
+  <script>
+    const SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
+    
+    // Inicializa o cliente Supabase globalmente
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    
+    console.log('Supabase inicializado com sucesso (Inline).');
+  </script>
+
   <script src="sidebar.js"></script>
 
   <script>
@@ -514,7 +525,7 @@
             const { data: existingCpf } = await supabaseClient
                 .from('dados_cadastrais')
                 .select('id')
-                .eq('cpf', cpf);
+                .eq('cpf', cpf); // Tenta match exato primeiro
             
             if (existingCpf && existingCpf.length > 0) {
                 alert('ERRO: Já existe um cliente cadastrado com este CPF no sistema.');
@@ -961,15 +972,11 @@
 
         // Verifica duplicidade de CPF em dados_cadastrais (para avisar se já é cliente)
         if (cpf && cpf !== '-') {
-            // Para verificação de duplicidade, comparamos apenas números ou tentamos match exato
-            // Como o banco pode ter salvo formatado ou não, o ideal seria limpar para comparar, 
-            // mas se o banco salva formatado, precisamos comparar formatado.
-            // Vou assumir que a verificação deve ser flexível, mas por segurança vou buscar pelo valor exato primeiro.
-            
+            const cleanCpf = cpf.replace(/\D/g, '');
             const { data: existingClient } = await supabaseClient
                 .from('dados_cadastrais')
                 .select('id')
-                .eq('cpf', cpf); // Tenta match exato primeiro
+                .eq('cpf', cleanCpf);
             
             if (existingClient && existingClient.length > 0) {
                 if (!confirm('ATENÇÃO: Este CPF já está cadastrado como cliente no sistema. Deseja criar uma nova tarefa de onboarding mesmo assim?')) {
