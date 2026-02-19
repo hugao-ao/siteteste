@@ -275,9 +275,12 @@
   <script type="module">
     import { supabase } from './supabase.js';
     
-    // Injetar a sidebar (agora global)
-    if (typeof injectSidebar === 'function') {
-        injectSidebar("main-content-mensagens", "Mensagens");
+    // Injetar a sidebar (agora global) com detecção automática
+    if (typeof injectSidebarWithAutoDetection === 'function') {
+        injectSidebarWithAutoDetection("main-content-mensagens");
+    } else if (typeof injectSidebar === 'function') {
+        // Fallback
+        injectSidebar("main-content-mensagens", "Planejamento");
     } else {
         console.error("injectSidebar não encontrado");
     }
