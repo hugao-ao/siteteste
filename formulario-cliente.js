@@ -761,15 +761,23 @@ function addObjetivoEntry() {
     addCurrencyFormatting(entryDiv.querySelector("input[name='objetivo_valor']"));
 }
 
-// --- Função Principal de Atualização Dinâmica --- (EXISTENTE)
-function updateDynamicFormSections() {
+// --- Função Principal de Atualização Dinâmica --- (MODIFICADA)
+function updateDynamicFormSections(source) {
+    // Atualiza labels que dependem de "Renda Única" e "Outras Pessoas"
+    // Essas atualizações são leves e não causam problemas de layout
     updatePerguntaDependentesLabel();
     updatePerguntaPatrimonioFisicoLabel();
     updatePerguntaPatrimonioLiquidoLabel();
     updatePerguntaDividasLabel();
-    renderPlanoSaudeQuestions();
-    renderSeguroVidaQuestions();
-    renderImpostoRendaQuestions();
+
+    // Apenas renderiza as seções dinâmicas pesadas (Plano, Seguro, IR) se a alteração vier de campos que afetam essas seções.
+    // Fontes que afetam: 'nome_completo', 'renda_unica', 'outras_pessoas'
+    // Fontes que NÃO afetam: 'tem_dependentes', 'tem_patrimonio', 'tem_dividas', etc.
+    if (!source || source === 'nome_completo' || source === 'renda_unica' || source === 'outras_pessoas') {
+        renderPlanoSaudeQuestions();
+        renderSeguroVidaQuestions();
+        renderImpostoRendaQuestions();
+    }
 }
 
 // --- Função para Anexar Event Listeners --- (MODIFICADA)
@@ -815,7 +823,7 @@ function attachFormEventListeners(formId) {
     // --- Listeners EXISTENTES --- (Mantidos)
     if (nomeCompletoInput) {
         nomeCompletoInput.addEventListener("input", () => {
-            updateDynamicFormSections();
+            updateDynamicFormSections('nome_completo');
         });
     }
 
@@ -823,13 +831,13 @@ function attachFormEventListeners(formId) {
         rendaUnicaSimRadio.addEventListener("change", () => {
             if(outrasPessoasContainerEl) outrasPessoasContainerEl.style.display = "none";
             if(pessoasListEl) pessoasListEl.innerHTML = '';
-            updateDynamicFormSections();
+            updateDynamicFormSections('renda_unica');
         });
     }
     if (rendaUnicaNaoRadio) {
         rendaUnicaNaoRadio.addEventListener("change", () => {
             if(outrasPessoasContainerEl) outrasPessoasContainerEl.style.display = "block";
-            updateDynamicFormSections();
+            updateDynamicFormSections('renda_unica');
         });
     }
 
@@ -857,14 +865,14 @@ function attachFormEventListeners(formId) {
             nomeInput.addEventListener('input', () => {
                 const primeiroNome = nomeInput.value.trim().split(' ')[0];
                 placeholder.textContent = primeiroNome ? capitalizeName(primeiroNome) : "esta pessoa";
-                updateDynamicFormSections();
+                updateDynamicFormSections('outras_pessoas');
             });
 
             newPersonEntry.querySelector(".remove-dynamic-entry-btn").addEventListener("click", () => {
                 newPersonEntry.remove();
-                updateDynamicFormSections();
+                updateDynamicFormSections('outras_pessoas');
             });
-            updateDynamicFormSections();
+            updateDynamicFormSections('outras_pessoas');
         });
     }
 
@@ -1198,10 +1206,14 @@ function attachFormEventListeners(formId) {
         if (e.target.classList.contains("remove-dynamic-entry-btn")) {
             const entryItem = e.target.closest(".dynamic-entry-item");
             if (entryItem) {
+                // Verificar se é uma pessoa da lista de "Outras Pessoas" antes de remover
+                const isPessoaRenda = entryItem.parentElement.id === 'pessoas-list';
+                
                 entryItem.remove();
-                // Chama a função de atualização principal se necessário (ex: se remoção afetar IR/Plano/Seguro)
-                // Neste caso, a remoção de orçamento/objetivos não afeta as seções condicionais, então não precisa chamar updateDynamicFormSections()
-                // updateDynamicFormSections();
+                
+                if (isPessoaRenda) {
+                    updateDynamicFormSections('outras_pessoas');
+                }
             }
         }
     });
