@@ -476,7 +476,7 @@ function renderPlanoSaudeQuestions() {
         entryDiv.style.marginBottom = "1rem";
         entryDiv.innerHTML = `
             <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui plano de saúde?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+            <div class="radio-options-inline">
                 <span style="margin-right: 15px; display: flex; align-items: center;">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 3px;">
                     <label for="${personId}_sim" style="font-size: 14px;">Sim</label>
@@ -555,7 +555,7 @@ function renderSeguroVidaQuestions() {
         entryDiv.style.marginBottom = "1rem";
         entryDiv.innerHTML = `
             <label for="${personId}" style="display: block; margin-bottom: 0.5rem;">${nomeCapitalizado} possui seguro de vida?</label>
-            <div class="radio-options-inline" style="display: flex; align-items: center; flex-wrap: nowrap; width: 100%;">
+            <div class="radio-options-inline">
                 <span style="margin-right: 15px; display: flex; align-items: center;">
                     <input type="radio" id="${personId}_sim" name="${personId}" value="sim" required style="margin-right: 3px;">
                     <label for="${personId}_sim" style="font-size: 14px;">Sim</label>
