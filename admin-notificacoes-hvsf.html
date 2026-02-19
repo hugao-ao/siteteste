@@ -536,13 +536,23 @@
 
         try {
             // 1. Criar Cliente na tabela 'clientes'
+            
+            // Recupera ID do usuário logado (admin)
+            const userId = sessionStorage.getItem('user_id') || sessionStorage.getItem('id');
+            
+            if (!userId) {
+                alert('ERRO CRÍTICO: Usuário não identificado na sessão. Faça login novamente no painel administrativo.');
+                return;
+            }
+
             const { data: newClient, error: clientError } = await supabaseClient
                 .from('clientes')
                 .insert([{
                     nome: nome,
-                    whatsapp: whatsapp, // Salva whatsapp no cliente também se disponível
+                    whatsapp: whatsapp, 
                     projeto: 'Planejamento',
-                    // created_by: sessionStorage.getItem('user_id') // Se necessário
+                    criado_por_id: userId, // Campo obrigatório para FK
+                    created_at: new Date().toISOString()
                 }])
                 .select()
                 .single();
