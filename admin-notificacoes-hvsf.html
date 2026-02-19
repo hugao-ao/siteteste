@@ -131,9 +131,28 @@
     }
 
     .btn-finalize:disabled {
-        background-color: #555;
-        color: #888;
-        cursor: not-allowed;
+        background-color: #28a745; /* Verde fixo quando desabilitado (lançado) */
+        color: #fff;
+        cursor: default;
+        opacity: 1; /* Remove opacidade padrão de disabled */
+        border: 1px solid #28a745;
+    }
+
+    .btn-save-tasks {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-weight: bold;
+        margin-top: 10px;
+        width: 100%;
+        transition: background 0.3s;
+    }
+
+    .btn-save-tasks:hover {
+        background-color: #0056b3;
     }
 
     /* Estilos para a seção Cyclopay */
@@ -307,8 +326,8 @@
           </div>
           <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
               <div style="display: flex; align-items: center; gap: 10px;">
-                  <input type="checkbox" id="hide-completed" onchange="loadNotifications()" style="transform: scale(1.5); cursor: pointer;">
-                  <label for="hide-completed" style="color: #ddd; cursor: pointer; user-select: none;">Ocultar Concluídos</label>
+                  <input type="checkbox" id="hide-notifications" onchange="toggleNotificationsVisibility()" style="transform: scale(1.5); cursor: pointer;">
+                  <label for="hide-notifications" style="color: #ddd; cursor: pointer; user-select: none;">Ocultar Notificações de Tarefa</label>
               </div>
               <button onclick="toggleAllCards()" style="background: transparent; border: 1px solid #666; color: #aaa; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
                   <i class="fas fa-expand-alt"></i> Expandir/Recolher Tudo
@@ -418,8 +437,17 @@
     // --- LÓGICA DE NOTIFICAÇÕES ---
     async function loadNotifications() {
         const list = document.getElementById('notifications-list');
-        const hideCompleted = document.getElementById('hide-completed').checked;
+        const hideNotifications = document.getElementById('hide-notifications').checked;
         
+        // Se o filtro de ocultar TUDO estiver ativo, limpa a lista e sai
+        if (hideNotifications) {
+            list.innerHTML = '';
+            list.style.display = 'none'; // Garante que o container suma
+            return;
+        } else {
+            list.style.display = 'block';
+        }
+
         list.innerHTML = '<p style="color: #888;">Atualizando...</p>';
 
         try {
@@ -427,11 +455,6 @@
                 .from('hvsf_tasks')
                 .select('*')
                 .order('created_at', { ascending: false });
-
-            // Se o filtro estiver ativo, busca apenas pendentes
-            if (hideCompleted) {
-                query = query.neq('status', 'completed');
-            }
 
             const { data: notifications, error } = await query;
 
@@ -454,12 +477,8 @@
                 const allTasksChecked = tasks.login && tasks.email && tasks.form;
                 
                 // Verifica se o cliente já foi lançado (existe client_id salvo nas tasks ou status já é completed)
-                // Para ser completed, precisa: lançado no sistema E todas as tarefas marcadas
                 const isLaunched = tasks.client_launched === true;
                 const isFullyCompleted = isLaunched && allTasksChecked;
-
-                // Se o filtro estiver ativo e for fully completed, não renderiza (redundância visual)
-                if (hideCompleted && isFullyCompleted) return;
 
                 const card = document.createElement('div');
                 card.className = `notification-card ${isFullyCompleted ? 'completed' : ''}`;
@@ -484,28 +503,29 @@
                         <ul class="task-list">
                             <li class="task-item">
                                 <input type="checkbox" id="task-login-${notif.id}" 
-                                    ${tasks.login ? 'checked' : ''} 
-                                    onchange="updateTask('${notif.id}', 'login', this.checked)">
+                                    ${tasks.login ? 'checked' : ''}>
                                 <label for="task-login-${notif.id}">Criar Login</label>
                             </li>
                             <li class="task-item">
                                 <input type="checkbox" id="task-email-${notif.id}" 
-                                    ${tasks.email ? 'checked' : ''} 
-                                    onchange="updateTask('${notif.id}', 'email', this.checked)">
+                                    ${tasks.email ? 'checked' : ''}>
                                 <label for="task-email-${notif.id}">Criar Email</label>
                             </li>
                             <li class="task-item">
                                 <input type="checkbox" id="task-form-${notif.id}" 
-                                    ${tasks.form ? 'checked' : ''} 
-                                    onchange="updateTask('${notif.id}', 'form', this.checked)">
+                                    ${tasks.form ? 'checked' : ''}>
                                 <label for="task-form-${notif.id}">Enviar Formulário</label>
                             </li>
                         </ul>
 
+                        <button class="btn-save-tasks" onclick="saveTasks('${notif.id}')">
+                            <i class="fas fa-save"></i> Salvar Tarefas
+                        </button>
+
                         <button class="btn-finalize" 
                             onclick="lancarClienteNoSistema('${notif.id}')"
                             ${isLaunched ? 'disabled' : ''}>
-                            ${isLaunched ? '<i class="fas fa-check"></i> Cliente Lançado' : 'Lançar Cliente no Sistema'}
+                            ${isLaunched ? '<i class="fas fa-check-circle"></i> CLIENTE JÁ LANÇADO' : 'Lançar Cliente no Sistema'}
                         </button>
                     </div>
                 `;
@@ -516,6 +536,11 @@
             console.error('Erro ao carregar notificações:', error);
             list.innerHTML = '<p style="color: red;">Erro ao carregar notificações.</p>';
         }
+    }
+
+    // Função para alternar visibilidade de TODAS as notificações
+    function toggleNotificationsVisibility() {
+        loadNotifications(); // Recarrega aplicando a lógica de display: none/block
     }
 
     // Função para expandir/recolher card individual
@@ -563,12 +588,22 @@
         });
     }
 
-    async function updateTask(id, taskType, isChecked) {
+    // NOVA FUNÇÃO: Salvar Tarefas Manualmente
+    async function saveTasks(id) {
         const notif = window.notifications.find(n => n.id === id);
         if (!notif) return;
 
+        // Pega o estado atual dos checkboxes
+        const loginChecked = document.getElementById(`task-login-${id}`).checked;
+        const emailChecked = document.getElementById(`task-email-${id}`).checked;
+        const formChecked = document.getElementById(`task-form-${id}`).checked;
+
         let tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
-        tasks[taskType] = isChecked;
+        
+        // Atualiza objeto tasks
+        tasks.login = loginChecked;
+        tasks.email = emailChecked;
+        tasks.form = formChecked;
 
         // Verifica status completo
         const allTasksChecked = tasks.login && tasks.email && tasks.form;
@@ -596,19 +631,15 @@
             const card = document.getElementById(`card-${id}`);
             if (newStatus === 'completed') {
                 card.classList.add('completed');
-                // Se filtro de ocultar estiver ativo, remove o card da tela
-                if (document.getElementById('hide-completed').checked) {
-                    card.remove();
-                }
             } else {
                 card.classList.remove('completed');
             }
 
+            alert('Tarefas salvas com sucesso!');
+
         } catch (error) {
-            console.error('Erro ao atualizar tarefa:', error);
-            alert('Erro ao salvar alteração.');
-            // Reverte checkbox visualmente
-            document.getElementById(`task-${taskType}-${id}`).checked = !isChecked;
+            console.error('Erro ao salvar tarefas:', error);
+            alert('Erro ao salvar tarefas: ' + error.message);
         }
     }
 
