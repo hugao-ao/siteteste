@@ -419,9 +419,8 @@
                 const emailChecked = tasks.email ? 'checked' : '';
                 const formChecked = tasks.form ? 'checked' : '';
                 
-                // Verifica se todos estão marcados para habilitar o botão
-                const allChecked = tasks.login && tasks.email && tasks.form;
-                const btnDisabled = !allChecked || isCompleted;
+                // Botão sempre habilitado conforme solicitação do usuário
+                const btnDisabled = isCompleted; // Só desabilita se já estiver concluído
 
                 const card = document.createElement('div');
                 card.className = `notification-card ${isCompleted ? 'completed' : ''}`;
@@ -450,7 +449,7 @@
                     </ul>
 
                     ${!isCompleted ? `
-                        <button id="btn-finalize-${notif.id}" class="btn-finalize" onclick="lancarClienteNoSistema(${notif.id})" ${!allChecked ? 'disabled' : ''}>
+                        <button id="btn-finalize-${notif.id}" class="btn-finalize" onclick="lancarClienteNoSistema(${notif.id})">
                             <i class="fas fa-check"></i> Lançar Cliente no Sistema
                         </button>
                     ` : ''}
@@ -471,10 +470,9 @@
         const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
         tasks[taskType] = isChecked;
 
-        // Verifica se todos estão marcados
+        // Verifica se todos estão marcados (apenas para controle interno, não bloqueia botão)
         const allChecked = tasks.login && tasks.email && tasks.form;
-        const btn = document.getElementById(`btn-finalize-${id}`);
-        if (btn) btn.disabled = !allChecked;
+        // O botão permanece sempre habilitado
 
         try {
             const { error } = await supabaseClient
