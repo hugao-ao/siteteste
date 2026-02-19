@@ -1266,8 +1266,22 @@ async function initForm() {
         // Definir o título do formulário como "Formulário Pré Diagnóstico"
         formTitleEl.textContent = "Formulário Pré Diagnóstico";
 
-        // Renderizar formulário
-        renderForm(formData);
+        // Buscar nome do cliente na tabela 'clientes'
+        let clientName = "";
+        if (formData.cliente_id) {
+            const { data: clientData, error: clientError } = await supabase
+                .from("clientes")
+                .select("nome")
+                .eq("id", formData.cliente_id)
+                .single();
+            
+            if (clientData && clientData.nome) {
+                clientName = clientData.nome;
+            }
+        }
+
+        // Renderizar formulário passando o nome do cliente
+        renderForm(formData, clientName);
 
     } catch (error) {
         console.error("Erro ao inicializar formulário:", error);
@@ -1281,14 +1295,19 @@ async function initForm() {
 }
 
 // --- Função para Renderizar o Formulário --- (MODIFICADA)
-function renderForm(formData) {
+function renderForm(formData, clientName = "") {
     // Estrutura HTML base do formulário com as seções existentes e as NOVAS seções
+    // Se clientName existir, preenche o valor e adiciona readonly e estilo visual de bloqueado
+    const nameValue = clientName ? `value="${sanitizeInput(clientName)}"` : "";
+    const nameReadOnly = clientName ? "readonly" : "";
+    const nameStyle = clientName ? "background-color: rgba(0,0,0,0.4); color: #aaa; cursor: not-allowed;" : "";
+
     formContentEl.innerHTML = `
         <form id="client-response-form" class="client-form">
             <!-- Seções Existentes (Nome, Renda Única, Outras Pessoas, Dependentes) -->
             <div class="form-group">
                 <label for="nome_completo">Nome Completo:</label>
-                <input type="text" id="nome_completo" name="nome_completo" required>
+                <input type="text" id="nome_completo" name="nome_completo" required ${nameValue} ${nameReadOnly} style="${nameStyle}">
             </div>
 
             <div class="radio-group">
