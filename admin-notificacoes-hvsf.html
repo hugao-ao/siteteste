@@ -832,153 +832,277 @@
                 const sub = subscriptions.find(s => s.customer_id === customer.customer_id);
                 
                 // Extrai nome do plano da assinatura (se existir)
-                const planName = sub ? sub.product_name : '-';
+                let planName = null;
+                if (sub) {
+                    // Tenta extrair de sub.plan.name (estrutura aninhada vista no diagnóstico)
+                    if (sub.plan && sub.plan.name) {
+                        planName = sub.plan.name;
+                    } else {
+                        // Fallback para outros campos possíveis
+                        planName = sub.product_name || sub.plan_name || (sub.product ? sub.product.name : null);
+                    }
+                }
 
-                // Encontra a transação mais recente
-                const lastTransaction = transactions.find(t => t.customer_id === customer.customer_id);
+                // Encontra a transação mais recente do cliente
+                // Como buscamos todas as transações, filtramos pelo cliente e pegamos a primeira (mais recente)
+                const clientTransactions = transactions.filter(t => t.customer && t.customer.customer_id === customer.customer_id);
                 
-                // Status de pagamento (baseado na última transação ou assinatura)
-                let paymentStatus = 'unknown';
-                if (sub && sub.status === 'active') paymentStatus = 'paid';
-                else if (lastTransaction && lastTransaction.status === 'paid') paymentStatus = 'paid';
-                else if (lastTransaction && lastTransaction.status === 'refused') paymentStatus = 'refused';
-                else if (lastTransaction && lastTransaction.status === 'pending') paymentStatus = 'pending';
+                const lastTransaction = clientTransactions.length > 0 ? clientTransactions[0] : null;
+
+                // Lógica para Data da Última Cobrança:
+                // Prioriza a data da última transação se existir, senão usa a da assinatura
+                let lastChargeDate = null;
+                if (lastTransaction) {
+                    lastChargeDate = lastTransaction.create_date;
+                } else if (sub && sub.last_charge_date) {
+                    lastChargeDate = sub.last_charge_date;
+                }
 
                 return {
                     ...customer,
-                    plan_name: planName,
-                    last_transaction_date: lastTransaction ? lastTransaction.created_at : null,
-                    next_billing_date: sub ? sub.next_billing_date : null,
-                    payment_status: paymentStatus
+                    last_charge_date: lastChargeDate,
+                    next_charge: sub ? sub.next_charge : null,
+                    last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null,
+                    plan_name: planName, // Adiciona o nome do plano ao objeto mesclado
+                    // Garante que telefone esteja acessível (prioriza mobile_number conforme diagnóstico)
+                    phone: customer.mobile_number || customer.mobile_phone || customer.phone
                 };
             });
-
-            // Salva dados completos para filtro
+            
+            // Salva dados globais para filtragem
             window.allCyclopayData = mergedData;
 
             renderCyclopayTable(mergedData);
 
         } catch (error) {
-            console.error('Erro ao carregar Cyclopay:', error);
-            tbody.innerHTML = `<tr><td colspan="7" style="color: red;">Erro ao carregar dados: ${error.message}</td></tr>`;
+            console.error('Erro ao carregar dados da Cyclopay:', error);
+            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ff4d4d;">Erro ao carregar dados: ${error.message}</td></tr>`;
         }
     }
 
-    function renderCyclopayTable(data) {
+    function renderCyclopayTable(clients) {
         const tbody = document.getElementById('cyclopay-list');
         tbody.innerHTML = '';
-
-        if (data.length === 0) {
+        
+        if (!clients || clients.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
         // Paginação simples (mostra os 50 primeiros para não travar)
-        const displayData = data.slice(0, 50);
+        const displayData = clients.slice(0, 50);
 
         displayData.forEach(client => {
-            const tr = document.createElement('tr');
-            
-            // Formatação de datas
-            const createdDate = new Date(client.created_at).toLocaleDateString('pt-BR');
-            const lastCharge = client.last_transaction_date ? new Date(client.last_transaction_date).toLocaleDateString('pt-BR') : '-';
-            const nextCharge = client.next_billing_date ? new Date(client.next_billing_date).toLocaleDateString('pt-BR') : '-';
+                const statusClass = client.active ? 'badge-active' : 'badge-inactive';
+                const statusLabel = client.active ? 'Ativo' : 'Inativo';
+                const createdDate = client.create_date ? new Date(client.create_date).toLocaleDateString('pt-BR') : '-';
+                
+                // Formata datas de cobrança
+                const lastCharge = client.last_charge_date ? new Date(client.last_charge_date).toLocaleDateString('pt-BR') : '-';
+                const nextCharge = client.next_charge ? new Date(client.next_charge).toLocaleDateString('pt-BR') : '-';
+                
+                // Ícone de status da última cobrança
+                let statusIcon = '';
+                if (client.last_transaction_status) {
+                    if (client.last_transaction_status === 'paid' || client.last_transaction_status === 'authorized') {
+                        statusIcon = '<i class="fas fa-check-circle status-icon status-paid" title="Pago"></i>';
+                    } else if (client.last_transaction_status === 'refused' || client.last_transaction_status === 'failed') {
+                        statusIcon = '<i class="fas fa-times-circle status-icon status-refused" title="Falhou"></i>';
+                    } else if (client.last_transaction_status === 'pending' || client.last_transaction_status === 'waiting_payment') {
+                        statusIcon = '<i class="fas fa-clock status-icon status-pending" title="Pendente"></i>';
+                    } else {
+                        statusIcon = `<i class="fas fa-question-circle status-icon status-unknown" title="${client.last_transaction_status}"></i>`;
+                    }
+                }
 
-            // Status Icon
-            let statusIcon = '';
-            if (client.payment_status === 'paid') statusIcon = '<i class="fas fa-check-circle status-icon status-paid" title="Pago"></i>';
-            else if (client.payment_status === 'refused') statusIcon = '<i class="fas fa-times-circle status-icon status-refused" title="Recusado"></i>';
-            else if (client.payment_status === 'pending') statusIcon = '<i class="fas fa-clock status-icon status-pending" title="Pendente"></i>';
-            else statusIcon = '<i class="fas fa-question-circle status-icon status-unknown" title="Desconhecido"></i>';
+                // Tratamento do CPF (pode vir como objeto ou string)
+                let cpfDisplay = '-';
+                let rawDocument = '';
+                
+                if (client.document) {
+                    if (typeof client.document === 'object') {
+                        // Tenta pegar 'number', 'value', 'cpf', ou 'cnpj'
+                        rawDocument = client.document.number || client.document.value || client.document.cpf || client.document.cnpj || '';
+                    } else {
+                        rawDocument = String(client.document);
+                    }
+                }
 
-            // Verifica se já está no sistema (ADCS) - Comparação por CPF (mais seguro) ou Nome
-            let isAdded = false;
-            let clientId = null;
-            
-            // Normaliza CPF da Cyclopay
-            let cyclopayCpf = '';
-            if (client.document) {
-                if (typeof client.document === 'object') {
-                    cyclopayCpf = (client.document.number || client.document.value || client.document.cpf || client.document.cnpj || '').replace(/\D/g, '');
+                // Aplica máscara de CPF ou CNPJ
+                let cleanDoc = '';
+                if (rawDocument) {
+                    cleanDoc = rawDocument.replace(/\D/g, ''); // Remove não-números
+                    if (cleanDoc.length === 11) {
+                        // CPF: 000.000.000-00
+                        cpfDisplay = cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                    } else if (cleanDoc.length === 14) {
+                        // CNPJ: 00.000.000/0000-00
+                        cpfDisplay = cleanDoc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+                    } else {
+                        cpfDisplay = rawDocument; // Retorna original se não bater tamanho
+                    }
+                }
+
+                // Lógica ADCS, FORM, Duplicidade e Tarefas
+                let isAdcs = false;
+                let formStatus = 'none';
+                let isDuplicateCpf = false;
+                let existingClientId = null;
+
+                // Verifica duplicidade por CPF
+                if (cleanDoc) {
+                    const foundInDados = window.supabaseDados.find(d => d.cpf && d.cpf.replace(/\D/g, '') === cleanDoc);
+                    if (foundInDados) {
+                        isDuplicateCpf = true;
+                        existingClientId = foundInDados.cliente_id;
+                    }
+                }
+
+                // Recupera dados do Supabase do escopo global
+                const sbClients = window.supabaseClients || [];
+                const formsMap = window.formsByClientId || {};
+
+                // Tenta achar cliente no Supabase
+                let sbClient = null;
+                if (existingClientId) {
+                    sbClient = sbClients.find(c => c.id === existingClientId);
                 } else {
-                    cyclopayCpf = String(client.document).replace(/\D/g, '');
+                    // Fallback por nome se não achou por CPF (ou se CPF não existe na Cyclopay)
+                    sbClient = sbClients.find(c => 
+                        c.nome && client.first_name && 
+                        c.nome.toLowerCase().includes(client.first_name.toLowerCase()) &&
+                        (client.last_name ? c.nome.toLowerCase().includes(client.last_name.toLowerCase()) : true)
+                    );
                 }
-            }
+                
+                if (sbClient) {
+                    isAdcs = true;
+                    const clientForms = formsMap[sbClient.id];
+                    
+                    if (clientForms && clientForms.length > 0) {
+                        // Verifica se algum formulário foi respondido
+                        const hasAnsweredForm = clientForms.some(f => {
+                            const hasData = f.respostas || f.dados || f.json_respostas;
+                            const isCompleted = f.status === 'concluido' || f.status === 'respondido' || f.status === 'finalizado';
+                            return hasData || isCompleted; 
+                        });
 
-            // Tenta encontrar por CPF primeiro
-            if (cyclopayCpf && window.supabaseDados) {
-                const found = window.supabaseDados.find(d => d.cpf && d.cpf.replace(/\D/g, '') === cyclopayCpf);
-                if (found) {
-                    isAdded = true;
-                    clientId = found.cliente_id;
+                        if (hasAnsweredForm) {
+                            formStatus = 'answered';
+                        } else {
+                            formStatus = 'created';
+                        }
+                    }
                 }
-            }
 
-            // Se não achou por CPF, tenta por Nome (fallback)
-            if (!isAdded && window.supabaseClients) {
-                const fullName = (client.first_name + ' ' + (client.last_name || '')).trim().toLowerCase();
-                const found = window.supabaseClients.find(c => c.nome.trim().toLowerCase() === fullName);
-                if (found) {
-                    isAdded = true;
-                    clientId = found.id;
+                // Ícone ADCS
+                const adcsIcon = isAdcs 
+                    ? '<i class="fas fa-check-circle" style="color: #28a745;" title="Cliente encontrado no sistema"></i>' 
+                    : '<i class="fas fa-times-circle" style="color: #dc3545;" title="Cliente NÃO encontrado"></i>';
+
+                // Ícone FORM
+                let formIcon = '';
+                if (!isAdcs) {
+                    // Cliente não encontrado -> X Vermelho
+                    formIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Cliente não encontrado"></i>';
+                } else if (formStatus === 'none') {
+                    // Cliente encontrado, mas sem formulário -> X Vermelho
+                    formIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Formulário não criado"></i>';
+                } else if (formStatus === 'created') {
+                    // Formulário criado, mas não respondido -> ! Amarelo
+                    formIcon = '<i class="fas fa-exclamation-triangle" style="color: #ffc107;" title="Aguardando resposta"></i>';
+                } else {
+                    // Formulário respondido -> Check Verde
+                    formIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Formulário respondido"></i>';
                 }
-            }
 
-            // Verifica Tarefas (Login e Email)
-            let hasLogin = false;
-            let hasEmail = false;
-            if (window.supabaseTasks) {
-                // Procura tarefa com mesmo nome
-                const fullName = (client.first_name + ' ' + (client.last_name || '')).trim();
-                const task = window.supabaseTasks.find(t => t.client_name === fullName);
-                if (task) {
-                    const tasks = typeof task.tasks === 'string' ? JSON.parse(task.tasks) : task.tasks;
-                    if (tasks.login) hasLogin = true;
-                    if (tasks.email) hasEmail = true;
+                // Verifica Status de Login e Email (Tarefas)
+                let loginIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Pendente"></i>';
+                let emailIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Pendente"></i>';
+                let taskExists = false;
+
+                // Procura tarefa pelo nome do cliente
+                const clientFullName = `${client.first_name} ${client.last_name || ''}`.trim();
+                const existingTask = window.supabaseTasks.find(t => t.client_name === clientFullName);
+
+                if (existingTask) {
+                    taskExists = true;
+                    const tasks = typeof existingTask.tasks === 'string' ? JSON.parse(existingTask.tasks) : existingTask.tasks;
+                    
+                    if (tasks.login) loginIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Login Criado"></i>';
+                    if (tasks.email) emailIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Email Criado"></i>';
                 }
-            }
 
-            // Verifica Formulário
-            let hasForm = false;
-            if (isAdded && clientId && window.formsByClientId && window.formsByClientId[clientId]) {
-                hasForm = true;
-            }
+                // Formata Telefone
+                let phoneDisplay = '-';
+                if (client.phone) {
+                    const rawPhone = client.phone;
+                    // Remove caracteres não numéricos
+                    const cleanPhone = String(rawPhone).replace(/\D/g, '');
+                    if (cleanPhone.length >= 10) {
+                        // Formata (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
+                        if (cleanPhone.length === 11) {
+                            phoneDisplay = `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,7)}-${cleanPhone.substring(7)}`;
+                        } else {
+                            phoneDisplay = `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,6)}-${cleanPhone.substring(6)}`;
+                        }
+                    } else {
+                        phoneDisplay = rawPhone;
+                    }
+                }
 
-            // Badges
-            const badgeAdcs = isAdded ? '<span class="badge badge-active">SIM</span>' : '<span class="badge badge-inactive">NÃO</span>';
-            const badgeLogin = hasLogin ? '<span class="badge badge-active">SIM</span>' : '<span class="badge badge-pending">NÃO</span>';
-            const badgeEmail = hasEmail ? '<span class="badge badge-active">SIM</span>' : '<span class="badge badge-pending">NÃO</span>';
-            const badgeForm = hasForm ? '<span class="badge badge-active">SIM</span>' : '<span class="badge badge-inactive">NÃO</span>';
-
-            // Botão Importar (só aparece se não estiver no sistema)
-            // Passamos os dados brutos para garantir formatação correta
-            const rawCpf = client.document ? (typeof client.document === 'object' ? (client.document.number || client.document.value) : client.document) : '';
-            const rawPhone = client.mobile_phone || client.home_phone || '';
-            
-            const btnImport = !isAdded 
-                ? `<button class="btn-import" onclick="importarCliente('${client.first_name} ${client.last_name || ''}', '${rawCpf}', '${rawPhone}')" title="Importar para Notificações"><i class="fas fa-file-import"></i></button>` 
-                : '<span style="color: #28a745;"><i class="fas fa-check"></i></span>';
-
-            tr.innerHTML = `
-                <td>${client.first_name} ${client.last_name || ''}</td>
-                <td>${client.plan_name}</td>
-                <td>${client.mobile_phone || client.home_phone || '-'}</td>
-                <td>${rawCpf || '-'}</td>
-                <td>${badgeLogin}</td>
-                <td>${badgeEmail}</td>
-                <td>${badgeAdcs}</td>
-                <td>${badgeForm}</td>
-                <td>${createdDate}</td>
-                <td>${lastCharge}</td>
-                <td>${nextCharge}</td>
-                <td>${statusIcon} ${client.payment_status.toUpperCase()}</td>
-                <td>${btnImport}</td>
-            `;
-            tbody.appendChild(tr);
+                // Obtém nome do Plano (se disponível na assinatura)
+                let planName = client.plan_name || '-';
+                
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
+                    <td>${planName}</td>
+                    <td>${phoneDisplay}</td>
+                    <td>${cpfDisplay}</td>
+                    <td style="text-align: center;">${loginIcon}</td>
+                    <td style="text-align: center;">${emailIcon}</td>
+                    <td style="text-align: center;">${adcsIcon}</td>
+                    <td style="text-align: center;">${formIcon}</td>
+                    <td>${createdDate}</td>
+                    <td>${lastCharge} ${statusIcon}</td>
+                    <td>${nextCharge}</td>
+                    <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+                    <td>
+                        ${isDuplicateCpf ? 
+                            `<span class="badge badge-active" style="background-color: #28a745; color: white;">Cadastrado</span>` : 
+                            (taskExists ? 
+                                `<span class="badge badge-pending" style="background-color: #ffc107; color: black;">Em Onboarding</span>` :
+                                `<button class="btn-import" onclick="importarCliente('${client.first_name} ${client.last_name || ''}', '${client.email}', '${cpfDisplay}', '${phoneDisplay}')" title="Iniciar Onboarding">
+                                    <i class="fas fa-file-import"></i> Importar
+                                </button>`
+                            )
+                        }
+                    </td>
+                `;
+                tbody.appendChild(tr);
         });
     }
 
-    async function importarCliente(nome, cpf, whatsapp) {
+    async function importarCliente(nome, email, cpf, whatsapp) {
+        if (!supabaseClient) {
+            alert('Supabase não configurado! Configure a chave API no código para salvar.');
+            return;
+        }
+        
+        console.log('DEBUG: importarCliente chamado com:', { nome, email, cpf, whatsapp });
+
+        // Verifica duplicidade de tarefa antes de criar (por nome)
+        const { data: existingTasks } = await supabaseClient
+            .from('hvsf_tasks')
+            .select('*')
+            .eq('client_name', nome);
+
+        if (existingTasks && existingTasks.length > 0) {
+            alert('Já existe um processo de onboarding para este cliente (verificado por nome).');
+            return;
+        }
+
         // Verifica duplicidade de CPF em dados_cadastrais (para avisar se já é cliente)
         if (cpf && cpf !== '-') {
             const cleanCpf = cpf.replace(/\D/g, '');
