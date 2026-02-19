@@ -58,17 +58,32 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 15px;
+        cursor: pointer; /* Indica que é clicável para expandir/recolher */
     }
 
     .card-header h3 {
         margin: 0;
         color: #fff;
         font-size: 1.2rem;
+        display: flex;
+        align-items: center;
+        gap: 10px;
     }
 
     .card-meta {
         font-size: 0.9rem;
         color: #aaa;
+    }
+
+    /* Container para o conteúdo expansível (tarefas e botão) */
+    .card-content {
+        display: block; /* Padrão visível */
+        overflow: hidden;
+        transition: max-height 0.3s ease-out;
+    }
+    
+    .card-content.collapsed {
+        display: none;
     }
 
     .task-list {
@@ -289,17 +304,20 @@
               <h1 style="margin: 0; color: #d4af37;">Notificações SITE HVSF</h1>
               <p style="color: #aaa; margin: 5px 0 0 0;">Gerencie aqui as tarefas de onboarding para novos clientes do Plano Financeiro.</p>
           </div>
-          <div style="display: flex; align-items: center; gap: 10px;">
-              <input type="checkbox" id="hide-completed" onchange="loadNotifications()" style="transform: scale(1.5); cursor: pointer;">
-              <label for="hide-completed" style="color: #ddd; cursor: pointer; user-select: none;">Ocultar Concluídos</label>
+          <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+              <div style="display: flex; align-items: center; gap: 10px;">
+                  <input type="checkbox" id="hide-completed" onchange="loadNotifications()" style="transform: scale(1.5); cursor: pointer;">
+                  <label for="hide-completed" style="color: #ddd; cursor: pointer; user-select: none;">Ocultar Concluídos</label>
+              </div>
+              <button onclick="toggleAllCards()" style="background: transparent; border: 1px solid #666; color: #aaa; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 0.8rem;">
+                  <i class="fas fa-expand-alt"></i> Expandir/Recolher Tudo
+              </button>
           </div>
       </div>
 
       <div id="notifications-list">
           <p style="color: #888;">Carregando notificações...</p>
       </div>
-
-
 
       <!-- Seção de Integração Cyclopay -->
       <div class="cyclopay-section">
@@ -340,176 +358,213 @@
             </table>
         </div>
       </div>
+
     </div>
   </div>
 
   <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  
-  <!-- Inicialização do Supabase (Inline para evitar erros de módulo) -->
-  <script>
-    const SUPABASE_URL = 'https://vbikskbfkhundhropykf.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
-    
-    // Inicializa o cliente Supabase globalmente
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    
-    console.log('Supabase inicializado com sucesso (Inline).');
-  </script>
-
+  <script src="config.js"></script>
+  <script src="auth-check.js"></script>
   <script src="sidebar.js"></script>
 
   <script>
-    // Verifica autenticação
-    if (!sessionStorage.getItem('user_id') && !sessionStorage.getItem('id')) {
-        window.location.href = 'index.html';
-    }
+    // Variável global para controle de expansão
+    let allExpanded = true;
 
-    // Função para alternar a visibilidade do card
-    function toggleCard(containerId, headerElement) {
-        const container = document.getElementById(containerId);
-        const icon = headerElement.querySelector('.toggle-icon');
-        
-        if (container.style.maxHeight) {
-            // Está aberto, vamos fechar
-            container.style.maxHeight = null;
-            icon.style.transform = 'rotate(-90deg)';
-        } else {
-            // Está fechado (ou null), vamos abrir
-            container.style.maxHeight = container.scrollHeight + "px";
-            icon.style.transform = 'rotate(0deg)';
-        }
-    }
-
-    // Carrega notificações ao iniciar
     document.addEventListener('DOMContentLoaded', () => {
-        // Injeta a sidebar automaticamente
-        if (typeof injectSidebarWithAutoDetection === 'function') {
-            injectSidebarWithAutoDetection('main-content');
-        } else {
-            console.error('Função injectSidebarWithAutoDetection não encontrada. Verifique se sidebar.js foi carregado.');
-        }
-
         loadNotifications();
         loadCyclopayData();
     });
 
+    // --- LÓGICA DE NOTIFICAÇÕES ---
     async function loadNotifications() {
-        const container = document.getElementById('notifications-list');
+        const list = document.getElementById('notifications-list');
+        const hideCompleted = document.getElementById('hide-completed').checked;
         
+        list.innerHTML = '<p style="color: #888;">Atualizando...</p>';
+
         try {
-            const { data: notifications, error } = await supabaseClient
+            let query = supabaseClient
                 .from('hvsf_tasks')
                 .select('*')
                 .order('created_at', { ascending: false });
 
+            // Se o filtro estiver ativo, busca apenas pendentes
+            if (hideCompleted) {
+                query = query.neq('status', 'completed');
+            }
+
+            const { data: notifications, error } = await query;
+
             if (error) throw error;
 
+            list.innerHTML = '';
+
             if (!notifications || notifications.length === 0) {
-                container.innerHTML = '<p style="color: #888;">Nenhuma notificação pendente.</p>';
+                list.innerHTML = '<p style="color: #888;">Nenhuma notificação encontrada.</p>';
                 return;
             }
 
-            container.innerHTML = '';
-            
-            // Salva notificações no escopo global para acesso posterior
+            // Salva notificações no escopo global para acesso fácil
             window.notifications = notifications;
-
-            const hideCompleted = document.getElementById('hide-completed').checked;
 
             notifications.forEach(notif => {
                 const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
-                const isCompleted = notif.status === 'completed';
+                
+                // Verifica se todas as tarefas estão marcadas
+                const allTasksChecked = tasks.login && tasks.email && tasks.form;
+                
+                // Verifica se o cliente já foi lançado (existe client_id salvo nas tasks ou status já é completed)
+                // Para ser completed, precisa: lançado no sistema E todas as tarefas marcadas
+                const isLaunched = tasks.client_launched === true;
+                const isFullyCompleted = isLaunched && allTasksChecked;
 
-                // Se o filtro estiver ativo e a notificação estiver concluída, pula
-                if (hideCompleted && isCompleted) return;
-                
-                // Verifica status individuais
-                const loginChecked = tasks.login ? 'checked' : '';
-                const emailChecked = tasks.email ? 'checked' : '';
-                const formChecked = tasks.form ? 'checked' : '';
-                
-                // Botão sempre habilitado conforme solicitação do usuário
-                const btnDisabled = isCompleted; // Só desabilita se já estiver concluído
+                // Se o filtro estiver ativo e for fully completed, não renderiza (redundância visual)
+                if (hideCompleted && isFullyCompleted) return;
 
                 const card = document.createElement('div');
-                card.className = `notification-card ${isCompleted ? 'completed' : ''}`;
-                const tasksContainerId = `tasks-${notif.id}`;
+                card.className = `notification-card ${isFullyCompleted ? 'completed' : ''}`;
+                card.id = `card-${notif.id}`;
                 
+                // Ícone da seta
+                const arrowIcon = 'fa-chevron-down'; // Padrão expandido
+
                 card.innerHTML = `
-                    <div class="card-header" style="cursor: pointer;" onclick="toggleCard('${tasksContainerId}', this)">
-                        <div style="display: flex; align-items: center; gap: 10px;">
-                            <i class="fas fa-chevron-down toggle-icon" style="transition: transform 0.3s; color: #d4af37;"></i>
-                            <h3>${notif.client_name} <span style="font-size: 0.8rem; color: #d4af37;">(${notif.plan})</span></h3>
-                        </div>
+                    <div class="card-header" onclick="toggleCard('${notif.id}')">
+                        <h3>
+                            <i id="icon-${notif.id}" class="fas ${arrowIcon}" style="font-size: 0.8rem; width: 20px;"></i>
+                            ${notif.client_name} 
+                            <span style="font-size: 0.8rem; color: #d4af37; margin-left: 10px;">(${notif.plan})</span>
+                        </h3>
                         <div class="card-meta">
                             ${new Date(notif.created_at).toLocaleDateString('pt-BR')}
-                            ${isCompleted ? '<i class="fas fa-check-circle" style="color: #28a745; margin-left: 10px;"></i>' : ''}
                         </div>
                     </div>
                     
-                    <div id="${tasksContainerId}" class="tasks-container" style="transition: max-height 0.3s ease-out; overflow: hidden;">
+                    <div id="content-${notif.id}" class="card-content">
                         <ul class="task-list">
                             <li class="task-item">
-                                <input type="checkbox" id="task-login-${notif.id}" ${loginChecked} onchange="updateTask(${notif.id}, 'login', this.checked)">
+                                <input type="checkbox" id="task-login-${notif.id}" 
+                                    ${tasks.login ? 'checked' : ''} 
+                                    onchange="updateTask('${notif.id}', 'login', this.checked)">
                                 <label for="task-login-${notif.id}">Criar Login</label>
                             </li>
                             <li class="task-item">
-                                <input type="checkbox" id="task-email-${notif.id}" ${emailChecked} onchange="updateTask(${notif.id}, 'email', this.checked)">
+                                <input type="checkbox" id="task-email-${notif.id}" 
+                                    ${tasks.email ? 'checked' : ''} 
+                                    onchange="updateTask('${notif.id}', 'email', this.checked)">
                                 <label for="task-email-${notif.id}">Criar Email</label>
                             </li>
                             <li class="task-item">
-                                <input type="checkbox" id="task-form-${notif.id}" ${formChecked} onchange="updateTask(${notif.id}, 'form', this.checked)">
+                                <input type="checkbox" id="task-form-${notif.id}" 
+                                    ${tasks.form ? 'checked' : ''} 
+                                    onchange="updateTask('${notif.id}', 'form', this.checked)">
                                 <label for="task-form-${notif.id}">Enviar Formulário</label>
                             </li>
                         </ul>
 
-                        ${!isCompleted ? `
-                            <button id="btn-finalize-${notif.id}" class="btn-finalize" onclick="lancarClienteNoSistema(${notif.id})">
-                                <i class="fas fa-check"></i> Lançar Cliente no Sistema
-                            </button>
-                        ` : ''}
+                        <button class="btn-finalize" 
+                            onclick="lancarClienteNoSistema('${notif.id}')"
+                            ${isLaunched ? 'disabled' : ''}>
+                            ${isLaunched ? '<i class="fas fa-check"></i> Cliente Lançado' : 'Lançar Cliente no Sistema'}
+                        </button>
                     </div>
                 `;
-                container.appendChild(card);
-                
-                // Inicializa o max-height para cards abertos por padrão
-                const tasksContainer = card.querySelector(`#${tasksContainerId}`);
-                if (tasksContainer) {
-                     // Pequeno delay para garantir que o elemento foi renderizado e tem altura
-                    setTimeout(() => {
-                        tasksContainer.style.maxHeight = tasksContainer.scrollHeight + "px";
-                    }, 10);
-                }
+                list.appendChild(card);
             });
 
         } catch (error) {
             console.error('Erro ao carregar notificações:', error);
-            container.innerHTML = '<p style="color: #ff4d4d;">Erro ao carregar notificações.</p>';
+            list.innerHTML = '<p style="color: red;">Erro ao carregar notificações.</p>';
         }
+    }
+
+    // Função para expandir/recolher card individual
+    function toggleCard(id) {
+        const content = document.getElementById(`content-${id}`);
+        const icon = document.getElementById(`icon-${id}`);
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            icon.classList.remove('fa-chevron-right');
+            icon.classList.add('fa-chevron-down');
+        } else {
+            content.classList.add('collapsed');
+            icon.classList.remove('fa-chevron-down');
+            icon.classList.add('fa-chevron-right');
+        }
+    }
+
+    // Função para expandir/recolher TODOS os cards
+    function toggleAllCards() {
+        const contents = document.querySelectorAll('.card-content');
+        const icons = document.querySelectorAll('.card-header i.fas');
+        
+        allExpanded = !allExpanded; // Inverte o estado global
+
+        contents.forEach(content => {
+            if (allExpanded) {
+                content.classList.remove('collapsed');
+            } else {
+                content.classList.add('collapsed');
+            }
+        });
+
+        icons.forEach(icon => {
+            // Filtra apenas os ícones de seta (evita alterar outros ícones se houver)
+            if (icon.classList.contains('fa-chevron-down') || icon.classList.contains('fa-chevron-right')) {
+                if (allExpanded) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-down');
+                } else {
+                    icon.classList.remove('fa-chevron-down');
+                    icon.classList.add('fa-chevron-right');
+                }
+            }
+        });
     }
 
     async function updateTask(id, taskType, isChecked) {
         const notif = window.notifications.find(n => n.id === id);
         if (!notif) return;
 
-        const tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
+        let tasks = typeof notif.tasks === 'string' ? JSON.parse(notif.tasks) : notif.tasks;
         tasks[taskType] = isChecked;
 
-        // Verifica se todos estão marcados (apenas para controle interno, não bloqueia botão)
-        const allChecked = tasks.login && tasks.email && tasks.form;
-        // O botão permanece sempre habilitado
+        // Verifica status completo
+        const allTasksChecked = tasks.login && tasks.email && tasks.form;
+        const isLaunched = tasks.client_launched === true;
+        
+        // Só marca como completed no banco se TUDO estiver ok
+        const newStatus = (isLaunched && allTasksChecked) ? 'completed' : 'pending';
 
         try {
             const { error } = await supabaseClient
                 .from('hvsf_tasks')
-                .update({ tasks: tasks })
+                .update({ 
+                    tasks: tasks,
+                    status: newStatus
+                })
                 .eq('id', id);
 
             if (error) throw error;
             
             // Atualiza objeto local
             notif.tasks = tasks;
+            notif.status = newStatus;
+
+            // Atualiza visualmente o card (cor verde se completou tudo)
+            const card = document.getElementById(`card-${id}`);
+            if (newStatus === 'completed') {
+                card.classList.add('completed');
+                // Se filtro de ocultar estiver ativo, remove o card da tela
+                if (document.getElementById('hide-completed').checked) {
+                    card.remove();
+                }
+            } else {
+                card.classList.remove('completed');
+            }
 
         } catch (error) {
             console.error('Erro ao atualizar tarefa:', error);
@@ -518,8 +573,6 @@
             document.getElementById(`task-${taskType}-${id}`).checked = !isChecked;
         }
     }
-
-
 
     async function lancarClienteNoSistema(notifId) {
         const notif = window.notifications.find(n => n.id === notifId);
@@ -629,10 +682,20 @@
                 console.log('DEBUG: Dados cadastrais salvos com sucesso:', dadosResult);
                 alert('Cliente lançado com sucesso no sistema! (Dados Cadastrais OK)');
                 
-                // Atualiza status da notificação para completed
+                // Atualiza tasks para marcar que foi lançado
+                tasks.client_launched = true;
+                
+                // Verifica se já pode marcar como completed (se todas as tarefas já estavam ok)
+                const allTasksChecked = tasks.login && tasks.email && tasks.form;
+                const newStatus = allTasksChecked ? 'completed' : 'pending';
+
+                // Atualiza status da notificação
                 await supabaseClient
                     .from('hvsf_tasks')
-                    .update({ status: 'completed' })
+                    .update({ 
+                        tasks: tasks,
+                        status: newStatus 
+                    })
                     .eq('id', notifId);
                 
                 loadNotifications();
@@ -731,274 +794,153 @@
                 const sub = subscriptions.find(s => s.customer_id === customer.customer_id);
                 
                 // Extrai nome do plano da assinatura (se existir)
-                let planName = null;
-                if (sub) {
-                    // Tenta extrair de sub.plan.name (estrutura aninhada vista no diagnóstico)
-                    if (sub.plan && sub.plan.name) {
-                        planName = sub.plan.name;
-                    } else {
-                        // Fallback para outros campos possíveis
-                        planName = sub.product_name || sub.plan_name || (sub.product ? sub.product.name : null);
-                    }
-                }
+                const planName = sub ? sub.product_name : '-';
 
-                // Encontra a transação mais recente do cliente
-                // Como buscamos todas as transações, filtramos pelo cliente e pegamos a primeira (mais recente)
-                const clientTransactions = transactions.filter(t => t.customer && t.customer.customer_id === customer.customer_id);
+                // Encontra a transação mais recente
+                const lastTransaction = transactions.find(t => t.customer_id === customer.customer_id);
                 
-                const lastTransaction = clientTransactions.length > 0 ? clientTransactions[0] : null;
-
-                // Lógica para Data da Última Cobrança:
-                // Prioriza a data da última transação se existir, senão usa a da assinatura
-                let lastChargeDate = null;
-                if (lastTransaction) {
-                    lastChargeDate = lastTransaction.create_date;
-                } else if (sub && sub.last_charge_date) {
-                    lastChargeDate = sub.last_charge_date;
-                }
+                // Status de pagamento (baseado na última transação ou assinatura)
+                let paymentStatus = 'unknown';
+                if (sub && sub.status === 'active') paymentStatus = 'paid';
+                else if (lastTransaction && lastTransaction.status === 'paid') paymentStatus = 'paid';
+                else if (lastTransaction && lastTransaction.status === 'refused') paymentStatus = 'refused';
+                else if (lastTransaction && lastTransaction.status === 'pending') paymentStatus = 'pending';
 
                 return {
                     ...customer,
-                    last_charge_date: lastChargeDate,
-                    next_charge: sub ? sub.next_charge : null,
-                    last_transaction_status: lastTransaction ? lastTransaction.transaction_status : null,
-                    plan_name: planName, // Adiciona o nome do plano ao objeto mesclado
-                    // Garante que telefone esteja acessível (prioriza mobile_number conforme diagnóstico)
-                    phone: customer.mobile_number || customer.mobile_phone || customer.phone
+                    plan_name: planName,
+                    last_transaction_date: lastTransaction ? lastTransaction.created_at : null,
+                    next_billing_date: sub ? sub.next_billing_date : null,
+                    payment_status: paymentStatus
                 };
             });
-            
-            // Salva dados globais para filtragem
+
+            // Salva dados completos para filtro
             window.allCyclopayData = mergedData;
 
             renderCyclopayTable(mergedData);
 
         } catch (error) {
-            console.error('Erro ao carregar dados da Cyclopay:', error);
-            tbody.innerHTML = `<tr><td colspan="7" style="text-align: center; color: #ff4d4d;">Erro ao carregar dados: ${error.message}</td></tr>`;
+            console.error('Erro ao carregar Cyclopay:', error);
+            tbody.innerHTML = `<tr><td colspan="7" style="color: red;">Erro ao carregar dados: ${error.message}</td></tr>`;
         }
     }
 
-    function renderCyclopayTable(clients) {
+    function renderCyclopayTable(data) {
         const tbody = document.getElementById('cyclopay-list');
         tbody.innerHTML = '';
-        
-        if (!clients || clients.length === 0) {
+
+        if (data.length === 0) {
             tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">Nenhum cliente encontrado.</td></tr>';
             return;
         }
 
-        clients.forEach(client => {
-                const statusClass = client.active ? 'badge-active' : 'badge-inactive';
-                const statusLabel = client.active ? 'Ativo' : 'Inativo';
-                const createdDate = client.create_date ? new Date(client.create_date).toLocaleDateString('pt-BR') : '-';
-                
-                // Formata datas de cobrança
-                const lastCharge = client.last_charge_date ? new Date(client.last_charge_date).toLocaleDateString('pt-BR') : '-';
-                const nextCharge = client.next_charge ? new Date(client.next_charge).toLocaleDateString('pt-BR') : '-';
-                
-                // Ícone de status da última cobrança
-                let statusIcon = '';
-                if (client.last_transaction_status) {
-                    if (client.last_transaction_status === 'paid' || client.last_transaction_status === 'authorized') {
-                        statusIcon = '<i class="fas fa-check-circle status-icon status-paid" title="Pago"></i>';
-                    } else if (client.last_transaction_status === 'refused' || client.last_transaction_status === 'failed') {
-                        statusIcon = '<i class="fas fa-times-circle status-icon status-refused" title="Falhou"></i>';
-                    } else if (client.last_transaction_status === 'pending' || client.last_transaction_status === 'waiting_payment') {
-                        statusIcon = '<i class="fas fa-clock status-icon status-pending" title="Pendente"></i>';
-                    } else {
-                        statusIcon = `<i class="fas fa-question-circle status-icon status-unknown" title="${client.last_transaction_status}"></i>`;
-                    }
-                }
+        // Paginação simples (mostra os 50 primeiros para não travar)
+        const displayData = data.slice(0, 50);
 
-                // Tratamento do CPF (pode vir como objeto ou string)
-                let cpfDisplay = '-';
-                let rawDocument = '';
-                
-                if (client.document) {
-                    if (typeof client.document === 'object') {
-                        // Tenta pegar 'number', 'value', 'cpf', ou 'cnpj'
-                        rawDocument = client.document.number || client.document.value || client.document.cpf || client.document.cnpj || '';
-                    } else {
-                        rawDocument = String(client.document);
-                    }
-                }
+        displayData.forEach(client => {
+            const tr = document.createElement('tr');
+            
+            // Formatação de datas
+            const createdDate = new Date(client.created_at).toLocaleDateString('pt-BR');
+            const lastCharge = client.last_transaction_date ? new Date(client.last_transaction_date).toLocaleDateString('pt-BR') : '-';
+            const nextCharge = client.next_billing_date ? new Date(client.next_billing_date).toLocaleDateString('pt-BR') : '-';
 
-                // Aplica máscara de CPF ou CNPJ
-                let cleanDoc = '';
-                if (rawDocument) {
-                    cleanDoc = rawDocument.replace(/\D/g, ''); // Remove não-números
-                    if (cleanDoc.length === 11) {
-                        // CPF: 000.000.000-00
-                        cpfDisplay = cleanDoc.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-                    } else if (cleanDoc.length === 14) {
-                        // CNPJ: 00.000.000/0000-00
-                        cpfDisplay = cleanDoc.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
-                    } else {
-                        cpfDisplay = rawDocument; // Retorna original se não bater tamanho
-                    }
-                }
+            // Status Icon
+            let statusIcon = '';
+            if (client.payment_status === 'paid') statusIcon = '<i class="fas fa-check-circle status-icon status-paid" title="Pago"></i>';
+            else if (client.payment_status === 'refused') statusIcon = '<i class="fas fa-times-circle status-icon status-refused" title="Recusado"></i>';
+            else if (client.payment_status === 'pending') statusIcon = '<i class="fas fa-clock status-icon status-pending" title="Pendente"></i>';
+            else statusIcon = '<i class="fas fa-question-circle status-icon status-unknown" title="Desconhecido"></i>';
 
-                // Lógica ADCS, FORM, Duplicidade e Tarefas
-                let isAdcs = false;
-                let formStatus = 'none';
-                let isDuplicateCpf = false;
-                let existingClientId = null;
-
-                // Verifica duplicidade por CPF
-                if (cleanDoc) {
-                    const foundInDados = window.supabaseDados.find(d => d.cpf && d.cpf.replace(/\D/g, '') === cleanDoc);
-                    if (foundInDados) {
-                        isDuplicateCpf = true;
-                        existingClientId = foundInDados.cliente_id;
-                    }
-                }
-
-                // Recupera dados do Supabase do escopo global
-                const sbClients = window.supabaseClients || [];
-                const formsMap = window.formsByClientId || {};
-
-                // Tenta achar cliente no Supabase
-                let sbClient = null;
-                if (existingClientId) {
-                    sbClient = sbClients.find(c => c.id === existingClientId);
+            // Verifica se já está no sistema (ADCS) - Comparação por CPF (mais seguro) ou Nome
+            let isAdded = false;
+            let clientId = null;
+            
+            // Normaliza CPF da Cyclopay
+            let cyclopayCpf = '';
+            if (client.document) {
+                if (typeof client.document === 'object') {
+                    cyclopayCpf = (client.document.number || client.document.value || client.document.cpf || client.document.cnpj || '').replace(/\D/g, '');
                 } else {
-                    // Fallback por nome se não achou por CPF (ou se CPF não existe na Cyclopay)
-                    sbClient = sbClients.find(c => 
-                        c.nome && client.first_name && 
-                        c.nome.toLowerCase().includes(client.first_name.toLowerCase()) &&
-                        (client.last_name ? c.nome.toLowerCase().includes(client.last_name.toLowerCase()) : true)
-                    );
+                    cyclopayCpf = String(client.document).replace(/\D/g, '');
                 }
-                
-                if (sbClient) {
-                    isAdcs = true;
-                    const clientForms = formsMap[sbClient.id];
-                    
-                    if (clientForms && clientForms.length > 0) {
-                        // Verifica se algum formulário foi respondido
-                        const hasAnsweredForm = clientForms.some(f => {
-                            const hasData = f.respostas || f.dados || f.json_respostas;
-                            const isCompleted = f.status === 'concluido' || f.status === 'respondido' || f.status === 'finalizado';
-                            return hasData || isCompleted; 
-                        });
+            }
 
-                        if (hasAnsweredForm) {
-                            formStatus = 'answered';
-                        } else {
-                            formStatus = 'created';
-                        }
-                    }
+            // Tenta encontrar por CPF primeiro
+            if (cyclopayCpf && window.supabaseDados) {
+                const found = window.supabaseDados.find(d => d.cpf && d.cpf.replace(/\D/g, '') === cyclopayCpf);
+                if (found) {
+                    isAdded = true;
+                    clientId = found.cliente_id;
                 }
+            }
 
-                // Ícone ADCS
-                const adcsIcon = isAdcs 
-                    ? '<i class="fas fa-check-circle" style="color: #28a745;" title="Cliente encontrado no sistema"></i>' 
-                    : '<i class="fas fa-times-circle" style="color: #dc3545;" title="Cliente NÃO encontrado"></i>';
-
-                // Ícone FORM
-                let formIcon = '';
-                if (!isAdcs) {
-                    // Cliente não encontrado -> X Vermelho
-                    formIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Cliente não encontrado"></i>';
-                } else if (formStatus === 'none') {
-                    // Cliente encontrado, mas sem formulário -> X Vermelho
-                    formIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Formulário não criado"></i>';
-                } else if (formStatus === 'created') {
-                    // Formulário criado, mas não respondido -> ! Amarelo
-                    formIcon = '<i class="fas fa-exclamation-triangle" style="color: #ffc107;" title="Aguardando resposta"></i>';
-                } else {
-                    // Formulário respondido -> Check Verde
-                    formIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Formulário respondido"></i>';
+            // Se não achou por CPF, tenta por Nome (fallback)
+            if (!isAdded && window.supabaseClients) {
+                const fullName = (client.first_name + ' ' + (client.last_name || '')).trim().toLowerCase();
+                const found = window.supabaseClients.find(c => c.nome.trim().toLowerCase() === fullName);
+                if (found) {
+                    isAdded = true;
+                    clientId = found.id;
                 }
+            }
 
-                // Verifica Status de Login e Email (Tarefas)
-                let loginIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Pendente"></i>';
-                let emailIcon = '<i class="fas fa-times-circle" style="color: #dc3545;" title="Pendente"></i>';
-                let taskExists = false;
-
-                // Procura tarefa pelo nome do cliente
-                const clientFullName = `${client.first_name} ${client.last_name || ''}`.trim();
-                const existingTask = window.supabaseTasks.find(t => t.client_name === clientFullName);
-
-                if (existingTask) {
-                    taskExists = true;
-                    const tasks = typeof existingTask.tasks === 'string' ? JSON.parse(existingTask.tasks) : existingTask.tasks;
-                    
-                    if (tasks.login) loginIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Login Criado"></i>';
-                    if (tasks.email) emailIcon = '<i class="fas fa-check-circle" style="color: #28a745;" title="Email Criado"></i>';
+            // Verifica Tarefas (Login e Email)
+            let hasLogin = false;
+            let hasEmail = false;
+            if (window.supabaseTasks) {
+                // Procura tarefa com mesmo nome
+                const fullName = (client.first_name + ' ' + (client.last_name || '')).trim();
+                const task = window.supabaseTasks.find(t => t.client_name === fullName);
+                if (task) {
+                    const tasks = typeof task.tasks === 'string' ? JSON.parse(task.tasks) : task.tasks;
+                    if (tasks.login) hasLogin = true;
+                    if (tasks.email) hasEmail = true;
                 }
+            }
 
-                // Formata Telefone
-                let phoneDisplay = '-';
-                if (client.phone) {
-                    const rawPhone = client.phone;
-                    // Remove caracteres não numéricos
-                    const cleanPhone = String(rawPhone).replace(/\D/g, '');
-                    if (cleanPhone.length >= 10) {
-                        // Formata (XX) XXXXX-XXXX ou (XX) XXXX-XXXX
-                        if (cleanPhone.length === 11) {
-                            phoneDisplay = `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,7)}-${cleanPhone.substring(7)}`;
-                        } else {
-                            phoneDisplay = `(${cleanPhone.substring(0,2)}) ${cleanPhone.substring(2,6)}-${cleanPhone.substring(6)}`;
-                        }
-                    } else {
-                        phoneDisplay = rawPhone;
-                    }
-                }
+            // Verifica Formulário
+            let hasForm = false;
+            if (isAdded && clientId && window.formsByClientId && window.formsByClientId[clientId]) {
+                hasForm = true;
+            }
 
-                // Obtém nome do Plano (se disponível na assinatura)
-                let planName = client.plan_name || '-';
-                
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><strong>${client.first_name} ${client.last_name || ''}</strong></td>
-                    <td>${planName}</td>
-                    <td>${phoneDisplay}</td>
-                    <td>${cpfDisplay}</td>
-                    <td style="text-align: center;">${loginIcon}</td>
-                    <td style="text-align: center;">${emailIcon}</td>
-                    <td style="text-align: center;">${adcsIcon}</td>
-                    <td style="text-align: center;">${formIcon}</td>
-                    <td>${createdDate}</td>
-                    <td>${lastCharge} ${statusIcon}</td>
-                    <td>${nextCharge}</td>
-                    <td><span class="badge ${statusClass}">${statusLabel}</span></td>
-                    <td>
-                        ${isDuplicateCpf ? 
-                            `<span class="badge badge-active" style="background-color: #28a745; color: white;">Cadastrado</span>` : 
-                            (taskExists ? 
-                                `<span class="badge badge-pending" style="background-color: #ffc107; color: black;">Em Onboarding</span>` :
-                                `<button class="btn-import" onclick="importarCliente('${client.first_name} ${client.last_name || ''}', '${client.email}', '${cpfDisplay}', '${phoneDisplay}')" title="Iniciar Onboarding">
-                                    <i class="fas fa-file-import"></i> Importar
-                                </button>`
-                            )
-                        }
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            // Badges
+            const badgeAdcs = isAdded ? '<span class="badge badge-active">SIM</span>' : '<span class="badge badge-inactive">NÃO</span>';
+            const badgeLogin = hasLogin ? '<span class="badge badge-active">SIM</span>' : '<span class="badge badge-pending">NÃO</span>';
+            const badgeEmail = hasEmail ? '<span class="badge badge-active">SIM</span>' : '<span class="badge badge-pending">NÃO</span>';
+            const badgeForm = hasForm ? '<span class="badge badge-active">SIM</span>' : '<span class="badge badge-inactive">NÃO</span>';
+
+            // Botão Importar (só aparece se não estiver no sistema)
+            // Passamos os dados brutos para garantir formatação correta
+            const rawCpf = client.document ? (typeof client.document === 'object' ? (client.document.number || client.document.value) : client.document) : '';
+            const rawPhone = client.mobile_phone || client.home_phone || '';
+            
+            const btnImport = !isAdded 
+                ? `<button class="btn-import" onclick="importarCliente('${client.first_name} ${client.last_name || ''}', '${rawCpf}', '${rawPhone}')" title="Importar para Notificações"><i class="fas fa-file-import"></i></button>` 
+                : '<span style="color: #28a745;"><i class="fas fa-check"></i></span>';
+
+            tr.innerHTML = `
+                <td>${client.first_name} ${client.last_name || ''}</td>
+                <td>${client.plan_name}</td>
+                <td>${client.mobile_phone || client.home_phone || '-'}</td>
+                <td>${rawCpf || '-'}</td>
+                <td>${badgeLogin}</td>
+                <td>${badgeEmail}</td>
+                <td>${badgeAdcs}</td>
+                <td>${badgeForm}</td>
+                <td>${createdDate}</td>
+                <td>${lastCharge}</td>
+                <td>${nextCharge}</td>
+                <td>${statusIcon} ${client.payment_status.toUpperCase()}</td>
+                <td>${btnImport}</td>
+            `;
+            tbody.appendChild(tr);
         });
     }
 
-    async function importarCliente(nome, email, cpf, whatsapp) {
-        if (!supabaseClient) {
-            alert('Supabase não configurado! Configure a chave API no código para salvar.');
-            return;
-        }
-        
-        console.log('DEBUG: importarCliente chamado com:', { nome, email, cpf, whatsapp });
-
-        // Verifica duplicidade de tarefa antes de criar (por nome)
-        const { data: existingTasks } = await supabaseClient
-            .from('hvsf_tasks')
-            .select('*')
-            .eq('client_name', nome);
-
-        if (existingTasks && existingTasks.length > 0) {
-            alert('Já existe um processo de onboarding para este cliente (verificado por nome).');
-            return;
-        }
-
+    async function importarCliente(nome, cpf, whatsapp) {
         // Verifica duplicidade de CPF em dados_cadastrais (para avisar se já é cliente)
         if (cpf && cpf !== '-') {
             const cleanCpf = cpf.replace(/\D/g, '');
@@ -1022,6 +964,7 @@
                     login: false, 
                     email: false, 
                     form: false,
+                    client_launched: false, // Novo campo para controlar lançamento
                     client_data: { 
                         cpf: cpf || '', 
                         whatsapp: whatsapp || '' 
