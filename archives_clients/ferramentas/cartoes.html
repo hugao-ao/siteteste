@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparador de Cartões - MithraSF</title>
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/layout.js" defer></script>
+</head>
+<body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <header class="flex justify-between items-center mb-8">
+                <h1>Comparador de Cartões</h1>
+                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            </header>
+
+            <div class="card overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10">
+                            <th class="p-4 text-primary">Cartão</th>
+                            <th class="p-4 text-primary">Anuidade</th>
+                            <th class="p-4 text-primary">Pontuação</th>
+                            <th class="p-4 text-primary">Benefícios</th>
+                            <th class="p-4 text-primary">Renda Mínima</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-gray-300">
+                        <tr class="border-b border-white/5 hover:bg-white/5">
+                            <td class="p-4 font-bold text-white">Black Infinite</td>
+                            <td class="p-4">R$ 1.200 (Isenção > 20k)</td>
+                            <td class="p-4">2.5 pts / dólar</td>
+                            <td class="p-4">Sala VIP, Seguro Viagem</td>
+                            <td class="p-4">R$ 15.000</td>
+                        </tr>
+                        <tr class="border-b border-white/5 hover:bg-white/5">
+                            <td class="p-4 font-bold text-white">Platinum Rewards</td>
+                            <td class="p-4">R$ 600 (Isenção > 5k)</td>
+                            <td class="p-4">1.5 pts / dólar</td>
+                            <td class="p-4">Seguro Médico, Concierge</td>
+                            <td class="p-4">R$ 7.000</td>
+                        </tr>
+                        <tr class="border-b border-white/5 hover:bg-white/5">
+                            <td class="p-4 font-bold text-white">Gold Cashback</td>
+                            <td class="p-4">Grátis</td>
+                            <td class="p-4">1% Cashback</td>
+                            <td class="p-4">Garantia Estendida</td>
+                            <td class="p-4">R$ 2.500</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <p class="text-gray-400 mb-4">Não encontrou seu cartão?</p>
+                <button class="btn btn-outline">Solicitar Análise Personalizada</button>
+            </div>
+        </div>
+    </main>
+</body>
+</html>
