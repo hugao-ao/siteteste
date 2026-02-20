@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fluxo de Caixa - MithraSF</title>
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/layout.js" defer></script>
+</head>
+<body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <header class="flex justify-between items-center mb-8">
+                <h1>Fluxo de Caixa</h1>
+                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="card bg-emerald-900/50">
+                    <h3 class="text-gray-400 text-sm">Entradas</h3>
+                    <p id="total-income" class="text-2xl font-bold text-green-400">R$ 0,00</p>
+                </div>
+                <div class="card bg-emerald-900/50">
+                    <h3 class="text-gray-400 text-sm">Saídas</h3>
+                    <p id="total-expense" class="text-2xl font-bold text-red-400">R$ 0,00</p>
+                </div>
+                <div class="card bg-emerald-900/50">
+                    <h3 class="text-gray-400 text-sm">Saldo</h3>
+                    <p id="balance" class="text-2xl font-bold text-white">R$ 0,00</p>
+                </div>
+            </div>
+
+            <div class="card mb-8">
+                <h3 class="text-xl font-bold text-white mb-4">Novo Lançamento</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <input type="text" id="desc" placeholder="Descrição (Ex: Salário, Aluguel)">
+                    <input type="number" id="amount" placeholder="Valor (R$)">
+                    <select id="type" class="bg-emerald-900/50 border border-emerald-700 text-white p-3 rounded">
+                        <option value="income">Entrada (+)</option>
+                        <option value="expense">Saída (-)</option>
+                    </select>
+                    <button onclick="addTransaction()" class="btn btn-primary">Adicionar</button>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3 class="text-xl font-bold text-white mb-4">Histórico</h3>
+                <ul id="transaction-list" class="space-y-2">
+                    <!-- Transactions will appear here -->
+                    <li class="text-center text-gray-500 py-4">Nenhum lançamento ainda.</li>
+                </ul>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let transactions = [];
+
+        function addTransaction() {
+            const desc = document.getElementById('desc').value;
+            const amount = parseFloat(document.getElementById('amount').value);
+            const type = document.getElementById('type').value;
+
+            if (!desc || isNaN(amount)) {
+                alert('Preencha a descrição e o valor corretamente.');
+                return;
+            }
+
+            const transaction = {
+                id: Date.now(),
+                desc,
+                amount,
+                type
+            };
+
+            transactions.push(transaction);
+            updateUI();
+            
+            // Clear inputs
+            document.getElementById('desc').value = '';
+            document.getElementById('amount').value = '';
+        }
+
+        function updateUI() {
+            const list = document.getElementById('transaction-list');
+            const incomeEl = document.getElementById('total-income');
+            const expenseEl = document.getElementById('total-expense');
+            const balanceEl = document.getElementById('balance');
+
+            list.innerHTML = '';
+
+            let income = 0;
+            let expense = 0;
+
+            transactions.forEach(t => {
+                if (t.type === 'income') income += t.amount;
+                else expense += t.amount;
+
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-white/5 rounded border-l-4 ' + (t.type === 'income' ? 'border-green-500' : 'border-red-500');
+                li.innerHTML = `
+                    <span class="text-white">${t.desc}</span>
+                    <span class="${t.type === 'income' ? 'text-green-400' : 'text-red-400'} font-bold">
+                        ${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
+                    </span>
+                `;
+                list.appendChild(li);
+            });
+
+            const balance = income - expense;
+
+            incomeEl.textContent = `R$ ${income.toFixed(2)}`;
+            expenseEl.textContent = `R$ ${expense.toFixed(2)}`;
+            balanceEl.textContent = `R$ ${balance.toFixed(2)}`;
+        }
+    </script>
+</body>
+</html>
