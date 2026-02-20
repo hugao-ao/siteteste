@@ -4,21 +4,25 @@
 // Replace with your actual keys if needed for client-side logic
 const supabaseUrl = 'YOUR_SUPABASE_URL';
 const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
-let supabase;
-
-if (typeof supabase !== 'undefined') {
-    // Check if supabase is already initialized or if the library is loaded
-    if (window.supabase && window.supabase.createClient) {
-         supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-    }
-}
+let supabaseClient; // Renamed to avoid conflict with global 'supabase' object from CDN
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize Supabase if library is loaded
+    if (typeof supabase !== 'undefined' && supabase.createClient) {
+        try {
+            supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        } catch (e) {
+            console.warn('Supabase initialization failed:', e);
+        }
+    }
+
     // 1. Inject Sidebar HTML if not present
     const sidebarContainer = document.getElementById('sidebar-container');
     
     // Determine base path for links (handle subdirectories)
-    const isSubDir = window.location.pathname.includes('/ferramentas/');
+    // If we are in a subdirectory (like /ferramentas/), we need to go up one level
+    const pathSegments = window.location.pathname.split('/').filter(Boolean);
+    const isSubDir = pathSegments.includes('ferramentas') && pathSegments.length > 1 && !window.location.pathname.endsWith('ferramentas.html');
     const basePath = isSubDir ? '../' : '';
 
     if (sidebarContainer) {
@@ -54,18 +58,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const navItems = document.querySelectorAll('.nav-item');
     
     navItems.forEach(item => {
-        // Simple check: if current path contains the href (ignoring ../)
         const href = item.getAttribute('href').replace('../', '');
-        if (currentPath.includes(href) && href !== '') {
+        // Check if current path ends with the href (e.g. /index.html ends with index.html)
+        if (currentPath.endsWith(href) && href !== '') {
             item.classList.add('active');
-        } else if (currentPath.endsWith('/') && href === 'index.html') {
+        } else if ((currentPath.endsWith('/') || currentPath.endsWith('/archives_clients/')) && href === 'index.html') {
              item.classList.add('active');
         }
     });
 
     // 3. Mobile Toggle Logic
     const mobileToggle = document.getElementById('mobile-toggle');
-    const sidebar = document.querySelector('.sidebar');
+    const sidebar = document.querySelector('.sidebar'); // Select by class, not ID, as per CSS
     
     if (mobileToggle && sidebar) {
         mobileToggle.addEventListener('click', () => {
@@ -78,9 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             try {
-                if (supabase) {
+                if (supabaseClient) {
                     // Clear Supabase session
-                    const { error } = await supabase.auth.signOut();
+                    const { error } = await supabaseClient.auth.signOut();
                     if (error) throw error;
                 }
                 
@@ -94,20 +98,19 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // 5. Check Authentication (Simple Client-Side Check)
-    // In a real app, you'd verify the token with the server.
-    // Here we just check if the user is logged in via Supabase client.
-    if (supabase) {
+    if (supabaseClient) {
         checkAuth();
     }
 });
 
 async function checkAuth() {
     try {
-        const { data: { session } } = await supabase.auth.getSession();
+        if (!supabaseClient) return;
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (!session) {
             // Redirect to login if not authenticated
-            // window.location.href = '/login-cliente.html'; 
-            // Commented out for development testing, uncomment for production
+            // window.location.href = 'login-cliente.html'; 
+            // Commented out for development testing
         }
     } catch (e) {
         console.log("Auth check skipped or failed", e);
