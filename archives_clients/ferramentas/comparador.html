@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparador de Preços - MithraSF</title>
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/layout.js" defer></script>
+</head>
+<body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <header class="flex justify-between items-center mb-8">
+                <h1>Comparador de Preços</h1>
+                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- Produto 1 -->
+                <div class="card">
+                    <h3 class="text-xl font-bold text-white mb-4">Produto 1</h3>
+                    <div class="form-group">
+                        <label>Preço (R$)</label>
+                        <input type="number" id="price1" placeholder="0.00" step="0.01" oninput="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantidade / Tamanho</label>
+                        <input type="number" id="qty1" placeholder="Ex: 500" oninput="calculate()">
+                    </div>
+                    <div class="pt-4 border-t border-white/10 mt-4">
+                        <p class="text-sm text-gray-400">Custo por unidade:</p>
+                        <p id="result1" class="text-2xl font-bold text-primary">R$ 0,0000</p>
+                    </div>
+                </div>
+
+                <!-- Produto 2 -->
+                <div class="card">
+                    <h3 class="text-xl font-bold text-white mb-4">Produto 2</h3>
+                    <div class="form-group">
+                        <label>Preço (R$)</label>
+                        <input type="number" id="price2" placeholder="0.00" step="0.01" oninput="calculate()">
+                    </div>
+                    <div class="form-group">
+                        <label>Quantidade / Tamanho</label>
+                        <input type="number" id="qty2" placeholder="Ex: 500" oninput="calculate()">
+                    </div>
+                    <div class="pt-4 border-t border-white/10 mt-4">
+                        <p class="text-sm text-gray-400">Custo por unidade:</p>
+                        <p id="result2" class="text-2xl font-bold text-primary">R$ 0,0000</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="verdict" class="mt-8 text-center hidden">
+                <div class="card bg-emerald-900/50 border-primary">
+                    <h2 class="text-primary mb-2">Veredito</h2>
+                    <p id="verdict-text" class="text-xl text-white"></p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function calculate() {
+            const p1 = parseFloat(document.getElementById('price1').value) || 0;
+            const q1 = parseFloat(document.getElementById('qty1').value) || 0;
+            const p2 = parseFloat(document.getElementById('price2').value) || 0;
+            const q2 = parseFloat(document.getElementById('qty2').value) || 0;
+
+            const unitPrice1 = q1 > 0 ? p1 / q1 : 0;
+            const unitPrice2 = q2 > 0 ? p2 / q2 : 0;
+
+            document.getElementById('result1').textContent = `R$ ${unitPrice1.toFixed(4)}`;
+            document.getElementById('result2').textContent = `R$ ${unitPrice2.toFixed(4)}`;
+
+            const verdictDiv = document.getElementById('verdict');
+            const verdictText = document.getElementById('verdict-text');
+
+            if (unitPrice1 > 0 && unitPrice2 > 0) {
+                verdictDiv.classList.remove('hidden');
+                if (unitPrice1 < unitPrice2) {
+                    const economy = ((unitPrice2 - unitPrice1) / unitPrice2 * 100).toFixed(1);
+                    verdictText.innerHTML = `O <strong>Produto 1</strong> é mais vantajoso.<br><span class="text-sm text-green-400">Economia de ${economy}%</span>`;
+                } else if (unitPrice2 < unitPrice1) {
+                    const economy = ((unitPrice1 - unitPrice2) / unitPrice1 * 100).toFixed(1);
+                    verdictText.innerHTML = `O <strong>Produto 2</strong> é mais vantajoso.<br><span class="text-sm text-green-400">Economia de ${economy}%</span>`;
+                } else {
+                    verdictText.textContent = "Os produtos têm o mesmo custo-benefício.";
+                }
+            } else {
+                verdictDiv.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
