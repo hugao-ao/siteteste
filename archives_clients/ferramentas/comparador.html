@@ -5,93 +5,200 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comparador de Preços - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/layout.js" defer></script>
+    <style>
+        /* Specific styles for Comparador to match Image 02 */
+        .product-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .product-title-a { color: #3b82f6; font-weight: bold; margin-bottom: 1rem; }
+        .product-title-b { color: #a855f7; font-weight: bold; margin-bottom: 1rem; }
+
+        .input-group { margin-bottom: 1rem; }
+        .input-group label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600; }
+        .input-group input {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 0.75rem;
+            color: white;
+            font-size: 1rem;
+        }
+        .input-group input:focus { outline: none; border-color: var(--primary-color); }
+
+        .btn-calculate {
+            width: 100%;
+            background-color: #3b82f6; /* Blue-500 */
+            color: white;
+            font-weight: bold;
+            padding: 1rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            margin-top: 1rem;
+            font-size: 1rem;
+        }
+        .btn-calculate:hover { background-color: #2563eb; }
+
+        .result-box {
+            margin-top: 2rem;
+            border: 1px solid #10b981; /* Green-500 */
+            background-color: rgba(16, 185, 129, 0.05);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            display: none; /* Hidden by default */
+        }
+        
+        .result-title { font-size: 1.5rem; font-weight: bold; color: white; margin-bottom: 0.5rem; }
+        .result-highlight { color: #a855f7; } /* Purple for Product B */
+        .result-highlight-a { color: #3b82f6; } /* Blue for Product A */
+        
+        .result-economy { color: #10b981; font-weight: 500; margin-bottom: 2rem; }
+        
+        .result-details {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #9ca3af;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 1rem;
+        }
+    </style>
 </head>
 <body>
+    <!-- Sidebar Container (Injected by layout.js) -->
     <div id="sidebar-container" class="sidebar"></div>
 
+    <!-- Main Content -->
     <main class="main-content">
         <div class="container">
-            <header class="flex justify-between items-center mb-8">
-                <h1>Comparador de Preços</h1>
-                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            <header class="flex items-center gap-4 mb-8">
+                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-blue-500 text-2xl">⚖️</span>
+                        <h1 class="text-2xl font-bold m-0">Comparador de Preços</h1>
+                    </div>
+                    <p class="text-gray-400 text-sm">Descubra qual embalagem vale mais a pena.</p>
+                </div>
+                <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- Produto 1 -->
-                <div class="card">
-                    <h3 class="text-xl font-bold text-white mb-4">Produto 1</h3>
-                    <div class="form-group">
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Produto A -->
+                <div class="product-card">
+                    <div class="product-title-a">Produto A</div>
+                    
+                    <div class="input-group">
                         <label>Preço (R$)</label>
-                        <input type="number" id="price1" placeholder="0.00" step="0.01" oninput="calculate()">
+                        <input type="text" id="priceA" placeholder="0,00" oninput="formatCurrency(this)">
                     </div>
-                    <div class="form-group">
-                        <label>Quantidade / Tamanho</label>
-                        <input type="number" id="qty1" placeholder="Ex: 500" oninput="calculate()">
-                    </div>
-                    <div class="pt-4 border-t border-white/10 mt-4">
-                        <p class="text-sm text-gray-400">Custo por unidade:</p>
-                        <p id="result1" class="text-2xl font-bold text-primary">R$ 0,0000</p>
+                    
+                    <div class="input-group">
+                        <label>Quantidade (ml, g, unidades)</label>
+                        <input type="number" id="qtyA" placeholder="0">
                     </div>
                 </div>
 
-                <!-- Produto 2 -->
-                <div class="card">
-                    <h3 class="text-xl font-bold text-white mb-4">Produto 2</h3>
-                    <div class="form-group">
+                <!-- Produto B -->
+                <div class="product-card">
+                    <div class="product-title-b">Produto B</div>
+                    
+                    <div class="input-group">
                         <label>Preço (R$)</label>
-                        <input type="number" id="price2" placeholder="0.00" step="0.01" oninput="calculate()">
+                        <input type="text" id="priceB" placeholder="0,00" oninput="formatCurrency(this)">
                     </div>
-                    <div class="form-group">
-                        <label>Quantidade / Tamanho</label>
-                        <input type="number" id="qty2" placeholder="Ex: 500" oninput="calculate()">
-                    </div>
-                    <div class="pt-4 border-t border-white/10 mt-4">
-                        <p class="text-sm text-gray-400">Custo por unidade:</p>
-                        <p id="result2" class="text-2xl font-bold text-primary">R$ 0,0000</p>
+                    
+                    <div class="input-group">
+                        <label>Quantidade (ml, g, unidades)</label>
+                        <input type="number" id="qtyB" placeholder="0">
                     </div>
                 </div>
             </div>
 
-            <div id="verdict" class="mt-8 text-center hidden">
-                <div class="card bg-emerald-900/50 border-primary">
-                    <h2 class="text-primary mb-2">Veredito</h2>
-                    <p id="verdict-text" class="text-xl text-white"></p>
+            <button onclick="calculate()" class="btn-calculate">Calcular Melhor Opção</button>
+
+            <!-- Resultado -->
+            <div id="result-box" class="result-box">
+                <div class="result-title">
+                    O <span id="winner-name" class="result-highlight">Produto B</span> é a melhor escolha!
+                </div>
+                <div class="result-economy">
+                    Você economiza <span id="economy-percent">0%</span> levando esta opção.
+                </div>
+                
+                <div class="result-details">
+                    <span id="detail-a">Preço por unidade A: R$ 0.0000</span>
+                    <span id="detail-b">Preço por unidade B: R$ 0.0000</span>
                 </div>
             </div>
         </div>
     </main>
 
     <script>
+        function formatCurrency(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = (parseFloat(value) / 100).toFixed(2) + '';
+            value = value.replace('.', ',');
+            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            if (value === 'NaN') value = '';
+            input.value = value;
+        }
+
+        function parseCurrency(value) {
+            if (!value) return 0;
+            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+        }
+
         function calculate() {
-            const p1 = parseFloat(document.getElementById('price1').value) || 0;
-            const q1 = parseFloat(document.getElementById('qty1').value) || 0;
-            const p2 = parseFloat(document.getElementById('price2').value) || 0;
-            const q2 = parseFloat(document.getElementById('qty2').value) || 0;
+            const priceA = parseCurrency(document.getElementById('priceA').value);
+            const qtyA = parseFloat(document.getElementById('qtyA').value);
+            const priceB = parseCurrency(document.getElementById('priceB').value);
+            const qtyB = parseFloat(document.getElementById('qtyB').value);
 
-            const unitPrice1 = q1 > 0 ? p1 / q1 : 0;
-            const unitPrice2 = q2 > 0 ? p2 / q2 : 0;
+            if (!priceA || !qtyA || !priceB || !qtyB) {
+                alert("Por favor, preencha todos os campos.");
+                return;
+            }
 
-            document.getElementById('result1').textContent = `R$ ${unitPrice1.toFixed(4)}`;
-            document.getElementById('result2').textContent = `R$ ${unitPrice2.toFixed(4)}`;
+            const unitPriceA = priceA / qtyA;
+            const unitPriceB = priceB / qtyB;
 
-            const verdictDiv = document.getElementById('verdict');
-            const verdictText = document.getElementById('verdict-text');
+            const resultBox = document.getElementById('result-box');
+            const winnerName = document.getElementById('winner-name');
+            const economyPercent = document.getElementById('economy-percent');
+            const detailA = document.getElementById('detail-a');
+            const detailB = document.getElementById('detail-b');
+            const resultEconomyText = document.querySelector('.result-economy');
 
-            if (unitPrice1 > 0 && unitPrice2 > 0) {
-                verdictDiv.classList.remove('hidden');
-                if (unitPrice1 < unitPrice2) {
-                    const economy = ((unitPrice2 - unitPrice1) / unitPrice2 * 100).toFixed(1);
-                    verdictText.innerHTML = `O <strong>Produto 1</strong> é mais vantajoso.<br><span class="text-sm text-green-400">Economia de ${economy}%</span>`;
-                } else if (unitPrice2 < unitPrice1) {
-                    const economy = ((unitPrice1 - unitPrice2) / unitPrice1 * 100).toFixed(1);
-                    verdictText.innerHTML = `O <strong>Produto 2</strong> é mais vantajoso.<br><span class="text-sm text-green-400">Economia de ${economy}%</span>`;
-                } else {
-                    verdictText.textContent = "Os produtos têm o mesmo custo-benefício.";
-                }
+            resultBox.style.display = 'block';
+            
+            detailA.textContent = `Preço por unidade A: R$ ${unitPriceA.toFixed(4)}`;
+            detailB.textContent = `Preço por unidade B: R$ ${unitPriceB.toFixed(4)}`;
+
+            if (unitPriceA < unitPriceB) {
+                winnerName.textContent = "Produto A";
+                winnerName.className = "result-highlight-a"; // Blue
+                const economy = ((unitPriceB - unitPriceA) / unitPriceB) * 100;
+                economyPercent.textContent = `${economy.toFixed(1)}%`;
+                resultEconomyText.innerHTML = `Você economiza <span id="economy-percent">${economy.toFixed(1)}%</span> levando esta opção.`;
+            } else if (unitPriceB < unitPriceA) {
+                winnerName.textContent = "Produto B";
+                winnerName.className = "result-highlight"; // Purple
+                const economy = ((unitPriceA - unitPriceB) / unitPriceA) * 100;
+                economyPercent.textContent = `${economy.toFixed(1)}%`;
+                resultEconomyText.innerHTML = `Você economiza <span id="economy-percent">${economy.toFixed(1)}%</span> levando esta opção.`;
             } else {
-                verdictDiv.classList.add('hidden');
+                winnerName.textContent = "Empate";
+                winnerName.className = "text-white";
+                resultEconomyText.textContent = "Os dois produtos têm o mesmo custo-benefício.";
             }
         }
     </script>
