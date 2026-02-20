@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oráculo Financeiro - MithraSF</title>
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/layout.js" defer></script>
+</head>
+<body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <header class="flex justify-between items-center mb-8">
+                <h1>Oráculo Financeiro</h1>
+                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            </header>
+
+            <div class="card h-[600px] flex flex-col">
+                <div id="chat-window" class="flex-1 overflow-y-auto p-4 space-y-4 bg-black/20 rounded mb-4">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black font-bold">M</div>
+                        <div class="bg-emerald-900/80 p-3 rounded-lg max-w-[80%] text-white">
+                            Olá! Sou o Oráculo Financeiro da Mithra. Posso te ajudar com dúvidas rápidas sobre investimentos, dívidas ou planejamento. O que você gostaria de saber hoje?
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex gap-2">
+                    <input type="text" id="user-input" placeholder="Digite sua dúvida aqui..." class="flex-1 bg-emerald-900/50 border-emerald-700 text-white p-3 rounded">
+                    <button onclick="sendMessage()" class="btn btn-primary px-6">Enviar</button>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const responses = {
+            "investimento": "Para começar a investir, recomendo criar primeiro sua reserva de emergência (6 meses de custo de vida) em um ativo de liquidez diária, como Tesouro Selic ou CDB 100% CDI.",
+            "dívida": "A prioridade deve ser quitar dívidas com juros altos (cartão de crédito, cheque especial). Tente renegociar o valor total com o credor antes de pagar.",
+            "cdb": "CDB é um empréstimo que você faz para o banco. Procure opções que paguem acima de 100% do CDI e verifique se têm liquidez diária ou apenas no vencimento.",
+            "selic": "A Taxa Selic é a taxa básica de juros da economia. Quando ela sobe, a renda fixa rende mais e o crédito fica mais caro.",
+            "default": "Interessante pergunta. Como sou uma versão demonstrativa, recomendo agendar uma consultoria com nossos especialistas para uma análise detalhada do seu caso."
+        };
+
+        function sendMessage() {
+            const input = document.getElementById('user-input');
+            const message = input.value.trim();
+            if (!message) return;
+
+            // User Message
+            appendMessage('user', message);
+            input.value = '';
+
+            // Bot Response (Simulated)
+            setTimeout(() => {
+                let reply = responses.default;
+                const lowerMsg = message.toLowerCase();
+                
+                if (lowerMsg.includes('invest')) reply = responses.investimento;
+                else if (lowerMsg.includes('dívida') || lowerMsg.includes('divida')) reply = responses.dívida;
+                else if (lowerMsg.includes('cdb')) reply = responses.cdb;
+                else if (lowerMsg.includes('selic')) reply = responses.selic;
+
+                appendMessage('bot', reply);
+            }, 1000);
+        }
+
+        function appendMessage(sender, text) {
+            const chatWindow = document.getElementById('chat-window');
+            const div = document.createElement('div');
+            div.className = `flex items-start gap-3 ${sender === 'user' ? 'flex-row-reverse' : ''}`;
+            
+            const avatar = sender === 'bot' 
+                ? '<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-black font-bold">M</div>'
+                : '<div class="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center text-white font-bold">Eu</div>';
+            
+            const bubble = `<div class="${sender === 'bot' ? 'bg-emerald-900/80' : 'bg-primary/20'} p-3 rounded-lg max-w-[80%] text-white">${text}</div>`;
+            
+            div.innerHTML = sender === 'bot' ? avatar + bubble : bubble + avatar;
+            chatWindow.appendChild(div);
+            chatWindow.scrollTop = chatWindow.scrollHeight;
+        }
+
+        // Allow Enter key to send
+        document.getElementById('user-input').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sendMessage();
+        });
+    </script>
+</body>
+</html>
