@@ -5,84 +5,157 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ferramentas - MithraSF</title>
     <link rel="stylesheet" href="assets/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="assets/layout.js" defer></script>
+    <style>
+        /* Custom styles for the tools grid to match Image 01 */
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .tool-card {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            text-decoration: none;
+            color: inherit;
+        }
+        
+        .tool-card:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+            transform: translateY(-4px);
+            border-color: var(--primary-color);
+        }
+        
+        .tool-icon-box {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+        }
+        
+        /* Icon Colors based on Image 01 */
+        .icon-blue { background-color: rgba(59, 130, 246, 0.1); color: #3b82f6; }
+        .icon-green { background-color: rgba(16, 185, 129, 0.1); color: #10b981; }
+        .icon-yellow { background-color: rgba(234, 179, 8, 0.1); color: #eab308; }
+        .icon-purple { background-color: rgba(168, 85, 247, 0.1); color: #a855f7; }
+        .icon-red { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
+        .icon-white { background-color: rgba(255, 255, 255, 0.1); color: #ffffff; }
+
+        .tool-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: #fff;
+        }
+        
+        .tool-desc {
+            font-size: 0.9rem;
+            color: #9ca3af;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+
+        .tool-link {
+            margin-top: 1.5rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: color 0.3s;
+        }
+
+        .tool-card:hover .tool-link {
+            color: var(--primary-color);
+        }
+    </style>
 </head>
 <body>
+    <!-- Sidebar Container (Injected by layout.js) -->
     <div id="sidebar-container" class="sidebar"></div>
 
+    <!-- Main Content -->
     <main class="main-content">
         <div class="container">
             <header class="flex justify-between items-center mb-8">
-                <h1>Ferramentas Financeiras</h1>
-                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+                <div class="w-full text-center">
+                    <h1 class="text-4xl font-bold mb-2">Ferramentas <span class="text-primary">Gratuitas</span></h1>
+                    <p class="text-gray-400">Calculadoras e simuladores para te ajudar a tomar decisões melhores agora mesmo.</p>
+                </div>
+                <button id="mobile-toggle" class="mobile-toggle absolute right-4 top-4 md:hidden">☰</button>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div class="tools-grid">
                 <!-- 1. Comparador de Preços -->
-                <a href="ferramentas/comparador.html" class="card hover:bg-emerald-900 transition-colors block text-decoration-none">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary text-2xl">
-                            ⚖️
-                        </div>
-                        <h2 class="text-xl font-bold text-white m-0">Comparador de Preços</h2>
+                <a href="ferramentas/comparador.html" class="tool-card">
+                    <div class="tool-icon-box icon-blue">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
                     </div>
-                    <p class="text-gray-300">Compare preços de produtos em diferentes quantidades e tamanhos para encontrar o melhor custo-benefício.</p>
+                    <h3 class="tool-title">Comparador de Preços</h3>
+                    <p class="tool-desc">Descubra qual produto vale mais a pena levar (ex: embalagem econômica vs normal).</p>
+                    <div class="tool-link">Acessar Ferramenta →</div>
                 </a>
 
                 <!-- 2. Calculadora de Juros -->
-                <a href="ferramentas/juros.html" class="card hover:bg-emerald-900 transition-colors block text-decoration-none">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary text-2xl">
-                            📈
-                        </div>
-                        <h2 class="text-xl font-bold text-white m-0">Calculadora de Juros</h2>
+                <a href="ferramentas/juros.html" class="tool-card">
+                    <div class="tool-icon-box icon-green">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="20" x="4" y="2" rx="2"/><line x1="8" x2="16" y1="6" y2="6"/><line x1="16" x2="16" y1="14" y2="18"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 10h.01"/><path d="M12 14h.01"/><path d="M8 14h.01"/><path d="M12 18h.01"/><path d="M8 18h.01"/></svg>
                     </div>
-                    <p class="text-gray-300">Simule o crescimento do seu patrimônio ao longo do tempo com o poder dos juros compostos.</p>
+                    <h3 class="tool-title">Calculadora de Juros Reais</h3>
+                    <p class="tool-desc">Descubra os juros embutidos em parcelas 'sem juros' e veja se compensa pagar à vista.</p>
+                    <div class="tool-link">Acessar Ferramenta →</div>
                 </a>
 
                 <!-- 3. Simulador Imobiliário -->
-                <a href="ferramentas/simulador.html" class="card hover:bg-emerald-900 transition-colors block text-decoration-none">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary text-2xl">
-                            🏠
-                        </div>
-                        <h2 class="text-xl font-bold text-white m-0">Simulador Imobiliário</h2>
+                <a href="ferramentas/simulador.html" class="tool-card">
+                    <div class="tool-icon-box icon-yellow">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
                     </div>
-                    <p class="text-gray-300">Compare financiamento vs. aluguel e investimento para tomar a melhor decisão de moradia.</p>
+                    <h3 class="tool-title">Simulador Imobiliário</h3>
+                    <p class="tool-desc">Compare SAC vs Price e veja quanto você vai pagar de juros no final do financiamento.</p>
+                    <div class="tool-link">Acessar Ferramenta →</div>
                 </a>
 
                 <!-- 4. Comparador de Cartões -->
-                <a href="ferramentas/cartoes.html" class="card hover:bg-emerald-900 transition-colors block text-decoration-none">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary text-2xl">
-                            💳
-                        </div>
-                        <h2 class="text-xl font-bold text-white m-0">Comparador de Cartões</h2>
+                <a href="ferramentas/cartoes.html" class="tool-card">
+                    <div class="tool-icon-box icon-purple">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
                     </div>
-                    <p class="text-gray-300">Analise benefícios, anuidade e pontuação para escolher o cartão ideal para seu perfil.</p>
+                    <h3 class="tool-title">Comparador de Cartões</h3>
+                    <p class="tool-desc">Coloque dois cartões lado a lado e decida qual oferece os melhores benefícios para você.</p>
+                    <div class="tool-link">Acessar Ferramenta →</div>
                 </a>
 
                 <!-- 5. Fluxo de Caixa -->
-                <a href="ferramentas/fluxo.html" class="card hover:bg-emerald-900 transition-colors block text-decoration-none">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary text-2xl">
-                            📊
-                        </div>
-                        <h2 class="text-xl font-bold text-white m-0">Fluxo de Caixa</h2>
+                <a href="ferramentas/fluxo.html" class="tool-card">
+                    <div class="tool-icon-box icon-red">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></svg>
                     </div>
-                    <p class="text-gray-300">Gerencie suas entradas e saídas com uma ferramenta simples e visual.</p>
+                    <h3 class="tool-title">Teste de Fluxo de Caixa</h3>
+                    <p class="tool-desc">Descubra para onde seu dinheiro está indo com este teste rápido e revelador.</p>
+                    <div class="tool-link">Acessar Ferramenta →</div>
                 </a>
 
                 <!-- 6. Oráculo Financeiro -->
-                <a href="ferramentas/oraculo.html" class="card hover:bg-emerald-900 transition-colors block text-decoration-none">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="w-12 h-12 bg-primary/20 rounded-full flex items-center justify-center text-primary text-2xl">
-                            🔮
-                        </div>
-                        <h2 class="text-xl font-bold text-white m-0">Oráculo Financeiro</h2>
+                <a href="ferramentas/oraculo.html" class="tool-card">
+                    <div class="tool-icon-box icon-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
                     </div>
-                    <p class="text-gray-300">Respostas rápidas para suas dúvidas financeiras baseadas em dados.</p>
+                    <h3 class="tool-title">O Oráculo Financeiro</h3>
+                    <p class="tool-desc">Projete seu patrimônio futuro e veja como seus objetivos impactam sua liberdade financeira.</p>
+                    <div class="tool-link">Acessar Ferramenta →</div>
                 </a>
             </div>
         </div>
