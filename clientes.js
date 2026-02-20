@@ -100,7 +100,7 @@ async function initializeDashboard() {
                 .from('credenciais')
                 .select('projeto')
                 .eq('id', effectiveUserId)
-                .single();
+                .maybeSingle();
             if (viewedUserError) throw viewedUserError;
             effectiveProjeto = viewedUserData?.projeto;
             console.log(`clientes.js: Projeto do usuário visualizado (${effectiveUserId}): ${effectiveProjeto}`);
@@ -279,7 +279,7 @@ async function loadClients(filterProject = null) {
                 .from('dados_cadastrais')
                 .select('whatsapp')
                 .eq('cliente_id', client.id)
-                .single();
+                .maybeSingle();
             
             if (!dadosError && dadosCadastrais) {
                 whatsapp = dadosCadastrais.whatsapp || "";
@@ -415,7 +415,7 @@ async function addClient(event) {
                 assigned_to_user_id: visibility === 'INDIVIDUAL' ? currentUserId : null // Se individual, atribui a quem criou
             }])
             .select()
-            .single();
+            .maybeSingle();
 
         if (clientError) throw clientError;
 
@@ -610,7 +610,7 @@ async function deleteClient(id) {
             .from('clientes')
             .select('criado_por_id, visibility, projeto, nome')
             .eq('id', id)
-            .single();
+            .maybeSingle();
             
         if (clientError) {
             console.error("clientes.js: Erro ao verificar cliente para exclusão:", clientError);
@@ -802,7 +802,7 @@ async function deleteForm(formId, clientId) {
             .from('clientes')
             .select('criado_por_id, visibility, projeto')
             .eq('id', clientId)
-            .single();
+            .maybeSingle();
             
         if (clientError) {
             console.error("clientes.js: Erro ao verificar cliente para exclusão de formulário:", clientError);
