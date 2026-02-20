@@ -3,90 +3,324 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Calculadora de Juros Compostos - MithraSF</title>
+    <title>Calculadora de Juros Reais - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/layout.js" defer></script>
+    <style>
+        /* Specific styles for Juros to match Images 03/04 */
+        .mode-switch {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+        
+        .mode-btn {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #9ca3af;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 600;
+        }
+        
+        .mode-btn.active {
+            background-color: #eab308; /* Yellow-500 */
+            color: black;
+            border-color: #eab308;
+        }
+
+        .input-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .input-group { margin-bottom: 1.5rem; }
+        .input-group label { display: block; font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600; }
+        .input-group input {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 1rem;
+            color: white;
+            font-size: 1rem;
+        }
+        .input-group input:focus { outline: none; border-color: var(--primary-color); }
+
+        .action-btn {
+            width: 100%;
+            background-color: #10b981; /* Green-500 */
+            color: white;
+            font-weight: bold;
+            padding: 1rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+        .action-btn:hover { background-color: #059669; }
+
+        .result-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            height: 100%;
+        }
+
+        .result-main-label { font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.5rem; }
+        .result-main-value { font-size: 3rem; font-weight: bold; color: white; margin-bottom: 2rem; }
+        
+        .result-details-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+        
+        .detail-label { font-size: 0.8rem; color: #9ca3af; }
+        .detail-value { font-size: 1.2rem; font-weight: bold; color: #ef4444; } /* Red for costs */
+
+        .recommendation-box {
+            background-color: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 1rem;
+            text-align: left;
+        }
+        
+        .rec-title { color: #10b981; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+        .rec-text { font-size: 0.9rem; color: #d1d5db; line-height: 1.4; }
+    </style>
 </head>
 <body>
+    <!-- Sidebar Container (Injected by layout.js) -->
     <div id="sidebar-container" class="sidebar"></div>
 
+    <!-- Main Content -->
     <main class="main-content">
         <div class="container">
-            <header class="flex justify-between items-center mb-8">
-                <h1>Calculadora de Juros Compostos</h1>
-                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            <header class="flex items-center gap-4 mb-8">
+                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-green-500 text-2xl">🧮</span>
+                        <h1 class="text-2xl font-bold m-0">Calculadora de Juros Reais</h1>
+                    </div>
+                    <p class="text-gray-400 text-sm">Descubra os juros escondidos ou simule parcelas.</p>
+                </div>
+                <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Input Form -->
-                <div class="card space-y-6">
-                    <div class="form-group">
-                        <label>Investimento Inicial (R$)</label>
-                        <input type="number" id="initial" placeholder="0.00" step="0.01">
+            <!-- Mode Switcher -->
+            <div class="mode-switch">
+                <button id="btn-mode-rate" class="mode-btn active" onclick="setMode('rate')">Descobrir Taxa de Juros</button>
+                <button id="btn-mode-installment" class="mode-btn" onclick="setMode('installment')">Calcular Parcela</button>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Input Section -->
+                <div class="input-card">
+                    <h3 class="text-green-500 font-bold mb-6" id="input-title">Dados da Compra</h3>
+                    
+                    <div class="input-group">
+                        <label>Valor à Vista (R$)</label>
+                        <input type="text" id="cashPrice" placeholder="R$ 0,00" oninput="formatCurrency(this)">
                     </div>
-                    <div class="form-group">
-                        <label>Aporte Mensal (R$)</label>
-                        <input type="number" id="monthly" placeholder="0.00" step="0.01">
+
+                    <div class="input-group">
+                        <label>Número de Parcelas</label>
+                        <input type="number" id="installments" placeholder="12">
                     </div>
-                    <div class="form-group">
-                        <label>Taxa de Juros Anual (%)</label>
-                        <input type="number" id="rate" placeholder="Ex: 10.5" step="0.01">
+
+                    <!-- Dynamic Input: Either Installment Value OR Interest Rate -->
+                    <div class="input-group" id="group-installment-value">
+                        <label>Valor da Parcela (R$)</label>
+                        <input type="text" id="installmentValue" placeholder="R$ 0,00" oninput="formatCurrency(this)">
                     </div>
-                    <div class="form-group">
-                        <label>Período (Anos)</label>
-                        <input type="number" id="years" placeholder="Ex: 10">
+
+                    <div class="input-group hidden" id="group-interest-rate">
+                        <label>Taxa de Juros Mensal (%)</label>
+                        <input type="number" id="interestRate" placeholder="Ex: 2" step="0.01">
                     </div>
-                    <button onclick="calculateInterest()" class="btn btn-primary w-full">Calcular Resultado</button>
+
+                    <button onclick="calculate()" class="action-btn" id="action-btn">Descobrir Taxa Real</button>
                 </div>
 
-                <!-- Result Display -->
-                <div class="card flex flex-col justify-center items-center text-center bg-emerald-900/30 border-primary/20">
-                    <h3 class="text-xl text-gray-300 mb-4">Valor Total Acumulado</h3>
-                    <p id="total-result" class="text-5xl md:text-6xl font-bold text-primary mb-2">R$ 0,00</p>
-                    <div id="breakdown" class="mt-6 w-full text-left hidden">
-                        <div class="flex justify-between border-b border-white/10 py-2">
-                            <span class="text-gray-400">Total Investido:</span>
-                            <span id="total-invested" class="font-bold text-white">R$ 0,00</span>
+                <!-- Result Section -->
+                <div class="result-card" id="result-card" style="opacity: 0.5;">
+                    <p class="result-main-label" id="result-main-label">Taxa de Juros Mensal Real</p>
+                    <p class="result-main-value" id="result-main-value">0.00% a.m.</p>
+
+                    <div class="result-details-grid">
+                        <div>
+                            <p class="detail-label">Total a Pagar</p>
+                            <p class="detail-value" id="total-paid">R$ 0,00</p>
                         </div>
-                        <div class="flex justify-between border-b border-white/10 py-2">
-                            <span class="text-gray-400">Total em Juros:</span>
-                            <span id="total-interest" class="font-bold text-green-400">R$ 0,00</span>
+                        <div>
+                            <p class="detail-label">Juros Totais</p>
+                            <p class="detail-value" id="total-interest">R$ 0,00</p>
                         </div>
                     </div>
-                    <p class="text-sm text-gray-500 mt-4">
-                        *Simulação baseada em taxa constante. Resultados podem variar.
-                    </p>
+
+                    <div class="recommendation-box hidden" id="rec-box">
+                        <div class="rec-title">
+                            <span>✅</span> <span id="rec-title">Vale a pena pagar à vista!</span>
+                        </div>
+                        <p class="rec-text" id="rec-text">
+                            O desconto equivale a um rendimento de X% ao mês. Dificilmente um investimento seguro supera isso.
+                        </p>
+                    </div>
                 </div>
             </div>
         </div>
     </main>
 
     <script>
-        function calculateInterest() {
-            const p = parseFloat(document.getElementById('initial').value) || 0;
-            const m = parseFloat(document.getElementById('monthly').value) || 0;
-            const r = (parseFloat(document.getElementById('rate').value) || 0) / 100 / 12;
-            const t = (parseFloat(document.getElementById('years').value) || 0) * 12;
+        let currentMode = 'rate'; // 'rate' or 'installment'
 
-            if (t <= 0) return;
+        function setMode(mode) {
+            currentMode = mode;
+            
+            // Update Buttons
+            document.getElementById('btn-mode-rate').className = mode === 'rate' ? 'mode-btn active' : 'mode-btn';
+            document.getElementById('btn-mode-installment').className = mode === 'installment' ? 'mode-btn active' : 'mode-btn';
 
-            let total = p * Math.pow(1 + r, t);
-            for (let i = 1; i <= t; i++) {
-                total += m * Math.pow(1 + r, t - i);
+            // Update Inputs
+            const groupInstallment = document.getElementById('group-installment-value');
+            const groupRate = document.getElementById('group-interest-rate');
+            const actionBtn = document.getElementById('action-btn');
+            const inputTitle = document.getElementById('input-title');
+            const resultMainLabel = document.getElementById('result-main-label');
+
+            if (mode === 'rate') {
+                groupInstallment.classList.remove('hidden');
+                groupRate.classList.add('hidden');
+                actionBtn.textContent = 'Descobrir Taxa Real';
+                inputTitle.textContent = 'Dados da Compra';
+                resultMainLabel.textContent = 'Taxa de Juros Mensal Real';
+            } else {
+                groupInstallment.classList.add('hidden');
+                groupRate.classList.remove('hidden');
+                actionBtn.textContent = 'Calcular Valor da Parcela';
+                inputTitle.textContent = 'Simulação de Financiamento';
+                resultMainLabel.textContent = 'Valor da Parcela Mensal';
             }
 
-            const totalInvested = p + (m * t);
-            const totalInterest = total - totalInvested;
+            // Reset Results
+            document.getElementById('result-card').style.opacity = '0.5';
+            document.getElementById('rec-box').classList.add('hidden');
+            document.getElementById('result-main-value').textContent = mode === 'rate' ? '0.00% a.m.' : 'R$ 0,00';
+        }
 
-            // Format Currency
-            const formatBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        function formatCurrency(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = (parseFloat(value) / 100).toFixed(2) + '';
+            value = value.replace('.', ',');
+            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            if (value === 'NaN') value = '';
+            input.value = value;
+        }
 
-            document.getElementById('total-result').textContent = formatBRL(total);
-            document.getElementById('total-invested').textContent = formatBRL(totalInvested);
-            document.getElementById('total-interest').textContent = formatBRL(totalInterest);
-            
-            document.getElementById('breakdown').classList.remove('hidden');
+        function parseCurrency(value) {
+            if (!value) return 0;
+            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+        }
+
+        function formatBRL(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function calculate() {
+            const cashPrice = parseCurrency(document.getElementById('cashPrice').value);
+            const n = parseInt(document.getElementById('installments').value);
+
+            if (!cashPrice || !n) {
+                alert("Preencha o valor à vista e o número de parcelas.");
+                return;
+            }
+
+            document.getElementById('result-card').style.opacity = '1';
+
+            if (currentMode === 'rate') {
+                // Mode 1: Find Interest Rate
+                const pmt = parseCurrency(document.getElementById('installmentValue').value);
+                if (!pmt) { alert("Preencha o valor da parcela."); return; }
+
+                // Newton-Raphson to find rate
+                let rate = 0.01; // Initial guess 1%
+                let totalPaid = pmt * n;
+                let totalInterest = totalPaid - cashPrice;
+
+                // Simple check if interest is 0 or negative
+                if (totalPaid <= cashPrice) {
+                    rate = 0;
+                } else {
+                    for(let i=0; i<100; i++) {
+                        let f = pmt * (1 - Math.pow(1 + rate, -n)) / rate - cashPrice;
+                        let df = pmt * (Math.pow(1 + rate, -n-1) * n * rate - (1 - Math.pow(1 + rate, -n))) / (rate * rate);
+                        let newRate = rate - f / df;
+                        if (Math.abs(newRate - rate) < 0.000001) { rate = newRate; break; }
+                        rate = newRate;
+                    }
+                }
+                
+                const ratePercent = (rate * 100).toFixed(2);
+
+                document.getElementById('result-main-value').textContent = `${ratePercent}% a.m.`;
+                document.getElementById('total-paid').textContent = formatBRL(totalPaid);
+                document.getElementById('total-interest').textContent = formatBRL(totalInterest);
+
+                // Recommendation
+                const recBox = document.getElementById('rec-box');
+                const recTitle = document.getElementById('rec-title');
+                const recText = document.getElementById('rec-text');
+                recBox.classList.remove('hidden');
+
+                if (rate > 0.01) { // > 1% a.m.
+                    recTitle.textContent = "Vale a pena pagar à vista!";
+                    recText.textContent = `O desconto equivale a um rendimento de ${ratePercent}% ao mês. Dificilmente um investimento seguro supera isso.`;
+                } else {
+                    recTitle.textContent = "Pode valer a pena parcelar";
+                    recText.textContent = `A taxa de juros é baixa (${ratePercent}% a.m.). Se você tiver o dinheiro investido rendendo mais que isso, parcele.`;
+                }
+
+            } else {
+                // Mode 2: Calculate Installment
+                const ratePercent = parseFloat(document.getElementById('interestRate').value);
+                if (isNaN(ratePercent)) { alert("Preencha a taxa de juros."); return; }
+
+                const rate = ratePercent / 100;
+                let pmt = 0;
+                
+                if (rate === 0) {
+                    pmt = cashPrice / n;
+                } else {
+                    pmt = cashPrice * (rate * Math.pow(1 + rate, n)) / (Math.pow(1 + rate, n) - 1);
+                }
+                
+                const totalPaid = pmt * n;
+                const totalInterest = totalPaid - cashPrice;
+
+                document.getElementById('result-main-value').textContent = formatBRL(pmt);
+                document.getElementById('total-paid').textContent = formatBRL(totalPaid);
+                document.getElementById('total-interest').textContent = formatBRL(totalInterest);
+                
+                // Hide recommendation in this mode as it's a simulation
+                document.getElementById('rec-box').classList.add('hidden');
+            }
         }
     </script>
 </body>
