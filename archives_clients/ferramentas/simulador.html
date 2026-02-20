@@ -5,59 +5,252 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Simulador Imobiliário - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/layout.js" defer></script>
+    <style>
+        /* Specific styles for Simulador to match Image 05 */
+        .input-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+
+        .input-group { margin-bottom: 1.5rem; }
+        .input-group label { display: block; font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600; }
+        .input-group input {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 1rem;
+            color: white;
+            font-size: 1rem;
+        }
+        .input-group input:focus { outline: none; border-color: var(--primary-color); }
+
+        .period-toggle {
+            display: flex;
+            background-color: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .period-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            background: transparent;
+            color: #9ca3af;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        .period-btn.active {
+            background-color: #eab308; /* Yellow-500 */
+            color: black;
+            font-weight: bold;
+        }
+
+        .action-btn {
+            width: 100%;
+            background-color: #eab308; /* Yellow-500 */
+            color: black;
+            font-weight: bold;
+            padding: 1rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+        .action-btn:hover { background-color: #ca8a04; }
+
+        .summary-bar {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 2rem;
+        }
+        .summary-label { color: #9ca3af; font-size: 0.9rem; }
+        .summary-value { color: white; font-size: 1.5rem; font-weight: bold; }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .table-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 2rem;
+        }
+        
+        .table-title {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+        .table-subtitle {
+            text-align: center;
+            font-size: 0.8rem;
+            color: #9ca3af;
+            margin-bottom: 2rem;
+        }
+
+        .sac-title { color: #3b82f6; } /* Blue */
+        .price-title { color: #a855f7; } /* Purple */
+
+        .result-row {
+            margin-bottom: 1.5rem;
+        }
+        .result-label { font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.25rem; }
+        .result-value { font-size: 1.25rem; font-weight: bold; color: white; }
+        .result-value-red { color: #ef4444; } /* Red for interest */
+
+        .sac-border { border-top: 2px solid #3b82f6; }
+        .price-border { border-top: 2px solid #a855f7; }
+
+        .verdict-box {
+            margin-top: 2rem;
+            text-align: center;
+            padding: 1rem;
+            background-color: rgba(255, 255, 255, 0.02);
+            border-radius: 8px;
+        }
+        .verdict-text { color: white; font-weight: bold; }
+    </style>
 </head>
 <body>
+    <!-- Sidebar Container (Injected by layout.js) -->
     <div id="sidebar-container" class="sidebar"></div>
 
+    <!-- Main Content -->
     <main class="main-content">
         <div class="container">
-            <header class="flex justify-between items-center mb-8">
-                <h1>Simulador Imobiliário</h1>
-                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            <header class="flex items-center gap-4 mb-8">
+                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-yellow-500 text-2xl">🏠</span>
+                        <h1 class="text-2xl font-bold m-0">Simulador Imobiliário</h1>
+                    </div>
+                    <p class="text-gray-400 text-sm">SAC ou Price? Veja quanto você vai pagar de verdade.</p>
+                </div>
+                <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                <!-- Input Form -->
-                <div class="card space-y-6">
-                    <h3 class="text-xl font-bold text-white mb-4">Dados do Imóvel</h3>
-                    <div class="form-group">
-                        <label>Valor do Imóvel (R$)</label>
-                        <input type="number" id="propertyValue" placeholder="Ex: 500000" step="1000">
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Input Column -->
+                <div class="lg:col-span-1">
+                    <div class="input-card">
+                        <h3 class="text-yellow-500 font-bold mb-6">Dados do Financiamento</h3>
+                        
+                        <div class="input-group">
+                            <label>Valor do Imóvel (R$)</label>
+                            <input type="text" id="propertyValue" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Valor da Entrada (R$)</label>
+                            <input type="text" id="downPayment" placeholder="R$ 0,00" oninput="formatCurrency(this)">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Taxa de Juros Anual (%)</label>
+                            <input type="number" id="interestRate" placeholder="Ex: 10" step="0.1">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Prazo</label>
+                            <div class="flex gap-2">
+                                <input type="number" id="term" placeholder="30" style="flex: 2;">
+                                <div class="period-toggle" style="flex: 1;">
+                                    <button class="period-btn active" onclick="setPeriod('years')" id="btn-years">Anos</button>
+                                    <button class="period-btn" onclick="setPeriod('months')" id="btn-months">Meses</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <button onclick="calculate()" class="action-btn">Simular Financiamento</button>
                     </div>
-                    <div class="form-group">
-                        <label>Valor do Aluguel Mensal (R$)</label>
-                        <input type="number" id="rentValue" placeholder="Ex: 2500" step="100">
-                    </div>
-                    <div class="form-group">
-                        <label>Taxa de Juros Financiamento (% a.a.)</label>
-                        <input type="number" id="interestRate" placeholder="Ex: 9.5" step="0.1">
-                    </div>
-                    <div class="form-group">
-                        <label>Rendimento Investimento (% a.a.)</label>
-                        <input type="number" id="investmentRate" placeholder="Ex: 10.0" step="0.1">
-                    </div>
-                    <button onclick="calculateRealEstate()" class="btn btn-primary w-full">Comparar Opções</button>
                 </div>
 
-                <!-- Result Display -->
-                <div class="card flex flex-col justify-center items-center text-center bg-emerald-900/30 border-primary/20">
-                    <h3 class="text-xl text-gray-300 mb-4">Melhor Opção Financeira</h3>
-                    <p id="verdict" class="text-4xl font-bold text-primary mb-6">---</p>
-                    
-                    <div id="breakdown" class="w-full text-left hidden space-y-4">
-                        <div class="p-4 bg-white/5 rounded-lg">
-                            <h4 class="font-bold text-white mb-2">Cenário: Compra (Financiamento)</h4>
-                            <p class="text-sm text-gray-400">Custo Total Estimado (30 anos):</p>
-                            <p id="buy-cost" class="text-xl font-bold text-red-400">R$ 0,00</p>
+                <!-- Results Column -->
+                <div class="lg:col-span-2">
+                    <!-- Summary Bar -->
+                    <div class="summary-bar">
+                        <div>
+                            <div class="summary-label">Valor Financiado (Imóvel - Entrada)</div>
                         </div>
-                        
-                        <div class="p-4 bg-white/5 rounded-lg">
-                            <h4 class="font-bold text-white mb-2">Cenário: Aluguel + Investimento</h4>
-                            <p class="text-sm text-gray-400">Patrimônio Acumulado (30 anos):</p>
-                            <p id="rent-wealth" class="text-xl font-bold text-green-400">R$ 0,00</p>
+                        <div class="summary-value" id="financed-amount">R$ 0,00</div>
+                    </div>
+
+                    <!-- Comparison Grid -->
+                    <div class="comparison-grid">
+                        <!-- SAC Card -->
+                        <div class="table-card sac-border">
+                            <div class="table-title sac-title">Tabela SAC</div>
+                            <div class="table-subtitle">Parcelas decrescentes</div>
+
+                            <div class="result-row">
+                                <div class="result-label">Primeira Parcela</div>
+                                <div class="result-value" id="sac-first">R$ 0,00</div>
+                            </div>
+
+                            <div class="result-row">
+                                <div class="result-label">Última Parcela</div>
+                                <div class="result-value" id="sac-last">R$ 0,00</div>
+                            </div>
+
+                            <div class="result-row border-t border-gray-700 pt-4">
+                                <div class="result-label">Total Pago (Financiamento)</div>
+                                <div class="result-value text-red-500" id="sac-total">R$ 0,00</div>
+                            </div>
+
+                            <div class="result-row">
+                                <div class="result-label">Só de Juros</div>
+                                <div class="result-value text-red-400" id="sac-interest">R$ 0,00</div>
+                            </div>
                         </div>
+
+                        <!-- Price Card -->
+                        <div class="table-card price-border">
+                            <div class="table-title price-title">Tabela Price</div>
+                            <div class="table-subtitle">Parcelas fixas</div>
+
+                            <div class="result-row">
+                                <div class="result-label">Valor da Parcela</div>
+                                <div class="result-value" id="price-pmt">R$ 0,00</div>
+                            </div>
+
+                            <div class="result-row" style="visibility: hidden;">
+                                <div class="result-label">Placeholder</div>
+                                <div class="result-value">R$ 0,00</div>
+                            </div>
+
+                            <div class="result-row border-t border-gray-700 pt-4">
+                                <div class="result-label">Total Pago (Financiamento)</div>
+                                <div class="result-value text-red-500" id="price-total">R$ 0,00</div>
+                            </div>
+
+                            <div class="result-row">
+                                <div class="result-label">Só de Juros</div>
+                                <div class="result-value text-red-400" id="price-interest">R$ 0,00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Verdict -->
+                    <div class="verdict-box hidden" id="verdict-box">
+                        <span class="text-yellow-500 text-xl mr-2">💡</span>
+                        <span class="verdict-text" id="verdict-text">Você vai pagar de 1.9x a 2.5x o valor do imóvel!</span>
                     </div>
                 </div>
             </div>
@@ -65,51 +258,86 @@
     </main>
 
     <script>
-        function calculateRealEstate() {
-            const propertyValue = parseFloat(document.getElementById('propertyValue').value) || 0;
-            const rentValue = parseFloat(document.getElementById('rentValue').value) || 0;
-            const interestRate = (parseFloat(document.getElementById('interestRate').value) || 0) / 100;
-            const investmentRate = (parseFloat(document.getElementById('investmentRate').value) || 0) / 100;
-            
-            const years = 30;
-            const months = years * 12;
+        let periodType = 'years'; // 'years' or 'months'
 
-            // Simple Financing Calculation (Price Table Approximation)
-            // Total paid = Property Value * (1 + Interest Rate * Years) - Very simplified
-            // Better approximation: Monthly Payment * Months
-            const monthlyInterest = interestRate / 12;
-            const monthlyPayment = propertyValue * (monthlyInterest * Math.pow(1 + monthlyInterest, months)) / (Math.pow(1 + monthlyInterest, months) - 1);
-            const totalPaidBuying = monthlyPayment * months;
+        function setPeriod(type) {
+            periodType = type;
+            document.getElementById('btn-years').className = type === 'years' ? 'period-btn active' : 'period-btn';
+            document.getElementById('btn-months').className = type === 'months' ? 'period-btn active' : 'period-btn';
+        }
 
-            // Rent + Invest Difference Calculation
-            // Assume difference between Mortgage Payment and Rent is invested
-            let investmentBalance = 0;
-            const monthlyInvestmentRate = investmentRate / 12;
-            const monthlyDifference = monthlyPayment - rentValue;
+        function formatCurrency(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = (parseFloat(value) / 100).toFixed(2) + '';
+            value = value.replace('.', ',');
+            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            if (value === 'NaN') value = '';
+            input.value = value;
+        }
 
-            if (monthlyDifference > 0) {
-                // Invest the difference
-                for (let i = 0; i < months; i++) {
-                    investmentBalance = (investmentBalance + monthlyDifference) * (1 + monthlyInvestmentRate);
-                }
+        function parseCurrency(value) {
+            if (!value) return 0;
+            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+        }
+
+        function formatBRL(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function calculate() {
+            const propertyValue = parseCurrency(document.getElementById('propertyValue').value);
+            const downPayment = parseCurrency(document.getElementById('downPayment').value);
+            const interestRateAnnual = parseFloat(document.getElementById('interestRate').value);
+            let term = parseInt(document.getElementById('term').value);
+
+            if (!propertyValue || !interestRateAnnual || !term) {
+                alert("Preencha todos os campos obrigatórios.");
+                return;
             }
 
-            // Format Currency
-            const formatBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-
-            document.getElementById('buy-cost').textContent = formatBRL(totalPaidBuying);
-            document.getElementById('rent-wealth').textContent = formatBRL(investmentBalance);
+            // Convert term to months if in years
+            const months = periodType === 'years' ? term * 12 : term;
             
-            const verdict = document.getElementById('verdict');
-            if (investmentBalance > propertyValue) {
-                verdict.textContent = "Alugar + Investir";
-                verdict.className = "text-4xl font-bold text-green-400 mb-6";
-            } else {
-                verdict.textContent = "Comprar Imóvel";
-                verdict.className = "text-4xl font-bold text-primary mb-6";
-            }
+            // Monthly Interest Rate
+            const rate = interestRateAnnual / 100 / 12;
 
-            document.getElementById('breakdown').classList.remove('hidden');
+            const financed = propertyValue - downPayment;
+            document.getElementById('financed-amount').textContent = formatBRL(financed);
+
+            // --- SAC Calculation ---
+            const amortization = financed / months;
+            const sacFirst = amortization + (financed * rate);
+            const sacLast = amortization + (amortization * rate); // Last installment interest is on 1 amortization unit
+            
+            // Total Interest SAC = (First Interest + Last Interest) * Months / 2
+            // First Interest = Financed * Rate
+            // Last Interest = Amortization * Rate
+            const totalInterestSAC = (months * (financed * rate + amortization * rate)) / 2;
+            const totalPaidSAC = financed + totalInterestSAC;
+
+            document.getElementById('sac-first').textContent = formatBRL(sacFirst);
+            document.getElementById('sac-last').textContent = formatBRL(sacLast);
+            document.getElementById('sac-total').textContent = formatBRL(totalPaidSAC);
+            document.getElementById('sac-interest').textContent = formatBRL(totalInterestSAC);
+
+            // --- Price Calculation ---
+            const pricePmt = financed * (rate * Math.pow(1 + rate, months)) / (Math.pow(1 + rate, months) - 1);
+            const totalPaidPrice = pricePmt * months;
+            const totalInterestPrice = totalPaidPrice - financed;
+
+            document.getElementById('price-pmt').textContent = formatBRL(pricePmt);
+            document.getElementById('price-total').textContent = formatBRL(totalPaidPrice);
+            document.getElementById('price-interest').textContent = formatBRL(totalInterestPrice);
+
+            // --- Verdict ---
+            const verdictBox = document.getElementById('verdict-box');
+            const verdictText = document.getElementById('verdict-text');
+            verdictBox.classList.remove('hidden');
+
+            const multipleSAC = (totalPaidSAC / propertyValue).toFixed(1);
+            const multiplePrice = (totalPaidPrice / propertyValue).toFixed(1);
+
+            verdictText.textContent = `Você vai pagar de ${multipleSAC}x a ${multiplePrice}x o valor do imóvel!`;
         }
     </script>
 </body>
