@@ -5,61 +5,399 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Comparador de Cartões - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/layout.js" defer></script>
+    <style>
+        /* Specific styles for Cartoes to match Images 06/07/08 */
+        .input-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .section-title {
+            color: #eab308; /* Yellow-500 */
+            font-weight: bold;
+            margin-bottom: 1.5rem;
+            font-size: 1.1rem;
+        }
+
+        .input-group { margin-bottom: 1rem; }
+        .input-group label { display: block; font-size: 0.85rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600; }
+        .input-group input {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 0.75rem;
+            color: white;
+            font-size: 1rem;
+        }
+        .input-group input:focus { outline: none; border-color: var(--primary-color); }
+
+        .card-title-a { color: #a855f7; font-weight: bold; margin-bottom: 1rem; } /* Purple */
+        .card-title-b { color: #3b82f6; font-weight: bold; margin-bottom: 1rem; } /* Blue */
+
+        .action-btn {
+            width: 100%;
+            background-color: #a855f7; /* Purple-500 */
+            color: white;
+            font-weight: bold;
+            padding: 1rem;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 1rem;
+            margin-top: 1rem;
+        }
+        .action-btn:hover { background-color: #9333ea; }
+
+        /* Result Styles */
+        .result-header {
+            background-color: #a855f7; /* Purple-500 */
+            color: white;
+            text-align: center;
+            padding: 1rem;
+            border-radius: 8px 8px 0 0;
+            font-weight: bold;
+        }
+
+        .winner-box {
+            text-align: center;
+            padding: 2rem;
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: none;
+            margin-bottom: 2rem;
+        }
+        
+        .trophy-icon {
+            font-size: 3rem;
+            color: #eab308;
+            margin-bottom: 1rem;
+            display: block;
+        }
+
+        .winner-name { font-size: 2rem; font-weight: bold; color: white; margin-bottom: 0.5rem; }
+        .winner-subtitle { color: #9ca3af; font-size: 0.9rem; }
+
+        .comparison-grid {
+            display: grid;
+            md:grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card-result {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .result-value-green { color: #10b981; font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0; }
+        .result-value-red { color: #ef4444; font-size: 1.5rem; font-weight: bold; margin: 0.5rem 0; }
+        
+        .result-tag { font-size: 0.8rem; color: #9ca3af; }
+
+        .calc-memory {
+            margin-top: 1.5rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            padding-top: 1rem;
+        }
+        
+        .memory-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 0.5rem;
+            color: #d1d5db;
+        }
+        .memory-row.red { color: #ef4444; }
+        .memory-row.green { color: #10b981; font-weight: bold; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 0.5rem; margin-top: 0.5rem; }
+
+        .miles-power-box {
+            background-color: rgba(59, 130, 246, 0.1);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            display: flex;
+            gap: 1rem;
+        }
+        .plane-icon { font-size: 1.5rem; color: #3b82f6; }
+        .power-title { color: #3b82f6; font-weight: bold; margin-bottom: 0.5rem; }
+        .power-text { font-size: 0.9rem; color: #d1d5db; line-height: 1.4; }
+
+    </style>
 </head>
 <body>
+    <!-- Sidebar Container (Injected by layout.js) -->
     <div id="sidebar-container" class="sidebar"></div>
 
+    <!-- Main Content -->
     <main class="main-content">
         <div class="container">
-            <header class="flex justify-between items-center mb-8">
-                <h1>Comparador de Cartões</h1>
-                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            <header class="flex items-center gap-4 mb-8">
+                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-purple-500 text-2xl">💳</span>
+                        <h1 class="text-2xl font-bold m-0">Comparador de Cartões</h1>
+                    </div>
+                    <p class="text-gray-400 text-sm">Milhas ou Cashback? Veja qual coloca mais dinheiro no seu bolso.</p>
+                </div>
+                <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
 
-            <div class="card overflow-x-auto">
-                <table class="w-full text-left border-collapse">
-                    <thead>
-                        <tr class="border-b border-white/10">
-                            <th class="p-4 text-primary">Cartão</th>
-                            <th class="p-4 text-primary">Anuidade</th>
-                            <th class="p-4 text-primary">Pontuação</th>
-                            <th class="p-4 text-primary">Benefícios</th>
-                            <th class="p-4 text-primary">Renda Mínima</th>
-                        </tr>
-                    </thead>
-                    <tbody class="text-gray-300">
-                        <tr class="border-b border-white/5 hover:bg-white/5">
-                            <td class="p-4 font-bold text-white">Black Infinite</td>
-                            <td class="p-4">R$ 1.200 (Isenção > 20k)</td>
-                            <td class="p-4">2.5 pts / dólar</td>
-                            <td class="p-4">Sala VIP, Seguro Viagem</td>
-                            <td class="p-4">R$ 15.000</td>
-                        </tr>
-                        <tr class="border-b border-white/5 hover:bg-white/5">
-                            <td class="p-4 font-bold text-white">Platinum Rewards</td>
-                            <td class="p-4">R$ 600 (Isenção > 5k)</td>
-                            <td class="p-4">1.5 pts / dólar</td>
-                            <td class="p-4">Seguro Médico, Concierge</td>
-                            <td class="p-4">R$ 7.000</td>
-                        </tr>
-                        <tr class="border-b border-white/5 hover:bg-white/5">
-                            <td class="p-4 font-bold text-white">Gold Cashback</td>
-                            <td class="p-4">Grátis</td>
-                            <td class="p-4">1% Cashback</td>
-                            <td class="p-4">Garantia Estendida</td>
-                            <td class="p-4">R$ 2.500</td>
-                        </tr>
-                    </tbody>
-                </table>
+            <!-- Input Section -->
+            <div id="input-section">
+                <!-- Profile Inputs -->
+                <div class="input-card">
+                    <div class="section-title">Seu Perfil de Gastos</div>
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <div class="input-group">
+                            <label>Gasto Mensal na Fatura (R$)</label>
+                            <input type="text" id="monthlySpend" placeholder="0,00" oninput="formatCurrency(this)">
+                        </div>
+                        <div class="input-group">
+                            <label>Cotação do Dólar (R$)</label>
+                            <input type="number" id="dollarRate" placeholder="5.20" step="0.01">
+                        </div>
+                        <div class="input-group">
+                            <label>Valor do Milheiro (R$)</label>
+                            <input type="text" id="milesValue" placeholder="28,00" oninput="formatCurrency(this)">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cards Comparison Inputs -->
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Card A -->
+                    <div class="input-card">
+                        <div class="card-title-a">Cartão A</div>
+                        
+                        <div class="input-group">
+                            <label>Nome do Cartão</label>
+                            <input type="text" id="nameA" placeholder="Ex: Black">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Anuidade (R$)</label>
+                            <input type="text" id="feeA" placeholder="0,00" oninput="formatCurrency(this)">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <label>Pontos por Dólar</label>
+                                <input type="number" id="pointsA" placeholder="0" step="0.1">
+                            </div>
+                            <div class="input-group">
+                                <label>Cashback (%)</label>
+                                <input type="number" id="cashbackA" placeholder="0" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Card B -->
+                    <div class="input-card">
+                        <div class="card-title-b">Cartão B</div>
+                        
+                        <div class="input-group">
+                            <label>Nome do Cartão</label>
+                            <input type="text" id="nameB" placeholder="Ex: Platinum">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label>Anuidade (R$)</label>
+                            <input type="text" id="feeB" placeholder="0,00" oninput="formatCurrency(this)">
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <label>Pontos por Dólar</label>
+                                <input type="number" id="pointsB" placeholder="0" step="0.1">
+                            </div>
+                            <div class="input-group">
+                                <label>Cashback (%)</label>
+                                <input type="number" id="cashbackB" placeholder="0" step="0.1">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="calculate()" class="action-btn">Comparar Retorno Financeiro</button>
             </div>
-            
-            <div class="mt-8 text-center">
-                <p class="text-gray-400 mb-4">Não encontrou seu cartão?</p>
-                <button class="btn btn-outline">Solicitar Análise Personalizada</button>
+
+            <!-- Result Section (Hidden by default) -->
+            <div id="result-section" class="hidden mt-8">
+                <div class="result-header">Comparar Retorno Financeiro</div>
+                
+                <div class="winner-box">
+                    <span class="trophy-icon">🏆</span>
+                    <div class="winner-name" id="winner-name">Vencedor: Cartão A</div>
+                    <div class="winner-subtitle">Considerando o retorno líquido (ganho - anuidade)</div>
+                </div>
+
+                <div class="grid md:grid-cols-2 gap-6">
+                    <!-- Result Card A -->
+                    <div class="card-result">
+                        <div class="font-bold text-lg mb-2" id="res-name-a">Cartão A</div>
+                        <div class="text-sm text-gray-400">Retorno Mensal Líquido</div>
+                        <div id="res-value-a" class="result-value-green">R$ 0,00</div>
+                        <div id="res-tag-a" class="result-tag">(Melhor via Milhas)</div>
+
+                        <div class="calc-memory">
+                            <div class="text-xs text-gray-400 font-bold mb-2">Memória de Cálculo:</div>
+                            <div class="memory-row"><span>Gasto Mensal:</span><span id="mem-spend-a">R$ 0,00</span></div>
+                            <div class="memory-row"><span>Cotação Dólar:</span><span id="mem-dollar-a">R$ 0,00</span></div>
+                            <div class="memory-row"><span>Milhas Geradas:</span><span id="mem-miles-a">0 (R$ 0,00)</span></div>
+                            <div class="memory-row"><span>Cashback:</span><span id="mem-cashback-a">R$ 0,00</span></div>
+                            <div class="memory-row red"><span>Anuidade Mensal:</span><span id="mem-fee-a">-R$ 0,00</span></div>
+                            <div class="memory-row green"><span>Resultado Final:</span><span id="mem-final-a">R$ 0,00</span></div>
+                        </div>
+                    </div>
+
+                    <!-- Result Card B -->
+                    <div class="card-result">
+                        <div class="font-bold text-lg mb-2" id="res-name-b">Cartão B</div>
+                        <div class="text-sm text-gray-400">Retorno Mensal Líquido</div>
+                        <div id="res-value-b" class="result-value-red">R$ 0,00</div>
+                        <div id="res-tag-b" class="result-tag">(Melhor via Cashback)</div>
+
+                        <div class="calc-memory">
+                            <div class="text-xs text-gray-400 font-bold mb-2">Memória de Cálculo:</div>
+                            <div class="memory-row"><span>Gasto Mensal:</span><span id="mem-spend-b">R$ 0,00</span></div>
+                            <div class="memory-row"><span>Cotação Dólar:</span><span id="mem-dollar-b">R$ 0,00</span></div>
+                            <div class="memory-row"><span>Milhas Geradas:</span><span id="mem-miles-b">0 (R$ 0,00)</span></div>
+                            <div class="memory-row"><span>Cashback:</span><span id="mem-cashback-b">R$ 0,00</span></div>
+                            <div class="memory-row red"><span>Anuidade Mensal:</span><span id="mem-fee-b">-R$ 0,00</span></div>
+                            <div class="memory-row green"><span>Resultado Final:</span><span id="mem-final-b">R$ 0,00</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="miles-power-box">
+                    <span class="plane-icon">✈️</span>
+                    <div>
+                        <div class="power-title">O Poder das Milhas vai além do dinheiro</div>
+                        <div class="power-text">
+                            O cálculo acima considera a venda das milhas. Porém, o maior potencial está no uso estratégico: aproveitar promoções de transferência bonificada e emitir passagens ou diárias pode fazer seu retorno valer <strong>muito mais</strong> do que a conversão direta em dinheiro.
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </main>
+
+    <script>
+        function formatCurrency(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = (parseFloat(value) / 100).toFixed(2) + '';
+            value = value.replace('.', ',');
+            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            if (value === 'NaN') value = '';
+            input.value = value;
+        }
+
+        function parseCurrency(value) {
+            if (!value) return 0;
+            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+        }
+
+        function formatBRL(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function calculateCard(spend, dollar, milesVal, fee, points, cashback) {
+            const monthlyFee = fee / 12;
+            
+            // Miles Calculation
+            const spendInDollars = spend / dollar;
+            const milesGenerated = spendInDollars * points;
+            const milesReturn = (milesGenerated / 1000) * milesVal;
+
+            // Cashback Calculation
+            const cashbackReturn = spend * (cashback / 100);
+
+            // Total Return
+            const totalReturn = (milesReturn + cashbackReturn) - monthlyFee;
+
+            return {
+                totalReturn,
+                milesGenerated,
+                milesReturn,
+                cashbackReturn,
+                monthlyFee
+            };
+        }
+
+        function updateCardResult(suffix, name, result, spend, dollar) {
+            document.getElementById(`res-name-${suffix}`).textContent = name;
+            
+            const valEl = document.getElementById(`res-value-${suffix}`);
+            valEl.textContent = formatBRL(result.totalReturn);
+            valEl.className = result.totalReturn >= 0 ? 'result-value-green' : 'result-value-red';
+
+            const tagEl = document.getElementById(`res-tag-${suffix}`);
+            if (result.milesReturn > result.cashbackReturn) {
+                tagEl.textContent = "(Melhor via Milhas)";
+            } else {
+                tagEl.textContent = "(Melhor via Cashback)";
+            }
+
+            // Memory
+            document.getElementById(`mem-spend-${suffix}`).textContent = formatBRL(spend);
+            document.getElementById(`mem-dollar-${suffix}`).textContent = formatBRL(dollar);
+            document.getElementById(`mem-miles-${suffix}`).textContent = `${Math.floor(result.milesGenerated)} (R$ ${result.milesReturn.toFixed(2)})`;
+            document.getElementById(`mem-cashback-${suffix}`).textContent = formatBRL(result.cashbackReturn);
+            document.getElementById(`mem-fee-${suffix}`).textContent = `- ${formatBRL(result.monthlyFee)}`;
+            document.getElementById(`mem-final-${suffix}`).textContent = formatBRL(result.totalReturn);
+        }
+
+        function calculate() {
+            const spend = parseCurrency(document.getElementById('monthlySpend').value);
+            const dollar = parseFloat(document.getElementById('dollarRate').value);
+            const milesVal = parseCurrency(document.getElementById('milesValue').value);
+
+            if (!spend || !dollar || !milesVal) {
+                alert("Preencha os dados do perfil de gastos.");
+                return;
+            }
+
+            // Card A
+            const nameA = document.getElementById('nameA').value || "Cartão A";
+            const feeA = parseCurrency(document.getElementById('feeA').value);
+            const pointsA = parseFloat(document.getElementById('pointsA').value) || 0;
+            const cashbackA = parseFloat(document.getElementById('cashbackA').value) || 0;
+            const resA = calculateCard(spend, dollar, milesVal, feeA, pointsA, cashbackA);
+
+            // Card B
+            const nameB = document.getElementById('nameB').value || "Cartão B";
+            const feeB = parseCurrency(document.getElementById('feeB').value);
+            const pointsB = parseFloat(document.getElementById('pointsB').value) || 0;
+            const cashbackB = parseFloat(document.getElementById('cashbackB').value) || 0;
+            const resB = calculateCard(spend, dollar, milesVal, feeB, pointsB, cashbackB);
+
+            // Update UI
+            updateCardResult('a', nameA, resA, spend, dollar);
+            updateCardResult('b', nameB, resB, spend, dollar);
+
+            // Determine Winner
+            const winnerNameEl = document.getElementById('winner-name');
+            if (resA.totalReturn > resB.totalReturn) {
+                winnerNameEl.textContent = `Vencedor: ${nameA}`;
+            } else if (resB.totalReturn > resA.totalReturn) {
+                winnerNameEl.textContent = `Vencedor: ${nameB}`;
+            } else {
+                winnerNameEl.textContent = "Empate!";
+            }
+
+            document.getElementById('result-section').classList.remove('hidden');
+            // Scroll to result
+            document.getElementById('result-section').scrollIntoView({ behavior: 'smooth' });
+        }
+    </script>
 </body>
 </html>
