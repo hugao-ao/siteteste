@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Imobiliário - MithraSF</title>
+    <link rel="stylesheet" href="../assets/style.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../assets/layout.js" defer></script>
+</head>
+<body>
+    <div id="sidebar-container" class="sidebar"></div>
+
+    <main class="main-content">
+        <div class="container">
+            <header class="flex justify-between items-center mb-8">
+                <h1>Simulador Imobiliário</h1>
+                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            </header>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <!-- Input Form -->
+                <div class="card space-y-6">
+                    <h3 class="text-xl font-bold text-white mb-4">Dados do Imóvel</h3>
+                    <div class="form-group">
+                        <label>Valor do Imóvel (R$)</label>
+                        <input type="number" id="propertyValue" placeholder="Ex: 500000" step="1000">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor do Aluguel Mensal (R$)</label>
+                        <input type="number" id="rentValue" placeholder="Ex: 2500" step="100">
+                    </div>
+                    <div class="form-group">
+                        <label>Taxa de Juros Financiamento (% a.a.)</label>
+                        <input type="number" id="interestRate" placeholder="Ex: 9.5" step="0.1">
+                    </div>
+                    <div class="form-group">
+                        <label>Rendimento Investimento (% a.a.)</label>
+                        <input type="number" id="investmentRate" placeholder="Ex: 10.0" step="0.1">
+                    </div>
+                    <button onclick="calculateRealEstate()" class="btn btn-primary w-full">Comparar Opções</button>
+                </div>
+
+                <!-- Result Display -->
+                <div class="card flex flex-col justify-center items-center text-center bg-emerald-900/30 border-primary/20">
+                    <h3 class="text-xl text-gray-300 mb-4">Melhor Opção Financeira</h3>
+                    <p id="verdict" class="text-4xl font-bold text-primary mb-6">---</p>
+                    
+                    <div id="breakdown" class="w-full text-left hidden space-y-4">
+                        <div class="p-4 bg-white/5 rounded-lg">
+                            <h4 class="font-bold text-white mb-2">Cenário: Compra (Financiamento)</h4>
+                            <p class="text-sm text-gray-400">Custo Total Estimado (30 anos):</p>
+                            <p id="buy-cost" class="text-xl font-bold text-red-400">R$ 0,00</p>
+                        </div>
+                        
+                        <div class="p-4 bg-white/5 rounded-lg">
+                            <h4 class="font-bold text-white mb-2">Cenário: Aluguel + Investimento</h4>
+                            <p class="text-sm text-gray-400">Patrimônio Acumulado (30 anos):</p>
+                            <p id="rent-wealth" class="text-xl font-bold text-green-400">R$ 0,00</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        function calculateRealEstate() {
+            const propertyValue = parseFloat(document.getElementById('propertyValue').value) || 0;
+            const rentValue = parseFloat(document.getElementById('rentValue').value) || 0;
+            const interestRate = (parseFloat(document.getElementById('interestRate').value) || 0) / 100;
+            const investmentRate = (parseFloat(document.getElementById('investmentRate').value) || 0) / 100;
+            
+            const years = 30;
+            const months = years * 12;
+
+            // Simple Financing Calculation (Price Table Approximation)
+            // Total paid = Property Value * (1 + Interest Rate * Years) - Very simplified
+            // Better approximation: Monthly Payment * Months
+            const monthlyInterest = interestRate / 12;
+            const monthlyPayment = propertyValue * (monthlyInterest * Math.pow(1 + monthlyInterest, months)) / (Math.pow(1 + monthlyInterest, months) - 1);
+            const totalPaidBuying = monthlyPayment * months;
+
+            // Rent + Invest Difference Calculation
+            // Assume difference between Mortgage Payment and Rent is invested
+            let investmentBalance = 0;
+            const monthlyInvestmentRate = investmentRate / 12;
+            const monthlyDifference = monthlyPayment - rentValue;
+
+            if (monthlyDifference > 0) {
+                // Invest the difference
+                for (let i = 0; i < months; i++) {
+                    investmentBalance = (investmentBalance + monthlyDifference) * (1 + monthlyInvestmentRate);
+                }
+            }
+
+            // Format Currency
+            const formatBRL = (val) => val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+
+            document.getElementById('buy-cost').textContent = formatBRL(totalPaidBuying);
+            document.getElementById('rent-wealth').textContent = formatBRL(investmentBalance);
+            
+            const verdict = document.getElementById('verdict');
+            if (investmentBalance > propertyValue) {
+                verdict.textContent = "Alugar + Investir";
+                verdict.className = "text-4xl font-bold text-green-400 mb-6";
+            } else {
+                verdict.textContent = "Comprar Imóvel";
+                verdict.className = "text-4xl font-bold text-primary mb-6";
+            }
+
+            document.getElementById('breakdown').classList.remove('hidden');
+        }
+    </script>
+</body>
+</html>
