@@ -1,233 +1,455 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Área do Cliente - Mithra SF</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <style>
-        :root {
-            --primary: #0f291e; /* Verde Escuro Mithra */
-            --accent: #d4af37; /* Dourado */
-            --bg: #f8f9fa;
-            --text: #333;
-        }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard do Cliente - HVSF</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Emerald & Gold Theme Variables */
+      --background: #042f2e; /* Deep Emerald Green */
+      --foreground: #f2e8c9; /* Light Gold */
+      --card: #064e3b; /* Slightly lighter Emerald */
+      --primary: #d4af37; /* Rich Gold */
+      --primary-hover: #c5a028;
+      --border: rgba(212, 175, 55, 0.2);
+      --sidebar-bg: #022c22; /* Darker sidebar */
+      --sidebar-active: rgba(212, 175, 55, 0.1);
+    }
 
-        body {
-            margin: 0;
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg);
-            color: var(--text);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background-color: var(--background);
+      font-family: 'Inter', sans-serif;
+      color: var(--foreground);
+      display: flex;
+      overflow-x: hidden;
+    }
 
-        /* Header Estilo Mithra */
-        header {
-            background-color: var(--primary);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
+    /* Sidebar */
+    .sidebar {
+      width: 260px;
+      background-color: var(--sidebar-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      height: 100vh;
+      z-index: 10;
+      transition: transform 0.3s ease;
+    }
 
-        .logo {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--accent);
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    .sidebar-header {
+      padding: 2rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
 
-        .user-menu {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: rgba(212, 175, 55, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.2rem;
+    }
 
-        .welcome-msg {
-            font-size: 0.9rem;
-            opacity: 0.9;
-        }
+    .logo-text {
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
 
-        .btn-logout {
-            background: transparent;
-            border: 1px solid rgba(255,255,255,0.3);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 4px;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    .logo-subtext {
+      font-size: 0.7rem;
+      color: var(--primary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
 
-        .btn-logout:hover {
-            background: rgba(255,255,255,0.1);
-            border-color: white;
-        }
+    .nav-links {
+      flex: 1;
+      padding: 1.5rem 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
 
-        /* Main Content */
-        main {
-            flex: 1;
-            padding: 2rem;
-            max-width: 1200px;
-            margin: 0 auto;
-            width: 100%;
-            box-sizing: border-box;
-        }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 0.75rem 1rem;
+      border-radius: 8px;
+      color: rgba(242, 232, 201, 0.7);
+      text-decoration: none;
+      transition: all 0.2s;
+      font-weight: 500;
+      font-size: 0.95rem;
+    }
 
-        h1 {
-            color: var(--primary);
-            margin-bottom: 2rem;
-            border-bottom: 2px solid var(--accent);
-            padding-bottom: 10px;
-            display: inline-block;
-        }
+    .nav-item:hover, .nav-item.active {
+      background-color: var(--sidebar-active);
+      color: var(--primary);
+      border: 1px solid rgba(212, 175, 55, 0.1);
+    }
 
-        .dashboard-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 2rem;
-        }
+    .nav-item i {
+      width: 20px;
+      text-align: center;
+    }
 
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 2rem;
-            text-align: center;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            transition: transform 0.3s, box-shadow 0.3s;
-            cursor: pointer;
-            border: 1px solid #eee;
-            text-decoration: none;
-            color: inherit;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 200px;
-        }
+    .sidebar-footer {
+      padding: 1.5rem;
+      border-top: 1px solid var(--border);
+    }
 
-        .card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            border-color: var(--accent);
-        }
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
 
-        .card i {
-            font-size: 3rem;
-            color: var(--primary);
-            margin-bottom: 1rem;
-        }
+    .avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary);
+      color: #042f2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
 
-        .card h3 {
-            margin: 0;
-            font-size: 1.2rem;
-            color: var(--primary);
-        }
+    .user-info h4 {
+      margin: 0;
+      color: #fff;
+      font-size: 0.9rem;
+    }
 
-        .card p {
-            font-size: 0.9rem;
-            color: #666;
-            margin-top: 0.5rem;
-        }
+    .user-info p {
+      margin: 0;
+      font-size: 0.75rem;
+      color: rgba(242, 232, 201, 0.6);
+    }
 
-        /* Footer */
-        footer {
-            background-color: #1a1a1a;
-            color: #888;
-            text-align: center;
-            padding: 1.5rem;
-            font-size: 0.8rem;
-        }
+    .logout-btn {
+      width: 100%;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: rgba(242, 232, 201, 0.8);
+      padding: 0.6rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 0.9rem;
+    }
 
-        /* Responsividade */
-        @media (max-width: 768px) {
-            header {
-                flex-direction: column;
-                gap: 1rem;
-                text-align: center;
-            }
-            .dashboard-grid {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
+    .logout-btn:hover {
+      background: rgba(220, 38, 38, 0.1);
+      border-color: rgba(220, 38, 38, 0.3);
+      color: #fca5a5;
+    }
+
+    /* Main Content */
+    .main-content {
+      flex: 1;
+      margin-left: 260px;
+      padding: 2rem;
+      width: calc(100% - 260px);
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .page-title h1 {
+      margin: 0;
+      font-size: 1.8rem;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .page-title p {
+      margin: 0.5rem 0 0 0;
+      color: rgba(242, 232, 201, 0.6);
+    }
+
+    .welcome-card {
+      background: linear-gradient(135deg, rgba(6, 78, 59, 0.8), rgba(4, 47, 46, 0.9));
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2.5rem;
+      margin-bottom: 2.5rem;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+    }
+
+    .welcome-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.1) 0%, transparent 70%);
+      transform: translate(30%, -30%);
+      pointer-events: none;
+    }
+
+    .welcome-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    .welcome-content h2 {
+      margin: 0 0 1rem 0;
+      color: var(--primary);
+      font-size: 1.5rem;
+    }
+
+    .welcome-content p {
+      margin: 0;
+      max-width: 600px;
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .card {
+      background-color: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      transition: all 0.3s ease;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 20px rgba(0, 0, 0, 0.3);
+      border-color: var(--primary);
+    }
+
+    .card-icon {
+      width: 50px;
+      height: 50px;
+      background: rgba(212, 175, 55, 0.1);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 1.5rem;
+      margin-bottom: 1.5rem;
+      transition: all 0.3s;
+    }
+
+    .card:hover .card-icon {
+      background: var(--primary);
+      color: #042f2e;
+    }
+
+    .card h3 {
+      margin: 0 0 0.5rem 0;
+      color: #fff;
+      font-size: 1.1rem;
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 0.9rem;
+      color: rgba(242, 232, 201, 0.6);
+      line-height: 1.5;
+    }
+
+    .card-arrow {
+      position: absolute;
+      bottom: 1.5rem;
+      right: 1.5rem;
+      color: var(--primary);
+      opacity: 0;
+      transform: translateX(-10px);
+      transition: all 0.3s;
+    }
+
+    .card:hover .card-arrow {
+      opacity: 1;
+      transform: translateX(0);
+    }
+
+    /* Mobile Responsive */
+    @media (max-width: 768px) {
+      .sidebar {
+        transform: translateX(-100%);
+      }
+      
+      .sidebar.open {
+        transform: translateX(0);
+      }
+      
+      .main-content {
+        margin-left: 0;
+        width: 100%;
+        padding: 1.5rem;
+      }
+      
+      .mobile-menu-btn {
+        display: block;
+      }
+    }
+  </style>
 </head>
 <body>
 
-    <header>
-        <a href="#" class="logo">
-            <i class="fas fa-shield-alt"></i> Mithra SF
-        </a>
-        <div class="user-menu">
-            <span class="welcome-msg" id="welcome-msg">Bem-vindo, Cliente</span>
-            <button class="btn-logout" onclick="logout()">
-                <i class="fas fa-sign-out-alt"></i> Sair
-            </button>
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <div class="logo-icon">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      <div>
+        <div class="logo-text">MithraSF</div>
+        <div class="logo-subtext">Saúde Financeira</div>
+      </div>
+    </div>
+    
+    <nav class="nav-links">
+      <a href="#" class="nav-item active">
+        <i class="fas fa-home"></i> Início
+      </a>
+      <a href="#" class="nav-item">
+        <i class="fas fa-chart-pie"></i> Relatórios
+      </a>
+      <a href="#" class="nav-item">
+        <i class="fas fa-file-invoice-dollar"></i> Faturas
+      </a>
+      <a href="#" class="nav-item">
+        <i class="fas fa-calendar-check"></i> Agendamentos
+      </a>
+      <a href="#" class="nav-item">
+        <i class="fas fa-user-cog"></i> Perfil
+      </a>
+    </nav>
+    
+    <div class="sidebar-footer">
+      <div class="user-profile">
+        <div class="avatar" id="user-avatar">U</div>
+        <div class="user-info">
+          <h4 id="sidebar-user-name">Carregando...</h4>
+          <p>Cliente HVSF</p>
         </div>
+      </div>
+      <button class="logout-btn" onclick="logout()">
+        <i class="fas fa-sign-out-alt"></i> Sair do Sistema
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <header>
+      <div class="page-title">
+        <h1>Visão Geral</h1>
+        <p>Acompanhe o progresso do seu planejamento financeiro.</p>
+      </div>
+      <!-- Mobile Menu Button (Hidden on Desktop) -->
+      <button class="mobile-menu-btn" style="display: none; background: none; border: none; color: #fff; font-size: 1.5rem;">
+        <i class="fas fa-bars"></i>
+      </button>
     </header>
 
-    <main>
-        <h1>Painel do Cliente</h1>
+    <div class="welcome-card">
+      <div class="welcome-content">
+        <h2 id="welcome-msg">Bem-vindo de volta!</h2>
+        <p>Seu planejamento está em dia. Confira abaixo os relatórios mais recentes e as próximas etapas da sua jornada financeira.</p>
+      </div>
+    </div>
 
-        <div class="dashboard-grid">
-            <!-- Card 1: Ferramentas -->
-            <a href="https://mithrasf.com/ferramentas" target="_blank" class="card">
-                <i class="fas fa-tools"></i>
-                <h3>Ferramentas Exclusivas</h3>
-                <p>Acesse calculadoras, simuladores e comparadores.</p>
-            </a>
+    <div class="dashboard-grid">
+      <div class="card">
+        <div class="card-icon"><i class="fas fa-chart-line"></i></div>
+        <h3>Relatórios Financeiros</h3>
+        <p>Acesse análises detalhadas sobre seus investimentos e evolução patrimonial.</p>
+        <i class="fas fa-arrow-right card-arrow"></i>
+      </div>
+      
+      <div class="card">
+        <div class="card-icon"><i class="fas fa-file-invoice"></i></div>
+        <h3>Faturas e Pagamentos</h3>
+        <p>Visualize histórico de pagamentos e faturas pendentes do seu plano.</p>
+        <i class="fas fa-arrow-right card-arrow"></i>
+      </div>
+      
+      <div class="card">
+        <div class="card-icon"><i class="fas fa-comments"></i></div>
+        <h3>Fale com Consultor</h3>
+        <p>Envie mensagens diretas para sua equipe de planejamento financeiro.</p>
+        <i class="fas fa-arrow-right card-arrow"></i>
+      </div>
 
-            <!-- Card 2: Financeiro -->
-            <a href="https://app.cyclopay.com/customer-portal" target="_blank" class="card">
-                <i class="fas fa-file-invoice-dollar"></i>
-                <h3>Financeiro</h3>
-                <p>2ª via de boletos, notas fiscais e gestão da assinatura.</p>
-            </a>
+      <div class="card">
+        <div class="card-icon"><i class="fas fa-folder-open"></i></div>
+        <h3>Documentos</h3>
+        <p>Acesse contratos, propostas e documentos importantes do seu planejamento.</p>
+        <i class="fas fa-arrow-right card-arrow"></i>
+      </div>
+    </div>
+  </main>
 
-            <!-- Card 3: Meus Dados -->
-            <a href="#" onclick="alert('Em breve: Atualização de cadastro.')" class="card">
-                <i class="fas fa-user-edit"></i>
-                <h3>Meus Dados</h3>
-                <p>Atualize suas informações pessoais e financeiras.</p>
-            </a>
+  <script>
+    // Verifica autenticação
+    const clienteId = sessionStorage.getItem('cliente_id');
+    const clienteNome = sessionStorage.getItem('cliente_nome');
 
-            <!-- Card 4: Falar com Assistente -->
-            <a href="https://wa.me/5511999999999" target="_blank" class="card">
-                <i class="fab fa-whatsapp"></i>
-                <h3>Falar com Assistente</h3>
-                <p>Agende reuniões ou tire dúvidas urgentes.</p>
-            </a>
-        </div>
-    </main>
+    if (!clienteId) {
+        // Redireciona se não estiver logado
+        window.location.href = 'login-cliente.html';
+    } else {
+        // Preenche dados do usuário
+        const firstName = clienteNome.split(' ')[0];
+        document.getElementById('sidebar-user-name').textContent = firstName;
+        document.getElementById('user-avatar').textContent = firstName.charAt(0).toUpperCase();
+        document.getElementById('welcome-msg').textContent = `Olá, ${firstName}!`;
+    }
 
-    <footer>
-        &copy; 2026 Mithra Saúde Financeira. Todos os direitos reservados.
-    </footer>
-
-    <script>
-        // Simulação de Autenticação
-        document.addEventListener('DOMContentLoaded', () => {
-            // Tenta pegar o nome do usuário do LocalStorage (definido no login do siteteste)
-            const userName = localStorage.getItem('userName') || 'Cliente VIP';
-            document.getElementById('welcome-msg').innerText = `Bem-vindo, ${userName}`;
-        });
-
-        function logout() {
-            if(confirm('Deseja realmente sair?')) {
-                localStorage.removeItem('userToken');
-                window.location.href = 'index.html'; // Volta para login do siteteste
-            }
+    function logout() {
+        if(confirm('Deseja realmente sair?')) {
+            sessionStorage.clear();
+            window.location.href = 'login-cliente.html';
         }
-    </script>
-
+    }
+  </script>
 </body>
 </html>
