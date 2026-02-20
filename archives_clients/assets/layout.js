@@ -1,8 +1,26 @@
 // MithraSF Client Portal - Shared Layout Logic
 
+// Initialize Supabase (Global)
+// Replace with your actual keys if needed for client-side logic
+const supabaseUrl = 'YOUR_SUPABASE_URL';
+const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+let supabase;
+
+if (typeof supabase !== 'undefined') {
+    // Check if supabase is already initialized or if the library is loaded
+    if (window.supabase && window.supabase.createClient) {
+         supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // 1. Inject Sidebar HTML if not present
     const sidebarContainer = document.getElementById('sidebar-container');
+    
+    // Determine base path for links (handle subdirectories)
+    const isSubDir = window.location.pathname.includes('/ferramentas/');
+    const basePath = isSubDir ? '../' : '';
+
     if (sidebarContainer) {
         sidebarContainer.innerHTML = `
             <div class="sidebar-header">
@@ -10,16 +28,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 <div class="logo-text">MithraSF</div>
             </div>
             <nav class="sidebar-nav">
-                <a href="index.html" class="nav-item" id="nav-home">
+                <a href="${basePath}index.html" class="nav-item" id="nav-home">
                     <i>🏠</i> Início
                 </a>
-                <a href="ferramentas.html" class="nav-item" id="nav-tools">
+                <a href="${basePath}ferramentas.html" class="nav-item" id="nav-tools">
                     <i>🛠️</i> Ferramentas
                 </a>
-                <a href="plano.html" class="nav-item" id="nav-plan">
+                <a href="${basePath}plano.html" class="nav-item" id="nav-plan">
                     <i>📄</i> Plano de Referência
                 </a>
-                <a href="ajuda.html" class="nav-item" id="nav-help">
+                <a href="${basePath}ajuda.html" class="nav-item" id="nav-help">
                     <i>❓</i> Preciso de Algo
                 </a>
             </nav>
@@ -36,8 +54,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const navItems = document.querySelectorAll('.nav-item');
     
     navItems.forEach(item => {
-        if (currentPath.includes(item.getAttribute('href'))) {
+        // Simple check: if current path contains the href (ignoring ../)
+        const href = item.getAttribute('href').replace('../', '');
+        if (currentPath.includes(href) && href !== '') {
             item.classList.add('active');
+        } else if (currentPath.endsWith('/') && href === 'index.html') {
+             item.classList.add('active');
         }
     });
 
@@ -56,12 +78,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (logoutBtn) {
         logoutBtn.addEventListener('click', async () => {
             try {
-                // Clear Supabase session
-                const { error } = await supabase.auth.signOut();
-                if (error) throw error;
+                if (supabase) {
+                    // Clear Supabase session
+                    const { error } = await supabase.auth.signOut();
+                    if (error) throw error;
+                }
                 
                 // Redirect to login page
-                window.location.href = '/login-cliente.html';
+                window.location.href = basePath + 'login-cliente.html';
             } catch (error) {
                 console.error('Error logging out:', error);
                 alert('Erro ao sair. Tente novamente.');
@@ -72,14 +96,20 @@ document.addEventListener('DOMContentLoaded', () => {
     // 5. Check Authentication (Simple Client-Side Check)
     // In a real app, you'd verify the token with the server.
     // Here we just check if the user is logged in via Supabase client.
-    checkAuth();
+    if (supabase) {
+        checkAuth();
+    }
 });
 
 async function checkAuth() {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-        // Redirect to login if not authenticated
-        // window.location.href = '/login-cliente.html'; 
-        // Commented out for development testing, uncomment for production
+    try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+            // Redirect to login if not authenticated
+            // window.location.href = '/login-cliente.html'; 
+            // Commented out for development testing, uncomment for production
+        }
+    } catch (e) {
+        console.log("Auth check skipped or failed", e);
     }
 }
