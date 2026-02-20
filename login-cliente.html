@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login do Cliente - HVSF</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Emerald & Gold Theme Variables (Approximate RGB for CSS) */
+      --background: #042f2e; /* Deep Emerald Green */
+      --foreground: #f2e8c9; /* Light Gold */
+      --card: #064e3b; /* Slightly lighter Emerald */
+      --primary: #d4af37; /* Rich Gold */
+      --primary-hover: #c5a028;
+      --border: rgba(212, 175, 55, 0.2);
+      --input-bg: rgba(0, 0, 0, 0.2);
+    }
+
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: var(--background);
+      font-family: 'Inter', sans-serif;
+      color: var(--foreground);
+      overflow: hidden;
+    }
+
+    /* Background Pattern Overlay */
+    body::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: radial-gradient(circle at 50% 50%, rgba(212, 175, 55, 0.05) 0%, transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    .login-container {
+      background-color: var(--card);
+      padding: 3rem;
+      border-radius: 12px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      border: 1px solid var(--border);
+      width: 100%;
+      max-width: 400px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* Gold Glow Effect on Card */
+    .login-container::after {
+      content: "";
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(212, 175, 55, 0.05) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .logo-container {
+      margin-bottom: 2rem;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .logo-icon {
+      width: 64px;
+      height: 64px;
+      background: rgba(212, 175, 55, 0.1);
+      border: 1px solid rgba(212, 175, 55, 0.3);
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary);
+      font-size: 2rem;
+      box-shadow: 0 0 20px rgba(212, 175, 55, 0.1);
+    }
+
+    .logo-text {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+
+    .logo-subtext {
+      font-size: 0.875rem;
+      color: var(--primary);
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    h1 {
+      margin-bottom: 0.5rem;
+      font-weight: 600;
+      font-size: 1.5rem;
+      color: #fff;
+    }
+
+    p.subtitle {
+      margin-top: 0;
+      margin-bottom: 2rem;
+      color: rgba(242, 232, 201, 0.7);
+      font-size: 0.9rem;
+    }
+
+    .input-group {
+      margin-bottom: 1.25rem;
+      position: relative;
+      text-align: left;
+    }
+
+    .input-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-size: 0.85rem;
+      font-weight: 500;
+      color: var(--foreground);
+    }
+
+    .input-wrapper {
+      position: relative;
+    }
+
+    .input-wrapper i {
+      position: absolute;
+      left: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: rgba(242, 232, 201, 0.5);
+      transition: color 0.3s;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px 15px 12px 45px;
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: #fff;
+      font-size: 0.95rem;
+      box-sizing: border-box;
+      transition: all 0.3s;
+      font-family: 'Inter', sans-serif;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary);
+      background: rgba(0, 0, 0, 0.4);
+      box-shadow: 0 0 0 2px rgba(212, 175, 55, 0.2);
+    }
+
+    input:focus + i {
+      color: var(--primary);
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      background: var(--primary);
+      border: none;
+      border-radius: 8px;
+      color: #042f2e; /* Dark text on gold button */
+      font-weight: 600;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      margin-top: 1rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    button:hover {
+      background: var(--primary-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 5px 15px rgba(212, 175, 55, 0.3);
+    }
+
+    button:active {
+      transform: translateY(0);
+    }
+
+    .error-msg {
+      background: rgba(220, 38, 38, 0.2);
+      border: 1px solid rgba(220, 38, 38, 0.5);
+      color: #fca5a5;
+      padding: 10px;
+      border-radius: 6px;
+      margin-top: 1.5rem;
+      font-size: 0.85rem;
+      display: none;
+      animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both;
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-1px, 0, 0); }
+      20%, 80% { transform: translate3d(2px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+      40%, 60% { transform: translate3d(4px, 0, 0); }
+    }
+
+    .footer-links {
+      margin-top: 2rem;
+      font-size: 0.85rem;
+      color: rgba(242, 232, 201, 0.5);
+    }
+
+    .footer-links a {
+      color: var(--primary);
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+
+    .footer-links a:hover {
+      text-decoration: underline;
+      color: #fff;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-container">
+    <div class="logo-container">
+      <div class="logo-icon">
+        <i class="fas fa-shield-alt"></i>
+      </div>
+      <div>
+        <div class="logo-text">MithraSF</div>
+        <div class="logo-subtext">Saúde Financeira</div>
+      </div>
+    </div>
+    
+    <h1>Área do Cliente</h1>
+    <p class="subtitle">Acesse seu painel exclusivo de planejamento</p>
+    
+    <form id="login-form">
+      <div class="input-group">
+        <label for="login">Usuário</label>
+        <div class="input-wrapper">
+          <input type="text" id="login" placeholder="Digite seu login" required />
+          <i class="fas fa-user"></i>
+        </div>
+      </div>
+      
+      <div class="input-group">
+        <label for="senha">Senha</label>
+        <div class="input-wrapper">
+          <input type="password" id="senha" placeholder="Digite sua senha" required />
+          <i class="fas fa-lock"></i>
+        </div>
+      </div>
+      
+      <button type="submit">
+        <i class="fas fa-sign-in-alt" style="margin-right: 8px;"></i> Entrar
+      </button>
+      
+      <div class="error-msg" id="error-msg">
+        <i class="fas fa-exclamation-circle" style="margin-right: 5px;"></i> Login ou senha incorretos.
+      </div>
+    </form>
+
+    <div class="footer-links">
+      Precisa de ajuda? <a href="#">Fale com seu consultor</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Configuração Supabase
+    const SUPABASE_URL = "https://vbikskbfkhundhropykf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const login = document.getElementById('login').value;
+        const senha = document.getElementById('senha').value;
+        const errorMsg = document.getElementById('error-msg');
+        const btn = document.querySelector('button[type="submit"]');
+        const originalBtnText = btn.innerHTML;
+        
+        errorMsg.style.display = 'none';
+        
+        // Loading state
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verificando...';
+
+        try {
+            // Busca cliente com login e senha correspondentes
+            const { data, error } = await supabase
+                .from('clientes')
+                .select('*')
+                .eq('login', login)
+                .eq('senha', senha) // Nota: Em produção, use hash de senha!
+                .single();
+
+            if (error || !data) {
+                throw new Error('Credenciais inválidas');
+            }
+
+            // Login sucesso
+            sessionStorage.setItem('cliente_id', data.id);
+            sessionStorage.setItem('cliente_nome', data.nome);
+            sessionStorage.setItem('cliente_projeto', data.projeto);
+            
+            // Feedback visual de sucesso
+            btn.style.background = '#10b981'; // Success green
+            btn.innerHTML = '<i class="fas fa-check"></i> Sucesso!';
+            
+            setTimeout(() => {
+                window.location.href = 'cliente-dashboard-hvsf.html';
+            }, 800);
+
+        } catch (error) {
+            console.error('Erro login:', error);
+            errorMsg.style.display = 'block';
+            errorMsg.innerHTML = '<i class="fas fa-exclamation-circle" style="margin-right: 5px;"></i> Login ou senha incorretos.';
+            
+            // Reset button
+            btn.disabled = false;
+            btn.innerHTML = originalBtnText;
+        }
+    });
+  </script>
+</body>
+</html>
