@@ -42,8 +42,13 @@
 
             sidebarContainer.innerHTML = `
                 <div class="sidebar-header">
-                    <img src="${logoPath}" alt="HV Logo" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
-                    <div class="logo-text">HV Saude Financeira</div>
+                    <div class="logo-container">
+                        <img src="${logoPath}" alt="HV Logo" class="logo-img" onerror="this.style.display='none';">
+                    </div>
+                    <div class="logo-text-container">
+                        <span class="logo-title">HV</span>
+                        <span class="logo-subtitle">Saúde Financeira</span>
+                    </div>
                 </div>
                 <nav class="sidebar-nav">
                     <a href="${basePath}index.html" class="nav-item" id="nav-home">
