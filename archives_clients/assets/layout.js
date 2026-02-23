@@ -2,6 +2,8 @@
 // Wrapped in an IIFE to prevent global scope pollution and conflicts
 (function() {
     // Initialize Supabase (Global but scoped to this closure or window property if needed)
+    // NOTE: Replace these with your actual Supabase URL and Key when ready.
+    // If invalid, the script will gracefully skip Supabase initialization to prevent errors.
     const supabaseUrl = 'YOUR_SUPABASE_URL';
     const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
     let localSupabaseClient = null;
@@ -9,11 +11,15 @@
     // Safe initialization
     if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
         try {
-            // Check if we already have a client to avoid re-creating
-            if (!window.mithraSupabaseClient) {
-                window.mithraSupabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+            // Only attempt to create client if URL is valid (not the placeholder)
+            if (supabaseUrl !== 'YOUR_SUPABASE_URL' && supabaseUrl.startsWith('http')) {
+                if (!window.mithraSupabaseClient) {
+                    window.mithraSupabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
+                }
+                localSupabaseClient = window.mithraSupabaseClient;
+            } else {
+                console.warn('Supabase URL not configured. Auth features will be disabled.');
             }
-            localSupabaseClient = window.mithraSupabaseClient;
         } catch (e) {
             console.warn('Supabase initialization failed:', e);
         }
@@ -30,9 +36,13 @@
         const basePath = isSubDir ? '../' : '';
 
         if (sidebarContainer) {
+            // Use absolute path for logo if possible, or relative based on basePath
+            // Assuming assets folder is always at root/assets
+            const logoPath = basePath + 'assets/logo.png';
+
             sidebarContainer.innerHTML = `
                 <div class="sidebar-header">
-                    <img src="${basePath}assets/logo.png" alt="HV Logo" class="logo-img">
+                    <img src="${logoPath}" alt="HV Logo" class="logo-img" onerror="this.style.display='none'; this.nextElementSibling.style.display='block';">
                     <div class="logo-text">HV Saude Financeira</div>
                 </div>
                 <nav class="sidebar-nav">
@@ -93,7 +103,8 @@
                     window.location.href = basePath + 'login-cliente.html';
                 } catch (error) {
                     console.error('Error logging out:', error);
-                    alert('Erro ao sair. Tente novamente.');
+                    // Fallback redirect even on error
+                    window.location.href = basePath + 'login-cliente.html';
                 }
             });
         }
