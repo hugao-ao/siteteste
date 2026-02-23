@@ -269,11 +269,10 @@
                 const pmt = parseCurrency(document.getElementById('installmentValue').value);
                 if (!pmt) { alert("Preencha o valor da parcela."); return; }
 
-                let rate = 0.01; // Initial guess
-                
                 // Newton-Raphson method to find rate
                 // f(r) = pmt * (1 - (1+r)^-n) / r - cashPrice = 0
                 
+                let rate = 0.01; // Initial guess
                 let totalPaid = pmt * n;
                 let totalInterest = totalPaid - cashPrice;
 
@@ -346,7 +345,37 @@
                 document.getElementById('total-paid').textContent = formatBRL(totalPaid);
                 document.getElementById('total-interest').textContent = formatBRL(totalInterest);
                 
-                document.getElementById('rec-box').classList.add('hidden');
+                // Financial Impact Assessment Logic
+                const recBox = document.getElementById('rec-box');
+                const recTitle = document.getElementById('rec-title');
+                const recText = document.getElementById('rec-text');
+                
+                recBox.classList.remove('hidden');
+                
+                const overpricePercent = (totalInterest / cashPrice) * 100;
+                
+                if (overpricePercent < 10) {
+                    recTitle.textContent = "Baixo Impacto Financeiro";
+                    recTitle.parentElement.querySelector('span').textContent = "✅";
+                    recBox.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
+                    recBox.style.borderColor = "rgba(16, 185, 129, 0.3)";
+                    recBox.querySelector('.rec-title').style.color = "#10b981";
+                    recText.innerHTML = `<strong>Diagnóstico:</strong> Você pagará apenas <strong>${overpricePercent.toFixed(2)}%</strong> a mais pelo bem. <br>O custo do crédito está controlado e eficiente.`;
+                } else if (overpricePercent < 30) {
+                    recTitle.textContent = "Médio Impacto Financeiro";
+                    recTitle.parentElement.querySelector('span').textContent = "⚠️";
+                    recBox.style.backgroundColor = "rgba(234, 179, 8, 0.1)";
+                    recBox.style.borderColor = "rgba(234, 179, 8, 0.3)";
+                    recBox.querySelector('.rec-title').style.color = "#eab308";
+                    recText.innerHTML = `<strong>Atenção:</strong> Você pagará <strong>${overpricePercent.toFixed(2)}%</strong> a mais pelo bem. <br>O custo dos juros já representa uma fatia considerável do valor original. Avalie se a compra é urgente.`;
+                } else {
+                    recTitle.textContent = "Alto Impacto Financeiro";
+                    recTitle.parentElement.querySelector('span').textContent = "🚨";
+                    recBox.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+                    recBox.style.borderColor = "rgba(239, 68, 68, 0.3)";
+                    recBox.querySelector('.rec-title').style.color = "#ef4444";
+                    recText.innerHTML = `<strong>Alerta de Custo Elevado:</strong> Você pagará <strong>${overpricePercent.toFixed(2)}%</strong> a mais pelo bem. <br>Isso significa que quase 1/3 ou mais do valor pago será apenas juros. Considere juntar o dinheiro para comprar à vista.`;
+                }
             }
         }
     </script>
