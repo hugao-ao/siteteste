@@ -42,7 +42,7 @@
             sidebarContainer.innerHTML = `
                 <div class="sidebar-header">
                     <div class="logo-container">
-                        <img src="${logoBase64}" alt="HV Logo" class="logo-img" onerror="this.style.display='none';">
+                        <img src="${logoBase64}" alt="HV Logo" class="logo-img">
                     </div>
                     <div class="logo-text-container">
                         <span class="logo-title">HV</span>
