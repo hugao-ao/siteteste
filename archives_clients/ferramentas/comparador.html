@@ -86,7 +86,7 @@
                         <span class="text-blue-500 text-2xl">⚖️</span>
                         <h1 class="text-2xl font-bold m-0">Comparador de Preços</h1>
                     </div>
-                    <p class="text-gray-400 text-sm">Descubra qual embalagem vale mais a pena.</p>
+                    <p class="text-gray-400 text-sm">Análise de custo unitário e eficiência de compra.</p>
                 </div>
                 <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
@@ -94,49 +94,49 @@
             <div class="grid md:grid-cols-2 gap-6">
                 <!-- Produto A -->
                 <div class="product-card">
-                    <div class="product-title-a">Produto A</div>
+                    <div class="product-title-a">Opção A</div>
                     
                     <div class="input-group">
-                        <label>Preço (R$)</label>
+                        <label>Preço Total (R$)</label>
                         <input type="text" id="priceA" placeholder="0,00" oninput="formatCurrency(this)">
                     </div>
                     
                     <div class="input-group">
-                        <label>Quantidade (ml, g, unidades)</label>
+                        <label>Quantidade / Volume (ml, g, un)</label>
                         <input type="number" id="qtyA" placeholder="0">
                     </div>
                 </div>
 
                 <!-- Produto B -->
                 <div class="product-card">
-                    <div class="product-title-b">Produto B</div>
+                    <div class="product-title-b">Opção B</div>
                     
                     <div class="input-group">
-                        <label>Preço (R$)</label>
+                        <label>Preço Total (R$)</label>
                         <input type="text" id="priceB" placeholder="0,00" oninput="formatCurrency(this)">
                     </div>
                     
                     <div class="input-group">
-                        <label>Quantidade (ml, g, unidades)</label>
+                        <label>Quantidade / Volume (ml, g, un)</label>
                         <input type="number" id="qtyB" placeholder="0">
                     </div>
                 </div>
             </div>
 
-            <button onclick="calculate()" class="btn-calculate">Calcular Melhor Opção</button>
+            <button onclick="calculate()" class="btn-calculate">Calcular Custo Unitário</button>
 
             <!-- Resultado -->
             <div id="result-box" class="result-box">
                 <div class="result-title">
-                    O <span id="winner-name" class="result-highlight">Produto B</span> é a melhor escolha!
+                    Melhor Eficiência: <span id="winner-name" class="result-highlight">Opção B</span>
                 </div>
                 <div class="result-economy">
-                    Você economiza <span id="economy-percent">0%</span> levando esta opção.
+                    Economia Relativa: <span id="economy-percent">0%</span>
                 </div>
                 
                 <div class="result-details">
-                    <span id="detail-a">Preço por unidade A: R$ 0.0000</span>
-                    <span id="detail-b">Preço por unidade B: R$ 0.0000</span>
+                    <span id="detail-a">Custo Unitário A: R$ 0.0000</span>
+                    <span id="detail-b">Custo Unitário B: R$ 0.0000</span>
                 </div>
             </div>
         </div>
@@ -180,25 +180,25 @@
 
             resultBox.style.display = 'block';
             
-            detailA.textContent = `Preço por unidade A: R$ ${unitPriceA.toFixed(4)}`;
-            detailB.textContent = `Preço por unidade B: R$ ${unitPriceB.toFixed(4)}`;
+            detailA.textContent = `Custo Unitário A: R$ ${unitPriceA.toFixed(4)}`;
+            detailB.textContent = `Custo Unitário B: R$ ${unitPriceB.toFixed(4)}`;
 
             if (unitPriceA < unitPriceB) {
-                winnerName.textContent = "Produto A";
+                winnerName.textContent = "Opção A";
                 winnerName.className = "result-highlight-a"; // Blue
                 const economy = ((unitPriceB - unitPriceA) / unitPriceB) * 100;
                 economyPercent.textContent = `${economy.toFixed(1)}%`;
-                resultEconomyText.innerHTML = `Você economiza <span id="economy-percent">${economy.toFixed(1)}%</span> levando esta opção.`;
+                resultEconomyText.innerHTML = `Economia Relativa: <span id="economy-percent">${economy.toFixed(1)}%</span>`;
             } else if (unitPriceB < unitPriceA) {
-                winnerName.textContent = "Produto B";
+                winnerName.textContent = "Opção B";
                 winnerName.className = "result-highlight"; // Purple
                 const economy = ((unitPriceA - unitPriceB) / unitPriceA) * 100;
                 economyPercent.textContent = `${economy.toFixed(1)}%`;
-                resultEconomyText.innerHTML = `Você economiza <span id="economy-percent">${economy.toFixed(1)}%</span> levando esta opção.`;
+                resultEconomyText.innerHTML = `Economia Relativa: <span id="economy-percent">${economy.toFixed(1)}%</span>`;
             } else {
-                winnerName.textContent = "Empate";
+                winnerName.textContent = "Equivalente";
                 winnerName.className = "text-white";
-                resultEconomyText.textContent = "Os dois produtos têm o mesmo custo-benefício.";
+                resultEconomyText.textContent = "Ambas as opções têm o mesmo custo unitário.";
             }
         }
     </script>
