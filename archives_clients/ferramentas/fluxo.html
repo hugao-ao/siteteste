@@ -243,19 +243,74 @@
             border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
+        /* Enhanced Projection Box Styles */
         .projection-box {
-            background-color: rgba(0, 0, 0, 0.2);
             border-radius: 12px;
-            padding: 1.5rem;
+            padding: 2rem;
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
+            text-align: center;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            border: 2px solid transparent;
+            transition: transform 0.3s ease;
         }
 
-        .projection-title { font-size: 1.1rem; color: white; margin-bottom: 0.5rem; }
-        .projection-value { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
-        .projection-desc { font-size: 0.85rem; color: #9ca3af; text-align: center; }
+        .projection-box:hover {
+            transform: scale(1.02);
+        }
+
+        /* Status-specific styles for Projection Box */
+        .projection-box.status-red {
+            background: linear-gradient(145deg, rgba(239, 68, 68, 0.2), rgba(153, 27, 27, 0.4));
+            border-color: #ef4444;
+        }
+
+        .projection-box.status-yellow {
+            background: linear-gradient(145deg, rgba(234, 179, 8, 0.2), rgba(161, 98, 7, 0.4));
+            border-color: #eab308;
+        }
+
+        .projection-box.status-green {
+            background: linear-gradient(145deg, rgba(34, 197, 94, 0.2), rgba(21, 128, 61, 0.4));
+            border-color: #22c55e;
+        }
+
+        .projection-title { 
+            font-size: 1.2rem; 
+            font-weight: 600; 
+            color: white; 
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .projection-value { 
+            font-size: 3rem; 
+            font-weight: 800; 
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .projection-desc { 
+            font-size: 1rem; 
+            color: rgba(255, 255, 255, 0.9); 
+            line-height: 1.5;
+            font-weight: 500;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-bottom: 1rem;
+            background-color: rgba(0,0,0,0.3);
+            color: white;
+        }
 
         .alert-box {
             background-color: rgba(255, 255, 255, 0.02);
@@ -342,25 +397,25 @@
                 listKey: "incomes"
             },
             2: {
-                title: "Seus Investimentos Mensais",
-                desc: "Quanto você guarda ou investe todo mês?",
-                placeholder: "Ex: Aporte Tesouro Direto",
+                title: "Seus Investimentos",
+                desc: "Quanto você já separa para o futuro (Aportes mensais).",
+                placeholder: "Ex: Tesouro Direto",
                 color: "bg-blue-500",
                 textColor: "text-blue-500",
                 listKey: "investments"
             },
             3: {
-                title: "Despesas Fixas (Obrigatórias)",
-                desc: "Contas que chegam todo mês e são essenciais.",
-                placeholder: "Ex: Aluguel / Condomínio",
+                title: "Despesas Fixas",
+                desc: "Contas que chegam todo mês (Aluguel, Luz, Internet).",
+                placeholder: "Ex: Aluguel",
                 color: "bg-yellow-500",
                 textColor: "text-yellow-500",
                 listKey: "fixedExpenses"
             },
             4: {
-                title: "Despesas Variáveis (Estilo de Vida)",
-                desc: "Gastos com lazer, compras, delivery e supérfluos.",
-                placeholder: "Ex: iFood / Uber",
+                title: "Despesas Variáveis",
+                desc: "Gastos que mudam (Lazer, Ifood, Uber, Compras).",
+                placeholder: "Ex: Supermercado",
                 color: "bg-red-500",
                 textColor: "text-red-500",
                 listKey: "variableExpenses"
@@ -369,49 +424,23 @@
 
         // Helper Functions
         function formatCurrency(value) {
-            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-        }
-
-        function parseCurrencyInput(value) {
-            if (!value) return 0;
-            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
-        }
-
-        function formatCurrencyInput(input) {
-            let value = input.value.replace(/\D/g, '');
-            value = (parseFloat(value) / 100).toFixed(2) + '';
-            value = value.replace('.', ',');
-            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
-            if (value === 'NaN') value = '';
-            input.value = value;
+            return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
         }
 
         function getTotal(list) {
             return list.reduce((acc, item) => acc + item.value, 0);
         }
 
-        // Core Logic
-        function addItem() {
-            const nameInput = document.getElementById('itemName');
-            const valueInput = document.getElementById('itemValue');
-            const name = nameInput.value.trim();
-            const value = parseCurrencyInput(valueInput.value);
-
-            if (name && value > 0) {
-                const listKey = stepsConfig[currentStep].listKey;
-                data[listKey].push({ id: Date.now(), name, value });
-                
-                nameInput.value = '';
-                valueInput.value = '';
-                nameInput.focus();
-                
-                renderStep();
-            }
+        function addItem(name, value) {
+            if (!name || !value) return;
+            const key = stepsConfig[currentStep].listKey;
+            data[key].push({ name, value: parseFloat(value) });
+            renderStep();
         }
 
-        function removeItem(id) {
-            const listKey = stepsConfig[currentStep].listKey;
-            data[listKey] = data[listKey].filter(item => item.id !== id);
+        function removeItem(index) {
+            const key = stepsConfig[currentStep].listKey;
+            data[key].splice(index, 1);
             renderStep();
         }
 
@@ -445,57 +474,58 @@
             const config = stepsConfig[currentStep];
             const list = data[config.listKey];
             const total = getTotal(list);
-            const container = document.getElementById('step-container');
+            const progress = (currentStep / 4) * 100;
 
+            const container = document.getElementById('step-container');
+            
             container.innerHTML = `
                 <div class="step-card">
                     <div class="progress-bar-container">
-                        <div class="progress-bar ${config.color}" style="width: ${(currentStep / 4) * 100}%"></div>
+                        <div class="progress-bar ${config.color}" style="width: ${progress}%"></div>
                     </div>
 
                     <div class="step-header">
                         <div>
-                            <div class="text-sm text-gray-400 mb-1">Passo ${currentStep} de 4</div>
-                            <div class="step-title">${config.title}</div>
-                            <div class="step-desc">${config.desc}</div>
+                            <h2 class="step-title">${config.title}</h2>
+                            <p class="step-desc">${config.desc}</p>
                         </div>
                         <div>
-                            <div class="step-total-label">Total</div>
+                            <div class="step-total-label">Total desta etapa</div>
                             <div class="step-total-value ${config.textColor}">${formatCurrency(total)}</div>
                         </div>
                     </div>
 
                     <div class="input-row">
                         <div class="input-group">
-                            <label>Nome</label>
-                            <input type="text" id="itemName" placeholder="${config.placeholder}" onkeydown="if(event.key==='Enter') addItem()">
+                            <label>Descrição</label>
+                            <input type="text" id="item-name" placeholder="${config.placeholder}">
                         </div>
                         <div class="input-group">
                             <label>Valor (R$)</label>
-                            <input type="text" id="itemValue" placeholder="0,00" oninput="formatCurrencyInput(this)" onkeydown="if(event.key==='Enter') addItem()">
+                            <input type="number" id="item-value" placeholder="0,00">
                         </div>
-                        <button onclick="addItem()" class="add-btn ${config.color}">
-                            <span style="font-size: 1.2rem; font-weight: bold;">+</span>
+                        <button onclick="addItem(document.getElementById('item-name').value, document.getElementById('item-value').value)" class="add-btn">
+                            <span class="text-xl">+</span>
                         </button>
                     </div>
 
                     <div class="item-list">
-                        ${list.length === 0 ? '<p class="text-center text-gray-500 italic py-4">Nenhum item adicionado ainda.</p>' : ''}
-                        ${list.map(item => `
+                        ${list.map((item, index) => `
                             <div class="list-item">
-                                <span class="font-medium text-white">${item.name}</span>
+                                <span>${item.name}</span>
                                 <div class="flex items-center">
-                                    <span class="text-white mr-4">${formatCurrency(item.value)}</span>
-                                    <button onclick="removeItem(${item.id})" class="delete-btn">🗑️</button>
+                                    <span class="font-bold">${formatCurrency(item.value)}</span>
+                                    <button onclick="removeItem(${index})" class="delete-btn">🗑️</button>
                                 </div>
                             </div>
                         `).join('')}
+                        ${list.length === 0 ? '<div class="text-center text-gray-600 py-4">Nenhum item adicionado ainda.</div>' : ''}
                     </div>
 
                     <div class="nav-buttons">
-                        ${currentStep > 1 ? `<button onclick="prevStep()" class="btn-back">Voltar</button>` : ''}
+                        <button onclick="prevStep()" class="btn-back" ${currentStep === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Voltar</button>
                         <button onclick="nextStep()" class="btn-next ${config.color}">
-                            ${currentStep === 4 ? 'Ver Resultado Completo' : 'Próximo Passo'}
+                            ${currentStep === 4 ? 'Finalizar e Ver Resultado' : 'Próxima Etapa'}
                         </button>
                     </div>
                 </div>
@@ -510,39 +540,51 @@
             
             const totalExpenses = totalFixed + totalVariable + totalInvest;
             const balance = totalIncome - totalExpenses;
-            const yearlyLoss = balance * 12;
+            const yearlyProjection = balance * 12;
             const isPositive = balance >= 0;
 
-            // Calculate surplus percentage
+            // Calculate surplus percentage relative to total income
+            // Avoid division by zero
             const surplusPercentage = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
-            const isWarning = isPositive && surplusPercentage > 2.5;
+            
+            // Logic for 2.5% Rule
+            // 1. Deficit (Negative Balance) -> RED
+            // 2. Surplus > 2.5% -> YELLOW (Inefficiency Warning)
+            // 3. Surplus between 0% and 2.5% -> GREEN (Optimized)
+            
+            let statusColor, statusTitle, statusDesc, boxClass, badgeText;
+
+            if (!isPositive) {
+                // CASE 1: DEFICIT (RED)
+                statusColor = "text-red-500";
+                boxClass = "status-red";
+                statusTitle = "DÍVIDA ANUAL PROJETADA";
+                badgeText = "ALERTA CRÍTICO";
+                statusDesc = `CUIDADO! Você está sangrando financeiramente. Se nada mudar, sua dívida aumentará em <strong>${formatCurrency(Math.abs(yearlyProjection))}</strong> em um ano.`;
+            } else if (surplusPercentage > 2.5) {
+                // CASE 2: SURPLUS > 2.5% (YELLOW - INEFFICIENCY)
+                statusColor = "text-yellow-400";
+                boxClass = "status-yellow";
+                statusTitle = "DINHEIRO PARADO (CUSTO DE OPORTUNIDADE)";
+                badgeText = "ALERTA DE INEFICIÊNCIA";
+                statusDesc = `ATENÇÃO! Você tem <strong>${surplusPercentage.toFixed(1)}%</strong> da sua renda parada. Isso é dinheiro que deveria estar investido. Você está deixando de ganhar juros sobre <strong>${formatCurrency(yearlyProjection)}</strong> ao ano.`;
+            } else {
+                // CASE 3: OPTIMIZED (GREEN)
+                statusColor = "text-green-400";
+                boxClass = "status-green";
+                statusTitle = "POTENCIAL ANUAL ACUMULADO";
+                badgeText = "ORÇAMENTO OTIMIZADO";
+                statusDesc = `PARABÉNS! Seu orçamento está eficiente. Sua sobra é de apenas <strong>${surplusPercentage.toFixed(1)}%</strong>, o que significa que você está alocando corretamente seus recursos.`;
+            }
 
             const container = document.getElementById('step-container');
 
-            let alertTitle, alertText, alertColorClass;
-
-            if (!isPositive) {
-                // Deficit
-                alertTitle = "Alerta Vermelho! Você está sangrando financeiramente.";
-                alertText = `Você está perdendo <strong>${formatCurrency(Math.abs(balance))}</strong> por mês. Isso destrói qualquer plano de futuro. É uma emergência.`;
-                alertColorClass = "text-red-500";
-            } else if (isWarning) {
-                // Surplus > 2.5% (Inefficiency Warning)
-                alertTitle = "Você tem dinheiro sobrando, mas onde ele está?";
-                alertText = `Você tem <strong>${formatCurrency(balance)}</strong> (${surplusPercentage.toFixed(1)}% da renda) que deveriam estar construindo sua liberdade. Se você não vê esse dinheiro, você está queimando patrimônio. Sobras acima de 2,5% indicam ineficiência na alocação.`;
-                alertColorClass = "text-yellow-500";
-            } else {
-                // Healthy Surplus (<= 2.5%)
-                alertTitle = "Parabéns! Seu orçamento está otimizado.";
-                alertText = `Você tem uma sobra saudável de <strong>${formatCurrency(balance)}</strong>. Continue investindo e mantendo o controle.`;
-                alertColorClass = "text-green-500";
-            }
-
             container.innerHTML = `
                 <div class="result-card ${isPositive ? 'positive' : 'negative'}">
-                    <h2 class="result-title">${isPositive ? "Você está no Azul!" : "Alerta Vermelho!"}</h2>
+                    <h2 class="result-title">${isPositive ? "Resultado do Mês" : "Alerta Vermelho!"}</h2>
                     
                     <div class="grid md:grid-cols-2 gap-8">
+                        <!-- Left Column: Summary -->
                         <div class="space-y-2">
                             <div class="summary-row">
                                 <span class="summary-label">Renda Total</span>
@@ -562,38 +604,28 @@
                             </div>
                             
                             <div class="final-balance-row">
-                                <span>Saldo Final</span>
+                                <span>Saldo Final Mensal</span>
                                 <span class="${isPositive ? 'text-green-400' : 'text-red-400'}">${formatCurrency(balance)}</span>
                             </div>
                         </div>
 
-                        <div class="projection-box">
-                            <div class="projection-title">${isPositive ? "Potencial Anual Acumulado" : "Rombo Anual Projetado"}</div>
-                            <div class="projection-value ${isPositive ? 'text-green-500' : 'text-red-500'}">
-                                ${formatCurrency(Math.abs(yearlyLoss))}
+                        <!-- Right Column: Projection Box (Focal Point) -->
+                        <div class="projection-box ${boxClass}">
+                            <span class="status-badge">${badgeText}</span>
+                            <div class="projection-title">${statusTitle}</div>
+                            <div class="projection-value text-white">
+                                ${formatCurrency(Math.abs(yearlyProjection))}
                             </div>
                             <div class="projection-desc">
-                                ${isPositive 
-                                    ? "Isso é o que você acumula em 1 ano mantendo esse ritmo." 
-                                    : "Se nada mudar, esse é o tamanho da sua dívida em 1 ano."}
+                                ${statusDesc}
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="alert-box">
-                    <div class="alert-icon ${alertColorClass}">
-                        ${!isPositive ? '⚠️' : (isWarning ? '⚠️' : '✅')}
-                    </div>
-                    <div class="alert-title ${alertColorClass}">${alertTitle}</div>
-                    <div class="alert-text">${alertText}</div>
-                    
-                    <a href="#" class="inline-block w-full md:w-auto bg-transparent border border-white text-white font-bold py-3 px-6 rounded-lg hover:bg-white hover:text-black transition-colors mb-4">
-                        Sim, quero um especialista
-                    </a>
+                <div class="flex justify-center gap-4 mt-8">
+                    <button onclick="restart()" class="restart-btn">Refazer Raio-X</button>
                 </div>
-
-                <button onclick="restart()" class="restart-btn">Refazer Raio-X</button>
             `;
         }
 
