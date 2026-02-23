@@ -363,7 +363,7 @@
                         <span class="text-blue-400 text-2xl">💰</span>
                         <h1 class="text-2xl font-bold m-0">Raio-X do Orçamento</h1>
                     </div>
-                    <p class="text-gray-400 text-sm">Mapeie cada centavo e descubra a verdade sobre suas finanças.</p>
+                    <p class="text-gray-400 text-sm">Diagnóstico financeiro detalhado e projeção de fluxo de caixa.</p>
                 </div>
                 <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
@@ -389,33 +389,33 @@
         // Configuration for each step
         const stepsConfig = {
             1: {
-                title: "Suas Fontes de Renda",
-                desc: "Adicione salários, aluguéis, dividendos e renda extra.",
+                title: "Fontes de Renda",
+                desc: "Registre todas as entradas mensais (salários, pró-labore, aluguéis, dividendos).",
                 placeholder: "Ex: Salário Mensal",
                 color: "bg-green-500",
                 textColor: "text-green-500",
                 listKey: "incomes"
             },
             2: {
-                title: "Seus Investimentos",
-                desc: "Quanto você já separa para o futuro (Aportes mensais).",
-                placeholder: "Ex: Tesouro Direto",
+                title: "Aportes e Investimentos",
+                desc: "Valores destinados à construção de patrimônio (não inclua reserva de emergência se for uso corrente).",
+                placeholder: "Ex: Aporte Tesouro Direto",
                 color: "bg-blue-500",
                 textColor: "text-blue-500",
                 listKey: "investments"
             },
             3: {
                 title: "Despesas Fixas",
-                desc: "Contas que chegam todo mês (Aluguel, Luz, Internet).",
-                placeholder: "Ex: Aluguel",
+                desc: "Compromissos financeiros recorrentes e obrigatórios (Moradia, Educação, Seguros).",
+                placeholder: "Ex: Aluguel / Condomínio",
                 color: "bg-yellow-500",
                 textColor: "text-yellow-500",
                 listKey: "fixedExpenses"
             },
             4: {
                 title: "Despesas Variáveis",
-                desc: "Gastos que mudam (Lazer, Ifood, Uber, Compras).",
-                placeholder: "Ex: Supermercado",
+                desc: "Gastos discricionários e oscilantes (Lazer, Alimentação fora, Transporte por app).",
+                placeholder: "Ex: Restaurantes / Ifood",
                 color: "bg-red-500",
                 textColor: "text-red-500",
                 listKey: "variableExpenses"
@@ -525,7 +525,7 @@
                     <div class="nav-buttons">
                         <button onclick="prevStep()" class="btn-back" ${currentStep === 1 ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>Voltar</button>
                         <button onclick="nextStep()" class="btn-next ${config.color}">
-                            ${currentStep === 4 ? 'Finalizar e Ver Resultado' : 'Próxima Etapa'}
+                            ${currentStep === 4 ? 'Gerar Diagnóstico' : 'Próxima Etapa'}
                         </button>
                     </div>
                 </div>
@@ -558,40 +558,40 @@
                 // CASE 1: DEFICIT (RED)
                 statusColor = "text-red-500";
                 boxClass = "status-red";
-                statusTitle = "DÍVIDA ANUAL PROJETADA";
-                badgeText = "ALERTA CRÍTICO";
-                statusDesc = `CUIDADO! Você está sangrando financeiramente. Se nada mudar, sua dívida aumentará em <strong>${formatCurrency(Math.abs(yearlyProjection))}</strong> em um ano.`;
+                statusTitle = "DÉFICIT PROJETADO (ANUAL)";
+                badgeText = "RISCO DE INSOLVÊNCIA";
+                statusDesc = `Diagnóstico Crítico: Seu fluxo de caixa apresenta um déficit estrutural. A projeção indica um acúmulo de dívida de <strong>${formatCurrency(Math.abs(yearlyProjection))}</strong> em 12 meses. Recomendação imediata: revisão de custos fixos e variáveis.`;
             } else if (surplusPercentage > 2.5) {
                 // CASE 2: SURPLUS > 2.5% (YELLOW - INEFFICIENCY)
                 statusColor = "text-yellow-400";
                 boxClass = "status-yellow";
-                statusTitle = "DINHEIRO PARADO (CUSTO DE OPORTUNIDADE)";
-                badgeText = "ALERTA DE INEFICIÊNCIA";
-                statusDesc = `ATENÇÃO! Você tem <strong>${surplusPercentage.toFixed(1)}%</strong> da sua renda parada. Isso é dinheiro que deveria estar investido. Você está deixando de ganhar juros sobre <strong>${formatCurrency(yearlyProjection)}</strong> ao ano.`;
+                statusTitle = "CAPITAL OCIOSO (ANUAL)";
+                badgeText = "INEFICIÊNCIA DE ALOCAÇÃO";
+                statusDesc = `Diagnóstico de Eficiência: Identificamos <strong>${surplusPercentage.toFixed(1)}%</strong> de capital não alocado. Isso representa um custo de oportunidade sobre <strong>${formatCurrency(yearlyProjection)}</strong> anuais. Recomendação: Aumentar aportes em investimentos produtivos.`;
             } else {
                 // CASE 3: OPTIMIZED (GREEN)
                 statusColor = "text-green-400";
                 boxClass = "status-green";
-                statusTitle = "POTENCIAL ANUAL ACUMULADO";
-                badgeText = "ORÇAMENTO OTIMIZADO";
-                statusDesc = `PARABÉNS! Seu orçamento está eficiente. Sua sobra é de apenas <strong>${surplusPercentage.toFixed(1)}%</strong>, o que significa que você está alocando corretamente seus recursos.`;
+                statusTitle = "POTENCIAL DE ACUMULAÇÃO";
+                badgeText = "ALOCAÇÃO OTIMIZADA";
+                statusDesc = `Diagnóstico Positivo: Sua estrutura de capital está eficiente, com margem de erro de apenas <strong>${surplusPercentage.toFixed(1)}%</strong>. O fluxo de caixa está devidamente direcionado para despesas e investimentos, maximizando o potencial de juros compostos.`;
             }
 
             const container = document.getElementById('step-container');
 
             container.innerHTML = `
                 <div class="result-card ${isPositive ? 'positive' : 'negative'}">
-                    <h2 class="result-title">${isPositive ? "Resultado do Mês" : "Alerta Vermelho!"}</h2>
+                    <h2 class="result-title">Diagnóstico Financeiro</h2>
                     
                     <div class="grid md:grid-cols-2 gap-8">
                         <!-- Left Column: Summary -->
                         <div class="space-y-2">
                             <div class="summary-row">
-                                <span class="summary-label">Renda Total</span>
+                                <span class="summary-label">Receita Total</span>
                                 <span class="summary-val-green">${formatCurrency(totalIncome)}</span>
                             </div>
                             <div class="summary-row">
-                                <span class="summary-label">Investimentos</span>
+                                <span class="summary-label">Aportes (Investimentos)</span>
                                 <span class="summary-val-blue">-${formatCurrency(totalInvest)}</span>
                             </div>
                             <div class="summary-row">
@@ -604,7 +604,7 @@
                             </div>
                             
                             <div class="final-balance-row">
-                                <span>Saldo Final Mensal</span>
+                                <span>Resultado Líquido Mensal</span>
                                 <span class="${isPositive ? 'text-green-400' : 'text-red-400'}">${formatCurrency(balance)}</span>
                             </div>
                         </div>
@@ -624,7 +624,7 @@
                 </div>
 
                 <div class="flex justify-center gap-4 mt-8">
-                    <button onclick="restart()" class="restart-btn">Refazer Raio-X</button>
+                    <button onclick="restart()" class="restart-btn">Nova Análise</button>
                 </div>
             `;
         }
