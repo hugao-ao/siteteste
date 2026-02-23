@@ -146,7 +146,7 @@
                         <span class="text-purple-500 text-2xl">💳</span>
                         <h1 class="text-2xl font-bold m-0">Comparador de Cartões</h1>
                     </div>
-                    <p class="text-gray-400 text-sm">Milhas ou Cashback? Veja qual coloca mais dinheiro no seu bolso.</p>
+                    <p class="text-gray-400 text-sm">Análise de eficiência: Milhas vs Cashback.</p>
                 </div>
                 <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
@@ -155,7 +155,7 @@
             <div id="input-section">
                 <!-- Profile Inputs -->
                 <div class="input-card">
-                    <div class="section-title">Seu Perfil de Gastos</div>
+                    <div class="section-title">Parâmetros de Consumo</div>
                     <div class="grid md:grid-cols-3 gap-4">
                         <div class="input-group">
                             <label>Gasto Mensal na Fatura (R$)</label>
@@ -227,7 +227,7 @@
                     </div>
                 </div>
 
-                <button onclick="calculate()" class="action-btn">Comparar Retorno Financeiro</button>
+                <button onclick="calculate()" class="action-btn">Gerar Relatório Comparativo</button>
             </div>
 
             <!-- Result Section (Hidden by default) -->
@@ -236,8 +236,8 @@
                 
                 <div class="winner-box">
                     <span class="trophy-icon">🏆</span>
-                    <div class="winner-name" id="winner-name">Vencedor: Cartão A</div>
-                    <div class="winner-subtitle">Considerando o retorno líquido (ganho - anuidade)</div>
+                    <div class="winner-name" id="winner-name">Melhor Eficiência: Cartão A</div>
+                    <div class="winner-subtitle">Baseado no Retorno Líquido (Yield) sobre o gasto mensal</div>
                 </div>
 
                 <div class="grid md:grid-cols-2 gap-6">
@@ -249,13 +249,13 @@
                         <div id="res-tag-a" class="result-tag">(Melhor via Milhas)</div>
 
                         <div class="calc-memory">
-                            <div class="text-xs text-gray-400 font-bold mb-2">Memória de Cálculo:</div>
-                            <div class="memory-row"><span>Gasto Mensal:</span><span id="mem-spend-a">R$ 0,00</span></div>
-                            <div class="memory-row"><span>Cotação Dólar:</span><span id="mem-dollar-a">R$ 0,00</span></div>
-                            <div class="memory-row"><span>Milhas Geradas:</span><span id="mem-miles-a">0 (R$ 0,00)</span></div>
-                            <div class="memory-row"><span>Cashback:</span><span id="mem-cashback-a">R$ 0,00</span></div>
-                            <div class="memory-row red"><span>Anuidade Mensal:</span><span id="mem-fee-a">-R$ 0,00</span></div>
-                            <div class="memory-row green"><span>Resultado Final:</span><span id="mem-final-a">R$ 0,00</span></div>
+                            <div class="text-xs text-gray-400 font-bold mb-2">Detalhamento Técnico:</div>
+                            <div class="memory-row"><span>Volume Transacionado:</span><span id="mem-spend-a">R$ 0,00</span></div>
+                            <div class="memory-row"><span>Câmbio Base:</span><span id="mem-dollar-a">R$ 0,00</span></div>
+                            <div class="memory-row"><span>Geração de Milhas:</span><span id="mem-miles-a">0 (R$ 0,00)</span></div>
+                            <div class="memory-row"><span>Cashback Direto:</span><span id="mem-cashback-a">R$ 0,00</span></div>
+                            <div class="memory-row red"><span>Custo de Anuidade:</span><span id="mem-fee-a">-R$ 0,00</span></div>
+                            <div class="memory-row green"><span>Resultado Líquido:</span><span id="mem-final-a">R$ 0,00</span></div>
                         </div>
                     </div>
 
@@ -267,13 +267,13 @@
                         <div id="res-tag-b" class="result-tag">(Melhor via Cashback)</div>
 
                         <div class="calc-memory">
-                            <div class="text-xs text-gray-400 font-bold mb-2">Memória de Cálculo:</div>
-                            <div class="memory-row"><span>Gasto Mensal:</span><span id="mem-spend-b">R$ 0,00</span></div>
-                            <div class="memory-row"><span>Cotação Dólar:</span><span id="mem-dollar-b">R$ 0,00</span></div>
-                            <div class="memory-row"><span>Milhas Geradas:</span><span id="mem-miles-b">0 (R$ 0,00)</span></div>
-                            <div class="memory-row"><span>Cashback:</span><span id="mem-cashback-b">R$ 0,00</span></div>
-                            <div class="memory-row red"><span>Anuidade Mensal:</span><span id="mem-fee-b">-R$ 0,00</span></div>
-                            <div class="memory-row green"><span>Resultado Final:</span><span id="mem-final-b">R$ 0,00</span></div>
+                            <div class="text-xs text-gray-400 font-bold mb-2">Detalhamento Técnico:</div>
+                            <div class="memory-row"><span>Volume Transacionado:</span><span id="mem-spend-b">R$ 0,00</span></div>
+                            <div class="memory-row"><span>Câmbio Base:</span><span id="mem-dollar-b">R$ 0,00</span></div>
+                            <div class="memory-row"><span>Geração de Milhas:</span><span id="mem-miles-b">0 (R$ 0,00)</span></div>
+                            <div class="memory-row"><span>Cashback Direto:</span><span id="mem-cashback-b">R$ 0,00</span></div>
+                            <div class="memory-row red"><span>Custo de Anuidade:</span><span id="mem-fee-b">-R$ 0,00</span></div>
+                            <div class="memory-row green"><span>Resultado Líquido:</span><span id="mem-final-b">R$ 0,00</span></div>
                         </div>
                     </div>
                 </div>
@@ -281,9 +281,9 @@
                 <div class="miles-power-box">
                     <span class="plane-icon">✈️</span>
                     <div>
-                        <div class="power-title">O Poder das Milhas vai além do dinheiro</div>
+                        <div class="power-title">Nota Técnica sobre Milhas</div>
                         <div class="power-text">
-                            O cálculo acima considera a venda das milhas. Porém, o maior potencial está no uso estratégico: aproveitar promoções de transferência bonificada e emitir passagens ou diárias pode fazer seu retorno valer <strong>muito mais</strong> do que a conversão direta em dinheiro.
+                            A análise acima considera a liquidação das milhas no mercado secundário. Em emissões estratégicas (passagens aéreas), o valor percebido por milheiro pode superar R$ 40,00, o que aumentaria significativamente o retorno do cartão pontuador.
                         </div>
                     </div>
                 </div>
@@ -387,11 +387,11 @@
             // Determine Winner
             const winnerNameEl = document.getElementById('winner-name');
             if (resA.totalReturn > resB.totalReturn) {
-                winnerNameEl.textContent = `Vencedor: ${nameA}`;
+                winnerNameEl.textContent = `Melhor Eficiência: ${nameA}`;
             } else if (resB.totalReturn > resA.totalReturn) {
-                winnerNameEl.textContent = `Vencedor: ${nameB}`;
+                winnerNameEl.textContent = `Melhor Eficiência: ${nameB}`;
             } else {
-                winnerNameEl.textContent = "Empate!";
+                winnerNameEl.textContent = "Eficiência Equivalente";
             }
 
             document.getElementById('result-section').classList.remove('hidden');
