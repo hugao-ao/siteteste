@@ -41,7 +41,7 @@
 
         .input-group { margin-bottom: 1.5rem; }
         .input-group label { display: block; font-size: 0.9rem; color: #9ca3af; margin-bottom: 0.5rem; font-weight: 600; }
-        .input-group input {
+        .input-group input, .input-group select {
             width: 100%;
             background-color: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -50,7 +50,7 @@
             color: white;
             font-size: 1rem;
         }
-        .input-group input:focus { outline: none; border-color: var(--primary-color); }
+        .input-group input:focus, .input-group select:focus { outline: none; border-color: var(--primary-color); }
 
         .action-btn {
             width: 100%;
@@ -103,6 +103,8 @@
         
         .rec-title { color: #10b981; font-weight: bold; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
         .rec-text { font-size: 0.9rem; color: #d1d5db; line-height: 1.4; }
+        
+        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -152,8 +154,14 @@
                     </div>
 
                     <div class="input-group hidden" id="group-interest-rate">
-                        <label>Taxa de Juros Mensal (%)</label>
-                        <input type="number" id="interestRate" placeholder="Ex: 2" step="0.01">
+                        <label>Taxa de Juros (%)</label>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <input type="number" id="interestRate" placeholder="Ex: 2" step="0.01" style="flex: 2;">
+                            <select id="rateType" style="flex: 1;">
+                                <option value="monthly">Mensal</option>
+                                <option value="annual">Anual</option>
+                            </select>
+                        </div>
                     </div>
 
                     <button onclick="calculate()" class="action-btn" id="action-btn">Descobrir Taxa Real</button>
@@ -223,6 +231,8 @@
             document.getElementById('result-card').style.opacity = '0.5';
             document.getElementById('rec-box').classList.add('hidden');
             document.getElementById('result-main-value').textContent = mode === 'rate' ? '0.00% a.m.' : 'R$ 0,00';
+            document.getElementById('total-paid').textContent = 'R$ 0,00';
+            document.getElementById('total-interest').textContent = 'R$ 0,00';
         }
 
         function formatCurrency(input) {
@@ -276,49 +286,63 @@
                         rate = newRate;
                     }
                 }
-                
-                const ratePercent = (rate * 100).toFixed(2);
 
-                document.getElementById('result-main-value').textContent = `${ratePercent}% a.m.`;
+                document.getElementById('result-main-value').textContent = (rate * 100).toFixed(2) + '% a.m.';
                 document.getElementById('total-paid').textContent = formatBRL(totalPaid);
                 document.getElementById('total-interest').textContent = formatBRL(totalInterest);
 
-                // Recommendation
+                // Recommendation Logic
                 const recBox = document.getElementById('rec-box');
                 const recTitle = document.getElementById('rec-title');
                 const recText = document.getElementById('rec-text');
+                
                 recBox.classList.remove('hidden');
-
-                if (rate > 0.01) { // > 1% a.m.
-                    recTitle.textContent = "Vale a pena pagar à vista!";
-                    recText.textContent = `O desconto equivale a um rendimento de ${ratePercent}% ao mês. Dificilmente um investimento seguro supera isso.`;
+                if (rate > 0.01) { // If rate > 1% per month
+                    recTitle.textContent = "Cuidado! Juros Altos";
+                    recTitle.parentElement.querySelector('span').textContent = "⚠️";
+                    recBox.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
+                    recBox.style.borderColor = "rgba(239, 68, 68, 0.3)";
+                    recBox.querySelector('.rec-title').style.color = "#ef4444";
+                    recText.textContent = `Essa compra tem juros de ${(rate*100).toFixed(2)}% ao mês. Isso é muito acima da maioria dos investimentos seguros. Se puder, pague à vista.`;
                 } else {
-                    recTitle.textContent = "Pode valer a pena parcelar";
-                    recText.textContent = `A taxa de juros é baixa (${ratePercent}% a.m.). Se você tiver o dinheiro investido rendendo mais que isso, parcele.`;
+                    recTitle.textContent = "Taxa Aceitável";
+                    recTitle.parentElement.querySelector('span').textContent = "✅";
+                    recBox.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
+                    recBox.style.borderColor = "rgba(16, 185, 129, 0.3)";
+                    recBox.querySelector('.rec-title').style.color = "#10b981";
+                    recText.textContent = `A taxa de ${(rate*100).toFixed(2)}% ao mês está razoável. Se você tiver investimentos rendendo mais que isso, pode valer a pena parcelar.`;
                 }
 
             } else {
                 // Mode 2: Calculate Installment
-                const ratePercent = parseFloat(document.getElementById('interestRate').value);
-                if (isNaN(ratePercent)) { alert("Preencha a taxa de juros."); return; }
+                let rateInput = parseFloat(document.getElementById('interestRate').value);
+                const rateType = document.getElementById('rateType').value;
 
-                const rate = ratePercent / 100;
-                let pmt = 0;
-                
-                if (rate === 0) {
+                if (isNaN(rateInput)) { alert("Preencha a taxa de juros."); return; }
+
+                let monthlyRate;
+                if (rateType === 'annual') {
+                    // Convert Annual to Monthly: (1 + annual)^(1/12) - 1
+                    monthlyRate = Math.pow(1 + (rateInput / 100), 1/12) - 1;
+                } else {
+                    monthlyRate = rateInput / 100;
+                }
+
+                // PMT Formula: PV * i / (1 - (1+i)^-n)
+                let pmt;
+                if (monthlyRate === 0) {
                     pmt = cashPrice / n;
                 } else {
-                    pmt = cashPrice * (rate * Math.pow(1 + rate, n)) / (Math.pow(1 + rate, n) - 1);
+                    pmt = cashPrice * monthlyRate / (1 - Math.pow(1 + monthlyRate, -n));
                 }
-                
-                const totalPaid = pmt * n;
-                const totalInterest = totalPaid - cashPrice;
+
+                let totalPaid = pmt * n;
+                let totalInterest = totalPaid - cashPrice;
 
                 document.getElementById('result-main-value').textContent = formatBRL(pmt);
                 document.getElementById('total-paid').textContent = formatBRL(totalPaid);
                 document.getElementById('total-interest').textContent = formatBRL(totalInterest);
                 
-                // Hide recommendation in this mode as it's a simulation
                 document.getElementById('rec-box').classList.add('hidden');
             }
         }
