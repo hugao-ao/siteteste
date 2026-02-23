@@ -120,11 +120,26 @@
         .verdict-box {
             margin-top: 2rem;
             text-align: center;
-            padding: 1rem;
+            padding: 1.5rem;
             background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 8px;
         }
-        .verdict-text { color: white; font-weight: bold; }
+        .verdict-title {
+            color: #eab308;
+            font-weight: bold;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+        .verdict-text {
+            color: #d1d5db;
+            font-size: 0.95rem;
+            line-height: 1.5;
+        }
     </style>
 </head>
 <body>
@@ -141,7 +156,7 @@
                         <span class="text-yellow-500 text-2xl">🏠</span>
                         <h1 class="text-2xl font-bold m-0">Simulador Imobiliário</h1>
                     </div>
-                    <p class="text-gray-400 text-sm">SAC ou Price? Veja quanto você vai pagar de verdade.</p>
+                    <p class="text-gray-400 text-sm">Análise comparativa de sistemas de amortização (SAC vs Price).</p>
                 </div>
                 <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
@@ -150,7 +165,7 @@
                 <!-- Input Column -->
                 <div class="lg:col-span-1">
                     <div class="input-card">
-                        <h3 class="text-yellow-500 font-bold mb-6">Dados do Financiamento</h3>
+                        <h3 class="text-yellow-500 font-bold mb-6">Parâmetros do Financiamento</h3>
                         
                         <div class="input-group">
                             <label>Valor do Imóvel (R$)</label>
@@ -168,7 +183,7 @@
                         </div>
 
                         <div class="input-group">
-                            <label>Prazo</label>
+                            <label>Prazo de Pagamento</label>
                             <div class="flex gap-2">
                                 <input type="number" id="term" placeholder="30" style="flex: 2;">
                                 <div class="period-toggle" style="flex: 1;">
@@ -178,7 +193,7 @@
                             </div>
                         </div>
 
-                        <button onclick="calculate()" class="action-btn">Simular Financiamento</button>
+                        <button onclick="calculate()" class="action-btn">Gerar Simulação Comparativa</button>
                     </div>
                 </div>
 
@@ -187,7 +202,7 @@
                     <!-- Summary Bar -->
                     <div class="summary-bar">
                         <div>
-                            <div class="summary-label">Valor Financiado (Imóvel - Entrada)</div>
+                            <div class="summary-label">Saldo Devedor Inicial (Financiado)</div>
                         </div>
                         <div class="summary-value" id="financed-amount">R$ 0,00</div>
                     </div>
@@ -196,8 +211,8 @@
                     <div class="comparison-grid">
                         <!-- SAC Card -->
                         <div class="table-card sac-border">
-                            <div class="table-title sac-title">Tabela SAC</div>
-                            <div class="table-subtitle">Parcelas decrescentes</div>
+                            <div class="table-title sac-title">Sistema SAC</div>
+                            <div class="table-subtitle">Amortização Constante (Parcelas Decrescentes)</div>
 
                             <div class="result-row">
                                 <div class="result-label">Primeira Parcela</div>
@@ -210,12 +225,12 @@
                             </div>
 
                             <div class="result-row border-t border-gray-700 pt-4">
-                                <div class="result-label">Total Pago (Financiamento)</div>
+                                <div class="result-label">Custo Total do Financiamento</div>
                                 <div class="result-value text-red-500" id="sac-total">R$ 0,00</div>
                             </div>
 
                             <div class="result-row">
-                                <div class="result-label">Só de Juros</div>
+                                <div class="result-label">Total Pago em Juros</div>
                                 <div class="result-value text-red-400" id="sac-interest">R$ 0,00</div>
                             </div>
                         </div>
@@ -223,10 +238,10 @@
                         <!-- Price Card -->
                         <div class="table-card price-border">
                             <div class="table-title price-title">Tabela Price</div>
-                            <div class="table-subtitle">Parcelas fixas</div>
+                            <div class="table-subtitle">Sistema Francês (Parcelas Fixas)</div>
 
                             <div class="result-row">
-                                <div class="result-label">Valor da Parcela</div>
+                                <div class="result-label">Valor da Parcela (Fixa)</div>
                                 <div class="result-value" id="price-pmt">R$ 0,00</div>
                             </div>
 
@@ -236,12 +251,12 @@
                             </div>
 
                             <div class="result-row border-t border-gray-700 pt-4">
-                                <div class="result-label">Total Pago (Financiamento)</div>
+                                <div class="result-label">Custo Total do Financiamento</div>
                                 <div class="result-value text-red-500" id="price-total">R$ 0,00</div>
                             </div>
 
                             <div class="result-row">
-                                <div class="result-label">Só de Juros</div>
+                                <div class="result-label">Total Pago em Juros</div>
                                 <div class="result-value text-red-400" id="price-interest">R$ 0,00</div>
                             </div>
                         </div>
@@ -249,8 +264,12 @@
 
                     <!-- Verdict -->
                     <div class="verdict-box hidden" id="verdict-box">
-                        <span class="text-yellow-500 text-xl mr-2">💡</span>
-                        <span class="verdict-text" id="verdict-text">Você vai pagar de 1.9x a 2.5x o valor do imóvel!</span>
+                        <div class="verdict-title">
+                            <span>💡</span> Análise de Custo Efetivo
+                        </div>
+                        <div class="verdict-text" id="verdict-text">
+                            <!-- Text injected by JS -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -334,10 +353,13 @@
             const verdictText = document.getElementById('verdict-text');
             verdictBox.classList.remove('hidden');
 
-            const multipleSAC = (totalPaidSAC / propertyValue).toFixed(1);
-            const multiplePrice = (totalPaidPrice / propertyValue).toFixed(1);
+            const multipleSAC = (totalPaidSAC / financed).toFixed(1);
+            const multiplePrice = (totalPaidPrice / financed).toFixed(1);
 
-            verdictText.textContent = `Você vai pagar de ${multipleSAC}x a ${multiplePrice}x o valor do imóvel!`;
+            verdictText.innerHTML = `
+                <strong>Impacto dos Juros:</strong> Ao final do contrato, você terá pago entre <strong>${multipleSAC}x</strong> (SAC) e <strong>${multiplePrice}x</strong> (Price) o valor original financiado. <br>
+                A tabela SAC, apesar da parcela inicial maior, gera uma economia total de <strong>${formatBRL(totalPaidPrice - totalPaidSAC)}</strong> em juros comparada à Price.
+            `;
         }
     </script>
 </body>
