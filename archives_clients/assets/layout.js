@@ -32,7 +32,7 @@
         if (sidebarContainer) {
             sidebarContainer.innerHTML = `
                 <div class="sidebar-header">
-                    <div class="logo-icon">HV</div>
+                    <img src="${basePath}assets/logo.png" alt="HV Logo" class="logo-img">
                     <div class="logo-text">HV Saude Financeira</div>
                 </div>
                 <nav class="sidebar-nav">
