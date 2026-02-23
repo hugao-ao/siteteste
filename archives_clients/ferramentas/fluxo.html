@@ -3,119 +3,603 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Fluxo de Caixa - MithraSF</title>
+    <title>Raio-X do Orçamento - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="../assets/layout.js" defer></script>
+    <style>
+        /* Specific styles for Fluxo de Caixa */
+        .step-card {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .progress-bar-container {
+            height: 0.5rem;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-bottom: 1.5rem;
+        }
+
+        .progress-bar {
+            height: 100%;
+            transition: width 0.5s ease-in-out, background-color 0.5s ease-in-out;
+        }
+
+        .step-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 2rem;
+        }
+
+        .step-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 0.5rem;
+        }
+
+        .step-desc {
+            color: #9ca3af;
+            font-size: 0.9rem;
+        }
+
+        .step-total-label {
+            font-size: 0.85rem;
+            color: #9ca3af;
+            text-align: right;
+        }
+
+        .step-total-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: right;
+        }
+
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 1rem;
+            align-items: end;
+            margin-bottom: 1.5rem;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #9ca3af;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .input-group input {
+            width: 100%;
+            background-color: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 0.75rem;
+            color: white;
+            font-size: 1rem;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .add-btn {
+            background-color: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: white;
+            width: 42px;
+            height: 42px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background-color 0.2s;
+        }
+
+        .add-btn:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .item-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-bottom: 2rem;
+        }
+
+        .list-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: rgba(255, 255, 255, 0.05);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+            animation: slideIn 0.3s ease-out;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .delete-btn {
+            background: none;
+            border: none;
+            color: #9ca3af;
+            cursor: pointer;
+            margin-left: 1rem;
+            transition: color 0.2s;
+        }
+
+        .delete-btn:hover {
+            color: #ef4444;
+        }
+
+        .nav-buttons {
+            display: flex;
+            gap: 1rem;
+        }
+
+        .btn-back {
+            width: 33%;
+            background-color: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-back:hover {
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .btn-next {
+            flex: 1;
+            color: white;
+            padding: 1rem;
+            border-radius: 8px;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+
+        .btn-next:hover {
+            opacity: 0.9;
+        }
+
+        /* Result Styles */
+        .result-card {
+            border: 2px solid;
+            border-radius: 12px;
+            padding: 2rem;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .result-card.positive {
+            border-color: #22c55e; /* Green-500 */
+            background-color: rgba(34, 197, 94, 0.1);
+        }
+
+        .result-card.negative {
+            border-color: #ef4444; /* Red-500 */
+            background-color: rgba(239, 68, 68, 0.1);
+        }
+
+        .result-title {
+            font-size: 2rem;
+            font-weight: bold;
+            color: white;
+            margin-bottom: 2rem;
+        }
+
+        .result-grid {
+            display: grid;
+            md:grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            text-align: left;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-label { color: #9ca3af; }
+        .summary-val-green { color: #4ade80; font-weight: bold; }
+        .summary-val-blue { color: #60a5fa; font-weight: bold; }
+        .summary-val-yellow { color: #facc15; font-weight: bold; }
+        .summary-val-red { color: #f87171; font-weight: bold; }
+
+        .final-balance-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .projection-box {
+            background-color: rgba(0, 0, 0, 0.2);
+            border-radius: 12px;
+            padding: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .projection-title { font-size: 1.1rem; color: white; margin-bottom: 0.5rem; }
+        .projection-value { font-size: 2.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .projection-desc { font-size: 0.85rem; color: #9ca3af; text-align: center; }
+
+        .alert-box {
+            background-color: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            text-align: center;
+            margin-top: 2rem;
+        }
+
+        .alert-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1rem;
+            font-size: 1.5rem;
+        }
+
+        .alert-title { font-size: 1.2rem; font-weight: bold; color: white; margin-bottom: 0.5rem; }
+        .alert-text { color: #9ca3af; font-size: 0.9rem; margin-bottom: 1.5rem; }
+
+        .restart-btn {
+            width: 100%;
+            background: none;
+            border: none;
+            color: #9ca3af;
+            padding: 1rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .restart-btn:hover { color: white; }
+
+    </style>
 </head>
 <body>
+    <!-- Sidebar Container (Injected by layout.js) -->
     <div id="sidebar-container" class="sidebar"></div>
 
+    <!-- Main Content -->
     <main class="main-content">
         <div class="container">
-            <header class="flex justify-between items-center mb-8">
-                <h1>Fluxo de Caixa</h1>
-                <button id="mobile-toggle" class="mobile-toggle">☰</button>
+            <header class="flex items-center gap-4 mb-8">
+                <a href="../ferramentas.html" class="text-gray-400 hover:text-white text-xl">←</a>
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-blue-400 text-2xl">💰</span>
+                        <h1 class="text-2xl font-bold m-0">Raio-X do Orçamento</h1>
+                    </div>
+                    <p class="text-gray-400 text-sm">Mapeie cada centavo e descubra a verdade sobre suas finanças.</p>
+                </div>
+                <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div class="card bg-emerald-900/50">
-                    <h3 class="text-gray-400 text-sm">Entradas</h3>
-                    <p id="total-income" class="text-2xl font-bold text-green-400">R$ 0,00</p>
-                </div>
-                <div class="card bg-emerald-900/50">
-                    <h3 class="text-gray-400 text-sm">Saídas</h3>
-                    <p id="total-expense" class="text-2xl font-bold text-red-400">R$ 0,00</p>
-                </div>
-                <div class="card bg-emerald-900/50">
-                    <h3 class="text-gray-400 text-sm">Saldo</h3>
-                    <p id="balance" class="text-2xl font-bold text-white">R$ 0,00</p>
-                </div>
+            <!-- Step Content -->
+            <div id="step-container">
+                <!-- Content injected by JS -->
             </div>
 
-            <div class="card mb-8">
-                <h3 class="text-xl font-bold text-white mb-4">Novo Lançamento</h3>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <input type="text" id="desc" placeholder="Descrição (Ex: Salário, Aluguel)">
-                    <input type="number" id="amount" placeholder="Valor (R$)">
-                    <select id="type" class="bg-emerald-900/50 border border-emerald-700 text-white p-3 rounded">
-                        <option value="income">Entrada (+)</option>
-                        <option value="expense">Saída (-)</option>
-                    </select>
-                    <button onclick="addTransaction()" class="btn btn-primary">Adicionar</button>
-                </div>
-            </div>
-
-            <div class="card">
-                <h3 class="text-xl font-bold text-white mb-4">Histórico</h3>
-                <ul id="transaction-list" class="space-y-2">
-                    <!-- Transactions will appear here -->
-                    <li class="text-center text-gray-500 py-4">Nenhum lançamento ainda.</li>
-                </ul>
-            </div>
         </div>
     </main>
 
     <script>
-        let transactions = [];
+        // State
+        let currentStep = 1;
+        const data = {
+            incomes: [],
+            investments: [],
+            fixedExpenses: [],
+            variableExpenses: []
+        };
 
-        function addTransaction() {
-            const desc = document.getElementById('desc').value;
-            const amount = parseFloat(document.getElementById('amount').value);
-            const type = document.getElementById('type').value;
+        // Configuration for each step
+        const stepsConfig = {
+            1: {
+                title: "Suas Fontes de Renda",
+                desc: "Adicione salários, aluguéis, dividendos e renda extra.",
+                placeholder: "Ex: Salário Mensal",
+                color: "bg-green-500",
+                textColor: "text-green-500",
+                listKey: "incomes"
+            },
+            2: {
+                title: "Seus Investimentos Mensais",
+                desc: "Quanto você guarda ou investe todo mês?",
+                placeholder: "Ex: Aporte Tesouro Direto",
+                color: "bg-blue-500",
+                textColor: "text-blue-500",
+                listKey: "investments"
+            },
+            3: {
+                title: "Despesas Fixas (Obrigatórias)",
+                desc: "Contas que chegam todo mês e são essenciais.",
+                placeholder: "Ex: Aluguel / Condomínio",
+                color: "bg-yellow-500",
+                textColor: "text-yellow-500",
+                listKey: "fixedExpenses"
+            },
+            4: {
+                title: "Despesas Variáveis (Estilo de Vida)",
+                desc: "Gastos com lazer, compras, delivery e supérfluos.",
+                placeholder: "Ex: iFood / Uber",
+                color: "bg-red-500",
+                textColor: "text-red-500",
+                listKey: "variableExpenses"
+            }
+        };
 
-            if (!desc || isNaN(amount)) {
-                alert('Preencha a descrição e o valor corretamente.');
-                return;
+        // Helper Functions
+        function formatCurrency(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
+        function parseCurrencyInput(value) {
+            if (!value) return 0;
+            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+        }
+
+        function formatCurrencyInput(input) {
+            let value = input.value.replace(/\D/g, '');
+            value = (parseFloat(value) / 100).toFixed(2) + '';
+            value = value.replace('.', ',');
+            value = value.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            if (value === 'NaN') value = '';
+            input.value = value;
+        }
+
+        function getTotal(list) {
+            return list.reduce((acc, item) => acc + item.value, 0);
+        }
+
+        // Core Logic
+        function addItem() {
+            const nameInput = document.getElementById('itemName');
+            const valueInput = document.getElementById('itemValue');
+            const name = nameInput.value.trim();
+            const value = parseCurrencyInput(valueInput.value);
+
+            if (name && value > 0) {
+                const listKey = stepsConfig[currentStep].listKey;
+                data[listKey].push({ id: Date.now(), name, value });
+                
+                nameInput.value = '';
+                valueInput.value = '';
+                nameInput.focus();
+                
+                renderStep();
+            }
+        }
+
+        function removeItem(id) {
+            const listKey = stepsConfig[currentStep].listKey;
+            data[listKey] = data[listKey].filter(item => item.id !== id);
+            renderStep();
+        }
+
+        function nextStep() {
+            if (currentStep < 4) {
+                currentStep++;
+                renderStep();
+            } else {
+                renderResult();
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 1) {
+                currentStep--;
+                renderStep();
+            }
+        }
+
+        function restart() {
+            currentStep = 1;
+            data.incomes = [];
+            data.investments = [];
+            data.fixedExpenses = [];
+            data.variableExpenses = [];
+            renderStep();
+        }
+
+        // Render Functions
+        function renderStep() {
+            const config = stepsConfig[currentStep];
+            const list = data[config.listKey];
+            const total = getTotal(list);
+            const container = document.getElementById('step-container');
+
+            container.innerHTML = `
+                <div class="step-card">
+                    <div class="progress-bar-container">
+                        <div class="progress-bar ${config.color}" style="width: ${(currentStep / 4) * 100}%"></div>
+                    </div>
+
+                    <div class="step-header">
+                        <div>
+                            <div class="text-sm text-gray-400 mb-1">Passo ${currentStep} de 4</div>
+                            <div class="step-title">${config.title}</div>
+                            <div class="step-desc">${config.desc}</div>
+                        </div>
+                        <div>
+                            <div class="step-total-label">Total</div>
+                            <div class="step-total-value ${config.textColor}">${formatCurrency(total)}</div>
+                        </div>
+                    </div>
+
+                    <div class="input-row">
+                        <div class="input-group">
+                            <label>Nome</label>
+                            <input type="text" id="itemName" placeholder="${config.placeholder}" onkeydown="if(event.key==='Enter') addItem()">
+                        </div>
+                        <div class="input-group">
+                            <label>Valor (R$)</label>
+                            <input type="text" id="itemValue" placeholder="0,00" oninput="formatCurrencyInput(this)" onkeydown="if(event.key==='Enter') addItem()">
+                        </div>
+                        <button onclick="addItem()" class="add-btn ${config.color}">
+                            <span style="font-size: 1.2rem; font-weight: bold;">+</span>
+                        </button>
+                    </div>
+
+                    <div class="item-list">
+                        ${list.length === 0 ? '<p class="text-center text-gray-500 italic py-4">Nenhum item adicionado ainda.</p>' : ''}
+                        ${list.map(item => `
+                            <div class="list-item">
+                                <span class="font-medium text-white">${item.name}</span>
+                                <div class="flex items-center">
+                                    <span class="text-white mr-4">${formatCurrency(item.value)}</span>
+                                    <button onclick="removeItem(${item.id})" class="delete-btn">🗑️</button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+
+                    <div class="nav-buttons">
+                        ${currentStep > 1 ? `<button onclick="prevStep()" class="btn-back">Voltar</button>` : ''}
+                        <button onclick="nextStep()" class="btn-next ${config.color}">
+                            ${currentStep === 4 ? 'Ver Resultado Completo' : 'Próximo Passo'}
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderResult() {
+            const totalIncome = getTotal(data.incomes);
+            const totalInvest = getTotal(data.investments);
+            const totalFixed = getTotal(data.fixedExpenses);
+            const totalVariable = getTotal(data.variableExpenses);
+            
+            const totalExpenses = totalFixed + totalVariable + totalInvest;
+            const balance = totalIncome - totalExpenses;
+            const yearlyLoss = balance * 12;
+            const isPositive = balance >= 0;
+
+            // Calculate surplus percentage
+            const surplusPercentage = totalIncome > 0 ? (balance / totalIncome) * 100 : 0;
+            const isWarning = isPositive && surplusPercentage > 2.5;
+
+            const container = document.getElementById('step-container');
+
+            let alertTitle, alertText, alertColorClass;
+
+            if (!isPositive) {
+                // Deficit
+                alertTitle = "Alerta Vermelho! Você está sangrando financeiramente.";
+                alertText = `Você está perdendo <strong>${formatCurrency(Math.abs(balance))}</strong> por mês. Isso destrói qualquer plano de futuro. É uma emergência.`;
+                alertColorClass = "text-red-500";
+            } else if (isWarning) {
+                // Surplus > 2.5% (Inefficiency Warning)
+                alertTitle = "Você tem dinheiro sobrando, mas onde ele está?";
+                alertText = `Você tem <strong>${formatCurrency(balance)}</strong> (${surplusPercentage.toFixed(1)}% da renda) que deveriam estar construindo sua liberdade. Se você não vê esse dinheiro, você está queimando patrimônio. Sobras acima de 2,5% indicam ineficiência na alocação.`;
+                alertColorClass = "text-yellow-500";
+            } else {
+                // Healthy Surplus (<= 2.5%)
+                alertTitle = "Parabéns! Seu orçamento está otimizado.";
+                alertText = `Você tem uma sobra saudável de <strong>${formatCurrency(balance)}</strong>. Continue investindo e mantendo o controle.`;
+                alertColorClass = "text-green-500";
             }
 
-            const transaction = {
-                id: Date.now(),
-                desc,
-                amount,
-                type
-            };
+            container.innerHTML = `
+                <div class="result-card ${isPositive ? 'positive' : 'negative'}">
+                    <h2 class="result-title">${isPositive ? "Você está no Azul!" : "Alerta Vermelho!"}</h2>
+                    
+                    <div class="grid md:grid-cols-2 gap-8">
+                        <div class="space-y-2">
+                            <div class="summary-row">
+                                <span class="summary-label">Renda Total</span>
+                                <span class="summary-val-green">${formatCurrency(totalIncome)}</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Investimentos</span>
+                                <span class="summary-val-blue">-${formatCurrency(totalInvest)}</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Despesas Fixas</span>
+                                <span class="summary-val-yellow">-${formatCurrency(totalFixed)}</span>
+                            </div>
+                            <div class="summary-row">
+                                <span class="summary-label">Despesas Variáveis</span>
+                                <span class="summary-val-red">-${formatCurrency(totalVariable)}</span>
+                            </div>
+                            
+                            <div class="final-balance-row">
+                                <span>Saldo Final</span>
+                                <span class="${isPositive ? 'text-green-400' : 'text-red-400'}">${formatCurrency(balance)}</span>
+                            </div>
+                        </div>
 
-            transactions.push(transaction);
-            updateUI();
-            
-            // Clear inputs
-            document.getElementById('desc').value = '';
-            document.getElementById('amount').value = '';
+                        <div class="projection-box">
+                            <div class="projection-title">${isPositive ? "Potencial Anual Acumulado" : "Rombo Anual Projetado"}</div>
+                            <div class="projection-value ${isPositive ? 'text-green-500' : 'text-red-500'}">
+                                ${formatCurrency(Math.abs(yearlyLoss))}
+                            </div>
+                            <div class="projection-desc">
+                                ${isPositive 
+                                    ? "Isso é o que você acumula em 1 ano mantendo esse ritmo." 
+                                    : "Se nada mudar, esse é o tamanho da sua dívida em 1 ano."}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="alert-box">
+                    <div class="alert-icon ${alertColorClass}">
+                        ${!isPositive ? '⚠️' : (isWarning ? '⚠️' : '✅')}
+                    </div>
+                    <div class="alert-title ${alertColorClass}">${alertTitle}</div>
+                    <div class="alert-text">${alertText}</div>
+                    
+                    <a href="#" class="inline-block w-full md:w-auto bg-transparent border border-white text-white font-bold py-3 px-6 rounded-lg hover:bg-white hover:text-black transition-colors mb-4">
+                        Sim, quero um especialista
+                    </a>
+                </div>
+
+                <button onclick="restart()" class="restart-btn">Refazer Raio-X</button>
+            `;
         }
 
-        function updateUI() {
-            const list = document.getElementById('transaction-list');
-            const incomeEl = document.getElementById('total-income');
-            const expenseEl = document.getElementById('total-expense');
-            const balanceEl = document.getElementById('balance');
+        // Initialize
+        renderStep();
 
-            list.innerHTML = '';
-
-            let income = 0;
-            let expense = 0;
-
-            transactions.forEach(t => {
-                if (t.type === 'income') income += t.amount;
-                else expense += t.amount;
-
-                const li = document.createElement('li');
-                li.className = 'flex justify-between items-center p-3 bg-white/5 rounded border-l-4 ' + (t.type === 'income' ? 'border-green-500' : 'border-red-500');
-                li.innerHTML = `
-                    <span class="text-white">${t.desc}</span>
-                    <span class="${t.type === 'income' ? 'text-green-400' : 'text-red-400'} font-bold">
-                        ${t.type === 'income' ? '+' : '-'} R$ ${t.amount.toFixed(2)}
-                    </span>
-                `;
-                list.appendChild(li);
-            });
-
-            const balance = income - expense;
-
-            incomeEl.textContent = `R$ ${income.toFixed(2)}`;
-            expenseEl.textContent = `R$ ${expense.toFixed(2)}`;
-            balanceEl.textContent = `R$ ${balance.toFixed(2)}`;
-        }
     </script>
 </body>
 </html>
