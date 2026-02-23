@@ -121,21 +121,21 @@
                         <span class="text-green-500 text-2xl">🧮</span>
                         <h1 class="text-2xl font-bold m-0">Calculadora de Juros Reais</h1>
                     </div>
-                    <p class="text-gray-400 text-sm">Descubra os juros escondidos ou simule parcelas.</p>
+                    <p class="text-gray-400 text-sm">Auditoria de taxas e simulação de custo efetivo total.</p>
                 </div>
                 <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
 
             <!-- Mode Switcher -->
             <div class="mode-switch">
-                <button id="btn-mode-rate" class="mode-btn active" onclick="setMode('rate')">Descobrir Taxa de Juros</button>
-                <button id="btn-mode-installment" class="mode-btn" onclick="setMode('installment')">Calcular Parcela</button>
+                <button id="btn-mode-rate" class="mode-btn active" onclick="setMode('rate')">Auditar Taxa de Juros</button>
+                <button id="btn-mode-installment" class="mode-btn" onclick="setMode('installment')">Simular Parcela</button>
             </div>
 
             <div class="grid md:grid-cols-2 gap-8">
                 <!-- Input Section -->
                 <div class="input-card">
-                    <h3 class="text-green-500 font-bold mb-6" id="input-title">Dados da Compra</h3>
+                    <h3 class="text-green-500 font-bold mb-6" id="input-title">Dados da Operação</h3>
                     
                     <div class="input-group">
                         <label>Valor à Vista (R$)</label>
@@ -164,31 +164,31 @@
                         </div>
                     </div>
 
-                    <button onclick="calculate()" class="action-btn" id="action-btn">Descobrir Taxa Real</button>
+                    <button onclick="calculate()" class="action-btn" id="action-btn">Calcular Custo Efetivo</button>
                 </div>
 
                 <!-- Result Section -->
                 <div class="result-card" id="result-card" style="opacity: 0.5;">
-                    <p class="result-main-label" id="result-main-label">Taxa de Juros Mensal Real</p>
+                    <p class="result-main-label" id="result-main-label">Custo Efetivo Mensal (CET)</p>
                     <p class="result-main-value" id="result-main-value">0.00% a.m.</p>
 
                     <div class="result-details-grid">
                         <div>
-                            <p class="detail-label">Total a Pagar</p>
+                            <p class="detail-label">Montante Total</p>
                             <p class="detail-value" id="total-paid">R$ 0,00</p>
                         </div>
                         <div>
-                            <p class="detail-label">Juros Totais</p>
+                            <p class="detail-label">Custo de Juros</p>
                             <p class="detail-value" id="total-interest">R$ 0,00</p>
                         </div>
                     </div>
 
                     <div class="recommendation-box hidden" id="rec-box">
                         <div class="rec-title">
-                            <span>✅</span> <span id="rec-title">Vale a pena pagar à vista!</span>
+                            <span>✅</span> <span id="rec-title">Análise de Viabilidade</span>
                         </div>
                         <p class="rec-text" id="rec-text">
-                            O desconto equivale a um rendimento de X% ao mês. Dificilmente um investimento seguro supera isso.
+                            <!-- Text injected by JS -->
                         </p>
                     </div>
                 </div>
@@ -216,15 +216,15 @@
             if (mode === 'rate') {
                 groupInstallment.classList.remove('hidden');
                 groupRate.classList.add('hidden');
-                actionBtn.textContent = 'Descobrir Taxa Real';
-                inputTitle.textContent = 'Dados da Compra';
-                resultMainLabel.textContent = 'Taxa de Juros Mensal Real';
+                actionBtn.textContent = 'Calcular Custo Efetivo';
+                inputTitle.textContent = 'Dados da Operação';
+                resultMainLabel.textContent = 'Custo Efetivo Mensal (CET)';
             } else {
                 groupInstallment.classList.add('hidden');
                 groupRate.classList.remove('hidden');
-                actionBtn.textContent = 'Calcular Valor da Parcela';
-                inputTitle.textContent = 'Simulação de Financiamento';
-                resultMainLabel.textContent = 'Valor da Parcela Mensal';
+                actionBtn.textContent = 'Simular Fluxo de Pagamento';
+                inputTitle.textContent = 'Parâmetros do Financiamento';
+                resultMainLabel.textContent = 'Parcela Mensal Projetada';
             }
 
             // Reset Results
@@ -269,8 +269,11 @@
                 const pmt = parseCurrency(document.getElementById('installmentValue').value);
                 if (!pmt) { alert("Preencha o valor da parcela."); return; }
 
-                // Newton-Raphson to find rate
-                let rate = 0.01; // Initial guess 1%
+                let rate = 0.01; // Initial guess
+                
+                // Newton-Raphson method to find rate
+                // f(r) = pmt * (1 - (1+r)^-n) / r - cashPrice = 0
+                
                 let totalPaid = pmt * n;
                 let totalInterest = totalPaid - cashPrice;
 
@@ -298,19 +301,19 @@
                 
                 recBox.classList.remove('hidden');
                 if (rate > 0.01) { // If rate > 1% per month
-                    recTitle.textContent = "Cuidado! Juros Altos";
+                    recTitle.textContent = "Custo Elevado de Capital";
                     recTitle.parentElement.querySelector('span').textContent = "⚠️";
                     recBox.style.backgroundColor = "rgba(239, 68, 68, 0.1)";
                     recBox.style.borderColor = "rgba(239, 68, 68, 0.3)";
                     recBox.querySelector('.rec-title').style.color = "#ef4444";
-                    recText.textContent = `Essa compra tem juros de ${(rate*100).toFixed(2)}% ao mês. Isso é muito acima da maioria dos investimentos seguros. Se puder, pague à vista.`;
+                    recText.innerHTML = `<strong>Diagnóstico:</strong> O Custo Efetivo Total (CET) desta operação é de <strong>${(rate*100).toFixed(2)}% ao mês</strong>. <br>Isso supera a rentabilidade média de investimentos conservadores (aprox. 0,8% a.m.). Financeiramente, a compra à vista é mandatória para evitar destruição de valor.`;
                 } else {
-                    recTitle.textContent = "Taxa Aceitável";
+                    recTitle.textContent = "Custo de Oportunidade Favorável";
                     recTitle.parentElement.querySelector('span').textContent = "✅";
                     recBox.style.backgroundColor = "rgba(16, 185, 129, 0.1)";
                     recBox.style.borderColor = "rgba(16, 185, 129, 0.3)";
                     recBox.querySelector('.rec-title').style.color = "#10b981";
-                    recText.textContent = `A taxa de ${(rate*100).toFixed(2)}% ao mês está razoável. Se você tiver investimentos rendendo mais que isso, pode valer a pena parcelar.`;
+                    recText.innerHTML = `<strong>Diagnóstico:</strong> A taxa implícita de <strong>${(rate*100).toFixed(2)}% ao mês</strong> está competitiva. <br>Se o seu capital estiver investido a uma taxa superior a esta, o parcelamento é matematicamente vantajoso (alavancagem positiva).`;
                 }
 
             } else {
