@@ -1,4 +1,4 @@
-// MithraSF Client Portal - Shared Layout Logic
+// HV Saude Financeira Client Portal - Shared Layout Logic
 // Wrapped in an IIFE to prevent global scope pollution and conflicts
 (function() {
     // Initialize Supabase (Global but scoped to this closure or window property if needed)
@@ -32,8 +32,8 @@
         if (sidebarContainer) {
             sidebarContainer.innerHTML = `
                 <div class="sidebar-header">
-                    <div class="logo-icon">M</div>
-                    <div class="logo-text">MithraSF</div>
+                    <div class="logo-icon">HV</div>
+                    <div class="logo-text">HV Saude Financeira</div>
                 </div>
                 <nav class="sidebar-nav">
                     <a href="${basePath}index.html" class="nav-item" id="nav-home">
