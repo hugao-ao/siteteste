@@ -228,8 +228,8 @@
             font-weight: bold;
             text-align: right;
         }
-        .projection-table th:first-child { text-align: left; }
-        .projection-table td:first-child { text-align: left; color: #9ca3af; }
+        .projection-table th:first-child { text-align: center; width: 50px; }
+        .projection-table td:first-child { text-align: center; color: #9ca3af; }
 
         .projection-table tr:hover {
             background-color: rgba(255, 255, 255, 0.02);
@@ -443,6 +443,7 @@
                         <table class="projection-table">
                             <thead>
                                 <tr>
+                                    <th>#</th>
                                     <th>Data</th>
                                     <th>Saldo Inicial</th>
                                     <th>Rendimentos</th>
@@ -661,14 +662,14 @@
                 let firstMonth = g.timeUnit === 'years' ? g.time * 12 : g.time;
                 
                 // Add first occurrence
-                expandedGoals.push({ ...g, month: firstMonth });
+                expandedGoals.push({ ...g, month: firstMonth, originalMonth: firstMonth });
 
                 // Add recurrences
                 if (g.recurrence) {
                     let intervalMonths = g.recurrence.unit === 'years' ? g.recurrence.value * 12 : g.recurrence.value;
                     let nextMonth = firstMonth + intervalMonths;
                     while (nextMonth <= duration) {
-                        expandedGoals.push({ ...g, month: nextMonth });
+                        expandedGoals.push({ ...g, month: nextMonth, originalMonth: nextMonth });
                         nextMonth += intervalMonths;
                     }
                 }
@@ -676,6 +677,9 @@
 
             // Sort goals by month
             expandedGoals.sort((a, b) => a.month - b.month);
+
+            // Queue for postponed goals
+            let goalQueue = [];
 
             for (let m = 1; m <= duration; m++) {
                 // Calculate Date
@@ -688,10 +692,8 @@
                 let interest = balance * interestRateMonthly;
                 balance += interest;
 
-                // Contribution (Adjusted by inflation annually?) - Let's keep simple for now, or adjust annually
-                // Assuming contribution increases with inflation annually
-                let currentContribution = monthlyContribution; // Could implement inflation adjustment here too
-
+                // Contribution
+                let currentContribution = monthlyContribution; 
                 balance += currentContribution;
                 totalInvested += currentContribution;
 
@@ -700,36 +702,58 @@
                 let inflationFactor = Math.pow(1 + inflationRateAnnual, yearsPassed);
                 let currentMinReserve = minReserveInitial * inflationFactor;
 
-                // Handle Goals
+                // Add new goals for this month to the queue
                 let monthGoals = expandedGoals.filter(g => g.month === m);
-                
-                // Sort month goals by priority (1 first)
-                monthGoals.sort((a, b) => a.priority - b.priority);
+                monthGoals.forEach(g => {
+                    // Calculate initial adjusted value based on inflation up to this month
+                    let adjustedValue = g.inflationAdjust ? g.value * inflationFactor : g.value;
+                    goalQueue.push({ ...g, currentAdjustedValue: adjustedValue, monthsDelayed: 0 });
+                });
+
+                // Sort queue by priority (1 first)
+                goalQueue.sort((a, b) => a.priority - b.priority);
 
                 let goalsCost = 0;
                 let goalsListText = [];
+                let remainingQueue = [];
 
-                monthGoals.forEach(g => {
-                    // Calculate Inflation Adjustment for Goal Value
-                    let adjustedValue = g.inflationAdjust ? g.value * inflationFactor : g.value;
+                // Process Queue
+                goalQueue.forEach(g => {
+                    // Update inflation for queued item if needed (monthly adjustment while in queue?)
+                    // For simplicity, we keep the annual step logic based on current year
+                    // Or should we adjust monthly while in queue? 
+                    // Let's stick to the annual factor of the current simulation month to keep it consistent with "price at that time"
+                    if (g.inflationAdjust) {
+                        g.currentAdjustedValue = g.value * inflationFactor;
+                    }
 
                     if (g.type === 'spend') {
                         // Check Minimum Reserve Safety Lock
-                        if (balance - adjustedValue >= currentMinReserve) {
-                            balance -= adjustedValue;
-                            goalsCost += adjustedValue;
-                            goalsListText.push(`${g.name} (${formatBRL(adjustedValue)})`);
+                        if (balance - g.currentAdjustedValue >= currentMinReserve) {
+                            balance -= g.currentAdjustedValue;
+                            goalsCost += g.currentAdjustedValue;
+                            
+                            let delayText = g.monthsDelayed > 0 ? ` (Atraso: ${g.monthsDelayed} meses)` : '';
+                            goalsListText.push(`${g.name}${delayText} (${formatBRL(g.currentAdjustedValue)})`);
                         } else {
-                            // Goal Cancelled/Skipped
-                            goalsListText.push(`<span class="val-warning">⚠️ ${g.name} (Cancelado: Saldo < Reserva)</span>`);
+                            // Keep in queue
+                            g.monthsDelayed++;
+                            remainingQueue.push(g);
+                            // Only show in table if it was supposed to happen this month or is significantly delayed?
+                            // Let's show it as "Postponed" in the table row if it was originally for this month OR every month it's delayed?
+                            // To avoid clutter, maybe only show "In Queue: X goals" or list them?
+                            // User asked to show "Carro Novo (Atraso: 3 meses)"
+                            goalsListText.push(`<span class="val-warning">⏳ ${g.name} (Fila: ${g.monthsDelayed} meses)</span>`);
                         }
                     } else {
                         // Accumulate goal (just a marker)
-                        goalsListText.push(`🎯 ${g.name} (Meta: ${formatBRL(adjustedValue)})`);
+                        goalsListText.push(`🎯 ${g.name} (Meta: ${formatBRL(g.currentAdjustedValue)})`);
                     }
                 });
 
-                if (balance < 0) balance = 0; // No debt in this simple model
+                goalQueue = remainingQueue;
+
+                if (balance < 0) balance = 0; 
 
                 labels.push(dateStr);
                 dataWealth.push(balance);
@@ -737,6 +761,7 @@
 
                 // Add to Table Data
                 tableRows.push({
+                    period: m,
                     date: dateStr,
                     start: startBalance,
                     yield: interest,
@@ -849,6 +874,7 @@
             rows.forEach(row => {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
+                    <td>${row.period}</td>
                     <td>${row.date}</td>
                     <td>${formatBRL(row.start)}</td>
                     <td class="val-positive">+${formatBRL(row.yield)}</td>
