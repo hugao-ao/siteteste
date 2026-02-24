@@ -310,116 +310,115 @@
                             <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">*Valor mínimo intocável (corrigido pela inflação)</p>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="input-group">
-                                <label>Rentabilidade Anual (%)</label>
-                                <input type="number" id="interestRate" placeholder="Ex: 10" step="0.1">
-                            </div>
-                            <div class="input-group">
-                                <label>Inflação Anual (%)</label>
-                                <input type="number" id="inflationRate" placeholder="Ex: 4.5" step="0.1">
-                            </div>
+                        <div class="input-group">
+                            <label>Taxa de Juros Anual (%)</label>
+                            <input type="number" id="interestRate" placeholder="Ex: 10" step="0.1">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Taxa de Inflação Anual (%)</label>
+                            <input type="number" id="inflationRate" placeholder="Ex: 4.5" step="0.1">
                         </div>
 
                         <div class="input-group">
                             <label>Imposto de Renda sobre Lucro (%)</label>
                             <input type="number" id="taxRate" placeholder="Ex: 15" step="0.1" value="15">
-                            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">*Incide apenas sobre os rendimentos</p>
+                            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">*Incide sobre o rendimento acumulado</p>
                         </div>
 
                         <div class="input-group">
-                            <div class="flex justify-between items-center mb-2">
-                                <label style="margin:0">Horizonte de Tempo</label>
-                                <div class="toggle-group">
-                                    <button class="toggle-btn active" onclick="setTimeUnit('years')" id="btn-years">Anos</button>
-                                    <button class="toggle-btn" onclick="setTimeUnit('months')" id="btn-months">Meses</button>
-                                </div>
-                            </div>
-                            <input type="number" id="duration" placeholder="Ex: 20" value="10">
+                            <label>Período de Projeção (Anos)</label>
+                            <input type="number" id="years" placeholder="Ex: 20">
                         </div>
                     </div>
 
                     <!-- Goals Card -->
                     <div class="input-card">
-                        <div class="card-header text-blue">Objetivos e Eventos</div>
+                        <div class="card-header text-blue">Objetivos de Vida</div>
                         
-                        <input type="hidden" id="editingGoalId" value="">
+                        <input type="hidden" id="editingGoalId">
 
                         <div class="input-group">
-                            <label>Descrição do Objetivo</label>
-                            <input type="text" id="goalName" placeholder="Ex: Trocar de Carro">
+                            <label>Nome do Objetivo</label>
+                            <input type="text" id="goalName" placeholder="Ex: Viagem, Carro, Casa">
                         </div>
 
                         <div class="input-group">
-                            <label>Valor Atual (R$)</label>
+                            <label>Valor (R$ - Preço Hoje)</label>
                             <input type="text" id="goalValue" placeholder="0,00" oninput="formatCurrencyInput(this)">
-                            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">*Valor a preço de hoje</p>
                         </div>
 
                         <div class="input-group">
-                            <label>Tipo</label>
-                            <select id="goalType">
-                                <option value="spend">Usufruir (Gastar)</option>
-                                <option value="accumulate">Acumular (Meta)</option>
-                            </select>
-                        </div>
-
-                        <div class="input-group">
-                            <label>Recorrência</label>
+                            <label>Realizar em (Tempo)</label>
                             <div style="display: flex; gap: 0.5rem;">
-                                <select id="goalRecurrenceType" onchange="toggleRecurrenceInput()" style="flex: 1;">
-                                    <option value="once">Único</option>
-                                    <option value="repeat">Repetir a cada...</option>
-                                </select>
-                                <div id="recurrenceDetails" style="display: none; flex: 1; gap: 0.5rem;">
-                                    <input type="number" id="recurrenceValue" placeholder="Ex: 2" style="width: 60px;">
-                                    <select id="recurrenceUnit" style="width: auto;">
-                                        <option value="years">Anos</option>
-                                        <option value="months">Meses</option>
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="input-group">
-                            <label>Quando? (A partir do início)</label>
-                            <div style="display: flex; gap: 0.5rem; align-items: center;">
                                 <input type="number" id="goalTime" placeholder="Ex: 5" style="flex: 1;">
-                                <select id="goalTimeUnit" style="flex: 1;">
+                                <select id="goalTimeUnit" style="width: 100px;">
                                     <option value="years">Anos</option>
                                     <option value="months">Meses</option>
                                 </select>
                             </div>
                         </div>
 
+                        <div class="input-group">
+                            <label>Tipo de Objetivo</label>
+                            <select id="goalType" onchange="togglePhysicalAssetInput()">
+                                <option value="spend">Usufruir (Gastar/Comprar)</option>
+                                <option value="accumulate">Acumular (Meta de Saldo)</option>
+                            </select>
+                        </div>
+
+                        <!-- Physical Asset Inputs (Hidden by default) -->
+                        <div id="physicalAssetGroup" style="display: none; border-left: 2px solid var(--primary-color); padding-left: 1rem; margin-bottom: 1rem;">
+                            <label class="checkbox-wrapper">
+                                <input type="checkbox" id="isPhysicalAsset" onchange="toggleAssetRateInput()">
+                                É construção de patrimônio físico? (Imóvel, etc)
+                            </label>
+                            
+                            <div id="assetRateGroup" style="display: none;">
+                                <label>Taxa de Valorização Anual (%)</label>
+                                <input type="number" id="assetAppreciationRate" placeholder="Ex: 3.0 (ou -10 para depreciação)" step="0.1">
+                                <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">*Ajuste anual após aquisição</p>
+                            </div>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Recorrência</label>
+                            <select id="goalRecurrenceType" onchange="toggleRecurrenceInput()">
+                                <option value="once">Uma vez apenas</option>
+                                <option value="repeat">Repetir a cada...</option>
+                            </select>
+                        </div>
+
+                        <div id="recurrenceDetails" class="input-group" style="display: none; gap: 0.5rem;">
+                            <input type="number" id="recurrenceValue" placeholder="Ex: 2" style="flex: 1;">
+                            <select id="recurrenceUnit" style="width: 100px;">
+                                <option value="years">Anos</option>
+                                <option value="months">Meses</option>
+                            </select>
+                        </div>
+
                         <label class="checkbox-wrapper">
                             <input type="checkbox" id="goalInflationAdjust" checked>
-                            Corrigir valor pela inflação?
+                            Corrigir valor pela inflação? (Reajuste anual)
                         </label>
 
-                        <button onclick="addOrUpdateGoal()" class="btn-secondary" id="btnAddGoal">
+                        <button id="btnAddGoal" onclick="addOrUpdateGoal()" class="btn-secondary">
                             <span>+</span> Adicionar Objetivo
                         </button>
-                        <button onclick="cancelEdit()" class="btn-secondary" id="btnCancelEdit" style="display:none; margin-top: 0.5rem; background-color: rgba(239, 68, 68, 0.2); color: #fca5a5;">
+                        <button id="btnCancelEdit" onclick="cancelEdit()" class="btn-secondary" style="display: none; margin-top: 0.5rem; background-color: rgba(239, 68, 68, 0.2); color: #fca5a5;">
                             Cancelar Edição
                         </button>
 
-                        <div style="margin-top: 1rem; font-size: 0.8rem; color: #9ca3af; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;">
-                            <strong>Ordem de Prioridade:</strong><br>
-                            Defina a ordem de realização (1, 2, 3...) para todos os objetivos abaixo antes de simular.
+                        <div id="priorityError" style="display:none; color: #ef4444; font-size: 0.85rem; margin-top: 0.5rem; padding: 0.5rem; background: rgba(239,68,68,0.1); border-radius: 4px;">
+                            ⚠️ A numeração deve ser sequencial (1, 2, 3...) sem repetições.
                         </div>
 
                         <div id="goalsList" class="goal-list">
-                            <!-- Goals injected here -->
-                        </div>
-                        <div id="priorityError" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.5rem; display: none;">
-                            Erro: A numeração deve ser sequencial (1, 2, 3...) sem repetições.
+                            <!-- Goals will appear here -->
                         </div>
                     </div>
 
-                    <button onclick="calculate()" class="btn-primary" id="btnCalculate" disabled>
-                        🔮 Consultar o Oráculo
-                    </button>
+                    <button id="btnCalculate" onclick="calculate()" class="btn-primary">Consultar o Oráculo</button>
                 </div>
 
                 <!-- Results Column -->
@@ -428,52 +427,51 @@
                         <canvas id="wealthChart"></canvas>
                     </div>
 
-                    <div class="verdict-box hidden" id="verdict-box">
-                        <div class="verdict-title">
-                            <span>📜</span> Parecer do Oráculo
-                        </div>
-                        <div class="verdict-text" id="verdict-text">
-                            <!-- Verdict injected by JS -->
-                        </div>
+                    <!-- Verdict Box -->
+                    <div id="oracleVerdict" class="verdict-box" style="display: none;">
+                        <div class="verdict-title">📜 Parecer do Oráculo</div>
+                        <div id="verdictContent" class="verdict-text"></div>
                     </div>
 
                     <div class="summary-grid">
                         <div class="summary-box">
-                            <p class="summary-label">Patrimônio Bruto Final</p>
-                            <p class="summary-value text-gold" id="finalWealth">R$ 0,00</p>
+                            <div class="summary-label">Patrimônio Líquido Final (Financeiro)</div>
+                            <div class="summary-value text-gold" id="finalWealth">R$ 0,00</div>
                         </div>
                         <div class="summary-box">
-                            <p class="summary-label">Total Investido (Principal)</p>
-                            <p class="summary-value" id="totalInvested">R$ 0,00</p>
+                            <div class="summary-label">Total Investido (Principal)</div>
+                            <div class="summary-value" id="totalInvested">R$ 0,00</div>
                         </div>
                         <div class="summary-box">
-                            <p class="summary-label">Total em Juros (Bruto)</p>
-                            <p class="summary-value text-green-400" id="totalInterest">R$ 0,00</p>
+                            <div class="summary-label">Total em Juros (Bruto)</div>
+                            <div class="summary-value" id="totalInterest">R$ 0,00</div>
                         </div>
                         <div class="summary-box">
-                            <p class="summary-label">Patrimônio Líquido (Pós-IR)</p>
-                            <p class="summary-value text-blue-400" id="netWealth">R$ 0,00</p>
+                            <div class="summary-label">Poder de Compra (Deflacionado)</div>
+                            <div class="summary-value text-blue" id="realWealth">R$ 0,00</div>
                         </div>
                     </div>
 
                     <!-- Detailed Table -->
-                    <div class="projection-table-container hidden" id="table-container">
-                        <h3 class="text-yellow font-bold mb-4">Evolução Detalhada</h3>
+                    <div id="tableContainer" class="projection-table-container" style="display: none;">
+                        <h3 class="text-xl font-bold text-yellow mb-4 px-4 pt-4">Evolução Detalhada</h3>
                         <table class="projection-table">
                             <thead>
                                 <tr>
                                     <th>#</th>
-                                    <th>Data</th>
-                                    <th>Saldo Bruto</th>
+                                    <th style="text-align: left;">Data</th>
+                                    <th>Saldo Inicial</th>
                                     <th>Rendimentos</th>
                                     <th>Aportes</th>
                                     <th>Objetivos (Saídas)</th>
                                     <th>Imposto Devido</th>
+                                    <th>Reserva Mín.</th>
                                     <th>Saldo Líquido</th>
+                                    <!-- Dynamic columns for Physical/Total will be added here -->
                                 </tr>
                             </thead>
                             <tbody id="projectionBody">
-                                <!-- Rows injected by JS -->
+                                <!-- Rows generated by JS -->
                             </tbody>
                         </table>
                     </div>
@@ -483,26 +481,36 @@
     </main>
 
     <script>
-        // Initialize Start Date to current month
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, '0');
-        document.getElementById('startDate').value = `${yyyy}-${mm}`;
-
         let goals = [];
         let chartInstance = null;
-        let timeUnit = 'years'; // 'years' or 'months'
 
-        function setTimeUnit(unit) {
-            timeUnit = unit;
-            document.getElementById('btn-years').className = unit === 'years' ? 'toggle-btn active' : 'toggle-btn';
-            document.getElementById('btn-months').className = unit === 'months' ? 'toggle-btn active' : 'toggle-btn';
-        }
+        // Set default start date to next month
+        const today = new Date();
+        const nextMonth = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+        document.getElementById('startDate').value = nextMonth.toISOString().slice(0, 7);
 
         function toggleRecurrenceInput() {
             const type = document.getElementById('goalRecurrenceType').value;
             const details = document.getElementById('recurrenceDetails');
             details.style.display = type === 'repeat' ? 'flex' : 'none';
+        }
+
+        function togglePhysicalAssetInput() {
+            const type = document.getElementById('goalType').value;
+            const group = document.getElementById('physicalAssetGroup');
+            if (type === 'spend') {
+                group.style.display = 'block';
+            } else {
+                group.style.display = 'none';
+                document.getElementById('isPhysicalAsset').checked = false;
+                toggleAssetRateInput();
+            }
+        }
+
+        function toggleAssetRateInput() {
+            const isPhysical = document.getElementById('isPhysicalAsset').checked;
+            const rateGroup = document.getElementById('assetRateGroup');
+            rateGroup.style.display = isPhysical ? 'block' : 'none';
         }
 
         function formatCurrencyInput(input) {
@@ -533,6 +541,10 @@
             const type = document.getElementById('goalType').value;
             const recurrenceType = document.getElementById('goalRecurrenceType').value;
             const inflationAdjust = document.getElementById('goalInflationAdjust').checked;
+            
+            // Physical Asset Logic
+            const isPhysical = document.getElementById('isPhysicalAsset').checked;
+            const appreciationRate = isPhysical ? parseFloat(document.getElementById('assetAppreciationRate').value || 0) : 0;
 
             if (!name || !value || isNaN(time)) {
                 alert("Preencha nome, valor e data do objetivo.");
@@ -548,19 +560,25 @@
                 }
             }
 
+            const goalData = {
+                name,
+                value,
+                time,
+                timeUnit,
+                type,
+                recurrence,
+                inflationAdjust,
+                isPhysical,
+                appreciationRate
+            };
+
             if (editingId) {
                 // Update existing goal
                 const index = goals.findIndex(g => g.id == editingId);
                 if (index !== -1) {
                     goals[index] = {
                         ...goals[index], // Keep priority and id
-                        name,
-                        value,
-                        time,
-                        timeUnit,
-                        type,
-                        recurrence,
-                        inflationAdjust
+                        ...goalData
                     };
                 }
                 cancelEdit(); // Reset form
@@ -569,14 +587,8 @@
                 const nextPriority = goals.length + 1;
                 const goal = {
                     id: Date.now(),
-                    name,
-                    value,
-                    time,
-                    timeUnit,
-                    type,
                     priority: nextPriority,
-                    recurrence,
-                    inflationAdjust
+                    ...goalData
                 };
                 goals.push(goal);
             }
@@ -589,6 +601,9 @@
                 document.getElementById('goalName').value = '';
                 document.getElementById('goalValue').value = '';
                 document.getElementById('goalTime').value = '';
+                document.getElementById('isPhysicalAsset').checked = false;
+                document.getElementById('assetAppreciationRate').value = '';
+                toggleAssetRateInput();
             }
         }
 
@@ -608,6 +623,16 @@
             document.getElementById('goalTimeUnit').value = goal.timeUnit;
             document.getElementById('goalType').value = goal.type;
             document.getElementById('goalInflationAdjust').checked = goal.inflationAdjust;
+
+            // Physical Asset Fields
+            togglePhysicalAssetInput(); // Show/Hide group based on type
+            if (goal.type === 'spend') {
+                document.getElementById('isPhysicalAsset').checked = goal.isPhysical || false;
+                toggleAssetRateInput();
+                if (goal.isPhysical) {
+                    document.getElementById('assetAppreciationRate').value = goal.appreciationRate;
+                }
+            }
 
             if (goal.recurrence) {
                 document.getElementById('goalRecurrenceType').value = 'repeat';
@@ -636,6 +661,10 @@
             document.getElementById('goalRecurrenceType').value = 'once';
             document.getElementById('recurrenceDetails').style.display = 'none';
             document.getElementById('goalInflationAdjust').checked = true;
+            
+            document.getElementById('isPhysicalAsset').checked = false;
+            document.getElementById('assetAppreciationRate').value = '';
+            toggleAssetRateInput();
 
             const btn = document.getElementById('btnAddGoal');
             btn.innerHTML = '<span>+</span> Adicionar Objetivo';
@@ -709,13 +738,14 @@
                 div.className = 'goal-item';
                 
                 let recurrenceText = g.recurrence ? ` (Repete a cada ${g.recurrence.value} ${g.recurrence.unit === 'years' ? 'anos' : 'meses'})` : '';
-                let typeIcon = g.type === 'spend' ? '💸' : '🎯';
+                let typeIcon = g.type === 'spend' ? (g.isPhysical ? '🏠' : '💸') : '🎯';
+                let physicalText = g.isPhysical ? ` <span style="color:#4ade80; font-size:0.75rem;">(Patrimônio Físico: ${g.appreciationRate}% a.a.)</span>` : '';
                 
                 div.innerHTML = `
                     <div style="display:flex; align-items:center;">
                         <input type="number" class="priority-input" value="${g.priority}" min="1" onchange="updateGoalPriority(${g.id}, this.value)">
                         <div>
-                            ${typeIcon} <strong>${g.name}</strong><br>
+                            ${typeIcon} <strong>${g.name}</strong>${physicalText}<br>
                             <span style="font-size:0.75rem; color:#9ca3af;">${formatBRL(g.value)} em ${g.time} ${g.timeUnit === 'years' ? 'anos' : 'meses'}${recurrenceText}</span>
                         </div>
                     </div>
@@ -735,284 +765,445 @@
             const interestRateAnnual = parseFloat(document.getElementById('interestRate').value) / 100;
             const inflationRateAnnual = parseFloat(document.getElementById('inflationRate').value || 0) / 100;
             const taxRate = parseFloat(document.getElementById('taxRate').value || 0) / 100;
-            let duration = parseInt(document.getElementById('duration').value);
-            
-            if (timeUnit === 'years') duration *= 12; // Convert to months for calculation
+            const years = parseInt(document.getElementById('years').value);
+            const startMonthStr = document.getElementById('startDate').value;
 
-            const startDateInput = document.getElementById('startDate').value;
-            const [startYear, startMonth] = startDateInput.split('-').map(Number);
+            if (!years || !startMonthStr) {
+                alert("Preencha todos os parâmetros.");
+                return;
+            }
 
-            // Monthly Rates
+            const months = years * 12;
             const interestRateMonthly = Math.pow(1 + interestRateAnnual, 1/12) - 1;
-            const inflationRateMonthly = Math.pow(1 + inflationRateAnnual, 1/12) - 1;
+            
+            // Parse Start Date
+            const [startYear, startMonth] = startMonthStr.split('-').map(Number);
+            let currentDate = new Date(startYear, startMonth - 1, 1);
 
             let balance = currentWealth;
             let totalInvested = currentWealth;
-            let totalProfit = 0; // Track accumulated profit for tax calculation
-            
+            let totalInterest = 0;
+            let physicalWealth = 0; // New: Track physical assets value
+            let hasPhysicalAssets = false; // Flag to show/hide columns
+
             let labels = [];
             let dataWealth = [];
             let dataInvested = [];
+            let dataPhysical = []; // New
+            let dataTotalConsolidated = []; // New
             let tableRows = [];
 
-            // Expand Goals (Handle Recurrence)
+            // Expand goals based on recurrence
             let expandedGoals = [];
             goals.forEach(g => {
                 let firstMonth = g.timeUnit === 'years' ? g.time * 12 : g.time;
                 
                 // Add first occurrence
-                expandedGoals.push({ ...g, month: firstMonth, originalMonth: firstMonth });
+                expandedGoals.push({ ...g, monthDue: firstMonth, originalId: g.id });
 
                 // Add recurrences
                 if (g.recurrence) {
                     let intervalMonths = g.recurrence.unit === 'years' ? g.recurrence.value * 12 : g.recurrence.value;
                     let nextMonth = firstMonth + intervalMonths;
-                    while (nextMonth <= duration) {
-                        expandedGoals.push({ ...g, month: nextMonth, originalMonth: nextMonth });
+                    while (nextMonth <= months) {
+                        expandedGoals.push({ ...g, monthDue: nextMonth, originalId: g.id });
                         nextMonth += intervalMonths;
                     }
                 }
             });
 
-            // Sort goals by month
-            expandedGoals.sort((a, b) => a.month - b.month);
+            // Sort by Month Due, then by Priority
+            expandedGoals.sort((a, b) => {
+                if (a.monthDue !== b.monthDue) return a.monthDue - b.monthDue;
+                return a.priority - b.priority;
+            });
 
-            // Queue for postponed goals
+            // Goal Queue for postponed goals
             let goalQueue = [];
 
-            for (let m = 1; m <= duration; m++) {
-                // Calculate Date
-                let date = new Date(startYear, startMonth - 1 + m);
-                let dateStr = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+            // Physical Assets Tracking List
+            let acquiredAssets = [];
 
-                let startBalance = balance;
+            for (let m = 1; m <= months; m++) {
+                // 1. Date String
+                let dateStr = currentDate.toLocaleString('pt-BR', { month: 'short', year: 'numeric' });
                 
-                // Interest (Profit)
-                let interest = balance * interestRateMonthly;
-                balance += interest;
-                totalProfit += interest;
-
-                // Contribution
-                let currentContribution = monthlyContribution; 
-                balance += currentContribution;
-                totalInvested += currentContribution;
-
-                // Calculate Inflation Adjustment for Reserve
+                // 2. Inflation Adjustment for Min Reserve (Annual Step)
                 let yearsPassed = Math.floor((m - 1) / 12);
                 let inflationFactor = Math.pow(1 + inflationRateAnnual, yearsPassed);
                 let currentMinReserve = minReserveInitial * inflationFactor;
 
-                // Calculate Net Balance (Hypothetical Liquidation)
-                // Tax is only on profit. Profit = Balance - Invested.
-                // If Balance < Invested (loss), tax is 0.
-                let currentProfit = Math.max(0, balance - totalInvested);
-                let taxDue = currentProfit * taxRate;
-                let netBalance = balance - taxDue;
+                // 3. Start Balance Logic
+                let startBalance = balance;
+                
+                // 4. Investment Return (Gross)
+                let earnings = balance * interestRateMonthly;
+                let balanceAfterEarnings = balance + earnings;
+                totalInterest += earnings;
 
-                // Add new goals for this month to the queue
-                let monthGoals = expandedGoals.filter(g => g.month === m);
-                monthGoals.forEach(g => {
-                    let adjustedValue = g.inflationAdjust ? g.value * inflationFactor : g.value;
-                    goalQueue.push({ ...g, currentAdjustedValue: adjustedValue, monthsDelayed: 0 });
+                // 5. Calculate Tax and Net Balance
+                // Tax is on accumulated earnings. Simplified: Tax on this month's earnings + tax on prev earnings?
+                // Better approach: Calculate tax on Total Interest Accumulated so far? 
+                // For simplicity in this flow: Tax is calculated on the earnings of this month for display, 
+                // but for "Net Balance" check, we calculate tax on total accumulated interest.
+                // Let's track "Principal" vs "Interest" components of balance.
+                // Actually, let's calculate Tax Liability based on Total Interest component.
+                // Current Balance = Principal + Interest. 
+                // Tax = Interest * taxRate.
+                // Net Balance = Balance - Tax.
+                
+                // We need to track how much of the balance is Principal vs Interest to calc tax correctly.
+                // But withdrawals complicate this (FIFO? Proportional?).
+                // Simplified Rule: Tax is calculated on the *Earnings* part. 
+                // Let's assume proportional withdrawal or just calc tax on total interest accrued.
+                // Let's stick to: Net Balance = Balance - (Total Interest * Tax Rate).
+                // Wait, if we withdraw, we reduce Total Interest? 
+                // Let's use a simpler proxy: Net Balance = Balance * (1 - taxRate on gains). 
+                // Let's calculate exact tax due on the *current* accumulated interest.
+                // We need to track "Cost Basis" (Principal).
+                
+                let currentTaxDue = (balanceAfterEarnings - totalInvested) * taxRate;
+                if (currentTaxDue < 0) currentTaxDue = 0;
+                let netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
+
+                // 6. Contribution
+                let contribution = monthlyContribution; // Inflation adjust contribution? Usually salaries go up. Let's assume yes.
+                contribution = contribution * inflationFactor;
+                
+                balanceAfterEarnings += contribution;
+                totalInvested += contribution;
+                
+                // Recalculate Net Balance after contribution (contribution adds to principal, so tax due doesn't change immediately)
+                netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
+
+                // 7. Physical Assets Appreciation/Depreciation
+                // Apply annual rate monthly
+                acquiredAssets.forEach(asset => {
+                    let monthlyAppreciation = Math.pow(1 + (asset.appreciationRate / 100), 1/12) - 1;
+                    asset.currentValue *= (1 + monthlyAppreciation);
+                });
+                physicalWealth = acquiredAssets.reduce((sum, a) => sum + a.currentValue, 0);
+                if (physicalWealth > 0) hasPhysicalAssets = true;
+
+                // 8. Process Goals (Queue + New)
+                // Add new goals due this month to queue
+                let goalsDue = expandedGoals.filter(g => g.monthDue === m);
+                goalsDue.forEach(g => {
+                    // Calculate inflation adjusted value
+                    let goalInflationFactor = Math.pow(1 + inflationRateAnnual, yearsPassed);
+                    let adjustedValue = g.inflationAdjust ? g.value * goalInflationFactor : g.value;
+                    
+                    goalQueue.push({
+                        ...g,
+                        currentValue: adjustedValue,
+                        monthsDelayed: 0
+                    });
                 });
 
-                // Sort queue by priority (1 first)
+                // Sort Queue by Priority
                 goalQueue.sort((a, b) => a.priority - b.priority);
 
-                let goalsCost = 0;
-                let goalsListText = [];
-                let remainingQueue = [];
+                let goalsOutput = [];
+                let goalsDeduction = 0;
 
-                // Process Queue
-                goalQueue.forEach(g => {
-                    if (g.inflationAdjust) {
-                        g.currentAdjustedValue = g.value * inflationFactor;
+                // Try to execute queue
+                // We must re-calculate Net Balance available for spending
+                // Spending comes from Net Balance. If we spend, we withdraw Gross amount that results in that Net amount?
+                // Simplified: We check against Net Balance. If we spend, we deduct from Gross Balance.
+                // How much to deduct from Gross? If we need 10k Net, and tax is 15%, we withdraw 10k? 
+                // Usually you pay the goal with net money. So we deduct X from Balance such that (X - tax) = Goal?
+                // No, let's assume we pay the goal with the money available. 
+                // We deduct the Goal Value from the Balance. The Tax Liability reduces because Balance reduces.
+                // But wait, if we sell assets to pay goal, we pay tax.
+                // So: We need to withdraw Gross Amount = Goal / (1 - TaxRate)? No, only on profit.
+                // Let's keep it simple: We deduct Goal Value from Balance. 
+                // We just check if (Net Balance - Goal Value) >= Min Reserve.
+                
+                for (let i = 0; i < goalQueue.length; i++) {
+                    let g = goalQueue[i];
+                    
+                    // Update inflation for queued items (if not just added)
+                    if (g.monthsDelayed > 0 && g.inflationAdjust && m % 12 === 1) {
+                         // Annual adjustment happened above via inflationFactor, but for queue we need to keep it updated.
+                         // Actually, let's just update based on current inflation factor of the year.
+                         let currentGoalInflationFactor = Math.pow(1 + inflationRateAnnual, yearsPassed);
+                         g.currentValue = g.originalValue ? g.originalValue * currentGoalInflationFactor : g.value * currentGoalInflationFactor; 
+                         // Wait, g.value is original.
+                         g.currentValue = g.value * currentGoalInflationFactor;
                     }
 
-                    if (g.type === 'spend') {
-                        // Check Minimum Reserve Safety Lock against NET BALANCE
-                        // Because you pay with net money, and reserve is net money
-                        if (netBalance - g.currentAdjustedValue >= currentMinReserve) {
-                            // Deduct from Gross Balance (assuming tax is paid at withdrawal or accounted for)
-                            // To withdraw X net, you need to withdraw Y gross where Y - tax = X?
-                            // Simplified model: We deduct X from Gross Balance, but check feasibility against Net.
-                            // Actually, if we withdraw from an investment, we pay tax on the profit portion of that withdrawal.
-                            // This is complex. Let's simplify: Deduct from Gross Balance.
-                            // But feasibility check MUST be: (Net Balance - Goal Cost) >= Min Reserve
-                            
-                            balance -= g.currentAdjustedValue;
-                            goalsCost += g.currentAdjustedValue;
-                            
-                            // Recalculate Net Balance after withdrawal for next checks
-                            currentProfit = Math.max(0, balance - totalInvested);
-                            taxDue = currentProfit * taxRate;
-                            netBalance = balance - taxDue;
-
-                            let delayText = g.monthsDelayed > 0 ? ` (Atraso: ${g.monthsDelayed} meses)` : '';
-                            goalsListText.push(`${g.name}${delayText} (${formatBRL(g.currentAdjustedValue)})`);
+                    if (g.type === 'accumulate') {
+                        // Just check, don't deduct
+                        if (netBalanceAvailable >= g.currentValue) {
+                            goalsOutput.push(`<span class="val-positive">🎯 ${g.name} (Atingido)</span>`);
+                            goalQueue.splice(i, 1);
+                            i--;
                         } else {
-                            // Keep in queue
                             g.monthsDelayed++;
-                            remainingQueue.push(g);
-                            goalsListText.push(`<span class="val-warning">⏳ ${g.name} (Fila: ${g.monthsDelayed} meses)</span>`);
+                            goalsOutput.push(`<span class="val-warning">⏳ ${g.name} (Fila: ${g.monthsDelayed}m)</span>`);
                         }
                     } else {
-                        // Accumulate goal (just a marker)
-                        goalsListText.push(`🎯 ${g.name} (Meta: ${formatBRL(g.currentAdjustedValue)})`);
+                        // Spend
+                        if (netBalanceAvailable - g.currentValue >= currentMinReserve) {
+                            // Execute Spend
+                            balanceAfterEarnings -= g.currentValue;
+                            goalsDeduction += g.currentValue;
+                            
+                            // If Physical Asset, add to Physical Wealth
+                            if (g.isPhysical) {
+                                acquiredAssets.push({
+                                    name: g.name,
+                                    currentValue: g.currentValue,
+                                    appreciationRate: g.appreciationRate
+                                });
+                                goalsOutput.push(`<span class="val-positive">🏠 ${g.name} (Adquirido)</span>`);
+                            } else {
+                                goalsOutput.push(`<span class="val-negative">💸 ${g.name} (Realizado)</span>`);
+                            }
+                            
+                            // Recalculate Net Balance for next goal in queue
+                            // Note: Total Invested (Principal) should also decrease? 
+                            // Usually withdrawals come from Principal + Interest proportionally.
+                            // Let's reduce Total Invested proportionally to keep math consistent.
+                            let ratio = g.currentValue / (balanceAfterEarnings + g.currentValue);
+                            totalInvested -= totalInvested * ratio;
+                            
+                            currentTaxDue = (balanceAfterEarnings - totalInvested) * taxRate;
+                            if (currentTaxDue < 0) currentTaxDue = 0;
+                            netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
+
+                            goalQueue.splice(i, 1);
+                            i--;
+                        } else {
+                            g.monthsDelayed++;
+                            goalsOutput.push(`<span class="val-warning">⏳ ${g.name} (Fila: ${g.monthsDelayed}m)</span>`);
+                        }
                     }
-                });
+                }
 
-                goalQueue = remainingQueue;
+                balance = balanceAfterEarnings;
 
-                if (balance < 0) balance = 0; 
+                // Final Tax Calc for Display
+                let finalTaxDue = (balance - totalInvested) * taxRate;
+                if (finalTaxDue < 0) finalTaxDue = 0;
+                let finalNetBalance = balance - finalTaxDue;
 
+                // Store Data
                 labels.push(dateStr);
-                dataWealth.push(balance);
+                dataWealth.push(finalNetBalance); // Chart shows Net Wealth
                 dataInvested.push(totalInvested);
+                dataPhysical.push(physicalWealth);
+                dataTotalConsolidated.push(finalNetBalance + physicalWealth);
 
-                // Add to Table Data
                 tableRows.push({
                     period: m,
                     date: dateStr,
-                    start: startBalance, // Gross
-                    yield: interest,
-                    contribution: currentContribution,
-                    goals: goalsCost,
-                    goalsText: goalsListText.join(', '),
-                    taxDue: taxDue,
-                    netBalance: netBalance // Net
+                    start: startBalance,
+                    earnings: earnings,
+                    contribution: contribution,
+                    goals: goalsOutput.join('<br>'),
+                    tax: finalTaxDue,
+                    minReserve: currentMinReserve,
+                    netBalance: finalNetBalance,
+                    physical: physicalWealth,
+                    totalConsolidated: finalNetBalance + physicalWealth
                 });
+
+                // Increment Date
+                currentDate.setMonth(currentDate.getMonth() + 1);
             }
 
-            // Final Calculations
-            let finalProfit = Math.max(0, balance - totalInvested);
-            let finalTax = finalProfit * taxRate;
-            let finalNetWealth = balance - finalTax;
-
             // Update Summary
-            document.getElementById('finalWealth').textContent = formatBRL(balance);
-            document.getElementById('totalInvested').textContent = formatBRL(totalInvested);
-            document.getElementById('totalInterest').textContent = formatBRL(balance - totalInvested);
-            document.getElementById('netWealth').textContent = formatBRL(finalNetWealth);
+            const lastRow = tableRows[tableRows.length - 1];
+            document.getElementById('finalWealth').innerText = formatBRL(lastRow.netBalance);
+            document.getElementById('totalInvested').innerText = formatBRL(lastRow.contribution * months + parseCurrency(document.getElementById('currentWealth').value)); // Approx
+            document.getElementById('totalInterest').innerText = formatBRL(totalInterest);
             
-            // Update Chart
-            updateChart(labels, dataWealth, dataInvested);
+            // Real Wealth (Deflated)
+            let inflationTotal = Math.pow(1 + inflationRateAnnual, years);
+            let realWealthVal = lastRow.totalConsolidated / inflationTotal;
+            document.getElementById('realWealth').innerText = formatBRL(realWealthVal);
 
-            // Update Verdict
-            updateVerdict(finalNetWealth, totalInvested, interestRateAnnual, inflationRateAnnual, duration);
+            // Render Chart
+            renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, hasPhysicalAssets);
 
-            // Update Table
-            renderTable(tableRows);
+            // Render Table
+            renderTable(tableRows, hasPhysicalAssets);
+
+            // Render Verdict
+            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual);
         }
 
-        function updateChart(labels, wealth, invested) {
+        function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, hasPhysicalAssets) {
             const ctx = document.getElementById('wealthChart').getContext('2d');
             
             if (chartInstance) chartInstance.destroy();
+
+            let datasets = [
+                {
+                    label: 'Patrimônio Líquido (Financeiro)',
+                    data: dataWealth,
+                    borderColor: '#eab308', // Gold
+                    backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                    borderWidth: 3,
+                    pointRadius: 0, // Smooth line
+                    fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Total Investido',
+                    data: dataInvested,
+                    borderColor: '#60a5fa', // Blue
+                    borderWidth: 2,
+                    borderDash: [5, 5],
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.4
+                }
+            ];
+
+            if (hasPhysicalAssets) {
+                datasets.push({
+                    label: 'Patrimônio Físico (Imóveis/Bens)',
+                    data: dataPhysical,
+                    borderColor: '#4ade80', // Green
+                    backgroundColor: 'rgba(74, 222, 128, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.4
+                });
+                datasets.push({
+                    label: 'Patrimônio Total Consolidado',
+                    data: dataTotalConsolidated,
+                    borderColor: '#ffffff', // White
+                    borderWidth: 3,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.4
+                });
+            }
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [
-                        {
-                            label: 'Patrimônio Bruto',
-                            data: wealth,
-                            borderColor: '#eab308', // Yellow-500
-                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
-                            fill: true,
-                            tension: 0.4,
-                            pointRadius: 0
-                        },
-                        {
-                            label: 'Total Investido',
-                            data: invested,
-                            borderColor: '#60a5fa', // Blue-400
-                            borderDash: [5, 5],
-                            tension: 0.4,
-                            pointRadius: 0
-                        }
-                    ]
+                    datasets: datasets
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { labels: { color: 'white' } }
+                        legend: { labels: { color: 'white' } },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return context.dataset.label + ': ' + 
+                                        context.raw.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+                                }
+                            }
+                        }
                     },
                     scales: {
                         y: {
-                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
-                            ticks: { color: '#9ca3af' }
+                            ticks: { color: '#9ca3af' },
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' }
                         },
                         x: {
-                            grid: { display: false },
-                            ticks: { color: '#9ca3af', maxTicksLimit: 10 }
+                            ticks: { color: '#9ca3af', maxTicksLimit: 10 },
+                            grid: { display: false }
                         }
                     }
                 }
             });
         }
 
-        function updateVerdict(finalNetWealth, totalInvested, nominalRate, inflationRate, months) {
-            const box = document.getElementById('verdict-box');
-            const text = document.getElementById('verdict-text');
-            box.classList.remove('hidden');
+        function renderTable(rows, hasPhysicalAssets) {
+            const tbody = document.getElementById('projectionBody');
+            const thead = document.querySelector('.projection-table thead tr');
+            
+            // Update Header dynamically
+            let headerHTML = `
+                <th>#</th>
+                <th style="text-align: left;">Data</th>
+                <th>Saldo Inicial</th>
+                <th>Rendimentos</th>
+                <th>Aportes</th>
+                <th>Objetivos (Saídas)</th>
+                <th>Imposto Devido</th>
+                <th>Reserva Mín.</th>
+                <th>Saldo Líquido</th>
+            `;
+            
+            if (hasPhysicalAssets) {
+                headerHTML += `
+                    <th style="color: #4ade80;">Patrimônio Físico</th>
+                    <th style="color: white;">Total Consolidado</th>
+                `;
+            }
+            thead.innerHTML = headerHTML;
 
-            let years = (months / 12).toFixed(1);
-            let realRate = ((1 + nominalRate) / (1 + inflationRate)) - 1;
-            let profit = finalNetWealth - totalInvested;
-            
-            let msg = `<strong>Análise de Longo Prazo (${years} anos):</strong><br>`;
-            
-            if (profit < 0) {
-                msg += `🚨 <strong style="color:#ef4444">DESTRUIÇÃO DE PATRIMÔNIO DETECTADA</strong><br>`;
-                msg += `Sua estratégia está gerando um prejuízo real de <strong>${formatBRL(profit)}</strong>. `;
-                msg += `Você terminará com menos dinheiro do que investiu. `;
-                msg += `Isso ocorre porque seus saques/objetivos são maiores que a capacidade de rendimento da carteira. `;
-                msg += `Recomendação Imediata: Reduza gastos, aumente aportes ou revise a viabilidade dos objetivos.`;
-            } else {
-                let multiple = finalNetWealth / totalInvested;
-                msg += `Você acumulará um patrimônio líquido de <strong>${formatBRL(finalNetWealth)}</strong>, multiplicando seu capital em <strong>${multiple.toFixed(2)}x</strong>.<br><br>`;
+            tbody.innerHTML = rows.map(r => {
+                let rowHTML = `
+                    <tr>
+                        <td>${r.period}</td>
+                        <td style="text-align: left; color: white;">${r.date}</td>
+                        <td>${formatBRL(r.start)}</td>
+                        <td class="val-positive">+${formatBRL(r.earnings)}</td>
+                        <td class="val-positive">+${formatBRL(r.contribution)}</td>
+                        <td>${r.goals || '-'}</td>
+                        <td class="val-negative">-${formatBRL(r.tax)}</td>
+                        <td style="color: #9ca3af;">${formatBRL(r.minReserve)}</td>
+                        <td style="font-weight:bold; color: var(--primary-color);">${formatBRL(r.netBalance)}</td>
+                `;
                 
-                msg += `<strong>Diagnóstico de Rentabilidade:</strong><br>`;
-                if (realRate < 0) {
-                    msg += `⚠️ <strong>Perda de Poder de Compra:</strong> Sua rentabilidade real é negativa (${(realRate*100).toFixed(2)}%). Você está ganhando menos que a inflação.`;
-                } else if (realRate < 0.03) {
-                    msg += `ℹ️ <strong>Conservador:</strong> Sua rentabilidade real é baixa (${(realRate*100).toFixed(2)}%). Equivalente à Poupança antiga. Seguro, mas lento.`;
-                } else if (realRate < 0.06) {
-                    msg += `✅ <strong>Equilibrado:</strong> Rentabilidade real sólida (${(realRate*100).toFixed(2)}%). Compatível com carteiras diversificadas de Renda Fixa/Multimercado.`;
+                if (hasPhysicalAssets) {
+                    rowHTML += `
+                        <td style="color: #4ade80;">${formatBRL(r.physical)}</td>
+                        <td style="font-weight:bold; color: white;">${formatBRL(r.totalConsolidated)}</td>
+                    `;
+                }
+                
+                rowHTML += `</tr>`;
+                return rowHTML;
+            }).join('');
+
+            document.getElementById('tableContainer').style.display = 'block';
+        }
+
+        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate) {
+            const verdictBox = document.getElementById('oracleVerdict');
+            const content = document.getElementById('verdictContent');
+            
+            verdictBox.style.display = 'block';
+            
+            let realReturn = (1 + interestRate) / (1 + inflationRate) - 1;
+            let multiplier = finalWealth / totalInvested;
+            
+            let html = `<strong>Análise de Longo Prazo:</strong><br>`;
+            html += `Em ${document.getElementById('years').value} anos, seu patrimônio consolidado projetado é de <strong>${formatBRL(finalWealth)}</strong>.<br>`;
+            
+            if (finalWealth < totalInvested) {
+                html += `<span style="color: #ef4444;">🚨 <strong>DESTRUIÇÃO DE PATRIMÔNIO DETECTADA</strong></span><br>`;
+                html += `Você terminará com MENOS dinheiro do que investiu (${multiplier.toFixed(2)}x).<br>`;
+                html += `Isso ocorre porque seus saques/objetivos estão drenando o capital mais rápido do que ele rende.`;
+            } else {
+                html += `Isso representa <strong>${multiplier.toFixed(2)}x</strong> o capital investido.<br>`;
+                
+                if (realReturn < 0) {
+                    html += `<span style="color: #fbbf24;">⚠️ <strong>Perda de Poder de Compra</strong></span>: Sua rentabilidade real é negativa.<br>`;
+                } else if (realReturn < 0.03) {
+                    html += `✅ <strong>Crescimento Conservador</strong>: Você está protegendo seu capital, mas com ganhos modestos.<br>`;
+                } else if (realReturn < 0.06) {
+                    html += `🚀 <strong>Crescimento Equilibrado</strong>: Excelente construção de riqueza com risco controlado.<br>`;
                 } else {
-                    msg += `🚀 <strong>Agressivo/Otimizado:</strong> Rentabilidade real excelente (${(realRate*100).toFixed(2)}%). Típica de carteiras de ações bem sucedidas no longo prazo.`;
+                    html += `🔥 <strong>Crescimento Agressivo</strong>: Multiplicação acelerada de capital.<br>`;
                 }
             }
 
-            text.innerHTML = msg;
-        }
-
-        function renderTable(rows) {
-            const container = document.getElementById('table-container');
-            const tbody = document.getElementById('projectionBody');
-            container.classList.remove('hidden');
-            tbody.innerHTML = '';
-
-            rows.forEach(row => {
-                const tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td>${row.period}</td>
-                    <td>${row.date}</td>
-                    <td>${formatBRL(row.start)}</td>
-                    <td class="val-positive">+${formatBRL(row.yield)}</td>
-                    <td class="val-positive">+${formatBRL(row.contribution)}</td>
-                    <td class="${row.goals > 0 ? 'val-negative' : ''}">
-                        ${row.goals > 0 ? '-' + formatBRL(row.goals) : '-'}
-                        ${row.goalsText ? '<br><span style="font-size:0.75rem; color:#9ca3af">' + row.goalsText + '</span>' : ''}
-                    </td>
-                    <td style="color:#f87171; font-size:0.85rem;">-${formatBRL(row.taxDue)}</td>
-                    <td style="font-weight:bold; color:#60a5fa;">${formatBRL(row.netBalance)}</td>
-                `;
-                tbody.appendChild(tr);
-            });
+            content.innerHTML = html;
         }
     </script>
 </body>
