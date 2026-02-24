@@ -49,7 +49,7 @@
             font-size: 1rem;
         }
 
-        .input-group input:focus {
+        .input-group input:focus, .input-group select:focus {
             outline: none;
             border-color: var(--primary-color);
         }
@@ -90,6 +90,7 @@
         }
 
         .btn-primary:hover { opacity: 0.9; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; background-color: #555; color: #888; }
 
         .btn-secondary {
             width: 100%;
@@ -111,7 +112,7 @@
 
         .goal-list {
             margin-top: 1rem;
-            max-height: 200px;
+            max-height: 300px;
             overflow-y: auto;
         }
 
@@ -201,6 +202,57 @@
             line-height: 1.5;
         }
 
+        /* Table Styles */
+        .projection-table-container {
+            margin-top: 2rem;
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .projection-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+            text-align: right;
+        }
+
+        .projection-table th, .projection-table td {
+            padding: 0.75rem 1rem;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .projection-table th {
+            background-color: rgba(255, 255, 255, 0.05);
+            color: var(--primary-color);
+            font-weight: bold;
+            text-align: right;
+        }
+        .projection-table th:first-child { text-align: left; }
+        .projection-table td:first-child { text-align: left; color: #9ca3af; }
+
+        .projection-table tr:hover {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+
+        .val-positive { color: #4ade80; }
+        .val-negative { color: #f87171; }
+        .val-warning { color: #fbbf24; }
+
+        /* Priority Input Style */
+        .priority-input {
+            width: 50px !important;
+            padding: 0.25rem !important;
+            text-align: center;
+            margin-right: 0.5rem;
+            background-color: rgba(0,0,0,0.5) !important;
+            border: 1px solid #555 !important;
+        }
+        .priority-input.error {
+            border-color: #ef4444 !important;
+            background-color: rgba(239, 68, 68, 0.1) !important;
+        }
+
     </style>
 </head>
 <body>
@@ -217,7 +269,7 @@
                         <span class="text-yellow-500 text-2xl">📈</span>
                         <h1 class="text-2xl font-bold m-0">O Oráculo Financeiro</h1>
                     </div>
-                    <p class="text-gray-400 text-sm">Projeção de patrimônio e análise de viabilidade de objetivos.</p>
+                    <p class="text-gray-400 text-sm">Planejamento de vida, projeção de patrimônio e análise de objetivos.</p>
                 </div>
                 <button id="mobile-toggle" class="mobile-toggle ml-auto md:hidden">☰</button>
             </header>
@@ -230,6 +282,11 @@
                         <div class="card-header text-yellow">Parâmetros de Acumulação</div>
                         
                         <div class="input-group">
+                            <label>Data de Início da Simulação</label>
+                            <input type="month" id="startDate">
+                        </div>
+
+                        <div class="input-group">
                             <label>Patrimônio Atual (R$)</label>
                             <input type="text" id="currentWealth" placeholder="0,00" oninput="formatCurrencyInput(this)">
                         </div>
@@ -240,8 +297,20 @@
                         </div>
 
                         <div class="input-group">
-                            <label>Rentabilidade Anual Estimada (%)</label>
-                            <input type="number" id="interestRate" placeholder="Ex: 10">
+                            <label>Reserva de Segurança Mínima (R$)</label>
+                            <input type="text" id="minReserve" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">*Valor mínimo intocável (corrigido pela inflação)</p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="input-group">
+                                <label>Rentabilidade Anual (%)</label>
+                                <input type="number" id="interestRate" placeholder="Ex: 10" step="0.1">
+                            </div>
+                            <div class="input-group">
+                                <label>Inflação Anual (%)</label>
+                                <input type="number" id="inflationRate" placeholder="Ex: 4.5" step="0.1">
+                            </div>
                         </div>
 
                         <div class="input-group">
@@ -258,89 +327,162 @@
 
                     <!-- Goals Card -->
                     <div class="input-card">
-                        <div class="card-header text-blue">Eventos de Saque (Objetivos)</div>
+                        <div class="card-header text-blue">Objetivos e Eventos</div>
                         
                         <div class="input-group">
-                            <label>Descrição do Evento</label>
+                            <label>Descrição do Objetivo</label>
                             <input type="text" id="goalName" placeholder="Ex: Trocar de Carro">
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
-                            <div class="input-group">
-                                <label>Valor do Saque (R$)</label>
-                                <input type="text" id="goalValue" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                        <div class="input-group">
+                            <label>Valor Atual (R$)</label>
+                            <input type="text" id="goalValue" placeholder="0,00" oninput="formatCurrencyInput(this)">
+                            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">*Valor a preço de hoje</p>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Tipo</label>
+                            <select id="goalType">
+                                <option value="spend">Usufruir (Gastar)</option>
+                                <option value="accumulate">Acumular (Meta)</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Recorrência</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <select id="goalRecurrenceType" onchange="toggleRecurrenceInput()" style="flex: 1;">
+                                    <option value="once">Único</option>
+                                    <option value="repeat">Repetir a cada...</option>
+                                </select>
+                                <div id="recurrenceDetails" style="display: none; flex: 1; gap: 0.5rem;">
+                                    <input type="number" id="recurrenceValue" placeholder="Ex: 2" style="width: 60px;">
+                                    <select id="recurrenceUnit" style="width: auto;">
+                                        <option value="years">Anos</option>
+                                        <option value="months">Meses</option>
+                                    </select>
+                                </div>
                             </div>
-                            <div class="input-group">
-                                <label id="goalTimeLabel">Ano do Evento</label>
-                                <input type="number" id="goalTime" placeholder="Ex: 5">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Quando? (A partir do início)</label>
+                            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                <input type="number" id="goalTime" placeholder="Ex: 5" style="flex: 1;">
+                                <select id="goalTimeUnit" style="flex: 1;">
+                                    <option value="years">Anos</option>
+                                    <option value="months">Meses</option>
+                                </select>
                             </div>
                         </div>
 
                         <label class="checkbox-wrapper">
-                            <input type="checkbox" id="goalRecurring">
-                            Evento Recorrente (Anual)?
+                            <input type="checkbox" id="goalInflationAdjust" checked>
+                            Corrigir valor pela inflação?
                         </label>
 
                         <button onclick="addGoal()" class="btn-secondary">
-                            <span>+</span> Registrar Evento
+                            <span>+</span> Adicionar Objetivo
                         </button>
+
+                        <div style="margin-top: 1rem; font-size: 0.8rem; color: #9ca3af; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;">
+                            <strong>Ordem de Prioridade:</strong><br>
+                            Defina a ordem de realização (1, 2, 3...) para todos os objetivos abaixo antes de simular.
+                        </div>
 
                         <div id="goalsList" class="goal-list">
                             <!-- Goals injected here -->
                         </div>
+                        <div id="priorityError" style="color: #ef4444; font-size: 0.8rem; margin-top: 0.5rem; display: none;">
+                            Erro: A numeração deve ser sequencial (1, 2, 3...) sem repetições.
+                        </div>
                     </div>
 
-                    <button onclick="calculate()" class="btn-primary">
-                        Atualizar Projeção
+                    <button onclick="calculate()" class="btn-primary" id="btnCalculate" disabled>
+                        🔮 Consultar o Oráculo
                     </button>
                 </div>
 
-                <!-- Chart Column -->
+                <!-- Results Column -->
                 <div class="lg:col-span-2">
                     <div class="chart-container">
                         <canvas id="wealthChart"></canvas>
                     </div>
 
+                    <div class="verdict-box hidden" id="verdict-box">
+                        <div class="verdict-title">
+                            <span>📜</span> Parecer do Oráculo
+                        </div>
+                        <div class="verdict-text" id="verdict-text">
+                            <!-- Verdict injected by JS -->
+                        </div>
+                    </div>
+
                     <div class="summary-grid">
                         <div class="summary-box">
-                            <div class="summary-label">Patrimônio Final Projetado</div>
-                            <div class="summary-value text-gold" id="finalWealth">R$ 0,00</div>
+                            <p class="summary-label">Patrimônio Final Projetado</p>
+                            <p class="summary-value text-gold" id="finalWealth">R$ 0,00</p>
                         </div>
                         <div class="summary-box">
-                            <div class="summary-label">Total Aportado (Principal)</div>
-                            <div class="summary-value" id="totalInvested">R$ 0,00</div>
+                            <p class="summary-label">Total Investido (Principal)</p>
+                            <p class="summary-value" id="totalInvested">R$ 0,00</p>
+                        </div>
+                        <div class="summary-box">
+                            <p class="summary-label">Total em Juros</p>
+                            <p class="summary-value text-green-400" id="totalInterest">R$ 0,00</p>
+                        </div>
+                        <div class="summary-box">
+                            <p class="summary-label">Poder de Compra (Deflacionado)</p>
+                            <p class="summary-value text-blue-400" id="realWealth">R$ 0,00</p>
                         </div>
                     </div>
 
-                    <!-- Verdict Box -->
-                    <div class="verdict-box" id="verdictBox" style="display:none;">
-                        <div class="verdict-title">
-                            <span>🔮</span> Parecer do Oráculo
-                        </div>
-                        <div class="verdict-text" id="verdictText">
-                            <!-- Analysis text injected here -->
-                        </div>
+                    <!-- Detailed Table -->
+                    <div class="projection-table-container hidden" id="table-container">
+                        <h3 class="text-yellow font-bold mb-4">Evolução Detalhada</h3>
+                        <table class="projection-table">
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Saldo Inicial</th>
+                                    <th>Rendimentos</th>
+                                    <th>Aportes</th>
+                                    <th>Objetivos (Saídas)</th>
+                                    <th>Reserva Mín.</th>
+                                    <th>Saldo Final</th>
+                                </tr>
+                            </thead>
+                            <tbody id="projectionBody">
+                                <!-- Rows injected by JS -->
+                            </tbody>
+                        </table>
                     </div>
-
                 </div>
             </div>
         </div>
     </main>
 
     <script>
-        // State
-        let timeUnit = 'years';
+        // Initialize Start Date to current month
+        const today = new Date();
+        const yyyy = today.getFullYear();
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        document.getElementById('startDate').value = `${yyyy}-${mm}`;
+
         let goals = [];
         let chartInstance = null;
+        let timeUnit = 'years'; // 'years' or 'months'
 
-        // Helper Functions
-        function formatCurrency(value) {
-            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        function setTimeUnit(unit) {
+            timeUnit = unit;
+            document.getElementById('btn-years').className = unit === 'years' ? 'toggle-btn active' : 'toggle-btn';
+            document.getElementById('btn-months').className = unit === 'months' ? 'toggle-btn active' : 'toggle-btn';
         }
 
-        function parseCurrencyInput(value) {
-            if (!value) return 0;
-            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+        function toggleRecurrenceInput() {
+            const type = document.getElementById('goalRecurrenceType').value;
+            const details = document.getElementById('recurrenceDetails');
+            details.style.display = type === 'repeat' ? 'flex' : 'none';
         }
 
         function formatCurrencyInput(input) {
@@ -352,235 +494,374 @@
             input.value = value;
         }
 
-        function setTimeUnit(unit) {
-            timeUnit = unit;
-            document.getElementById('btn-years').className = `toggle-btn ${unit === 'years' ? 'active' : ''}`;
-            document.getElementById('btn-months').className = `toggle-btn ${unit === 'months' ? 'active' : ''}`;
-            document.getElementById('goalTimeLabel').innerText = unit === 'years' ? 'Ano' : 'Mês';
-            document.getElementById('duration').placeholder = unit === 'years' ? 'Ex: 20' : 'Ex: 240';
-            calculate();
+        function parseCurrency(value) {
+            if (!value) return 0;
+            return parseFloat(value.replace(/\./g, '').replace(',', '.'));
+        }
+
+        function formatBRL(value) {
+            return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
         function addGoal() {
             const name = document.getElementById('goalName').value;
-            const value = parseCurrencyInput(document.getElementById('goalValue').value);
+            const value = parseCurrency(document.getElementById('goalValue').value);
             const time = parseInt(document.getElementById('goalTime').value);
-            const isRecurring = document.getElementById('goalRecurring').checked;
+            const timeUnit = document.getElementById('goalTimeUnit').value;
+            const type = document.getElementById('goalType').value;
+            const recurrenceType = document.getElementById('goalRecurrenceType').value;
+            const inflationAdjust = document.getElementById('goalInflationAdjust').checked;
 
-            if (name && value > 0 && time > 0) {
-                goals.push({ name, value, time, isRecurring });
-                
-                // Reset inputs
-                document.getElementById('goalName').value = '';
-                document.getElementById('goalValue').value = '';
-                document.getElementById('goalTime').value = '';
-                document.getElementById('goalRecurring').checked = false;
-                
-                renderGoals();
-                calculate();
-            }
-        }
-
-        function removeGoal(index) {
-            goals.splice(index, 1);
-            renderGoals();
-            calculate();
-        }
-
-        function renderGoals() {
-            const container = document.getElementById('goalsList');
-            container.innerHTML = goals.map((g, i) => `
-                <div class="goal-item">
-                    <div>
-                        <span class="font-bold">${g.name}</span>
-                        <span class="text-gray-400 text-xs ml-2">
-                            (${timeUnit === 'years' ? 'Ano' : 'Mês'} ${g.time}${g.isRecurring ? ', Anual' : ''})
-                        </span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-red-400 font-bold">-${formatCurrency(g.value)}</span>
-                        <button onclick="removeGoal(${i})" class="goal-remove">🗑️</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function calculate() {
-            const currentWealth = parseCurrencyInput(document.getElementById('currentWealth').value);
-            const monthlyContribution = parseCurrencyInput(document.getElementById('monthlyContribution').value);
-            const interestRate = parseFloat(document.getElementById('interestRate').value.replace(',', '.') || 0);
-            const duration = parseInt(document.getElementById('duration').value || 10);
-
-            const monthlyRate = Math.pow(1 + interestRate / 100, 1 / 12) - 1;
-            const totalMonths = timeUnit === 'years' ? duration * 12 : duration;
-
-            let current = currentWealth;
-            const labels = [];
-            const dataPoints = [];
-
-            // Initial point
-            labels.push('Início');
-            dataPoints.push(current);
-
-            for (let month = 1; month <= totalMonths; month++) {
-                // Compound interest + contribution
-                current = current * (1 + monthlyRate) + monthlyContribution;
-
-                // Apply goals
-                goals.forEach(g => {
-                    const goalTime = g.time;
-                    const isGoalMonth = timeUnit === 'years' 
-                        ? (month % 12 === 0 && Math.floor(month / 12) === goalTime)
-                        : month === goalTime;
-
-                    if (isGoalMonth || (g.isRecurring && month % 12 === 0)) {
-                        // Simplified recurring logic: apply every year if recurring, or on specific match
-                        if (g.isRecurring || isGoalMonth) {
-                            current -= g.value;
-                        }
-                    }
-                });
-
-                // Add data point
-                if (timeUnit === 'years') {
-                    if (month % 12 === 0) {
-                        labels.push(`Ano ${month/12}`);
-                        dataPoints.push(current);
-                    }
-                } else {
-                    labels.push(`Mês ${month}`);
-                    dataPoints.push(current);
-                }
-            }
-
-            // Update Summary
-            document.getElementById('finalWealth').innerText = formatCurrency(current);
-            
-            const totalInvested = currentWealth + (monthlyContribution * totalMonths);
-            document.getElementById('totalInvested').innerText = formatCurrency(totalInvested);
-
-            // Generate Verdict
-            generateVerdict(current, totalInvested, duration, interestRate);
-
-            renderChart(labels, dataPoints);
-        }
-
-        function generateVerdict(finalWealth, totalInvested, duration, interestRate) {
-            const verdictBox = document.getElementById('verdictBox');
-            const verdictText = document.getElementById('verdictText');
-            
-            if (finalWealth <= 0) {
-                verdictBox.style.display = 'none';
+            if (!name || !value || isNaN(time)) {
+                alert("Preencha nome, valor e data do objetivo.");
                 return;
             }
 
-            verdictBox.style.display = 'block';
-            
-            const profit = finalWealth - totalInvested;
-            const profitPercentage = totalInvested > 0 ? (profit / totalInvested) * 100 : 0;
-            const multiplier = totalInvested > 0 ? (finalWealth / totalInvested).toFixed(1) : 0;
-
-            let analysis = `
-                <strong>Análise de Eficiência:</strong> Ao final de ${duration} ${timeUnit === 'years' ? 'anos' : 'meses'}, 
-                seus juros compostos terão gerado <strong>${formatCurrency(profit)}</strong> de lucro passivo. 
-                Isso significa que seu dinheiro trabalhou por você e multiplicou seu capital investido em <strong>${multiplier}x</strong>.
-            `;
-
-            if (interestRate < 6) {
-                analysis += `<br><br>⚠️ <strong>Alerta de Rentabilidade:</strong> Sua taxa de ${interestRate}% ao ano está conservadora. 
-                Aumentar a rentabilidade média para 10% poderia elevar seu patrimônio final significativamente.`;
-            } else if (interestRate > 15) {
-                analysis += `<br><br>⚠️ <strong>Alerta de Risco:</strong> Uma taxa de ${interestRate}% ao ano exige exposição a riscos elevados. 
-                Certifique-se de que sua carteira está diversificada para proteger este patrimônio.`;
+            let recurrence = null;
+            if (recurrenceType === 'repeat') {
+                const recVal = parseInt(document.getElementById('recurrenceValue').value);
+                const recUnit = document.getElementById('recurrenceUnit').value;
+                if (recVal > 0) {
+                    recurrence = { value: recVal, unit: recUnit };
+                }
             }
 
-            verdictText.innerHTML = analysis;
+            // Default priority is next available number
+            const nextPriority = goals.length + 1;
+
+            const goal = {
+                id: Date.now(),
+                name,
+                value,
+                time,
+                timeUnit,
+                type,
+                priority: nextPriority, // Initial priority assignment
+                recurrence,
+                inflationAdjust
+            };
+
+            goals.push(goal);
+            renderGoals();
+            validatePriorities();
+            
+            // Clear inputs
+            document.getElementById('goalName').value = '';
+            document.getElementById('goalValue').value = '';
+            document.getElementById('goalTime').value = '';
         }
 
-        function renderChart(labels, data) {
-            const ctx = document.getElementById('wealthChart').getContext('2d');
+        function removeGoal(id) {
+            goals = goals.filter(g => g.id !== id);
+            renderGoals();
+            validatePriorities();
+        }
 
-            if (chartInstance) {
-                chartInstance.destroy();
+        function updateGoalPriority(id, newPriority) {
+            const goal = goals.find(g => g.id === id);
+            if (goal) {
+                goal.priority = parseInt(newPriority);
+                validatePriorities();
+            }
+        }
+
+        function validatePriorities() {
+            const btn = document.getElementById('btnCalculate');
+            const errorMsg = document.getElementById('priorityError');
+            
+            if (goals.length === 0) {
+                btn.disabled = false;
+                errorMsg.style.display = 'none';
+                return;
             }
 
-            // Create gradient
-            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-            gradient.addColorStop(0, 'rgba(212, 175, 55, 0.5)'); // Gold with opacity
-            gradient.addColorStop(1, 'rgba(212, 175, 55, 0)');
+            // Check if priorities are 1..N unique
+            const priorities = goals.map(g => g.priority).sort((a, b) => a - b);
+            let isValid = true;
+            
+            for (let i = 0; i < priorities.length; i++) {
+                if (priorities[i] !== i + 1) {
+                    isValid = false;
+                    break;
+                }
+            }
+
+            // Also check for duplicates (though logic above covers gaps/dupes if length matches)
+            const unique = new Set(priorities);
+            if (unique.size !== priorities.length) isValid = false;
+
+            if (isValid) {
+                btn.disabled = false;
+                errorMsg.style.display = 'none';
+                // Update input styles to show valid state
+                document.querySelectorAll('.priority-input').forEach(el => el.classList.remove('error'));
+            } else {
+                btn.disabled = true;
+                errorMsg.style.display = 'block';
+                // Highlight inputs
+                document.querySelectorAll('.priority-input').forEach(el => el.classList.add('error'));
+            }
+        }
+
+        function renderGoals() {
+            const list = document.getElementById('goalsList');
+            list.innerHTML = '';
+            
+            // Sort by priority for display? Or just list them? 
+            // Let's list by insertion order but allow priority edit
+            
+            goals.forEach(g => {
+                const div = document.createElement('div');
+                div.className = 'goal-item';
+                
+                let recurrenceText = g.recurrence ? ` (Repete a cada ${g.recurrence.value} ${g.recurrence.unit === 'years' ? 'anos' : 'meses'})` : '';
+                let typeIcon = g.type === 'spend' ? '💸' : '🎯';
+                
+                div.innerHTML = `
+                    <div style="display:flex; align-items:center;">
+                        <input type="number" class="priority-input" value="${g.priority}" min="1" onchange="updateGoalPriority(${g.id}, this.value)">
+                        <div>
+                            ${typeIcon} <strong>${g.name}</strong><br>
+                            <span style="font-size:0.75rem; color:#9ca3af;">${formatBRL(g.value)} em ${g.time} ${g.timeUnit === 'years' ? 'anos' : 'meses'}${recurrenceText}</span>
+                        </div>
+                    </div>
+                    <button onclick="removeGoal(${g.id})" class="goal-remove">✖</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        function calculate() {
+            const currentWealth = parseCurrency(document.getElementById('currentWealth').value);
+            const monthlyContribution = parseCurrency(document.getElementById('monthlyContribution').value);
+            const minReserveInitial = parseCurrency(document.getElementById('minReserve').value);
+            const interestRateAnnual = parseFloat(document.getElementById('interestRate').value) / 100;
+            const inflationRateAnnual = parseFloat(document.getElementById('inflationRate').value || 0) / 100;
+            let duration = parseInt(document.getElementById('duration').value);
+            
+            if (timeUnit === 'years') duration *= 12; // Convert to months for calculation
+
+            const startDateInput = document.getElementById('startDate').value;
+            const [startYear, startMonth] = startDateInput.split('-').map(Number);
+
+            // Monthly Rates
+            const interestRateMonthly = Math.pow(1 + interestRateAnnual, 1/12) - 1;
+            const inflationRateMonthly = Math.pow(1 + inflationRateAnnual, 1/12) - 1;
+
+            let balance = currentWealth;
+            let totalInvested = currentWealth;
+            let labels = [];
+            let dataWealth = [];
+            let dataInvested = [];
+            let tableRows = [];
+
+            // Expand Goals (Handle Recurrence)
+            let expandedGoals = [];
+            goals.forEach(g => {
+                let firstMonth = g.timeUnit === 'years' ? g.time * 12 : g.time;
+                
+                // Add first occurrence
+                expandedGoals.push({ ...g, month: firstMonth });
+
+                // Add recurrences
+                if (g.recurrence) {
+                    let intervalMonths = g.recurrence.unit === 'years' ? g.recurrence.value * 12 : g.recurrence.value;
+                    let nextMonth = firstMonth + intervalMonths;
+                    while (nextMonth <= duration) {
+                        expandedGoals.push({ ...g, month: nextMonth });
+                        nextMonth += intervalMonths;
+                    }
+                }
+            });
+
+            // Sort goals by month
+            expandedGoals.sort((a, b) => a.month - b.month);
+
+            for (let m = 1; m <= duration; m++) {
+                // Calculate Date
+                let date = new Date(startYear, startMonth - 1 + m);
+                let dateStr = date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+
+                let startBalance = balance;
+                
+                // Interest
+                let interest = balance * interestRateMonthly;
+                balance += interest;
+
+                // Contribution (Adjusted by inflation annually?) - Let's keep simple for now, or adjust annually
+                // Assuming contribution increases with inflation annually
+                let currentContribution = monthlyContribution; // Could implement inflation adjustment here too
+
+                balance += currentContribution;
+                totalInvested += currentContribution;
+
+                // Calculate Inflation Adjustment for Reserve
+                let yearsPassed = Math.floor((m - 1) / 12);
+                let inflationFactor = Math.pow(1 + inflationRateAnnual, yearsPassed);
+                let currentMinReserve = minReserveInitial * inflationFactor;
+
+                // Handle Goals
+                let monthGoals = expandedGoals.filter(g => g.month === m);
+                
+                // Sort month goals by priority (1 first)
+                monthGoals.sort((a, b) => a.priority - b.priority);
+
+                let goalsCost = 0;
+                let goalsListText = [];
+
+                monthGoals.forEach(g => {
+                    // Calculate Inflation Adjustment for Goal Value
+                    let adjustedValue = g.inflationAdjust ? g.value * inflationFactor : g.value;
+
+                    if (g.type === 'spend') {
+                        // Check Minimum Reserve Safety Lock
+                        if (balance - adjustedValue >= currentMinReserve) {
+                            balance -= adjustedValue;
+                            goalsCost += adjustedValue;
+                            goalsListText.push(`${g.name} (${formatBRL(adjustedValue)})`);
+                        } else {
+                            // Goal Cancelled/Skipped
+                            goalsListText.push(`<span class="val-warning">⚠️ ${g.name} (Cancelado: Saldo < Reserva)</span>`);
+                        }
+                    } else {
+                        // Accumulate goal (just a marker)
+                        goalsListText.push(`🎯 ${g.name} (Meta: ${formatBRL(adjustedValue)})`);
+                    }
+                });
+
+                if (balance < 0) balance = 0; // No debt in this simple model
+
+                labels.push(dateStr);
+                dataWealth.push(balance);
+                dataInvested.push(totalInvested);
+
+                // Add to Table Data
+                tableRows.push({
+                    date: dateStr,
+                    start: startBalance,
+                    yield: interest,
+                    contribution: currentContribution,
+                    goals: goalsCost,
+                    goalsText: goalsListText.join(', '),
+                    minReserve: currentMinReserve,
+                    end: balance
+                });
+            }
+
+            // Update Summary
+            document.getElementById('finalWealth').textContent = formatBRL(balance);
+            document.getElementById('totalInvested').textContent = formatBRL(totalInvested);
+            document.getElementById('totalInterest').textContent = formatBRL(balance - totalInvested);
+            
+            // Real Wealth (Deflated)
+            let totalInflationFactor = Math.pow(1 + inflationRateAnnual, duration / 12);
+            let realWealth = balance / totalInflationFactor;
+            document.getElementById('realWealth').textContent = formatBRL(realWealth);
+
+            // Update Chart
+            updateChart(labels, dataWealth, dataInvested);
+
+            // Update Verdict
+            updateVerdict(balance, totalInvested, interestRateAnnual, duration);
+
+            // Update Table
+            renderTable(tableRows);
+        }
+
+        function updateChart(labels, wealth, invested) {
+            const ctx = document.getElementById('wealthChart').getContext('2d');
+            
+            if (chartInstance) chartInstance.destroy();
 
             chartInstance = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: 'Patrimônio Acumulado',
-                        data: data,
-                        borderColor: '#D4AF37', // Gold
-                        backgroundColor: gradient,
-                        borderWidth: 2,
-                        pointRadius: 0,
-                        pointHoverRadius: 6,
-                        fill: true,
-                        tension: 0.4
-                    }]
+                    datasets: [
+                        {
+                            label: 'Patrimônio Total',
+                            data: wealth,
+                            borderColor: '#eab308', // Yellow-500
+                            backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                            fill: true,
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Total Investido',
+                            data: invested,
+                            borderColor: '#60a5fa', // Blue-400
+                            borderDash: [5, 5],
+                            tension: 0.4,
+                            pointRadius: 0
+                        }
+                    ]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                            titleColor: '#D4AF37',
-                            bodyColor: '#fff',
-                            borderColor: 'rgba(255, 255, 255, 0.1)',
-                            borderWidth: 1,
-                            callbacks: {
-                                label: function(context) {
-                                    return formatCurrency(context.raw);
-                                }
-                            }
-                        }
+                        legend: { labels: { color: 'white' } }
                     },
                     scales: {
-                        x: {
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { color: '#9ca3af', maxTicksLimit: 10 }
-                        },
                         y: {
-                            grid: { color: 'rgba(255, 255, 255, 0.05)' },
-                            ticks: { 
-                                color: '#9ca3af',
-                                callback: function(value) {
-                                    return 'R$ ' + (value / 1000).toFixed(0) + 'k';
-                                }
-                            }
+                            grid: { color: 'rgba(255, 255, 255, 0.1)' },
+                            ticks: { color: '#9ca3af' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#9ca3af', maxTicksLimit: 10 }
                         }
-                    },
-                    interaction: {
-                        mode: 'nearest',
-                        axis: 'x',
-                        intersect: false
                     }
                 }
             });
         }
 
-        // Initial render
-        calculate();
+        function updateVerdict(finalWealth, totalInvested, rate, months) {
+            const box = document.getElementById('verdict-box');
+            const text = document.getElementById('verdict-text');
+            box.classList.remove('hidden');
 
-        // Auto-calculate on input change (debounced)
-        let timeout;
-        document.querySelectorAll('input').forEach(input => {
-            input.addEventListener('input', () => {
-                clearTimeout(timeout);
-                timeout = setTimeout(calculate, 500);
+            let multiple = finalWealth / totalInvested;
+            let years = (months / 12).toFixed(1);
+            
+            let msg = `<strong>Análise de Longo Prazo:</strong><br>`;
+            msg += `Em <strong>${years} anos</strong>, seu patrimônio projetado é de <strong>${formatBRL(finalWealth)}</strong>.<br>`;
+            msg += `Isso representa <strong>${multiple.toFixed(2)}x</strong> o capital investido. `;
+            
+            if (rate < 0.06) {
+                msg += `⚠️ Sua taxa de rentabilidade está conservadora. Aumentar o risco controlado poderia antecipar seus objetivos.`;
+            } else if (rate > 0.15) {
+                msg += `⚠️ Atenção: A taxa de rentabilidade inserida é alta e envolve riscos significativos. Certifique-se de que é realista.`;
+            } else {
+                msg += `✅ Você está num caminho equilibrado de construção de riqueza.`;
+            }
+
+            text.innerHTML = msg;
+        }
+
+        function renderTable(rows) {
+            const container = document.getElementById('table-container');
+            const tbody = document.getElementById('projectionBody');
+            container.classList.remove('hidden');
+            tbody.innerHTML = '';
+
+            rows.forEach(row => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${row.date}</td>
+                    <td>${formatBRL(row.start)}</td>
+                    <td class="val-positive">+${formatBRL(row.yield)}</td>
+                    <td class="val-positive">+${formatBRL(row.contribution)}</td>
+                    <td class="${row.goals > 0 ? 'val-negative' : ''}">
+                        ${row.goals > 0 ? '-' + formatBRL(row.goals) : '-'}
+                        ${row.goalsText ? '<br><span style="font-size:0.75rem; color:#9ca3af">' + row.goalsText + '</span>' : ''}
+                    </td>
+                    <td style="color:#9ca3af; font-size:0.85rem;">${formatBRL(row.minReserve)}</td>
+                    <td style="font-weight:bold">${formatBRL(row.end)}</td>
+                `;
+                tbody.appendChild(tr);
             });
-        });
-
+        }
     </script>
 </body>
 </html>
