@@ -1028,7 +1028,7 @@
             document.getElementById('totalInterest').innerText = formatBRL(totalInterest);
             
             // Real Wealth (Deflated)
-            let inflationTotal = Math.pow(1 + inflationRateAnnual, years);
+            let inflationTotal = Math.pow(1 + inflationRateAnnual, months / 12);
             let realWealthVal = lastRow.totalConsolidated / inflationTotal;
             document.getElementById('realWealth').innerText = formatBRL(realWealthVal);
 
