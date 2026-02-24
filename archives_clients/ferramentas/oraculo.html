@@ -314,6 +314,12 @@
                         </div>
 
                         <div class="input-group">
+                            <label>Imposto de Renda sobre Lucro (%)</label>
+                            <input type="number" id="taxRate" placeholder="Ex: 15" step="0.1" value="15">
+                            <p style="font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem;">*Incide apenas sobre os rendimentos</p>
+                        </div>
+
+                        <div class="input-group">
                             <div class="flex justify-between items-center mb-2">
                                 <label style="margin:0">Horizonte de Tempo</label>
                                 <div class="toggle-group">
@@ -420,7 +426,7 @@
 
                     <div class="summary-grid">
                         <div class="summary-box">
-                            <p class="summary-label">Patrimônio Final Projetado</p>
+                            <p class="summary-label">Patrimônio Bruto Final</p>
                             <p class="summary-value text-gold" id="finalWealth">R$ 0,00</p>
                         </div>
                         <div class="summary-box">
@@ -428,12 +434,12 @@
                             <p class="summary-value" id="totalInvested">R$ 0,00</p>
                         </div>
                         <div class="summary-box">
-                            <p class="summary-label">Total em Juros</p>
+                            <p class="summary-label">Total em Juros (Bruto)</p>
                             <p class="summary-value text-green-400" id="totalInterest">R$ 0,00</p>
                         </div>
                         <div class="summary-box">
-                            <p class="summary-label">Poder de Compra (Deflacionado)</p>
-                            <p class="summary-value text-blue-400" id="realWealth">R$ 0,00</p>
+                            <p class="summary-label">Patrimônio Líquido (Pós-IR)</p>
+                            <p class="summary-value text-blue-400" id="netWealth">R$ 0,00</p>
                         </div>
                     </div>
 
@@ -445,12 +451,12 @@
                                 <tr>
                                     <th>#</th>
                                     <th>Data</th>
-                                    <th>Saldo Inicial</th>
+                                    <th>Saldo Bruto</th>
                                     <th>Rendimentos</th>
                                     <th>Aportes</th>
                                     <th>Objetivos (Saídas)</th>
-                                    <th>Reserva Mín.</th>
-                                    <th>Saldo Final</th>
+                                    <th>Imposto Devido</th>
+                                    <th>Saldo Líquido</th>
                                 </tr>
                             </thead>
                             <tbody id="projectionBody">
@@ -638,6 +644,7 @@
             const minReserveInitial = parseCurrency(document.getElementById('minReserve').value);
             const interestRateAnnual = parseFloat(document.getElementById('interestRate').value) / 100;
             const inflationRateAnnual = parseFloat(document.getElementById('inflationRate').value || 0) / 100;
+            const taxRate = parseFloat(document.getElementById('taxRate').value || 0) / 100;
             let duration = parseInt(document.getElementById('duration').value);
             
             if (timeUnit === 'years') duration *= 12; // Convert to months for calculation
@@ -651,6 +658,8 @@
 
             let balance = currentWealth;
             let totalInvested = currentWealth;
+            let totalProfit = 0; // Track accumulated profit for tax calculation
+            
             let labels = [];
             let dataWealth = [];
             let dataInvested = [];
@@ -688,9 +697,10 @@
 
                 let startBalance = balance;
                 
-                // Interest
+                // Interest (Profit)
                 let interest = balance * interestRateMonthly;
                 balance += interest;
+                totalProfit += interest;
 
                 // Contribution
                 let currentContribution = monthlyContribution; 
@@ -702,10 +712,16 @@
                 let inflationFactor = Math.pow(1 + inflationRateAnnual, yearsPassed);
                 let currentMinReserve = minReserveInitial * inflationFactor;
 
+                // Calculate Net Balance (Hypothetical Liquidation)
+                // Tax is only on profit. Profit = Balance - Invested.
+                // If Balance < Invested (loss), tax is 0.
+                let currentProfit = Math.max(0, balance - totalInvested);
+                let taxDue = currentProfit * taxRate;
+                let netBalance = balance - taxDue;
+
                 // Add new goals for this month to the queue
                 let monthGoals = expandedGoals.filter(g => g.month === m);
                 monthGoals.forEach(g => {
-                    // Calculate initial adjusted value based on inflation up to this month
                     let adjustedValue = g.inflationAdjust ? g.value * inflationFactor : g.value;
                     goalQueue.push({ ...g, currentAdjustedValue: adjustedValue, monthsDelayed: 0 });
                 });
@@ -719,30 +735,35 @@
 
                 // Process Queue
                 goalQueue.forEach(g => {
-                    // Update inflation for queued item if needed (monthly adjustment while in queue?)
-                    // For simplicity, we keep the annual step logic based on current year
-                    // Or should we adjust monthly while in queue? 
-                    // Let's stick to the annual factor of the current simulation month to keep it consistent with "price at that time"
                     if (g.inflationAdjust) {
                         g.currentAdjustedValue = g.value * inflationFactor;
                     }
 
                     if (g.type === 'spend') {
-                        // Check Minimum Reserve Safety Lock
-                        if (balance - g.currentAdjustedValue >= currentMinReserve) {
+                        // Check Minimum Reserve Safety Lock against NET BALANCE
+                        // Because you pay with net money, and reserve is net money
+                        if (netBalance - g.currentAdjustedValue >= currentMinReserve) {
+                            // Deduct from Gross Balance (assuming tax is paid at withdrawal or accounted for)
+                            // To withdraw X net, you need to withdraw Y gross where Y - tax = X?
+                            // Simplified model: We deduct X from Gross Balance, but check feasibility against Net.
+                            // Actually, if we withdraw from an investment, we pay tax on the profit portion of that withdrawal.
+                            // This is complex. Let's simplify: Deduct from Gross Balance.
+                            // But feasibility check MUST be: (Net Balance - Goal Cost) >= Min Reserve
+                            
                             balance -= g.currentAdjustedValue;
                             goalsCost += g.currentAdjustedValue;
                             
+                            // Recalculate Net Balance after withdrawal for next checks
+                            currentProfit = Math.max(0, balance - totalInvested);
+                            taxDue = currentProfit * taxRate;
+                            netBalance = balance - taxDue;
+
                             let delayText = g.monthsDelayed > 0 ? ` (Atraso: ${g.monthsDelayed} meses)` : '';
                             goalsListText.push(`${g.name}${delayText} (${formatBRL(g.currentAdjustedValue)})`);
                         } else {
                             // Keep in queue
                             g.monthsDelayed++;
                             remainingQueue.push(g);
-                            // Only show in table if it was supposed to happen this month or is significantly delayed?
-                            // Let's show it as "Postponed" in the table row if it was originally for this month OR every month it's delayed?
-                            // To avoid clutter, maybe only show "In Queue: X goals" or list them?
-                            // User asked to show "Carro Novo (Atraso: 3 meses)"
                             goalsListText.push(`<span class="val-warning">⏳ ${g.name} (Fila: ${g.monthsDelayed} meses)</span>`);
                         }
                     } else {
@@ -763,31 +784,32 @@
                 tableRows.push({
                     period: m,
                     date: dateStr,
-                    start: startBalance,
+                    start: startBalance, // Gross
                     yield: interest,
                     contribution: currentContribution,
                     goals: goalsCost,
                     goalsText: goalsListText.join(', '),
-                    minReserve: currentMinReserve,
-                    end: balance
+                    taxDue: taxDue,
+                    netBalance: netBalance // Net
                 });
             }
+
+            // Final Calculations
+            let finalProfit = Math.max(0, balance - totalInvested);
+            let finalTax = finalProfit * taxRate;
+            let finalNetWealth = balance - finalTax;
 
             // Update Summary
             document.getElementById('finalWealth').textContent = formatBRL(balance);
             document.getElementById('totalInvested').textContent = formatBRL(totalInvested);
             document.getElementById('totalInterest').textContent = formatBRL(balance - totalInvested);
+            document.getElementById('netWealth').textContent = formatBRL(finalNetWealth);
             
-            // Real Wealth (Deflated)
-            let totalInflationFactor = Math.pow(1 + inflationRateAnnual, duration / 12);
-            let realWealth = balance / totalInflationFactor;
-            document.getElementById('realWealth').textContent = formatBRL(realWealth);
-
             // Update Chart
             updateChart(labels, dataWealth, dataInvested);
 
             // Update Verdict
-            updateVerdict(balance, totalInvested, interestRateAnnual, duration);
+            updateVerdict(finalNetWealth, totalInvested, interestRateAnnual, inflationRateAnnual, duration);
 
             // Update Table
             renderTable(tableRows);
@@ -804,7 +826,7 @@
                     labels: labels,
                     datasets: [
                         {
-                            label: 'Patrimônio Total',
+                            label: 'Patrimônio Bruto',
                             data: wealth,
                             borderColor: '#eab308', // Yellow-500
                             backgroundColor: 'rgba(234, 179, 8, 0.1)',
@@ -842,24 +864,37 @@
             });
         }
 
-        function updateVerdict(finalWealth, totalInvested, rate, months) {
+        function updateVerdict(finalNetWealth, totalInvested, nominalRate, inflationRate, months) {
             const box = document.getElementById('verdict-box');
             const text = document.getElementById('verdict-text');
             box.classList.remove('hidden');
 
-            let multiple = finalWealth / totalInvested;
             let years = (months / 12).toFixed(1);
+            let realRate = ((1 + nominalRate) / (1 + inflationRate)) - 1;
+            let profit = finalNetWealth - totalInvested;
             
-            let msg = `<strong>Análise de Longo Prazo:</strong><br>`;
-            msg += `Em <strong>${years} anos</strong>, seu patrimônio projetado é de <strong>${formatBRL(finalWealth)}</strong>.<br>`;
-            msg += `Isso representa <strong>${multiple.toFixed(2)}x</strong> o capital investido. `;
+            let msg = `<strong>Análise de Longo Prazo (${years} anos):</strong><br>`;
             
-            if (rate < 0.06) {
-                msg += `⚠️ Sua taxa de rentabilidade está conservadora. Aumentar o risco controlado poderia antecipar seus objetivos.`;
-            } else if (rate > 0.15) {
-                msg += `⚠️ Atenção: A taxa de rentabilidade inserida é alta e envolve riscos significativos. Certifique-se de que é realista.`;
+            if (profit < 0) {
+                msg += `🚨 <strong style="color:#ef4444">DESTRUIÇÃO DE PATRIMÔNIO DETECTADA</strong><br>`;
+                msg += `Sua estratégia está gerando um prejuízo real de <strong>${formatBRL(profit)}</strong>. `;
+                msg += `Você terminará com menos dinheiro do que investiu. `;
+                msg += `Isso ocorre porque seus saques/objetivos são maiores que a capacidade de rendimento da carteira. `;
+                msg += `Recomendação Imediata: Reduza gastos, aumente aportes ou revise a viabilidade dos objetivos.`;
             } else {
-                msg += `✅ Você está num caminho equilibrado de construção de riqueza.`;
+                let multiple = finalNetWealth / totalInvested;
+                msg += `Você acumulará um patrimônio líquido de <strong>${formatBRL(finalNetWealth)}</strong>, multiplicando seu capital em <strong>${multiple.toFixed(2)}x</strong>.<br><br>`;
+                
+                msg += `<strong>Diagnóstico de Rentabilidade:</strong><br>`;
+                if (realRate < 0) {
+                    msg += `⚠️ <strong>Perda de Poder de Compra:</strong> Sua rentabilidade real é negativa (${(realRate*100).toFixed(2)}%). Você está ganhando menos que a inflação.`;
+                } else if (realRate < 0.03) {
+                    msg += `ℹ️ <strong>Conservador:</strong> Sua rentabilidade real é baixa (${(realRate*100).toFixed(2)}%). Equivalente à Poupança antiga. Seguro, mas lento.`;
+                } else if (realRate < 0.06) {
+                    msg += `✅ <strong>Equilibrado:</strong> Rentabilidade real sólida (${(realRate*100).toFixed(2)}%). Compatível com carteiras diversificadas de Renda Fixa/Multimercado.`;
+                } else {
+                    msg += `🚀 <strong>Agressivo/Otimizado:</strong> Rentabilidade real excelente (${(realRate*100).toFixed(2)}%). Típica de carteiras de ações bem sucedidas no longo prazo.`;
+                }
             }
 
             text.innerHTML = msg;
@@ -883,8 +918,8 @@
                         ${row.goals > 0 ? '-' + formatBRL(row.goals) : '-'}
                         ${row.goalsText ? '<br><span style="font-size:0.75rem; color:#9ca3af">' + row.goalsText + '</span>' : ''}
                     </td>
-                    <td style="color:#9ca3af; font-size:0.85rem;">${formatBRL(row.minReserve)}</td>
-                    <td style="font-weight:bold">${formatBRL(row.end)}</td>
+                    <td style="color:#f87171; font-size:0.85rem;">-${formatBRL(row.taxDue)}</td>
+                    <td style="font-weight:bold; color:#60a5fa;">${formatBRL(row.netBalance)}</td>
                 `;
                 tbody.appendChild(tr);
             });
