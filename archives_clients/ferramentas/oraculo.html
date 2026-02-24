@@ -781,7 +781,7 @@
                 return;
             }
 
-            const months = years * 12;
+
             const interestRateMonthly = Math.pow(1 + interestRateAnnual, 1/12) - 1;
             
             // Parse Start Date
@@ -1191,7 +1191,7 @@
             let multiplier = finalWealth / totalInvested;
             
             let html = `<strong>Análise de Longo Prazo:</strong><br>`;
-            html += `Em ${document.getElementById('years').value} anos, seu patrimônio consolidado projetado é de <strong>${formatBRL(finalWealth)}</strong>.<br>`;
+            html += `Em ${document.getElementById('projectionValue').value} ${document.getElementById('projectionUnit').value === 'years' ? 'anos' : 'meses'}, seu patrimônio consolidado projetado é de <strong>${formatBRL(finalWealth)}</strong>.<br>`;
             
             if (finalWealth < totalInvested) {
                 html += `<span style="color: #ef4444;">🚨 <strong>DESTRUIÇÃO DE PATRIMÔNIO DETECTADA</strong></span><br>`;
