@@ -327,8 +327,14 @@
                         </div>
 
                         <div class="input-group">
-                            <label>Período de Projeção (Anos)</label>
-                            <input type="number" id="years" placeholder="Ex: 20">
+                            <label>Período de Projeção</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="number" id="projectionValue" value="30" style="flex: 1;">
+                                <select id="projectionUnit" style="width: 100px;">
+                                    <option value="years" selected>Anos</option>
+                                    <option value="months">Meses</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -765,10 +771,12 @@
             const interestRateAnnual = parseFloat(document.getElementById('interestRate').value) / 100;
             const inflationRateAnnual = parseFloat(document.getElementById('inflationRate').value || 0) / 100;
             const taxRate = parseFloat(document.getElementById('taxRate').value || 0) / 100;
-            const years = parseInt(document.getElementById('years').value);
+            const projectionValue = parseInt(document.getElementById('projectionValue').value);
+            const projectionUnit = document.getElementById('projectionUnit').value;
+            const months = projectionUnit === 'years' ? projectionValue * 12 : projectionValue;
             const startMonthStr = document.getElementById('startDate').value;
 
-            if (!years || !startMonthStr) {
+            if (!projectionValue || !startMonthStr) {
                 alert("Preencha todos os parâmetros.");
                 return;
             }
