@@ -127,13 +127,21 @@
             font-size: 0.85rem;
         }
 
-        .goal-remove {
-            color: #ef4444;
+        .goal-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .goal-btn {
             background: none;
             border: none;
             cursor: pointer;
             padding: 0.25rem;
+            font-size: 1rem;
         }
+
+        .goal-edit { color: #fbbf24; }
+        .goal-remove { color: #ef4444; }
 
         .chart-container {
             background-color: rgba(0, 0, 0, 0.2);
@@ -335,6 +343,8 @@
                     <div class="input-card">
                         <div class="card-header text-blue">Objetivos e Eventos</div>
                         
+                        <input type="hidden" id="editingGoalId" value="">
+
                         <div class="input-group">
                             <label>Descrição do Objetivo</label>
                             <input type="text" id="goalName" placeholder="Ex: Trocar de Carro">
@@ -387,8 +397,11 @@
                             Corrigir valor pela inflação?
                         </label>
 
-                        <button onclick="addGoal()" class="btn-secondary">
+                        <button onclick="addOrUpdateGoal()" class="btn-secondary" id="btnAddGoal">
                             <span>+</span> Adicionar Objetivo
+                        </button>
+                        <button onclick="cancelEdit()" class="btn-secondary" id="btnCancelEdit" style="display:none; margin-top: 0.5rem; background-color: rgba(239, 68, 68, 0.2); color: #fca5a5;">
+                            Cancelar Edição
                         </button>
 
                         <div style="margin-top: 1rem; font-size: 0.8rem; color: #9ca3af; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 0.5rem;">
@@ -510,7 +523,9 @@
             return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
-        function addGoal() {
+        function addOrUpdateGoal() {
+            const editingId = document.getElementById('editingGoalId').value;
+            
             const name = document.getElementById('goalName').value;
             const value = parseCurrency(document.getElementById('goalValue').value);
             const time = parseInt(document.getElementById('goalTime').value);
@@ -533,32 +548,107 @@
                 }
             }
 
-            // Default priority is next available number
-            const nextPriority = goals.length + 1;
+            if (editingId) {
+                // Update existing goal
+                const index = goals.findIndex(g => g.id == editingId);
+                if (index !== -1) {
+                    goals[index] = {
+                        ...goals[index], // Keep priority and id
+                        name,
+                        value,
+                        time,
+                        timeUnit,
+                        type,
+                        recurrence,
+                        inflationAdjust
+                    };
+                }
+                cancelEdit(); // Reset form
+            } else {
+                // Add new goal
+                const nextPriority = goals.length + 1;
+                const goal = {
+                    id: Date.now(),
+                    name,
+                    value,
+                    time,
+                    timeUnit,
+                    type,
+                    priority: nextPriority,
+                    recurrence,
+                    inflationAdjust
+                };
+                goals.push(goal);
+            }
 
-            const goal = {
-                id: Date.now(),
-                name,
-                value,
-                time,
-                timeUnit,
-                type,
-                priority: nextPriority, // Initial priority assignment
-                recurrence,
-                inflationAdjust
-            };
-
-            goals.push(goal);
             renderGoals();
             validatePriorities();
             
-            // Clear inputs
+            if (!editingId) {
+                // Clear inputs only if adding new (edit mode clears via cancelEdit)
+                document.getElementById('goalName').value = '';
+                document.getElementById('goalValue').value = '';
+                document.getElementById('goalTime').value = '';
+            }
+        }
+
+        function editGoal(id) {
+            const goal = goals.find(g => g.id === id);
+            if (!goal) return;
+
+            document.getElementById('editingGoalId').value = goal.id;
+            document.getElementById('goalName').value = goal.name;
+            
+            // Format value back to input format
+            let valStr = goal.value.toFixed(2).replace('.', ',');
+            valStr = valStr.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+            document.getElementById('goalValue').value = valStr;
+
+            document.getElementById('goalTime').value = goal.time;
+            document.getElementById('goalTimeUnit').value = goal.timeUnit;
+            document.getElementById('goalType').value = goal.type;
+            document.getElementById('goalInflationAdjust').checked = goal.inflationAdjust;
+
+            if (goal.recurrence) {
+                document.getElementById('goalRecurrenceType').value = 'repeat';
+                document.getElementById('recurrenceValue').value = goal.recurrence.value;
+                document.getElementById('recurrenceUnit').value = goal.recurrence.unit;
+                document.getElementById('recurrenceDetails').style.display = 'flex';
+            } else {
+                document.getElementById('goalRecurrenceType').value = 'once';
+                document.getElementById('recurrenceDetails').style.display = 'none';
+            }
+
+            // Change button state
+            const btn = document.getElementById('btnAddGoal');
+            btn.innerHTML = '<span>💾</span> Salvar Alterações';
+            btn.style.backgroundColor = '#fbbf24'; // Yellow
+            btn.style.color = 'black';
+
+            document.getElementById('btnCancelEdit').style.display = 'block';
+        }
+
+        function cancelEdit() {
+            document.getElementById('editingGoalId').value = '';
             document.getElementById('goalName').value = '';
             document.getElementById('goalValue').value = '';
             document.getElementById('goalTime').value = '';
+            document.getElementById('goalRecurrenceType').value = 'once';
+            document.getElementById('recurrenceDetails').style.display = 'none';
+            document.getElementById('goalInflationAdjust').checked = true;
+
+            const btn = document.getElementById('btnAddGoal');
+            btn.innerHTML = '<span>+</span> Adicionar Objetivo';
+            btn.style.backgroundColor = ''; // Reset to default CSS
+            btn.style.color = '';
+
+            document.getElementById('btnCancelEdit').style.display = 'none';
         }
 
         function removeGoal(id) {
+            if (document.getElementById('editingGoalId').value == id) {
+                cancelEdit();
+            }
             goals = goals.filter(g => g.id !== id);
             renderGoals();
             validatePriorities();
@@ -614,9 +704,6 @@
             const list = document.getElementById('goalsList');
             list.innerHTML = '';
             
-            // Sort by priority for display? Or just list them? 
-            // Let's list by insertion order but allow priority edit
-            
             goals.forEach(g => {
                 const div = document.createElement('div');
                 div.className = 'goal-item';
@@ -632,7 +719,10 @@
                             <span style="font-size:0.75rem; color:#9ca3af;">${formatBRL(g.value)} em ${g.time} ${g.timeUnit === 'years' ? 'anos' : 'meses'}${recurrenceText}</span>
                         </div>
                     </div>
-                    <button onclick="removeGoal(${g.id})" class="goal-remove">✖</button>
+                    <div class="goal-actions">
+                        <button onclick="editGoal(${g.id})" class="goal-btn goal-edit" title="Editar">✏️</button>
+                        <button onclick="removeGoal(${g.id})" class="goal-btn goal-remove" title="Remover">✖</button>
+                    </div>
                 `;
                 list.appendChild(div);
             });
