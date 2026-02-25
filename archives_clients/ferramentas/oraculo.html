@@ -1132,7 +1132,7 @@
             });
 
             // Render Verdict
-            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth, acquiredAssets);
+            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth, acquiredAssets, balance);
         }
 
         function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, hasPhysicalAssets) {
@@ -1272,7 +1272,7 @@
             }).join('');
 
             document.getElementById('tableContainer').style.display = 'block';
-        }        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth, acquiredAssets) {
+        }        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth, acquiredAssets, balance) {
             const verdictBox = document.getElementById('oracleVerdict');
             const content = document.getElementById('verdictContent');
             
