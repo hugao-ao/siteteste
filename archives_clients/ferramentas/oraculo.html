@@ -560,7 +560,7 @@
             
             // Physical Asset Logic
             const isPhysical = document.getElementById('isPhysicalAsset').checked;
-            const appreciationRate = isPhysical ? parseFloat(document.getElementById('assetAppreciationRate').value || 0) : 0;
+            const appreciationRate = isPhysical ? (parseFloat(document.getElementById('assetAppreciationRate').value || 0) / 100) : 0;
 
             if (!name || !value || isNaN(time)) {
                 alert("Preencha nome, valor e data do objetivo.");
@@ -907,7 +907,7 @@
                 // 7. Physical Assets Appreciation/Depreciation
                 // Apply annual rate monthly
                 acquiredAssets.forEach(asset => {
-                    let monthlyAppreciation = Math.pow(1 + (asset.appreciationRate / 100), 1/12) - 1;
+                    let monthlyAppreciation = Math.pow(1 + asset.appreciationRate, 1/12) - 1;
                     asset.currentValue *= (1 + monthlyAppreciation);
                 });
                 physicalWealth = acquiredAssets.reduce((sum, a) => sum + a.currentValue, 0);
