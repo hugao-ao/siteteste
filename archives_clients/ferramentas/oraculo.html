@@ -533,24 +533,7 @@
                         <div id="verdictContent" class="verdict-text"></div>
                     </div>
 
-                    <div class="summary-grid">
-                        <div class="summary-box">
-                            <div class="summary-label">Patrimônio Líquido Final (Financeiro)</div>
-                            <div class="summary-value text-gold" id="finalWealth">R$ 0,00</div>
-                        </div>
-                        <div class="summary-box">
-                            <div class="summary-label">Total Investido (Principal)</div>
-                            <div class="summary-value" id="totalInvested">R$ 0,00</div>
-                        </div>
-                        <div class="summary-box">
-                            <div class="summary-label">Total em Juros (Bruto)</div>
-                            <div class="summary-value" id="totalInterest">R$ 0,00</div>
-                        </div>
-                        <div class="summary-box">
-                            <div class="summary-label">Poder de Compra (Deflacionado)</div>
-                            <div class="summary-value text-blue" id="realWealth">R$ 0,00</div>
-                        </div>
-                    </div>
+                    <!-- Summary Grid Removed as requested -->
 
                     <!-- Detailed Table -->
                     <div id="tableContainer" class="projection-table-container" style="display: none;">
@@ -1538,16 +1521,16 @@
                 currentDate.setMonth(currentDate.getMonth() + 1);
             }
 
-            // Update Summary
+            // Update Summary (Removed)
             const lastRow = tableRows[tableRows.length - 1];
-            document.getElementById('finalWealth').innerText = formatBRL(lastRow.netBalance) + " (Líq) / " + formatBRL(balance) + " (Bruto)";
-            document.getElementById('totalInvested').innerText = formatBRL(lastRow.contribution * months + parseCurrency(document.getElementById('currentWealth').value)); // Approx
-            document.getElementById('totalInterest').innerText = formatBRL(totalInterest);
+            // document.getElementById('finalWealth').innerText = ...
+            // document.getElementById('totalInvested').innerText = ...
+            // document.getElementById('totalInterest').innerText = ...
             
             // Real Wealth (Deflated)
             let inflationTotal = Math.pow(1 + inflationRateAnnual, months / 12);
             let realWealthVal = lastRow.totalConsolidated / inflationTotal;
-            document.getElementById('realWealth').innerText = formatBRL(realWealthVal);
+            // document.getElementById('realWealth').innerText = ...
 
             // Render Chart
             renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets);
