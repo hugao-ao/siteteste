@@ -1033,26 +1033,40 @@
                                 type: 'spend'
                             });
                             
-                            // Recalculate Net Balance for next goal in queue
-                            // Note: Total Invested (Principal) should NOT decrease. It represents the total effort (contributions).
-                            // However, for tax calculation, we need a separate "Tax Basis" that reduces on withdrawal.
-                            // But for the chart "Total Invested", we want to see the cumulative input.
-                            // Let's keep totalInvested as cumulative input for the chart.
-                            // And use a separate variable for Tax Basis if needed, or simplify tax to be on current balance vs current basis.
-                            // For now, let's just NOT reduce totalInvested to fix the chart drop.
+                            // Proportional Withdrawal Logic
+                            // When withdrawing, we must reduce the "Total Invested" (Principal) proportionally.
+                            // Ratio of withdrawal relative to total balance BEFORE withdrawal (but after earnings)
+                            let withdrawalRatio = g.currentValue / (balanceAfterEarnings + g.currentValue);
                             
-                            // But wait, if we don't reduce basis, tax calculation might be wrong (paying tax on principal?).
-                            // Tax is (Balance - Basis) * Rate. If Balance drops (spent) and Basis stays high, Tax drops (or becomes 0).
-                            // This is actually correct for "Total Invested" visualization, but maybe not for strict tax law.
-                            // Let's prioritize the user request: "line of invested value follows linearly".
+                            // Reduce Total Invested proportionally
+                            let investedReduction = totalInvested * withdrawalRatio;
+                            totalInvested -= investedReduction;
+
+                            // Calculate Tax on the Profit portion of the withdrawal
+                            // Profit portion = Withdrawal Amount - Principal Portion of Withdrawal
+                            // Principal Portion = investedReduction
+                            // Profit Portion = g.currentValue - investedReduction
+                            // Tax = Profit Portion * Tax Rate
                             
-                            currentTaxDue = (balanceAfterEarnings - (totalInvested * (balanceAfterEarnings / (balanceAfterEarnings + g.currentValue)))) * taxRate; 
-                            // Actually, let's just use a simplified tax model: Tax on (Balance - Proportional Basis).
-                            // But for the CHART, we use the cumulative totalInvested.
+                            let profitPortion = g.currentValue - investedReduction;
+                            if (profitPortion < 0) profitPortion = 0;
                             
-                            if (currentTaxDue < 0) currentTaxDue = 0;
-                            if (currentTaxDue < 0) currentTaxDue = 0;
-                            netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
+                            // We don't deduct tax from the withdrawal amount itself (user wants full amount for goal),
+                            // but we need to account for the tax payment from the remaining balance.
+                            // Wait, usually tax is withheld. If I need 100k net, I might need to withdraw more.
+                            // But here, let's assume the goal value is the GROSS withdrawal amount, and tax is paid from the balance?
+                            // Or simpler: The tax due on the remaining balance is recalculated based on the new (lower) principal.
+                            
+                            // Let's stick to the standard model:
+                            // We reduced the Principal (totalInvested).
+                            // The Balance was reduced by g.currentValue.
+                            // The Tax Due on the REMAINING balance will be calculated at the end of the month loop.
+                            // So we don't need to calculate "currentTaxDue" here for the loop, just update the principal.
+                            
+                            // Recalculate Net Balance Available for next goal check
+                            let estimatedTax = (balanceAfterEarnings - totalInvested) * taxRate;
+                            if (estimatedTax < 0) estimatedTax = 0;
+                            netBalanceAvailable = balanceAfterEarnings - estimatedTax;
 
                             goalQueue.splice(i, 1);
                             i--;
@@ -1094,7 +1108,8 @@
                     minReserve: currentMinReserve,
                     netBalance: finalNetBalance,
                     physical: physicalWealth,
-                    totalConsolidated: finalNetBalance + physicalWealth
+                    totalConsolidated: finalNetBalance + physicalWealth,
+                    grossEarnings: earnings // Store gross earnings for table display
                 });
 
                 // Increment Date
@@ -1259,17 +1274,22 @@
             thead.innerHTML = headerHTML;
 
             tbody.innerHTML = rows.map(r => {
-                let rowHTML = `
-                    <tr>
-                        <td>${r.period}</td>
-                        <td style="text-align: left; color: white;">${r.date}</td>
-                        <td>${formatBRL(r.start)}</td>
-                        <td class="val-positive">+${formatBRL(r.earnings)}</td>
-                        <td class="val-positive">+${formatBRL(r.contribution)}</td>
-                        <td>${r.goals || '-'}</td>
-                        <td class="val-negative">-${formatBRL(r.tax)}</td>
-                        <td style="color: #9ca3af;">${formatBRL(r.minReserve)}</td>
-                        <td style="font-weight:bold; color: var(--primary-color);">${formatBRL(r.netBalance)}</td>
+                // Calculate Net Earnings for display (Earnings - Tax on Earnings)
+                let netEarnings = r.earnings * (1 - taxRate);
+                
+                let rowHTML = `<tr>
+                    <td>${r.period}</td>
+                    <td>${r.date}</td>
+                    <td>${formatBRL(r.start)}</td>
+                    <td class="val-positive">+${formatBRL(r.contribution)}</td>
+                    <td class="val-positive">
+                        <div>+${formatBRL(netEarnings)}</div>
+                        <div style="font-size: 0.75em; color: #fbbf24; opacity: 0.8;">(+${formatBRL(r.grossEarnings)})</div>
+                    </td>
+                    <td>${r.goals}</td>
+                    <td class="val-negative">-${formatBRL(r.tax)}</td>
+                    <td style="color: #9ca3af;">${formatBRL(r.minReserve)}</td>
+                    <td style="font-weight:bold; color: var(--primary-color);">${formatBRL(r.netBalance)}</td>
                 `;
                 
                 if (hasPhysicalAssets) {
