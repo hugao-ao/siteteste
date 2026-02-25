@@ -304,12 +304,7 @@
                             <input type="month" id="startDate">
                         </div>
 
-                        <div class="input-group">
-                            <label>Patrimônio Atual (R$)</label>
-                            <input type="text" id="currentWealth" placeholder="0,00" oninput="formatCurrencyInput(this)">
-                        </div>
-
-                        <div cl<div class="input-group">
+<div class="input-group">
                             <label>Aporte Mensal (R$)</label>
                             <input type="text" id="monthlyContribution" placeholder="0,00" oninput="formatCurrencyInput(this)">
                         </div>
@@ -317,6 +312,11 @@
                         <div class="checkbox-wrapper">
                             <input type="checkbox" id="adjustContributionInflation">
                             <label for="adjustContributionInflation">Corrigir Aporte p/ Inflação?</label>
+                        </div>
+
+                        <div class="input-group">
+                            <label>Reserva de Segurança Mínima (R$)</label>
+                            <input type="text" id="minReserve" placeholder="0,00" oninput="formatCurrencyInput(this)">
                         </div>
 
                         <div class="input-group">
@@ -781,6 +781,7 @@
             const interestRateAnnual = parseFloat(document.getElementById('interestRate').value) / 100;
             const inflationRateAnnual = parseFloat(document.getElementById('inflationRate').value || 0) / 100;
             const taxRate = parseFloat(document.getElementById('taxRate').value || 0) / 100;
+            const adjustContribution = document.getElementById('adjustContributionInflation').checked;
             const projectionValue = parseInt(document.getElementById('projectionValue').value);
             const projectionUnit = document.getElementById('projectionUnit').value;
             const months = projectionUnit === 'years' ? projectionValue * 12 : projectionValue;
@@ -895,8 +896,10 @@
                 let netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
 
                 // 6. Contribution
-                let contribution = monthlyContribution; // Inflation adjust contribution? Usually salaries go up. Let's assume yes.
-                contribution = contribution * inflationFactor;
+                let contribution = monthlyContribution;
+                if (adjustContribution) {
+                    contribution = contribution * inflationFactor;
+                }
                 
                 balanceAfterEarnings += contribution;
                 totalInvested += contribution;
