@@ -905,10 +905,11 @@
                 netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
 
                 // 7. Physical Assets Appreciation/Depreciation
-                // Apply annual rate monthly
+                // Apply annual rate only on anniversary (every 12 months after acquisition)
                 acquiredAssets.forEach(asset => {
-                    let monthlyAppreciation = Math.pow(1 + asset.appreciationRate, 1/12) - 1;
-                    asset.currentValue *= (1 + monthlyAppreciation);
+                    if ((m - asset.acquisitionMonth) > 0 && (m - asset.acquisitionMonth) % 12 === 0) {
+                        asset.currentValue *= (1 + asset.appreciationRate);
+                    }
                 });
                 physicalWealth = acquiredAssets.reduce((sum, a) => sum + a.currentValue, 0);
                 if (physicalWealth > 0) hasPhysicalAssets = true;
@@ -1085,7 +1086,8 @@
                     minReserve: currentMinReserve,
                     netBalance: finalNetBalance,
                     physical: physicalWealth,
-                    totalConsolidated: finalNetBalance + physicalWealth
+                    totalConsolidated: finalNetBalance + physicalWealth,
+                    taxRate: taxRate
                 });
 
                 // Increment Date
@@ -1245,7 +1247,10 @@
                         <td>${r.period}</td>
                         <td style="text-align: left; color: white;">${r.date}</td>
                         <td>${formatBRL(r.start)}</td>
-                        <td class="val-positive">+${formatBRL(r.earnings)}</td>
+                        <td class="val-positive">
+                            <div>+${formatBRL(r.earnings)}</div>
+                            <div style="font-size: 0.75em; color: rgba(255,255,255,0.5);">(${formatBRL(r.earnings / (1 - r.taxRate))})</div>
+                        </td>
                         <td class="val-positive">+${formatBRL(r.contribution)}</td>
                         <td>${r.goals || '-'}</td>
                         <td class="val-negative">-${formatBRL(r.tax)}</td>
@@ -1427,7 +1432,10 @@
             html += `<td style="padding: 4px; text-align: right; color: #fbbf24;">${formatBRL(finalWealth)}</td>`;
             html += `<td style="padding: 4px; text-align: right;">-</td>`;
             html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(totalMonthlyYield)}</td>`;
-            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(totalAnnualYield)}</td>`;
+            html += `<td style="padding: 12px; text-align: right;">
+                                    <div style="color: #34d399;">${formatBRL(row.earnings)}</div>
+                                    <div style="font-size: 0.75em; color: rgba(255,255,255,0.5);">(${formatBRL(row.earnings / (1 - taxRate))})</div>
+                                </td>td>`;
             html += `</tr>`;
             
             html += `</tbody></table>`;
