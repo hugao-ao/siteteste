@@ -1282,12 +1282,14 @@
             html += `<div style="margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; border-left: 3px solid #34d399;">`;
             html += `💰 <strong>Resumo do Investimento:</strong><br>`;
             html += `Total Investido (Seu Bolso): <strong>${formatBRL(totalInvested)}</strong><br>`;
-            html += `Lucro Acumulado (Juros + Valorização): <strong style="color: #34d399;">${formatBRL(profit)}</strong> (+${profitPercent.toFixed(0)}%)`;
-            html += `</div>`; #ef4444;">🚨 <strong>DESTRUIÇÃO DE PATRIMÔNIO DETECTADA</strong></span><br>`;
+            html += `Lucro Acumulado (Juros + Valorização): <strong style="color: ${profit >= 0 ? '#34d399' : '#ef4444'};">${formatBRL(profit)}</strong> (${profitPercent >= 0 ? '+' : ''}${profitPercent.toFixed(0)}%)`;
+            html += `</div>`;
+            
+            if (multiplier < 1) {
+                html += `<br><span style="color: #ef4444;">🚨 <strong>DESTRUIÇÃO DE PATRIMÔNIO DETECTADA</strong></span><br>`;
                 html += `Você terminará com MENOS dinheiro do que investiu (${multiplier.toFixed(2)}x).<br>`;
-                html += `Isso ocorre porque seus saques/objetivos estão drenando o capital mais rápido do que ele rende.`;
-            } else {
-                html += `Isso representa <strong>${multiplier.toFixed(2)}x</strong> o capital investido.<br>`;
+                html += `Isso ocorre porque seus saques/objetivos estão drenando o capital mais rápido do que ele rende.<br>`;
+            }
                 
                 if (realReturn < 0) {
                     html += `<span style="color: #fbbf24;">⚠️ <strong>Perda de Poder de Compra</strong></span>: Sua rentabilidade real é negativa.<br>`;
