@@ -319,6 +319,58 @@
                             <label for="adjustContributionInflation">Corrigir Aporte p/ Inflação?</label>
                         </div>
 
+                        <!-- Variable Contributions Section -->
+                        <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: #fbbf24; font-weight: bold;">Evolução dos Aportes Mensais</label>
+                            <div id="contributionLadderList" style="margin-bottom: 0.5rem;">
+                                <!-- Dynamic list of contribution changes -->
+                            </div>
+                            
+                            <div class="input-group" style="background: rgba(255,255,255,0.03); padding: 0.5rem; border-radius: 4px;">
+                                <label style="font-size: 0.85rem;">Novo Aporte a partir de:</label>
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <input type="month" id="ladderDate" style="flex: 1;">
+                                    <input type="text" id="ladderValue" placeholder="R$ 0,00" oninput="formatCurrencyInput(this)" style="flex: 1;">
+                                </div>
+                                <button onclick="addContributionStep()" class="btn-secondary" style="width: 100%; font-size: 0.85rem; padding: 0.25rem;">+ Adicionar Mudança de Aporte</button>
+                            </div>
+                        </div>
+
+                        <!-- Special Contributions Section -->
+                        <div style="margin-top: 1rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem;">
+                            <label style="display: block; margin-bottom: 0.5rem; color: #fbbf24; font-weight: bold;">Aportes Especiais (Recorrentes)</label>
+                            <div id="specialContributionList" style="margin-bottom: 0.5rem;">
+                                <!-- Dynamic list of special contributions -->
+                            </div>
+                            
+                            <div class="input-group" style="background: rgba(255,255,255,0.03); padding: 0.5rem; border-radius: 4px;">
+                                <label style="font-size: 0.85rem;">Nome (Ex: Bônus, PLR):</label>
+                                <input type="text" id="specialName" placeholder="Ex: Bônus Anual" style="margin-bottom: 0.5rem;">
+                                
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 0.75rem;">Valor:</label>
+                                        <input type="text" id="specialValue" placeholder="R$ 0,00" oninput="formatCurrencyInput(this)">
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <label style="font-size: 0.75rem;">1º Aporte em:</label>
+                                        <input type="month" id="specialDate">
+                                    </div>
+                                </div>
+
+                                <label style="font-size: 0.75rem;">Repetir a cada:</label>
+                                <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                    <input type="number" id="specialRecurrenceValue" placeholder="Ex: 1" style="flex: 1;">
+                                    <select id="specialRecurrenceUnit" style="width: 100px;">
+                                        <option value="years">Anos</option>
+                                        <option value="months">Meses</option>
+                                    </select>
+                                </div>
+
+                                <button onclick="addSpecialContribution()" class="btn-secondary" style="width: 100%; font-size: 0.85rem; padding: 0.25rem;">+ Adicionar Aporte Especial</button>
+                            </div>
+                        </div>
+
                         <div class="input-group">
                             <label>Reserva de Segurança Mínima (R$)</label>
                             <input type="text" id="minReserve" placeholder="0,00" oninput="formatCurrencyInput(this)">
@@ -409,12 +461,28 @@
                             </select>
                         </div>
 
-                        <div id="recurrenceDetails" class="input-group" style="display: none; gap: 0.5rem;">
-                            <input type="number" id="recurrenceValue" placeholder="Ex: 2" style="flex: 1;">
-                            <select id="recurrenceUnit" style="width: 100px;">
-                                <option value="years">Anos</option>
-                                <option value="months">Meses</option>
-                            </select>
+                        <div id="recurrenceDetails" class="input-group" style="display: none; flex-direction: column; gap: 0.5rem;">
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="number" id="recurrenceValue" placeholder="Ex: 2" style="flex: 1;">
+                                <select id="recurrenceUnit" style="width: 100px;">
+                                    <option value="years">Anos</option>
+                                    <option value="months">Meses</option>
+                                </select>
+                            </div>
+                            
+                            <div style="margin-top: 0.5rem;">
+                                <label style="font-size: 0.85rem; color: #9ca3af;">Terminar Recorrência:</label>
+                                <select id="recurrenceEndType" onchange="toggleRecurrenceEndInput()" style="margin-bottom: 0.5rem;">
+                                    <option value="never">Nunca (Até o fim da simulação)</option>
+                                    <option value="after_occurrences">Após X ocorrências</option>
+                                    <option value="at_date">Em data específica</option>
+                                </select>
+                                
+                                <div id="recurrenceEndDetails" style="display: none;">
+                                    <input type="number" id="recurrenceEndOccurrences" placeholder="Nº de vezes" style="display: none;">
+                                    <input type="month" id="recurrenceEndDate" style="display: none;">
+                                </div>
+                            </div>
                         </div>
 
                         <label class="checkbox-wrapper">
@@ -502,6 +570,8 @@
 
     <script>
         let goals = [];
+        let contributionLadder = []; // Array to store { date: 'YYYY-MM', value: 1000.00 }
+        let specialContributions = []; // Array to store { name, value, date, recurrence: {value, unit} }
         let chartInstance = null;
 
         // Set default start date to next month
@@ -513,6 +583,31 @@
             const type = document.getElementById('goalRecurrenceType').value;
             const details = document.getElementById('recurrenceDetails');
             details.style.display = type === 'repeat' ? 'flex' : 'none';
+            if (type === 'repeat') {
+                toggleRecurrenceEndInput();
+            }
+        }
+
+        function toggleRecurrenceEndInput() {
+            const endType = document.getElementById('recurrenceEndType').value;
+            const details = document.getElementById('recurrenceEndDetails');
+            const occurrencesInput = document.getElementById('recurrenceEndOccurrences');
+            const dateInput = document.getElementById('recurrenceEndDate');
+
+            if (endType === 'never') {
+                details.style.display = 'none';
+                occurrencesInput.style.display = 'none';
+                dateInput.style.display = 'none';
+            } else {
+                details.style.display = 'block';
+                if (endType === 'after_occurrences') {
+                    occurrencesInput.style.display = 'block';
+                    dateInput.style.display = 'none';
+                } else {
+                    occurrencesInput.style.display = 'none';
+                    dateInput.style.display = 'block';
+                }
+            }
         }
 
         function togglePhysicalAssetInput() {
@@ -551,6 +646,135 @@
             return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
 
+        // Contribution Ladder Functions
+        function addContributionStep() {
+            const date = document.getElementById('ladderDate').value;
+            const value = parseCurrency(document.getElementById('ladderValue').value);
+
+            if (!date || isNaN(value)) {
+                alert("Informe a data e o novo valor do aporte.");
+                return;
+            }
+
+            // Check if date is after start date
+            const startDate = document.getElementById('startDate').value;
+            if (date <= startDate) {
+                alert("A data da mudança deve ser posterior ao início da simulação.");
+                return;
+            }
+
+            // Add or Update
+            const existingIndex = contributionLadder.findIndex(c => c.date === date);
+            if (existingIndex !== -1) {
+                contributionLadder[existingIndex].value = value;
+            } else {
+                contributionLadder.push({ date, value });
+            }
+
+            // Sort by date
+            contributionLadder.sort((a, b) => a.date.localeCompare(b.date));
+
+            renderContributionLadder();
+            
+            // Clear inputs
+            document.getElementById('ladderDate').value = '';
+            document.getElementById('ladderValue').value = '';
+        }
+
+        function removeContributionStep(index) {
+            contributionLadder.splice(index, 1);
+            renderContributionLadder();
+        }
+
+        function renderContributionLadder() {
+            const list = document.getElementById('contributionLadderList');
+            list.innerHTML = '';
+
+            contributionLadder.forEach((step, index) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 0.5rem; margin-bottom: 0.25rem; border-radius: 4px; font-size: 0.85rem;';
+                
+                const [year, month] = step.date.split('-');
+                const dateStr = `${month}/${year}`;
+
+                div.innerHTML = `
+                    <span>A partir de <strong>${dateStr}</strong>: ${formatBRL(step.value)}</span>
+                    <button onclick="removeContributionStep(${index})" style="background: none; border: none; color: #ef4444; cursor: pointer;">✖</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
+        // Special Contribution Functions
+        function addSpecialContribution() {
+            const name = document.getElementById('specialName').value;
+            const value = parseCurrency(document.getElementById('specialValue').value);
+            const date = document.getElementById('specialDate').value;
+            const recVal = parseInt(document.getElementById('specialRecurrenceValue').value);
+            const recUnit = document.getElementById('specialRecurrenceUnit').value;
+
+            if (!name || isNaN(value) || !date) {
+                alert("Preencha nome, valor e data do aporte especial.");
+                return;
+            }
+
+            // Check if date is after start date
+            const startDate = document.getElementById('startDate').value;
+            if (date < startDate) {
+                alert("A data deve ser posterior ou igual ao início da simulação.");
+                return;
+            }
+
+            let recurrence = null;
+            if (recVal > 0) {
+                recurrence = { value: recVal, unit: recUnit };
+            }
+
+            specialContributions.push({
+                id: Date.now(),
+                name,
+                value,
+                date,
+                recurrence
+            });
+
+            renderSpecialContributions();
+
+            // Clear inputs
+            document.getElementById('specialName').value = '';
+            document.getElementById('specialValue').value = '';
+            document.getElementById('specialDate').value = '';
+            document.getElementById('specialRecurrenceValue').value = '';
+        }
+
+        function removeSpecialContribution(index) {
+            specialContributions.splice(index, 1);
+            renderSpecialContributions();
+        }
+
+        function renderSpecialContributions() {
+            const list = document.getElementById('specialContributionList');
+            list.innerHTML = '';
+
+            specialContributions.forEach((sc, index) => {
+                const div = document.createElement('div');
+                div.style.cssText = 'display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 0.5rem; margin-bottom: 0.25rem; border-radius: 4px; font-size: 0.85rem;';
+                
+                const [year, month] = sc.date.split('-');
+                const dateStr = `${month}/${year}`;
+                let recText = sc.recurrence ? ` (Repete a cada ${sc.recurrence.value} ${sc.recurrence.unit === 'years' ? 'anos' : 'meses'})` : '';
+
+                div.innerHTML = `
+                    <div>
+                        <strong>${sc.name}</strong>: ${formatBRL(sc.value)}<br>
+                        <span style="color: #9ca3af; font-size: 0.75rem;">Em ${dateStr}${recText}</span>
+                    </div>
+                    <button onclick="removeSpecialContribution(${index})" style="background: none; border: none; color: #ef4444; cursor: pointer;">✖</button>
+                `;
+                list.appendChild(div);
+            });
+        }
+
         function addOrUpdateGoal() {
             const editingId = document.getElementById('editingGoalId').value;
             
@@ -575,8 +799,23 @@
             if (recurrenceType === 'repeat') {
                 const recVal = parseInt(document.getElementById('recurrenceValue').value);
                 const recUnit = document.getElementById('recurrenceUnit').value;
+                
+                // Recurrence End Logic
+                const endType = document.getElementById('recurrenceEndType').value;
+                let endCondition = { type: endType };
+                
+                if (endType === 'after_occurrences') {
+                    endCondition.value = parseInt(document.getElementById('recurrenceEndOccurrences').value) || 0;
+                } else if (endType === 'at_date') {
+                    endCondition.value = document.getElementById('recurrenceEndDate').value;
+                }
+
                 if (recVal > 0) {
-                    recurrence = { value: recVal, unit: recUnit };
+                    recurrence = { 
+                        value: recVal, 
+                        unit: recUnit,
+                        endCondition: endCondition
+                    };
                 }
             }
 
@@ -659,6 +898,21 @@
                 document.getElementById('recurrenceValue').value = goal.recurrence.value;
                 document.getElementById('recurrenceUnit').value = goal.recurrence.unit;
                 document.getElementById('recurrenceDetails').style.display = 'flex';
+                
+                // Populate End Condition
+                if (goal.recurrence.endCondition) {
+                    document.getElementById('recurrenceEndType').value = goal.recurrence.endCondition.type;
+                    toggleRecurrenceEndInput();
+                    
+                    if (goal.recurrence.endCondition.type === 'after_occurrences') {
+                        document.getElementById('recurrenceEndOccurrences').value = goal.recurrence.endCondition.value;
+                    } else if (goal.recurrence.endCondition.type === 'at_date') {
+                        document.getElementById('recurrenceEndDate').value = goal.recurrence.endCondition.value;
+                    }
+                } else {
+                    document.getElementById('recurrenceEndType').value = 'never';
+                    toggleRecurrenceEndInput();
+                }
             } else {
                 document.getElementById('goalRecurrenceType').value = 'once';
                 document.getElementById('recurrenceDetails').style.display = 'none';
@@ -680,6 +934,8 @@
             document.getElementById('goalTime').value = '';
             document.getElementById('goalRecurrenceType').value = 'once';
             document.getElementById('recurrenceDetails').style.display = 'none';
+            document.getElementById('recurrenceEndType').value = 'never';
+            toggleRecurrenceEndInput();
             document.getElementById('goalInflationAdjust').checked = true;
             
             document.getElementById('isPhysicalAsset').checked = false;
@@ -829,9 +1085,37 @@
                 if (g.recurrence) {
                     let intervalMonths = g.recurrence.unit === 'years' ? g.recurrence.value * 12 : g.recurrence.value;
                     let nextMonth = firstMonth + intervalMonths;
+                    let occurrences = 1; // First one already added
+
+                    // Determine end condition
+                    let maxOccurrences = Infinity;
+                    let maxMonth = Infinity;
+
+                    if (g.recurrence.endCondition) {
+                        if (g.recurrence.endCondition.type === 'after_occurrences') {
+                            maxOccurrences = parseInt(g.recurrence.endCondition.value);
+                        } else if (g.recurrence.endCondition.type === 'at_date') {
+                            // Calculate month difference from start date
+                            const [endYear, endMonth] = g.recurrence.endCondition.value.split('-').map(Number);
+                            const endDate = new Date(endYear, endMonth - 1, 1);
+                            
+                            const [sYear, sMonth] = document.getElementById('startDate').value.split('-').map(Number);
+                            const sDate = new Date(sYear, sMonth - 1, 1);
+                            
+                            // Diff in months (1-based index)
+                            // If End Date < Start Date, maxMonth will be <= 0, loop won't run.
+                            maxMonth = (endDate.getFullYear() - sDate.getFullYear()) * 12 + (endDate.getMonth() - sDate.getMonth()) + 1;
+                        }
+                    }
+
                     while (nextMonth <= months) {
+                        // Check end conditions
+                        if (occurrences >= maxOccurrences) break;
+                        if (nextMonth > maxMonth) break;
+
                         expandedGoals.push({ ...g, monthDue: nextMonth, originalId: g.id });
                         nextMonth += intervalMonths;
+                        occurrences++;
                     }
                 }
             });
@@ -900,16 +1184,64 @@
                 if (currentTaxDue < 0) currentTaxDue = 0;
                 let netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
 
-                // 6. Contribution
-                let contribution = monthlyContribution;
-                if (adjustContribution) {
-                    contribution = contribution * inflationFactor;
+                // 6. Contribution Logic
+                let monthlyPart = monthlyContribution;
+
+                // Check Contribution Ladder
+                let currentYear = currentDate.getFullYear();
+                let currentMonth = currentDate.getMonth() + 1;
+                let currentYYYYMM = `${currentYear}-${currentMonth.toString().padStart(2, '0')}`;
+
+                let applicableStep = null;
+                for (let step of contributionLadder) {
+                    if (step.date <= currentYYYYMM) {
+                        applicableStep = step;
+                    } else {
+                        break; 
+                    }
                 }
+
+                if (applicableStep) {
+                    monthlyPart = applicableStep.value;
+                }
+
+                if (adjustContribution) {
+                    monthlyPart = monthlyPart * inflationFactor;
+                }
+
+                // Special Contributions
+                let specialPart = 0;
+                specialContributions.forEach(sc => {
+                    let [scYear, scMonth] = sc.date.split('-').map(Number);
+                    let scDateObj = new Date(scYear, scMonth - 1, 1);
+                    
+                    let isDue = false;
+                    if (currentYear === scYear && currentMonth === scMonth) {
+                        isDue = true;
+                    } else if (sc.recurrence && scDateObj < currentDate) {
+                        let diffMonths = (currentYear - scYear) * 12 + (currentMonth - scMonth);
+                        let interval = sc.recurrence.unit === 'years' ? sc.recurrence.value * 12 : sc.recurrence.value;
+                        if (diffMonths > 0 && diffMonths % interval === 0) {
+                            isDue = true;
+                        }
+                    }
+
+                    if (isDue) {
+                        let val = sc.value;
+                        if (adjustContribution) {
+                            val = val * inflationFactor;
+                        }
+                        specialPart += val;
+                    }
+                });
+
+                // Total Contribution for this month
+                let contribution = monthlyPart + specialPart;
                 
                 balanceAfterEarnings += contribution;
                 totalInvested += contribution;
                 
-                // Recalculate Net Balance after contribution (contribution adds to principal, so tax due doesn't change immediately)
+                // Recalculate Net Balance after contribution
                 netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
 
                 // 7. Physical Assets Appreciation/Depreciation
