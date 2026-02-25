@@ -1132,7 +1132,7 @@
             });
 
             // Render Verdict
-            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth, acquiredAssets, balance);
+            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth, acquiredAssets, balance, taxRate);
         }
 
         function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, hasPhysicalAssets) {
@@ -1272,7 +1272,7 @@
             }).join('');
 
             document.getElementById('tableContainer').style.display = 'block';
-        }        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth, acquiredAssets, balance) {
+        }        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth, acquiredAssets, balance, taxRate) {
             const verdictBox = document.getElementById('oracleVerdict');
             const content = document.getElementById('verdictContent');
             
@@ -1452,17 +1452,7 @@
             html += `<td style="padding: 4px; text-align: right; font-weight: bold; color: #fbbf24;">${formatBRL(totalConsolidatedAnnualIncome)}</td>`;
             html += `</tr>`;
             
-            // Total Consolidated
-            let totalMonthlyYield = monthlyYieldNet + totalPhysicalMonthlyYield;
-            let totalAnnualYield = annualYieldNet + totalPhysicalAnnualYield;
-            
-            html += `<tr style="border-top: 1px solid rgba(255,255,255,0.2); font-weight: bold; background: rgba(255,255,255,0.05);">`;
-            html += `<td style="padding: 4px;">TOTAL CONSOLIDADO</td>`;
-            html += `<td style="padding: 4px; text-align: right; color: #fbbf24;">${formatBRL(finalWealth)}</td>`;
-            html += `<td style="padding: 4px; text-align: right;">-</td>`;
-            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(totalMonthlyYield)}</td>`;
-            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(totalAnnualYield)}</td>`;
-            html += `</tr>`;
+
             
             html += `</tbody></table>`;
             html += `<div style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px;">*Renda Financeira: Juros compostos (caixa). Ganho Físico: Valorização patrimonial (não é caixa imediato).</div>`;
