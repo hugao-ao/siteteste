@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>O Oráculo Financeiro - MithraSF</title>
+    <link<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>O Oráculo Financeiro - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
     <script src="../assets/layout.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -302,6 +308,11 @@
                         <div class="input-group">
                             <label>Data de Início da Simulação</label>
                             <input type="month" id="startDate">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Período de Simulação (Anos)</label>
+                            <input type="number" id="simulationYears" placeholder="Ex: 30" value="30">
                         </div>
 
                         <div class="input-group">
@@ -754,13 +765,16 @@
             const [startYear, startMonth] = startDateStr.split('-').map(Number);
             const startDate = new Date(startYear, startMonth - 1, 1);
 
-            // Determine Simulation Duration (Max Goal Time + 5 years buffer or default 30 years)
-            let maxMonths = 360; // Default 30 years
-            goals.forEach(g => {
-                let months = g.timeUnit === 'years' ? g.time * 12 : g.time;
-                if (months > maxMonths) maxMonths = months;
-            });
-            maxMonths += 60; // Buffer
+            // Determine Simulation Duration
+            let simulationYears = parseInt(document.getElementById('simulationYears').value) || 30;
+            let maxMonths = simulationYears * 12;
+
+            // Ensure simulation covers at least the longest goal?
+            // User might want to see what happens if they stop early, but usually we extend.
+            // Let's warn or just extend if a goal is beyond the period?
+            // For now, let's respect the user input strictly, but ensure it's at least enough for the longest goal if they didn't set it?
+            // Actually, better to just use the input value as the definitive timeline.
+            // If a goal is beyond this time, it won't be processed (which is correct behavior for a fixed timeline).
 
             // 2. Prepare Variables
             let balance = startBalance;
