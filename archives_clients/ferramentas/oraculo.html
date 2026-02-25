@@ -1131,7 +1131,7 @@
             renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets);
 
             // Render Table
-            renderTable(tableRows, hasPhysicalAssets);
+            renderTable(tableRows, hasPhysicalAssets, taxRate);
 
             // Final Stats
             goalStats.failed = goalQueue.length;
@@ -1248,7 +1248,7 @@
             });
         }
 
-        function renderTable(rows, hasPhysicalAssets) {
+        function renderTable(rows, hasPhysicalAssets, taxRate) {
             const tbody = document.getElementById('projectionBody');
             const thead = document.querySelector('.projection-table thead tr');
             
