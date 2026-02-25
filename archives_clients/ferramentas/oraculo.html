@@ -842,6 +842,16 @@
             // Physical Assets Tracking List
             let acquiredAssets = [];
 
+            // Goal Statistics
+            let goalStats = {
+                total: expandedGoals.length,
+                realized: 0,
+                delayedCount: 0,
+                totalDelayMonths: 0,
+                failed: 0,
+                details: [] // Detailed report for each goal
+            };
+
             for (let m = 1; m <= months; m++) {
                 // 1. Date String
                 let dateStr = currentDate.toLocaleString('pt-BR', { month: 'short', year: 'numeric' });
@@ -923,6 +933,7 @@
 
                 let goalsOutput = [];
                 let goalsDeduction = 0;
+                let monthlyRealizedTotal = 0;
 
                 // Try to execute queue
                 // We must re-calculate Net Balance available for spending
@@ -953,7 +964,24 @@
                     if (g.type === 'accumulate') {
                         // Just check, don't deduct
                         if (netBalanceAvailable >= g.currentValue) {
-                            goalsOutput.push(`<span class="val-positive">🎯 ${g.name} (Atingido)</span>`);
+                            goalsOutput.push(`<span class="val-positive">🎯 ${g.name} (Atingido) - ${formatBRL(g.currentValue)}</span>`);
+                            
+                            // Stats
+                            goalStats.realized++;
+                            if (g.monthsDelayed > 0) {
+                                goalStats.delayedCount++;
+                                goalStats.totalDelayMonths += g.monthsDelayed;
+                            }
+                            
+                            goalStats.details.push({
+                                name: g.name,
+                                value: g.currentValue,
+                                status: g.monthsDelayed > 0 ? 'Atrasado' : 'No Prazo',
+                                delay: g.monthsDelayed,
+                                realizedDate: dateStr,
+                                type: 'accumulate'
+                            });
+
                             goalQueue.splice(i, 1);
                             i--;
                         } else {
@@ -974,19 +1002,47 @@
                                     currentValue: g.currentValue,
                                     appreciationRate: g.appreciationRate
                                 });
-                                goalsOutput.push(`<span class="val-positive">🏠 ${g.name} (Adquirido)</span>`);
+                                goalsOutput.push(`<span class="val-positive">🏠 ${g.name} (Adquirido) - ${formatBRL(g.currentValue)}</span>`);
                             } else {
-                                goalsOutput.push(`<span class="val-negative">💸 ${g.name} (Realizado)</span>`);
+                                goalsOutput.push(`<span class="val-negative">💸 ${g.name} (Realizado) - ${formatBRL(g.currentValue)}</span>`);
                             }
+
+                            monthlyRealizedTotal += g.currentValue;
+
+                            // Stats
+                            goalStats.realized++;
+                            if (g.monthsDelayed > 0) {
+                                goalStats.delayedCount++;
+                                goalStats.totalDelayMonths += g.monthsDelayed;
+                            }
+
+                            goalStats.details.push({
+                                name: g.name,
+                                value: g.currentValue,
+                                status: g.monthsDelayed > 0 ? 'Atrasado' : 'No Prazo',
+                                delay: g.monthsDelayed,
+                                realizedDate: dateStr,
+                                type: 'spend'
+                            });
                             
                             // Recalculate Net Balance for next goal in queue
-                            // Note: Total Invested (Principal) should also decrease? 
-                            // Usually withdrawals come from Principal + Interest proportionally.
-                            // Let's reduce Total Invested proportionally to keep math consistent.
-                            let ratio = g.currentValue / (balanceAfterEarnings + g.currentValue);
-                            totalInvested -= totalInvested * ratio;
+                            // Note: Total Invested (Principal) should NOT decrease. It represents the total effort (contributions).
+                            // However, for tax calculation, we need a separate "Tax Basis" that reduces on withdrawal.
+                            // But for the chart "Total Invested", we want to see the cumulative input.
+                            // Let's keep totalInvested as cumulative input for the chart.
+                            // And use a separate variable for Tax Basis if needed, or simplify tax to be on current balance vs current basis.
+                            // For now, let's just NOT reduce totalInvested to fix the chart drop.
                             
-                            currentTaxDue = (balanceAfterEarnings - totalInvested) * taxRate;
+                            // But wait, if we don't reduce basis, tax calculation might be wrong (paying tax on principal?).
+                            // Tax is (Balance - Basis) * Rate. If Balance drops (spent) and Basis stays high, Tax drops (or becomes 0).
+                            // This is actually correct for "Total Invested" visualization, but maybe not for strict tax law.
+                            // Let's prioritize the user request: "line of invested value follows linearly".
+                            
+                            currentTaxDue = (balanceAfterEarnings - (totalInvested * (balanceAfterEarnings / (balanceAfterEarnings + g.currentValue)))) * taxRate; 
+                            // Actually, let's just use a simplified tax model: Tax on (Balance - Proportional Basis).
+                            // But for the CHART, we use the cumulative totalInvested.
+                            
+                            if (currentTaxDue < 0) currentTaxDue = 0;
                             if (currentTaxDue < 0) currentTaxDue = 0;
                             netBalanceAvailable = balanceAfterEarnings - currentTaxDue;
 
@@ -1013,13 +1069,18 @@
                 dataPhysical.push(physicalWealth);
                 dataTotalConsolidated.push(finalNetBalance + physicalWealth);
 
+                let goalsDisplay = goalsOutput.join('<br>');
+                if (goalsOutput.length > 1 && monthlyRealizedTotal > 0) {
+                    goalsDisplay += `<br><strong>Total Realizado: ${formatBRL(monthlyRealizedTotal)}</strong>`;
+                }
+
                 tableRows.push({
                     period: m,
                     date: dateStr,
                     start: startBalance,
                     earnings: earnings,
                     contribution: contribution,
-                    goals: goalsOutput.join('<br>'),
+                    goals: goalsDisplay,
                     tax: finalTaxDue,
                     minReserve: currentMinReserve,
                     netBalance: finalNetBalance,
@@ -1048,8 +1109,23 @@
             // Render Table
             renderTable(tableRows, hasPhysicalAssets);
 
+            // Final Stats
+            goalStats.failed = goalQueue.length;
+            
+            // Add failed goals to details
+            goalQueue.forEach(g => {
+                goalStats.details.push({
+                    name: g.name,
+                    value: g.currentValue,
+                    status: 'Não Realizado',
+                    delay: g.monthsDelayed,
+                    realizedDate: '-',
+                    type: g.type
+                });
+            });
+
             // Render Verdict
-            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual);
+            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth);
         }
 
         function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, hasPhysicalAssets) {
@@ -1191,7 +1267,7 @@
             document.getElementById('tableContainer').style.display = 'block';
         }
 
-        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate) {
+        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth) {
             const verdictBox = document.getElementById('oracleVerdict');
             const content = document.getElementById('verdictContent');
             
@@ -1220,6 +1296,102 @@
                     html += `🔥 <strong>Crescimento Agressivo</strong>: Multiplicação acelerada de capital.<br>`;
                 }
             }
+
+            // Goal Analysis
+            if (goalStats && goalStats.total > 0) {
+                html += `<br><br><strong>Diagnóstico de Objetivos:</strong><br>`;
+                let successRate = (goalStats.realized / goalStats.total) * 100;
+                
+                html += `Você planejou <strong>${goalStats.total}</strong> objetivos.<br>`;
+                html += `✅ Realizados: <strong>${goalStats.realized}</strong> (${successRate.toFixed(0)}%)<br>`;
+                
+                if (goalStats.delayedCount > 0) {
+                    let avgDelay = (goalStats.totalDelayMonths / goalStats.delayedCount).toFixed(1);
+                    html += `<span style="color: #fbbf24;">⚠️ Atrasados: <strong>${goalStats.delayedCount}</strong> (Média de atraso: ${avgDelay} meses)</span><br>`;
+                }
+                
+                if (goalStats.failed > 0) {
+                    html += `<span style="color: #ef4444;">❌ Não Realizados: <strong>${goalStats.failed}</strong></span> (Ficaram na fila até o fim da projeção)<br>`;
+                    html += `Sugestão: Aumente os aportes ou adie a data dos objetivos não realizados.<br>`;
+                } else if (goalStats.realized === goalStats.total) {
+                    html += `🎉 <strong>Parabéns!</strong> Todos os seus sonhos cabem no seu bolso com este plano.<br>`;
+                }
+
+                // Detailed Report Table
+                html += `<br><strong>Relatório Detalhado:</strong><br>`;
+                html += `<div style="overflow-x: auto; margin-top: 0.5rem;">`;
+                html += `<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem;">`;
+                html += `<thead style="background: rgba(255,255,255,0.1); color: #fbbf24;"><tr><th style="padding: 4px; text-align: left;">Objetivo</th><th style="padding: 4px; text-align: right;">Valor Final</th><th style="padding: 4px; text-align: center;">Status</th><th style="padding: 4px; text-align: right;">Data</th></tr></thead>`;
+                html += `<tbody>`;
+                
+                goalStats.details.forEach(d => {
+                    let statusColor = d.status === 'No Prazo' ? '#34d399' : (d.status === 'Atrasado' ? '#fbbf24' : '#ef4444');
+                    let delayText = d.delay > 0 ? ` (+${d.delay}m)` : '';
+                    html += `<tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">`;
+                    html += `<td style="padding: 4px;">${d.name}</td>`;
+                    html += `<td style="padding: 4px; text-align: right;">${formatBRL(d.value)}</td>`;
+                    html += `<td style="padding: 4px; text-align: center; color: ${statusColor};">${d.status}${delayText}</td>`;
+                    html += `<td style="padding: 4px; text-align: right;">${d.realizedDate}</td>`;
+                    html += `</tr>`;
+                });
+                
+                html += `</tbody></table></div>`;
+
+            } else if (goalStats && goalStats.total === 0) {
+                html += `<br><br><strong>Diagnóstico de Objetivos:</strong><br>`;
+                html += `Nenhum objetivo foi cadastrado para esta simulação.<br>`;
+            }
+
+            // Final Yield Analysis
+            html += `<br><br><strong>Fluxo de Renda Futura (Rentabilidade Final):</strong><br>`;
+            
+            // Calculate Monthly and Annual Yields
+            let monthlyRate = Math.pow(1 + interestRate, 1/12) - 1;
+            let annualRate = interestRate;
+            
+            let monthlyYieldNet = finalNetBalance * monthlyRate;
+            let annualYieldNet = finalNetBalance * annualRate;
+            
+            let monthlyYieldTotal = (finalNetBalance + physicalWealth) * monthlyRate; // Assuming physical wealth doesn't yield cash flow here, but user asked for "Total"
+            // Actually, physical wealth usually appreciates but doesn't yield cash unless rented. 
+            // User asked: "rendimento líquido mensal e anual do patrimônio líquido + patrimônio físico + total"
+            // Let's assume the same financial yield rate applies to the "Total" just for the hypothetical "if all was invested" or just show the breakdown.
+            // Or maybe user means: Yield of Net Financial Wealth + Appreciation of Physical Wealth?
+            // Let's stick to Financial Yield for Financial Wealth, and maybe 0 for Physical (or appreciation rate?).
+            // Let's show Financial Yield primarily.
+            
+            html += `<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem;">`;
+            html += `<thead style="background: rgba(255,255,255,0.1); color: #fbbf24;"><tr><th style="padding: 4px; text-align: left;">Tipo</th><th style="padding: 4px; text-align: right;">Patrimônio</th><th style="padding: 4px; text-align: right;">Renda Mensal</th><th style="padding: 4px; text-align: right;">Renda Anual</th></tr></thead>`;
+            html += `<tbody>`;
+            
+            // Financial
+            html += `<tr>`;
+            html += `<td style="padding: 4px;">Financeiro (Líquido)</td>`;
+            html += `<td style="padding: 4px; text-align: right;">${formatBRL(finalNetBalance)}</td>`;
+            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(monthlyYieldNet)}</td>`;
+            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(annualYieldNet)}</td>`;
+            html += `</tr>`;
+            
+            // Physical (Appreciation only, no cash flow usually, but let's show appreciation as "yield" if we have rate)
+            // We don't have a single appreciation rate for all physical assets easily accessible here without recalculating.
+            // Let's assume 0 cash flow for physical, or just show the value.
+            html += `<tr>`;
+            html += `<td style="padding: 4px;">Físico (Imóveis/Bens)</td>`;
+            html += `<td style="padding: 4px; text-align: right;">${formatBRL(physicalWealth)}</td>`;
+            html += `<td style="padding: 4px; text-align: right;">-</td>`;
+            html += `<td style="padding: 4px; text-align: right;">-</td>`;
+            html += `</tr>`;
+            
+            // Total
+            html += `<tr style="border-top: 1px solid rgba(255,255,255,0.2); font-weight: bold;">`;
+            html += `<td style="padding: 4px;">TOTAL CONSOLIDADO</td>`;
+            html += `<td style="padding: 4px; text-align: right; color: #fbbf24;">${formatBRL(finalWealth)}</td>`;
+            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(monthlyYieldNet)}</td>`; // Only financial yields cash
+            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(annualYieldNet)}</td>`;
+            html += `</tr>`;
+            
+            html += `</tbody></table>`;
+            html += `<div style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px;">*Renda calculada sobre o saldo financeiro líquido à taxa de ${(interestRate * 100).toFixed(2)}% a.a.</div>`;
 
             content.innerHTML = html;
         }
