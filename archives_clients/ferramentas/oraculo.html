@@ -1284,12 +1284,14 @@
             let profitPercent = (profit / totalInvested) * 100;
             
             let html = `<strong>Análise de Longo Prazo:</strong><br>`;
-            html += `Em ${document.getElementById('projectionValue').value} ${document.getElementById('projectionUnit').value === 'years' ? 'anos' : 'meses'}, seu patrimônio consolidado projetado é de <strong>${formatBRL(finalWealth)}</strong>.<br>`;
+            html += `Em ${document.getElementById('projectionValue').value} ${document.getElementById('projectionUnit').value === 'years' ? 'anos' : 'meses'}, seu patrimônio bruto projetado é de <strong>${formatBRL(balance + physicalWealth)}</strong>.<br>`;
+            html += `Após impostos, seu patrimônio líquido será de <strong>${formatBRL(finalWealth)}</strong>.<br>`;
             html += `Isso representa <strong>${multiplier.toFixed(2)}x</strong> o capital investido.<br>`;
             html += `<div style="margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; border-left: 3px solid #34d399;">`;
             html += `💰 <strong>Resumo do Investimento:</strong><br>`;
             html += `Total Investido (Seu Bolso): <strong>${formatBRL(totalInvested)}</strong><br>`;
-            html += `Lucro Acumulado (Juros + Valorização): <strong style="color: ${profit >= 0 ? '#34d399' : '#ef4444'};">${formatBRL(profit)}</strong> (${profitPercent >= 0 ? '+' : ''}${profitPercent.toFixed(0)}%)`;
+            html += `Lucro Bruto Acumulado: <strong style="color: ${profit >= 0 ? '#34d399' : '#ef4444'};">${formatBRL((balance + physicalWealth) - totalInvested)}</strong><br>`;
+            html += `Lucro Líquido Acumulado: <strong style="color: ${profit >= 0 ? '#34d399' : '#ef4444'};">${formatBRL(profit)}</strong> (${profitPercent >= 0 ? '+' : ''}${profitPercent.toFixed(0)}%)`;
             html += `</div>`;
             
             if (multiplier < 1) {
