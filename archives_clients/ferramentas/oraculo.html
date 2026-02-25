@@ -810,10 +810,11 @@
             let hasPhysicalAssets = false; // Flag to show/hide columns
 
             let labels = [];
-            let dataWealth = [];
+                let dataWealth = [];
             let dataInvested = [];
-            let dataPhysical = []; // New
-            let dataTotalConsolidated = []; // New
+            let dataPhysical = [];
+            let dataTotalConsolidated = [];
+            let dataGrossTotal = []; // New
             let tableRows = [];
 
             // Expand goals based on recurrence
@@ -1075,6 +1076,7 @@
                 dataInvested.push(totalInvested);
                 dataPhysical.push(physicalWealth);
                 dataTotalConsolidated.push(finalNetBalance + physicalWealth);
+                dataGrossTotal.push(balance + physicalWealth); // Gross Financial + Physical
 
                 let goalsDisplay = goalsOutput.join('<br>');
                 if (goalsOutput.length > 1 && monthlyRealizedTotal > 0) {
@@ -1111,7 +1113,7 @@
             document.getElementById('realWealth').innerText = formatBRL(realWealthVal);
 
             // Render Chart
-            renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, hasPhysicalAssets);
+            renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets);
 
             // Render Table
             renderTable(tableRows, hasPhysicalAssets);
@@ -1135,7 +1137,7 @@
             renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth, acquiredAssets, balance, taxRate);
         }
 
-        function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, hasPhysicalAssets) {
+        function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, dataGrossTotal, hasPhysicalAssets) {
             const ctx = document.getElementById('wealthChart').getContext('2d');
             
             if (chartInstance) chartInstance.destroy();
@@ -1149,6 +1151,16 @@
                     borderWidth: 3,
                     pointRadius: 0, // Smooth line
                     fill: true,
+                    tension: 0.4
+                },
+                {
+                    label: 'Patrimônio Bruto Total',
+                    data: dataGrossTotal,
+                    borderColor: '#fbbf24', // Lighter Gold/Orange
+                    borderWidth: 1,
+                    borderDash: [2, 2], // Thin dotted line
+                    pointRadius: 0,
+                    fill: false,
                     tension: 0.4
                 },
                 {
