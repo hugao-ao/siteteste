@@ -4,12 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>O Oráculo Financeiro - MithraSF</title>
-    <link<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>O Oráculo Financeiro - MithraSF</title>
     <link rel="stylesheet" href="../assets/style.css">
     <script src="../assets/layout.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -311,11 +305,6 @@
                         </div>
 
                         <div class="input-group">
-                            <label>Período de Simulação (Anos)</label>
-                            <input type="number" id="simulationYears" placeholder="Ex: 30" value="30">
-                        </div>
-
-                        <div class="input-group">
                             <label>Patrimônio Atual (R$)</label>
                             <input type="text" id="currentWealth" placeholder="0,00" oninput="formatCurrencyInput(this)">
                         </div>
@@ -348,6 +337,17 @@
                         <div class="input-group">
                             <label>Alíquota de Imposto sobre Rendimentos (%)</label>
                             <input type="number" id="taxRateInput" placeholder="Ex: 15" step="0.1" value="15">
+                        </div>
+
+                        <div class="input-group">
+                            <label>Período de Simulação</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input type="number" id="simulationPeriod" placeholder="Ex: 30" value="30" style="flex: 2;">
+                                <select id="simulationUnit" style="flex: 1;">
+                                    <option value="years" selected>Anos</option>
+                                    <option value="months">Meses</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
 
@@ -766,8 +766,9 @@
             const startDate = new Date(startYear, startMonth - 1, 1);
 
             // Determine Simulation Duration
-            let simulationYears = parseInt(document.getElementById('simulationYears').value) || 30;
-            let maxMonths = simulationYears * 12;
+            let simulationPeriod = parseInt(document.getElementById('simulationPeriod').value) || 30;
+            let simulationUnit = document.getElementById('simulationUnit').value;
+            let maxMonths = simulationUnit === 'years' ? simulationPeriod * 12 : simulationPeriod;
 
             // Ensure simulation covers at least the longest goal?
             // User might want to see what happens if they stop early, but usually we extend.
