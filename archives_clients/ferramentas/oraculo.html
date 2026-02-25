@@ -1353,8 +1353,15 @@
             let monthlyRate = Math.pow(1 + interestRate, 1/12) - 1;
             let annualRate = interestRate;
             
+            // Net Yield (already calculated on Net Balance)
             let monthlyYieldNet = finalNetBalance * monthlyRate;
             let annualYieldNet = finalNetBalance * annualRate;
+            
+            // Gross Yield (for display) - assuming 15% tax on earnings
+            // Gross = Net / (1 - tax)
+            let taxRateYield = 0.15;
+            let monthlyYieldGross = monthlyYieldNet / (1 - taxRateYield);
+            let annualYieldGross = annualYieldNet / (1 - taxRateYield);
             
             // Calculate Yields for Physical Assets
             let totalPhysicalMonthlyYield = 0;
@@ -1369,16 +1376,23 @@
             html += `<td style="padding: 4px;"><strong>Financeiro (Líquido)</strong></td>`;
             html += `<td style="padding: 4px; text-align: right;">${formatBRL(finalNetBalance)}</td>`;
             html += `<td style="padding: 4px; text-align: right;">${(interestRate * 100).toFixed(2)}%</td>`;
-            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(monthlyYieldNet)}</td>`;
-            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(annualYieldNet)}</td>`;
+            html += `<td style="padding: 4px; text-align: right;">
+                        <span style="color: #34d399; font-weight: bold;">${formatBRL(monthlyYieldNet)}</span><br>
+                        <span style="font-size: 0.8em; color: #9ca3af;">(${formatBRL(monthlyYieldGross)})</span>
+                     </td>`;
+            html += `<td style="padding: 4px; text-align: right;">
+                        <span style="color: #34d399; font-weight: bold;">${formatBRL(annualYieldNet)}</span><br>
+                        <span style="font-size: 0.8em; color: #9ca3af;">(${formatBRL(annualYieldGross)})</span>
+                     </td>`;
             html += `</tr>`;
             
             // Physical Assets Rows
             if (acquiredAssets && acquiredAssets.length > 0) {
                 acquiredAssets.forEach(asset => {
-                    let assetMonthlyRate = Math.pow(1 + asset.appreciationRate, 1/12) - 1;
-                    let assetMonthlyGain = asset.currentValue * assetMonthlyRate;
+                    // Annual gain based on FINAL value
                     let assetAnnualGain = asset.currentValue * asset.appreciationRate;
+                    // Monthly gain is proportional (Annual / 12) for income flow view
+                    let assetMonthlyGain = assetAnnualGain / 12;
                     
                     totalPhysicalMonthlyYield += assetMonthlyGain;
                     totalPhysicalAnnualYield += assetAnnualGain;
