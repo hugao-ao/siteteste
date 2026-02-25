@@ -360,11 +360,23 @@
 
                                 <label style="font-size: 0.75rem;">Repetir a cada:</label>
                                 <div style="display: flex; gap: 0.5rem; margin-bottom: 0.5rem;">
-                                    <input type="number" id="specialRecurrenceValue" placeholder="Ex: 1" style="flex: 1;">
+                                    <input type="number" id="specialRecurrenceValue" placeholder="Ex: 1" style="flex: 1;" oninput="toggleSpecialRecurrenceEnd(this.value)">
                                     <select id="specialRecurrenceUnit" style="width: 100px;">
                                         <option value="years">Anos</option>
                                         <option value="months">Meses</option>
                                     </select>
+                                </div>
+
+                                <div id="specialRecurrenceEndContainer" style="display: none; margin-bottom: 0.5rem; background: rgba(0,0,0,0.2); padding: 0.5rem; border-radius: 4px;">
+                                    <label style="font-size: 0.75rem; color: #fbbf24;">Terminar Recorrência:</label>
+                                    <select id="specialRecurrenceEndType" style="width: 100%; margin-bottom: 0.5rem; font-size: 0.8rem;" onchange="toggleSpecialRecurrenceEndInputs()">
+                                        <option value="never">Nunca (até o fim)</option>
+                                        <option value="after_occurrences">Após X ocorrências</option>
+                                        <option value="at_date">Em data específica</option>
+                                    </select>
+                                    
+                                    <input type="number" id="specialRecurrenceEndOccurrences" placeholder="Nº de vezes" style="display: none; width: 100%; font-size: 0.8rem;">
+                                    <input type="month" id="specialRecurrenceEndDate" style="display: none; width: 100%; font-size: 0.8rem;">
                                 </div>
 
                                 <button onclick="addSpecialContribution()" class="btn-secondary" style="width: 100%; font-size: 0.85rem; padding: 0.25rem;">+ Adicionar Aporte Especial</button>
@@ -706,6 +718,30 @@
         }
 
         // Special Contribution Functions
+        function toggleSpecialRecurrenceEnd(val) {
+            const container = document.getElementById('specialRecurrenceEndContainer');
+            if (parseInt(val) > 0) {
+                container.style.display = 'block';
+            } else {
+                container.style.display = 'none';
+            }
+        }
+
+        function toggleSpecialRecurrenceEndInputs() {
+            const type = document.getElementById('specialRecurrenceEndType').value;
+            const occInput = document.getElementById('specialRecurrenceEndOccurrences');
+            const dateInput = document.getElementById('specialRecurrenceEndDate');
+
+            occInput.style.display = 'none';
+            dateInput.style.display = 'none';
+
+            if (type === 'after_occurrences') {
+                occInput.style.display = 'block';
+            } else if (type === 'at_date') {
+                dateInput.style.display = 'block';
+            }
+        }
+
         function addSpecialContribution() {
             const name = document.getElementById('specialName').value;
             const value = parseCurrency(document.getElementById('specialValue').value);
@@ -728,6 +764,18 @@
             let recurrence = null;
             if (recVal > 0) {
                 recurrence = { value: recVal, unit: recUnit };
+                
+                // End Condition
+                const endType = document.getElementById('specialRecurrenceEndType').value;
+                if (endType !== 'never') {
+                    let endCondition = { type: endType };
+                    if (endType === 'after_occurrences') {
+                        endCondition.value = parseInt(document.getElementById('specialRecurrenceEndOccurrences').value) || 0;
+                    } else if (endType === 'at_date') {
+                        endCondition.value = document.getElementById('specialRecurrenceEndDate').value;
+                    }
+                    recurrence.endCondition = endCondition;
+                }
             }
 
             specialContributions.push({
@@ -745,6 +793,10 @@
             document.getElementById('specialValue').value = '';
             document.getElementById('specialDate').value = '';
             document.getElementById('specialRecurrenceValue').value = '';
+            document.getElementById('specialRecurrenceEndContainer').style.display = 'none';
+            document.getElementById('specialRecurrenceEndType').value = 'never';
+            document.getElementById('specialRecurrenceEndOccurrences').value = '';
+            document.getElementById('specialRecurrenceEndDate').value = '';
         }
 
         function removeSpecialContribution(index) {
@@ -762,7 +814,21 @@
                 
                 const [year, month] = sc.date.split('-');
                 const dateStr = `${month}/${year}`;
-                let recText = sc.recurrence ? ` (Repete a cada ${sc.recurrence.value} ${sc.recurrence.unit === 'years' ? 'anos' : 'meses'})` : '';
+                
+                let recText = '';
+                if (sc.recurrence) {
+                    recText = ` (Repete a cada ${sc.recurrence.value} ${sc.recurrence.unit === 'years' ? 'anos' : 'meses'}`;
+                    
+                    if (sc.recurrence.endCondition) {
+                        if (sc.recurrence.endCondition.type === 'after_occurrences') {
+                            recText += `, máx ${sc.recurrence.endCondition.value}x`;
+                        } else if (sc.recurrence.endCondition.type === 'at_date') {
+                            const [eY, eM] = sc.recurrence.endCondition.value.split('-');
+                            recText += `, até ${eM}/${eY}`;
+                        }
+                    }
+                    recText += ')';
+                }
 
                 div.innerHTML = `
                     <div>
@@ -1216,13 +1282,37 @@
                     let scDateObj = new Date(scYear, scMonth - 1, 1);
                     
                     let isDue = false;
+                    let occurrenceIndex = 0; // 0 for first occurrence
+
                     if (currentYear === scYear && currentMonth === scMonth) {
                         isDue = true;
+                        occurrenceIndex = 0;
                     } else if (sc.recurrence && scDateObj < currentDate) {
                         let diffMonths = (currentYear - scYear) * 12 + (currentMonth - scMonth);
                         let interval = sc.recurrence.unit === 'years' ? sc.recurrence.value * 12 : sc.recurrence.value;
+                        
                         if (diffMonths > 0 && diffMonths % interval === 0) {
                             isDue = true;
+                            occurrenceIndex = diffMonths / interval;
+                        }
+                    }
+
+                    // Check End Conditions if due
+                    if (isDue && sc.recurrence && sc.recurrence.endCondition) {
+                        const end = sc.recurrence.endCondition;
+                        if (end.type === 'after_occurrences') {
+                            // occurrenceIndex starts at 0 (1st occurrence). 
+                            // If end.value is 5, we allow indices 0, 1, 2, 3, 4.
+                            // So if occurrenceIndex >= end.value, we stop.
+                            if (occurrenceIndex >= end.value) {
+                                isDue = false;
+                            }
+                        } else if (end.type === 'at_date') {
+                            // Check if current date is AFTER end date
+                            // end.value is YYYY-MM
+                            if (currentYYYYMM > end.value) {
+                                isDue = false;
+                            }
                         }
                     }
 
