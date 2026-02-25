@@ -1385,29 +1385,21 @@
             html += `<thead style="background: rgba(255,255,255,0.1); color: #fbbf24;"><tr><th style="padding: 4px; text-align: left;">Ativo / Tipo</th><th style="padding: 4px; text-align: right;">Patrimônio</th><th style="padding: 4px; text-align: right;">Taxa a.a.</th><th style="padding: 4px; text-align: right;">Renda/Ganho Mensal</th><th style="padding: 4px; text-align: right;">Renda/Ganho Anual</th></tr></thead>`;
             html += `<tbody>`;
             
-            // Financial Row (Gross)
+            // Financial Row (Unified)
             html += `<tr>`;
-            html += `<td style="padding: 4px;"><strong>Financeiro (Bruto)</strong></td>`;
-            html += `<td style="padding: 4px; text-align: right;">${formatBRL(grossBalance)}</td>`;
+            html += `<td style="padding: 4px;"><strong>Financeiro</strong></td>`;
+            html += `<td style="padding: 4px; text-align: right;">
+                        <span style="font-weight: bold;">${formatBRL(finalNetBalance)}</span><br>
+                        <span style="font-size: 0.8em; color: #9ca3af;">(${formatBRL(grossBalance)})</span>
+                     </td>`;
             html += `<td style="padding: 4px; text-align: right;">${(interestRate * 100).toFixed(2)}%</td>`;
             html += `<td style="padding: 4px; text-align: right;">
-                        <span style="color: #34d399; font-weight: bold;">${formatBRL(monthlyYieldGross)}</span>
+                        <span style="color: #34d399; font-weight: bold;">${formatBRL(monthlyYieldNet)}</span><br>
+                        <span style="font-size: 0.8em; color: #9ca3af;">(${formatBRL(monthlyYieldGross)})</span>
                      </td>`;
             html += `<td style="padding: 4px; text-align: right;">
-                        <span style="color: #34d399; font-weight: bold;">${formatBRL(annualYieldGross)}</span>
-                     </td>`;
-            html += `</tr>`;
-
-            // Financial Row (Net)
-            html += `<tr>`;
-            html += `<td style="padding: 4px;"><strong>Financeiro (Líquido)</strong></td>`;
-            html += `<td style="padding: 4px; text-align: right;">${formatBRL(finalNetBalance)}</td>`;
-            html += `<td style="padding: 4px; text-align: right;">-</td>`;
-            html += `<td style="padding: 4px; text-align: right;">
-                        <span style="color: #34d399; font-weight: bold;">${formatBRL(monthlyYieldNet)}</span>
-                     </td>`;
-            html += `<td style="padding: 4px; text-align: right;">
-                        <span style="color: #34d399; font-weight: bold;">${formatBRL(annualYieldNet)}</span>
+                        <span style="color: #34d399; font-weight: bold;">${formatBRL(annualYieldNet)}</span><br>
+                        <span style="font-size: 0.8em; color: #9ca3af;">(${formatBRL(annualYieldGross)})</span>
                      </td>`;
             html += `</tr>`;
             
@@ -1442,6 +1434,23 @@
                 html += `<td style="padding: 4px; text-align: right; color: #fbbf24;">${formatBRL(totalPhysicalAnnualYield)}</td>`;
                 html += `</tr>`;
             }
+            
+            // Consolidated Total
+            // Wealth: Gross Financial + Physical
+            let totalConsolidatedWealth = grossBalance + physicalWealth;
+            // Income: Net Financial Income + Physical Gain
+            let totalConsolidatedMonthlyIncome = monthlyYieldNet + totalPhysicalMonthlyYield;
+            let totalConsolidatedAnnualIncome = annualYieldNet + totalPhysicalAnnualYield;
+            // Rate: Annual Income / Total Wealth
+            let consolidatedRate = totalConsolidatedWealth > 0 ? (totalConsolidatedAnnualIncome / totalConsolidatedWealth) : 0;
+
+            html += `<tr style="border-top: 2px solid #fbbf24; background: rgba(251, 191, 36, 0.1);">`;
+            html += `<td style="padding: 4px;"><strong>TOTAL CONSOLIDADO</strong></td>`;
+            html += `<td style="padding: 4px; text-align: right; font-weight: bold; color: #fbbf24;">${formatBRL(totalConsolidatedWealth)}</td>`;
+            html += `<td style="padding: 4px; text-align: right; font-weight: bold; color: #fbbf24;">${(consolidatedRate * 100).toFixed(2)}%</td>`;
+            html += `<td style="padding: 4px; text-align: right; font-weight: bold; color: #fbbf24;">${formatBRL(totalConsolidatedMonthlyIncome)}</td>`;
+            html += `<td style="padding: 4px; text-align: right; font-weight: bold; color: #fbbf24;">${formatBRL(totalConsolidatedAnnualIncome)}</td>`;
+            html += `</tr>`;
             
             // Total Consolidated
             let totalMonthlyYield = monthlyYieldNet + totalPhysicalMonthlyYield;
