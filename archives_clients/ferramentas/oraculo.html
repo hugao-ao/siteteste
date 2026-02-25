@@ -1257,8 +1257,8 @@
                 <th>#</th>
                 <th style="text-align: left;">Data</th>
                 <th>Saldo Inicial</th>
-                <th>Rendimentos</th>
                 <th>Aportes</th>
+                <th>Rendimentos</th>
                 <th>Objetivos (Saídas)</th>
                 <th>Imposto Devido</th>
                 <th>Reserva Mín.</th>
@@ -1283,7 +1283,7 @@
                     <td>${formatBRL(r.start)}</td>
                     <td class="val-positive">+${formatBRL(r.contribution)}</td>
                     <td class="val-positive">
-                        <div>+${formatBRL(netEarnings)}</div>
+                        <div style="font-weight: bold; color: #4ade80;">+${formatBRL(netEarnings)}</div>
                         <div style="font-size: 0.75em; color: #fbbf24; opacity: 0.8;">(+${formatBRL(r.grossEarnings)})</div>
                     </td>
                     <td>${r.goals}</td>
