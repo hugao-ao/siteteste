@@ -151,6 +151,8 @@
             height: 400px;
             position: relative;
             box-shadow: 0 4px 20px rgba(212, 175, 55, 0.1);
+            width: 100%;
+            overflow: hidden;
         }
 
         .summary-grid {
@@ -216,6 +218,8 @@
             overflow-x: auto;
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            width: 100%;
+            max-width: 100%;
         }
 
         .projection-table {
@@ -259,6 +263,12 @@
         .priority-input.error {
             border-color: #ef4444 !important;
             background-color: rgba(239, 68, 68, 0.1) !important;
+        }
+
+        @media (max-width: 640px) {
+            .summary-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
     </style>
@@ -428,7 +438,7 @@
                 </div>
 
                 <!-- Results Column -->
-                <div class="lg:col-span-2">
+                <div class="lg:col-span-2" style="min-width: 0;">
                     <div class="chart-container">
                         <canvas id="wealthChart"></canvas>
                     </div>
