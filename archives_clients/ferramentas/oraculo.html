@@ -1101,7 +1101,7 @@
 
             // Update Summary
             const lastRow = tableRows[tableRows.length - 1];
-            document.getElementById('finalWealth').innerText = formatBRL(lastRow.netBalance);
+            document.getElementById('finalWealth').innerText = formatBRL(lastRow.netBalance) + " (Líq) / " + formatBRL(balance) + " (Bruto)";
             document.getElementById('totalInvested').innerText = formatBRL(lastRow.contribution * months + parseCurrency(document.getElementById('currentWealth').value)); // Approx
             document.getElementById('totalInterest').innerText = formatBRL(totalInterest);
             
@@ -1356,19 +1356,24 @@
             // Final Yield Analysis
             html += `<br><br><strong>Fluxo de Renda Futura (Rentabilidade Final):</strong><br>`;
             
-            // Calculate Monthly and Annual Yields for Financial
+            // Calculate Monthly and Annual Yields for Financial based on GROSS Balance
+            // We need Gross Balance (Balance before tax deduction)
+            // In our loop, 'balance' variable holds the Gross Balance at the end.
+            // finalNetBalance is balance - finalTaxDue.
+            // So Gross Balance = balance.
+            
+            let grossBalance = balance;
             let monthlyRate = Math.pow(1 + interestRate, 1/12) - 1;
             let annualRate = interestRate;
             
-            // Net Yield (already calculated on Net Balance)
-            let monthlyYieldNet = finalNetBalance * monthlyRate;
-            let annualYieldNet = finalNetBalance * annualRate;
+            // Gross Yield (Calculated on Gross Balance)
+            let monthlyYieldGross = grossBalance * monthlyRate;
+            let annualYieldGross = grossBalance * annualRate;
             
-            // Gross Yield (for display) - assuming 15% tax on earnings
-            // Gross = Net / (1 - tax)
-            let taxRateYield = 0.15;
-            let monthlyYieldGross = monthlyYieldNet / (1 - taxRateYield);
-            let annualYieldGross = annualYieldNet / (1 - taxRateYield);
+            // Net Yield (Gross Yield - Tax on Yield)
+            // Tax is applied on the yield itself for this "Future Income" projection
+            let monthlyYieldNet = monthlyYieldGross * (1 - taxRate);
+            let annualYieldNet = annualYieldGross * (1 - taxRate);
             
             // Calculate Yields for Physical Assets
             let totalPhysicalMonthlyYield = 0;
@@ -1378,18 +1383,29 @@
             html += `<thead style="background: rgba(255,255,255,0.1); color: #fbbf24;"><tr><th style="padding: 4px; text-align: left;">Ativo / Tipo</th><th style="padding: 4px; text-align: right;">Patrimônio</th><th style="padding: 4px; text-align: right;">Taxa a.a.</th><th style="padding: 4px; text-align: right;">Renda/Ganho Mensal</th><th style="padding: 4px; text-align: right;">Renda/Ganho Anual</th></tr></thead>`;
             html += `<tbody>`;
             
-            // Financial Row
+            // Financial Row (Gross)
+            html += `<tr>`;
+            html += `<td style="padding: 4px;"><strong>Financeiro (Bruto)</strong></td>`;
+            html += `<td style="padding: 4px; text-align: right;">${formatBRL(grossBalance)}</td>`;
+            html += `<td style="padding: 4px; text-align: right;">${(interestRate * 100).toFixed(2)}%</td>`;
+            html += `<td style="padding: 4px; text-align: right;">
+                        <span style="color: #34d399; font-weight: bold;">${formatBRL(monthlyYieldGross)}</span>
+                     </td>`;
+            html += `<td style="padding: 4px; text-align: right;">
+                        <span style="color: #34d399; font-weight: bold;">${formatBRL(annualYieldGross)}</span>
+                     </td>`;
+            html += `</tr>`;
+
+            // Financial Row (Net)
             html += `<tr>`;
             html += `<td style="padding: 4px;"><strong>Financeiro (Líquido)</strong></td>`;
             html += `<td style="padding: 4px; text-align: right;">${formatBRL(finalNetBalance)}</td>`;
-            html += `<td style="padding: 4px; text-align: right;">${(interestRate * 100).toFixed(2)}%</td>`;
+            html += `<td style="padding: 4px; text-align: right;">-</td>`;
             html += `<td style="padding: 4px; text-align: right;">
-                        <span style="color: #34d399; font-weight: bold;">${formatBRL(monthlyYieldNet)}</span><br>
-                        <span style="font-size: 0.8em; color: #9ca3af;">(${formatBRL(monthlyYieldGross)})</span>
+                        <span style="color: #34d399; font-weight: bold;">${formatBRL(monthlyYieldNet)}</span>
                      </td>`;
             html += `<td style="padding: 4px; text-align: right;">
-                        <span style="color: #34d399; font-weight: bold;">${formatBRL(annualYieldNet)}</span><br>
-                        <span style="font-size: 0.8em; color: #9ca3af;">(${formatBRL(annualYieldGross)})</span>
+                        <span style="color: #34d399; font-weight: bold;">${formatBRL(annualYieldNet)}</span>
                      </td>`;
             html += `</tr>`;
             
