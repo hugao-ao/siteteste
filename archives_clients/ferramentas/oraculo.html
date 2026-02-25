@@ -1125,7 +1125,7 @@
             });
 
             // Render Verdict
-            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth);
+            renderVerdict(lastRow.totalConsolidated, totalInvested, inflationRateAnnual, interestRateAnnual, goalStats, lastRow.netBalance, physicalWealth, acquiredAssets);
         }
 
         function renderChart(labels, dataWealth, dataInvested, dataPhysical, dataTotalConsolidated, hasPhysicalAssets) {
@@ -1265,9 +1265,7 @@
             }).join('');
 
             document.getElementById('tableContainer').style.display = 'block';
-        }
-
-        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth) {
+        }        function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth, acquiredAssets) {
             const verdictBox = document.getElementById('oracleVerdict');
             const content = document.getElementById('verdictContent');
             
@@ -1275,12 +1273,17 @@
             
             let realReturn = (1 + interestRate) / (1 + inflationRate) - 1;
             let multiplier = finalWealth / totalInvested;
+            let profit = finalWealth - totalInvested;
+            let profitPercent = (profit / totalInvested) * 100;
             
             let html = `<strong>Análise de Longo Prazo:</strong><br>`;
             html += `Em ${document.getElementById('projectionValue').value} ${document.getElementById('projectionUnit').value === 'years' ? 'anos' : 'meses'}, seu patrimônio consolidado projetado é de <strong>${formatBRL(finalWealth)}</strong>.<br>`;
-            
-            if (finalWealth < totalInvested) {
-                html += `<span style="color: #ef4444;">🚨 <strong>DESTRUIÇÃO DE PATRIMÔNIO DETECTADA</strong></span><br>`;
+            html += `Isso representa <strong>${multiplier.toFixed(2)}x</strong> o capital investido.<br>`;
+            html += `<div style="margin-top: 8px; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; border-left: 3px solid #34d399;">`;
+            html += `💰 <strong>Resumo do Investimento:</strong><br>`;
+            html += `Total Investido (Seu Bolso): <strong>${formatBRL(totalInvested)}</strong><br>`;
+            html += `Lucro Acumulado (Juros + Valorização): <strong style="color: #34d399;">${formatBRL(profit)}</strong> (+${profitPercent.toFixed(0)}%)`;
+            html += `</div>`; #ef4444;">🚨 <strong>DESTRUIÇÃO DE PATRIMÔNIO DETECTADA</strong></span><br>`;
                 html += `Você terminará com MENOS dinheiro do que investiu (${multiplier.toFixed(2)}x).<br>`;
                 html += `Isso ocorre porque seus saques/objetivos estão drenando o capital mais rápido do que ele rende.`;
             } else {
@@ -1345,53 +1348,75 @@
             // Final Yield Analysis
             html += `<br><br><strong>Fluxo de Renda Futura (Rentabilidade Final):</strong><br>`;
             
-            // Calculate Monthly and Annual Yields
+            // Calculate Monthly and Annual Yields for Financial
             let monthlyRate = Math.pow(1 + interestRate, 1/12) - 1;
             let annualRate = interestRate;
             
             let monthlyYieldNet = finalNetBalance * monthlyRate;
             let annualYieldNet = finalNetBalance * annualRate;
             
-            let monthlyYieldTotal = (finalNetBalance + physicalWealth) * monthlyRate; // Assuming physical wealth doesn't yield cash flow here, but user asked for "Total"
-            // Actually, physical wealth usually appreciates but doesn't yield cash unless rented. 
-            // User asked: "rendimento líquido mensal e anual do patrimônio líquido + patrimônio físico + total"
-            // Let's assume the same financial yield rate applies to the "Total" just for the hypothetical "if all was invested" or just show the breakdown.
-            // Or maybe user means: Yield of Net Financial Wealth + Appreciation of Physical Wealth?
-            // Let's stick to Financial Yield for Financial Wealth, and maybe 0 for Physical (or appreciation rate?).
-            // Let's show Financial Yield primarily.
+            // Calculate Yields for Physical Assets
+            let totalPhysicalMonthlyYield = 0;
+            let totalPhysicalAnnualYield = 0;
             
             html += `<table style="width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 0.5rem;">`;
-            html += `<thead style="background: rgba(255,255,255,0.1); color: #fbbf24;"><tr><th style="padding: 4px; text-align: left;">Tipo</th><th style="padding: 4px; text-align: right;">Patrimônio</th><th style="padding: 4px; text-align: right;">Renda Mensal</th><th style="padding: 4px; text-align: right;">Renda Anual</th></tr></thead>`;
+            html += `<thead style="background: rgba(255,255,255,0.1); color: #fbbf24;"><tr><th style="padding: 4px; text-align: left;">Ativo / Tipo</th><th style="padding: 4px; text-align: right;">Patrimônio</th><th style="padding: 4px; text-align: right;">Taxa a.a.</th><th style="padding: 4px; text-align: right;">Renda/Ganho Mensal</th><th style="padding: 4px; text-align: right;">Renda/Ganho Anual</th></tr></thead>`;
             html += `<tbody>`;
             
-            // Financial
+            // Financial Row
             html += `<tr>`;
-            html += `<td style="padding: 4px;">Financeiro (Líquido)</td>`;
+            html += `<td style="padding: 4px;"><strong>Financeiro (Líquido)</strong></td>`;
             html += `<td style="padding: 4px; text-align: right;">${formatBRL(finalNetBalance)}</td>`;
+            html += `<td style="padding: 4px; text-align: right;">${(interestRate * 100).toFixed(2)}%</td>`;
             html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(monthlyYieldNet)}</td>`;
             html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(annualYieldNet)}</td>`;
             html += `</tr>`;
             
-            // Physical (Appreciation only, no cash flow usually, but let's show appreciation as "yield" if we have rate)
-            // We don't have a single appreciation rate for all physical assets easily accessible here without recalculating.
-            // Let's assume 0 cash flow for physical, or just show the value.
-            html += `<tr>`;
-            html += `<td style="padding: 4px;">Físico (Imóveis/Bens)</td>`;
-            html += `<td style="padding: 4px; text-align: right;">${formatBRL(physicalWealth)}</td>`;
-            html += `<td style="padding: 4px; text-align: right;">-</td>`;
-            html += `<td style="padding: 4px; text-align: right;">-</td>`;
-            html += `</tr>`;
+            // Physical Assets Rows
+            if (acquiredAssets && acquiredAssets.length > 0) {
+                acquiredAssets.forEach(asset => {
+                    let assetMonthlyRate = Math.pow(1 + asset.appreciationRate, 1/12) - 1;
+                    let assetMonthlyGain = asset.currentValue * assetMonthlyRate;
+                    let assetAnnualGain = asset.currentValue * asset.appreciationRate;
+                    
+                    totalPhysicalMonthlyYield += assetMonthlyGain;
+                    totalPhysicalAnnualYield += assetAnnualGain;
+                    
+                    let gainColor = asset.appreciationRate >= 0 ? '#34d399' : '#ef4444';
+                    
+                    html += `<tr>`;
+                    html += `<td style="padding: 4px; padding-left: 12px;">🏠 ${asset.name}</td>`;
+                    html += `<td style="padding: 4px; text-align: right;">${formatBRL(asset.currentValue)}</td>`;
+                    html += `<td style="padding: 4px; text-align: right;">${(asset.appreciationRate * 100).toFixed(2)}%</td>`;
+                    html += `<td style="padding: 4px; text-align: right; color: ${gainColor};">${formatBRL(assetMonthlyGain)}</td>`;
+                    html += `<td style="padding: 4px; text-align: right; color: ${gainColor};">${formatBRL(assetAnnualGain)}</td>`;
+                    html += `</tr>`;
+                });
+                
+                // Physical Subtotal
+                html += `<tr style="background: rgba(255,255,255,0.02);">`;
+                html += `<td style="padding: 4px;"><strong>Total Físico</strong></td>`;
+                html += `<td style="padding: 4px; text-align: right;">${formatBRL(physicalWealth)}</td>`;
+                html += `<td style="padding: 4px; text-align: right;">-</td>`;
+                html += `<td style="padding: 4px; text-align: right; color: #fbbf24;">${formatBRL(totalPhysicalMonthlyYield)}</td>`;
+                html += `<td style="padding: 4px; text-align: right; color: #fbbf24;">${formatBRL(totalPhysicalAnnualYield)}</td>`;
+                html += `</tr>`;
+            }
             
-            // Total
-            html += `<tr style="border-top: 1px solid rgba(255,255,255,0.2); font-weight: bold;">`;
+            // Total Consolidated
+            let totalMonthlyYield = monthlyYieldNet + totalPhysicalMonthlyYield;
+            let totalAnnualYield = annualYieldNet + totalPhysicalAnnualYield;
+            
+            html += `<tr style="border-top: 1px solid rgba(255,255,255,0.2); font-weight: bold; background: rgba(255,255,255,0.05);">`;
             html += `<td style="padding: 4px;">TOTAL CONSOLIDADO</td>`;
             html += `<td style="padding: 4px; text-align: right; color: #fbbf24;">${formatBRL(finalWealth)}</td>`;
-            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(monthlyYieldNet)}</td>`; // Only financial yields cash
-            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(annualYieldNet)}</td>`;
+            html += `<td style="padding: 4px; text-align: right;">-</td>`;
+            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(totalMonthlyYield)}</td>`;
+            html += `<td style="padding: 4px; text-align: right; color: #34d399;">${formatBRL(totalAnnualYield)}</td>`;
             html += `</tr>`;
             
             html += `</tbody></table>`;
-            html += `<div style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px;">*Renda calculada sobre o saldo financeiro líquido à taxa de ${(interestRate * 100).toFixed(2)}% a.a.</div>`;
+            html += `<div style="font-size: 0.8rem; color: #9ca3af; margin-top: 4px;">*Renda Financeira: Juros compostos (caixa). Ganho Físico: Valorização patrimonial (não é caixa imediato).</div>`;
 
             content.innerHTML = html;
         }
