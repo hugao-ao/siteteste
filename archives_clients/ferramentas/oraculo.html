@@ -16,13 +16,82 @@
             padding: 1.5rem;
             margin-bottom: 1.5rem;
         }
-
-        .card-header {
-            font-size: 1.1rem;
+        .verdict-title {
+            font-size: 1.2rem;
             font-weight: bold;
-            margin-bottom: 1rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--primary-color);
+            margin-bottom: 0.5rem;
+        }
+
+        /* Tooltip Styles */
+        .info-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background-color: rgba(255, 255, 255, 0.2);
+            color: #fff;
+            border-radius: 50%;
+            font-size: 10px;
+            font-weight: bold;
+            cursor: help;
+            margin-left: 6px;
+            position: relative;
+        }
+        
+        .info-icon:hover {
+            background-color: var(--primary-color);
+        }
+
+        .tooltip-container {
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 350px;
+            background-color: #1f2937;
+            border: 1px solid #374151;
+            border-radius: 6px;
+            padding: 10px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            z-index: 100;
+            display: none;
+            font-size: 0.75rem;
+            color: #d1d5db;
+            margin-bottom: 8px;
+            text-align: left;
+        }
+
+        .info-icon:hover .tooltip-container {
+            display: block;
+        }
+
+        .tooltip-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 8px;
+        }
+
+        .tooltip-table th, .tooltip-table td {
+            border: 1px solid #374151;
+            padding: 4px;
+            text-align: left;
+        }
+
+        .tooltip-table th {
+            background-color: #111827;
+            color: var(--primary-color);
+        }
+
+        .tooltip-title {
+            font-weight: bold;
+            color: var(--primary-color);
+            margin-bottom: 4px;
+            border-bottom: 1px solid #374151;
+            padding-bottom: 2px;
+            display: block;
+        }r-bottom: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .text-yellow { color: var(--primary-color); }
@@ -389,14 +458,64 @@
                         </div>
 
                         <div class="input-group">
-                            <label>Rentabilidade Anual Esperada (%)</label>
-                            <input type="number" id="interestRate" placeholder="Ex: 10" step="0.1">
-                        </div>
+                     <label for="interestRateAnnual">
+                    Rentabilidade Anual Esperada (%)
+                    <span class="info-icon">!
+                        <div class="tooltip-container">
+                            <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
+                            
+                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Entrada</span>
+                            <table class="tooltip-table">
+                                <tr><td>SELIC</td><td>10.75%</td></tr>
+                                <tr><td>CDI 120m</td><td>10.50%</td></tr>
+                                <tr><td>IPCA</td><td>4.50%</td></tr>
+                                <tr><td>IPCA 120m</td><td>5.00%</td></tr>
+                            </table>
 
-                        <div class="input-group">
-                            <label>Taxa de Inflação Anual (%)</label>
-                            <input type="number" id="inflationRate" placeholder="Ex: 4.5" step="0.1">
+                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Calculadas</span>
+                            <table class="tooltip-table">
+                                <tr><td>CDI</td><td>10.65%</td></tr>
+                                <tr><td>CDI Médio 10a</td><td>9.80%</td></tr>
+                                <tr><td>IPCA Médio 10a</td><td>4.80%</td></tr>
+                            </table>
+
+                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Rentabilidade 10 Anos</span>
+                            <table class="tooltip-table">
+                                <tr><td>Conservador</td><td>10.10%</td></tr>
+                                <tr><td>Moderado</td><td>10.80%</td></tr>
+                                <tr><td>Arrojado</td><td>11.76%</td></tr>
+                            </table>
                         </div>
+                    </span>
+                </label>
+                <input type="number" id="interestRateAnnual" placeholder="Ex: 10" step="0.01">
+            </div>
+            <div class="input-group">
+                <label for="inflationRateAnnual">
+                    Taxa de Inflação Anual (%)
+                    <span class="info-icon">!
+                        <div class="tooltip-container">
+                            <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
+                            
+                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Entrada</span>
+                            <table class="tooltip-table">
+                                <tr><td>SELIC</td><td>10.75%</td></tr>
+                                <tr><td>CDI 120m</td><td>10.50%</td></tr>
+                                <tr><td>IPCA</td><td>4.50%</td></tr>
+                                <tr><td>IPCA 120m</td><td>5.00%</td></tr>
+                            </table>
+
+                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Calculadas</span>
+                            <table class="tooltip-table">
+                                <tr><td>CDI</td><td>10.65%</td></tr>
+                                <tr><td>CDI Médio 10a</td><td>9.80%</td></tr>
+                                <tr><td>IPCA Médio 10a</td><td>4.80%</td></tr>
+                            </table>
+                        </div>
+                    </span>
+                </label>
+                <input type="number" id="inflationRateAnnual" placeholder="Ex: 4.5" step="0.01">
+            </div>         </div>
 
                         <div class="input-group">
                             <label>Imposto de Renda sobre Lucro (%)</label>
