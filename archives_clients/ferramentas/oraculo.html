@@ -1825,14 +1825,14 @@
 
             document.getElementById('tableContainer').style.display = 'block';
         }        // Initialize Supabase
-        const supabaseUrl = 'https://ivnlm4ro8pe406l9i5tz2.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Iml2bmxtNHJvOHBlNDA2bDlpNXR6MiIsInJvbGUiOiJhbm9uIiwiaWF0IjoxNzM2Mjg1NDg1LCJleHAiOjIwNTE4NjE0ODV9.u-s-q-r-t-v-w-x-y-z';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseUrl = 'https://vbikskbfkhundhropykf.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDI0OTYwMzMsImV4cCI6MjA1ODA3MjAzM30.xNMnGFGQFVbUvSJFRMkIvGQNHWcAKDJWZBJMmfEJkiQ';
+        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
 
         async function fetchMarketVariables() {
             try {
-                const { data, error } = await supabase
-                    .from('market_variables')
+                const { data, error } = await supabaseClient
+                    .from('variaveis_mercado')
                     .select('*')
                     .order('created_at', { ascending: false })
                     .limit(1)
@@ -1860,18 +1860,18 @@
                     <table class="tooltip-table">
                         <tr><th colspan="2">Entrada</th></tr>
                         <tr><td>SELIC</td><td>${fmt(data.selic)}</td></tr>
-                        <tr><td>CDI 120m</td><td>${fmt(data.cdi_120m)}</td></tr>
+                        <tr><td>CDI 120m</td><td>${fmt(data.cdi_120_meses)}</td></tr>
                     </table>
                     <table class="tooltip-table">
                         <tr><th colspan="2">Calculadas</th></tr>
                         <tr><td>CDI</td><td>${fmt(data.cdi)}</td></tr>
-                        <tr><td>CDI Médio 10a</td><td>${fmt(data.cdi_avg_10y)}</td></tr>
+                        <tr><td>CDI Médio 10a</td><td>${fmt(data.cdi_aa_medio_10_anos)}</td></tr>
                     </table>
                     <table class="tooltip-table">
                         <tr><th colspan="2">Rentabilidade 10 Anos</th></tr>
-                        <tr><td>Conservador</td><td>${fmt(data.rent_conservador)}</td></tr>
-                        <tr><td>Moderado</td><td>${fmt(data.rent_moderado)}</td></tr>
-                        <tr><td>Arrojado</td><td>${fmt(data.rent_arrojado)}</td></tr>
+                        <tr><td>Conservador</td><td>${fmt(data.rent_cons_10_anos)}</td></tr>
+                        <tr><td>Moderado</td><td>${fmt(data.rent_mod_10_anos)}</td></tr>
+                        <tr><td>Arrojado</td><td>${fmt(data.rent_arro_10_anos)}</td></tr>
                     </table>
                 `;
             }
@@ -1884,11 +1884,11 @@
                     <table class="tooltip-table">
                         <tr><th colspan="2">Entrada</th></tr>
                         <tr><td>IPCA</td><td>${fmt(data.ipca)}</td></tr>
-                        <tr><td>IPCA 120m</td><td>${fmt(data.ipca_120m)}</td></tr>
+                        <tr><td>IPCA 120m</td><td>${fmt(data.ipca_120_meses)}</td></tr>
                     </table>
                     <table class="tooltip-table">
                         <tr><th colspan="2">Calculadas</th></tr>
-                        <tr><td>IPCA Médio 10a</td><td>${fmt(data.ipca_avg_10y)}</td></tr>
+                        <tr><td>IPCA Médio 10a</td><td>${fmt(data.ipca_aa_medio_10_anos)}</td></tr>
                     </table>
                 `;
             }
