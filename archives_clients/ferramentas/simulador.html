@@ -1806,7 +1806,11 @@
         const mod = c.modalidade;
         const parts = [];
         parts.push(`Bem: ${fmtBRL(g.valorBem)}`);
-        parts.push(`Prazo análise: ${g.prazoAnos} anos`);
+        if (prazoUnidade === 'meses') {
+            parts.push(`Prazo análise: ${Math.round(g.prazoAnos * 12)} meses`);
+        } else {
+            parts.push(`Prazo análise: ${g.prazoAnos} anos`);
+        }
         if (mod === 'avista') {
             const v = parseCur(p.av_valor) || g.valorBem;
             parts.push(`Valor pago: ${fmtBRL(v)}`);
@@ -1929,7 +1933,9 @@
         function mes(m) {
             if (m === 0) return 'Dia 0';
             const a = Math.floor((m-1)/12)+1;
-            const me = ((m-1)%12)+1;
+            if (prazoUnidade === 'meses') {
+                return `Mês ${m}`;
+            }
             return `Mês ${m} (Ano ${a})`;
         }
 
@@ -1940,7 +1946,8 @@
             eventos.push({ mes: 'Todo mês', desc: `Pagamento de custos de posse: <strong>${fmtBRL(g.custosMensais)}/mês</strong> (condomínio, IPTU, seguro, manutenção, etc.).` });
             if (g.valorizacao !== 0) {
                 const vFinal = r.valorBemFinal || 0;
-                eventos.push({ mes: mes(meses), desc: `Ao final do período, o bem vale <strong>${fmtBRL(vFinal)}</strong> (valorização de ${(g.valorizacao*100).toFixed(2)}% a.a. ao longo de ${g.prazoAnos} anos).` });
+                const prazoLabel = prazoUnidade === 'meses' ? `${Math.round(g.prazoAnos*12)} meses` : `${g.prazoAnos} anos`;
+                eventos.push({ mes: mes(meses), desc: `Ao final do período, o bem vale <strong>${fmtBRL(vFinal)}</strong> (valorização de ${(g.valorizacao*100).toFixed(2)}% a.a. ao longo de ${prazoLabel}).` });
             }
             eventos.push({ mes: mes(meses), desc: `<strong>Custo total acumulado: ${fmtBRL(r.custoTotalNominal)}</strong>. Patrimônio líquido final: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>.` });
         }
@@ -2034,9 +2041,20 @@
         else if (mod === 'oportunidade') {
             const rendMensal = Math.pow(1+g.rendimento, 1/12) - 1;
             eventos.push({ mes: 'Dia 0', desc: `Capital inicial de <strong>${fmtBRL(g.valorBem)}</strong> aplicado a <strong>${(g.rendimento*100).toFixed(2)}% a.a.</strong> líquido (equivalente a ${(rendMensal*100).toFixed(4)}% a.m.).` });
-            for (let ano = 1; ano <= Math.min(g.prazoAnos, 5); ano++) {
-                const cap = g.valorBem * Math.pow(1+g.rendimento, ano);
-                eventos.push({ mes: `Fim do Ano ${ano}`, desc: `Capital acumulado: <strong>${fmtBRL(cap)}</strong>.` });
+            if (prazoUnidade === 'meses') {
+                // Mostrar marcos mensais (a cada 12 meses, até 5 marcos)
+                const totalMeses = Math.round(g.prazoAnos * 12);
+                const marcosMax = Math.min(Math.floor(totalMeses / 12), 5);
+                for (let i = 1; i <= marcosMax; i++) {
+                    const m12 = i * 12;
+                    const cap = g.valorBem * Math.pow(1+g.rendimento, i);
+                    eventos.push({ mes: `Mês ${m12}`, desc: `Capital acumulado (${i} ano${i>1?'s':''}): <strong>${fmtBRL(cap)}</strong>.` });
+                }
+            } else {
+                for (let ano = 1; ano <= Math.min(g.prazoAnos, 5); ano++) {
+                    const cap = g.valorBem * Math.pow(1+g.rendimento, ano);
+                    eventos.push({ mes: `Fim do Ano ${ano}`, desc: `Capital acumulado: <strong>${fmtBRL(cap)}</strong>.` });
+                }
             }
             if (g.prazoAnos > 5) eventos.push({ mes: '...', desc: 'Capital continua crescendo com juros compostos.' });
             eventos.push({ mes: mes(meses), desc: `Capital final: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>. Ganho total: <strong>${fmtBRL(r.ganhoPatrimonial)}</strong>.` });
@@ -2050,8 +2068,8 @@
         const mod = c.modalidade;
         const p = c.params || {};
 
-        // Mostrar apenas anos (ou meses se prazo <= 2 anos)
-        const mostrarMeses = meses <= 24;
+        // Usar a unidade escolhida pelo usuário no campo de prazo global
+        const mostrarMeses = prazoUnidade === 'meses';
         const step = mostrarMeses ? 1 : 12;
         const totalLinhas = Math.ceil(meses / step);
 
@@ -2323,12 +2341,13 @@
         if (!canvas) return;
         const g = globais();
         const meses = g.prazoAnos * 12;
-        const step = meses <= 24 ? 1 : 12;
+        const usarMeses = prazoUnidade === 'meses';
+        const step = usarMeses ? 1 : 12;
         const labels = [];
         const dataSerie = [];
         const dataBem = [];
         for (let m = step; m <= meses; m += step) {
-            labels.push(step===1 ? `M${m}` : `A${m/12}`);
+            labels.push(usarMeses ? `M${m}` : `A${m/12}`);
             const idx = m - 1;
             dataSerie.push((c.resultado?.serie||[])[idx] || 0);
             dataBem.push(g.valorBem * Math.pow(1+g.valorizacao, m/12));
@@ -2432,10 +2451,20 @@
     function renderChart() {
         const g = globais();
         const meses = g.prazoAnos * 12;
+        const usarMeses = prazoUnidade === 'meses';
         const labels = [];
-        for (let m = 1; m <= meses; m++) {
-            if (m % 12 === 0) labels.push('Ano ' + (m/12));
-            else labels.push('');
+        if (usarMeses) {
+            // Um ponto por mês, exibir label a cada 6 meses
+            for (let m = 1; m <= meses; m++) {
+                if (m % 6 === 0) labels.push('M' + m);
+                else labels.push('');
+            }
+        } else {
+            // Um ponto por mês, exibir label apenas nos anos completos
+            for (let m = 1; m <= meses; m++) {
+                if (m % 12 === 0) labels.push('Ano ' + (m/12));
+                else labels.push('');
+            }
         }
 
         const COLORS = ['#fbbf24','#4ade80','#60a5fa','#f87171','#a78bfa','#fb923c','#22d3ee','#f472b6'];
