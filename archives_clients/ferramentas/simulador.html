@@ -369,6 +369,125 @@
         .badge-custom   { background: rgba(244,114,182,0.15); color: #f472b6; border: 1px solid rgba(244,114,182,0.3); }
         .badge-oport    { background: rgba(34,211,238,0.15); color: #22d3ee; border: 1px solid rgba(34,211,238,0.3); }
 
+        /* ── CARD STATES ─────────────────────────────────────────────────────── */
+        .cenario-card.recolhido .cenario-body { display: none; }
+        .cenario-card.recolhido { padding: 0.6rem 1.25rem; }
+        .cenario-card.recolhido .cenario-top { margin-bottom: 0; }
+        .btn-recolher {
+            background: none;
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #6b7280;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 0.72rem;
+            padding: 0.2rem 0.55rem;
+            transition: all 0.2s;
+        }
+        .btn-recolher:hover { background: rgba(255,255,255,0.08); color: #d1d5db; }
+        .btn-detalhes {
+            background-color: rgba(34,211,238,0.1);
+            color: #22d3ee;
+            font-weight: bold;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            border: 1px solid rgba(34,211,238,0.3);
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 0.85rem;
+        }
+        .btn-detalhes:hover { background-color: rgba(34,211,238,0.2); }
+        /* Painel de detalhes */
+        .cenario-detalhes {
+            display: none;
+            margin-top: 1.25rem;
+            border-top: 1px solid rgba(255,255,255,0.07);
+            padding-top: 1.25rem;
+        }
+        .cenario-detalhes.open { display: block; }
+        .detalhe-explicacao {
+            background: rgba(34,211,238,0.05);
+            border: 1px solid rgba(34,211,238,0.15);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.25rem;
+            font-size: 0.85rem;
+            color: #d1d5db;
+            line-height: 1.7;
+        }
+        .detalhe-explicacao strong { color: #22d3ee; }
+        .detalhe-section-title {
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: var(--primary-color);
+            margin: 1rem 0 0.6rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+        .detalhe-roteiro {
+            font-size: 0.82rem;
+            color: #9ca3af;
+            line-height: 1.9;
+            margin-bottom: 1rem;
+        }
+        .detalhe-roteiro .evento {
+            display: flex;
+            gap: 0.5rem;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .detalhe-roteiro .evento:last-child { border-bottom: none; }
+        .evento-mes {
+            min-width: 70px;
+            color: var(--primary-color);
+            font-weight: bold;
+            font-size: 0.78rem;
+        }
+        .evento-desc { color: #d1d5db; }
+        /* Tabela de amortização */
+        .amort-table-wrap {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.07);
+            margin-bottom: 1rem;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+        .amort-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+        .amort-table th {
+            background: rgba(255,255,255,0.04);
+            color: var(--primary-color);
+            padding: 0.5rem 0.75rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            position: sticky;
+            top: 0;
+            white-space: nowrap;
+        }
+        .amort-table th:first-child { text-align: center; }
+        .amort-table td {
+            padding: 0.4rem 0.75rem;
+            text-align: right;
+            border-bottom: 1px solid rgba(255,255,255,0.03);
+            color: #d1d5db;
+            white-space: nowrap;
+        }
+        .amort-table td:first-child { text-align: center; color: #6b7280; }
+        .amort-table tr:hover { background: rgba(255,255,255,0.02); }
+        .amort-table .destaque { background: rgba(212,175,55,0.08); }
+        .detalhe-chart-wrap {
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(212,175,55,0.2);
+            border-radius: 10px;
+            padding: 1rem;
+            height: 260px;
+            position: relative;
+            margin-bottom: 1rem;
+        }
         @media (max-width: 640px) {
             .cols-2, .cols-3, .cols-4 { grid-template-columns: 1fr; }
             .cenario-results { grid-template-columns: 1fr 1fr; }
@@ -1584,45 +1703,50 @@
                         <input class="cenario-name-input" value="${c.nome}" onblur="renomearCenario(${c.id}, this.value)" onkeydown="if(event.key==='Enter')this.blur()">
                         <span class="cenario-badge ${BADGE_MOD[c.modalidade]||''}">${LABELS_MOD[c.modalidade]||c.modalidade}</span>
                     </div>
+                    <button class="btn-recolher" onclick="toggleRecolher(${c.id})" title="Recolher/Expandir card">▲ Recolher</button>
                 </div>
-                <div class="cenario-params">${paramsStr}</div>
-                <div class="cenario-results">
-                    <div class="cenario-result-box">
-                        <div class="cenario-result-label">Custo Total Nominal</div>
-                        <div class="cenario-result-value gold">${fmtBRL(r.custoTotalNominal)}</div>
+                <div class="cenario-body">
+                    <div class="cenario-params">${paramsStr}</div>
+                    <div class="cenario-results">
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Custo Total Nominal</div>
+                            <div class="cenario-result-value gold">${fmtBRL(r.custoTotalNominal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Custo Total Real</div>
+                            <div class="cenario-result-value">${fmtBRL(r.custoTotalReal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Patrimônio Líq. Final</div>
+                            <div class="cenario-result-value ${(r.patrimonioLiqFinal||0)>=0?'green':'red'}">${fmtBRL(r.patrimonioLiqFinal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Ganho Patrimonial</div>
+                            <div class="cenario-result-value ${(r.ganhoPatrimonial||0)>=0?'green':'red'}">${fmtBRL(r.ganhoPatrimonial)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Saldo Devedor Final</div>
+                            <div class="cenario-result-value ${(r.saldoDevedorFinal||0)>0?'red':''}">${fmtBRL(r.saldoDevedorFinal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Valor do Bem ao Final</div>
+                            <div class="cenario-result-value">${fmtBRL(r.valorBemFinal)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Parcela Inicial</div>
+                            <div class="cenario-result-value">${fmtBRL(r.parcelaInicial)}</div>
+                        </div>
+                        <div class="cenario-result-box">
+                            <div class="cenario-result-label">Parcela Final</div>
+                            <div class="cenario-result-value">${fmtBRL(r.parcelaFinal)}</div>
+                        </div>
                     </div>
-                    <div class="cenario-result-box">
-                        <div class="cenario-result-label">Custo Total Real</div>
-                        <div class="cenario-result-value">${fmtBRL(r.custoTotalReal)}</div>
+                    <div class="cenario-actions">
+                        <button class="btn-detalhes" onclick="toggleDetalhes(${c.id})">🔍 Mostrar Detalhes</button>
+                        ${c.modalidade !== 'oportunidade' ? `<button class="btn-edit" onclick="abrirModal(${c.id})">✎ Editar</button>` : ''}
+                        <button class="btn-danger" onclick="excluirCenario(${c.id})">✕ Excluir</button>
                     </div>
-                    <div class="cenario-result-box">
-                        <div class="cenario-result-label">Patrimônio Líq. Final</div>
-                        <div class="cenario-result-value ${(r.patrimonioLiqFinal||0)>=0?'green':'red'}">${fmtBRL(r.patrimonioLiqFinal)}</div>
-                    </div>
-                    <div class="cenario-result-box">
-                        <div class="cenario-result-label">Ganho Patrimonial</div>
-                        <div class="cenario-result-value ${(r.ganhoPatrimonial||0)>=0?'green':'red'}">${fmtBRL(r.ganhoPatrimonial)}</div>
-                    </div>
-                    <div class="cenario-result-box">
-                        <div class="cenario-result-label">Saldo Devedor Final</div>
-                        <div class="cenario-result-value ${(r.saldoDevedorFinal||0)>0?'red':''}">${fmtBRL(r.saldoDevedorFinal)}</div>
-                    </div>
-                    <div class="cenario-result-box">
-                        <div class="cenario-result-label">Valor do Bem ao Final</div>
-                        <div class="cenario-result-value">${fmtBRL(r.valorBemFinal)}</div>
-                    </div>
-                    <div class="cenario-result-box">
-                        <div class="cenario-result-label">Parcela Inicial</div>
-                        <div class="cenario-result-value">${fmtBRL(r.parcelaInicial)}</div>
-                    </div>
-                    <div class="cenario-result-box">
-                        <div class="cenario-result-label">Parcela Final</div>
-                        <div class="cenario-result-value">${fmtBRL(r.parcelaFinal)}</div>
-                    </div>
-                </div>
-                <div class="cenario-actions">
-                    ${c.modalidade !== 'oportunidade' ? `<button class="btn-edit" onclick="abrirModal(${c.id})">✎ Editar</button>` : ''}
-                    <button class="btn-danger" onclick="excluirCenario(${c.id})">✕ Excluir</button>
+                    <div class="cenario-detalhes" id="detalhes-${c.id}"></div>
                 </div>
             </div>`;
         }).join('');
@@ -1674,6 +1798,486 @@
         cenarios = cenarios.filter(c=>c.id!==id);
         renderCenarios();
         document.getElementById('comparacao-section').style.display = 'none';
+    }
+
+    // ── RECOLHER / EXPANDIR ───────────────────────────────────────────────────
+    function toggleRecolher(id) {
+        const card = document.getElementById('card-'+id);
+        if (!card) return;
+        const recolhido = card.classList.toggle('recolhido');
+        const btn = card.querySelector('.btn-recolher');
+        btn.textContent = recolhido ? '▼ Expandir' : '▲ Recolher';
+    }
+
+    // ── MOSTRAR / OCULTAR DETALHES ────────────────────────────────────────────
+    function toggleDetalhes(id) {
+        const painel = document.getElementById('detalhes-'+id);
+        const btn = document.querySelector(`#card-${id} .btn-detalhes`);
+        if (!painel) return;
+        if (painel.classList.contains('open')) {
+            painel.classList.remove('open');
+            btn.textContent = '🔍 Mostrar Detalhes';
+        } else {
+            const c = cenarios.find(x=>x.id===id);
+            if (!c) return;
+            painel.innerHTML = gerarDetalhes(c);
+            painel.classList.add('open');
+            btn.textContent = '▲ Ocultar Detalhes';
+            // Inicializar gráfico do detalhe após render
+            setTimeout(() => renderDetalheChart(id, c), 50);
+        }
+    }
+
+    // ── GERADOR DE DETALHES ───────────────────────────────────────────────────
+    function gerarDetalhes(c) {
+        const g = globais();
+        const mod = c.modalidade;
+        const p = c.params || {};
+        const r = c.resultado || {};
+        const meses = g.prazoAnos * 12;
+
+        const explicacoes = {
+            avista: `<strong>Compra à Vista</strong> significa desembolsar o valor integral do bem de uma só vez, sem financiamento. O custo é imediato e não há juros. Em contrapartida, o capital fica imobilizado no bem, deixando de render no mercado financeiro. O <strong>custo de oportunidade</strong> é o ganho que você abre mão ao não investir esse dinheiro. O patrimônio líquido ao final é o próprio valor de mercado do bem, corrigido pela valorização/depreciação configurada.`,
+            aluguel: `<strong>Aluguel</strong> é a opção de não adquirir o bem, pagando mensalmente pelo uso. O capital que seria usado na compra permanece investido, gerando rendimentos. O custo total acumula os alugueis pagos ao longo do período. O patrimônio ao final é o saldo do capital investido. Essa modalidade é vantajosa quando o rendimento do capital supera a valorização do bem e o custo do aluguel é inferior ao custo de financiar.`,
+            sac: `<strong>Financiamento SAC</strong> (Sistema de Amortização Constante): a amortização do principal é igual todos os meses, enquanto os juros diminuem progressivamente — por isso a parcela cai ao longo do tempo. A primeira parcela é a maior e a última, a menor. O saldo devedor cai de forma linear. Ideal para quem quer pagar menos juros totais e suporta parcelas mais altas no início.`,
+            price: `<strong>Financiamento Price</strong> (Tabela Price): a parcela é fixa durante todo o contrato. No início, a maior parte da parcela é juros e pouco amortiza o principal. Com o tempo, a proporção inverte. Por isso, o saldo devedor cai mais lentamente que no SAC, e o total de juros pagos é maior. Ideal para quem precisa de previsibilidade no orçamento.`,
+            consorcio: `<strong>Consórcio</strong> é uma modalidade sem juros, mas com taxa de administração e fundo de reserva. Os participantes pagam parcelas mensais e são contemplados por sorteio ou lance. O risco é a incerteza do prazo para contemplação: você pode ser contemplado no primeiro mês ou apenas no último. O custo total inclui todas as parcelas pagas até a contemplação e os custos de aquisição após receber o crédito.`,
+            custom: `<strong>Crédito Personalizado</strong> permite modelar qualquer tipo de financiamento: CDC, leasing, crédito direto, etc. Os parâmetros são totalmente flexíveis, incluindo IOF, tarifas, seguros, valor residual (balloon/VRG) e correção monetária. O cálculo segue o sistema de amortização escolhido (SAC, Price ou parcela fixa manual).`,
+            oportunidade: `<strong>Custo de Oportunidade</strong>: simula o que aconteceria se você simplesmente investisse o valor do bem à taxa de rendimento configurada, sem adquirir o bem. É o cenário de referência para avaliar se qualquer modalidade de aquisição é financeiramente vantajosa em relação a simplesmente deixar o dinheiro render.`
+        };
+
+        let html = `<div class="detalhe-explicacao">${explicacoes[mod]||''}</div>`;
+
+        // Roteiro narrativo
+        const roteiro = gerarRoteiro(c, g, meses);
+        html += `<div class="detalhe-section-title">🗓️ Roteiro do Cenário</div>`;
+        html += `<div class="detalhe-roteiro">`;
+        roteiro.forEach(ev => {
+            html += `<div class="evento"><span class="evento-mes">${ev.mes}</span><span class="evento-desc">${ev.desc}</span></div>`;
+        });
+        html += `</div>`;
+
+        // Gráfico de evolução
+        html += `<div class="detalhe-section-title">📈 Evolução ao Longo do Tempo</div>`;
+        html += `<div class="detalhe-chart-wrap"><canvas id="chart-det-${c.id}"></canvas></div>`;
+
+        // Tabela de memória de cálculo
+        const tabela = gerarTabelaCalculo(c, g, meses);
+        if (tabela) {
+            html += `<div class="detalhe-section-title">📊 Memória de Cálculo Detalhada</div>`;
+            html += tabela;
+        }
+
+        return html;
+    }
+
+    // ── ROTEIRO NARRATIVO ─────────────────────────────────────────────────────
+    function gerarRoteiro(c, g, meses) {
+        const mod = c.modalidade;
+        const p = c.params || {};
+        const r = c.resultado || {};
+        const eventos = [];
+
+        function mes(m) {
+            if (m === 0) return 'Dia 0';
+            const a = Math.floor((m-1)/12)+1;
+            const me = ((m-1)%12)+1;
+            return `Mês ${m} (Ano ${a})`;
+        }
+
+        if (mod === 'avista') {
+            const vp = parseCur(p.av_valor) || g.valorBem;
+            const ce = parseCur(p.av_custosExtra);
+            eventos.push({ mes: 'Dia 0', desc: `Desembolso total de <strong>${fmtBRL(vp + g.custosAquisicao + ce)}</strong>: valor do bem (${fmtBRL(vp)}) + custos de aquisição (${fmtBRL(g.custosAquisicao + ce)}).` });
+            eventos.push({ mes: 'Todo mês', desc: `Pagamento de custos de posse: <strong>${fmtBRL(g.custosMensais)}/mês</strong> (condomínio, IPTU, seguro, manutenção, etc.).` });
+            if (g.valorizacao !== 0) {
+                const vFinal = r.valorBemFinal || 0;
+                eventos.push({ mes: mes(meses), desc: `Ao final do período, o bem vale <strong>${fmtBRL(vFinal)}</strong> (valorização de ${(g.valorizacao*100).toFixed(2)}% a.a. ao longo de ${g.prazoAnos} anos).` });
+            }
+            eventos.push({ mes: mes(meses), desc: `<strong>Custo total acumulado: ${fmtBRL(r.custoTotalNominal)}</strong>. Patrimônio líquido final: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>.` });
+        }
+
+        else if (mod === 'aluguel') {
+            const al = parseCur(p.al_aluguel);
+            const cap = parseCur(p.al_capital);
+            const reaj = parseFloat(p.al_reajuste)||0;
+            eventos.push({ mes: 'Dia 0', desc: `Capital de <strong>${fmtBRL(cap)}</strong> fica investido rendendo <strong>${(g.rendimento*100).toFixed(2)}% a.a.</strong> líquido.` });
+            if (parseCur(p.al_caucao)) eventos.push({ mes: 'Dia 0', desc: `Pagamento de caução/depósito: <strong>${fmtBRL(parseCur(p.al_caucao))}</strong>.` });
+            eventos.push({ mes: 'Mês 1', desc: `Primeiro aluguel: <strong>${fmtBRL(al)}/mês</strong>.` });
+            for (let ano = 1; ano <= g.prazoAnos; ano++) {
+                const alReaj = al * Math.pow(1+reaj/100, ano);
+                if (ano <= 3 || ano === g.prazoAnos) {
+                    eventos.push({ mes: `Mês ${ano*12+1} (Ano ${ano+1})`, desc: `Reajuste anual de ${reaj}%: aluguel passa para <strong>${fmtBRL(alReaj)}/mês</strong>.` });
+                } else if (ano === 4) {
+                    eventos.push({ mes: '...', desc: 'Reajustes anuais continuam.' });
+                }
+            }
+            eventos.push({ mes: mes(meses), desc: `Capital investido cresce para <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>. Custo total de aluguel pago: <strong>${fmtBRL(r.custoTotalNominal)}</strong>.` });
+        }
+
+        else if (mod === 'sac' || mod === 'price') {
+            const pfx = mod === 'sac' ? 'sac' : 'pr';
+            const entrada = parseCur(p[pfx+'_entrada']);
+            const financiado = parseCur(p[pfx+'_financiado']) || (g.valorBem - entrada);
+            const prazo = parseInt(p[pfx+'_prazo'])||0;
+            const juros = parseFloat(p[pfx+'_juros'])||0;
+            const carencia = parseInt(p[pfx+'_carencia'])||0;
+            const amorts = p[pfx+'_amortsList'] || [];
+
+            eventos.push({ mes: 'Dia 0', desc: `Entrada de <strong>${fmtBRL(entrada)}</strong> + custos de aquisição de <strong>${fmtBRL(g.custosAquisicao)}</strong>. Saldo financiado: <strong>${fmtBRL(financiado)}</strong>.` });
+            if (carencia > 0) {
+                eventos.push({ mes: `Meses 1–${carencia}`, desc: `Período de carência: ${p[pfx+'_tipoCarencia']==='paga'?'paga apenas os juros mensais':'juros são capitalizados ao saldo devedor'}.` });
+            }
+            eventos.push({ mes: mes(carencia+1), desc: `Início das parcelas de amortização. Primeira parcela: <strong>${fmtBRL(r.parcelaInicial)}</strong>.` });
+            if (mod === 'sac') {
+                eventos.push({ mes: 'Todo mês', desc: `Amortização constante de <strong>${fmtBRL(financiado/prazo)}</strong> + juros decrescentes sobre o saldo devedor. Parcela diminui a cada mês.` });
+            } else {
+                eventos.push({ mes: 'Todo mês', desc: `Parcela fixa de <strong>${fmtBRL(r.parcelaInicial)}</strong>. No início, a maior parte é juros; ao final, a maior parte é amortização.` });
+            }
+            amorts.forEach(a => {
+                const label = a.period === 'unica' ? mes(a.mes) : (a.period === 'anual' ? `A partir do mês ${a.mes} (anual)` : `A partir do mês ${a.mes} (mensal)`);
+                eventos.push({ mes: label, desc: `Amortização extraordinária de <strong>${fmtBRL(a.valor)}</strong> — efeito: ${p[pfx+'_efeitoAmort']==='prazo'?'reduz o prazo':'reduz a parcela'}.` });
+            });
+            eventos.push({ mes: mes(prazo), desc: `Financiamento quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+            eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total do financiamento: <strong>${fmtBRL(r.custoTotalNominal)}</strong>.` });
+        }
+
+        else if (mod === 'consorcio') {
+            const credito = parseCur(p.co_credito) || g.valorBem;
+            const prazo = parseInt(p.co_prazo)||0;
+            const mesContemp = parseInt(p.co_mesContemplacao)||0;
+            const mesLance = parseInt(p.co_mesLance)||0;
+            const lanceEmb = parseFloat(p.co_lanceEmbutido)||0;
+            const lanceRec = parseCur(p.co_lanceRecursos);
+
+            eventos.push({ mes: 'Dia 0', desc: `Ingresso no consórcio. Carta de crédito: <strong>${fmtBRL(credito)}</strong>. Prazo do grupo: <strong>${prazo} meses</strong>.` });
+            eventos.push({ mes: 'Mês 1', desc: `Início das parcelas mensais: <strong>${fmtBRL(r.parcelaInicial)}</strong> (inclui taxa de adm. de ${p.co_taxaAdm||0}% e fundo de reserva de ${p.co_fundoReserva||0}%).` });
+            if (mesLance > 0 && (lanceEmb > 0 || lanceRec > 0)) {
+                eventos.push({ mes: mes(mesLance), desc: `Lance dado: embutido de ${lanceEmb}% do crédito${lanceRec>0?' + '+fmtBRL(lanceRec)+' de recursos próprios':''}.` });
+            }
+            eventos.push({ mes: mes(mesContemp), desc: `<strong>Contemplação!</strong> Carta de crédito liberada. Custos de aquisição pagos: <strong>${fmtBRL(g.custosAquisicao)}</strong>. Bem adquirido.` });
+            eventos.push({ mes: mes(prazo), desc: `Última parcela do consórcio paga.` });
+            eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>.` });
+        }
+
+        else if (mod === 'custom') {
+            const entrada = parseCur(p.cu_entrada);
+            const prazo = parseInt(p.cu_prazo)||0;
+            const carencia = parseInt(p.cu_carencia)||0;
+            const balloon = parseCur(p.cu_balloon);
+            const amorts = p.cu_amortsList || [];
+
+            eventos.push({ mes: 'Dia 0', desc: `Entrada de <strong>${fmtBRL(entrada)}</strong> + custos de aquisição de <strong>${fmtBRL(g.custosAquisicao)}</strong>. IOF de ${p.cu_iof||0}% incorporado ao saldo.` });
+            if (carencia > 0) {
+                eventos.push({ mes: `Meses 1–${carencia}`, desc: `Carência: ${p.cu_tipoCarencia==='paga'?'juros pagos mensalmente':'juros capitalizados ao saldo'}.` });
+            }
+            eventos.push({ mes: mes(carencia+1), desc: `Início das parcelas. Sistema: <strong>${{sac:'SAC',price:'Price',fixo:'Parcela Fixa'}[p.cu_sistema]||p.cu_sistema}</strong>. Primeira parcela: <strong>${fmtBRL(r.parcelaInicial)}</strong>.` });
+            amorts.forEach(a => {
+                const label = a.period === 'unica' ? mes(a.mes) : `A partir do mês ${a.mes}`;
+                eventos.push({ mes: label, desc: `Amortização extraordinária de <strong>${fmtBRL(a.valor)}</strong>.` });
+            });
+            if (balloon > 0) {
+                eventos.push({ mes: mes(prazo), desc: `Pagamento do valor residual (balloon/VRG): <strong>${fmtBRL(balloon)}</strong>.` });
+            }
+            eventos.push({ mes: mes(prazo), desc: `Crédito quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+            eventos.push({ mes: mes(meses), desc: `Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>. Patrimônio líquido: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>.` });
+        }
+
+        else if (mod === 'oportunidade') {
+            const rendMensal = Math.pow(1+g.rendimento, 1/12) - 1;
+            eventos.push({ mes: 'Dia 0', desc: `Capital inicial de <strong>${fmtBRL(g.valorBem)}</strong> aplicado a <strong>${(g.rendimento*100).toFixed(2)}% a.a.</strong> líquido (equivalente a ${(rendMensal*100).toFixed(4)}% a.m.).` });
+            for (let ano = 1; ano <= Math.min(g.prazoAnos, 5); ano++) {
+                const cap = g.valorBem * Math.pow(1+g.rendimento, ano);
+                eventos.push({ mes: `Fim do Ano ${ano}`, desc: `Capital acumulado: <strong>${fmtBRL(cap)}</strong>.` });
+            }
+            if (g.prazoAnos > 5) eventos.push({ mes: '...', desc: 'Capital continua crescendo com juros compostos.' });
+            eventos.push({ mes: mes(meses), desc: `Capital final: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>. Ganho total: <strong>${fmtBRL(r.ganhoPatrimonial)}</strong>.` });
+        }
+
+        return eventos;
+    }
+
+    // ── TABELA DE MEMÓRIA DE CÁLCULO ──────────────────────────────────────────
+    function gerarTabelaCalculo(c, g, meses) {
+        const mod = c.modalidade;
+        const p = c.params || {};
+
+        // Mostrar apenas anos (ou meses se prazo <= 2 anos)
+        const mostrarMeses = meses <= 24;
+        const step = mostrarMeses ? 1 : 12;
+        const totalLinhas = Math.ceil(meses / step);
+
+        if (mod === 'avista') {
+            const valorPago = parseCur(p.av_valor) || g.valorBem;
+            const custosExtra = parseCur(p.av_custosExtra);
+            const custosAq = g.custosAquisicao + custosExtra;
+            let valorBem = valorPago;
+            let custoAcum = valorPago + custosAq;
+            let rows = '';
+            for (let m = step; m <= meses; m += step) {
+                const periodos = mostrarMeses ? m : m/12;
+                const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                for (let i = 1; i <= step; i++) valorBem *= (1+g.valorizacao/12);
+                custoAcum += g.custosMensais * step;
+                const real = custoAcum / Math.pow(1+g.inflacao, m/12);
+                rows += `<tr><td>${label}</td><td>${fmtBRL(valorBem)}</td><td>${fmtBRL(g.custosMensais*step)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(real)}</td></tr>`;
+            }
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Valor do Bem</th><th>Custos Posse</th><th>Custo Acum. Nominal</th><th>Custo Acum. Real</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'aluguel') {
+            let aluguel = parseCur(p.al_aluguel);
+            const reajuste = (parseFloat(p.al_reajuste)||0)/100;
+            const taxaAdm = (parseFloat(p.al_taxaAdm)||0)/100;
+            const custosExtra = parseCur(p.al_custosExtra);
+            let capital = parseCur(p.al_capital);
+            const aporteInv = parseCur(p.al_aporteInv);
+            const rendMensal = Math.pow(1+g.rendimento, 1/12)-1;
+            let custoAcum = parseCur(p.al_caucao);
+            let rows = '';
+            for (let m = 1; m <= meses; m++) {
+                if (m > 1 && (m-1)%12===0) aluguel *= (1+reajuste);
+                const pgto = aluguel*(1+taxaAdm)+custosExtra;
+                custoAcum += pgto;
+                capital = capital*(1+rendMensal)+aporteInv;
+                if (m % step === 0) {
+                    const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                    const real = custoAcum / Math.pow(1+g.inflacao, m/12);
+                    rows += `<tr><td>${label}</td><td>${fmtBRL(aluguel)}</td><td>${fmtBRL(pgto)}</td><td>${fmtBRL(custoAcum)}</td><td>${fmtBRL(capital)}</td><td>${fmtBRL(real)}</td></tr>`;
+                }
+            }
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Aluguel</th><th>Desembolso Mensal</th><th>Custo Acum.</th><th>Capital Investido</th><th>Custo Real</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'sac' || mod === 'price') {
+            const pfx = mod === 'sac' ? 'sac' : 'pr';
+            const entrada = parseCur(p[pfx+'_entrada']);
+            let saldo = parseCur(p[pfx+'_financiado']) || (g.valorBem - entrada);
+            const prazoTotal = parseInt(p[pfx+'_prazo'])||meses;
+            const jurosAA = (parseFloat(p[pfx+'_cet'])||parseFloat(p[pfx+'_juros'])||0)/100;
+            const jurosMensal = Math.pow(1+jurosAA, 1/12)-1;
+            const correcaoAA = (parseFloat(p[pfx+'_indiceCorrecao'])||0)/100;
+            const correcaoMensal = Math.pow(1+correcaoAA, 1/12)-1;
+            const mip = (parseFloat(p[pfx+'_mip'])||0)/100;
+            const dfi = (parseFloat(p[pfx+'_dfi'])||0)/100;
+            const taxaAdm = parseCur(p[pfx+'_taxaAdm']);
+            const carencia = parseInt(p[pfx+'_carencia'])||0;
+            const tipoCarencia = p[pfx+'_tipoCarencia']||'paga';
+            const amorts = p[pfx+'_amortsList']||[];
+            const efeitoAmort = p[pfx+'_efeitoAmort']||'prazo';
+            let prazoRestante = prazoTotal;
+            let custoAcum = entrada + g.custosAquisicao;
+            let parcelaPrice = 0;
+            if (mod === 'price' && jurosMensal > 0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoTotal));
+            else if (mod === 'price') parcelaPrice = saldo/prazoTotal;
+            let rows = '';
+            let totalJuros = 0, totalAmort = 0, totalSeguros = 0;
+            for (let m = 1; m <= meses; m++) {
+                saldo *= (1+correcaoMensal);
+                let amortizacao = 0, juros = 0, parcela = 0;
+                if (m <= carencia) {
+                    juros = saldo*jurosMensal;
+                    if (tipoCarencia==='paga') parcela = juros;
+                    else { saldo += juros; }
+                } else if (prazoRestante > 0) {
+                    if (mod === 'sac') {
+                        amortizacao = saldo/prazoRestante;
+                        juros = saldo*jurosMensal;
+                        parcela = amortizacao+juros;
+                        saldo -= amortizacao;
+                        prazoRestante--;
+                    } else {
+                        if (jurosMensal>0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoRestante));
+                        else parcelaPrice = saldo/prazoRestante;
+                        juros = saldo*jurosMensal;
+                        amortizacao = parcelaPrice-juros;
+                        saldo -= amortizacao;
+                        prazoRestante--;
+                        parcela = parcelaPrice;
+                    }
+                }
+                const segMip = saldo*mip;
+                const segDfi = g.valorBem*dfi;
+                const totalMensal = parcela+segMip+segDfi+taxaAdm+g.custosMensais;
+                custoAcum += totalMensal;
+                totalJuros += juros;
+                totalAmort += amortizacao;
+                totalSeguros += segMip+segDfi;
+                amorts.forEach(a => {
+                    let ocorre = false;
+                    if (a.period==='unica'&&m===a.mes) ocorre=true;
+                    if (a.period==='anual'&&m>=a.mes&&(m-a.mes)%12===0) ocorre=true;
+                    if (a.period==='mensal'&&m>=a.mes) ocorre=true;
+                    if (ocorre&&saldo>0) { const av=Math.min(a.valor,saldo); saldo-=av; custoAcum+=av; }
+                });
+                if (saldo<0) saldo=0;
+                if (m%step===0) {
+                    const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                    const destaque = amorts.some(a=>a.period==='unica'&&a.mes>=m-step+1&&a.mes<=m) ? ' class="destaque"' : '';
+                    rows += `<tr${destaque}><td>${label}</td><td>${fmtBRL(saldo)}</td><td>${fmtBRL(amortizacao)}</td><td>${fmtBRL(juros)}</td><td>${fmtBRL(parcela)}</td><td>${fmtBRL(segMip+segDfi+taxaAdm)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                }
+            }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td>—</td><td>${fmtBRL(totalAmort)}</td><td>${fmtBRL(totalJuros)}</td><td>—</td><td>${fmtBRL(totalSeguros)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Saldo Dev.</th><th>Amortização</th><th>Juros</th><th>Parcela</th><th>Seguros+Taxas</th><th>Custo Acum.</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'consorcio') {
+            const credito = parseCur(p.co_credito)||g.valorBem;
+            const prazo = parseInt(p.co_prazo)||meses;
+            const taxaAdmTotal = (parseFloat(p.co_taxaAdm)||0)/100;
+            const fundoReserva = (parseFloat(p.co_fundoReserva)||0)/100;
+            const seguroMensal = parseCur(p.co_seguro);
+            const reajusteAA = (parseFloat(p.co_indiceReajuste)||0)/100;
+            const reajusteMensal = Math.pow(1+reajusteAA, 1/12)-1;
+            const mesContemp = parseInt(p.co_mesContemplacao)||Math.floor(prazo/2);
+            const mesLance = parseInt(p.co_mesLance)||mesContemp;
+            const lanceEmb = (parseFloat(p.co_lanceEmbutido)||0)/100;
+            const lanceRec = parseCur(p.co_lanceRecursos);
+            let creditoAtual = credito;
+            let custoAcum = 0;
+            let rows = '';
+            for (let m = 1; m <= meses; m++) {
+                creditoAtual *= (1+reajusteMensal);
+                const parcela = m<=prazo ? creditoAtual*(1+taxaAdmTotal+fundoReserva)/prazo+seguroMensal : 0;
+                custoAcum += parcela;
+                if (m===mesLance) custoAcum += lanceRec;
+                if (m===mesContemp) custoAcum += g.custosAquisicao + g.custosMensais*(meses-m);
+                if (m%step===0) {
+                    const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                    const ev = (m===mesContemp||m===mesLance) ? ' class="destaque"' : '';
+                    const obs = m===mesContemp ? ' ★ Contemplação' : (m===mesLance ? ' ★ Lance' : '');
+                    rows += `<tr${ev}><td>${label}${obs}</td><td>${fmtBRL(creditoAtual)}</td><td>${fmtBRL(parcela)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                }
+            }
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Crédito Atualizado</th><th>Parcela</th><th>Custo Acum.</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'custom') {
+            const sistema = p.cu_sistema||'sac';
+            const entrada = parseCur(p.cu_entrada);
+            let saldo = parseCur(p.cu_financiado)||(g.valorBem-entrada);
+            const iof = (parseFloat(p.cu_iof)||0)/100;
+            saldo *= (1+iof);
+            const prazoTotal = parseInt(p.cu_prazo)||meses;
+            const jurosAA = (parseFloat(p.cu_juros)||0)/100;
+            const jurosMensal = Math.pow(1+jurosAA, 1/12)-1;
+            const correcaoAA = (parseFloat(p.cu_indiceCorrecao)||0)/100;
+            const correcaoMensal = Math.pow(1+correcaoAA, 1/12)-1;
+            const tarifaFixa = parseCur(p.cu_tarifaFixa);
+            const tarifaVar = (parseFloat(p.cu_tarifaVar)||0)/100;
+            const seguro = parseCur(p.cu_seguro);
+            const seguroVar = (parseFloat(p.cu_seguroVar)||0)/100;
+            const balloon = parseCur(p.cu_balloon);
+            const carencia = parseInt(p.cu_carencia)||0;
+            const tipoCarencia = p.cu_tipoCarencia||'paga';
+            const parcelaFixaManual = parseCur(p.cu_parcelaFixa);
+            let prazoRestante = prazoTotal;
+            let custoAcum = entrada + g.custosAquisicao;
+            let parcelaPrice = 0;
+            if (sistema==='price'&&jurosMensal>0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoTotal));
+            let rows = '';
+            for (let m = 1; m <= meses; m++) {
+                saldo *= (1+correcaoMensal);
+                let parcela = 0, juros = 0, amortizacao = 0;
+                if (m<=carencia) {
+                    juros = saldo*jurosMensal;
+                    if (tipoCarencia==='paga') parcela=juros;
+                    else saldo+=juros;
+                } else if (prazoRestante>0) {
+                    if (sistema==='fixo'&&parcelaFixaManual>0) {
+                        juros=saldo*jurosMensal; amortizacao=Math.max(0,parcelaFixaManual-juros);
+                        saldo-=amortizacao; prazoRestante--; parcela=parcelaFixaManual;
+                    } else if (sistema==='sac') {
+                        amortizacao=saldo/prazoRestante; juros=saldo*jurosMensal;
+                        parcela=amortizacao+juros; saldo-=amortizacao; prazoRestante--;
+                    } else {
+                        if (jurosMensal>0) parcelaPrice=saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoRestante));
+                        else parcelaPrice=saldo/prazoRestante;
+                        juros=saldo*jurosMensal; amortizacao=parcelaPrice-juros;
+                        saldo-=amortizacao; prazoRestante--; parcela=parcelaPrice;
+                    }
+                }
+                if (m===prazoTotal&&balloon>0) { parcela+=balloon; saldo=Math.max(0,saldo-balloon); }
+                const encargos = tarifaFixa+saldo*tarifaVar+seguro+saldo*seguroVar;
+                custoAcum += parcela+encargos+g.custosMensais;
+                if (saldo<0) saldo=0;
+                if (m%step===0) {
+                    const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                    rows += `<tr><td>${label}</td><td>${fmtBRL(saldo)}</td><td>${fmtBRL(juros)}</td><td>${fmtBRL(parcela)}</td><td>${fmtBRL(encargos)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                }
+            }
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Saldo Dev.</th><th>Juros</th><th>Parcela</th><th>Encargos</th><th>Custo Acum.</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        if (mod === 'oportunidade') {
+            const rendMensal = Math.pow(1+g.rendimento, 1/12)-1;
+            let capital = g.valorBem;
+            let rows = '';
+            for (let m = step; m <= meses; m += step) {
+                for (let i=1;i<=step;i++) capital *= (1+rendMensal);
+                const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
+                const rendAcum = capital - g.valorBem;
+                const real = capital / Math.pow(1+g.inflacao, m/12);
+                rows += `<tr><td>${label}</td><td>${fmtBRL(capital)}</td><td>${fmtBRL(rendAcum)}</td><td>${fmtBRL(real)}</td></tr>`;
+            }
+            return `<div class="amort-table-wrap"><table class="amort-table">
+                <thead><tr><th>Período</th><th>Capital Acumulado</th><th>Rendimento Acum.</th><th>Capital Real</th></tr></thead>
+                <tbody>${rows}</tbody></table></div>`;
+        }
+
+        return '';
+    }
+
+    // ── GRÁFICO DO DETALHE ────────────────────────────────────────────────────
+    const detalheCharts = {};
+    function renderDetalheChart(id, c) {
+        const canvas = document.getElementById('chart-det-'+id);
+        if (!canvas) return;
+        const g = globais();
+        const meses = g.prazoAnos * 12;
+        const step = meses <= 24 ? 1 : 12;
+        const labels = [];
+        const dataSerie = [];
+        const dataBem = [];
+        for (let m = step; m <= meses; m += step) {
+            labels.push(step===1 ? `M${m}` : `A${m/12}`);
+            const idx = m - 1;
+            dataSerie.push((c.resultado?.serie||[])[idx] || 0);
+            dataBem.push(g.valorBem * Math.pow(1+g.valorizacao, m/12));
+        }
+        const datasets = [
+            { label: 'Custo Acumulado', data: dataSerie, borderColor: '#f87171', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3 }
+        ];
+        if (c.modalidade !== 'aluguel' && c.modalidade !== 'oportunidade') {
+            datasets.push({ label: 'Valor do Bem', data: dataBem, borderColor: '#4ade80', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 0, tension: 0.3, borderDash: [4,4] });
+        }
+        if (detalheCharts[id]) detalheCharts[id].destroy();
+        detalheCharts[id] = new Chart(canvas.getContext('2d'), {
+            type: 'line',
+            data: { labels, datasets },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                interaction: { mode: 'index', intersect: false },
+                plugins: {
+                    legend: { labels: { color: '#d1d5db', font: { size: 10 } } },
+                    tooltip: { callbacks: { label: ctx => ctx.dataset.label+': '+fmtBRL(ctx.parsed.y) } }
+                },
+                scales: {
+                    x: { ticks: { color: '#6b7280', font:{size:9} }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                    y: { ticks: { color: '#6b7280', font:{size:9}, callback: v => 'R$'+(v>=1e6?(v/1e6).toFixed(1)+'M':(v/1000).toFixed(0)+'k') }, grid: { color: 'rgba(255,255,255,0.03)' } }
+                }
+            }
+        });
     }
 
     // ══════════════════════════════════════════════════════════════════════════
