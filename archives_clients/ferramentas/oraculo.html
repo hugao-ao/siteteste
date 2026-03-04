@@ -1850,7 +1850,7 @@
 
         function updateTooltips(data) {
             // Format percentages
-            const fmt = (val) => (val).toFixed(2) + '%';
+            const fmt = (val) => parseFloat(val).toFixed(2) + '%';
 
             // Update Rentabilidade Tooltip
             const rentTooltip = document.getElementById('rentabilidadeTooltip');
@@ -1858,20 +1858,23 @@
                 rentTooltip.innerHTML = `
                     <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
                     <table class="tooltip-table">
-                        <tr><th colspan="2">Entrada</th></tr>
-                        <tr><td>SELIC</td><td>${fmt(data.selic)}</td></tr>
-                        <tr><td>CDI 120m</td><td>${fmt(data.cdi_120_meses)}</td></tr>
+                        <tr><th>Indicador</th><th>Valor</th></tr>
+                        <tr><td>SELIC Atual</td><td>${fmt(data.selic)}</td></tr>
+                        <tr><td>CDI Atual</td><td>${fmt(data.cdi)}</td></tr>
+                        <tr><td>CDI Últimos 10 anos</td><td>${fmt(data.cdi_120_meses)}</td></tr>
+                        <tr><td>CDI Médio Últimos 10 anos</td><td>${fmt(data.cdi_aa_medio_10_anos)}</td></tr>
                     </table>
                     <table class="tooltip-table">
-                        <tr><th colspan="2">Calculadas</th></tr>
-                        <tr><td>CDI</td><td>${fmt(data.cdi)}</td></tr>
-                        <tr><td>CDI Médio 10a</td><td>${fmt(data.cdi_aa_medio_10_anos)}</td></tr>
-                    </table>
-                    <table class="tooltip-table">
-                        <tr><th colspan="2">Rentabilidade 10 Anos</th></tr>
-                        <tr><td>Conservador</td><td>${fmt(data.rent_cons_10_anos)}</td></tr>
-                        <tr><td>Moderado</td><td>${fmt(data.rent_mod_10_anos)}</td></tr>
-                        <tr><td>Arrojado</td><td>${fmt(data.rent_arro_10_anos)}</td></tr>
+                        <tr><th>Perfil</th><th>Méd. 10 anos</th><th>Rent. Atual</th></tr>
+                        <tr><td>0. Sem Conhecimento</td><td>${fmt(data.rent_sem_conhecimento_10_anos)}</td><td>${fmt(data.rent_sem_conhecimento)}</td></tr>
+                        <tr><td>0.5. Iniciante</td><td>${fmt(data.rent_iniciante_10_anos)}</td><td>${fmt(data.rent_iniciante)}</td></tr>
+                        <tr><td>1. Ultra-Conservador</td><td>${fmt(data.rent_ultra_cons_10_anos)}</td><td>${fmt(data.rent_ultra_cons)}</td></tr>
+                        <tr><td>2. Conservador</td><td>${fmt(data.rent_cons_10_anos)}</td><td>${fmt(data.rent_cons)}</td></tr>
+                        <tr><td>3. Conservador-Moderado</td><td>${fmt(data.rent_cons_mod_10_anos)}</td><td>${fmt(data.rent_cons_mod)}</td></tr>
+                        <tr><td>4. Moderado</td><td>${fmt(data.rent_mod_10_anos)}</td><td>${fmt(data.rent_mod)}</td></tr>
+                        <tr><td>5. Moderado-Arrojado</td><td>${fmt(data.rent_mod_arro_10_anos)}</td><td>${fmt(data.rent_mod_arro)}</td></tr>
+                        <tr><td>6. Arrojado</td><td>${fmt(data.rent_arro_10_anos)}</td><td>${fmt(data.rent_arro)}</td></tr>
+                        <tr><td>7. Ultra-Arrojado</td><td>${fmt(data.rent_ultra_arro_10_anos)}</td><td>${fmt(data.rent_ultra_arro)}</td></tr>
                     </table>
                 `;
             }
@@ -1882,13 +1885,10 @@
                 inflaTooltip.innerHTML = `
                     <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
                     <table class="tooltip-table">
-                        <tr><th colspan="2">Entrada</th></tr>
-                        <tr><td>IPCA</td><td>${fmt(data.ipca)}</td></tr>
-                        <tr><td>IPCA 120m</td><td>${fmt(data.ipca_120_meses)}</td></tr>
-                    </table>
-                    <table class="tooltip-table">
-                        <tr><th colspan="2">Calculadas</th></tr>
-                        <tr><td>IPCA Médio 10a</td><td>${fmt(data.ipca_aa_medio_10_anos)}</td></tr>
+                        <tr><th>Indicador</th><th>Valor</th></tr>
+                        <tr><td>Inflação Atual (IPCA)</td><td>${fmt(data.ipca)}</td></tr>
+                        <tr><td>IPCA Últimos 10 anos</td><td>${fmt(data.ipca_120_meses)}</td></tr>
+                        <tr><td>IPCA Médio Últimos 10 anos</td><td>${fmt(data.ipca_aa_medio_10_anos)}</td></tr>
                     </table>
                 `;
             }
