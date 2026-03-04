@@ -462,27 +462,8 @@
                      <label for="interestRateAnnual">
                     Rentabilidade Anual Esperada (%)
                     <span class="info-icon">!
-                        <div class="tooltip-container">
-                            <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
-                            
-                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Entrada</span>
-                            <table class="tooltip-table">
-                                <tr><td>SELIC</td><td>10.75%</td></tr>
-                                <tr><td>CDI 120m</td><td>10.50%</td></tr>
-                            </table>
-
-                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Calculadas</span>
-                            <table class="tooltip-table">
-                                <tr><td>CDI</td><td>10.65%</td></tr>
-                                <tr><td>CDI Médio 10a</td><td>9.80%</td></tr>
-                            </table>
-
-                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Rentabilidade 10 Anos</span>
-                            <table class="tooltip-table">
-                                <tr><td>Conservador</td><td>10.10%</td></tr>
-                                <tr><td>Moderado</td><td>10.80%</td></tr>
-                                <tr><td>Arrojado</td><td>11.76%</td></tr>
-                            </table>
+                        <div class="tooltip-container" id="rentabilidadeTooltip">
+                            <span class="tooltip-title">Carregando...</span>
                         </div>
                     </span>
                 </label>
@@ -492,19 +473,8 @@
                 <label for="inflationRateAnnual">
                     Taxa de Inflação Anual (%)
                     <span class="info-icon">!
-                        <div class="tooltip-container">
-                            <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
-                            
-                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Entrada</span>
-                            <table class="tooltip-table">
-                                <tr><td>IPCA</td><td>4.50%</td></tr>
-                                <tr><td>IPCA 120m</td><td>5.00%</td></tr>
-                            </table>
-
-                            <span class="tooltip-title" style="font-size: 0.7rem; margin-top: 4px;">Calculadas</span>
-                            <table class="tooltip-table">
-                                <tr><td>IPCA Médio 10a</td><td>4.80%</td></tr>
-                            </table>
+                        <div class="tooltip-container" id="inflacaoTooltip">
+                            <span class="tooltip-title">Carregando...</span>
                         </div>
                     </span>
                 </label>
@@ -1827,7 +1797,6 @@
         }        // Initialize Supabase
         async function fetchMarketVariables() {
             try {
-                // Reutiliza a instância do Supabase já criada pelo layout.js para evitar múltiplas instâncias
                 const client = window.mithraSupabaseClient ||
                     (window.supabase && window.supabase.createClient
                         ? window.supabase.createClient(
@@ -1847,9 +1816,7 @@
 
                 if (error) throw error;
 
-                if (data) {
-                    updateTooltips(data);
-                }
+                if (data) updateTooltips(data);
             } catch (err) {
                 console.error('Error fetching market variables:', err);
             }
@@ -1858,7 +1825,6 @@
         function updateTooltips(data) {
             const fmt = (val) => parseFloat(val).toFixed(4) + '%';
 
-            // Bloco HTML idêntico para as duas tooltips (tudo que a página de variáveis de mercado mostra)
             const tooltipHTML = `
                 <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
                 <table class="tooltip-table">
@@ -1921,7 +1887,6 @@
             if (inflaTooltip) inflaTooltip.innerHTML = tooltipHTML;
         }
 
-        // Aguarda o layout.js criar a instância do Supabase antes de buscar os dados
         document.addEventListener('DOMContentLoaded', () => {
             setTimeout(fetchMarketVariables, 300);
         });
