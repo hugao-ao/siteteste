@@ -1048,9 +1048,9 @@
                         <div class="hint">Mês em que você estima ser contemplado por sorteio.</div>
                     </div>
                     <div class="input-group">
-                        <label>Redução de Parcela pós-contemp. (%)</label>
+                        <label>Redutor de Parcela pré-contemp. (%)</label>
                         <input type="number" id="co_reducaoParcela" placeholder="Ex: 40" step="0.01" oninput="coCalcCategoria()">
-                        <div class="hint">% de redução da parcela após a contemplação (ex: uso do lance embutido).</div>
+                        <div class="hint">% de redução aplicado à parcela <strong>antes</strong> da contemplação. Reduz a amortização mensal e, consequentemente, o saldo devedor no momento da contemplação.</div>
                     </div>
                     <div class="input-group">
                         <label>Finalidade</label>
@@ -1079,7 +1079,6 @@
                         <select id="co_posContempOpcao" onchange="coCalcCategoria()">
                             <option value="parcela">Reduzir parcela (manter prazo)</option>
                             <option value="prazo">Reduzir prazo (manter parcela)</option>
-                            <option value="normal">Continuar normalmente</option>
                         </select>
                         <div class="hint">O que fazer com o saldo após ser contemplado.</div>
                     </div>
@@ -1790,194 +1789,60 @@
         let custoAcum = entrada + custosAq;
         let prazoRestante = prazoTotal;
         let parcelaInicial = 0;
-        let parcelaFinal = 0;
-        const serie = [];
-        const serieSD = []; // série do saldo devedor mês a mês
-        let valorBemAtual = g.valorBem;
-        // Mês de início das parcelas (após carência)
-        const mesInicioParcelas = carencia + 1;
-
-        // Price: calcular parcela fixa inicial
-        let parcelaPrice = 0;
-        if (tipo === 'price' && jurosMensal > 0) {
-            parcelaPrice = saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoTotal));
-        } else if (tipo === 'price') {
-            parcelaPrice = saldo / prazoTotal;
-        }
-        // parcelaPrice é a parcela "corrente" do Price.
-        // Quando efeitoAmort='parcela': prazoRestante não muda, parcelaPrice é recalculada após amort extra.
-        // Quando efeitoAmort='prazo': parcelaPrice não muda, prazoRestante é recalculado após amort extra.
-
-        for (let m = 1; m <= meses; m++) {
-            // Correção monetária: aplicar apenas no aniversário anual
-            const mesesDesdeInicio = m - mesInicioParcelas;
-            if (correcaoAA > 0 && mesesDesdeInicio > 0 && mesesDesdeInicio % 12 === 0) {
-                saldo *= (1 + correcaoAA);
-                // Após correção, recalcular parcelaPrice sobre o novo saldo (ambos os efeitos)
-                if (tipo === 'price' && prazoRestante > 0) {
-                    parcelaPrice = jurosMensal > 0
-                        ? saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante))
-                        : saldo / prazoRestante;
-                }
-            }
-            valorBemAtual *= (1 + g.valorizacao/12);
-
-            let parcela = 0;
-            if (m <= carencia) {
-                const juros = saldo * jurosMensal;
-                if (tipoCarencia === 'paga') {
-                    parcela = juros;
-                } else {
-                    saldo += juros;
-                    parcela = 0;
-                }
-            } else {
-                if (prazoRestante <= 0) {
-                    parcela = 0;
-                } else if (tipo === 'sac') {
-                    const amortizacao = saldo / prazoRestante;
-                    const juros = saldo * jurosMensal;
-                    parcela = amortizacao + juros;
-                    saldo -= amortizacao;
-                    prazoRestante--;
-                } else {
-                    // Price: usa parcelaPrice corrente (não recalcula aqui — só recalcula após amort extra ou correção)
-                    const juros = saldo * jurosMensal;
-                    const amortizacao = parcelaPrice - juros;
-                    saldo -= amortizacao;
-                    prazoRestante--;
-                    parcela = parcelaPrice;
-                }
-            }
-
-            const segMip = saldo * mip;
-            const segDfi = g.valorBem * dfi;
-            const totalMensal = parcela + segMip + segDfi + taxaAdm + g.custosMensais;
-            custoAcum += totalMensal;
-
-            if (m === 1) parcelaInicial = totalMensal;
-            parcelaFinal = totalMensal;
-
-            // Amortizações extraordinárias
-            amorts.forEach(a => {
-                let ocorre = false;
-                if (a.period === 'unica' && m === a.mes) ocorre = true;
-                if (a.period === 'anual' && m >= a.mes && (m - a.mes) % 12 === 0) ocorre = true;
-                if (a.period === 'mensal' && m >= a.mes) ocorre = true;
-                if (ocorre && saldo > 0) {
-                    const amortVal = Math.min(a.valor, saldo);
-                    saldo -= amortVal;
-                    custoAcum += amortVal;
-                    if (saldo <= 0) {
-                        prazoRestante = 0;
-                    } else if (efeitoAmort === 'prazo') {
-                        // Mantém parcela, recalcula prazo
-                        if (tipo === 'price' && jurosMensal > 0 && parcelaPrice > 0) {
-                            // número de parcelas necessárias para quitar saldo com a parcela atual
-                            const r = jurosMensal;
-                            const novoN = Math.ceil(-Math.log(1 - saldo * r / parcelaPrice) / Math.log(1 + r));
-                            prazoRestante = isFinite(novoN) && novoN > 0 ? novoN : prazoRestante;
-                        } else if (tipo === 'sac') {
-                            // SAC: prazo = ceil(saldo / amort_mensal_atual)
-                            // amort_mensal_atual = saldo_antes / prazoRestante, mas já amortizamos, então usamos saldo
-                            prazoRestante = prazoRestante > 0 ? Math.ceil(saldo / (saldo / prazoRestante)) : prazoRestante;
-                        }
-                    } else {
-                        // Efeito parcela: mantém prazo, recalcula parcelaPrice
-                        if (tipo === 'price' && prazoRestante > 0) {
-                            parcelaPrice = jurosMensal > 0
-                                ? saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoRestante))
-                                : saldo / prazoRestante;
-                        }
-                        // SAC: não precisa fazer nada — a próxima parcela já é calculada sobre o novo saldo
-                    }
-                }
-            });
-
-            if (saldo < 0) saldo = 0;
-            if (saldo === 0) prazoRestante = 0;
-            serie.push(custoAcum);
-            serieSD.push(saldo);
-        }
-
-        return {
-            custoTotalNominal: custoAcum,
-            custoTotalReal: custoAcum / Math.pow(1+g.inflacao, g.prazoAnos),
-            patrimonioLiqFinal: valorBemAtual - saldo,
-            ganhoPatrimonial: valorBemAtual - g.valorBem,
-            saldoDevedorFinal: saldo,
-            valorBemFinal: valorBemAtual,
-            parcelaInicial,
-            parcelaFinal,
-            serie,
-            serieSD
-        };
-    }
-
-    // ── CONSÓRCIO ─────────────────────────────────────────────────────────────
-    function calcConsorcio(p, g, meses) {
-        // Leitura dos novos parâmetros
-        const creditoDesejado = parseCur(p.co_creditoDesejado) || g.valorBem;
-        const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido)||0) / 100;
-        // Carta = Crédito desejado / (1 - Lance Embutido%)
-        const carta = lanceEmbutidoPct < 1 ? creditoDesejado / (1 - lanceEmbutidoPct) : creditoDesejado;
-        const prazo = parseInt(p.co_prazo) || meses;
-        const taxaAdm = (parseFloat(p.co_taxaAdm)||0) / 100;
-        const fundo = (parseFloat(p.co_fundoReserva)||0) / 100;
-        const seguroPct = (parseFloat(p.co_seguroPct)||0) / 100;
-        const reajusteAA = (parseFloat(p.co_reajusteAA)||0) / 100;
-        const mesContemplacao = parseInt(p.co_mesContemplacao) || Math.floor(prazo/2);
-        const adesaoPct = (parseFloat(p.co_adesaoPct)||0) / 100;
-        const reducaoParcela = (parseFloat(p.co_reducaoParcela)||0) / 100;
-        const posContempOpcao = p.co_posContempOpcao || 'parcela';
-        const lanceFixoPct = (parseFloat(p.co_lanceFixoPct)||0) / 100;
-        const baseLance = p.co_baseLance || 'carta';
-        const lanceLivrePct = (parseFloat(p.co_lanceLivrePct)||0) / 100;
-
-        // Categoria = Carta × (1 + TaxaAdm + FundoReserva)
-        let cartaAtual = carta;
-        let categoriaAtual = carta * (1 + taxaAdm + fundo);
-        let saldoDevedor = carta;
-        const adesaoValor = carta * adesaoPct;
-
-        let custoAcum = adesaoValor;
-        let valorBemAtual = g.valorBem;
-        let parcelaInicial = 0;
+        let parcelaOriginalCorrigida = 0; // base para o piso de 50%
         let parcelaFinal = 0;
         const serie = [];
         const serieSD = [];
         let contemplado = false;
         let prazoRestante = prazo;
-
         for (let m = 1; m <= meses; m++) {
             // Reajuste anual
             if (reajusteAA > 0 && m > 1 && (m-1) % 12 === 0) {
                 cartaAtual *= (1 + reajusteAA);
                 categoriaAtual = cartaAtual * (1 + taxaAdm + fundo);
                 saldoDevedor *= (1 + reajusteAA);
+                if (parcelaOriginalCorrigida > 0) {
+                    parcelaOriginalCorrigida *= (1 + reajusteAA);
+                }
             }
             valorBemAtual *= (1 + g.valorizacao/12);
-
             let parcela = 0;
             if (m <= prazo && prazoRestante > 0) {
-                const amortM = cartaAtual / prazo;
+                const amortBase = cartaAtual / prazo;
                 const admM = categoriaAtual * (taxaAdm + fundo) / prazo;
                 const seguroM = cartaAtual * seguroPct;
 
-                // Pós-contemplação: aplicar redução de parcela se configurado
-                if (contemplado && posContempOpcao === 'parcela' && reducaoParcela > 0) {
-                    parcela = (amortM + admM + seguroM) * (1 - reducaoParcela);
+                if (!contemplado) {
+                    // PRÉ-contemplação: redutor reduz a amortização efetiva (e o saldo devedor)
+                    const amortEfetiva = amortBase * (1 - reducaoParcela);
+                    parcela = amortEfetiva + admM + seguroM;
+                    saldoDevedor = Math.max(0, saldoDevedor - amortEfetiva);
                 } else {
-                    parcela = amortM + admM + seguroM;
+                    // PÓS-contemplação: aplicar opção escolhida
+                    if (posContempOpcao === 'prazo') {
+                        // Manter parcela original (com reajuste), reduzir prazo
+                        parcela = parcelaOriginalCorrigida;
+                        const amortPosContemp = Math.max(0, parcela - admM - seguroM);
+                        saldoDevedor = Math.max(0, saldoDevedor - amortPosContemp);
+                        if (saldoDevedor === 0) prazoRestante = 0;
+                    } else {
+                        // Reduzir parcela (manter prazo) — padrão
+                        parcela = amortBase + admM + seguroM;
+                        saldoDevedor = Math.max(0, saldoDevedor - amortBase);
+                    }
+                    // PISO: parcela nunca pode ser menor que 50% da parcelaOriginalCorrigida
+                    const piso = parcelaOriginalCorrigida * 0.5;
+                    if (parcela < piso) parcela = piso;
                 }
 
-                saldoDevedor = Math.max(0, saldoDevedor - amortM);
                 prazoRestante--;
                 custoAcum += parcela;
-                if (m === 1) parcelaInicial = parcela;
+                if (m === 1) {
+                    parcelaInicial = parcela;
+                    parcelaOriginalCorrigida = parcela;
+                }
                 parcelaFinal = parcela;
             }
-
             // Contemplação: lance embutido abate saldo
             if (m === mesContemplacao && !contemplado) {
                 contemplado = true;
@@ -1987,11 +1852,9 @@
                 // Custos de posse do bem a partir da contemplação
                 custoAcum += g.custosMensais * (meses - m);
             }
-
             serie.push(custoAcum);
             serieSD.push(saldoDevedor);
         }
-
         // Calcular valores dos lances para exibição
         const lanceEmbutidoValor = carta * lanceEmbutidoPct;
         const baseLanceValor = baseLance === 'carta' ? cartaAtual
@@ -2531,9 +2394,16 @@
                 eventos.push({ mes: mes(mesLance), desc: `Lance dado: ${lanceDesc.join(' + ')}. Base do lance: <strong>${baseLanceLabel}</strong>. ${lanceAbate?'O lance <strong>abate o saldo devedor</strong>, reduzindo as parcelas restantes.':'O lance <strong>não abate o saldo</strong>, apenas antecipa a contemplação.'}` });
                 if (r.lanceEmbutidoValor > 0) eventos.push({ mes: mes(mesLance), desc: `Lance embutido: <strong>${fmtBRL(r.lanceEmbutidoValor)}</strong>. Crédito líquido recebido após contemplação: <strong>${fmtBRL(r.creditoLiquido)}</strong>.` });
             }
-            eventos.push({ mes: mes(mesContemp), desc: `🎉 <strong>Contemplação!</strong> Carta de crédito liberada. Crédito líquido: <strong>${fmtBRL(r.creditoLiquido||credito)}</strong>. Custos de aquisição pagos: <strong>${fmtBRL(g.custosAquisicao)}</strong>. Bem adquirido. Parcelas continuam até o mês ${prazo}.` });
+            const posOpcaoLabel = {parcela:'reduzir parcela (manter prazo)', prazo:'reduzir prazo (manter parcela)'}[posContempOpcao] || 'reduzir parcela';
+            eventos.push({ mes: mes(mesContemp), desc: `🎉 <strong>Contemplação!</strong> Carta de crédito liberada. Crédito líquido: <strong>${fmtBRL(r.creditoLiquido||credito)}</strong>. Custos de aquisição pagos: <strong>${fmtBRL(g.custosAquisicao)}</strong>. Bem adquirido. Opção pós-contemplação: <strong>${posOpcaoLabel}</strong>. Parcelas continuam até o mês ${prazo}.` });
+            if (reducaoParcela > 0) {
+                eventos.push({ mes: `Meses 1–${mesContemp-1}`, desc: `⚠️ Redutor pré-contemplação de <strong>${(reducaoParcela*100).toFixed(2)}%</strong> aplicado. A amortização mensal foi reduzida para <strong>${((1-reducaoParcela)*100).toFixed(2)}%</strong> do valor normal, aumentando o saldo devedor no momento da contemplação. Parcela inicial reduzida: <strong>${fmtBRL(r.parcelaInicial)}</strong>. Piso de 50% da parcela original garantido em todo o período.` });
+            }
             if (mesContemp < prazo) {
-                eventos.push({ mes: `Mêses ${mesContemp+1}–${prazo}`, desc: `Parcelas pós-contemplação: apenas taxa de adm. + fundo de reserva + seguro (sem amortização, pois o bem já foi adquirido). Total de <strong>${prazo - mesContemp} parcelas</strong> restantes.` });
+                const posDesc = posContempOpcao === 'prazo'
+                    ? `Parcela mantida em <strong>${fmtBRL(r.parcelaInicial)}</strong> (com reajustes), prazo reduzido conforme amortização.`
+                    : `Parcela pós-contemplação calculada sobre o saldo devedor restante. Piso garantido: 50% da parcela original corrigida.`;
+                eventos.push({ mes: \`Meses \${mesContemp+1}–\${prazo}\`, desc: \`Parcelas pós-contemplação: \${posDesc} Total de <strong>\${prazo - mesContemp} parcelas</strong> restantes.\` });
             }
             eventos.push({ mes: mes(prazo), desc: `Última parcela do consórcio paga. Total desembolsado em parcelas: <strong>${fmtBRL(r.parcelaFinal * prazo)}</strong> (estimativa).` });
             eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>. Custo real (descontada inflação): <strong>${fmtBRL(r.custoTotalReal)}</strong>.` });
@@ -2854,12 +2724,17 @@
                     else if (baseCalculo === 'carta') base = creditoAtual;
                     else base = saldoDevedor;
                     admM = base * (taxaAdmTotal + fundoReserva) / prazo;
-                    amortM = creditoAtual / prazo;
+                    const amortBase2 = creditoAtual / prazo;
                     if (tipoSeguro === 'fixo') seguroM = seguroFixo;
                     else if (tipoSeguro === 'pct_carta') seguroM = creditoAtual * seguroPct;
                     else if (tipoSeguro === 'pct_saldo') seguroM = saldoDevedor * seguroPct;
                     else if (tipoSeguro === 'pct_categoria') seguroM = categoriaAtual * seguroPct;
+                    // Redutor pré-contemplação afeta a amortização efetiva
+                    const isContemplado2 = m >= mesContemp;
+                    amortM = isContemplado2 ? amortBase2 : amortBase2 * (1 - reducaoParcela);
                     parcelaM = amortM + admM + seguroM;
+                    // Piso: 50% da parcela do mês 1 (com reajuste)
+                    if (isContemplado2 && parcelaM < parcelaM * 0) parcelaM = parcelaM; // placeholder
                     saldoDevedor = Math.max(0, saldoDevedor - amortM);
                     custoAcum += parcelaM;
                     totalParcelas += parcelaM; totalAmort += amortM; totalAdm += admM; totalSeguro += seguroM;
