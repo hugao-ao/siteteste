@@ -1500,14 +1500,21 @@
                     const amortVal = Math.min(a.valor, saldo);
                     saldo -= amortVal;
                     custoAcum += amortVal;
-                    if (efeitoAmort === 'prazo' && prazoRestante > 0) {
-                        const reducao = Math.floor(amortVal / (saldo / prazoRestante || 1));
-                        prazoRestante = Math.max(0, prazoRestante - reducao);
+                    if (efeitoAmort === 'prazo') {
+                        if (saldo <= 0) {
+                            // Saldo zerado: quitar imediatamente
+                            prazoRestante = 0;
+                        } else if (prazoRestante > 0) {
+                            // Recalcular prazo restante com base na amortização mensal atual
+                            const amortMensal = saldo / prazoRestante;
+                            prazoRestante = amortMensal > 0 ? Math.ceil(saldo / amortMensal) : prazoRestante;
+                        }
                     }
                 }
             });
 
             if (saldo < 0) saldo = 0;
+            if (saldo === 0) prazoRestante = 0;
             serie.push(custoAcum);
             serieSD.push(saldo);
         }
@@ -1682,10 +1689,19 @@
                     const av = Math.min(a.valor, saldo);
                     saldo -= av;
                     custoAcum += av;
+                    if (efeitoAmort === 'prazo') {
+                        if (saldo <= 0) {
+                            prazoRestante = 0;
+                        } else if (prazoRestante > 0) {
+                            const amortMensal = saldo / prazoRestante;
+                            prazoRestante = amortMensal > 0 ? Math.ceil(saldo / amortMensal) : prazoRestante;
+                        }
+                    }
                 }
             });
 
             if (saldo < 0) saldo = 0;
+            if (saldo === 0) prazoRestante = 0;
             serie.push(custoAcum);
             serieSD.push(saldo);
         }
@@ -2217,16 +2233,20 @@
                         const av = Math.min(a.valor, saldo);
                         saldo -= av;
                         custoAcum += av;
-                        // Adicionar ao acumulador de amortização para aparecer na coluna
                         stepAmort += av;
                         totalAmort += av;
-                        if (efeitoAmort==='prazo'&&prazoRestante>0) {
-                            const reducao = Math.floor(av/(saldo/prazoRestante||1));
-                            prazoRestante = Math.max(0, prazoRestante-reducao);
+                        if (efeitoAmort==='prazo') {
+                            if (saldo <= 0) {
+                                prazoRestante = 0;
+                            } else if (prazoRestante > 0) {
+                                const amortMensal = saldo / prazoRestante;
+                                prazoRestante = amortMensal > 0 ? Math.ceil(saldo / amortMensal) : prazoRestante;
+                            }
                         }
                     }
                 });
                 if (saldo < 0) saldo = 0;
+                if (saldo === 0) prazoRestante = 0;
                 if (m % step === 0) {
                     const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
                     const hasAmortExtra = amorts.some(a=>a.period==='unica'&&a.mes>=m-step+1&&a.mes<=m);
@@ -2293,10 +2313,14 @@
             const carencia = parseInt(p.cu_carencia)||0;
             const tipoCarencia = p.cu_tipoCarencia||'paga';
             const parcelaFixaManual = parseCur(p.cu_parcelaFixa);
+            const amorts = p.cu_amortsList || [];
+            const efeitoAmort = p.cu_efeitoAmort || 'prazo';
             let prazoRestante = prazoTotal;
             let custoAcum = entrada + g.custosAquisicao;
             const mesInicioCustomTab = carencia + 1;
             let parcelaPrice = 0;
+            let totalJurosC=0, totalAmortC=0, totalParcelasC=0, totalEncargosC=0;
+            let stepJurosC=0, stepAmortC=0, stepParcelaC=0, stepEncargosC=0;
             if (sistema==='price'&&jurosMensal>0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoTotal));
             let rows = '';
             for (let m = 1; m <= meses; m++) {
@@ -2327,14 +2351,42 @@
                 if (m===prazoTotal&&balloon>0) { parcela+=balloon; saldo=Math.max(0,saldo-balloon); }
                 const encargos = tarifaFixa+saldo*tarifaVar+seguro+saldo*seguroVar;
                 custoAcum += parcela+encargos+g.custosMensais;
+                totalJurosC+=juros; totalAmortC+=amortizacao; totalParcelasC+=parcela; totalEncargosC+=encargos;
+                stepJurosC+=juros; stepAmortC+=amortizacao; stepParcelaC+=parcela; stepEncargosC+=encargos;
+                // Amortizações extraordinárias
+                amorts.forEach(a => {
+                    let ocorre = false;
+                    if (a.period==='unica'&&m===a.mes) ocorre=true;
+                    if (a.period==='anual'&&m>=a.mes&&(m-a.mes)%12===0) ocorre=true;
+                    if (a.period==='mensal'&&m>=a.mes) ocorre=true;
+                    if (ocorre&&saldo>0) {
+                        const av = Math.min(a.valor, saldo);
+                        saldo -= av;
+                        custoAcum += av;
+                        stepAmortC += av;
+                        totalAmortC += av;
+                        if (efeitoAmort==='prazo') {
+                            if (saldo <= 0) { prazoRestante = 0; }
+                            else if (prazoRestante > 0) {
+                                const am = saldo / prazoRestante;
+                                prazoRestante = am > 0 ? Math.ceil(saldo / am) : prazoRestante;
+                            }
+                        }
+                    }
+                });
                 if (saldo<0) saldo=0;
+                if (saldo===0) prazoRestante=0;
                 if (m%step===0) {
                     const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
-                    rows += `<tr><td>${label}</td><td>${fmtBRL(saldo)}</td><td>${fmtBRL(juros)}</td><td>${fmtBRL(parcela)}</td><td>${fmtBRL(encargos)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    const hasAmortExtraC = amorts.some(a=>a.period==='unica'&&a.mes>=m-step+1&&a.mes<=m);
+                    const destaqueC = hasAmortExtraC ? ' class="destaque"' : '';
+                    rows += `<tr${destaqueC}><td>${label}</td><td>${fmtBRL(saldo)}</td><td>${fmtBRL(stepAmortC)}</td><td>${fmtBRL(stepJurosC)}</td><td>${fmtBRL(stepParcelaC)}</td><td>${fmtBRL(stepEncargosC)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    stepJurosC=0; stepAmortC=0; stepParcelaC=0; stepEncargosC=0;
                 }
             }
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(saldo)} (saldo final)</td><td>${fmtBRL(totalAmortC)}</td><td>${fmtBRL(totalJurosC)}</td><td>${fmtBRL(totalParcelasC)}</td><td>${fmtBRL(totalEncargosC)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
             return `<div class="amort-table-wrap"><table class="amort-table">
-                <thead><tr><th>Período</th><th>Saldo Dev.</th><th>Juros</th><th>Parcela</th><th>Encargos</th><th>Custo Acum.</th></tr></thead>
+                <thead><tr><th>Período</th><th>Saldo Dev. (fim)</th><th>Amortização</th><th>Juros</th><th>Parcela</th><th>Seguros+Taxas</th><th>Custo Acum.</th></tr></thead>
                 <tbody>${rows}</tbody></table></div>`;
         }
 
