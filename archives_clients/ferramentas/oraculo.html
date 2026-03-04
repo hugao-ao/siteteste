@@ -1825,16 +1825,23 @@
 
             document.getElementById('tableContainer').style.display = 'block';
         }        // Initialize Supabase
-        const supabaseUrl = 'https://vbikskbfkhundhropykf.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
-        const supabaseClient = window.supabase.createClient(supabaseUrl, supabaseKey);
-
         async function fetchMarketVariables() {
             try {
-                const { data, error } = await supabaseClient
+                // Reutiliza a instância do Supabase já criada pelo layout.js para evitar múltiplas instâncias
+                const client = window.mithraSupabaseClient ||
+                    (window.supabase && window.supabase.createClient
+                        ? window.supabase.createClient(
+                            'https://vbikskbfkhundhropykf.supabase.co',
+                            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU'
+                          )
+                        : null);
+
+                if (!client) return;
+
+                const { data, error } = await client
                     .from('variaveis_mercado')
                     .select('*')
-                    .order('created_at', { ascending: false })
+                    .order('data_ultima_atualizacao', { ascending: false })
                     .limit(1)
                     .single();
 
@@ -1849,23 +1856,27 @@
         }
 
         function updateTooltips(data) {
-            // Format percentages
             const fmt = (val) => parseFloat(val).toFixed(2) + '%';
 
-            // Update Rentabilidade Tooltip
+            // Tooltip de Rentabilidade: Variáveis de Entrada + Calculadas + 9 Perfis (Méd. 10a e Atual)
             const rentTooltip = document.getElementById('rentabilidadeTooltip');
             if (rentTooltip) {
                 rentTooltip.innerHTML = `
                     <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
                     <table class="tooltip-table">
-                        <tr><th>Indicador</th><th>Valor</th></tr>
-                        <tr><td>SELIC Atual</td><td>${fmt(data.selic)}</td></tr>
-                        <tr><td>CDI Atual</td><td>${fmt(data.cdi)}</td></tr>
-                        <tr><td>CDI Últimos 10 anos</td><td>${fmt(data.cdi_120_meses)}</td></tr>
-                        <tr><td>CDI Médio Últimos 10 anos</td><td>${fmt(data.cdi_aa_medio_10_anos)}</td></tr>
+                        <tr><th colspan="2">Variáveis de Entrada</th></tr>
+                        <tr><td>SELIC (%)</td><td>${fmt(data.selic)}</td></tr>
+                        <tr><td>CDI 120 meses (%)</td><td>${fmt(data.cdi_120_meses)}</td></tr>
+                        <tr><td>Rent. Anual Aposentadoria (%)</td><td>${fmt(data.rent_anual_aposentadoria)}</td></tr>
                     </table>
                     <table class="tooltip-table">
-                        <tr><th>Perfil</th><th>Méd. 10 anos</th><th>Rent. Atual</th></tr>
+                        <tr><th colspan="2">Variáveis Calculadas Automaticamente</th></tr>
+                        <tr><td>CDI (%)</td><td>${fmt(data.cdi)}</td></tr>
+                        <tr><td>CDI a.a. Médio 10 anos (%)</td><td>${fmt(data.cdi_aa_medio_10_anos)}</td></tr>
+                        <tr><td>Rent. Mensal Aposentadoria (%)</td><td>${fmt(data.rent_mensal_aposentadoria)}</td></tr>
+                    </table>
+                    <table class="tooltip-table">
+                        <tr><th>Perfil</th><th>Méd. 10 anos (%)</th><th>Rent. Atual (%)</th></tr>
                         <tr><td>0. Sem Conhecimento</td><td>${fmt(data.rent_sem_conhecimento_10_anos)}</td><td>${fmt(data.rent_sem_conhecimento)}</td></tr>
                         <tr><td>0.5. Iniciante</td><td>${fmt(data.rent_iniciante_10_anos)}</td><td>${fmt(data.rent_iniciante)}</td></tr>
                         <tr><td>1. Ultra-Conservador</td><td>${fmt(data.rent_ultra_cons_10_anos)}</td><td>${fmt(data.rent_ultra_cons)}</td></tr>
@@ -1879,24 +1890,27 @@
                 `;
             }
 
-            // Update Inflação Tooltip
+            // Tooltip de Inflação: Variáveis de Entrada + Calculadas (somente inflação)
             const inflaTooltip = document.getElementById('inflacaoTooltip');
             if (inflaTooltip) {
                 inflaTooltip.innerHTML = `
                     <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
                     <table class="tooltip-table">
-                        <tr><th>Indicador</th><th>Valor</th></tr>
-                        <tr><td>Inflação Atual (IPCA)</td><td>${fmt(data.ipca)}</td></tr>
-                        <tr><td>IPCA Últimos 10 anos</td><td>${fmt(data.ipca_120_meses)}</td></tr>
-                        <tr><td>IPCA Médio Últimos 10 anos</td><td>${fmt(data.ipca_aa_medio_10_anos)}</td></tr>
+                        <tr><th colspan="2">Variáveis de Entrada</th></tr>
+                        <tr><td>IPCA (%)</td><td>${fmt(data.ipca)}</td></tr>
+                        <tr><td>IPCA 120 meses (%)</td><td>${fmt(data.ipca_120_meses)}</td></tr>
+                    </table>
+                    <table class="tooltip-table">
+                        <tr><th colspan="2">Variáveis Calculadas Automaticamente</th></tr>
+                        <tr><td>IPCA a.a. Médio 10 anos (%)</td><td>${fmt(data.ipca_aa_medio_10_anos)}</td></tr>
                     </table>
                 `;
             }
         }
 
-        // Call fetch on load
+        // Aguarda o layout.js criar a instância do Supabase antes de buscar os dados
         document.addEventListener('DOMContentLoaded', () => {
-            fetchMarketVariables();
+            setTimeout(fetchMarketVariables, 300);
         });
 
         function renderVerdict(finalWealth, totalInvested, inflationRate, interestRate, goalStats, finalNetBalance, physicalWealth, acquiredAssets, balance, taxRate) {
