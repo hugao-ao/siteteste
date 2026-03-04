@@ -2024,7 +2024,47 @@
                 const label = a.period === 'unica' ? mes(a.mes) : (a.period === 'anual' ? `A partir do mês ${a.mes} (anual)` : `A partir do mês ${a.mes} (mensal)`);
                 eventos.push({ mes: label, desc: `Amortização extraordinária de <strong>${fmtBRL(a.valor)}</strong> — efeito: ${p[pfx+'_efeitoAmort']==='prazo'?'reduz o prazo':'reduz a parcela'}.` });
             });
-            eventos.push({ mes: mes(prazo), desc: `Financiamento quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+            // Detectar quitação antecipada simulando o loop
+            if (amorts.length > 0 || (parseFloat(p[pfx+'_indiceCorrecao'])||0) > 0) {
+                const jurosAA2 = (parseFloat(p[pfx+'_cet'])||parseFloat(p[pfx+'_juros'])||0)/100;
+                const jm2 = Math.pow(1+jurosAA2, 1/12)-1;
+                const corr2 = (parseFloat(p[pfx+'_indiceCorrecao'])||0)/100;
+                const efeitoAmort2 = p[pfx+'_efeitoAmort']||'prazo';
+                let saldo2 = parseCur(p[pfx+'_financiado']) || (g.valorBem - entrada);
+                let prazoR2 = prazo;
+                let mesQuit = prazo;
+                const mesInicio2 = carencia + 1;
+                let parcelaP2 = (mod==='price'&&jm2>0) ? saldo2*jm2/(1-Math.pow(1+jm2,-prazo)) : saldo2/prazo;
+                for (let m2 = 1; m2 <= prazo; m2++) {
+                    const mDI = m2 - mesInicio2;
+                    if (corr2 > 0 && mDI > 0 && mDI % 12 === 0) saldo2 *= (1+corr2);
+                    if (m2 > carencia && prazoR2 > 0) {
+                        if (mod==='sac') { saldo2 -= saldo2/prazoR2; }
+                        else { if (jm2>0) parcelaP2=saldo2*jm2/(1-Math.pow(1+jm2,-prazoR2)); else parcelaP2=saldo2/prazoR2; saldo2 -= (parcelaP2 - saldo2*jm2); }
+                        prazoR2--;
+                    }
+                    amorts.forEach(a => {
+                        let oc = false;
+                        if (a.period==='unica'&&m2===a.mes) oc=true;
+                        if (a.period==='anual'&&m2>=a.mes&&(m2-a.mes)%12===0) oc=true;
+                        if (a.period==='mensal'&&m2>=a.mes) oc=true;
+                        if (oc&&saldo2>0) {
+                            saldo2 -= Math.min(a.valor, saldo2);
+                            if (efeitoAmort2==='prazo'&&saldo2>0&&prazoR2>0) prazoR2=Math.ceil(saldo2/(saldo2/prazoR2));
+                        }
+                    });
+                    if (saldo2 < 0.01) saldo2 = 0;
+                    if (saldo2 === 0) { mesQuit = m2; break; }
+                }
+                if (mesQuit < prazo) {
+                    const mesesEconomizados = prazo - mesQuit;
+                    eventos.push({ mes: mes(mesQuit), desc: `🏁 <strong>Quitação antecipada!</strong> O financiamento foi quitado no mês ${mesQuit}, ou seja, <strong>${mesesEconomizados} meses antes</strong> do prazo original (${prazo} meses). Saldo devedor zerado.` });
+                } else {
+                    eventos.push({ mes: mes(prazo), desc: `Financiamento quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+                }
+            } else {
+                eventos.push({ mes: mes(prazo), desc: `Financiamento quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+            }
             eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total do financiamento: <strong>${fmtBRL(r.custoTotalNominal)}</strong>.` });
         }
 
@@ -2065,7 +2105,50 @@
             if (balloon > 0) {
                 eventos.push({ mes: mes(prazo), desc: `Pagamento do valor residual (balloon/VRG): <strong>${fmtBRL(balloon)}</strong>.` });
             }
-            eventos.push({ mes: mes(prazo), desc: `Crédito quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+            // Detectar quitação antecipada simulando o loop
+            if (amorts.length > 0) {
+                const jurosAA3 = (parseFloat(p.cu_juros)||0)/100;
+                const jm3 = Math.pow(1+jurosAA3, 1/12)-1;
+                const corr3 = (parseFloat(p.cu_indiceCorrecao)||0)/100;
+                const efeitoAmort3 = p.cu_efeitoAmort||'prazo';
+                const sistema3 = p.cu_sistema||'sac';
+                const parcelaFixa3 = parseCur(p.cu_parcelaFixa);
+                let saldo3 = parseCur(p.cu_financiado)||(g.valorBem - entrada);
+                saldo3 *= (1 + (parseFloat(p.cu_iof)||0)/100);
+                let prazoR3 = prazo;
+                let mesQuit3 = prazo;
+                const mesInicio3 = carencia + 1;
+                let parcelaP3 = (sistema3==='price'&&jm3>0) ? saldo3*jm3/(1-Math.pow(1+jm3,-prazo)) : saldo3/prazo;
+                for (let m3 = 1; m3 <= prazo; m3++) {
+                    const mDI3 = m3 - mesInicio3;
+                    if (corr3 > 0 && mDI3 > 0 && mDI3 % 12 === 0) saldo3 *= (1+corr3);
+                    if (m3 > carencia && prazoR3 > 0) {
+                        if (sistema3==='fixo'&&parcelaFixa3>0) { saldo3 -= Math.max(0, parcelaFixa3 - saldo3*jm3); prazoR3--; }
+                        else if (sistema3==='sac') { saldo3 -= saldo3/prazoR3; prazoR3--; }
+                        else { if (jm3>0) parcelaP3=saldo3*jm3/(1-Math.pow(1+jm3,-prazoR3)); else parcelaP3=saldo3/prazoR3; saldo3 -= (parcelaP3 - saldo3*jm3); prazoR3--; }
+                    }
+                    amorts.forEach(a => {
+                        let oc3 = false;
+                        if (a.period==='unica'&&m3===a.mes) oc3=true;
+                        if (a.period==='anual'&&m3>=a.mes&&(m3-a.mes)%12===0) oc3=true;
+                        if (a.period==='mensal'&&m3>=a.mes) oc3=true;
+                        if (oc3&&saldo3>0) {
+                            saldo3 -= Math.min(a.valor, saldo3);
+                            if (efeitoAmort3==='prazo'&&saldo3>0&&prazoR3>0) prazoR3=Math.ceil(saldo3/(saldo3/prazoR3));
+                        }
+                    });
+                    if (saldo3 < 0.01) saldo3 = 0;
+                    if (saldo3 === 0) { mesQuit3 = m3; break; }
+                }
+                if (mesQuit3 < prazo) {
+                    const mesesEcon3 = prazo - mesQuit3;
+                    eventos.push({ mes: mes(mesQuit3), desc: `🏁 <strong>Quitação antecipada!</strong> O crédito foi quitado no mês ${mesQuit3}, <strong>${mesesEcon3} meses antes</strong> do prazo original (${prazo} meses). Saldo devedor zerado.` });
+                } else {
+                    eventos.push({ mes: mes(prazo), desc: `Crédito quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+                }
+            } else {
+                eventos.push({ mes: mes(prazo), desc: `Crédito quitado. Última parcela: <strong>${fmtBRL(r.parcelaFinal)}</strong>.` });
+            }
             eventos.push({ mes: mes(meses), desc: `Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>. Patrimônio líquido: <strong>${fmtBRL(r.patrimonioLiqFinal)}</strong>.` });
         }
 
