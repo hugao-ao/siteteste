@@ -1412,7 +1412,6 @@
         const jurosAA = (parseFloat(p[pfx+'_cet']) || parseFloat(p[pfx+'_juros']) || 0) / 100;
         const jurosMensal = Math.pow(1+jurosAA, 1/12) - 1;
         const correcaoAA = (parseFloat(p[pfx+'_indiceCorrecao'])||0) / 100;
-        const correcaoMensal = Math.pow(1+correcaoAA, 1/12) - 1;
         const mip = (parseFloat(p[pfx+'_mip'])||0) / 100;
         const dfi = (parseFloat(p[pfx+'_dfi'])||0) / 100;
         const taxaAdm = parseCur(p[pfx+'_taxaAdm']);
@@ -1429,6 +1428,8 @@
         const serie = [];
         const serieSD = []; // série do saldo devedor mês a mês
         let valorBemAtual = g.valorBem;
+        // Mês de início das parcelas (após carência)
+        const mesInicioParcelas = carencia + 1;
 
         // Price: calcular parcela fixa inicial
         let parcelaPrice = 0;
@@ -1439,8 +1440,12 @@
         }
 
         for (let m = 1; m <= meses; m++) {
-            // Correção monetária do saldo
-            saldo *= (1 + correcaoMensal);
+            // Correção monetária: aplicar apenas no aniversário anual (a cada 12 meses a partir do início das parcelas)
+            // mês 1 nunca recebe correção; correção ocorre nos meses 13, 25, 37... (contados a partir do mesInicioParcelas)
+            const mesesDesdeInicio = m - mesInicioParcelas;
+            if (correcaoAA > 0 && mesesDesdeInicio > 0 && mesesDesdeInicio % 12 === 0) {
+                saldo *= (1 + correcaoAA);
+            }
             valorBemAtual *= (1 + g.valorizacao/12);
 
             let parcela = 0;
@@ -1593,7 +1598,6 @@
         const jurosAA = (parseFloat(p.cu_juros)||0) / 100;
         const jurosMensal = Math.pow(1+jurosAA, 1/12) - 1;
         const correcaoAA = (parseFloat(p.cu_indiceCorrecao)||0) / 100;
-        const correcaoMensal = Math.pow(1+correcaoAA, 1/12) - 1;
         const tarifaFixa = parseCur(p.cu_tarifaFixa);
         const tarifaVar = (parseFloat(p.cu_tarifaVar)||0) / 100;
         const seguro = parseCur(p.cu_seguro);
@@ -1614,13 +1618,18 @@
         const serieSD = []; // série do saldo devedor mês a mês
         let valorBemAtual = g.valorBem;
 
+        const mesInicioCustom = carencia + 1;
         let parcelaPrice = 0;
         if (sistema === 'price' && jurosMensal > 0) {
             parcelaPrice = saldo * jurosMensal / (1 - Math.pow(1+jurosMensal, -prazoTotal));
         }
 
         for (let m = 1; m <= meses; m++) {
-            saldo *= (1 + correcaoMensal);
+            // Correção monetária: apenas no aniversário anual
+            const mesesDesdeInicioCustom = m - mesInicioCustom;
+            if (correcaoAA > 0 && mesesDesdeInicioCustom > 0 && mesesDesdeInicioCustom % 12 === 0) {
+                saldo *= (1 + correcaoAA);
+            }
             valorBemAtual *= (1 + g.valorizacao/12);
 
             let parcela = 0;
@@ -2133,7 +2142,6 @@
             const jurosAA = (parseFloat(p[pfx+'_cet'])||parseFloat(p[pfx+'_juros'])||0)/100;
             const jurosMensal = Math.pow(1+jurosAA, 1/12)-1;
             const correcaoAA = (parseFloat(p[pfx+'_indiceCorrecao'])||0)/100;
-            const correcaoMensal = Math.pow(1+correcaoAA, 1/12)-1;
             const mip = (parseFloat(p[pfx+'_mip'])||0)/100;
             const dfi = (parseFloat(p[pfx+'_dfi'])||0)/100;
             const taxaAdm = parseCur(p[pfx+'_taxaAdm']);
@@ -2143,7 +2151,8 @@
             const efeitoAmort = p[pfx+'_efeitoAmort']||'prazo';
             let prazoRestante = prazoTotal;
             let custoAcum = entrada + g.custosAquisicao;
-            // Price: parcela fixa calculada sobre o saldo inicial (antes da 1ª correção)
+            const mesInicioTab = carencia + 1; // mês de início das parcelas
+            // Price: parcela fixa calculada sobre o saldo inicial
             let parcelaPrice = 0;
             if (mod === 'price' && jurosMensal > 0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoTotal));
             else if (mod === 'price') parcelaPrice = saldo/prazoTotal;
@@ -2152,10 +2161,11 @@
             // Acumuladores para agregação por período (step)
             let stepJuros=0, stepAmort=0, stepParcela=0, stepSeguros=0;
             for (let m = 1; m <= meses; m++) {
-                // Correção monetária ANTES do cálculo da parcela
-                saldo *= (1+correcaoMensal);
-                // Saldo no início do mês (após correção, antes da amortização) — é o saldo correto para exibir na tabela
-                const saldoInicio = saldo;
+                // Correção monetária: apenas no aniversário anual (meses 13, 25, 37... a partir do início das parcelas)
+                const mesesDesdeInicioTab = m - mesInicioTab;
+                if (correcaoAA > 0 && mesesDesdeInicioTab > 0 && mesesDesdeInicioTab % 12 === 0) {
+                    saldo *= (1 + correcaoAA);
+                }
                 let amortizacao = 0, juros = 0, parcela = 0;
                 if (m <= carencia) {
                     // Período de carência
@@ -2197,7 +2207,7 @@
                 totalEncargos += encargos;
                 stepJuros += juros; stepAmort += amortizacao;
                 stepParcela += parcela; stepSeguros += segMip+segDfi+taxaAdm;
-                // Amortizações extraordinárias
+                // Amortizações extraordinárias — contabilizar na coluna Amortização
                 amorts.forEach(a => {
                     let ocorre = false;
                     if (a.period==='unica'&&m===a.mes) ocorre=true;
@@ -2207,6 +2217,9 @@
                         const av = Math.min(a.valor, saldo);
                         saldo -= av;
                         custoAcum += av;
+                        // Adicionar ao acumulador de amortização para aparecer na coluna
+                        stepAmort += av;
+                        totalAmort += av;
                         if (efeitoAmort==='prazo'&&prazoRestante>0) {
                             const reducao = Math.floor(av/(saldo/prazoRestante||1));
                             prazoRestante = Math.max(0, prazoRestante-reducao);
@@ -2272,7 +2285,6 @@
             const jurosAA = (parseFloat(p.cu_juros)||0)/100;
             const jurosMensal = Math.pow(1+jurosAA, 1/12)-1;
             const correcaoAA = (parseFloat(p.cu_indiceCorrecao)||0)/100;
-            const correcaoMensal = Math.pow(1+correcaoAA, 1/12)-1;
             const tarifaFixa = parseCur(p.cu_tarifaFixa);
             const tarifaVar = (parseFloat(p.cu_tarifaVar)||0)/100;
             const seguro = parseCur(p.cu_seguro);
@@ -2283,11 +2295,16 @@
             const parcelaFixaManual = parseCur(p.cu_parcelaFixa);
             let prazoRestante = prazoTotal;
             let custoAcum = entrada + g.custosAquisicao;
+            const mesInicioCustomTab = carencia + 1;
             let parcelaPrice = 0;
             if (sistema==='price'&&jurosMensal>0) parcelaPrice = saldo*jurosMensal/(1-Math.pow(1+jurosMensal,-prazoTotal));
             let rows = '';
             for (let m = 1; m <= meses; m++) {
-                saldo *= (1+correcaoMensal);
+                // Correção monetária: apenas no aniversário anual
+                const mDesdeInicioCustomTab = m - mesInicioCustomTab;
+                if (correcaoAA > 0 && mDesdeInicioCustomTab > 0 && mDesdeInicioCustomTab % 12 === 0) {
+                    saldo *= (1 + correcaoAA);
+                }
                 let parcela = 0, juros = 0, amortizacao = 0;
                 if (m<=carencia) {
                     juros = saldo*jurosMensal;
