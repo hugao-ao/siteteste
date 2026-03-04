@@ -781,8 +781,8 @@
                 currentWealth:          document.getElementById('currentWealth').value,
                 monthlyContribution:    document.getElementById('monthlyContribution').value,
                 minReserve:             document.getElementById('minReserve').value,
-                interestRate:           document.getElementById('interestRate').value,
-                inflationRate:          document.getElementById('inflationRate').value,
+                interestRate:           document.getElementById('interestRateAnnual').value,
+                inflationRate:          document.getElementById('inflationRateAnnual').value,
                 taxRate:                document.getElementById('taxRate').value,
                 projectionValue:        document.getElementById('projectionValue').value,
                 projectionUnit:         document.getElementById('projectionUnit').value,
@@ -799,8 +799,8 @@
             document.getElementById('currentWealth').value          = p.currentWealth;
             document.getElementById('monthlyContribution').value    = p.monthlyContribution;
             document.getElementById('minReserve').value             = p.minReserve;
-            document.getElementById('interestRate').value           = p.interestRate;
-            document.getElementById('inflationRate').value          = p.inflationRate;
+            document.getElementById('interestRateAnnual').value     = p.interestRate;
+            document.getElementById('inflationRateAnnual').value    = p.inflationRate;
             document.getElementById('taxRate').value                = p.taxRate;
             document.getElementById('projectionValue').value        = p.projectionValue;
             document.getElementById('projectionUnit').value         = p.projectionUnit;
@@ -1449,8 +1449,8 @@
             const currentWealth = parseCurrency(document.getElementById('currentWealth').value);
             const monthlyContribution = parseCurrency(document.getElementById('monthlyContribution').value);
             const minReserveInitial = parseCurrency(document.getElementById('minReserve').value);
-            const interestRateAnnual = parseFloat(document.getElementById('interestRate').value) / 100;
-            const inflationRateAnnual = parseFloat(document.getElementById('inflationRate').value || 0) / 100;
+            const interestRateAnnual = parseFloat(document.getElementById('interestRateAnnual').value) / 100;
+            const inflationRateAnnual = parseFloat(document.getElementById('inflationRateAnnual').value || 0) / 100;
             const taxRate = parseFloat(document.getElementById('taxRate').value || 0) / 100;
             const adjustContribution = document.getElementById('adjustContributionInflation').checked;
             const projectionValue = parseInt(document.getElementById('projectionValue').value);
