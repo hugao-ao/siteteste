@@ -4,8 +4,8 @@
     // Initialize Supabase (Global but scoped to this closure or window property if needed)
     // NOTE: Replace these with your actual Supabase URL and Key when ready.
     // If invalid, the script will gracefully skip Supabase initialization to prevent errors.
-    const supabaseUrl = 'YOUR_SUPABASE_URL';
-    const supabaseKey = 'YOUR_SUPABASE_ANON_KEY';
+    const supabaseUrl = 'https://vbikskbfkhundhropykf.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZiaWtza2Jma2h1bmRocm9weWtmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU1MTk5NjEsImV4cCI6MjA2MTA5NTk2MX0.-n-Tj_5JnF1NL2ZImWlMeTcobWDl_VD6Vqp0lxRQFFU';
     let localSupabaseClient = null;
 
     // Safe initialization
