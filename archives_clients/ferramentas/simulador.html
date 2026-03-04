@@ -1010,39 +1010,32 @@
                         <input type="number" id="co_prazo" placeholder="Ex: 240" min="1" oninput="coCalcCategoria()">
                     </div>
                 </div>
-                <div class="input-row cols-3">
+                <div class="input-row cols-4">
+                    <div class="input-group">
+                        <label>Base de Cálculo dos Lances</label>
+                        <select id="co_baseLance" onchange="coCalcCategoria()">
+                            <option value="carta">Carta de crédito</option>
+                            <option value="categoria">Categoria</option>
+                            <option value="saldo">Saldo Devedor</option>
+                        </select>
+                        <div class="hint">Base usada para Lance Fixo e Lance Livre.</div>
+                    </div>
                     <div class="input-group">
                         <label>Lance Fixo (%)</label>
                         <input type="number" id="co_lanceFixoPct" placeholder="Ex: 25" step="0.01" oninput="coCalcCategoria()">
                         <div class="hint">% mínimo exigido para lance fixo.</div>
                     </div>
                     <div class="input-group">
-                        <label>Base do Lance Fixo</label>
-                        <select id="co_lanceFixoBase" onchange="coCalcCategoria()">
-                            <option value="carta">Carta de crédito</option>
-                            <option value="categoria">Categoria</option>
-                            <option value="credito">Crédito desejado</option>
-                        </select>
-                    </div>
-                    <div class="input-group">
                         <label>Lance Fixo (R$) — calculado</label>
                         <input type="text" id="co_lanceFixoValor" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
                     </div>
-                </div>
-                <div class="input-row cols-3">
                     <div class="input-group">
                         <label>Lance Livre (%)</label>
                         <input type="number" id="co_lanceLivrePct" placeholder="Ex: 50" step="0.01" oninput="coCalcCategoria()">
                         <div class="hint">% que você pretende oferecer como lance livre.</div>
                     </div>
-                    <div class="input-group">
-                        <label>Base do Lance Livre</label>
-                        <select id="co_lanceLivreBase" onchange="coCalcCategoria()">
-                            <option value="carta">Carta de crédito</option>
-                            <option value="categoria">Categoria</option>
-                            <option value="credito">Crédito desejado</option>
-                        </select>
-                    </div>
+                </div>
+                <div class="input-row cols-2">
                     <div class="input-group">
                         <label>Lance Livre (R$) — calculado</label>
                         <input type="text" id="co_lanceLivreValor" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default;background:rgba(255,255,255,0.03)">
@@ -1296,7 +1289,7 @@
          'al_aluguel','al_reajuste','al_caucao','al_taxaAdm','al_custosExtra','al_capital','al_aporteInv',
          'sac_entrada','sac_financiado','sac_prazo','sac_juros','sac_cet','sac_indiceCorrecao','sac_mip','sac_dfi','sac_taxaAdm','sac_carencia',
          'pr_entrada','pr_financiado','pr_prazo','pr_juros','pr_cet','pr_indiceCorrecao','pr_mip','pr_dfi','pr_taxaAdm','pr_carencia',
-         'co_creditoDesejado','co_lanceEmbutido','co_taxaAdm','co_fundoReserva','co_seguroPct','co_tipoPessoa','co_prazo','co_lanceFixoPct','co_lanceFixoBase','co_lanceLivrePct','co_lanceLivreBase','co_mesContemplacao','co_reducaoParcela','co_finalidade','co_adesaoPct','co_posContempOpcao','co_indiceReajuste','co_reajusteAA',
+         'co_creditoDesejado','co_lanceEmbutido','co_taxaAdm','co_fundoReserva','co_seguroPct','co_tipoPessoa','co_prazo','co_baseLance','co_lanceFixoPct','co_lanceLivrePct','co_mesContemplacao','co_reducaoParcela','co_finalidade','co_adesaoPct','co_posContempOpcao','co_indiceReajuste','co_reajusteAA',
          'cu_nomeCredito','cu_entrada','cu_financiado','cu_prazo','cu_juros','cu_iof','cu_parcelaFixa','cu_tarifaFixa','cu_tarifaVar','cu_seguro','cu_seguroVar','cu_indiceCorrecao','cu_balloon','cu_carencia'
         ].forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
         document.getElementById('sac_amorts').innerHTML = '';
@@ -1441,9 +1434,8 @@
             base.co_tipoPessoa = gv('co_tipoPessoa');
             base.co_prazo = gv('co_prazo');
             base.co_lanceFixoPct = gv('co_lanceFixoPct');
-            base.co_lanceFixoBase = gv('co_lanceFixoBase');
+            base.co_baseLance = gv('co_baseLance');
             base.co_lanceLivrePct = gv('co_lanceLivrePct');
-            base.co_lanceLivreBase = gv('co_lanceLivreBase');
             base.co_mesContemplacao = gv('co_mesContemplacao');
             base.co_reducaoParcela = gv('co_reducaoParcela');
             base.co_finalidade = gv('co_finalidade');
@@ -1530,9 +1522,9 @@
         const prazo = parseInt(document.getElementById('co_prazo')?.value) || 0;
         const adesaoPct = parseFloat(document.getElementById('co_adesaoPct')?.value) || 0;
         const lanceFixoPct = parseFloat(document.getElementById('co_lanceFixoPct')?.value) || 0;
-        const lanceFixoBase = document.getElementById('co_lanceFixoBase')?.value || 'carta';
+        const baseLance = document.getElementById('co_baseLance')?.value || 'carta';
         const lanceLivrePct = parseFloat(document.getElementById('co_lanceLivrePct')?.value) || 0;
-        const lanceLivreBase = document.getElementById('co_lanceLivreBase')?.value || 'carta';
+        const baseLance = document.getElementById('co_baseLance')?.value || 'carta';
 
         // Carta = Crédito desejado / (1 - Lance Embutido%)
         const lanceEmbutidoFrac = lanceEmbutidoPct / 100;
@@ -1551,13 +1543,11 @@
         const adesaoValor = carta * (adesaoPct / 100);
 
         // Lance Fixo
-        const lanceFixoBaseValor = lanceFixoBase === 'carta' ? carta
-            : lanceFixoBase === 'categoria' ? categoria : creditoDesejado;
+        const lanceFixoBaseValor = baseLance === 'carta' ? carta : baseLance === 'categoria' ? categoria : saldoDevedor;
         const lanceFixoValor = lanceFixoBaseValor * (lanceFixoPct / 100);
 
         // Lance Livre
-        const lanceLivreBaseValor = lanceLivreBase === 'carta' ? carta
-            : lanceLivreBase === 'categoria' ? categoria : creditoDesejado;
+        const lanceLivreBaseValor = baseLance === 'carta' ? carta : baseLance === 'categoria' ? categoria : saldoDevedor;
         const lanceLivreValor = lanceLivreBaseValor * (lanceLivrePct / 100);
 
         // Preencher campos calculados
@@ -1620,14 +1610,14 @@
         const reducaoParcela = (parseFloat(document.getElementById('co_reducaoParcela')?.value) || 0) / 100;
         const posContempOpcao = document.getElementById('co_posContempOpcao')?.value || 'parcela';
         const lanceFixoPct = (parseFloat(document.getElementById('co_lanceFixoPct')?.value) || 0) / 100;
-        const lanceFixoBase = document.getElementById('co_lanceFixoBase')?.value || 'carta';
+        const baseLance = document.getElementById('co_baseLance')?.value || 'carta';
         const lanceLivrePct = (parseFloat(document.getElementById('co_lanceLivrePct')?.value) || 0) / 100;
-        const lanceLivreBase = document.getElementById('co_lanceLivreBase')?.value || 'carta';
+        const baseLance = document.getElementById('co_baseLance')?.value || 'carta';
         const categoria = carta * (1 + taxaAdm + fundo);
         const adesaoValor = carta * adesaoPct;
         return { creditoDesejado, carta, lanceEmbutidoPct, taxaAdm, fundo, seguroPct, prazo,
             reajusteAA, mesContemp, adesaoValor, reducaoParcela, posContempOpcao,
-            lanceFixoPct, lanceFixoBase, lanceLivrePct, lanceLivreBase, categoria };
+            lanceFixoPct, baseLance, lanceLivrePct, baseLance, categoria };
     }
 
     // Simular parcelas mês a mês do consórcio (novo)
@@ -1941,9 +1931,8 @@
         const reducaoParcela = (parseFloat(p.co_reducaoParcela)||0) / 100;
         const posContempOpcao = p.co_posContempOpcao || 'parcela';
         const lanceFixoPct = (parseFloat(p.co_lanceFixoPct)||0) / 100;
-        const lanceFixoBase = p.co_lanceFixoBase || 'carta';
+        const baseLance = p.co_baseLance || 'carta';
         const lanceLivrePct = (parseFloat(p.co_lanceLivrePct)||0) / 100;
-        const lanceLivreBase = p.co_lanceLivreBase || 'carta';
 
         // Categoria = Carta × (1 + TaxaAdm + FundoReserva)
         let cartaAtual = carta;
@@ -2005,12 +1994,10 @@
 
         // Calcular valores dos lances para exibição
         const lanceEmbutidoValor = carta * lanceEmbutidoPct;
-        const lanceFixoBaseValor = lanceFixoBase === 'carta' ? carta
-            : lanceFixoBase === 'categoria' ? categoriaAtual : creditoDesejado;
-        const lanceFixoValor = lanceFixoBaseValor * lanceFixoPct;
-        const lanceLivreBaseValor = lanceLivreBase === 'carta' ? carta
-            : lanceLivreBase === 'categoria' ? categoriaAtual : creditoDesejado;
-        const lanceLivreValor = lanceLivreBaseValor * lanceLivrePct;
+        const baseLanceValor = baseLance === 'carta' ? cartaAtual
+            : baseLance === 'categoria' ? categoriaAtual : saldoDevedor;
+        const lanceFixoValor = baseLanceValor * lanceFixoPct;
+        const lanceLivreValor = baseLanceValor * lanceLivrePct;
         const creditoLiquido = carta - lanceEmbutidoValor;
 
         return {
@@ -2519,7 +2506,8 @@
             const seguroPct = parseFloat(p.co_seguroPct)||0;
             const mesContemp = parseInt(p.co_mesContemplacao)||0;
             const mesLance = 0;
-            const baseLance = 'carta';
+            const baseLance = p.co_baseLance || 'carta';
+            const baseLanceLabel = {carta:'carta de crédito', categoria:'categoria', saldo:'saldo devedor'}[baseLance] || 'carta de crédito';
             
             const lanceEmb = parseFloat(p.co_lanceEmbutido)||0;
             const lanceRec = 0;
