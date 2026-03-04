@@ -1856,56 +1856,69 @@
         }
 
         function updateTooltips(data) {
-            const fmt = (val) => parseFloat(val).toFixed(2) + '%';
+            const fmt = (val) => parseFloat(val).toFixed(4) + '%';
 
-            // Tooltip de Rentabilidade: Variáveis de Entrada + Calculadas + 9 Perfis (Méd. 10a e Atual)
+            // Bloco HTML idêntico para as duas tooltips (tudo que a página de variáveis de mercado mostra)
+            const tooltipHTML = `
+                <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
+                <table class="tooltip-table">
+                    <tr><th colspan="2">Variáveis de Entrada</th></tr>
+                    <tr><td>SELIC (%)</td><td>${fmt(data.selic)}</td></tr>
+                    <tr><td>CDI 120 meses (%)</td><td>${fmt(data.cdi_120_meses)}</td></tr>
+                    <tr><td>IPCA (%)</td><td>${fmt(data.ipca)}</td></tr>
+                    <tr><td>IPCA 120 meses (%)</td><td>${fmt(data.ipca_120_meses)}</td></tr>
+                    <tr><td>Rent. Anual Aposentadoria (%)</td><td>${fmt(data.rent_anual_aposentadoria)}</td></tr>
+                </table>
+                <table class="tooltip-table">
+                    <tr><th colspan="2">Variáveis Calculadas Automaticamente</th></tr>
+                    <tr><td>CDI (%)</td><td>${fmt(data.cdi)}</td></tr>
+                    <tr><td>CDI a.a. Médio 10 anos (%)</td><td>${fmt(data.cdi_aa_medio_10_anos)}</td></tr>
+                    <tr><td>IPCA a.a. Médio 10 anos (%)</td><td>${fmt(data.ipca_aa_medio_10_anos)}</td></tr>
+                    <tr><td>Rent. Mensal Aposentadoria (%)</td><td>${fmt(data.rent_mensal_aposentadoria)}</td></tr>
+                </table>
+                <table class="tooltip-table">
+                    <tr><th colspan="2">Multiplicadores % do CDI por Perfil</th></tr>
+                    <tr><td>0. Sem Conhecimento (%)</td><td>${data.mult_sem_conhecimento}</td></tr>
+                    <tr><td>0.5. Iniciante (%)</td><td>${data.mult_iniciante}</td></tr>
+                    <tr><td>1. Ultra-Conservador (%)</td><td>${data.mult_ultra_cons}</td></tr>
+                    <tr><td>2. Conservador (%)</td><td>${data.mult_cons}</td></tr>
+                    <tr><td>3. Conservador-Moderado (%)</td><td>${data.mult_cons_mod}</td></tr>
+                    <tr><td>4. Moderado (%)</td><td>${data.mult_mod}</td></tr>
+                    <tr><td>5. Moderado-Arrojado (%)</td><td>${data.mult_mod_arro}</td></tr>
+                    <tr><td>6. Arrojado (%)</td><td>${data.mult_arro}</td></tr>
+                    <tr><td>7. Ultra-Arrojado (%)</td><td>${data.mult_ultra_arro}</td></tr>
+                </table>
+                <table class="tooltip-table">
+                    <tr><th>Rentabilidades 10 anos (%) - 9 Perfis</th><th>Valor</th></tr>
+                    <tr><td>0. Sem Conhecimento</td><td>${fmt(data.rent_sem_conhecimento_10_anos)}</td></tr>
+                    <tr><td>0.5. Iniciante</td><td>${fmt(data.rent_iniciante_10_anos)}</td></tr>
+                    <tr><td>1. Ultra-Conservador</td><td>${fmt(data.rent_ultra_cons_10_anos)}</td></tr>
+                    <tr><td>2. Conservador</td><td>${fmt(data.rent_cons_10_anos)}</td></tr>
+                    <tr><td>3. Conservador-Moderado</td><td>${fmt(data.rent_cons_mod_10_anos)}</td></tr>
+                    <tr><td>4. Moderado</td><td>${fmt(data.rent_mod_10_anos)}</td></tr>
+                    <tr><td>5. Moderado-Arrojado</td><td>${fmt(data.rent_mod_arro_10_anos)}</td></tr>
+                    <tr><td>6. Arrojado</td><td>${fmt(data.rent_arro_10_anos)}</td></tr>
+                    <tr><td>7. Ultra-Arrojado</td><td>${fmt(data.rent_ultra_arro_10_anos)}</td></tr>
+                </table>
+                <table class="tooltip-table">
+                    <tr><th>Rentabilidades Atuais (%) - 9 Perfis</th><th>Valor</th></tr>
+                    <tr><td>0. Sem Conhecimento</td><td>${fmt(data.rent_sem_conhecimento)}</td></tr>
+                    <tr><td>0.5. Iniciante</td><td>${fmt(data.rent_iniciante)}</td></tr>
+                    <tr><td>1. Ultra-Conservador</td><td>${fmt(data.rent_ultra_cons)}</td></tr>
+                    <tr><td>2. Conservador</td><td>${fmt(data.rent_cons)}</td></tr>
+                    <tr><td>3. Conservador-Moderado</td><td>${fmt(data.rent_cons_mod)}</td></tr>
+                    <tr><td>4. Moderado</td><td>${fmt(data.rent_mod)}</td></tr>
+                    <tr><td>5. Moderado-Arrojado</td><td>${fmt(data.rent_mod_arro)}</td></tr>
+                    <tr><td>6. Arrojado</td><td>${fmt(data.rent_arro)}</td></tr>
+                    <tr><td>7. Ultra-Arrojado</td><td>${fmt(data.rent_ultra_arro)}</td></tr>
+                </table>
+            `;
+
             const rentTooltip = document.getElementById('rentabilidadeTooltip');
-            if (rentTooltip) {
-                rentTooltip.innerHTML = `
-                    <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
-                    <table class="tooltip-table">
-                        <tr><th colspan="2">Variáveis de Entrada</th></tr>
-                        <tr><td>SELIC (%)</td><td>${fmt(data.selic)}</td></tr>
-                        <tr><td>CDI 120 meses (%)</td><td>${fmt(data.cdi_120_meses)}</td></tr>
-                        <tr><td>Rent. Anual Aposentadoria (%)</td><td>${fmt(data.rent_anual_aposentadoria)}</td></tr>
-                    </table>
-                    <table class="tooltip-table">
-                        <tr><th colspan="2">Variáveis Calculadas Automaticamente</th></tr>
-                        <tr><td>CDI (%)</td><td>${fmt(data.cdi)}</td></tr>
-                        <tr><td>CDI a.a. Médio 10 anos (%)</td><td>${fmt(data.cdi_aa_medio_10_anos)}</td></tr>
-                        <tr><td>Rent. Mensal Aposentadoria (%)</td><td>${fmt(data.rent_mensal_aposentadoria)}</td></tr>
-                    </table>
-                    <table class="tooltip-table">
-                        <tr><th>Perfil</th><th>Méd. 10 anos (%)</th><th>Rent. Atual (%)</th></tr>
-                        <tr><td>0. Sem Conhecimento</td><td>${fmt(data.rent_sem_conhecimento_10_anos)}</td><td>${fmt(data.rent_sem_conhecimento)}</td></tr>
-                        <tr><td>0.5. Iniciante</td><td>${fmt(data.rent_iniciante_10_anos)}</td><td>${fmt(data.rent_iniciante)}</td></tr>
-                        <tr><td>1. Ultra-Conservador</td><td>${fmt(data.rent_ultra_cons_10_anos)}</td><td>${fmt(data.rent_ultra_cons)}</td></tr>
-                        <tr><td>2. Conservador</td><td>${fmt(data.rent_cons_10_anos)}</td><td>${fmt(data.rent_cons)}</td></tr>
-                        <tr><td>3. Conservador-Moderado</td><td>${fmt(data.rent_cons_mod_10_anos)}</td><td>${fmt(data.rent_cons_mod)}</td></tr>
-                        <tr><td>4. Moderado</td><td>${fmt(data.rent_mod_10_anos)}</td><td>${fmt(data.rent_mod)}</td></tr>
-                        <tr><td>5. Moderado-Arrojado</td><td>${fmt(data.rent_mod_arro_10_anos)}</td><td>${fmt(data.rent_mod_arro)}</td></tr>
-                        <tr><td>6. Arrojado</td><td>${fmt(data.rent_arro_10_anos)}</td><td>${fmt(data.rent_arro)}</td></tr>
-                        <tr><td>7. Ultra-Arrojado</td><td>${fmt(data.rent_ultra_arro_10_anos)}</td><td>${fmt(data.rent_ultra_arro)}</td></tr>
-                    </table>
-                `;
-            }
+            if (rentTooltip) rentTooltip.innerHTML = tooltipHTML;
 
-            // Tooltip de Inflação: Variáveis de Entrada + Calculadas (somente inflação)
             const inflaTooltip = document.getElementById('inflacaoTooltip');
-            if (inflaTooltip) {
-                inflaTooltip.innerHTML = `
-                    <span class="tooltip-title">Variáveis de Mercado (Referência)</span>
-                    <table class="tooltip-table">
-                        <tr><th colspan="2">Variáveis de Entrada</th></tr>
-                        <tr><td>IPCA (%)</td><td>${fmt(data.ipca)}</td></tr>
-                        <tr><td>IPCA 120 meses (%)</td><td>${fmt(data.ipca_120_meses)}</td></tr>
-                    </table>
-                    <table class="tooltip-table">
-                        <tr><th colspan="2">Variáveis Calculadas Automaticamente</th></tr>
-                        <tr><td>IPCA a.a. Médio 10 anos (%)</td><td>${fmt(data.ipca_aa_medio_10_anos)}</td></tr>
-                    </table>
-                `;
-            }
+            if (inflaTooltip) inflaTooltip.innerHTML = tooltipHTML;
         }
 
         // Aguarda o layout.js criar a instância do Supabase antes de buscar os dados
