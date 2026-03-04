@@ -861,33 +861,22 @@
             <!-- ── CONSÓRCIO ───────────────────────────────────────────────── -->
             <div class="tab-panel" id="tab-consorcio">
                 <div class="section-title">🔄 Consórcio</div>
+
+                <!-- Bloco 1: Carta e Grupo -->
+                <div class="section-title" style="font-size:0.82rem;margin-top:4px;color:#a78bfa;">Carta e Grupo</div>
                 <div class="input-row cols-3">
                     <div class="input-group">
                         <label>Valor da carta de crédito (R$)</label>
-                        <input type="text" id="co_credito" placeholder="Ex: 500.000,00" oninput="fmtCur(this)">
+                        <input type="text" id="co_credito" placeholder="Ex: 500.000,00" oninput="fmtCur(this);calcCategoria()">
+                        <div class="hint">Valor bruto da carta (antes de lances).</div>
                     </div>
                     <div class="input-group">
                         <label>Prazo do grupo (meses)</label>
-                        <input type="number" id="co_prazo" placeholder="Ex: 180" min="1">
+                        <input type="number" id="co_prazo" placeholder="Ex: 180" min="1" oninput="calcCategoria()">
                     </div>
                     <div class="input-group">
-                        <label>Taxa de administração total (%)</label>
-                        <input type="number" id="co_taxaAdm" placeholder="Ex: 18" step="0.1">
-                        <div class="hint">Sobre o valor do crédito, diluída nas parcelas.</div>
-                    </div>
-                </div>
-                <div class="input-row cols-3">
-                    <div class="input-group">
-                        <label>Fundo de reserva (%)</label>
-                        <input type="number" id="co_fundoReserva" placeholder="Ex: 2" step="0.1">
-                    </div>
-                    <div class="input-group">
-                        <label>Seguro de vida (R$/mês)</label>
-                        <input type="text" id="co_seguro" placeholder="0,00" oninput="fmtCur(this)">
-                    </div>
-                    <div class="input-group">
-                        <label>Reajuste anual do crédito e parcelas</label>
-                        <select id="co_reajuste">
+                        <label>Reajuste anual do crédito/parcelas</label>
+                        <select id="co_reajuste" onchange="calcCategoria()">
                             <option value="nenhum">Nenhum</option>
                             <option value="incc">INCC</option>
                             <option value="ipca">IPCA</option>
@@ -896,33 +885,114 @@
                         </select>
                     </div>
                 </div>
-                <div class="input-row cols-2">
+                <div class="input-row cols-3">
                     <div class="input-group">
                         <label>Índice de reajuste projetado (% a.a.)</label>
-                        <input type="number" id="co_indiceReajuste" placeholder="Ex: 4" step="0.1">
+                        <input type="number" id="co_indiceReajuste" placeholder="Ex: 4" step="0.1" oninput="calcCategoria()">
+                        <div class="hint">Usado para projetar a evolução do crédito e das parcelas.</div>
                     </div>
                     <div class="input-group">
                         <label>Mês estimado de contemplação</label>
                         <input type="number" id="co_mesContemplacao" placeholder="Ex: 36" min="1">
-                        <div class="hint">Mês em que você prevê ser contemplado.</div>
+                        <div class="hint">Mês em que você prevê ser contemplado (sorteio ou lance).</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Valor da categoria (R$) — calculado</label>
+                        <input type="text" id="co_categoria" placeholder="Calculado automaticamente" readonly style="opacity:0.7;cursor:default">
+                        <div class="hint">Carta × (1 + Taxa Adm + Fundo Reserva). Base de cálculo das parcelas.</div>
                     </div>
                 </div>
+
+                <!-- Bloco 2: Taxas e Encargos -->
                 <hr class="divider">
-                <div class="section-title" style="font-size:0.85rem;">Lance</div>
+                <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">Taxas e Encargos</div>
                 <div class="input-row cols-3">
                     <div class="input-group">
-                        <label>Lance embutido (% do crédito)</label>
-                        <input type="number" id="co_lanceEmbutido" placeholder="Ex: 25" step="0.1">
-                        <div class="hint">Reduz o crédito líquido recebido.</div>
+                        <label>Taxa de administração total (%)</label>
+                        <input type="number" id="co_taxaAdm" placeholder="Ex: 18" step="0.1" oninput="calcCategoria()">
+                        <div class="hint">% sobre o valor da carta, diluída no prazo. Base: categoria.</div>
                     </div>
+                    <div class="input-group">
+                        <label>Fundo de reserva (%)</label>
+                        <input type="number" id="co_fundoReserva" placeholder="Ex: 2" step="0.1" oninput="calcCategoria()">
+                        <div class="hint">% sobre o valor da carta, diluído no prazo. Base: categoria.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Taxa de administração é cobrada sobre</label>
+                        <select id="co_baseCalculo">
+                            <option value="categoria">Valor da categoria (carta × encargos)</option>
+                            <option value="carta">Valor da carta de crédito</option>
+                            <option value="saldo">Saldo devedor atualizado</option>
+                        </select>
+                        <div class="hint">Define a base de cálculo da parcela mensal.</div>
+                    </div>
+                </div>
+
+                <!-- Bloco 3: Seguro -->
+                <hr class="divider">
+                <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">Seguro</div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Tipo de seguro</label>
+                        <select id="co_tipoSeguro" onchange="toggleSeguroConsorcio()">
+                            <option value="nenhum">Nenhum / Não informar</option>
+                            <option value="fixo">Valor fixo (R$/mês)</option>
+                            <option value="pct_carta">% da carta de crédito ao mês</option>
+                            <option value="pct_saldo">% do saldo devedor ao mês</option>
+                            <option value="pct_categoria">% da categoria ao mês</option>
+                        </select>
+                    </div>
+                    <div class="input-group" id="co_seguro_fixo_grp" style="display:none">
+                        <label>Valor do seguro (R$/mês)</label>
+                        <input type="text" id="co_seguro" placeholder="0,00" oninput="fmtCur(this)">
+                    </div>
+                    <div class="input-group" id="co_seguro_pct_grp" style="display:none">
+                        <label>Taxa do seguro (% a.m.)</label>
+                        <input type="number" id="co_seguroPct" placeholder="Ex: 0.05" step="0.001">
+                    </div>
+                </div>
+
+                <!-- Bloco 4: Lance -->
+                <hr class="divider">
+                <div class="section-title" style="font-size:0.82rem;color:#a78bfa;">Lance</div>
+                <div class="input-row cols-3">
+                    <div class="input-group">
+                        <label>Mês em que o lance será dado</label>
+                        <input type="number" id="co_mesLance" placeholder="Ex: 12" min="1">
+                        <div class="hint">Deve ser ≤ mês de contemplação.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Base de cálculo do lance</label>
+                        <select id="co_baseLance">
+                            <option value="carta">% da carta de crédito</option>
+                            <option value="categoria">% da categoria</option>
+                            <option value="saldo">% do saldo devedor</option>
+                        </select>
+                        <div class="hint">Sobre qual valor o percentual do lance é aplicado.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Lance embutido (% da base)</label>
+                        <input type="number" id="co_lanceEmbutido" placeholder="Ex: 25" step="0.1">
+                        <div class="hint">Reduz o crédito líquido recebido. Pago com o próprio crédito.</div>
+                    </div>
+                </div>
+                <div class="input-row cols-3">
                     <div class="input-group">
                         <label>Lance com recursos próprios (R$)</label>
                         <input type="text" id="co_lanceRecursos" placeholder="0,00" oninput="fmtCur(this)">
                         <div class="hint">Capital externo ao consórcio usado como lance.</div>
                     </div>
                     <div class="input-group">
-                        <label>Mês em que o lance será dado</label>
-                        <input type="number" id="co_mesLance" placeholder="Ex: 12" min="1">
+                        <label>Lance com recursos próprios (% da base)</label>
+                        <input type="number" id="co_lanceRecursosPct" placeholder="Ex: 10" step="0.1">
+                        <div class="hint">Alternativa ao valor fixo. Preencha um ou outro.</div>
+                    </div>
+                    <div class="input-group">
+                        <label>Parcelas pagas antes do lance abater saldo?</label>
+                        <select id="co_lanceAbateSaldo">
+                            <option value="sim">Sim — lance reduz saldo devedor</option>
+                            <option value="nao">Não — lance apenas antecipa contemplação</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -1241,13 +1311,19 @@
             base.co_prazo = gv('co_prazo');
             base.co_taxaAdm = gv('co_taxaAdm');
             base.co_fundoReserva = gv('co_fundoReserva');
+            base.co_baseCalculo = gv('co_baseCalculo');
+            base.co_tipoSeguro = gv('co_tipoSeguro');
             base.co_seguro = gv('co_seguro');
+            base.co_seguroPct = gv('co_seguroPct');
             base.co_reajuste = gv('co_reajuste');
             base.co_indiceReajuste = gv('co_indiceReajuste');
             base.co_mesContemplacao = gv('co_mesContemplacao');
+            base.co_mesLance = gv('co_mesLance');
+            base.co_baseLance = gv('co_baseLance');
             base.co_lanceEmbutido = gv('co_lanceEmbutido');
             base.co_lanceRecursos = gv('co_lanceRecursos');
-            base.co_mesLance = gv('co_mesLance');
+            base.co_lanceRecursosPct = gv('co_lanceRecursosPct');
+            base.co_lanceAbateSaldo = gv('co_lanceAbateSaldo');
         } else if (mod === 'custom') {
             base.cu_nomeCredito = gv('cu_nomeCredito');
             base.cu_sistema = gv('cu_sistema');
@@ -1311,6 +1387,22 @@
             label.textContent = 'meses';
             hint.textContent = `= ${+(v / 12).toFixed(2)} anos`;
         }
+    }
+
+    function toggleSeguroConsorcio() {
+        const tipo = document.getElementById('co_tipoSeguro')?.value || 'nenhum';
+        const fixoGrp = document.getElementById('co_seguro_fixo_grp');
+        const pctGrp = document.getElementById('co_seguro_pct_grp');
+        if (fixoGrp) fixoGrp.style.display = tipo === 'fixo' ? '' : 'none';
+        if (pctGrp) pctGrp.style.display = (tipo !== 'nenhum' && tipo !== 'fixo') ? '' : 'none';
+    }
+    function calcCategoria() {
+        const credito = parseCur(document.getElementById('co_credito')?.value || '0');
+        const taxaAdm = parseFloat(document.getElementById('co_taxaAdm')?.value) || 0;
+        const fundo = parseFloat(document.getElementById('co_fundoReserva')?.value) || 0;
+        const cat = credito * (1 + (taxaAdm + fundo) / 100);
+        const el = document.getElementById('co_categoria');
+        if (el) el.value = cat > 0 ? cat.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) : '';
     }
 
     function globais() {
@@ -1554,58 +1646,124 @@
         const prazo = parseInt(p.co_prazo) || meses;
         const taxaAdmTotal = (parseFloat(p.co_taxaAdm)||0) / 100;
         const fundoReserva = (parseFloat(p.co_fundoReserva)||0) / 100;
-        const seguroMensal = parseCur(p.co_seguro);
+        const baseCalculo = p.co_baseCalculo || 'categoria';
+        const tipoSeguro = p.co_tipoSeguro || 'nenhum';
+        const seguroFixo = parseCur(p.co_seguro);
+        const seguroPct = (parseFloat(p.co_seguroPct)||0) / 100;
         const reajusteAA = (parseFloat(p.co_indiceReajuste)||0) / 100;
         const reajusteMensal = Math.pow(1+reajusteAA, 1/12) - 1;
         const mesContemplacao = parseInt(p.co_mesContemplacao) || Math.floor(prazo/2);
-        const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido)||0) / 100;
-        const lanceRecursos = parseCur(p.co_lanceRecursos);
         const mesLance = parseInt(p.co_mesLance) || mesContemplacao;
+        const baseLance = p.co_baseLance || 'carta';
+        const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido)||0) / 100;
+        const lanceRecursosPct = (parseFloat(p.co_lanceRecursosPct)||0) / 100;
+        const lanceRecursosFixo = parseCur(p.co_lanceRecursos);
+        const lanceAbateSaldo = (p.co_lanceAbateSaldo || 'sim') === 'sim';
         const custosAq = g.custosAquisicao;
 
+        // Categoria = carta × (1 + taxaAdm + fundoReserva)
+        const categoria = credito * (1 + taxaAdmTotal + fundoReserva);
+
         let creditoAtual = credito;
-        let parcelaMensal = credito * (1 + taxaAdmTotal + fundoReserva) / prazo;
+        let categoriaAtual = categoria;
+        // Saldo devedor: parcelas pagas reduzem o saldo (amortização proporcional)
+        let saldoDevedor = credito; // saldo devedor da carta
+        let parcelaInicial = 0;
+        let parcelaFinal = 0;
         let custoAcum = 0;
         let valorBemAtual = g.valorBem;
         const serie = [];
-        let contemplado = false;
-        let saldoDevedor = 0;
+        const serieSD = [];
+        let lanceJaDado = false;
+        let lanceEmbutidoValor = 0;
+        let lanceRecursosValor = 0;
 
         for (let m = 1; m <= meses; m++) {
-            creditoAtual *= (1 + reajusteMensal);
-            parcelaMensal = creditoAtual * (1 + taxaAdmTotal + fundoReserva) / prazo;
+            // Reajuste anual (a cada 12 meses)
+            if (reajusteAA > 0 && m > 1 && (m-1) % 12 === 0) {
+                creditoAtual *= (1 + reajusteAA);
+                categoriaAtual = creditoAtual * (1 + taxaAdmTotal + fundoReserva);
+                // Saldo devedor também é reajustado
+                saldoDevedor *= (1 + reajusteAA);
+            }
             valorBemAtual *= (1 + g.valorizacao/12);
 
+            let parcela = 0;
             if (m <= prazo) {
-                custoAcum += parcelaMensal + seguroMensal;
+                // Base de cálculo da parcela
+                let base;
+                if (baseCalculo === 'categoria') base = categoriaAtual;
+                else if (baseCalculo === 'carta') base = creditoAtual;
+                else base = saldoDevedor; // 'saldo'
+
+                const parcelaAdm = base * (taxaAdmTotal + fundoReserva) / prazo;
+                const amortMensal = creditoAtual / prazo; // amortização proporcional da carta
+
+                // Seguro
+                let seguro = 0;
+                if (tipoSeguro === 'fixo') seguro = seguroFixo;
+                else if (tipoSeguro === 'pct_carta') seguro = creditoAtual * seguroPct;
+                else if (tipoSeguro === 'pct_saldo') seguro = saldoDevedor * seguroPct;
+                else if (tipoSeguro === 'pct_categoria') seguro = categoriaAtual * seguroPct;
+
+                parcela = amortMensal + parcelaAdm + seguro;
+
+                // Reduzir saldo devedor pela amortização mensal
+                saldoDevedor = Math.max(0, saldoDevedor - amortMensal);
+
+                custoAcum += parcela;
+                if (m === 1) parcelaInicial = parcela;
+                parcelaFinal = parcela;
             }
 
-            if (m === mesLance) {
-                const lanceEmb = creditoAtual * lanceEmbutidoPct;
-                custoAcum += lanceRecursos;
-                saldoDevedor = creditoAtual - lanceEmb - lanceRecursos;
+            // Lance no mês configurado
+            if (m === mesLance && !lanceJaDado) {
+                lanceJaDado = true;
+                // Calcular base do lance
+                let baseLanceValor;
+                if (baseLance === 'carta') baseLanceValor = creditoAtual;
+                else if (baseLance === 'categoria') baseLanceValor = categoriaAtual;
+                else baseLanceValor = saldoDevedor;
+
+                lanceEmbutidoValor = baseLanceValor * lanceEmbutidoPct;
+                // Recursos próprios: fixo ou percentual (usa o maior informado)
+                lanceRecursosValor = lanceRecursosFixo > 0 ? lanceRecursosFixo : baseLanceValor * lanceRecursosPct;
+
+                // Lance embutido: reduz crédito líquido (não é custo extra, é desconto no crédito)
+                // Lance recursos próprios: é custo efetivo
+                custoAcum += lanceRecursosValor;
+
+                // Se lance abate saldo, reduzir saldo devedor
+                if (lanceAbateSaldo) {
+                    saldoDevedor = Math.max(0, saldoDevedor - lanceEmbutidoValor - lanceRecursosValor);
+                }
             }
 
+            // Contemplação
             if (m === mesContemplacao) {
-                contemplado = true;
                 custoAcum += custosAq;
                 custoAcum += g.custosMensais * (meses - m);
             }
 
             serie.push(custoAcum);
+            serieSD.push(saldoDevedor);
         }
 
-        const creditoLiquido = credito * (1 - lanceEmbutidoPct) - lanceRecursos;
+        const creditoLiquido = creditoAtual - lanceEmbutidoValor;
         return {
             custoTotalNominal: custoAcum,
             custoTotalReal: custoAcum / Math.pow(1+g.inflacao, g.prazoAnos),
-            patrimonioLiqFinal: valorBemAtual,
+            patrimonioLiqFinal: valorBemAtual - (saldoDevedor > 0 ? saldoDevedor : 0),
             ganhoPatrimonial: valorBemAtual - g.valorBem,
-            saldoDevedorFinal: 0,
+            saldoDevedorFinal: saldoDevedor,
             valorBemFinal: valorBemAtual,
-            parcelaInicial: parcelaMensal,
-            parcelaFinal: parcelaMensal,
-            serie
+            parcelaInicial,
+            parcelaFinal,
+            creditoLiquido,
+            lanceEmbutidoValor,
+            lanceRecursosValor,
+            serie,
+            serieSD
         };
     }
 
@@ -2086,19 +2244,44 @@
         else if (mod === 'consorcio') {
             const credito = parseCur(p.co_credito) || g.valorBem;
             const prazo = parseInt(p.co_prazo)||0;
+            const taxaAdm = parseFloat(p.co_taxaAdm)||0;
+            const fundoRes = parseFloat(p.co_fundoReserva)||0;
+            const baseCalculo = p.co_baseCalculo || 'categoria';
+            const baseCalcLabel = {categoria:'categoria', carta:'carta de crédito', saldo:'saldo devedor'}[baseCalculo];
+            const tipoSeguro = p.co_tipoSeguro || 'nenhum';
+            const seguroPct = parseFloat(p.co_seguroPct)||0;
             const mesContemp = parseInt(p.co_mesContemplacao)||0;
             const mesLance = parseInt(p.co_mesLance)||0;
+            const baseLance = p.co_baseLance || 'carta';
+            const baseLanceLabel = {carta:'carta de crédito', categoria:'categoria', saldo:'saldo devedor'}[baseLance];
             const lanceEmb = parseFloat(p.co_lanceEmbutido)||0;
             const lanceRec = parseCur(p.co_lanceRecursos);
+            const lanceRecPct = parseFloat(p.co_lanceRecursosPct)||0;
+            const lanceAbate = (p.co_lanceAbateSaldo||'sim') === 'sim';
+            const reajuste = parseFloat(p.co_indiceReajuste)||0;
+            const categoria = credito * (1 + (taxaAdm+fundoRes)/100);
 
-            eventos.push({ mes: 'Dia 0', desc: `Ingresso no consórcio. Carta de crédito: <strong>${fmtBRL(credito)}</strong>. Prazo do grupo: <strong>${prazo} meses</strong>.` });
-            eventos.push({ mes: 'Mês 1', desc: `Início das parcelas mensais: <strong>${fmtBRL(r.parcelaInicial)}</strong> (inclui taxa de adm. de ${p.co_taxaAdm||0}% e fundo de reserva de ${p.co_fundoReserva||0}%).` });
-            if (mesLance > 0 && (lanceEmb > 0 || lanceRec > 0)) {
-                eventos.push({ mes: mes(mesLance), desc: `Lance dado: embutido de ${lanceEmb}% do crédito${lanceRec>0?' + '+fmtBRL(lanceRec)+' de recursos próprios':''}.` });
+            eventos.push({ mes: 'Dia 0', desc: `Ingresso no consórcio. Carta de crédito: <strong>${fmtBRL(credito)}</strong>. Prazo do grupo: <strong>${prazo} meses</strong>. Categoria: <strong>${fmtBRL(categoria)}</strong> (carta × ${(1+(taxaAdm+fundoRes)/100).toFixed(4)}).` });
+            eventos.push({ mes: 'Mês 1', desc: `Início das parcelas. Parcela inicial: <strong>${fmtBRL(r.parcelaInicial)}</strong>. Base de cálculo: <strong>${baseCalcLabel}</strong>. Taxa Adm: ${taxaAdm}% + Fundo Reserva: ${fundoRes}% sobre a base, diluídos em ${prazo} meses.${tipoSeguro!=='nenhum'?' Seguro: '+( tipoSeguro==='fixo'?fmtBRL(parseCur(p.co_seguro))+'/mês':seguroPct+'% a.m. sobre '+{pct_carta:'a carta',pct_saldo:'o saldo devedor',pct_categoria:'a categoria'}[tipoSeguro])+'.':''}` });
+            if (reajuste > 0) {
+                eventos.push({ mes: 'Anualmente', desc: `Reajuste anual de <strong>${reajuste}% a.a.</strong> aplicado à carta de crédito, à categoria e ao saldo devedor. As parcelas acompanham o reajuste.` });
+                const creditoAno1 = credito * (1 + reajuste/100);
+                eventos.push({ mes: 'Mês 13', desc: `Após 1º reajuste: carta atualizada para <strong>${fmtBRL(creditoAno1)}</strong>. Parcela sobe proporcionalmente.` });
             }
-            eventos.push({ mes: mes(mesContemp), desc: `<strong>Contemplação!</strong> Carta de crédito liberada. Custos de aquisição pagos: <strong>${fmtBRL(g.custosAquisicao)}</strong>. Bem adquirido.` });
-            eventos.push({ mes: mes(prazo), desc: `Última parcela do consórcio paga.` });
-            eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>.` });
+            if (mesLance > 0 && (lanceEmb > 0 || lanceRec > 0 || lanceRecPct > 0)) {
+                const lanceDesc = [];
+                if (lanceEmb > 0) lanceDesc.push(`lance embutido de <strong>${lanceEmb}%</strong> da ${baseLanceLabel}`);
+                if (lanceRec > 0) lanceDesc.push(`<strong>${fmtBRL(lanceRec)}</strong> de recursos próprios`);
+                else if (lanceRecPct > 0) lanceDesc.push(`<strong>${lanceRecPct}%</strong> da ${baseLanceLabel} em recursos próprios`);
+                eventos.push({ mes: mes(mesLance), desc: `Lance dado: ${lanceDesc.join(' + ')}. Base do lance: <strong>${baseLanceLabel}</strong>. ${lanceAbate?'O lance <strong>abate o saldo devedor</strong>, reduzindo as parcelas restantes.':'O lance <strong>não abate o saldo</strong>, apenas antecipa a contemplação.'}` });
+                if (r.lanceEmbutidoValor > 0) eventos.push({ mes: mes(mesLance), desc: `Lance embutido: <strong>${fmtBRL(r.lanceEmbutidoValor)}</strong>. Crédito líquido recebido após contemplação: <strong>${fmtBRL(r.creditoLiquido)}</strong>.` });
+            }
+            eventos.push({ mes: mes(mesContemp), desc: `🎉 <strong>Contemplação!</strong> Carta de crédito liberada. Crédito líquido: <strong>${fmtBRL(r.creditoLiquido||credito)}</strong>. Custos de aquisição pagos: <strong>${fmtBRL(g.custosAquisicao)}</strong>. Bem adquirido. Parcelas continuam até o mês ${prazo}.` });
+            if (mesContemp < prazo) {
+                eventos.push({ mes: `Mêses ${mesContemp+1}–${prazo}`, desc: `Parcelas pós-contemplação: apenas taxa de adm. + fundo de reserva + seguro (sem amortização, pois o bem já foi adquirido). Total de <strong>${prazo - mesContemp} parcelas</strong> restantes.` });
+            }
+            eventos.push({ mes: mes(prazo), desc: `Última parcela do consórcio paga. Total desembolsado em parcelas: <strong>${fmtBRL(r.parcelaFinal * prazo)}</strong> (estimativa).` });
+            eventos.push({ mes: mes(meses), desc: `Bem vale <strong>${fmtBRL(r.valorBemFinal)}</strong>. Custo total: <strong>${fmtBRL(r.custoTotalNominal)}</strong>. Custo real (descontada inflação): <strong>${fmtBRL(r.custoTotalReal)}</strong>.` });
         }
 
         else if (mod === 'custom') {
@@ -2385,37 +2568,76 @@
             const prazo = parseInt(p.co_prazo)||meses;
             const taxaAdmTotal = (parseFloat(p.co_taxaAdm)||0)/100;
             const fundoReserva = (parseFloat(p.co_fundoReserva)||0)/100;
-            const seguroMensal = parseCur(p.co_seguro);
+            const baseCalculo = p.co_baseCalculo || 'categoria';
+            const tipoSeguro = p.co_tipoSeguro || 'nenhum';
+            const seguroFixo = parseCur(p.co_seguro);
+            const seguroPct = (parseFloat(p.co_seguroPct)||0)/100;
             const reajusteAA = (parseFloat(p.co_indiceReajuste)||0)/100;
-            const reajusteMensal = Math.pow(1+reajusteAA, 1/12)-1;
             const mesContemp = parseInt(p.co_mesContemplacao)||Math.floor(prazo/2);
             const mesLance = parseInt(p.co_mesLance)||mesContemp;
-            const lanceEmb = (parseFloat(p.co_lanceEmbutido)||0)/100;
-            const lanceRec = parseCur(p.co_lanceRecursos);
+            const baseLance = p.co_baseLance || 'carta';
+            const lanceEmbutidoPct = (parseFloat(p.co_lanceEmbutido)||0)/100;
+            const lanceRecursosPct = (parseFloat(p.co_lanceRecursosPct)||0)/100;
+            const lanceRecursosFixo = parseCur(p.co_lanceRecursos);
+            const lanceAbateSaldo = (p.co_lanceAbateSaldo||'sim') === 'sim';
             let creditoAtual = credito;
+            let categoriaAtual = credito * (1 + taxaAdmTotal + fundoReserva);
+            let saldoDevedor = credito;
             let custoAcum = 0;
-            let totalParcelas = 0;
-            let stepParcela = 0;
+            let totalParcelas = 0, totalAmort = 0, totalAdm = 0, totalSeguro = 0;
+            let stepParcela = 0, stepAmort = 0, stepAdm = 0, stepSeguro = 0;
+            let lanceJaDado = false;
             let rows = '';
             for (let m = 1; m <= meses; m++) {
-                creditoAtual *= (1+reajusteMensal);
-                const parcela = m<=prazo ? creditoAtual*(1+taxaAdmTotal+fundoReserva)/prazo+seguroMensal : 0;
-                custoAcum += parcela;
-                totalParcelas += parcela;
-                stepParcela += parcela;
-                if (m===mesLance) { custoAcum += lanceRec; stepParcela += lanceRec; totalParcelas += lanceRec; }
-                if (m===mesContemp) { custoAcum += g.custosAquisicao + g.custosMensais*(meses-m); }
-                if (m%step===0) {
+                if (reajusteAA > 0 && m > 1 && (m-1) % 12 === 0) {
+                    creditoAtual *= (1 + reajusteAA);
+                    categoriaAtual = creditoAtual * (1 + taxaAdmTotal + fundoReserva);
+                    saldoDevedor *= (1 + reajusteAA);
+                }
+                let amortM = 0, admM = 0, seguroM = 0, parcelaM = 0;
+                if (m <= prazo) {
+                    let base;
+                    if (baseCalculo === 'categoria') base = categoriaAtual;
+                    else if (baseCalculo === 'carta') base = creditoAtual;
+                    else base = saldoDevedor;
+                    admM = base * (taxaAdmTotal + fundoReserva) / prazo;
+                    amortM = creditoAtual / prazo;
+                    if (tipoSeguro === 'fixo') seguroM = seguroFixo;
+                    else if (tipoSeguro === 'pct_carta') seguroM = creditoAtual * seguroPct;
+                    else if (tipoSeguro === 'pct_saldo') seguroM = saldoDevedor * seguroPct;
+                    else if (tipoSeguro === 'pct_categoria') seguroM = categoriaAtual * seguroPct;
+                    parcelaM = amortM + admM + seguroM;
+                    saldoDevedor = Math.max(0, saldoDevedor - amortM);
+                    custoAcum += parcelaM;
+                    totalParcelas += parcelaM; totalAmort += amortM; totalAdm += admM; totalSeguro += seguroM;
+                    stepParcela += parcelaM; stepAmort += amortM; stepAdm += admM; stepSeguro += seguroM;
+                }
+                if (m === mesLance && !lanceJaDado) {
+                    lanceJaDado = true;
+                    let baseLanceValor;
+                    if (baseLance === 'carta') baseLanceValor = creditoAtual;
+                    else if (baseLance === 'categoria') baseLanceValor = categoriaAtual;
+                    else baseLanceValor = saldoDevedor;
+                    const lanceEmb = baseLanceValor * lanceEmbutidoPct;
+                    const lanceRec = lanceRecursosFixo > 0 ? lanceRecursosFixo : baseLanceValor * lanceRecursosPct;
+                    custoAcum += lanceRec;
+                    stepParcela += lanceRec; totalParcelas += lanceRec;
+                    if (lanceAbateSaldo) saldoDevedor = Math.max(0, saldoDevedor - lanceEmb - lanceRec);
+                }
+                if (m === mesContemp) { custoAcum += g.custosAquisicao + g.custosMensais*(meses-m); }
+                if (m % step === 0) {
                     const label = mostrarMeses ? `Mês ${m}` : `Ano ${m/12}`;
-                    const ev = (m===mesContemp||m===mesLance) ? ' class="destaque"' : '';
-                    const obs = m===mesContemp ? ' ★ Contemplação' : (m===mesLance ? ' ★ Lance' : '');
-                    rows += `<tr${ev}><td>${label}${obs}</td><td>${fmtBRL(creditoAtual)}</td><td>${fmtBRL(stepParcela)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
-                    stepParcela = 0;
+                    const isContemp = m >= mesContemp - step + 1 && m <= mesContemp;
+                    const isLance = m >= mesLance - step + 1 && m <= mesLance;
+                    const ev = (isContemp || isLance) ? ' class="destaque"' : '';
+                    const obs = isContemp ? ' ★ Contemplação' : (isLance ? ' ★ Lance' : '');
+                    rows += `<tr${ev}><td>${label}${obs}</td><td>${fmtBRL(saldoDevedor)}</td><td>${fmtBRL(stepAmort)}</td><td>${fmtBRL(stepAdm)}</td><td>${fmtBRL(stepSeguro)}</td><td>${fmtBRL(stepParcela)}</td><td>${fmtBRL(creditoAtual)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+                    stepParcela=0; stepAmort=0; stepAdm=0; stepSeguro=0;
                 }
             }
-            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(creditoAtual)} (crédito final)</td><td>${fmtBRL(totalParcelas)}</td><td>${fmtBRL(custoAcum)}</td></tr>`;
+            rows += `<tr style="background:rgba(212,175,55,0.08);font-weight:bold;"><td>TOTAL</td><td style="color:#4ade80">${fmtBRL(saldoDevedor)} (saldo final)</td><td>${fmtBRL(totalAmort)}</td><td>${fmtBRL(totalAdm)}</td><td>${fmtBRL(totalSeguro)}</td><td>${fmtBRL(totalParcelas)}</td><td style="color:#4ade80">${fmtBRL(creditoAtual)} (crédito final)</td><td>${fmtBRL(custoAcum)}</td></tr>`;
             return `<div class="amort-table-wrap"><table class="amort-table">
-                <thead><tr><th>Período</th><th>Crédito Atualizado</th><th>Parcela no Período</th><th>Custo Acum.</th></tr></thead>
+                <thead><tr><th>Período</th><th>Saldo Dev. (fim)</th><th>Amortização</th><th>Taxa Adm+FR</th><th>Seguro</th><th>Parcela Total</th><th>Crédito Atualizado</th><th>Custo Acum.</th></tr></thead>
                 <tbody>${rows}</tbody></table></div>`;
         }
 
